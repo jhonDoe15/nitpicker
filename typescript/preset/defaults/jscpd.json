@@ -1,0 +1,21 @@
+{
+  "path": ["src/main"],
+  "format": ["typescript"],
+  "mode": "mild",
+  "reporters": ["console", "json"],
+  "output": "reports/quality/duplicates",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/generated/**",
+    "**/*.d.ts",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/coverage/**",
+    "**/reports/**",
+    "**/target/**",
+    "**/.stryker-tmp/**"
+  ]
+}
