@@ -3,3 +3,4 @@ reports/
 coverage/
 .stryker-tmp/
 .quality-diff-*
+.pi/

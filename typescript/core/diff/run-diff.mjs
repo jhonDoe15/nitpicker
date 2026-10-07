@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { compareFindings } from './compare.mjs';
-import { readRenameMap, resolveComparison } from './git.mjs';
+import { captureWorkingTree, readRenameMap, resolveComparison } from './git.mjs';
 import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import {
@@ -17,9 +17,16 @@ export function runQualityDiff({
   requestedBaseRef,
   outputRoot,
   analyzers,
+  includeWorkingTree = false,
 }) {
   const startedAt = Date.now();
-  const comparison = resolveComparison(repositoryRoot, requestedBaseRef);
+  const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
+  const comparison = includeWorkingTree
+    ? {
+        ...committedComparison,
+        headSha: captureWorkingTree(repositoryRoot, committedComparison.headSha),
+      }
+    : committedComparison;
   const baseToHeadRenames = readRenameMap({
     repositoryRoot,
     mergeBaseSha: comparison.mergeBaseSha,
