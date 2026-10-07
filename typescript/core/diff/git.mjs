@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 export class GitCommandError extends Error {
@@ -12,11 +14,12 @@ export class GitCommandError extends Error {
   }
 }
 
-export function runGit(repositoryRoot, args) {
+export function runGit(repositoryRoot, args, { environment } = {}) {
   const result = spawnSync('git', args, {
     cwd: repositoryRoot,
     encoding: 'utf8',
     maxBuffer: 10 * 1024 * 1024,
+    env: environment === undefined ? process.env : { ...process.env, ...environment },
   });
 
   if (result.error !== undefined) {
@@ -61,6 +64,44 @@ export function resolveComparison(repositoryRoot, requestedBaseRef) {
     );
   }
 }
+
+/**
+ * Returns a commit whose tree is the checkout, including untracked files that are not ignored. The
+ * staging happens in a copy of the index, so the user's index, branches, and files are untouched.
+ */
+export function captureWorkingTree(repositoryRoot, headSha) {
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-index-'));
+  try {
+    const indexPath = path.resolve(
+      repositoryRoot,
+      runGit(repositoryRoot, ['rev-parse', '--git-path', 'index']).trim(),
+    );
+    const temporaryIndexPath = path.join(temporaryRoot, 'index');
+    if (existsSync(indexPath)) {
+      copyFileSync(indexPath, temporaryIndexPath);
+    }
+    const environment = { GIT_INDEX_FILE: temporaryIndexPath };
+    runGit(repositoryRoot, ['add', '--all', '--', ':/'], { environment });
+    const treeSha = runGit(repositoryRoot, ['write-tree'], { environment }).trim();
+    if (treeSha === runGit(repositoryRoot, ['rev-parse', `${headSha}^{tree}`]).trim()) {
+      return headSha;
+    }
+    return runGit(
+      repositoryRoot,
+      ['commit-tree', treeSha, '-p', headSha, '-m', 'nitpicker working tree'],
+      { environment: CAPTURE_IDENTITY },
+    ).trim();
+  } finally {
+    rmSync(temporaryRoot, { recursive: true, force: true });
+  }
+}
+
+const CAPTURE_IDENTITY = {
+  GIT_AUTHOR_NAME: 'nitpicker',
+  GIT_AUTHOR_EMAIL: 'nitpicker@localhost',
+  GIT_COMMITTER_NAME: 'nitpicker',
+  GIT_COMMITTER_EMAIL: 'nitpicker@localhost',
+};
 
 export function readRenameMap({ repositoryRoot, mergeBaseSha, headSha, projectRelativePath }) {
   const output = runGit(repositoryRoot, [

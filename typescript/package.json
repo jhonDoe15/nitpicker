@@ -4,6 +4,9 @@
   "private": true,
   "description": "Differential quality gate: only new enforceable findings fail.",
   "license": "UNLICENSED",
+  "bin": {
+    "nitpicker": "core/cli.mjs"
+  },
   "type": "module",
   "engines": {
     "node": ">=22"
