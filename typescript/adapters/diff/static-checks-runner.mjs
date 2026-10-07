@@ -1,0 +1,709 @@
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  existsSync,
+  lstatSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
+import { linkPolicyFile } from '../policy-links.mjs';
+
+const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
+const DEPENDENCY_MANIFESTS = ['package.json', 'package-lock.json'];
+const TRUSTED_TOOL_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
+const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
+
+const invokedPath = process.argv[1];
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
+  try {
+    const options = parseArguments(process.argv.slice(2));
+    const findings = await runStaticCheck(options);
+    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+  } catch (error) {
+    process.stderr.write(
+      `Static quality adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+  }
+}
+
+async function runStaticCheck(options) {
+  switch (options.kind) {
+    case 'prettier':
+      return runPrettier(options);
+    case 'typecheck':
+      return runTypecheck(options);
+    case 'architecture':
+      return runArchitecture(options);
+    default:
+      throw new Error(`Unsupported static check: ${options.kind}`);
+  }
+}
+
+async function runPrettier(options) {
+  if (options.patterns.length === 0) {
+    throw new Error('Prettier requires at least one --pattern');
+  }
+  if (options.ignoreRelativePath === undefined) {
+    throw new Error('Prettier requires --ignore-path');
+  }
+  const installedPolicy = installPrettierPolicy(options);
+  try {
+    const result = runNodeTool({
+      options,
+      relativeToolPath: 'prettier/bin/prettier.cjs',
+      arguments_: [
+        '--config',
+        installedPolicy.configPath,
+        '--ignore-path',
+        installedPolicy.ignorePath,
+        '--list-different',
+        ...options.patterns,
+      ],
+      acceptedStatuses: [0, 1],
+    });
+    const unformattedFiles = result.stdout
+      .split(/\r?\n/)
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    if (result.status === 1 && unformattedFiles.length === 0) {
+      throw new Error(`Prettier reported formatting differences without file paths`);
+    }
+    const prettier = await import(
+      pathToFileURL(path.join(options.toolRoot, 'node_modules/prettier/index.mjs')).href
+    );
+    let prettierOptions;
+    try {
+      prettierOptions = JSON.parse(readFileSync(installedPolicy.configPath, 'utf8'));
+    } catch (error) {
+      throw new Error('Prettier policy is not valid JSON', { cause: error });
+    }
+    return Promise.all(
+      unformattedFiles.map(async (filePath) => {
+        const relativePath = projectFile(options.projectRoot, filePath);
+        const absolutePath = path.join(options.projectRoot, relativePath);
+        const source = readFileSync(absolutePath, 'utf8');
+        const formatted = await prettier.format(source, {
+          ...prettierOptions,
+          filepath: absolutePath,
+        });
+        return {
+          tool: options.analyzerName,
+          rule: 'prettier/prettier',
+          path: relativePath,
+          identity: `format-diff:${hash(formattingDifference(source, formatted))}`,
+          message: 'Format this file with Prettier',
+          classification: 'enforceable',
+        };
+      }),
+    );
+  } finally {
+    installedPolicy.remove();
+  }
+}
+
+function runTypecheck(options) {
+  const preparedDependencies = prepareSnapshotDependencies(options);
+  let installedConfig;
+  try {
+    installedConfig = installTypeScriptConfig(options);
+    const configPath = installedConfig.targetPath;
+    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+    if (configFile.error !== undefined) {
+      throw new Error(formatDiagnostic(configFile.error));
+    }
+    const parsedConfig = ts.parseJsonConfigFileContent(
+      configFile.config,
+      ts.sys,
+      options.projectRoot,
+      undefined,
+      configPath,
+    );
+    if (parsedConfig.errors.length > 0) {
+      throw new Error(parsedConfig.errors.map(formatDiagnostic).join('\n'));
+    }
+    const program = ts.createProgram({
+      rootNames: parsedConfig.fileNames,
+      options: parsedConfig.options,
+      projectReferences: parsedConfig.projectReferences,
+    });
+    return normalizeTypeScriptDiagnostics({
+      diagnostics: ts.getPreEmitDiagnostics(program),
+      projectRoot: options.projectRoot,
+      analyzerName: options.analyzerName,
+      configRelativePath: options.configRelativePath,
+    });
+  } finally {
+    try {
+      installedConfig?.remove();
+    } finally {
+      removeSnapshotDependencies(preparedDependencies);
+    }
+  }
+}
+
+function runArchitecture(options) {
+  if (options.patterns.length === 0) {
+    throw new Error('Architecture requires at least one --pattern');
+  }
+  const generatedConfig = createArchitectureConfig(options);
+  try {
+    const arguments_ = [
+      ...options.patterns,
+      '--config',
+      generatedConfig.path,
+      '--output-type',
+      'json',
+    ];
+    if (options.includeOnly !== undefined) {
+      arguments_.push('--include-only', options.includeOnly);
+    }
+    if (options.exclude !== undefined) {
+      arguments_.push('--exclude', options.exclude);
+    }
+    const result = runNodeTool({
+      options,
+      relativeToolPath: 'dependency-cruiser/bin/dependency-cruise.mjs',
+      arguments_,
+      acceptedStatuses: [0, 1],
+    });
+    let report;
+    try {
+      report = JSON.parse(result.stdout);
+    } catch (error) {
+      throw new Error('dependency-cruiser did not produce valid JSON', { cause: error });
+    }
+    return normalizeArchitectureViolations(report, options.analyzerName);
+  } finally {
+    generatedConfig.remove();
+  }
+}
+
+export function normalizeTypeScriptDiagnostics({
+  diagnostics,
+  projectRoot,
+  analyzerName,
+  configRelativePath,
+}) {
+  const occurrences = new Map();
+  return diagnostics.map((diagnostic) => {
+    const message = formatDiagnostic(diagnostic);
+    const relativePath =
+      diagnostic.file === undefined
+        ? configRelativePath
+        : projectFile(projectRoot, diagnostic.file.fileName);
+    const symbol =
+      diagnostic.file === undefined || diagnostic.start === undefined
+        ? undefined
+        : enclosingSymbol(diagnostic.file, diagnostic.start);
+    const semanticKey = JSON.stringify([diagnostic.code, relativePath, symbol ?? '', message]);
+    const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
+    occurrences.set(semanticKey, occurrence);
+    const finding = {
+      tool: analyzerName,
+      rule: `TS${String(diagnostic.code)}`,
+      path: relativePath,
+      identity: [
+        `diagnostic:${String(diagnostic.code)}`,
+        `message:${hash(message)}`,
+        `symbol:${symbol ?? ''}`,
+        `occurrence:${String(occurrence)}`,
+      ].join('|'),
+      message,
+      classification: 'enforceable',
+    };
+    if (symbol !== undefined) {
+      finding.symbol = symbol;
+    }
+    if (diagnostic.file !== undefined && diagnostic.start !== undefined) {
+      const location = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
+      finding.location = { line: location.line + 1, column: location.character + 1 };
+    }
+    return finding;
+  });
+}
+
+export function normalizeArchitectureViolations(report, analyzerName) {
+  if (!Array.isArray(report?.summary?.violations)) {
+    throw new TypeError('dependency-cruiser report is missing summary.violations');
+  }
+  const occurrences = new Map();
+  return report.summary.violations.map((violation, index) => {
+    const context = `dependency-cruiser violation ${String(index)}`;
+    const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
+    const severity = requiredString(violation?.rule?.severity, `${context}.rule.severity`);
+    const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
+    const to = normalizedRelativePath(requiredString(violation.to, `${context}.to`), context);
+    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
+    const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
+    const canonicalPath = cycle?.[0] ?? from;
+    const occurrenceKey = JSON.stringify([rule, canonicalPath, semanticIdentity]);
+    const occurrence = (occurrences.get(occurrenceKey) ?? 0) + 1;
+    occurrences.set(occurrenceKey, occurrence);
+    return {
+      tool: analyzerName,
+      rule,
+      path: canonicalPath,
+      identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
+      message:
+        cycle === undefined
+          ? `${from} must not depend on ${to}`
+          : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
+      classification: severity === 'error' ? 'enforceable' : 'descriptive',
+    };
+  });
+}
+
+function canonicalCycle(value, context) {
+  if (!Array.isArray(value) || value.length < 2) {
+    throw new TypeError(`${context}.cycle must contain at least two modules`);
+  }
+  const names = value.map((item, index) =>
+    normalizedRelativePath(
+      requiredString(item?.name, `${context}.cycle[${String(index)}].name`),
+      context,
+    ),
+  );
+  const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
+  return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
+}
+
+function createArchitectureConfig(options) {
+  const policyConfig = policyFile(options, options.configRelativePath);
+  const wrapperConfig = path.join(
+    options.projectRoot,
+    '.quality-diff-dependency-cruiser.config.mjs',
+  );
+  if (existsSync(wrapperConfig)) {
+    throw new Error('Temporary architecture policy path already exists');
+  }
+  const projectConfig = linkPolicyFile(
+    policyFile(
+      options,
+      path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
+    ),
+    path.join(options.projectRoot, '.quality-diff-tsconfig.json'),
+  );
+  try {
+    writeFileSync(
+      wrapperConfig,
+      [
+        `import policy from ${JSON.stringify(pathToFileURL(policyConfig).href)};`,
+        'export default {',
+        '  ...policy,',
+        '  options: {',
+        '    ...policy.options,',
+        `    tsConfig: { ...policy.options?.tsConfig, fileName: ${JSON.stringify(projectConfig.targetPath)} },`,
+        '  },',
+        '};',
+        '',
+      ].join('\n'),
+      { flag: 'wx' },
+    );
+  } catch (error) {
+    projectConfig.remove();
+    throw error;
+  }
+  return {
+    path: wrapperConfig,
+    remove() {
+      unlinkSync(wrapperConfig);
+      projectConfig.remove();
+    },
+  };
+}
+
+function installTypeScriptConfig(options) {
+  return linkPolicyFile(
+    policyFile(options, options.configRelativePath),
+    path.join(options.projectRoot, '.quality-diff-typecheck.json'),
+  );
+}
+
+function installPrettierPolicy(options) {
+  const policyConfig = policyFile(options, options.configRelativePath);
+  const policyIgnore = policyFile(options, options.ignoreRelativePath);
+  if (options.projectRoot === options.policyRoot) {
+    return { configPath: policyConfig, ignorePath: policyIgnore, remove() {} };
+  }
+  const configPath = path.join(options.projectRoot, '.quality-diff-prettier.json');
+  const ignorePath = path.join(options.projectRoot, '.quality-diff-prettierignore');
+  if (existsSync(configPath) || existsSync(ignorePath)) {
+    throw new Error('Temporary Prettier policy path already exists');
+  }
+  symlinkSync(policyConfig, configPath, 'file');
+  try {
+    symlinkSync(policyIgnore, ignorePath, 'file');
+  } catch (error) {
+    unlinkSync(configPath);
+    throw error;
+  }
+  return {
+    configPath,
+    ignorePath,
+    remove() {
+      unlinkSync(ignorePath);
+      unlinkSync(configPath);
+    },
+  };
+}
+
+function runNodeTool({ options, relativeToolPath, arguments_, acceptedStatuses }) {
+  const toolPath = path.join(options.toolRoot, 'node_modules', relativeToolPath);
+  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
+    cwd: options.projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+  });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (!acceptedStatuses.includes(result.status)) {
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`${options.kind} exited with ${String(result.status)}: ${detail}`);
+  }
+  return result;
+}
+
+export function dependencyPreparationMode({ projectRoot, policyRoot, toolRoot }) {
+  if (projectRoot === toolRoot) {
+    return 'existing';
+  }
+  return dependencyManifestsDiffer(projectRoot, policyRoot) ? 'install' : 'link';
+}
+
+function dependencyManifestsDiffer(projectRoot, policyRoot) {
+  return DEPENDENCY_MANIFESTS.some((relativePath) => {
+    const projectPath = path.join(projectRoot, relativePath);
+    const policyPath = path.join(policyRoot, relativePath);
+    const projectManifestExists = existsSync(projectPath);
+    const policyManifestExists = existsSync(policyPath);
+    if (!projectManifestExists || !policyManifestExists) {
+      return projectManifestExists !== policyManifestExists;
+    }
+    return readFileSync(projectPath, 'utf8') !== readFileSync(policyPath, 'utf8');
+  });
+}
+
+export function prepareSnapshotDependencies(options) {
+  const mode = dependencyPreparationMode(options);
+  if (mode === 'existing') {
+    return undefined;
+  }
+  const dependencyPath = path.join(options.projectRoot, 'node_modules');
+  if (existsSync(dependencyPath)) {
+    validatePreparedDependencies(mode, dependencyPath, options.toolRoot);
+    return undefined;
+  }
+  switch (mode) {
+    case 'install':
+      return installSnapshotDependencies(options.projectRoot);
+    case 'link':
+      return linkDependencies(options);
+    default:
+      throw new Error('Unsupported dependency preparation mode');
+  }
+}
+
+function validatePreparedDependencies(mode, dependencyPath, toolRoot) {
+  const entry = lstatSync(dependencyPath);
+  if (mode === 'install' && entry.isDirectory() && !entry.isSymbolicLink()) {
+    return;
+  }
+  const dependencyRoot = realpathSync(path.join(toolRoot, 'node_modules'));
+  if (
+    mode === 'link' &&
+    entry.isSymbolicLink() &&
+    realpathSync(dependencyPath) === dependencyRoot
+  ) {
+    return;
+  }
+  throw new Error(`Existing dependencies at ${dependencyPath} do not match the snapshot manifests`);
+}
+
+function installSnapshotDependencies(projectRoot) {
+  const dependencyPath = path.join(projectRoot, 'node_modules');
+  if (existsSync(dependencyPath)) {
+    throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
+  }
+  const result = spawnSync(
+    process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
+    {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      maxBuffer: MAX_OUTPUT_BYTES,
+      timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
+    },
+  );
+  if (result.error !== undefined || result.status !== 0) {
+    rmSync(dependencyPath, { recursive: true, force: true });
+    if (result.error !== undefined) {
+      throw result.error;
+    }
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`Failed to install merge-base dependencies: ${detail}`);
+  }
+  const entry = lstatSync(dependencyPath);
+  if (!entry.isDirectory() || entry.isSymbolicLink()) {
+    rmSync(dependencyPath, { recursive: true, force: true });
+    throw new Error('Installed merge-base dependencies are not a regular directory');
+  }
+  return { kind: 'installed', dependencyPath };
+}
+
+function linkDependencies(options) {
+  if (options.projectRoot === options.toolRoot) {
+    return undefined;
+  }
+  const dependencyRoot = realpathSync(path.join(options.toolRoot, 'node_modules'));
+  const linkPath = path.join(options.projectRoot, 'node_modules');
+  if (existsSync(linkPath)) {
+    const entry = lstatSync(linkPath);
+    if (entry.isSymbolicLink() && realpathSync(linkPath) === dependencyRoot) {
+      return undefined;
+    }
+    throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
+  }
+  symlinkSync(dependencyRoot, linkPath, 'dir');
+  return { kind: 'linked', dependencyPath: linkPath, dependencyRoot };
+}
+
+export function removeSnapshotDependencies(dependencies) {
+  if (dependencies === undefined) {
+    return;
+  }
+  const entry = lstatSync(dependencies.dependencyPath);
+  if (dependencies.kind === 'installed') {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      throw new Error(
+        `Refusing to remove replaced dependency directory: ${dependencies.dependencyPath}`,
+      );
+    }
+    rmSync(dependencies.dependencyPath, { recursive: true });
+    return;
+  }
+  if (
+    !entry.isSymbolicLink() ||
+    realpathSync(dependencies.dependencyPath) !== dependencies.dependencyRoot
+  ) {
+    throw new Error(`Refusing to remove replaced dependency link: ${dependencies.dependencyPath}`);
+  }
+  unlinkSync(dependencies.dependencyPath);
+}
+
+function enclosingSymbol(sourceFile, position) {
+  let node = sourceFile;
+  function visit(candidate) {
+    if (candidate.pos <= position && position < candidate.end) {
+      node = candidate;
+      ts.forEachChild(candidate, visit);
+    }
+  }
+  visit(sourceFile);
+  const names = [];
+  for (let current = node; current !== undefined; current = current.parent) {
+    if (
+      (ts.isFunctionDeclaration(current) ||
+        ts.isClassDeclaration(current) ||
+        ts.isMethodDeclaration(current) ||
+        ts.isPropertyDeclaration(current) ||
+        ts.isVariableDeclaration(current)) &&
+      current.name !== undefined
+    ) {
+      names.push(current.name.getText());
+    }
+  }
+  return names.length === 0 ? undefined : names.reverse().join('.');
+}
+
+function projectFile(projectRoot, filePath) {
+  const resolvedPath = realpathSync(path.resolve(projectRoot, filePath));
+  const relativePath = path.relative(projectRoot, resolvedPath);
+  if (
+    relativePath.length === 0 ||
+    relativePath === '..' ||
+    relativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativePath)
+  ) {
+    throw new Error(
+      `Analyzer path must stay within ${projectRoot}: ${filePath} resolved to ${resolvedPath}`,
+    );
+  }
+  const entry = lstatSync(resolvedPath);
+  if (!entry.isFile()) {
+    throw new Error(`Analyzer returned a non-file path: ${filePath}`);
+  }
+  return relativePath.replaceAll('\\', '/');
+}
+
+function policyFile(options, relativePath) {
+  const normalizedPath = normalizedRelativePath(relativePath, relativePath);
+  const filePath = path.resolve(options.policyRoot, normalizedPath);
+  const relativeToPolicy = path.relative(options.policyRoot, filePath);
+  if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
+    throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
+  }
+  if (!statSync(filePath).isFile()) {
+    throw new Error(`Policy path is not a regular file: ${relativePath}`);
+  }
+  return filePath;
+}
+
+function parseArguments(arguments_) {
+  const values = new Map();
+  const patterns = [];
+  for (let index = 0; index < arguments_.length; index += 2) {
+    const name = arguments_[index];
+    const value = arguments_[index + 1];
+    if (value === undefined) {
+      throw new Error(`${name ?? '<missing>'} requires a value`);
+    }
+    if (name === '--pattern') {
+      patterns.push(value);
+      continue;
+    }
+    if (
+      ![
+        '--analyzer-name',
+        '--kind',
+        '--project-root',
+        '--policy-root',
+        '--tool-root',
+        '--config',
+        '--ignore-path',
+        '--include-only',
+        '--exclude',
+      ].includes(name)
+    ) {
+      throw new Error(`Unknown static-check adapter argument: ${name}`);
+    }
+    values.set(name, value);
+  }
+  const kind = requiredValue(values, '--kind');
+  if (!SUPPORTED_KINDS.has(kind)) {
+    throw new Error(`Unsupported static check: ${kind}`);
+  }
+  const toolRoot = realpathSync(requiredValue(values, '--tool-root'));
+  if (toolRoot !== TRUSTED_TOOL_ROOT) {
+    throw new Error('--tool-root must be the project checkout containing this adapter');
+  }
+  return {
+    analyzerName: requiredValue(values, '--analyzer-name'),
+    kind,
+    projectRoot: validatedSnapshotRoot(requiredValue(values, '--project-root'), '--project-root'),
+    policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
+    toolRoot,
+    configRelativePath: normalizedRelativePath(requiredValue(values, '--config'), '--config'),
+    ignoreRelativePath:
+      values.get('--ignore-path') === undefined
+        ? undefined
+        : normalizedRelativePath(values.get('--ignore-path'), '--ignore-path'),
+    includeOnly: values.get('--include-only'),
+    exclude: values.get('--exclude'),
+    patterns: patterns.map((value) => normalizedPattern(value)),
+  };
+}
+
+function directoryRoot(value, name) {
+  const root = realpathSync(path.resolve(value));
+  if (!statSync(root).isDirectory()) {
+    throw new Error(`${name} must be a directory`);
+  }
+  return root;
+}
+
+function validatedSnapshotRoot(value, name) {
+  const root = directoryRoot(value, name);
+  if (root === TRUSTED_TOOL_ROOT) {
+    return root;
+  }
+  const relativeToTemporaryRoot = path.relative(realpathSync(tmpdir()), root);
+  const segments = relativeToTemporaryRoot.split(path.sep);
+  if (
+    relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeToTemporaryRoot) ||
+    segments.length < 2 ||
+    !segments[0].startsWith('nitpicker-diff-') ||
+    segments[1] !== 'base'
+  ) {
+    throw new Error(`${name} must be inside a generated quality-diff worktree`);
+  }
+  return root;
+}
+
+function normalizedPattern(value) {
+  if (
+    value.length === 0 ||
+    path.posix.isAbsolute(value) ||
+    /^[A-Za-z]:\//.test(value) ||
+    value.split('/').includes('..')
+  ) {
+    throw new Error('--pattern must stay within the analyzed snapshot');
+  }
+  return value.replaceAll('\\', '/');
+}
+
+function normalizedRelativePath(value, context) {
+  const normalizedPath = path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
+  if (
+    normalizedPath.length === 0 ||
+    normalizedPath === '..' ||
+    normalizedPath.startsWith('../') ||
+    path.posix.isAbsolute(normalizedPath) ||
+    /^[A-Za-z]:\//.test(normalizedPath)
+  ) {
+    throw new Error(`${context} must stay within the analyzed snapshot`);
+  }
+  return normalizedPath;
+}
+
+function formatDiagnostic(diagnostic) {
+  return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
+}
+
+function formattingDifference(source, formatted) {
+  let start = 0;
+  while (start < source.length && start < formatted.length && source[start] === formatted[start]) {
+    start += 1;
+  }
+  let sourceEnd = source.length;
+  let formattedEnd = formatted.length;
+  while (
+    sourceEnd > start &&
+    formattedEnd > start &&
+    source[sourceEnd - 1] === formatted[formattedEnd - 1]
+  ) {
+    sourceEnd -= 1;
+    formattedEnd -= 1;
+  }
+  return `${source.slice(start, sourceEnd)}\0${formatted.slice(start, formattedEnd)}`;
+}
+
+function hash(value) {
+  return createHash('sha256').update(value).digest('hex').slice(0, 24);
+}
+
+function requiredValue(values, name) {
+  return requiredString(values.get(name), name);
+}
+
+function requiredString(value, context) {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${context} must be a non-empty string`);
+  }
+  return value;
+}

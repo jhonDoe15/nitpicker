@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main/main.ts",
+    "src/main/server.ts",
+    "vitest.config.ts",
+    "src/main/vitest.config.ts",
+    "tests/vitest.config.ts",
+    "vitest.quality.config.ts",
+    "tests/fixtures/*harness*.{ts,mts,mjs}"
+  ],
+  "project": ["src/main/**/*.ts", "tests/**/*.ts", "*.config.{ts,mts,mjs}"],
+  "ignore": [
+    "src/main/dist/**",
+    "src/main/**/*.d.ts",
+    "coverage/**",
+    "reports/**",
+    ".stryker-tmp/**"
+  ]
+}

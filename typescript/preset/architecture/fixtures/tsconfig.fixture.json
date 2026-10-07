@@ -1,0 +1,5 @@
+{
+  "extends": "../../defaults/tsconfig.quality.json",
+  "compilerOptions": { "types": [] },
+  "include": ["**/*.ts"]
+}
