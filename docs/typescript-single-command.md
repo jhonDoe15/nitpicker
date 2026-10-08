@@ -57,8 +57,26 @@ review.
 The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
 both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, and `analyzers`. Unknown keys are an error. `exclude`, `layout`, and `analyzers` are
+`layout`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude`, `layout`, and `analyzers` are
 validated and reported but not yet applied.
+
+## Adopting nitpicker on existing code
+
+The `coding-standards` analyzer fails on every violation of its rules unless an inventory lists it.
+To adopt nitpicker without fixing everything first:
+
+1. Run `npx nitpicker --all` at the project root to list the violations present now.
+2. Record the `coding-standards` sites in `nitpicker.legacy.json` at the project root, as
+   `{ "sites": [{ "file", "rule", "source", "count" }] }`, and commit it. To use another location,
+   set `"legacyInventory": "path/inside/the/project.json"` in `nitpicker.config.json`. The path must
+   stay inside the project.
+3. Only sites listed there (up to their `count`) are allowed; a new or extra occurrence is a new
+   finding. When a site is fixed, remove it from the inventory so it cannot return. Do not add new
+   code to the inventory.
+
+The file is read from the head commit and applied to both sides, and its content is part of the
+policy hash. The old nitpicker-internal path `preset/coding-standards/legacy-sites.json` is no
+longer read.
 
 ## Packaging
 
