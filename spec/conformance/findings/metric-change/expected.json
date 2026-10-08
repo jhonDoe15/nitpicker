@@ -1,0 +1,42 @@
+{
+  "description": "Descriptive findings with the same key and metric name but a different value are reported in changedMetrics (delta = head - base) and not in unchanged. Equal values are unchanged. A different metric name is a different key (resolved plus new).",
+  "new": [
+    {
+      "tool": "complexity",
+      "rule": "size",
+      "path": "src/c.js",
+      "identity": "fn:c",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "complexity",
+      "rule": "size",
+      "path": "src/c.js",
+      "identity": "fn:c",
+      "classification": "descriptive"
+    }
+  ],
+  "unchanged": [
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/b.js",
+      "identity": "fn:b",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": [
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/a.js",
+      "identity": "fn:a",
+      "metric": "cyclomatic",
+      "baseValue": 5,
+      "headValue": 8,
+      "delta": 3
+    }
+  ]
+}

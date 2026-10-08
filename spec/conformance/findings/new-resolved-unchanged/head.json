@@ -1,0 +1,23 @@
+{
+  "findings": [
+    {
+      "tool": "eslint",
+      "rule": "no-console",
+      "path": "src/a.js",
+      "identity": "a:1",
+      "message": "no-console in src/a.js",
+      "classification": "enforceable",
+      "location": {
+        "line": 9
+      }
+    },
+    {
+      "tool": "eslint",
+      "rule": "no-var",
+      "path": "src/c.js",
+      "identity": "c:1",
+      "message": "no-var in src/c.js",
+      "classification": "enforceable"
+    }
+  ]
+}

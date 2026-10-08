@@ -1,0 +1,8 @@
+{
+  "description": "Rename paths are relative to the analyzed project directory; renames outside the project are not reported.",
+  "baseRef": "main",
+  "projectPath": "packages/app",
+  "mergeBase": "base",
+  "head": "head",
+  "renames": { "src/a.js": "src/b.js" }
+}
