@@ -5,15 +5,21 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
-import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
+import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import { readHeadPolicy } from '../head-policy.mjs';
+import { layoutGlobs } from '../layout.mjs';
+
+// The head policy comes from nitpicker.config.json; without it the preset defaults apply.
+const policy = readHeadPolicy();
+const { sourceGlobs, testGlobs, excludedGlobs } = layoutGlobs(policy.layout);
 
 const productionFiles = sourceGlobs;
 const testFiles = testGlobs;
 const selectedFiles = [...productionFiles, ...testFiles];
 
-export default tseslint.config(
+const presetConfig = tseslint.config(
   {
-    ignores: [...excludedGlobs, '.stryker-tmp/**'],
+    ignores: [...excludedGlobs, ...policy.exclude, '.stryker-tmp/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -89,3 +95,5 @@ export default tseslint.config(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
 );
+
+export default applyRuleExceptions(presetConfig, policy.exceptions);
