@@ -1,4 +1,6 @@
-const sourceRoot = '(?:^|/)src/main/';
+import { codeExtensionNames, sourceRoot as layoutSourceRoot, testRoots } from '../layout.mjs';
+
+const sourceRoot = `(?:^|/)${layoutSourceRoot}/`;
 const productionSource = `${sourceRoot}(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))`;
 export default {
   forbidden: [
@@ -6,7 +8,9 @@ export default {
       name: 'no-production-to-test',
       severity: 'error',
       from: { path: productionSource },
-      to: { path: '(?:^|/)(?:tests/|src/main/.*/__tests__/)' },
+      to: {
+        path: `(?:^|/)(?:${testRoots.join('|')}/|${layoutSourceRoot}/.*/__tests__/|${layoutSourceRoot}/.*\\.(?:test|spec)\\.)`,
+      },
     },
     {
       name: 'no-production-cycles',
@@ -25,7 +29,7 @@ export default {
     },
     tsPreCompilationDeps: 'specify',
     enhancedResolveOptions: {
-      extensions: ['.ts', '.mts', '.js', '.mjs', '.json'],
+      extensions: [...codeExtensionNames.map((extension) => `.${extension}`), '.json'],
     },
   },
 };

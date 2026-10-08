@@ -1,3 +1,5 @@
+import { isTestFixture } from '../../layout.mjs';
+
 function isContainerName(name) {
   return /container|agent/i.test(name);
 }
@@ -35,8 +37,7 @@ export default {
     },
   },
   create(context) {
-    if (context.filename.replaceAll('\\', '/').endsWith('/tests/fixtures/container-teardown.ts'))
-      return {};
+    if (isTestFixture(context.filename, 'container-teardown.ts')) return {};
     return {
       CallExpression(node) {
         const callee =

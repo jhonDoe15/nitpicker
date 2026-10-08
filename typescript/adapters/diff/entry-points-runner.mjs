@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -44,6 +44,7 @@ async function loadPolicyModules(policyRoot) {
 }
 
 function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }) {
+  if (!existsSync(path.join(options.projectRoot, options.sourceRoot))) return { modules: [] };
   const dependencyCruiser = resolveTool('dependency-cruiser', {
     bin: 'bin/dependency-cruise.mjs',
   }).binPath;

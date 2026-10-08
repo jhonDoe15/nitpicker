@@ -1,7 +1,8 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
+import { isSourceFile } from '../layout.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(
@@ -143,17 +144,13 @@ function productionFiles(root) {
           continue;
         }
         visit(absolute);
-      } else if (
-        /\.(?:ts|mts)$/.test(entry.name) &&
-        !/\.(?:test|spec)\.[cm]?ts$/.test(entry.name) &&
-        !entry.name.endsWith('.d.ts')
-      ) {
+      } else if (isSourceFile(`src/${normalizePath(path.relative(root, absolute))}`)) {
         files.push(absolute);
       }
     }
   }
 
-  visit(root);
+  if (existsSync(root)) visit(root);
   return files.sort();
 }
 

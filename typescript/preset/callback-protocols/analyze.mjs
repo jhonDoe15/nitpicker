@@ -1,7 +1,8 @@
 import ts from 'typescript';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { callbackProtocolContracts } from './contracts.mjs';
+import { sourceRoot as defaultSourceRoot, isSourceFile } from '../layout.mjs';
 
 function unwrap(node) {
   while (
@@ -266,7 +267,7 @@ export function analyzeCallbackProtocols(
 
 /** Discover all production sources. Tests/build outputs are excluded by file role, never feature. */
 export function analyzeProductionCallbacks({
-  sourceRoot = 'src/main',
+  sourceRoot = defaultSourceRoot,
   contracts = callbackProtocolContracts,
 } = {}) {
   function sources(directory) {
@@ -277,13 +278,12 @@ export function analyzeProductionCallbacks({
           ? []
           : sources(fullPath);
       return entry.isFile() &&
-        /\.[cm]?tsx?$/.test(entry.name) &&
-        !/\.(?:test|spec|d)\.[cm]?tsx?$/.test(entry.name)
+        isSourceFile(`src/${path.relative(sourceRoot, fullPath).replaceAll('\\', '/')}`)
         ? [fullPath]
         : [];
     });
   }
-  const files = sources(sourceRoot).sort();
+  const files = existsSync(sourceRoot) ? sources(sourceRoot).sort() : [];
   const findings = files.flatMap((file) =>
     analyzeCallbackProtocols(readFileSync(file, 'utf8'), { file, contracts }),
   );

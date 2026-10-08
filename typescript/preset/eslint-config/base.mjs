@@ -1,27 +1,15 @@
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
+import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
 
-const ignores = [
-  'src/main/**/__tests__/**',
-  'src/main/**/*.test.ts',
-  'src/main/**/*.spec.ts',
-  '**/dist/**',
-  '**/build/**',
-  '**/generated/**',
-  'src/main/**/*.d.ts',
-  'node_modules/**',
-  'coverage/**',
-  'reports/**',
-  'target/**',
-  '.stryker-tmp/**',
-];
+const ignores = [...excludedGlobs, 'src/**/__tests__/**', ...testGlobs, '.stryker-tmp/**'];
 
 export function productionPolicyConfig(rules) {
   return tseslint.config(
     { ignores },
     {
-      files: ['src/main/**/*.ts'],
+      files: sourceGlobs,
       languageOptions: {
         globals: globals.node,
         parser: tseslint.parser,

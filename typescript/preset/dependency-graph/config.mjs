@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { TYPESCRIPT_CONFIG_ENVIRONMENT } from './cruise.mjs';
+import { codeExtensionNames } from '../layout.mjs';
 
 const projectTypeScriptConfig = requiredTypeScriptConfig();
 
@@ -14,7 +15,7 @@ export default {
     tsConfig: { fileName: projectTypeScriptConfig },
     tsPreCompilationDeps: 'specify',
     enhancedResolveOptions: {
-      extensions: ['.ts', '.mts', '.js', '.mjs', '.json'],
+      extensions: [...codeExtensionNames.map((extension) => `.${extension}`), '.json'],
     },
   },
 };

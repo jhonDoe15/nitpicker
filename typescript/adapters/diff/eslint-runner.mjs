@@ -72,6 +72,7 @@ function runEslint(options) {
         '--format',
         'json',
         '--no-color',
+        '--no-error-on-unmatched-pattern',
         ...options.patterns,
       ],
       {

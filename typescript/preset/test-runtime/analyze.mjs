@@ -6,8 +6,9 @@ import {
   isTypeOnlyDependency,
   normalizePath,
 } from '../dependency-graph/cruise.mjs';
+import { sourceRoot as defaultSourceRoot, testRoots, isSourceUnderRoot } from '../layout.mjs';
 
-const TEST_FILE = /(?:^|\/).+\.(?:test|spec)\.[cm]?ts$/;
+const TEST_FILE = /(?:^|\/).+\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
 function isTest(source) {
   return TEST_FILE.test(source);
@@ -39,20 +40,14 @@ function sourceEvidence(sourceText) {
 }
 
 function isPathExcludedTest(source) {
-  return isExcludedPath(source) || /(?:^|\/)tests\/contract(?:\/|$)/.test(source);
-}
-
-function isWithin(source, root) {
-  return source === root || source.startsWith(`${root}/`);
+  return (
+    isExcludedPath(source) ||
+    new RegExp(`(?:^|/)(?:${testRoots.join('|')})/contract(?:/|$)`).test(source)
+  );
 }
 
 function isProduction(source, productionRoot) {
-  return (
-    isWithin(source, productionRoot) &&
-    !isExcludedPath(source) &&
-    !source.includes('/__tests__/') &&
-    !/\.(?:test|spec)\.[cm]?ts$/.test(source)
-  );
+  return isSourceUnderRoot(source, productionRoot);
 }
 
 function isDynamicDependency(dependency) {
@@ -136,7 +131,7 @@ function typeOnlyProductionReachability(source, dependencies, productionRoot) {
   return [...production].sort();
 }
 
-function referencedBridges(source, runtimeModules, sourceText, bridges) {
+function referencedBridges(runtimeModules, sourceText, bridges) {
   return bridges.filter((bridge) => {
     if (runtimeModules.has(bridge)) {
       return true;
@@ -162,9 +157,9 @@ export async function loadModuleSources(graph, rootDirectory) {
 export function analyzeTestRuntime(
   graph,
   {
-    productionRoot = 'src/main',
+    productionRoot = defaultSourceRoot,
     sourceTexts = new Map(),
-    subprocessBridges = ['tests/fixtures/app-process.ts'],
+    subprocessBridges = testRoots.map((root) => `${root}/fixtures/app-process.ts`),
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
@@ -189,12 +184,7 @@ export function analyzeTestRuntime(
     const runtimeProductionModules = [...visited]
       .filter((target) => isProduction(target, normalizedProductionRoot))
       .sort();
-    const bridgeModules = referencedBridges(
-      source,
-      visited,
-      sourceTexts.get(source) ?? '',
-      bridges,
-    );
+    const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
     const typeOnlyProductionModules = typeOnlyProductionReachability(
       source,
       dependencies,

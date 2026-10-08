@@ -1,8 +1,9 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mjs';
+import { sourceRoot as defaultSourceRoot, isSourceFile } from '../layout.mjs';
 
 function requireStringList(value, label) {
   if (
@@ -144,7 +145,7 @@ function sourceFiles(root, exclude, directory = '') {
     if (matches(relative, exclude) || (entry.isDirectory() && matches(relative + '/', exclude)))
       continue;
     if (entry.isDirectory()) found.push(...sourceFiles(root, exclude, relative));
-    else if (entry.isFile() && /\.(?:[cm]?ts|tsx)$/.test(entry.name)) found.push(relative);
+    else if (entry.isFile() && isSourceFile(`src/${relative}`)) found.push(relative);
   }
   return found.sort();
 }
@@ -157,7 +158,7 @@ export function analyzeRuntimeBoundaries(root, configuration = moduleRoleBoundar
   const roleNames = configuration.roles.map((role) => role.name);
   if (new Set(roleNames).size !== roleNames.length)
     throw new TypeError('Module role names must be unique');
-  const sources = sourceFiles(root, configuration.exclude);
+  const sources = existsSync(root) ? sourceFiles(root, configuration.exclude) : [];
   const modules = [];
   const findings = [];
   for (const source of sources) {
@@ -183,7 +184,7 @@ if (
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
 ) {
   try {
-    const report = analyzeRuntimeBoundaries(path.resolve(process.argv[2] ?? 'src/main'));
+    const report = analyzeRuntimeBoundaries(path.resolve(process.argv[2] ?? defaultSourceRoot));
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = report.findings.length === 0 ? 0 : 1;
   } catch (error) {

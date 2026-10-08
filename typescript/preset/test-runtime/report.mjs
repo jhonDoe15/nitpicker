@@ -2,10 +2,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cruise } from '../dependency-graph/cruise.mjs';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mjs';
+import { graphRoots, existingRoots } from '../layout.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const outputPath = path.join(projectRoot, 'reports/quality/test-runtime/report.json');
-const graph = cruise(['src/main', 'tests']);
+const graph = cruise(existingRoots(projectRoot, graphRoots));
 const report = {
   analyzer: 'dependency-cruiser resolved runtime graph',
   policy: 'report-only; tests without a verified production runtime are findings',

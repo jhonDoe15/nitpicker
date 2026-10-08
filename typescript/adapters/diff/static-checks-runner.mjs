@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   existsSync,
+  globSync,
   lstatSync,
   readFileSync,
   realpathSync,
@@ -17,6 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
+import { existingRoots, projectCodeFiles } from '../../preset/layout.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
@@ -70,6 +72,10 @@ async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
+  if (
+    !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
+  )
+    return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
     const result = runNodeTool({
@@ -81,6 +87,7 @@ async function runPrettier(options) {
         '--ignore-path',
         installedPolicy.ignorePath,
         '--list-different',
+        '--no-error-on-unmatched-pattern',
         ...options.patterns,
       ],
       acceptedStatuses: [0, 1],
@@ -143,6 +150,11 @@ function runTypecheck(options) {
       undefined,
       configPath,
     );
+    if (
+      parsedConfig.fileNames.length === 0 &&
+      parsedConfig.errors.every((error) => error.code === 18003)
+    )
+      return [];
     if (parsedConfig.errors.length > 0) {
       throw new Error(parsedConfig.errors.map(formatDiagnostic).join('\n'));
     }
@@ -170,15 +182,12 @@ function runArchitecture(options) {
   if (options.patterns.length === 0) {
     throw new Error('Architecture requires at least one --pattern');
   }
+  if (projectCodeFiles(options.projectRoot).length === 0) return [];
+  const patterns = existingRoots(options.projectRoot, options.patterns);
+  if (patterns.length === 0) return [];
   const generatedConfig = createArchitectureConfig(options);
   try {
-    const arguments_ = [
-      ...options.patterns,
-      '--config',
-      generatedConfig.path,
-      '--output-type',
-      'json',
-    ];
+    const arguments_ = [...patterns, '--config', generatedConfig.path, '--output-type', 'json'];
     if (options.includeOnly !== undefined) {
       arguments_.push('--include-only', options.includeOnly);
     }

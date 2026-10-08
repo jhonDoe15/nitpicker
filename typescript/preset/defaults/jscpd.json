@@ -1,5 +1,5 @@
 {
-  "path": ["src/main"],
+  "path": ["src"],
   "format": ["typescript"],
   "mode": "mild",
   "reporters": ["console", "json"],

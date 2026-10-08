@@ -1,19 +1,35 @@
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/diff/eslint.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/diff/static-checks.mjs';
+import { createQualityAreaAnalyzer } from '../../adapters/diff/quality-areas.mjs';
 import { runAnalyzers } from '../../core/diff/run-analyzers.mjs';
-import { entryPointsCheck, eslintChecks, staticChecks } from '../quality-checks.mjs';
+import {
+  entryPointsCheck,
+  eslintChecks,
+  staticChecks,
+  qualityAreaChecks,
+} from '../quality-checks.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../..');
 const POLICY_PATHS = [
   'adapters/policy-links.mjs',
   'preset/defaults',
+  'preset/layout.mjs',
   'preset/dependency-graph',
   'preset/entry-points/analyze.mjs',
+  'preset/test-runtime/analyze.mjs',
   'preset/eslint-config',
   'preset/eslint-plugin/index.mjs',
   'preset/eslint-plugin/rules',
@@ -27,6 +43,113 @@ afterEach(() => {
 });
 
 describe('default configs used in place', () => {
+  it('selects src and test without src/main or tests', () => {
+    const projectRoot = createProject({
+      'src/service.ts': 'export const service = 1;\n',
+      'test/service.test.ts': "import { service } from '../src/service.js';\nvoid service;\n",
+    });
+    const check = staticChecks.find(({ name }) => name === 'dependency-architecture');
+    const run = runInPlace(
+      createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(run.toolErrors).toEqual([]);
+    expect(run.reports.get('dependency-architecture')?.findings).toEqual([]);
+    const runtime = qualityAreaChecks.find(({ name }) => name === 'test-runtime');
+    const runtimeRun = runInPlace(
+      createQualityAreaAnalyzer({ ...runtime, configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(runtimeRun.toolErrors).toEqual([]);
+    expect(runtimeRun.reports.get('test-runtime')?.findings).not.toContainEqual(
+      expect.objectContaining({ path: 'test/service.test.ts', classification: 'enforceable' }),
+    );
+  });
+
+  it('treats test helpers without runnable tests as no input to test execution', () => {
+    const projectRoot = createProject({
+      'src/service.ts': 'export const service = 1;\n',
+      'test/helper.ts': 'export const helper = true;\n',
+    });
+    for (const name of ['test-runtime', 'coverage', 'mutation']) {
+      const check = qualityAreaChecks.find((entry) => entry.name === name);
+      const run = runInPlace(
+        createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
+        projectRoot,
+      );
+      expect(run.toolErrors, name).toEqual([]);
+      expect(run.reports.get(name)?.findings, name).toEqual([]);
+    }
+  });
+
+  it('reports no error for every file-driven quality analyzer with no source or tests', () => {
+    const projectRoot = createProject({});
+    const checks = qualityAreaChecks.filter(({ kind }) => kind !== 'policy-tests');
+    const run = runAnalyzers({
+      analyzers: checks.map((check) =>
+        createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
+      ),
+      projectRoot,
+      policyRoot: projectRoot,
+      toolRoot: packageRoot,
+      liveProjectRoot: packageRoot,
+      snapshot: 'head',
+    });
+    expect(run.toolErrors).toEqual([]);
+    for (const check of checks)
+      expect(run.reports.get(check.name)?.findings, check.name).toEqual([]);
+  });
+
+  it('selects JavaScript source and tests in common locations without a parser error', () => {
+    const projectRoot = createProject({
+      'src/service.js': 'export const service = 1;\n',
+      'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
+    });
+    const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const run = runInPlace(
+      createEslintAnalyzer({ ...check, version: 'fixture', configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(run.toolErrors).toEqual([]);
+    expect(
+      run.reports.get('eslint-lint')?.findings.every(({ rule }) => rule !== 'eslint/parser-error'),
+    ).toBe(true);
+  });
+
+  it('reports no error for entry points and ESLint when both layouts are absent', () => {
+    const projectRoot = createProject({});
+    const entry = runInPlace(
+      createEntryPointAnalyzer({
+        version: 'fixture',
+        configurationHash: 'fixture',
+        exclusions: entryPointsCheck.exclusions,
+        sourceRoot: entryPointsCheck.sourceRoot,
+      }),
+      projectRoot,
+    );
+    expect(entry.toolErrors).toEqual([]);
+    expect(entry.reports.get('entry-points')?.findings).toEqual([]);
+    const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const lint = runInPlace(
+      createEslintAnalyzer({ ...check, version: 'fixture', configurationHash: 'fixture' }),
+      projectRoot,
+    );
+    expect(lint.toolErrors).toEqual([]);
+    expect(lint.reports.get('eslint-lint')?.findings).toEqual([]);
+  });
+
+  it('reports no error when source and test directories are absent', () => {
+    const projectRoot = createProject({});
+    for (const name of ['prettier-format', 'typescript-typecheck', 'dependency-architecture']) {
+      const check = staticChecks.find((entry) => entry.name === name);
+      const run = runInPlace(
+        createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
+        projectRoot,
+      );
+      expect(run.toolErrors).toEqual([]);
+      expect(run.reports.get(name)?.findings).toEqual([]);
+    }
+  });
   it('lint a project with the default ESLint config without parse or tool errors', () => {
     const projectRoot = createProject();
     const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
@@ -87,7 +210,7 @@ function runInPlace(analyzer, projectRoot) {
   });
 }
 
-function createProject() {
+function createProject(files = oldLayoutFiles()) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'base');
@@ -96,7 +219,17 @@ function createProject() {
       recursive: true,
     });
   }
-  writeFiles(projectRoot, {
+  writeFiles(projectRoot, files);
+  symlinkSync(
+    path.join(packageRoot, 'node_modules'),
+    path.join(projectRoot, 'node_modules'),
+    'dir',
+  );
+  return projectRoot;
+}
+
+function oldLayoutFiles() {
+  return {
     'src/main/greeting.ts': [
       'export function greeting(name: string): string {',
       '  return `Hello, ${name}`;',
@@ -120,8 +253,7 @@ function createProject() {
       '});',
       '',
     ].join('\n'),
-  });
-  return projectRoot;
+  };
 }
 
 function temporaryPolicyLinks(projectRoot) {

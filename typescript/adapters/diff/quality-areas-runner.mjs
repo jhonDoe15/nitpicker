@@ -13,6 +13,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import {
+  sourceRoot,
+  graphRoots,
+  existingRoots,
+  projectCodeFiles,
+  isSourceFile,
+  isRunnableTestFile,
+} from '../../preset/layout.mjs';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
@@ -65,6 +73,20 @@ async function runQualityArea(options) {
   if (runner === undefined) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
   }
+  if (options.kind !== 'policy-tests') {
+    const files = projectCodeFiles(options.projectRoot);
+    if (files.length === 0) return [];
+    if (
+      ['coupling', 'structure', 'crap', 'mutation'].includes(options.kind) &&
+      !files.some(isSourceFile)
+    )
+      return [];
+    if (
+      ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
+      !files.some(isRunnableTestFile)
+    )
+      return [];
+  }
   return runner(options);
 }
 
@@ -116,13 +138,16 @@ function readOptionalBaseline(root, relativePath) {
 }
 
 async function runCoupling(options) {
-  const graph = await runDependencyCruiser(options, ['src/main']);
+  const graph = await runDependencyCruiser(
+    options,
+    existingRoots(options.projectRoot, [sourceRoot]),
+  );
   const { analyzeCoupling } = await importPolicyModule(options, 'preset/coupling/analyze.mjs');
-  return normalizeCoupling(analyzeCoupling(graph, 'src/main'), options.analyzerName);
+  return normalizeCoupling(analyzeCoupling(graph, sourceRoot), options.analyzerName);
 }
 
 async function runTestRuntime(options) {
-  const graph = await runDependencyCruiser(options, ['src/main', 'tests']);
+  const graph = await runDependencyCruiser(options, existingRoots(options.projectRoot, graphRoots));
   const analyzer = await importPolicyModule(options, 'preset/test-runtime/analyze.mjs');
   const sourceTexts = await analyzer.loadModuleSources(graph, options.projectRoot);
   const report = analyzer.analyzeTestRuntime(graph, {
@@ -140,7 +165,7 @@ async function runStructure(options) {
     options,
     'preset/structure/analyze.mjs',
   );
-  const report = analyzeProductionFiles(path.join(options.projectRoot, 'src/main'), 'src/main');
+  const report = analyzeProductionFiles(path.join(options.projectRoot, sourceRoot), sourceRoot);
   return normalizeStructure(
     withFunctionSourceHashes(report, options.projectRoot),
     options.analyzerName,
@@ -571,7 +596,7 @@ function addFunctionStructureViolations(findings, analyzerName, entry, displayNa
   }
 }
 
-export function normalizeDuplicates(report, analyzerName, configuredPaths = ['src/main']) {
+export function normalizeDuplicates(report, analyzerName, configuredPaths = [sourceRoot]) {
   const findings = [];
   const prefix =
     Array.isArray(configuredPaths) && configuredPaths.length === 1

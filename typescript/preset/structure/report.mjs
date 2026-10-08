@@ -1,14 +1,15 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeProductionFiles } from './analyze.mjs';
+import { sourceRoot } from '../layout.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const outputPath = path.join(projectRoot, 'reports/quality/structure/report.json');
 const report = {
   analyzer: 'TypeScript syntax-tree structural metrics',
   policy: 'report-only; no size, nesting, or parameter thresholds',
-  sourceRoot: 'src/main',
-  ...analyzeProductionFiles(path.join(projectRoot, 'src/main'), 'src/main'),
+  sourceRoot,
+  ...analyzeProductionFiles(path.join(projectRoot, sourceRoot), sourceRoot),
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });
