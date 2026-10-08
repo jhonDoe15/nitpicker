@@ -7,6 +7,7 @@
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
 //   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
+//   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 
 def pinned = [
@@ -14,6 +15,8 @@ def pinned = [
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     jacoco          : '0.8.12',
+    pitest          : '1.17.4',
+    pitestJunit5    : '1.2.1',
 ]
 
 allprojects {
@@ -26,6 +29,7 @@ allprojects {
             nitpickerPmd { canBeConsumed = false }
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerFormat { canBeConsumed = false }
+            nitpickerPit { canBeConsumed = false }
         }
         repositories { mavenCentral() }
         dependencies {
@@ -33,6 +37,17 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+        }
+        dependencies {
+            nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
+            nitpickerPit("org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}") {
+                // The JUnit Platform comes from the project (see nitpickerPit): a copy pinned
+                // here would clash with the project's Jupiter version.
+                exclude group: 'org.junit.platform'
+                exclude group: 'org.junit.jupiter'
+                exclude group: 'org.opentest4j'
+                exclude group: 'org.apiguardian'
+            }
         }
         jacoco { toolVersion = pinned.jacoco }
 
@@ -87,6 +102,67 @@ allprojects {
             }
         }
 
+        // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
+        // JUnit 4) against each mutant. It needs a green test run to start, so a failing test suite
+        // fails the task like it fails `test`. Everything under the main classes is a target.
+        tasks.register('nitpickerPit', JavaExec) {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes'), tasks.named('testClasses')
+            classpath = configurations.nitpickerPit
+            mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+            def pitDir = reportDir.map { it.dir('pit') }
+            doFirst {
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                def targets = classDirs.collectMany { dir ->
+                    (dir.listFiles() ?: []).collect { entry ->
+                        entry.isDirectory() ? "${entry.name}.*".toString()
+                            : entry.name.endsWith('.class') ? entry.name.replaceAll(/\.class$/, '') : null
+                    }
+                }.findAll { it }.unique()
+                // Tests are named class by class: a package glob would also hand the main classes
+                // that share a package with the tests to the test engine.
+                def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
+                def tests = testClassDirs.collectMany { dir ->
+                    fileTree(dir) { include '**/*.class' }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+                    }
+                }.unique()
+                // PIT's JUnit 5 plugin needs the launcher next to the project's engine; Gradle itself
+                // supplies one to `test`, so a project may not declare it. Take the engine's version.
+                def runtimeJars = sourceSets.test.runtimeClasspath.files*.name
+                def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
+                def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
+                if (engine != null && !runtimeJars.any { it.startsWith('junit-platform-launcher-') }) {
+                    classpath += project.configurations.detachedConfiguration(
+                        project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
+                }
+                project.delete(pitDir)
+                pitDir.get().asFile.mkdirs()
+                def pitClasspath = (sourceSets.test.runtimeClasspath.files + classDirs)
+                    .findAll { it.exists() }.collect { it.absolutePath }.unique()
+                args(['--reportDir', pitDir.get().asFile.absolutePath,
+                      '--targetClasses', targets.join(','),
+                      '--targetTests', tests.join(','),
+                      '--sourceDirs', mainSources.files.findAll { it.exists() }.join(','),
+                      '--classPath', pitClasspath.join(','),
+                      '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
+                      '--outputFormats', 'XML',
+                      '--timestampedReports', 'false',
+                      '--threads', '2',
+                      '--failWhenNoMutations', 'false',
+                      '--verbose', 'false'])
+            }
+            onlyIf { sourceSets.main.output.classesDirs.files.any { it.exists() && it.list()?.length } }
+            doLast {
+                // PIT writes no report when it found nothing to mutate.
+                def report = pitDir.get().file('mutations.xml').asFile
+                if (!report.exists()) {
+                    report.text = '<mutations/>'
+                }
+            }
+        }
+
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
             dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
@@ -104,8 +180,8 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check and JaCoCo; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
