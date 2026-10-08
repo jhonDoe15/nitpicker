@@ -1,0 +1,149 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "demo-scan",
+          "rules": [
+            {
+              "id": "R1",
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            },
+            {
+              "id": "R2"
+            },
+            {
+              "id": "R3",
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "R1",
+          "level": "error",
+          "message": {
+            "text": "fingerprinted finding"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/a.js"
+                },
+                "region": {
+                  "startLine": 10,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "abc123:1"
+          }
+        },
+        {
+          "ruleId": "R2",
+          "level": "warning",
+          "message": {
+            "text": "symbol finding"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "file:///work/repo/src/b.js"
+                },
+                "region": {
+                  "startLine": 20,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "run",
+                  "fullyQualifiedName": "B.run"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "R2",
+          "level": "warning",
+          "message": {
+            "text": "symbol finding"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/b.js"
+                },
+                "region": {
+                  "startLine": 30,
+                  "startColumn": 5
+                }
+              },
+              "logicalLocations": [
+                {
+                  "name": "run",
+                  "fullyQualifiedName": "B.run"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "ruleId": "R3",
+          "message": {
+            "text": "just a note"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src%2Fc.js"
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 5
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "R1",
+          "message": {
+            "text": "suppressed"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/a.js"
+                },
+                "region": {
+                  "startLine": 50,
+                  "startColumn": 5
+                }
+              }
+            }
+          ],
+          "suppressions": [
+            {
+              "kind": "inSource"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
