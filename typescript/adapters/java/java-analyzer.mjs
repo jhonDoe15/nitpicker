@@ -19,6 +19,7 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-runner.mjs',
   'adapters/ingest/format-check.mjs',
   'adapters/ingest/jacoco.mjs',
+  'adapters/ingest/pit.mjs',
   'adapters/ingest/sarif.mjs',
 ];
 

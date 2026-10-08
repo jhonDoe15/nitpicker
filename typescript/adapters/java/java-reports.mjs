@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
+import { ingestPit } from '../ingest/pit.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 // Reads the reports written by java/nitpicker.init.gradle (build/nitpicker/*) and turns them into
@@ -43,7 +44,28 @@ export function readJavaFindings(projectRoot) {
       ),
     );
   }
+
+  // PIT: absent only when the project has no main classes.
+  const pitReport = path.join(reportRoot, 'pit/mutations.xml');
+  if (existsSync(pitReport)) {
+    findings.push(
+      ...ingestPit(readFileSync(pitReport, 'utf8'), {
+        resolvePath: (className, sourceFile) =>
+          sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
+      }).findings,
+    );
+  }
   return { findings };
+}
+
+// Project-relative source file of a Java class: `fileName` in the class's package directory under
+// one of the source roots, or undefined when no root has it.
+function sourceFileOf(projectRoot, sourceRoots, className, fileName) {
+  const directory = className.split('.').slice(0, -1).join('/');
+  const relative = directory === '' ? fileName : `${directory}/${fileName}`;
+  return sourceRoots
+    .map((sourceRoot) => `${sourceRoot}/${relative}`)
+    .find((candidate) => existsSync(path.join(projectRoot, candidate)));
 }
 
 function projectRoots(projectRoot) {
