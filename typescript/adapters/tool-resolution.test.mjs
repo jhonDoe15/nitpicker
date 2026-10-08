@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { PACKAGE_ROOT, resolveProjectRoot, resolveTool } from './tool-resolution.mjs';
-import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import { applyLegacyInventory, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { runQualitySnapshot } from '../core/snapshot/run-snapshot.mjs';
 import { execFileSync } from 'node:child_process';
 
@@ -128,9 +128,31 @@ it('includes a project-owned coding inventory in the selected policy hash', () =
     analyzer
   ).resolveConfigurationHash;
   const original = resolveHash(root);
+  writeFileSync(path.join(root, 'nitpicker.legacy.json'), '{"sites":[]}');
+  expect(resolveHash(root)).not.toBe(original);
+});
+
+it('reads the legacy inventory from the configured path and ignores the old internal one', () => {
+  const root = createTemporaryRoot('nitpicker-inventory-path-');
+  const [analyzer] = applyLegacyInventory(
+    configuredAnalyzers.filter(({ name }) => name === 'coding-standards'),
+    'config/legacy.json',
+  );
+  const original = analyzer.resolveConfigurationHash(root);
   mkdirSync(path.join(root, 'preset/coding-standards'), { recursive: true });
   writeFileSync(path.join(root, 'preset/coding-standards/legacy-sites.json'), '{"sites":[]}');
-  expect(resolveHash(root)).not.toBe(original);
+  writeFileSync(path.join(root, 'nitpicker.legacy.json'), '{"sites":[]}');
+  expect(analyzer.resolveConfigurationHash(root)).toBe(original);
+  mkdirSync(path.join(root, 'config'));
+  writeFileSync(path.join(root, 'config/legacy.json'), '{"sites":[]}');
+  expect(analyzer.resolveConfigurationHash(root)).not.toBe(original);
+  const invocation = analyzer.createInvocation({
+    projectRoot: root,
+    policyRoot: root,
+    toolRoot: root,
+    snapshot: 'head',
+  });
+  expect(invocation.args.slice(-2)).toEqual(['--legacy-inventory', 'config/legacy.json']);
 });
 
 function createTemporaryRoot(prefix) {

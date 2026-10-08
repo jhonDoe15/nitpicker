@@ -3,7 +3,16 @@ import path from 'node:path';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 const SUPPORTED_PRESETS = ['typescript'];
-const KEYS = ['base', 'preset', 'disable', 'thresholds', 'exclude', 'layout', 'analyzers'];
+const KEYS = [
+  'base',
+  'preset',
+  'disable',
+  'thresholds',
+  'exclude',
+  'layout',
+  'analyzers',
+  'legacyInventory',
+];
 const THRESHOLD_KEYS = ['crapLimit'];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
@@ -54,6 +63,9 @@ export function validateConfig(config) {
   }
   if (config.layout !== undefined) {
     validateLayout(config.layout);
+  }
+  if (config.legacyInventory !== undefined) {
+    validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
   }
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);
@@ -164,6 +176,16 @@ function validateCustomAnalyzers(analyzers) {
     if (entry.args !== undefined) {
       validateStringArray(entry.args, `${label}.args`);
     }
+  }
+}
+
+function validateProjectRelativePath(value, name) {
+  if (!isNonEmptyString(value)) {
+    throw configError(`"${name}" must be a non-empty string`);
+  }
+  const normalized = value.replaceAll('\\', '/');
+  if (path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || normalized.split('/').includes('..')) {
+    throw configError(`"${name}" must be a path inside the project`);
   }
 }
 
