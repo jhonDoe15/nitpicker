@@ -1,4 +1,6 @@
-import { isTestFixture } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const { isTestFixture } = readLayout();
 
 export default {
   meta: {

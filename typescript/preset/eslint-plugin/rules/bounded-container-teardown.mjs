@@ -1,4 +1,6 @@
-import { isTestFixture } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const { isTestFixture } = readLayout();
 
 function isContainerName(name) {
   return /container|agent/i.test(name);

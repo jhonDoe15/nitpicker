@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { sourceRoot as defaultSourceRoot } from '../../preset/layout.mjs';
+import { sourceRoots as defaultSourceRoots } from '../../preset/layout.mjs';
 
 const ANALYZER_NAME = 'entry-points';
 const PUBLIC_ALTERNATIVE_BYPASS = 'public-alternative-bypass';
@@ -9,7 +9,8 @@ export function createEntryPointAnalyzer({
   version,
   configurationHash,
   exclusions,
-  sourceRoot = defaultSourceRoot,
+  sourceRoot,
+  sourceRoots = sourceRoot === undefined ? defaultSourceRoots : [sourceRoot],
   shardWeight = 1,
 }) {
   return {
@@ -29,8 +30,7 @@ export function createEntryPointAnalyzer({
           policyRoot,
           '--tool-root',
           toolRoot,
-          '--source-root',
-          sourceRoot,
+          ...sourceRoots.flatMap((sourceRoot) => ['--source-root', sourceRoot]),
         ],
         cwd: toolRoot,
       };

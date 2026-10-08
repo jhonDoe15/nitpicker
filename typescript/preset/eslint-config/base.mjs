@@ -1,9 +1,10 @@
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
-import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
 
-const ignores = [...excludedGlobs, 'src/**/__tests__/**', ...testGlobs, '.stryker-tmp/**'];
+const { sourceGlobs, testGlobs, excludedGlobs, sourceTestDirectoryGlobs } = readLayout();
+const ignores = [...excludedGlobs, ...sourceTestDirectoryGlobs, ...testGlobs, '.stryker-tmp/**'];
 
 export function productionPolicyConfig(rules) {
   return tseslint.config(
