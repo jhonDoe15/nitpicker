@@ -1,0 +1,11 @@
+.git
+.github
+.claude
+docs
+**/node_modules
+**/reports
+**/coverage
+**/.stryker-tmp
+**/.nitpicker-*
+**/*.test.mjs
+**/fixtures
