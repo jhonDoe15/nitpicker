@@ -30,6 +30,7 @@ export const strykerVersion = 'unresolved';
 const POLICY_FILES = [
   'preset/layout.mjs',
   'preset/head-policy.mjs',
+  'preset/eslint-config/exceptions.mjs',
   'preset/eslint-config/error-wrapping-policy.mjs',
   'preset/eslint-plugin/index.mjs',
   'preset/eslint-plugin/rules/no-wait-for-with-fake-timers.mjs',
