@@ -27,6 +27,7 @@ const ESLINT_ADAPTER_FILES = [
   'adapters/diff/eslint-runner.mjs',
   'adapters/diff/eslint-config-wrapper.mjs',
   'adapters/policy-links.mjs',
+  'adapters/temporary-files.mjs',
 ];
 const ENTRY_POINT_ADAPTER_FILES = [
   'preset/quality-checks.mjs',
@@ -40,6 +41,7 @@ const STATIC_CHECK_ADAPTER_FILES = [
   'adapters/diff/static-checks.mjs',
   'adapters/diff/static-checks-runner.mjs',
   'adapters/policy-links.mjs',
+  'adapters/temporary-files.mjs',
 ];
 const QUALITY_AREA_ADAPTER_FILES = [
   'preset/quality-checks.mjs',
