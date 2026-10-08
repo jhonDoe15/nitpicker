@@ -1,6 +1,7 @@
 import path from 'node:path';
 import loggingConfig from '../eslint-config/logging.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
+import { domainFailureMessageCases } from './domain-cases.mjs';
 
 function strictCase([name, banned, allowed]) {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
@@ -112,4 +113,5 @@ export const failureMessageCases = [
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
   },
+  ...domainFailureMessageCases,
 ];
