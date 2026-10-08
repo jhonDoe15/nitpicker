@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from './java-diff.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
-// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format and JaCoCo), so it
+// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), so it
 // only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`). NITPICKER_GRADLE overrides `gradle`.
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -40,6 +40,7 @@ public final class Greeter {
     return name.trim().toUpperCase(java.util.Locale.ROOT);
   }
 
+  /** Says goodbye. */
   public String farewell(String name) {
     return "Goodbye, " + name + ".";
   }
@@ -60,6 +61,18 @@ public final class Bad {
         public void sloppy() { }
 }
 `;
+
+// What Checkstyle's bundled google_checks.xml (the default) reports on Bad.java.
+const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
+const CHECKSTYLE_ON_BAD = [
+  'blocks.EmptyCatchBlockCheck',
+  'indentation.IndentationCheck',
+  'javadoc.MissingJavadocMethodCheck',
+  'javadoc.MissingJavadocMethodCheck',
+  'javadoc.MissingJavadocTypeCheck',
+  'regexp.RegexpSinglelineJavaCheck',
+  'whitespace.EmptyLineSeparatorCheck',
+];
 
 let repository;
 const sourceDirectory = 'src/main/java/demo';
@@ -153,12 +166,13 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new PMD, SpotBugs and formatter violations as new',
+    'fails new PMD, SpotBugs, Checkstyle and formatter violations as new',
     () => {
       const result = diffOf('violation');
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
+        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
         'google-java-format format Bad.java',
         'pmd EmptyCatchBlock Bad.java',
         'spotbugs DM_DEFAULT_ENCODING Bad.java',

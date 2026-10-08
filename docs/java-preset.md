@@ -1,6 +1,6 @@
 # Java preset
 
-Status: slices 1 (ticket X11) and 2 (ticket J2) implemented; later slices are planned below. The scope is a proposal
+Status: slices 1 (ticket X11), 2 (ticket J2) and 3 (ticket J3) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
 The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -26,7 +26,7 @@ gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: b
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
   exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
   directory is the contract between the two sides.
 - **Nitpicker side: `typescript/adapters/java/`.** `runJavaPreset` runs the task,
@@ -50,8 +50,8 @@ mapping, tests, and this document.
 | #   | Slice                    | Tool and report                                                  | Findings                                                                                                 | Status  |
 | --- | ------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------- |
 | 1   | Base                     | PMD, SpotBugs, google-java-format, JaCoCo; init script, e2e test | see below                                                                                                | done    |
-| 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | this PR |
-| 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | later   |
+| 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | done    |
+| 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | this PR |
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | later   |
 | 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | later   |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
@@ -71,9 +71,9 @@ that is not a JVM artifact, so it needs a decision on how tools are provisioned.
   would otherwise change meaning silently. Without the key, nitpicker runs the TypeScript preset as
   before. The key is read from the head checkout and applies to both snapshots, like the rest of
   the config.
-- **One analyzer, four tools.** The preset is a single analyzer, `java` (one Gradle run per
-  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format` and
-  `jacoco`. The analyzer declares them as `reportedTools`, the one scheduler change this slice
+- **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
+  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`
+  and (slice 3) `checkstyle`. The analyzer declares them as `reportedTools`, the one scheduler change this slice
   needed (a finding for a tool that is neither the analyzer nor a declared one is still an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
   init script and the Java adapter files, so a tool bump invalidates the base cache.
@@ -134,6 +134,27 @@ Notes on the glue in `java-reports.mjs`:
   (JaCoCo, Checkstyle, SARIF hash fallback) include the path, so the rename map from git cannot
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
+
+## Slice 3: Checkstyle
+
+- **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` (main sources
+  only). `ignoreFailures` is on and the XML report is written to `build/nitpicker/checkstyle.xml`;
+  the HTML report is off.
+- **Configuration.** The consumer's `config/checkstyle/checkstyle.xml` in the root project wins
+  (like `config/pmd/ruleset.xml`). Without one, the preset uses `google_checks.xml` from the pinned
+  Checkstyle jar, which matches google-java-format. Decision to review: google_checks is noisy on
+  code that was never written for it, but the gate is differential, so existing violations stay
+  baselined and only new ones fail.
+- **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
+  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive.
+
+| Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
+| ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkstyle (`checkstyle`) | Checkstyle XML | `ingestCheckstyle` | enforceable (`error`, `warning`); descriptive (`info`) | Hash of check class (rule), path and message text; repeats of the same message in a file get `#2`, `#3` in order. No line number; the path is part of the hash, so a renamed file shows its findings as resolved plus new. |
+
+Messages that embed a measured value (for example "found 120" in a line-length violation) change
+identity when the value changes: editing such a line counts as a resolved plus a new finding.
 
 ## Slice 1: what is deliberately not included
 
