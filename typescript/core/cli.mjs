@@ -12,6 +12,7 @@ import {
   configuredAnalyzers,
 } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
+import { addCustomAnalyzers } from '../adapters/diff/custom-analyzer.mjs';
 import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
@@ -61,10 +62,13 @@ export function runCli({
     const config = loadConfig(selectedProjectRoot);
     const headPolicy = resolveHeadPolicy(config);
     const configure = (list) =>
-      applyThresholds(
-        applyLayout(applyDisable(list, config), headPolicy),
-        config.thresholds,
-        headPolicy,
+      addCustomAnalyzers(
+        applyThresholds(
+          applyLayout(applyDisable(list, config), headPolicy),
+          config.thresholds,
+          headPolicy,
+        ),
+        config.analyzers,
       );
     if (options.all) {
       return runSnapshotCli({
