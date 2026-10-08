@@ -12,7 +12,8 @@
     "node": ">=22.14"
   },
   "scripts": {
-    "test": "vitest run --config vitest.config.mts"
+    "test": "vitest run --config vitest.config.mts",
+    "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs"
   },
   "prettier": "./preset/defaults/.prettierrc.json",
   "files": [
