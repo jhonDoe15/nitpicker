@@ -61,6 +61,38 @@ public final class Bad {
 }
 `;
 
+// Never exercised by a test: the `if` line has two uncovered branch outcomes on the base.
+const BRANCHY = `package demo;
+
+public final class Branchy {
+  public int larger(int left, int right) {
+    if (left > right) {
+      return left;
+    }
+    return right;
+  }
+}
+`;
+
+const BRANCHY_MOVED = BRANCHY.replace(
+  '  public int larger',
+  '  // Picks the larger value.\n  public int larger',
+);
+const BRANCHY_EDITED = BRANCHY.replace('left > right', 'left >= right');
+const BRANCHY_ADDED = BRANCHY.replace(
+  '    return right;\n  }\n',
+  `    return right;
+  }
+
+  public int smaller(int left, int right) {
+    if (left < right) {
+      return left;
+    }
+    return right;
+  }
+`,
+);
+
 let repository;
 const sourceDirectory = 'src/main/java/demo';
 
@@ -101,12 +133,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     });
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
+    writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
     branchWith('clean', { 'Greeter.java': FAREWELL });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
+    branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
+    branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
   });
 
   afterAll(() => {
@@ -165,6 +201,49 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       ]);
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'baselines an uncovered branch whose line only moves',
+    () => {
+      const result = diffOf('branch-moved');
+
+      expect(result.failed).toBe(false);
+      expect(summarize(result.newEnforceable)).toEqual([]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails an uncovered branch on a changed line',
+    () => {
+      const result = diffOf('branch-edited');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'jacoco changed-branch-coverage Branchy.java',
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new uncovered branch and keeps the old one baselined',
+    () => {
+      const result = diffOf('branch-added');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'jacoco changed-branch-coverage Branchy.java',
+      ]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
       );
     },
     GRADLE_STEP_TIMEOUT_MS,

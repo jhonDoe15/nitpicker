@@ -2,6 +2,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
+import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 // Reads the reports written by java/nitpicker.init.gradle (build/nitpicker/*) and turns them into
@@ -41,6 +42,19 @@ export function readJavaFindings(projectRoot) {
       ...ingestJacoco(jacoco, { sourceRoot }).findings.filter((finding) =>
         existsSync(path.join(projectRoot, finding.path)),
       ),
+    );
+  }
+
+  // Branches below the coverage minimum: gated on changed lines by the differential comparison.
+  for (const sourceRoot of sourceRoots) {
+    findings.push(
+      ...ingestJacocoBranches(jacoco, {
+        sourceRoot,
+        sourceText: (file) => {
+          const absolute = path.join(projectRoot, file);
+          return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+        },
+      }).findings,
     );
   }
   return { findings };

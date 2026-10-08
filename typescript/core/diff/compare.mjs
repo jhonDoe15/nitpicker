@@ -3,7 +3,7 @@ import { comparisonKey } from './fingerprint.mjs';
 /**
  * Splits findings into new, resolved, unchanged and changed-metric. When `touchedCode` is given, an
  * enforceable finding of a strict rule that sits in code this change touched is new even though the
- * base has it: `touchedCode.isStrictRule(rule)` names the strict rules and
+ * base has it: `touchedCode.isStrictRule(rule, finding)` names the strict rules and
  * `touchedCode.changedLines` comes from `readChangedLines`. Findings in untouched code stay
  * baselined.
  */
@@ -65,7 +65,7 @@ function isInTouchedCode(finding, touchedCode) {
   if (touchedCode === undefined || finding.classification !== 'enforceable') {
     return false;
   }
-  if (!touchedCode.isStrictRule(finding.rule)) {
+  if (!touchedCode.isStrictRule(finding.rule, finding)) {
     return false;
   }
   const changed = touchedCode.changedLines.get(finding.path);
