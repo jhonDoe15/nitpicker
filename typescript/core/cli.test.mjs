@@ -180,37 +180,6 @@ describe('nitpicker CLI', () => {
     expect(git(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
   });
 
-  it('rejects projects without a package lock before analysis', () => {
-    const repository = createRepository({});
-    rmSync(path.join(repository.root, 'package-lock.json'));
-    const output = captureOutput();
-    expect(
-      runCli({
-        currentProjectRoot: repository.root,
-        arguments_: ['--all'],
-        stdout: output.stdout,
-        stderr: output.stderr,
-      }),
-    ).toBe(2);
-    expect(output.stderrText).toContain('package-lock.json is required');
-  });
-
-  it('rejects workspace projects before analysis', () => {
-    const repository = createRepository({
-      'package.json': '{"workspaces":["packages/*"]}\n',
-    });
-    const output = captureOutput();
-    expect(
-      runCli({
-        currentProjectRoot: repository.root,
-        arguments_: ['--all'],
-        stdout: output.stdout,
-        stderr: output.stderr,
-      }),
-    ).toBe(2);
-    expect(output.stderrText).toContain('npm workspaces are unsupported');
-  });
-
   it('rejects --all combined with --base', () => {
     const output = captureOutput();
 

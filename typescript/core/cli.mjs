@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveProjectRoot } from '../adapters/tool-resolution.mjs';
 import {
@@ -49,7 +49,6 @@ export function runCli({
 
     const selectedProjectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
-    validateProject(selectedProjectRoot);
     if (options.all) {
       return runSnapshotCli({
         options,
@@ -68,25 +67,6 @@ export function runCli({
   } catch (error) {
     stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
     return 2;
-  }
-}
-
-function validateProject(root) {
-  if (!existsSync(path.join(root, 'package-lock.json'))) {
-    throw new Error(
-      'Phase 1 supports single-package npm projects only: package-lock.json is required',
-    );
-  }
-  let manifest;
-  try {
-    manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
-  } catch (error) {
-    throw new Error(`Invalid package.json at ${root}`, { cause: error });
-  }
-  if (manifest.workspaces !== undefined) {
-    throw new Error(
-      'Phase 1 supports single-package npm projects only: npm workspaces are unsupported',
-    );
   }
 }
 

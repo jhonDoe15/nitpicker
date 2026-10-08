@@ -74,9 +74,10 @@ Decided:
 - `vitest`, `@vitest/coverage-v8`, and `typescript` are required peer dependencies resolved from
   the consumer. The report records the versions that ran. The other tools are exact-pinned
   dependencies resolved from nitpicker's own package.
-- Phase 1 supports single-package npm projects. The `nitpicker` command checks this before it
-  analyzes anything and fails clearly otherwise; the diff engine itself does not. npm workspaces,
-  pnpm, and yarn come later.
+- nitpicker behaves like any other dependency. It does not check the consumer's setup up front:
+  if a peer or the consumer's install is missing or incompatible, the affected tool fails the way
+  it would when run directly, and the report shows that as a tool error. Single-package npm
+  projects are the tested setup.
 - Runners keep the `--tool-root` argument, pinned to nitpicker's package folder.
 - Project-owned policy files, such as the coding-standards legacy inventory, are read from the head
   commit and applied to both sides of the comparison, so base and head are measured with one policy.
