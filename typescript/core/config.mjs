@@ -5,6 +5,7 @@ export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 const SUPPORTED_PRESETS = ['typescript'];
 const KEYS = ['base', 'preset', 'disable', 'thresholds', 'exclude', 'layout', 'analyzers'];
 const THRESHOLD_KEYS = ['crapLimit'];
+const LAYOUT_KEYS = ['sourceRoots', 'testRoots'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 /** Reads the optional config file from a project root; zero config yields an empty config. */
@@ -51,8 +52,8 @@ export function validateConfig(config) {
   if (config.exclude !== undefined) {
     validateStringArray(config.exclude, 'exclude');
   }
-  if (config.layout !== undefined && !isPlainObject(config.layout)) {
-    throw configError('"layout" must be an object');
+  if (config.layout !== undefined) {
+    validateLayout(config.layout);
   }
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);
@@ -106,6 +107,41 @@ function validateThresholds(thresholds) {
       throw configError(`"thresholds.${key}" must be a positive number`);
     }
   }
+}
+
+function validateLayout(layout) {
+  if (!isPlainObject(layout)) {
+    throw configError('"layout" must be an object');
+  }
+  for (const [key, value] of Object.entries(layout)) {
+    if (!LAYOUT_KEYS.includes(key)) {
+      throw configError(
+        `unknown layout key "${key}". Allowed layout keys: ${LAYOUT_KEYS.join(', ')}`,
+      );
+    }
+    validateStringArray(value, `layout.${key}`);
+    if (value.length === 0) {
+      throw configError(`"layout.${key}" must not be empty`);
+    }
+    for (const root of value) {
+      if (!isProjectRelativeDirectory(root)) {
+        throw configError(
+          `"layout.${key}" entries must be directories inside the project: ${root}`,
+        );
+      }
+    }
+  }
+}
+
+function isProjectRelativeDirectory(root) {
+  const normalized = root.replaceAll('\\', '/');
+  return (
+    !path.isAbsolute(normalized) &&
+    !/^[A-Za-z]:/.test(normalized) &&
+    !/[*?{}[\]]/.test(normalized) &&
+    !normalized.split('/').includes('..') &&
+    normalized.replace(/^\.\/?|\/$/g, '').length > 0
+  );
 }
 
 function validateCustomAnalyzers(analyzers) {

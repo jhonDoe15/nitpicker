@@ -1,12 +1,36 @@
-import { lstatSync, realpathSync, symlinkSync, unlinkSync } from 'node:fs';
+import {
+  lstatSync,
+  readFileSync,
+  realpathSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
 
-export function linkPolicyFile(sourcePath, targetPath) {
+/**
+ * Makes a package-owned policy file visible inside the analyzed tree. Without `transform` the
+ * target is a link to the file. With one (the config file changed the layout), the target is a
+ * copy of the file's text rewritten by `transform`; the copy is still package-owned content
+ * derived from the head policy, never from the analyzed tree.
+ */
+export function linkPolicyFile(sourcePath, targetPath, transform) {
   const canonicalSource = realpathSync(sourcePath);
   if (lstatIfExists(targetPath) !== undefined) {
     throw new Error(`Temporary policy target already exists: ${targetPath}`);
   }
   trackTemporaryPath(targetPath);
+  if (transform !== undefined) {
+    writeFileSync(targetPath, transform(readFileSync(canonicalSource, 'utf8')), { flag: 'wx' });
+    return {
+      sourcePath: canonicalSource,
+      targetPath,
+      remove() {
+        unlinkSync(targetPath);
+        untrackTemporaryPath(targetPath);
+      },
+    };
+  }
   symlinkSync(canonicalSource, targetPath, 'file'); // nosemgrep: javascript.express.file.fs-express.fs-express
   return {
     sourcePath: canonicalSource,

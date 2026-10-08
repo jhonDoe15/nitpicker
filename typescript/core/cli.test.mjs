@@ -424,6 +424,57 @@ describe('nitpicker CLI', () => {
     );
   });
 
+  it('does not fix files that the config excludes, and fixes custom layout roots', () => {
+    const repository = createRepository({
+      'nitpicker.config.json': `${JSON.stringify(
+        {
+          exclude: ['lib/legacy/**'],
+          layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
+        },
+        null,
+        2,
+      )}\n`,
+      'lib/changed.ts': 'export const changed = 1;\n',
+      'lib/legacy/old.ts': 'export const old = 1;\n',
+      'spec/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(import.meta.dirname, '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    writeFiles(repository.root, {
+      'lib/changed.ts': 'export let changed=3;\n',
+      'lib/legacy/old.ts': 'export let old=3;\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: [
+        '--fix',
+        '--base',
+        repository.baseRef,
+        '--analyzer',
+        'eslint-lint',
+        '--analyzer',
+        'prettier-format',
+        '--output',
+        makeOutputRoot(),
+      ],
+      currentProjectRoot: repository.root,
+      environment: {},
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
+    expect(readFileSync(path.join(repository.root, 'lib/changed.ts'), 'utf8')).toBe(
+      'export const changed = 3;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'lib/legacy/old.ts'), 'utf8')).toBe(
+      'export let old=3;\n',
+    );
+    expect(output.stdoutText).toMatch(/Fixed files:\nlib\/changed.ts\nBase:/);
+  });
+
   it('rejects --fix combined with --all', () => {
     const output = captureOutput();
     expect(
@@ -550,7 +601,7 @@ describe('nitpicker config file', () => {
       ['preset', 'typescript'],
       ['thresholds', { crapLimit: 12 }],
       ['exclude', ['generated/**']],
-      ['layout', { source: ['lib'] }],
+      ['layout', { sourceRoots: ['lib'] }],
       ['analyzers', [{ name: 'custom', command: './check.sh' }]],
     ]) {
       const { summary, exitCode } = runWithConfig({ [key]: value });

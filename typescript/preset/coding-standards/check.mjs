@@ -5,7 +5,7 @@ import { ESLint } from 'eslint';
 import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mjs';
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mjs';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mjs';
-import { sourceRoot as layoutSourceRoot, projectCodeFiles } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const defaultLegacyInventoryPath = path.join(import.meta.dirname, 'legacy-sites.json');
@@ -26,13 +26,13 @@ export function compareSignals(actual, allowed) {
     .map(([, item]) => item);
 }
 
-export async function collectSignals(root = projectRoot, policyRoot = root) {
+export async function collectSignals(root = projectRoot, policyRoot = root, layout = readLayout()) {
   const eslint = new ESLint({
     cwd: root,
     overrideConfigFile: path.join(policyRoot, 'preset/eslint-config/coding-standards.mjs'),
     allowInlineConfig: false,
   });
-  const files = projectCodeFiles(root);
+  const files = layout.projectCodeFiles(root);
   if (files.length === 0) return [];
   const results = await eslint.lintFiles(files);
   const signals = [];
@@ -90,24 +90,39 @@ export async function check() {
   return 0;
 }
 
-export function collectArchitectureSignals(root = projectRoot) {
+export function collectArchitectureSignals(root = projectRoot, layout = readLayout()) {
+  return layout.sourceRoots.flatMap((layoutSourceRoot) =>
+    collectRootArchitectureSignals(root, layoutSourceRoot, layout),
+  );
+}
+
+function collectRootArchitectureSignals(root, layoutSourceRoot, layout) {
   const sourceRoot = path.join(root, layoutSourceRoot);
   if (!existsSync(sourceRoot)) return [];
   const configPath = [
     path.join(sourceRoot, 'tsconfig.json'),
     path.join(root, 'tsconfig.json'),
   ].find(existsSync);
-  const contracts = (configPath ? analyzePublicContractUsage(configPath) : []).map((item) => ({
-    file: `${layoutSourceRoot}/${item.file}`,
-    rule: 'public-contract-production-use',
-    source: `${item.contract}.${item.method}`,
-  }));
-  const boundaries = analyzeRuntimeBoundaries(sourceRoot).findings.map((item) => ({
+  const contracts = (configPath ? analyzePublicContractUsage(configPath) : [])
+    .map((item) => ({
+      file: `${layoutSourceRoot}/${item.file}`,
+      rule: 'public-contract-production-use',
+      source: `${item.contract}.${item.method}`,
+    }))
+    .filter((item) => !layout.isExcluded(item.file));
+  const boundaries = analyzeRuntimeBoundaries(sourceRoot, undefined, {
+    layout,
+    displayRoot: layoutSourceRoot,
+  }).findings.map((item) => ({
     file: `${layoutSourceRoot}/${item.source}`,
     rule: `runtime-boundary/${item.rule}`,
     source: `${item.role}:${item.target}`,
   }));
-  const callbacks = analyzeProductionCallbacks({ sourceRoot }).findings.map((item) => ({
+  const callbacks = analyzeProductionCallbacks({
+    sourceRoot,
+    displayRoot: layoutSourceRoot,
+    layout,
+  }).findings.map((item) => ({
     file: path.relative(root, item.file).replaceAll('\\', '/'),
     rule: `callback-protocol/${item.rule}`,
     source: item.callee,

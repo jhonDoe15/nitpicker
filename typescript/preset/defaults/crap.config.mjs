@@ -1,4 +1,6 @@
-import { sourceRoots, excludedGlobs, testGlobs } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
+
+const { sourceRoots, excludedGlobs, testGlobs } = readLayout();
 
 export default {
   sourcePaths: sourceRoots,

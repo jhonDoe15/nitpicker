@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
 import { linkPolicyFile, lstatIfExists, removeOwnedLink } from '../policy-links.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -391,6 +393,7 @@ function removeDependencyLinks(linkedDependencies) {
 
 function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
   const installedFiles = [];
+  const layout = readLayout();
   try {
     for (const [index, relativePath] of policyFiles.entries()) {
       const sourcePath = validatedContainedFile(
@@ -403,6 +406,7 @@ function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
         linkPolicyFile(
           sourcePath,
           path.join(projectRoot, `.nitpicker-diff-policy-${String(index)}${extension}`),
+          layoutTransformFor(relativePath, layout),
         ),
       );
     }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
-import { isSourceUnderRoot } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
 const DEFAULT_COMPOSITION_ROOTS = new Set(['composition-root.ts', 'main.ts', 'server.ts']);
@@ -15,8 +15,8 @@ function componentName(modulePath, sourceRoot) {
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
-function isProductionModule(modulePath, sourceRoot) {
-  return isSourceUnderRoot(modulePath, sourceRoot);
+function isProductionModule(modulePath, sourceRoot, layout) {
+  return layout.isSourceUnderRoot(modulePath, sourceRoot);
 }
 
 function exportReachability(graph, sourceRoot) {
@@ -70,6 +70,7 @@ export function analyzeEntryPoints(
   {
     foundationDirectories = DEFAULT_FOUNDATION_DIRECTORIES,
     compositionRoots = DEFAULT_COMPOSITION_ROOTS,
+    layout = defaultResolvedLayout,
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
@@ -80,10 +81,11 @@ export function analyzeEntryPoints(
   const legacyRoot = `${requestedRoot}/main`;
   const sources = graph.modules.map((module) => normalizePath(module.source));
   const normalizedRoot =
-    requestedRoot === 'src' &&
-    sources.some((source) => isSourceUnderRoot(source, legacyRoot)) &&
+    layout.sourceRoots.includes(requestedRoot) &&
+    sources.some((source) => layout.isSourceUnderRoot(source, legacyRoot)) &&
     !sources.some(
-      (source) => isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
+      (source) =>
+        layout.isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
     )
       ? legacyRoot
       : requestedRoot;
@@ -91,7 +93,8 @@ export function analyzeEntryPoints(
     .map((module) => normalizePath(module.source))
     .filter(
       (source) =>
-        source.startsWith(`${normalizedRoot}/`) && isProductionModule(source, normalizedRoot),
+        source.startsWith(`${normalizedRoot}/`) &&
+        isProductionModule(source, normalizedRoot, layout),
     );
   const components = new Set(
     productionModules
@@ -113,8 +116,8 @@ export function analyzeEntryPoints(
 
   for (const edge of internalEdges(graph, normalizedRoot)) {
     if (
-      !isProductionModule(edge.source, normalizedRoot) ||
-      !isProductionModule(edge.target, normalizedRoot)
+      !isProductionModule(edge.source, normalizedRoot, layout) ||
+      !isProductionModule(edge.target, normalizedRoot, layout)
     ) {
       continue;
     }

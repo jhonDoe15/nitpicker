@@ -6,7 +6,11 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
-import { applyThresholds, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import {
+  applyLayout,
+  applyThresholds,
+  configuredAnalyzers,
+} from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
 import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
 import {
@@ -55,13 +59,19 @@ export function runCli({
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
     // The config is read from the head checkout and applies to both sides of the comparison.
     const config = loadConfig(selectedProjectRoot);
-    const configure = (list) => applyThresholds(applyDisable(list, config), config.thresholds);
+    const headPolicy = resolveHeadPolicy(config);
+    const configure = (list) =>
+      applyThresholds(
+        applyLayout(applyDisable(list, config), headPolicy),
+        config.thresholds,
+        headPolicy,
+      );
     if (options.all) {
       return runSnapshotCli({
         options,
         currentProjectRoot: selectedProjectRoot,
         analyzers: configure(snapshotAnalyzers),
-        headPolicy: resolveHeadPolicy(config),
+        headPolicy,
         stdout,
       });
     }
@@ -71,6 +81,7 @@ export function runCli({
       currentProjectRoot: selectedProjectRoot,
       analyzers: configure(analyzers),
       config,
+      headPolicy,
       stdout,
       executeFixCommand,
     });
@@ -152,6 +163,7 @@ function runComparisonCli({
   currentProjectRoot,
   analyzers,
   config,
+  headPolicy,
   stdout,
   executeFixCommand,
 }) {
@@ -175,6 +187,7 @@ function runComparisonCli({
         projectRoot: currentProjectRoot,
         baseRef: base.baseRef,
         executeFixCommand,
+        headPolicy,
       })
     : { fixedFiles: [], toolErrors: [] };
   if (options.fix) {
@@ -203,7 +216,7 @@ function runComparisonCli({
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
-    headPolicy: resolveHeadPolicy(config),
+    headPolicy,
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(

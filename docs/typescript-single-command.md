@@ -57,8 +57,8 @@ review.
 The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
 both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, and `analyzers`. Unknown keys are an error. `exclude`, `layout`, and `analyzers` are
-validated and reported but not yet applied.
+`layout`, and `analyzers`. Unknown keys are an error. `analyzers` is validated and reported but not
+yet applied; `exclude` and `layout` are applied everywhere (see below).
 
 ### Head policy delivery
 
@@ -78,8 +78,8 @@ JSON file and one environment variable.
   exported by `preset/layout.mjs`. With no variable (a runner started by hand, or no config) the
   defaults apply. A variable that points at an unreadable or malformed file throws; it never
   falls back to a weaker policy.
-- This ticket only delivers the policy. Making runners and child configs honor `exclude` and
-  `layout` is the next ticket (P4).
+- Delivering the policy and applying it are separate: the next section covers how runners and
+  tools honor `exclude` and `layout`.
 
 Alternatives considered:
 
@@ -95,6 +95,37 @@ Alternatives considered:
 - Let each runner read `nitpicker.config.json` from the head worktree: the base run would need
   the head path, and each runner would repeat validation.
 - Inline JSON in the variable: risks the environment size limit with long glob lists.
+
+### Exclude and layout in every runner and tool
+
+Decision (proposed, pending owner review):
+
+- `layout` accepts `sourceRoots` and `testRoots`: non-empty arrays of project-relative directories
+  (no absolute paths, `..` or globs). Other keys are an error. The defaults stay `["src"]` and
+  `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
+  `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,
+  `coverage`, `reports`, `target`, `*.d.ts`).
+- `preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
+  expression and predicate (`isSourceFile`, `isTestFile`, `isExcluded`, `projectCodeFiles`, ...)
+  from the roots and exclusions. `readLayout()` in `preset/head-policy.mjs` resolves the delivered
+  head policy. Runners, package-owned child configs, and ESLint rules call it; the exported
+  constants in `layout.mjs` are the default layout.
+- The CLI rebuilds the preset's analyzers for the policy (`applyLayout`), so `--pattern`s,
+  source roots and the reported exclusions follow the config. Custom and injected analyzers are
+  left alone.
+- Tools that read a project-root JSON config (`tsconfig.quality.json`, `tsconfig.stryker.json`,
+  `knip.json`, `jscpd.json`) get a generated copy with the roots moved and the exclusions added
+  (`preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
+  vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
+- dependency-cruiser gets the exclusions as part of its `--exclude` and `doNotFollow` patterns, so
+  excluded files are absent from the graph. TypeScript, ESLint and Prettier skip them in their
+  file selection, and diagnostics for excluded files that other files import are dropped.
+- Analyzers that work on one source root (coupling, structure, entry points) run once per root.
+  With several roots the identities of their findings are prefixed with the root; with one root
+  they are unchanged.
+- `--fix` applies the same policy: excluded files are not fixed and the roots are used.
+- The CRAP tool only expands directories named `src`, so for other roots the files inside are
+  passed explicitly.
 
 ## Packaging
 

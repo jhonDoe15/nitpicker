@@ -1,5 +1,8 @@
 import path from 'node:path';
-import { sourceRoot, testRoots, isSourceFile } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const layout = readLayout();
+const { testRoots } = layout;
 
 const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
 const TEST_SUPPORT = new RegExp(
@@ -17,15 +20,18 @@ function isRuntimeImport(node) {
 }
 
 function isProductionModule(filename, source) {
-  if (source.includes(`/${sourceRoot}/`) || source.startsWith(`${sourceRoot}/`)) {
-    return isSourceFile(source.slice(source.indexOf(`${sourceRoot}/`)));
+  const sourceRoot = layout.sourceRoots.find(
+    (root) => source.includes(`/${root}/`) || source.startsWith(`${root}/`),
+  );
+  if (sourceRoot !== undefined) {
+    return layout.isSourceFile(source.slice(source.indexOf(`${sourceRoot}/`)));
   }
   if (!source.startsWith('.')) {
     return false;
   }
 
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  return resolved.includes(`/${sourceRoot}/`) && !TEST_SUPPORT.test(resolved);
+  return layout.sourceRootOf(resolved) !== undefined && !TEST_SUPPORT.test(resolved);
 }
 
 export default {

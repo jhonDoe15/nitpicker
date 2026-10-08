@@ -1,7 +1,9 @@
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
-import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
+
+const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = readLayout();
 
 export default [
   { ignores: excludedGlobs },
@@ -16,7 +18,7 @@ export default [
     },
   },
   {
-    files: ['src/**/__tests__/**/*.ts', 'test/unit/**/*.ts', 'tests/unit/**/*.ts'],
+    files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   {
