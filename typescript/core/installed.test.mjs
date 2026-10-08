@@ -17,6 +17,9 @@ const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 const layouts = [undefined, 'nested', 'linked'];
+// npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
+// the consumer install is pinned to a newer npm.
+const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
@@ -24,7 +27,7 @@ function command(cwd, executable, args) {
   const result = spawnSync(executable, args, {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1', npm_config_offline: 'true' },
+    env: { ...process.env, NO_COLOR: '1' },
     timeout: 180_000,
   });
   if (result.error) throw result.error;
@@ -127,6 +130,16 @@ suite('packed nitpicker in a separate consumer', () => {
         );
         write(root, 'src/main/example.ts', cleanSource);
         write(root, 'test/example.test.ts', 'export const placeholder = true;\n');
+        // The lockfile is committed so the merge-base worktree can `npm ci`.
+        checked(root, 'npx', [
+          '--yes',
+          installer,
+          'install',
+          '--no-audit',
+          '--no-fund',
+          '--prefer-offline',
+          ...(strategy ? [`--install-strategy=${strategy}`] : []),
+        ]);
         checked(root, 'git', ['add', '.']);
         checked(root, 'git', [
           '-c',
@@ -138,13 +151,6 @@ suite('packed nitpicker in a separate consumer', () => {
           'clean baseline',
         ]);
         checked(root, 'git', ['switch', '-c', 'feature']);
-        checked(root, 'npm', [
-          'install',
-          '--no-audit',
-          '--no-fund',
-          '--prefer-offline',
-          ...(strategy ? [`--install-strategy=${strategy}`] : []),
-        ]);
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
         clean = invoke([
@@ -210,7 +216,7 @@ suite('packed nitpicker in a separate consumer', () => {
       }, 600_000);
       afterAll(() => {
         if (root) rmSync(root, { recursive: true, force: true });
-      });
+      }, 120_000);
 
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));
