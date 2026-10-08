@@ -577,6 +577,70 @@ describe('nitpicker config file', () => {
   });
 });
 
+describe('findings cache', () => {
+  function setup() {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/old.ts': findingLine(finding({ identity: 'old-finding' })),
+    });
+    writeFiles(repository.root, {
+      'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
+    });
+    const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
+    const snapshots = [];
+    const run = ({ extraArguments = [], configurationHash = 'fixture-policy' } = {}) => {
+      const analyzer = fakeAnalyzer();
+      analyzer.configurationHash = configurationHash;
+      const createInvocation = analyzer.createInvocation;
+      analyzer.createInvocation = (context) => {
+        snapshots.push(context.snapshot);
+        return createInvocation(context);
+      };
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot(), ...extraArguments],
+        environment: { NITPICKER_CACHE_DIR: cacheDirectory },
+        currentProjectRoot: repository.root,
+        analyzers: [analyzer],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return { exitCode, output };
+    };
+    return { run, snapshots };
+  }
+
+  it('skips base analysis on a second run against the same base', () => {
+    const { run, snapshots } = setup();
+
+    const first = run();
+    const second = run();
+
+    expect(first.exitCode).toBe(1);
+    expect(second.exitCode).toBe(1);
+    expect(second.output.stdoutText).toContain('new.ts');
+    expect(snapshots).toEqual(['base', 'head', 'head']);
+  });
+
+  it('analyzes the base again with --no-cache', () => {
+    const { run, snapshots } = setup();
+
+    run();
+    run({ extraArguments: ['--no-cache'] });
+
+    expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
+  });
+
+  it('analyzes the base again when the head policy hash changes', () => {
+    const { run, snapshots } = setup();
+
+    run();
+    run({ configurationHash: 'changed-policy' });
+
+    expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
+  });
+});
+
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
   git(root, ['init', '-q', '--initial-branch=main']);

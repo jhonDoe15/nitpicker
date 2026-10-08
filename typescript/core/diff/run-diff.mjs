@@ -8,6 +8,7 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../../adapters/diff/static-checks-runner.mjs';
+import { createFindingsCache, runBaseWithCache } from './findings-cache.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -21,6 +22,7 @@ export function runQualityDiff({
   includeWorkingTree = false,
   additionalToolErrors = [],
   configOverrides = [],
+  cacheDirectory,
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -45,14 +47,33 @@ export function runQualityDiff({
         const baseProjectRoot = path.join(baseWorktreeRoot, projectRelativePath);
         const headSnapshotRoot = path.join(headWorktreeRoot, projectRelativePath);
         const compareSnapshots = () => {
-          const baseRun = runAnalyzers({
-            analyzers,
-            projectRoot: baseProjectRoot,
-            policyRoot: headSnapshotRoot,
-            toolRoot: PACKAGE_ROOT,
-            liveProjectRoot: headProjectRoot,
-            snapshot: 'base',
-          });
+          const runBase = (baseAnalyzers) =>
+            runAnalyzers({
+              analyzers: baseAnalyzers,
+              projectRoot: baseProjectRoot,
+              policyRoot: headSnapshotRoot,
+              toolRoot: PACKAGE_ROOT,
+              liveProjectRoot: headProjectRoot,
+              snapshot: 'base',
+            });
+          // Only the base side is cached: it is a committed tree, so it cannot change under the key.
+          const baseRun =
+            cacheDirectory === undefined
+              ? runBase(analyzers)
+              : runBaseWithCache({
+                  cache: createFindingsCache({
+                    directory: cacheDirectory,
+                    mergeBaseSha: comparison.mergeBaseSha,
+                    projectRelativePath,
+                    configOverrides,
+                  }),
+                  analyzers,
+                  run: runBase,
+                  resolveContext: {
+                    liveProjectRoot: headProjectRoot,
+                    policyRoot: headSnapshotRoot,
+                  },
+                });
           const headRun = runAnalyzers({
             analyzers,
             projectRoot: headSnapshotRoot,
