@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!DOCTYPE report PUBLIC "-//JACOCO//DTD Report 1.1//EN" "report.dtd">
+<report name="app">
+  <sessioninfo id="s" start="1" dump="2"/>
+  <package name="com/acme">
+    <class name="com/acme/Foo" sourcefilename="Foo.java">
+      <method name="run" desc="()V" line="10">
+        <counter type="INSTRUCTION" missed="0" covered="8"/>
+        <counter type="LINE" missed="0" covered="3"/>
+      </method>
+      <method name="unused" desc="(I)I" line="25">
+        <counter type="INSTRUCTION" missed="6" covered="0"/>
+        <counter type="LINE" missed="2" covered="0"/>
+      </method>
+    </class>
+    <sourcefile name="Foo.java">
+      <line nr="10" mi="0" ci="3" mb="0" cb="0"/>
+      <line nr="25" mi="6" ci="0" mb="0" cb="0"/>
+      <counter type="LINE" missed="2" covered="3"/>
+    </sourcefile>
+  </package>
+</report>
