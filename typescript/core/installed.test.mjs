@@ -1,50 +1,22 @@
-import { execFileSync, spawnSync } from 'node:child_process';
-import {
-  lstatSync,
-  mkdtempSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { lstatSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  checked,
+  command,
+  createConsumer,
+  packNitpicker,
+  write,
+} from '../../evals/lib/consumer.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 const layouts = [undefined, 'nested', 'linked'];
-// npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
-// the consumer install is pinned to a newer npm.
-const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
-
-function command(cwd, executable, args) {
-  const result = spawnSync(executable, args, {
-    cwd,
-    encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1' },
-    timeout: 180_000,
-  });
-  if (result.error) throw result.error;
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
-}
-
-function checked(cwd, executable, args) {
-  const result = command(cwd, executable, args);
-  expect(result.status, `${executable} ${args.join(' ')}\n${result.output}`).toBe(0);
-  return result.output.trim();
-}
-
-function write(root, relative, contents) {
-  const target = path.join(root, relative);
-  mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, contents);
-}
 
 function listing(root) {
   function walk(directory, prefix = '') {
@@ -74,17 +46,13 @@ function temporaryFiles(root) {
 
 const suite = enabled ? describe : describe.skip;
 suite('packed nitpicker in a separate consumer', () => {
-  let packRoot;
   let tarball;
+  let cleanupPack;
   beforeAll(() => {
-    packRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-packed-'));
-    checked(packageRoot, 'npm', ['pack', '--pack-destination', packRoot]);
-    const tarballs = readdirSync(packRoot).filter((file) => file.endsWith('.tgz'));
-    expect(tarballs).toHaveLength(1);
-    tarball = path.join(packRoot, tarballs[0]);
+    ({ tarball, cleanup: cleanupPack } = packNitpicker(packageRoot));
   }, 180_000);
   afterAll(() => {
-    if (packRoot) rmSync(packRoot, { recursive: true, force: true });
+    cleanupPack?.();
   });
 
   for (const strategy of layouts) {
@@ -107,49 +75,16 @@ suite('packed nitpicker in a separate consumer', () => {
 
       beforeAll(() => {
         root = mkdtempSync(path.join(tmpdir(), `nitpicker-consumer-${strategy ?? 'hoisted'}-`));
-        checked(root, 'git', ['init', '-b', 'main']);
-        write(root, '.gitignore', 'node_modules/\nreports/\n');
-        write(
+        createConsumer({
           root,
-          'package.json',
-          JSON.stringify(
-            {
-              name: 'nitpicker-installed-consumer',
-              private: true,
-              type: 'module',
-              devDependencies: {
-                nitpicker: `file:${tarball}`,
-                vitest: manifest.devDependencies.vitest,
-                '@vitest/coverage-v8': manifest.devDependencies['@vitest/coverage-v8'],
-                typescript: manifest.devDependencies.typescript,
-              },
-            },
-            null,
-            2,
-          ) + '\n',
-        );
-        write(root, 'src/main/example.ts', cleanSource);
-        write(root, 'test/example.test.ts', 'export const placeholder = true;\n');
-        // The lockfile is committed so the merge-base worktree can `npm ci`.
-        checked(root, 'npx', [
-          '--yes',
-          installer,
-          'install',
-          '--no-audit',
-          '--no-fund',
-          '--prefer-offline',
-          ...(strategy ? [`--install-strategy=${strategy}`] : []),
-        ]);
-        checked(root, 'git', ['add', '.']);
-        checked(root, 'git', [
-          '-c',
-          'user.name=Installed Test',
-          '-c',
-          'user.email=test@example.invalid',
-          'commit',
-          '-m',
-          'clean baseline',
-        ]);
+          tarball,
+          manifest,
+          strategy,
+          files: {
+            'src/main/example.ts': cleanSource,
+            'test/example.test.ts': 'export const placeholder = true;\n',
+          },
+        });
         checked(root, 'git', ['switch', '-c', 'feature']);
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
