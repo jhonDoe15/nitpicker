@@ -4,3 +4,4 @@ coverage/
 .stryker-tmp/
 .quality-diff-*
 .pi/
+evals/results/
