@@ -3,16 +3,46 @@ import { normalizeGitPath } from './git.mjs';
 
 export function comparisonKey(finding, baseToHeadRenames = new Map()) {
   const normalizedPath = normalizeGitPath(finding.path);
-  const comparisonPath = baseToHeadRenames.get(normalizedPath) ?? normalizedPath;
+  const cycle = parseCycleIdentity(finding.identity);
+  const canonical =
+    cycle === undefined
+      ? {
+          path: baseToHeadRenames.get(normalizedPath) ?? normalizedPath,
+          identity: remapIdentityPaths(finding.identity, baseToHeadRenames),
+        }
+      : remapCycle(cycle, baseToHeadRenames);
   return JSON.stringify([
     finding.tool,
     finding.rule,
-    comparisonPath,
+    canonical.path,
     finding.symbol ?? '',
-    remapIdentityPaths(finding.identity, baseToHeadRenames),
+    canonical.identity,
     finding.classification,
     finding.metric?.name ?? '',
   ]);
+}
+
+// Dependency-cycle findings are identified by their member modules (`cycle:a>b>c|...`), listed
+// from the lexicographically smallest rotation and anchored at its first module. Renaming a member
+// can change which rotation is smallest, so the renamed cycle is re-rotated before comparing.
+function parseCycleIdentity(identity) {
+  const match = /^cycle:([^|]+)(\|.*)?$/.exec(identity);
+  return match === null ? undefined : { members: match[1].split('>'), suffix: match[2] ?? '' };
+}
+
+function remapCycle({ members, suffix }, baseToHeadRenames) {
+  const remapped = members.map((member) => baseToHeadRenames.get(member) ?? member);
+  const rotations = remapped.map((_, index) => [
+    ...remapped.slice(index),
+    ...remapped.slice(0, index),
+  ]);
+  const [canonicalMembers] = rotations.sort((left, right) =>
+    left.join('\0').localeCompare(right.join('\0')),
+  );
+  return {
+    path: canonicalMembers[0],
+    identity: `cycle:${canonicalMembers.join('>')}${suffix}`,
+  };
 }
 
 export function remapIdentityPaths(identity, baseToHeadRenames) {
