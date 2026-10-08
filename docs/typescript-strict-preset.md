@@ -77,9 +77,10 @@ and boundary rules. `eslint-plugin-unicorn` is a candidate source.
 
 ## Open points
 
-- The default composition-root pattern of `no-managed-resource-construction-outside-composition-roots`
-  also matches any `*factory*.ts`, so objects may be constructed in any file named like a factory.
-  Narrow it before "objects are constructed only in the composition root" relies on it. User-supplied
-  rule options replace the defaults rather than extending them.
+- Resolved: the default composition-root pattern of
+  `no-managed-resource-construction-outside-composition-roots` is now only `main.ts`, `server.ts`
+  and `composition-root.ts`; `*factory*.ts` no longer qualifies. The `compositionRootPattern` option
+  extends these defaults and cannot replace them, so a project adds roots but cannot drop the
+  defaults. The `no-module-level-let` rule has no exemption, including for composition roots.
 - Whether nitpicker's own code must follow the preset. Today its engine uses banned forms, such as
   `while (pending.pop())` graph walks.
