@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jhonDoe15/nitpicker/spec/findings.schema.json",
+  "title": "Nitpicker analyzer report",
+  "description": "Language-neutral output contract of a Nitpicker analyzer: an object with a findings array. Extracted from typescript/core/diff/finding-schema.mjs (parseAnalyzerReport / parseFinding). The reference implementation additionally normalizes path separators before applying the path rules below.",
+  "type": "object",
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/finding" }
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000]+$"
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "tool",
+        "rule",
+        "path",
+        "identity",
+        "message",
+        "classification"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "$ref": "#/$defs/nonEmptyString" },
+        "rule": { "$ref": "#/$defs/nonEmptyString" },
+        "path": {
+          "description": "Git-style relative path that stays within the analyzed project: not absolute, no drive letter, no leading '..'.",
+          "allOf": [
+            { "$ref": "#/$defs/nonEmptyString" },
+            { "not": { "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))" } }
+          ]
+        },
+        "identity": {
+          "description": "Stable identity used to match a finding between base and head snapshots.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "message": { "$ref": "#/$defs/nonEmptyString" },
+        "classification": {
+          "description": "enforceable findings fail the gate when new; descriptive findings are report-only; tool-error findings mark an analyzer failure.",
+          "enum": ["enforceable", "descriptive", "tool-error"]
+        },
+        "symbol": { "$ref": "#/$defs/nonEmptyString" },
+        "location": { "$ref": "#/$defs/location" },
+        "metric": { "$ref": "#/$defs/metric" }
+      },
+      "if": { "required": ["metric"] },
+      "then": {
+        "properties": { "classification": { "const": "descriptive" } }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["line"],
+      "additionalProperties": false,
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "metric": {
+      "description": "Numeric measurement; only descriptive findings may carry one.",
+      "type": "object",
+      "required": ["name", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "value": { "type": "number" }
+      }
+    }
+  }
+}
