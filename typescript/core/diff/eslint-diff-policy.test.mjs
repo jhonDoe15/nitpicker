@@ -348,7 +348,7 @@ describe('ESLint differential adapters', () => {
         fixtureAnalyzer('eslint-lint', 'eslint.config.mjs', {
           eslintCliPath: fakeEslintCliPath,
           eslintTimeoutMs: mode === 'timeout' ? 100 : undefined,
-          environment: { QUALITY_DIFF_FAKE_ESLINT_MODE: mode },
+          environment: { NITPICKER_DIFF_FAKE_ESLINT_MODE: mode },
         }),
       ]);
 

@@ -4,7 +4,7 @@ import { analyzeProject } from '@barney-media/crap-typescript-core';
 import config from '../defaults/crap.config.mjs';
 
 const projectRoot = path.resolve(
-  process.env.QUALITY_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../..'),
+  process.env.NITPICKER_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../..'),
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);

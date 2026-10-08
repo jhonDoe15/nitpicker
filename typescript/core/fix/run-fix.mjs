@@ -55,7 +55,7 @@ export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFi
     try {
       linked = linkPolicyFile(
         path.join(PACKAGE_ROOT, eslintPolicy.policyFiles[0]),
-        path.join(projectRoot, '.quality-fix-tsconfig.json'),
+        path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
       );
       run(
         'eslint-fix',
@@ -71,12 +71,12 @@ export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFi
         projectRoot,
         [0, 1],
         {
-          QUALITY_DIFF_ESLINT_POLICY_CONFIG: path.join(
+          NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(
             PACKAGE_ROOT,
             eslintPolicy.configRelativePath,
           ),
-          QUALITY_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
-          QUALITY_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
+          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
+          NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
         },
         undefined,
         executeFixCommand,
