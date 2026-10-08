@@ -222,6 +222,15 @@ suite('packed nitpicker in a separate consumer', () => {
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));
         expect(existsSync(path.join(packageLocation, 'README.md'))).toBe(true);
+        expect(existsSync(path.join(packageLocation, 'LICENSE'))).toBe(true);
+        expect(readFileSync(path.join(packageLocation, 'LICENSE'), 'utf8')).toBe(
+          readFileSync(path.join(packageRoot, '..', 'LICENSE'), 'utf8'),
+        );
+        const installedManifest = JSON.parse(
+          readFileSync(path.join(packageLocation, 'package.json'), 'utf8'),
+        );
+        expect(installedManifest.license).toBe('MIT');
+        expect(installedManifest.private).toBeUndefined();
         if (!strategy) {
           const eslint = path.dirname(
             execFileSync(
@@ -254,8 +263,16 @@ suite('packed nitpicker in a separate consumer', () => {
           summary('dirty').tools.map(({ name, version }) => [name, version]),
         );
         expect(versions['prettier-format']).toBe(manifest.dependencies.prettier);
+        const plugins = [
+          '@eslint/js',
+          '@vitest/eslint-plugin',
+          'eslint-plugin-functional',
+          'eslint-plugin-sonarjs',
+          'typescript-eslint',
+        ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
-          `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript}`,
+          `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript};` +
+            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')}`,
         );
         for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
           const installed = JSON.parse(

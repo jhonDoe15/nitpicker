@@ -27,4 +27,6 @@ npm ci
 npm test
 ```
 
+Released under the [MIT license](LICENSE). To cut a release, see [docs/releasing.md](docs/releasing.md).
+
 Not yet done: a shared language-neutral `spec/` (findings schema and conformance fixtures).
