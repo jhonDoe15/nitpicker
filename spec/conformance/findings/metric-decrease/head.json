@@ -1,0 +1,16 @@
+{
+  "findings": [
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/a.js",
+      "identity": "fn:a",
+      "message": "cyclomatic in src/a.js",
+      "classification": "descriptive",
+      "metric": {
+        "name": "cyclomatic",
+        "value": 4
+      }
+    }
+  ]
+}

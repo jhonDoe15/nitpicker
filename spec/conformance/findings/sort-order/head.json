@@ -1,0 +1,44 @@
+{
+  "findings": [
+    {
+      "tool": "z",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "1",
+      "message": "r in a.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "b.js",
+      "identity": "1",
+      "message": "r in b.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "2",
+      "message": "r in a.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "q",
+      "path": "a.js",
+      "identity": "1",
+      "message": "q in a.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "1",
+      "message": "r in a.js",
+      "classification": "enforceable"
+    }
+  ]
+}

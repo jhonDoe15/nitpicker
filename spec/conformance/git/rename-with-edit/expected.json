@@ -1,0 +1,8 @@
+{
+  "description": "A file renamed and lightly edited on the feature branch is reported as a rename from base to head.",
+  "baseRef": "main",
+  "projectPath": ".",
+  "mergeBase": "base",
+  "head": "head",
+  "renames": { "src/old.js": "src/new.js" }
+}

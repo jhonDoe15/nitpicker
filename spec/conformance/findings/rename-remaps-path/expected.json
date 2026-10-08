@@ -1,0 +1,18 @@
+{
+  "description": "renames maps base paths to head paths. The base finding's path is remapped, so a file renamed between base and head leaves its finding unchanged.",
+  "renames": {
+    "src/old.js": "src/new.js"
+  },
+  "new": [],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/new.js",
+      "identity": "i",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}

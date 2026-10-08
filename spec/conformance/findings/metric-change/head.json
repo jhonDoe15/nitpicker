@@ -1,0 +1,40 @@
+{
+  "findings": [
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/a.js",
+      "identity": "fn:a",
+      "message": "cyclomatic in src/a.js",
+      "classification": "descriptive",
+      "metric": {
+        "name": "cyclomatic",
+        "value": 8
+      }
+    },
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/b.js",
+      "identity": "fn:b",
+      "message": "cyclomatic in src/b.js",
+      "classification": "descriptive",
+      "metric": {
+        "name": "cyclomatic",
+        "value": 7
+      }
+    },
+    {
+      "tool": "complexity",
+      "rule": "size",
+      "path": "src/c.js",
+      "identity": "fn:c",
+      "message": "size in src/c.js",
+      "classification": "descriptive",
+      "metric": {
+        "name": "loc",
+        "value": 10
+      }
+    }
+  ]
+}

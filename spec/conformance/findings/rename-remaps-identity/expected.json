@@ -1,0 +1,18 @@
+{
+  "description": "Old paths embedded in a base identity are textually replaced by the new path (longest old path first), because identities such as import cycles contain paths. Without the rename the finding would be both resolved and new.",
+  "renames": {
+    "src/old.js": "src/new.js"
+  },
+  "new": [],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "deps",
+      "rule": "cycle",
+      "path": "src/new.js",
+      "identity": "src/new.js->src/x.js",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}

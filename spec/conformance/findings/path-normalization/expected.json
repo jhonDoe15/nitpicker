@@ -1,0 +1,15 @@
+{
+  "description": "Paths are normalized (backslashes to slashes, leading ./ removed) before keys are built, so spelling differences do not create new or resolved findings.",
+  "new": [],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/a.js",
+      "identity": "i",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}

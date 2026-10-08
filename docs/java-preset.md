@@ -1,0 +1,124 @@
+# Java preset
+
+Status: slice 1 implemented (ticket X11); later slices are planned below. The scope is a proposal
+pending owner review.
+
+The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
+the tools on the merge base and on head, turn each report into findings
+([`spec/findings.schema.json`](../spec/findings.schema.json)), and fail only on new enforceable
+findings. The comparison is the language-neutral core (`compareFindings`, rename map from git),
+which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
+side contributes only two things: producing reports, and converting them into findings.
+
+## How it works
+
+```
+gradle -I java/nitpicker.init.gradle nitpickerJava      (per snapshot: base, head)
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, manifest.json}
+  -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
+  -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
+```
+
+- **Gradle side: `java/nitpicker.init.gradle`.** An init script, not a plugin: the consumer build is
+  not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
+  same tools and versions as head, even if the base predates any adoption. It registers
+  `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
+  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
+  JaCoCo 0.8.12). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
+  directory is the contract between the two sides.
+- **Nitpicker side: `typescript/adapters/java/`.** `runJavaPreset` runs the task,
+  `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
+  It is deliberately not wired into `runQualityDiff` or the CLI yet (slice 2): that machinery is
+  built around the TypeScript analyzers.
+- **Base snapshot dependencies.** Gradle resolves from its own cache, so unlike npm no install step
+  is needed, and the X7 dependency hook (`dependency-hooks.mjs`) is not used by slice 1. If a
+  project vendors dependencies in the tree, a `gradleDependencyHook` with the manifests
+  `build.gradle(.kts)`, `settings.gradle(.kts)`, `gradle/libs.versions.toml` and `gradle.lockfile`
+  fits the X7 interface.
+- **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
+  crashes), the run throws; nothing is silently skipped. Mapping that to a `tool-error` finding is
+  slice 2.
+
+## Slices
+
+Order: each slice is one PR, adds one tool, and changes only the init script, one ingester or
+mapping, tests, and this document.
+
+| #   | Slice                    | Tool and report                                                  | Findings                                                                                                 | Status  |
+| --- | ------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------- |
+| 1   | Base                     | PMD, SpotBugs, google-java-format, JaCoCo; init script, e2e test | see below                                                                                                | this PR |
+| 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | later   |
+| 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | later   |
+| 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | later   |
+| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | later   |
+| 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
+| 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | later   |
+| 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | later   |
+
+PMD and SpotBugs appear before the other tools because both emit SARIF 2.1.0 and need no new
+ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Python for lizard, Node
+for jscpd, a long-running PIT) and each is expensive enough to deserve its own review. Slices 5 and
+8 depend on slice 1's JaCoCo output; 5 additionally needs lizard installed, which is the first tool
+that is not a JVM artifact, so it needs a decision on how tools are provisioned.
+
+## Slice 1: tools, reports and identities
+
+Identity is how a finding is matched between base and head. It never contains a line number, so a
+finding that only moves stays baselined. The comparison key is already
+`tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
+tool adds on top of rule and path.
+
+| Tool                                      | Report                     | Ingester                                                      | Classification                                          | Identity                                                                                                            |
+| ----------------------------------------- | -------------------------- | ------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                       | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                       | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `adapters/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                           | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+
+Notes on the glue in `java-reports.mjs`:
+
+- **Paths.** PMD writes absolute `file://` URIs; SpotBugs writes paths relative to a source root
+  (`demo/Bad.java`); JaCoCo writes package-relative paths. All become project-relative
+  (`src/main/java/demo/Bad.java`). `manifest.json` lists the project's source roots, and a relative
+  report path is attached to the root where the file exists.
+- **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
+  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
+  ingester's `fp:` identity path is used and the line is never involved. The alternative, the
+  ingester's default hash of rule, path and symbol, would treat two different unused fields in one
+  file as indistinguishable repeats; matching by what the finding is about is more precise.
+- **SpotBugs level.** SpotBugs marks lower-confidence findings with SARIF level `note`, which the
+  SARIF ingester would classify as report-only. The preset instead fixes the threshold in the init
+  script (`-medium`) and treats everything the tool reports as enforceable.
+- **Sources of weakness.** Identity from message text breaks if a tool version changes a message
+  (pinned versions make this a deliberate bump, and the bump shows up as old findings resolved and
+  new ones appearing, which the gate then flags: re-baseline on a tool bump). Hashed identities
+  (JaCoCo, Checkstyle, SARIF hash fallback) include the path, so the rename map from git cannot
+  remap them: a renamed file with such findings shows them as resolved plus new. `format` and
+  `fp:` identities carry no path, so they follow renames.
+
+## Slice 1: what is deliberately not included
+
+- ArchUnit, CRAP via lizard, jscpd, PIT: slices 4 to 7.
+- Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
+  the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
+  side reads one project root.
+- Custom PMD rules: the default ruleset is `category/java/errorprone.xml` plus
+  `category/java/bestpractices.xml`; a consumer can place `config/pmd/ruleset.xml` in the root
+  project. A `layout`-style config key for this is part of slice 2.
+- Kotlin or Groovy sources, Maven.
+
+## Tests
+
+- `adapters/java/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
+  classification, line-shift stability.
+- `adapters/java/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`
+  in `typescript/`). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+  warm. On a tiny Gradle project (`adapters/java/fixtures/gradle-project`, one legacy PMD and
+  SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
+  legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
+  `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.
+- The conformance suite (`npm run test:conformance`) already covers the comparison itself. The
+  Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
+  produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
+  `parseAnalyzerReport`.
