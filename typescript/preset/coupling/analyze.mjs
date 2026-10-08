@@ -1,5 +1,5 @@
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
-import { isSourceUnderRoot } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 function rounded(value) {
   return Math.round(value * 10_000) / 10_000;
@@ -45,7 +45,7 @@ function connectedComponents(files, edges) {
   return sizes.sort((left, right) => right - left);
 }
 
-export function analyzeCoupling(graph, sourceRoot) {
+export function analyzeCoupling(graph, sourceRoot, { layout = defaultResolvedLayout } = {}) {
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
@@ -53,7 +53,7 @@ export function analyzeCoupling(graph, sourceRoot) {
   const normalizedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
   const files = graph.modules
     .map((module) => normalizePath(module.source))
-    .filter((source) => isSourceUnderRoot(source, normalizedRoot))
+    .filter((source) => layout.isSourceUnderRoot(source, normalizedRoot))
     .sort();
   const fileSet = new Set(files);
   const edges = internalEdges(graph, normalizedRoot).filter(

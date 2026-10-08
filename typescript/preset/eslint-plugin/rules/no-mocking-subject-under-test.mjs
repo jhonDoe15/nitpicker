@@ -1,5 +1,7 @@
 import path from 'node:path';
-import { sourceRoot, isTestFile } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const layout = readLayout();
 
 const EXPLICIT_INFRASTRUCTURE_SEAM = /(?:^|[/.-])(?:fixtures?|infrastructure|seams?)(?:[/.-]|$)/;
 
@@ -13,12 +15,13 @@ function isRuntimeImport(node) {
 
 function isProductionModule(filename, source) {
   if (!source.startsWith('.')) {
-    return source.includes(`/${sourceRoot}/`);
+    return layout.sourceRootOf(source) !== undefined;
   }
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
+  const sourceRoot = layout.sourceRootOf(resolved);
   return (
-    resolved.includes(`/${sourceRoot}/`) &&
-    !isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
+    sourceRoot !== undefined &&
+    !layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
   );
 }
 

@@ -12,15 +12,16 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import { sourceRoot, existingRoots } from '../../preset/layout.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
 import {
-  sourceRoot,
-  graphRoots,
-  existingRoots,
-  projectCodeFiles,
-  isSourceFile,
-  isRunnableTestFile,
-} from '../../preset/layout.mjs';
+  layoutJscpdConfig,
+  layoutKnipConfig,
+  layoutTransformFor,
+} from '../../preset/tool-configs.mjs';
+import { trackTemporaryPath } from '../temporary-files.mjs';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
@@ -74,16 +75,17 @@ async function runQualityArea(options) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
   }
   if (options.kind !== 'policy-tests') {
-    const files = projectCodeFiles(options.projectRoot);
+    const layout = readLayout();
+    const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) return [];
     if (
       ['coupling', 'structure', 'crap', 'mutation'].includes(options.kind) &&
-      !files.some(isSourceFile)
+      !files.some(layout.isSourceFile)
     )
       return [];
     if (
       ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
-      !files.some(isRunnableTestFile)
+      !files.some(layout.isRunnableTestFile)
     )
       return [];
   }
@@ -106,7 +108,7 @@ function runPolicyTests(options) {
 
 async function runCodingStandards(options) {
   const checker = await importPolicyModule(options, 'preset/coding-standards/check.mjs');
-  const baselineRelativePath = 'preset/coding-standards/legacy-sites.json';
+  const baselineRelativePath = options.legacyInventory;
   const baseline = readOptionalBaseline(options.projectPolicyRoot, baselineRelativePath);
   const signals = [
     ...(await checker.collectSignals(options.projectRoot, options.policyRoot)),
@@ -137,20 +139,48 @@ function readOptionalBaseline(root, relativePath) {
   return parseReportJson(readFileSync(baselinePath, 'utf8'));
 }
 
+/**
+ * Runs an analyzer that works on one source root once per configured root. With several roots the
+ * findings of each get a root prefix in their identity, so aggregate metrics do not collide.
+ */
+function perSourceRoot(options, layout, analyze) {
+  const roots = existingRoots(options.projectRoot, layout.sourceRoots);
+  const results = roots.map((root) => ({ root, findings: analyze(root) }));
+  return Promise.all(
+    results.map(async ({ root, findings }) => {
+      const resolved = await findings;
+      return roots.length === 1
+        ? resolved
+        : resolved.map((finding) => ({ ...finding, identity: `${root}|${finding.identity}` }));
+    }),
+  ).then((groups) => groups.flat());
+}
+
 async function runCoupling(options) {
+  const layout = readLayout();
   const graph = await runDependencyCruiser(
     options,
-    existingRoots(options.projectRoot, [sourceRoot]),
+    existingRoots(options.projectRoot, layout.sourceRoots),
+    layout,
   );
   const { analyzeCoupling } = await importPolicyModule(options, 'preset/coupling/analyze.mjs');
-  return normalizeCoupling(analyzeCoupling(graph, sourceRoot), options.analyzerName);
+  return perSourceRoot(options, layout, (root) =>
+    normalizeCoupling(analyzeCoupling(graph, root, { layout }), options.analyzerName),
+  );
 }
 
 async function runTestRuntime(options) {
-  const graph = await runDependencyCruiser(options, existingRoots(options.projectRoot, graphRoots));
+  const layout = readLayout();
+  const graph = await runDependencyCruiser(
+    options,
+    existingRoots(options.projectRoot, layout.graphRoots),
+    layout,
+  );
   const analyzer = await importPolicyModule(options, 'preset/test-runtime/analyze.mjs');
   const sourceTexts = await analyzer.loadModuleSources(graph, options.projectRoot);
   const report = analyzer.analyzeTestRuntime(graph, {
+    layout,
+    productionRoots: layout.sourceRoots,
     sourceTexts,
   });
   report.findings = report.findings.map((finding) => ({
@@ -165,19 +195,31 @@ async function runStructure(options) {
     options,
     'preset/structure/analyze.mjs',
   );
-  const report = analyzeProductionFiles(path.join(options.projectRoot, sourceRoot), sourceRoot);
-  return normalizeStructure(
-    withFunctionSourceHashes(report, options.projectRoot),
-    options.analyzerName,
+  const layout = readLayout();
+  return perSourceRoot(options, layout, (root) =>
+    normalizeStructure(
+      withFunctionSourceHashes(
+        analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout }),
+        options.projectRoot,
+      ),
+      options.analyzerName,
+    ),
   );
 }
 
 function runDuplicates(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-jscpd.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
   const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
-  const config = parseReportJson(
-    readFileSync(path.join(options.policyRoot, 'preset/defaults/jscpd.json'), 'utf8'),
+  const layout = readLayout();
+  const config = layoutJscpdConfig(
+    parseReportJson(
+      readFileSync(path.join(options.policyRoot, 'preset/defaults/jscpd.json'), 'utf8'),
+    ),
+    layout,
   );
+  config.path = existingRoots(options.projectRoot, config.path);
+  if (config.path.length === 0) return [];
+  trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
     `${JSON.stringify({ ...config, reporters: ['json'], output: outputDirectory })}\n`,
@@ -199,10 +241,20 @@ function runDuplicates(options) {
 }
 
 function runDeadCode(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-knip.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
+  trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
-    readFileSync(path.join(options.policyRoot, 'preset/defaults/knip.json'), 'utf8'),
+    `${JSON.stringify(
+      layoutKnipConfig(
+        parseReportJson(
+          readFileSync(path.join(options.policyRoot, 'preset/defaults/knip.json'), 'utf8'),
+        ),
+        readLayout(),
+      ),
+      null,
+      2,
+    )}\n`,
   );
   try {
     const result = runNodeTool({
@@ -221,11 +273,13 @@ function runDeadCode(options) {
 }
 
 function runCoverage(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-vitest.config.ts');
-  const testReportPath = path.join(options.projectRoot, '.quality-diff-vitest-report.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-vitest.config.ts');
+  const testReportPath = path.join(options.projectRoot, '.nitpicker-diff-vitest-report.json');
   if (existsSync(testReportPath)) {
     throw new Error(`Temporary coverage report already exists: ${testReportPath}`);
   }
+  trackTemporaryPath(configPath);
+  trackTemporaryPath(testReportPath);
   writeFileSync(
     configPath,
     readFileSync(path.join(options.policyRoot, 'preset/defaults/vitest.quality.config.ts'), 'utf8'),
@@ -342,7 +396,7 @@ function runCrap(options) {
     absoluteToolPath: path.join(options.policyRoot, 'preset/crap/report.mjs'),
     arguments_: [],
     cwd: options.projectRoot,
-    environment: { QUALITY_PROJECT_ROOT: options.projectRoot },
+    environment: { NITPICKER_PROJECT_ROOT: options.projectRoot },
     acceptedStatuses: [0],
   });
   const report = parseReportJson(
@@ -361,20 +415,20 @@ async function runMutation(options) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
-  const configPath = path.join(options.projectRoot, '.quality-diff-stryker.config.mjs');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const reportPath = 'reports/quality/mutation/mutation.json';
   const createdFiles = [];
   try {
     const tsconfigPath = installMutationCompanion(
       options,
       sourceConfig.tsconfigFile,
-      '.quality-diff-tsconfig.stryker.json',
+      '.nitpicker-diff-tsconfig.stryker.json',
       createdFiles,
     );
     const vitestConfigPath = installMutationCompanion(
       options,
       sourceConfig.vitest?.configFile,
-      '.quality-diff-stryker.vitest.config.ts',
+      '.nitpicker-diff-stryker.vitest.config.ts',
       createdFiles,
     );
     const config = {
@@ -1037,7 +1091,7 @@ function sourceLineRange(source, startLine, endLine) {
     .join('\n');
 }
 
-async function runDependencyCruiser(options, sourcePaths) {
+async function runDependencyCruiser(options, sourcePaths, layout) {
   const { withProjectTypeScriptConfig } = await importPolicyModule(
     options,
     'preset/dependency-graph/cruise.mjs',
@@ -1057,7 +1111,9 @@ async function runDependencyCruiser(options, sourcePaths) {
           '--config',
           path.join(options.policyRoot, 'preset/dependency-graph/config.mjs'),
           '--exclude',
-          DEPENDENCY_GRAPH_EXCLUSION,
+          [DEPENDENCY_GRAPH_EXCLUSION, layout.excludePattern]
+            .filter((pattern) => pattern !== undefined)
+            .join('|'),
           '--output-type',
           'json',
         ],
@@ -1125,7 +1181,9 @@ function installMutationCompanion(options, sourceRelativePath, targetName, creat
     companionPath(path.posix.dirname(STRYKER_CONFIG_PATH), sourceRelativePath),
   );
   const targetPath = path.join(options.projectRoot, targetName);
-  writeTemporaryFile(targetPath, readFileSync(sourcePath, 'utf8'), createdFiles);
+  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout());
+  const text = readFileSync(sourcePath, 'utf8');
+  writeTemporaryFile(targetPath, transform === undefined ? text : transform(text), createdFiles);
   return targetPath;
 }
 
@@ -1144,6 +1202,7 @@ function writeTemporaryFile(filePath, contents, createdFiles) {
   if (existsSync(filePath)) {
     throw new Error(`Temporary mutation config already exists: ${filePath}`);
   }
+  trackTemporaryPath(filePath);
   createdFiles.push(filePath);
   writeFileSync(filePath, contents);
 }
@@ -1193,6 +1252,7 @@ function parseArguments(arguments_) {
         '--snapshot',
         '--baseline-root',
         '--crap-score-limit',
+        '--legacy-inventory',
       ].includes(name)
     ) {
       throw new Error(`Unknown quality-area adapter argument: ${name}`);
@@ -1233,6 +1293,7 @@ function parseArguments(arguments_) {
         ? PACKAGE_ROOT
         : realpathSync(values.get('--live-project-root')),
     snapshot,
+    legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,
     crapScoreLimit:
       values.get('--crap-score-limit') === undefined
         ? DEFAULT_CRAP_SCORE_LIMIT

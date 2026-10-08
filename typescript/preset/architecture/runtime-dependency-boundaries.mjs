@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mjs';
-import { sourceRoot as defaultSourceRoot, isSourceFile } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 function requireStringList(value, label) {
   if (
@@ -138,27 +138,39 @@ export function inspectModuleBoundary(source, filename, role) {
   return findings;
 }
 
-function sourceFiles(root, exclude, directory = '') {
+function sourceFiles(root, exclude, { layout, displayRoot }, directory = '') {
   const found = [];
   for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
     const relative = path.posix.join(directory, entry.name);
     if (matches(relative, exclude) || (entry.isDirectory() && matches(relative + '/', exclude)))
       continue;
-    if (entry.isDirectory()) found.push(...sourceFiles(root, exclude, relative));
-    else if (entry.isFile() && isSourceFile(`src/${relative}`)) found.push(relative);
+    if (entry.isDirectory())
+      found.push(...sourceFiles(root, exclude, { layout, displayRoot }, relative));
+    else if (
+      entry.isFile() &&
+      layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+      !layout.isExcluded(path.posix.join(displayRoot, relative))
+    )
+      found.push(relative);
   }
   return found.sort();
 }
 
 /** Discover production modules by configured role patterns; return findings and coverage together. */
-export function analyzeRuntimeBoundaries(root, configuration = moduleRoleBoundaries) {
+export function analyzeRuntimeBoundaries(
+  root,
+  configuration = moduleRoleBoundaries,
+  { layout = defaultResolvedLayout, displayRoot = '' } = {},
+) {
   if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
   requireStringList(configuration.exclude, 'exclude');
   configuration.roles.forEach(validateRole);
   const roleNames = configuration.roles.map((role) => role.name);
   if (new Set(roleNames).size !== roleNames.length)
     throw new TypeError('Module role names must be unique');
-  const sources = existsSync(root) ? sourceFiles(root, configuration.exclude) : [];
+  const sources = existsSync(root)
+    ? sourceFiles(root, configuration.exclude, { layout, displayRoot })
+    : [];
   const modules = [];
   const findings = [];
   for (const source of sources) {
@@ -184,7 +196,9 @@ if (
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
 ) {
   try {
-    const report = analyzeRuntimeBoundaries(path.resolve(process.argv[2] ?? defaultSourceRoot));
+    const report = analyzeRuntimeBoundaries(
+      path.resolve(process.argv[2] ?? defaultResolvedLayout.sourceRoot),
+    );
     console.log(JSON.stringify(report, null, 2));
     process.exitCode = report.findings.length === 0 ? 0 : 1;
   } catch (error) {

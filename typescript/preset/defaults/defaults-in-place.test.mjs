@@ -25,8 +25,13 @@ import {
 const packageRoot = path.resolve(import.meta.dirname, '../..');
 const POLICY_PATHS = [
   'adapters/policy-links.mjs',
+  'adapters/temporary-files.mjs',
   'preset/defaults',
   'preset/layout.mjs',
+  'preset/head-policy.mjs',
+  'preset/tool-configs.mjs',
+  'preset/architecture/strict-boundary-rules.mjs',
+  'preset/architecture/strict-layout.mjs',
   'preset/dependency-graph',
   'preset/entry-points/analyze.mjs',
   'preset/test-runtime/analyze.mjs',
@@ -257,7 +262,7 @@ function oldLayoutFiles() {
 }
 
 function temporaryPolicyLinks(projectRoot) {
-  return readdirSync(projectRoot).filter((entry) => entry.startsWith('.quality-'));
+  return readdirSync(projectRoot).filter((entry) => entry.startsWith('.nitpicker-'));
 }
 
 function writeFiles(root, files) {

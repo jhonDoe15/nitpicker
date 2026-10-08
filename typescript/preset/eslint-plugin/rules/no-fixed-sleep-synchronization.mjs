@@ -1,4 +1,6 @@
-import { isTestFixture } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const { isTestFixture } = readLayout();
 
 function callsResolveTimeout(node, resolveName) {
   if (!node || typeof node !== 'object') return false;

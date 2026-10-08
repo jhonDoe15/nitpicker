@@ -1,8 +1,8 @@
 const MANAGED_RESOURCE = /(?:Service|Client|Pool|Cache|Store|Scheduler|Transport|Adapter)$/;
 const VALUE_OBJECT =
   /^(?:Error|URL|Map|Set|WeakMap|WeakSet|Date|RegExp|Request|Response)$|(?:Request|Response|Command)$/;
-const DEFAULT_COMPOSITION_ROOT_PATTERN =
-  '(?:^|/)(?:main|server|composition-root)\\.ts$|(?:^|/)[^/]*factory[^/]*\\.ts$';
+// A file named like a factory is not a composition root: construction belongs in these files only.
+const DEFAULT_COMPOSITION_ROOT_PATTERN = '(?:^|/)(?:main|server|composition-root)\\.ts$';
 
 function constructedName(callee) {
   if (callee.type === 'Identifier') {
@@ -34,13 +34,18 @@ export default {
       },
     ],
     messages: {
-      outsideRoot: 'Construct {{name}} in an approved composition root and inject it here.',
+      outsideRoot:
+        'Construct {{name}} only in the composition root (composition-root.ts, main.ts or server.ts) and pass it in as a parameter.',
     },
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
+    // `compositionRootPattern` adds roots to the defaults; it never replaces them.
+    const userPattern = context.options[0]?.compositionRootPattern;
     const compositionRoot = new RegExp(
-      context.options[0]?.compositionRootPattern ?? DEFAULT_COMPOSITION_ROOT_PATTERN,
+      userPattern === undefined
+        ? DEFAULT_COMPOSITION_ROOT_PATTERN
+        : `(?:${DEFAULT_COMPOSITION_ROOT_PATTERN})|(?:${userPattern})`,
     );
     if (compositionRoot.test(filename)) {
       return {};

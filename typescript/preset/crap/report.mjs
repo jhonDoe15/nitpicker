@@ -1,16 +1,18 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeProject } from '@barney-media/crap-typescript-core';
+import { existsSync } from 'node:fs';
 import config from '../defaults/crap.config.mjs';
+import { readLayout } from '../head-policy.mjs';
 
 const projectRoot = path.resolve(
-  process.env.QUALITY_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../..'),
+  process.env.NITPICKER_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../..'),
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
 const analysis = await analyzeProject({
   projectRoot: projectRoot,
-  explicitPaths: config.sourcePaths,
+  explicitPaths: explicitPaths(),
   coverageMode: 'existing-only',
   coverageReportPath,
   excludes: config.excludes,
@@ -63,4 +65,19 @@ for (const entry of functions.slice(0, 20)) {
   console.log(
     `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
   );
+}
+
+/**
+ * The CRAP analyzer expands a directory only when it is named `src` (or finds `src` folders
+ * below it), so roots with any other name are handed over as the files inside them.
+ */
+function explicitPaths() {
+  const layout = readLayout();
+  return config.sourcePaths
+    .filter((sourcePath) => existsSync(path.resolve(projectRoot, sourcePath)))
+    .flatMap((sourcePath) =>
+      path.basename(sourcePath) === 'src'
+        ? [sourcePath]
+        : layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
+    );
 }

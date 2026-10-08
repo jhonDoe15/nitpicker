@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -423,6 +424,57 @@ describe('nitpicker CLI', () => {
     );
   });
 
+  it('does not fix files that the config excludes, and fixes custom layout roots', () => {
+    const repository = createRepository({
+      'nitpicker.config.json': `${JSON.stringify(
+        {
+          exclude: ['lib/legacy/**'],
+          layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
+        },
+        null,
+        2,
+      )}\n`,
+      'lib/changed.ts': 'export const changed = 1;\n',
+      'lib/legacy/old.ts': 'export const old = 1;\n',
+      'spec/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(import.meta.dirname, '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    writeFiles(repository.root, {
+      'lib/changed.ts': 'export let changed=3;\n',
+      'lib/legacy/old.ts': 'export let old=3;\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: [
+        '--fix',
+        '--base',
+        repository.baseRef,
+        '--analyzer',
+        'eslint-lint',
+        '--analyzer',
+        'prettier-format',
+        '--output',
+        makeOutputRoot(),
+      ],
+      currentProjectRoot: repository.root,
+      environment: {},
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
+    expect(readFileSync(path.join(repository.root, 'lib/changed.ts'), 'utf8')).toBe(
+      'export const changed = 3;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'lib/legacy/old.ts'), 'utf8')).toBe(
+      'export let old=3;\n',
+    );
+    expect(output.stdoutText).toMatch(/Fixed files:\nlib\/changed.ts\nBase:/);
+  });
+
   it('rejects --fix combined with --all', () => {
     const output = captureOutput();
     expect(
@@ -459,6 +511,78 @@ describe('nitpicker CLI', () => {
     expect(output.stderrText).toBe('');
   });
 
+  it('merges two shard reports through the aggregate subcommand', () => {
+    const root = realpathSync(makeTemporaryRoot('nitpicker-cli-aggregate-'));
+    const analyzers = ['first', 'second'].map((name) => ({
+      name,
+      version: '1.0.0',
+      configurationHash: `hash-${name}`,
+      exclusions: [],
+      dependencies: [],
+      shardWeight: 1,
+    }));
+    const finding = {
+      tool: 'second',
+      rule: 'example',
+      path: 'src/main/example.ts',
+      identity: 'example',
+      message: 'example finding',
+      classification: 'enforceable',
+    };
+    for (const [index, { name }] of analyzers.entries()) {
+      const findings = index === 1 ? [finding] : [];
+      const shardRoot = path.join(root, 'shards', String(index));
+      mkdirSync(shardRoot, { recursive: true });
+      const files = {
+        'summary.json': {
+          requestedBaseRef: 'origin/main',
+          resolvedBaseSha: 'base',
+          mergeBaseSha: 'merge-base',
+          headSha: 'head',
+          policyHash: `shard-${String(index)}`,
+          tools: [{ name, version: '1.0.0', configurationHash: `hash-${name}` }],
+          exclusions: [],
+          renamedPaths: 0,
+          elapsedMs: 10,
+          overallStatus: 'completed',
+          newEnforceableFindings: findings.length,
+        },
+        'new-findings.json': findings,
+        'resolved-findings.json': [],
+        'changed-metrics.json': [],
+        'tool-errors.json': [],
+      };
+      for (const [fileName, value] of Object.entries(files)) {
+        writeFileSync(path.join(shardRoot, fileName), JSON.stringify(value));
+      }
+    }
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: [
+        'aggregate',
+        '--input-root',
+        'shards',
+        '--shard-count',
+        '2',
+        '--output',
+        'combined',
+      ],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      analyzers,
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText).toContain('src/main/example.ts');
+    expect(output.stderrText).toBe('');
+    const summary = JSON.parse(readFileSync(path.join(root, 'combined', 'summary.json'), 'utf8'));
+    expect(summary.tools.map(({ name }) => name)).toEqual(['first', 'second']);
+    expect(summary.newEnforceableFindings).toBe(1);
+  });
+
   it('runs when launched through a symlinked bin', () => {
     const binPath = path.join(makeTemporaryRoot('nitpicker-cli-bin-'), 'nitpicker');
     symlinkSync(path.join(import.meta.dirname, 'cli.mjs'), binPath);
@@ -470,6 +594,216 @@ describe('nitpicker CLI', () => {
     expect(stdout.startsWith('Usage: nitpicker')).toBe(true);
   });
 });
+
+describe('nitpicker config file', () => {
+  function runWithConfig(config, { extraArguments = ['--base', 'HEAD'], analyzers } = {}) {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+      'custom-analyzer.mjs': customAnalyzerScript,
+    });
+    if (config !== undefined) {
+      writeFiles(repository.root, {
+        'nitpicker.config.json': typeof config === 'string' ? config : JSON.stringify(config),
+      });
+    }
+    const output = captureOutput();
+    const outputRoot = makeOutputRoot();
+    const exitCode = runCli({
+      arguments_: ['--output', outputRoot, ...extraArguments],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: analyzers ?? [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    const summaryPath = path.join(outputRoot, 'summary.json');
+    const summary = existsSync(summaryPath)
+      ? JSON.parse(readFileSync(summaryPath, 'utf8'))
+      : undefined;
+    return { exitCode, output, summary, outputRoot };
+  }
+
+  it('works with no config and reports no overrides', () => {
+    const { exitCode, summary } = runWithConfig(undefined);
+
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([]);
+  });
+
+  it('uses base from the config file', () => {
+    const { exitCode, output } = runWithConfig({ base: 'HEAD' }, { extraArguments: [] });
+
+    expect(exitCode).toBe(0);
+    expect(output.stdoutText).toContain('Base: HEAD (config)');
+  });
+
+  it('lets an explicit --base win over the config base', () => {
+    const { output } = runWithConfig({ base: 'does-not-exist' });
+
+    expect(output.stdoutText).toContain('Base: HEAD (argument)');
+  });
+
+  it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
+    const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
+    const plain = runWithConfig(undefined, { analyzers });
+    const disabled = runWithConfig({ disable: ['second-analyzer'] }, { analyzers });
+
+    expect(plain.summary.tools.map(({ name }) => name)).toEqual([
+      'fake-quality-analyzer',
+      'second-analyzer',
+    ]);
+    expect(disabled.summary.tools.map(({ name }) => name)).toEqual(['fake-quality-analyzer']);
+    expect(disabled.summary.configOverrides).toEqual(['disable: ["second-analyzer"]']);
+    expect(disabled.summary.policyHash).not.toBe(plain.summary.policyHash);
+    expect(readFileSync(path.join(disabled.outputRoot, 'report.txt'), 'utf8')).toContain(
+      'disable: ["second-analyzer"]',
+    );
+  });
+
+  it('rejects disabling an unknown analyzer', () => {
+    const { exitCode, output } = runWithConfig({ disable: ['nope'] });
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toContain('unknown analyzers: nope');
+  });
+
+  it('reports every parsed key and changes the policy hash for each', () => {
+    const hashes = new Set([runWithConfig(undefined).summary.policyHash]);
+    for (const [key, value] of [
+      ['preset', 'typescript'],
+      ['thresholds', { crapLimit: 12 }],
+      ['exclude', ['generated/**']],
+      ['layout', { sourceRoots: ['lib'] }],
+      ['legacyInventory', 'config/legacy.json'],
+      ['analyzers', [customAnalyzerEntry('clean')]],
+    ]) {
+      const { summary, exitCode } = runWithConfig({ [key]: value });
+      expect(exitCode).toBe(0);
+      expect(summary.configOverrides).toEqual([`${key}: ${JSON.stringify(value)}`]);
+      hashes.add(summary.policyHash);
+    }
+    expect(hashes.size).toBe(7);
+  });
+
+  describe('custom analyzers', () => {
+    it('classifies findings from a valid analyzer like built-in findings', () => {
+      const repository = createRepository({
+        'quality-policy.json': policy(),
+        'custom-analyzer.mjs': customAnalyzerScript,
+        'src/main/old.txt': 'legacy\n',
+      });
+      writeFiles(repository.root, {
+        'nitpicker.config.json': JSON.stringify({ analyzers: [customAnalyzerEntry('files')] }),
+        'src/main/new.txt': 'added\n',
+      });
+      const output = captureOutput();
+      const outputRoot = makeOutputRoot();
+
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', outputRoot],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+
+      const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+      const tool = summary.tools.find(({ name }) => name === 'custom');
+      expect(exitCode).toBe(1);
+      expect(tool).toMatchObject({ base: 1, head: 2, new: 1, unchanged: 1 });
+      expect(output.stdoutText).toContain('src/main/new.txt');
+    });
+
+    it.each([
+      ['json', /custom did not produce valid JSON/],
+      ['shape', /custom output must contain a findings array/],
+      ['crash', /custom crashed with exit 3: custom analyzer failed/],
+    ])('reports a %s failure as a tool error', (mode, message) => {
+      const { exitCode, output, summary } = runWithConfig({
+        analyzers: [customAnalyzerEntry(mode)],
+      });
+
+      expect(exitCode).toBe(2);
+      expect(summary.overallStatus).toBe('tool-error');
+      expect(output.stdoutText).toMatch(message);
+    });
+
+    it('rejects a name that clashes with a built-in analyzer', () => {
+      const { exitCode, output } = runWithConfig({
+        analyzers: [{ ...customAnalyzerEntry('clean'), name: 'fake-quality-analyzer' }],
+      });
+
+      expect(exitCode).toBe(2);
+      expect(output.stderrText).toContain('clashes with another analyzer name');
+    });
+  });
+
+  it('reports a strict exception and changes the policy hash', () => {
+    const exception = {
+      rule: 'nitpicker/preserve-error-cause',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy module until migration',
+    };
+    const plain = runWithConfig(undefined).summary.policyHash;
+    const { summary, exitCode } = runWithConfig({ exceptions: [exception] });
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([`exception: ${JSON.stringify(exception)}`]);
+    expect(summary.policyHash).not.toBe(plain);
+  });
+
+  it.each([
+    [{ unknownKey: true }, /unknown key "unknownKey"/],
+    [{ preset: 'strict' }, /"preset" must be one of: typescript/],
+    [{ thresholds: { crapLimit: 'x' } }, /positive number/],
+    [{ thresholds: { other: 1 } }, /unknown threshold "other"/],
+    [
+      { legacyInventory: '/abs/legacy.json' },
+      /"legacyInventory" must be a path inside the project/,
+    ],
+    [{ legacyInventory: '../legacy.json' }, /"legacyInventory" must be a path inside the project/],
+    [{ legacyInventory: '' }, /"legacyInventory" must be a non-empty string/],
+    [{ base: '' }, /"base" must be a non-empty string/],
+    [{ analyzers: [{ name: 'a' }] }, /needs a non-empty "name" and "command"/],
+    ['{not json', /not valid JSON/],
+  ])('fails for an invalid config %j', (config, message) => {
+    const { exitCode, output } = runWithConfig(config);
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toMatch(message);
+  });
+});
+
+const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
+const mode = process.argv[2];
+if (mode === 'crash') {
+  process.stderr.write('custom analyzer failed\\n');
+  process.exit(3);
+}
+if (mode === 'json') {
+  process.stdout.write('{not-json');
+} else if (mode === 'shape') {
+  process.stdout.write('{"items":[]}');
+} else {
+  const files = mode === 'files' && existsSync('src/main') ? readdirSync('src/main').sort() : [];
+  const findings = files
+    .filter((file) => file.endsWith('.txt'))
+    .map((file) => ({
+      tool: 'custom',
+      rule: 'text-file',
+      path: 'src/main/' + file,
+      identity: 'text-file:' + file,
+      message: 'Text file ' + file,
+      classification: 'enforceable',
+    }));
+  process.stdout.write(JSON.stringify({ findings }));
+}
+`;
+
+function customAnalyzerEntry(mode) {
+  return { name: 'custom', command: process.execPath, args: ['custom-analyzer.mjs', mode] };
+}
 
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
@@ -489,9 +823,9 @@ function createRepository(initialFiles) {
   return { root, baseSha, baseRef };
 }
 
-function fakeAnalyzer() {
+function fakeAnalyzer(name = 'fake-quality-analyzer') {
   return {
-    name: 'fake-quality-analyzer',
+    name,
     version: '1.0.0',
     configurationHash: 'fixture-policy',
     exclusions: [],

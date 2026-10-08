@@ -30,13 +30,10 @@ it('compares both sides using the head coding inventory when that inventory entr
     ...collectArchitectureSignals(baseProjectRoot),
   ];
   expect(legacySignals).toContainEqual(
-    expect.objectContaining({ rule: '@typescript-eslint/no-explicit-any' }),
+    expect.objectContaining({ rule: 'nitpicker/preserve-error-cause' }),
   );
-  mkdirSync(path.join(baseProjectRoot, 'preset/coding-standards'), {
-    recursive: true,
-  });
   writeFileSync(
-    path.join(baseProjectRoot, 'preset/coding-standards/legacy-sites.json'),
+    path.join(baseProjectRoot, 'nitpicker.legacy.json'),
     `${JSON.stringify({ sites: legacySignals.map((site) => ({ ...site, count: 1 })) })}\n`,
   );
 
@@ -68,7 +65,7 @@ it('compares both sides using the head coding inventory when that inventory entr
   expect(comparison.newFindings).toEqual([]);
   expect(comparison.unchangedFindings).toContainEqual(
     expect.objectContaining({
-      rule: '@typescript-eslint/no-explicit-any',
+      rule: 'nitpicker/preserve-error-cause',
       classification: 'enforceable',
     }),
   );
@@ -84,7 +81,10 @@ function createSnapshotRoot() {
 
 function writeProject(root) {
   mkdirSync(path.join(root, 'src/main'), { recursive: true });
-  writeFileSync(path.join(root, 'src/main/legacy.ts'), 'export const legacy: any = 1;\n');
+  writeFileSync(
+    path.join(root, 'src/main/legacy.ts'),
+    'export function legacy() {\n  try {\n    run();\n  } catch (error) {\n    throw new Error(String(error));\n  }\n}\n',
+  );
   mkdirSync(path.join(root, 'tests'), { recursive: true });
   writeFileSync(path.join(root, 'tests/placeholder.ts'), 'export {};\n');
   writeFileSync(

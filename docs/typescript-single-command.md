@@ -54,6 +54,109 @@ Optional; zero config must work. Overrides are limited to:
 Every override appears in the report and changes the policy hash, so a weakened check is visible in
 review.
 
+The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
+both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
+`thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
+`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
+applied everywhere (see below); `analyzers` are run as custom analyzers (see below).
+
+### Head policy delivery
+
+Decision (proposed, pending owner review): the resolved head policy reaches every runner by one
+JSON file and one environment variable.
+
+- The CLI reduces the validated config to `{ exclude, layout, thresholds }` and, once per run,
+  writes it to a file in a fresh temporary directory outside both worktrees. Base and head runs
+  get the same file, so the base tree cannot choose its own policy. The directory is removed when
+  the run ends.
+- The path travels in `NITPICKER_POLICY`, set on the environment of the analyzer scheduler.
+  The scheduler, every runner, and every grandchild (ESLint, depcruise, vitest, Stryker, the
+  package-owned configs in `preset/defaults/`) already spawn with `{ ...process.env }`, so the
+  variable reaches all of them without per-runner plumbing.
+- One reader, `readHeadPolicy()` in `preset/head-policy.mjs`, is the only code that parses the
+  file. It returns `{ exclude, layout, thresholds }`, with `layout` merged over the defaults
+  exported by `preset/layout.mjs`. With no variable (a runner started by hand, or no config) the
+  defaults apply. A variable that points at an unreadable or malformed file throws; it never
+  falls back to a weaker policy.
+- Delivering the policy and applying it are separate: the next section covers how runners and
+  tools honor `exclude` and `layout`.
+
+Alternatives considered:
+
+- Filter findings after the run: ruled out, because excluded files would still be analyzed and
+  could still fail or shape cross-file results.
+- One environment variable per key (`NITPICKER_EXCLUDE`, ...): lists and nested layout need
+  encoding anyway, and each new key would touch every spawn site.
+- A CLI argument on each runner: runners spawn grandchildren and package-owned configs that
+  take no arguments, so this needs plumbing at every level.
+- Link a policy file into each worktree, as `linkPolicyFile` does for project-owned files:
+  writes into the analyzed tree, needs a link per snapshot, and the child configs would still
+  need to find it. The tree's own files are also what the policy must not be read from.
+- Let each runner read `nitpicker.config.json` from the head worktree: the base run would need
+  the head path, and each runner would repeat validation.
+- Inline JSON in the variable: risks the environment size limit with long glob lists.
+
+### Exclude and layout in every runner and tool
+
+Decision (proposed, pending owner review):
+
+- `layout` accepts `sourceRoots` and `testRoots`: non-empty arrays of project-relative directories
+  (no absolute paths, `..` or globs), and `excludedGlobs`: an array of globs that replaces the
+  built-in exclusions. Other keys are an error. The defaults stay `["src"]` and
+  `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
+  `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,
+  `coverage`, `reports`, `target`, `*.d.ts`).
+- `preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
+  expression and predicate (`isSourceFile`, `isTestFile`, `isExcluded`, `projectCodeFiles`, ...)
+  from the roots and exclusions. `readLayout()` in `preset/head-policy.mjs` resolves the delivered
+  head policy. Runners, package-owned child configs, and ESLint rules call it; the exported
+  constants in `layout.mjs` are the default layout.
+- The CLI rebuilds the preset's analyzers for the policy (`applyLayout`), so `--pattern`s,
+  source roots and the reported exclusions follow the config. Custom and injected analyzers are
+  left alone.
+- Tools that read a project-root JSON config (`tsconfig.quality.json`, `tsconfig.stryker.json`,
+  `knip.json`, `jscpd.json`) get a generated copy with the roots moved and the exclusions added
+  (`preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
+  vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
+- dependency-cruiser gets the exclusions as part of its `--exclude` and `doNotFollow` patterns, so
+  excluded files are absent from the graph. TypeScript, ESLint and Prettier skip them in their
+  file selection, and diagnostics for excluded files that other files import are dropped.
+- Analyzers that work on one source root (coupling, structure, entry points) run once per root.
+  With several roots the identities of their findings are prefixed with the root; with one root
+  they are unchanged.
+- `--fix` applies the same policy: excluded files are not fixed and the roots are used.
+- The CRAP tool only expands directories named `src`, so for other roots the files inside are
+  passed explicitly.
+
+### Custom analyzers
+
+Each `analyzers` entry is `{ "name", "command", "args"? }`. The command runs on both the base and
+the head checkout, with that checkout as its working directory (so `"command": "./scripts/check"`
+resolves inside each side) and `NITPICKER_ANALYZER`, `NITPICKER_PROJECT_ROOT` and
+`NITPICKER_SNAPSHOT` set. It prints `{"findings": [...]}` on stdout and exits 0. Findings use the
+built-in finding schema and must carry `tool` equal to the entry's `name`; they are fingerprinted and
+classified exactly like built-in findings. A non-zero exit, invalid JSON, or a schema violation is a
+tool error. Names must not clash with built-in analyzers. The command and args are part of the
+policy hash.
+
+## Adopting nitpicker on existing code
+
+The `coding-standards` analyzer fails on every violation of its rules unless an inventory lists it.
+To adopt nitpicker without fixing everything first:
+
+1. Run `npx nitpicker --all` at the project root to list the violations present now.
+2. Record the `coding-standards` sites in `nitpicker.legacy.json` at the project root, as
+   `{ "sites": [{ "file", "rule", "source", "count" }] }`, and commit it. To use another location,
+   set `"legacyInventory": "path/inside/the/project.json"` in `nitpicker.config.json`. The path must
+   stay inside the project.
+3. Only sites listed there (up to their `count`) are allowed; a new or extra occurrence is a new
+   finding. When a site is fixed, remove it from the inventory so it cannot return. Do not add new
+   code to the inventory.
+
+The file is read from the head commit and applied to both sides, and its content is part of the
+policy hash. The old nitpicker-internal path `preset/coding-standards/legacy-sites.json` is no
+longer read.
+
 ## Packaging
 
 Status: implemented. The consumer installs one npm dev dependency and runs `npx nitpicker`.

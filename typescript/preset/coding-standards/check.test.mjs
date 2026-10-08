@@ -61,7 +61,7 @@ describe('coding standards gate', () => {
   it('treats a missing legacy inventory as allowing no sites', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'coding-standards-inventory-'));
     try {
-      const inventory = readLegacyInventory(path.join(root, 'legacy-sites.json'));
+      const inventory = readLegacyInventory(path.join(root, 'nitpicker.legacy.json'));
       expect(inventory).toEqual({ sites: [] });
       expect(compareSignals([legacy], inventory.sites)).toEqual([{ ...legacy, count: 1 }]);
     } finally {
@@ -71,7 +71,7 @@ describe('coding standards gate', () => {
   it('allows exactly the sites listed in a present legacy inventory', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'coding-standards-inventory-'));
     try {
-      const inventoryPath = path.join(root, 'legacy-sites.json');
+      const inventoryPath = path.join(root, 'nitpicker.legacy.json');
       writeFileSync(inventoryPath, JSON.stringify({ sites: [{ ...legacy, count: 1 }] }));
       const inventory = readLegacyInventory(inventoryPath);
       expect(compareSignals([legacy], inventory.sites)).toEqual([]);
@@ -83,7 +83,7 @@ describe('coding standards gate', () => {
   it('rejects a malformed legacy inventory instead of treating it as empty', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'coding-standards-inventory-'));
     try {
-      const inventoryPath = path.join(root, 'legacy-sites.json');
+      const inventoryPath = path.join(root, 'nitpicker.legacy.json');
       writeFileSync(inventoryPath, '{ not json');
       expect(() => readLegacyInventory(inventoryPath)).toThrow(SyntaxError);
     } finally {

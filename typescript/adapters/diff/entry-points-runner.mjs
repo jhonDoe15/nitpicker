@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -12,11 +13,19 @@ const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 try {
   const options = parseArguments(process.argv.slice(2));
   const policyModules = await loadPolicyModules(options.policyRoot);
-  const report = policyModules.analyzeEntryPoints(
-    loadGraph(options, policyModules),
-    options.sourceRoot,
+  const layout = readLayout();
+  const findings = options.sourceRoots.flatMap((sourceRoot) =>
+    toEntryPointDiffFindings(
+      policyModules.analyzeEntryPoints(
+        loadGraph(options, sourceRoot, layout, policyModules),
+        sourceRoot,
+        {
+          layout,
+        },
+      ),
+    ),
   );
-  process.stdout.write(`${JSON.stringify({ findings: toEntryPointDiffFindings(report) })}\n`);
+  process.stdout.write(`${JSON.stringify({ findings })}\n`);
 } catch (error) {
   process.stderr.write(
     `Entry-point differential adapter failed: ${
@@ -43,8 +52,13 @@ async function loadPolicyModules(policyRoot) {
   };
 }
 
-function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }) {
-  if (!existsSync(path.join(options.projectRoot, options.sourceRoot))) return { modules: [] };
+function loadGraph(
+  options,
+  sourceRoot,
+  layout,
+  { excludedPathPattern, withProjectTypeScriptConfig },
+) {
+  if (!existsSync(path.join(options.projectRoot, sourceRoot))) return { modules: [] };
   const dependencyCruiser = resolveTool('dependency-cruiser', {
     bin: 'bin/dependency-cruise.mjs',
   }).binPath;
@@ -60,11 +74,13 @@ function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }
         process.execPath,
         [
           dependencyCruiser,
-          options.sourceRoot,
+          sourceRoot,
           '--config',
           config,
           '--exclude',
-          excludedPathPattern,
+          [excludedPathPattern, layout.excludePattern]
+            .filter((pattern) => pattern !== undefined)
+            .join('|'),
           '--output-type',
           'json',
         ],
@@ -104,6 +120,7 @@ function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }
 
 function parseArguments(arguments_) {
   const values = new Map();
+  const sourceRoots = [];
   for (let index = 0; index < arguments_.length; index += 2) {
     const name = arguments_[index];
     const value = arguments_[index + 1];
@@ -113,7 +130,14 @@ function parseArguments(arguments_) {
     ) {
       throw new Error(`Invalid entry-point adapter argument: ${name ?? '<missing>'}`);
     }
-    values.set(name, value);
+    if (name === '--source-root') {
+      sourceRoots.push(relativePath(value, name));
+    } else {
+      values.set(name, value);
+    }
+  }
+  if (sourceRoots.length === 0) {
+    throw new Error('--source-root is required');
   }
 
   const toolRoot = realpathSync(requiredValue(values, '--tool-root'));
@@ -125,7 +149,7 @@ function parseArguments(arguments_) {
     projectRoot: validatedRoot(requiredValue(values, '--project-root'), '--project-root'),
     policyRoot: validatedRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
-    sourceRoot: relativePath(requiredValue(values, '--source-root'), '--source-root'),
+    sourceRoots,
   };
 }
 

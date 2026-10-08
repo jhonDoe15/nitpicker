@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { linkPolicyFile } from '../../adapters/policy-links.mjs';
+import { readLayout } from '../head-policy.mjs';
+import { layoutTransformFor } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const dependencyCruiser = path.join(
@@ -11,7 +13,7 @@ const config = path.join(import.meta.dirname, 'config.mjs');
 export const EXCLUDED_PATH_PATTERN =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 export const POLICY_TYPESCRIPT_CONFIG = 'preset/defaults/tsconfig.quality.json';
-export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'QUALITY_DEPENDENCY_GRAPH_TSCONFIG';
+export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'NITPICKER_DEPENDENCY_GRAPH_TSCONFIG';
 
 /**
  * Links the policy TypeScript config into the analyzed project root, so its include globs
@@ -21,7 +23,8 @@ export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'QUALITY_DEPENDENCY_GRAPH_TSCONFIG'
 export function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, operation) {
   const linkedConfig = linkPolicyFile(
     path.join(policyRoot, POLICY_TYPESCRIPT_CONFIG),
-    path.join(root, `.quality-${name}-tsconfig.json`),
+    path.join(root, `.nitpicker-${name}-tsconfig.json`),
+    layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, readLayout()),
   );
   try {
     return operation({ [TYPESCRIPT_CONFIG_ENVIRONMENT]: linkedConfig.targetPath });
@@ -51,7 +54,9 @@ export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
           '--config',
           config,
           '--exclude',
-          EXCLUDED_PATH_PATTERN,
+          [EXCLUDED_PATH_PATTERN, readLayout().excludePattern]
+            .filter((pattern) => pattern !== undefined)
+            .join('|'),
           '--output-type',
           'json',
         ],

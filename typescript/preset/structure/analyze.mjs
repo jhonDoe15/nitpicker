@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
-import { isSourceFile } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(
@@ -129,7 +129,7 @@ export function analyzeSource(source, filename) {
   };
 }
 
-function productionFiles(root) {
+function productionFiles(root, displayRoot, layout) {
   const files = [];
 
   function visit(current) {
@@ -144,8 +144,14 @@ function productionFiles(root) {
           continue;
         }
         visit(absolute);
-      } else if (isSourceFile(`src/${normalizePath(path.relative(root, absolute))}`)) {
-        files.push(absolute);
+      } else {
+        const relative = normalizePath(path.relative(root, absolute));
+        if (
+          layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+          !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
+        ) {
+          files.push(absolute);
+        }
       }
     }
   }
@@ -183,8 +189,12 @@ function rank(entries, property) {
     .slice(0, 20);
 }
 
-export function analyzeProductionFiles(root, displayRoot = root) {
-  const files = productionFiles(root);
+export function analyzeProductionFiles(
+  root,
+  displayRoot = root,
+  { layout = defaultResolvedLayout } = {},
+) {
+  const files = productionFiles(root, displayRoot, layout);
   const functions = [];
   const classes = [];
   let lines = 0;
