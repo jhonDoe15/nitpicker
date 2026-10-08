@@ -1,5 +1,6 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
@@ -43,7 +44,37 @@ export function readJavaFindings(projectRoot) {
       ),
     );
   }
+
+  // ArchUnit: JUnit XML of the rule tests, one file per test class. The directory is absent when
+  // the project has no ArchUnit tests.
+  const archunitRoot = path.join(reportRoot, 'archunit');
+  const archunitReports = existsSync(archunitRoot)
+    ? readdirSync(archunitRoot)
+        .filter((name) => name.endsWith('.xml'))
+        .sort()
+    : [];
+  const classRoots = [...sourceRoots, ...(manifest.testSourceRoots ?? [])];
+  for (const name of archunitReports) {
+    findings.push(
+      ...ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
+        resolvePath: (className, fileName) =>
+          sourceFileOf(projectRoot, classRoots, className, fileName),
+      }).findings,
+    );
+  }
   return { findings };
+}
+
+// Project-relative source file of a Java class: `fileName` (from a stack frame or violation
+// description) in the class's package directory, else the outermost class name + `.java`.
+function sourceFileOf(projectRoot, sourceRoots, className, fileName) {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const directory = parts.join('/');
+  const relative = `${directory === '' ? '' : `${directory}/`}${fileName ?? `${simple}.java`}`;
+  return sourceRoots
+    .map((sourceRoot) => `${sourceRoot}/${relative}`)
+    .find((candidate) => existsSync(path.join(projectRoot, candidate)));
 }
 
 function projectRoots(projectRoot) {

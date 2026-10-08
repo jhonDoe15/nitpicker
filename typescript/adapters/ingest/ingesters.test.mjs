@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
+import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
 import { ingestGoCoverprofile } from './gocover.mjs';
@@ -17,11 +18,22 @@ const shifters = {
   lcov: (text) => text.replace(/^(DA|FN):(\d+)/gm, (_, kind, n) => `${kind}:${Number(n) + SHIFT}`),
   jacoco: (text) =>
     text.replace(/ (line|nr)="(\d+)"/g, (_, attr, n) => ` ${attr}="${Number(n) + SHIFT}"`),
+  archunit: (text) =>
+    text.replace(/(\.java:)(\d+)/g, (_, head, n) => `${head}${Number(n) + SHIFT}`),
   gocover: (text) =>
     text.replace(
       /:(\d+)\.(\d+),(\d+)\./g,
       (_, a, b, c) => `:${Number(a) + SHIFT}.${b},${Number(c) + SHIFT}.`,
     ),
+};
+
+// Stands in for the Java glue: `demo.service.Foo$Inner` -> src/main/java/demo/service/Foo.java
+// (test classes live under src/test/java).
+const resolveJavaPath = (className, fileName) => {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const root = simple.endsWith('Test') ? 'src/test/java' : 'src/main/java';
+  return [root, ...parts, fileName ?? `${simple}.java`].join('/');
 };
 
 const formats = [
@@ -42,6 +54,12 @@ const formats = [
     file: 'jacoco.xml',
     ingest: (text) => ingestJacoco(text, { sourceRoot: 'src/main/java' }),
     count: 2,
+  },
+  {
+    name: 'archunit',
+    file: 'archunit-junit.xml',
+    ingest: (text) => ingestArchunit(text, { resolvePath: resolveJavaPath }),
+    count: 3,
   },
   {
     name: 'gocover',
@@ -100,6 +118,49 @@ describe('checkstyle', () => {
 
   it('rejects other documents', () => {
     expect(() => ingestCheckstyle('<report/>')).toThrow('<checkstyle>');
+  });
+});
+
+describe('archunit', () => {
+  const { findings } = ingestArchunit(fixture('archunit-junit.xml'), {
+    resolvePath: resolveJavaPath,
+  });
+
+  it('reports one enforceable finding per violated rule and offending class', () => {
+    expect(
+      findings.map(({ rule, path: file, identity, classification }) => [
+        rule,
+        file,
+        identity,
+        classification,
+      ]),
+    ).toEqual([
+      [
+        'services_do_not_use_dao',
+        'src/main/java/demo/service/OrderService.java',
+        'demo.service.OrderService',
+        'enforceable',
+      ],
+      [
+        'services_do_not_use_dao',
+        'src/main/java/demo/service/Audit.java',
+        'demo.service.Audit$Entry',
+        'enforceable',
+      ],
+      [
+        'no_cycles',
+        'src/test/java/demo/ArchitectureTest.java',
+        'demo.ArchitectureTest:test-failure',
+        'enforceable',
+      ],
+    ]);
+    expect(findings[0].message).toContain('3 violations');
+    expect(findings[0].message).not.toMatch(/\.java:\d/);
+  });
+
+  it('ignores passing test cases and rejects other documents', () => {
+    expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
+    expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');
   });
 });
 

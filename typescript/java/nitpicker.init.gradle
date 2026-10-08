@@ -7,7 +7,14 @@
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
 //   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
+//   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
+//
+// ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
+// its test classpath, JUnit Platform) are run by `nitpickerArchunit`. They are the test classes
+// named like `*ArchTest`/`*ArchitectureTest`; `-Pnitpicker.archunit.includes=<comma-separated
+// Gradle class patterns>` overrides that. These classes are left out of `test`, so a violated
+// rule does not stop the JaCoCo run.
 
 def pinned = [
     pmd             : '7.7.0',
@@ -87,6 +94,25 @@ allprojects {
             }
         }
 
+        def archunitIncludes = (findProperty('nitpicker.archunit.includes') ?: '**/*ArchTest.class,**/*ArchitectureTest.class')
+            .toString().split(',')*.trim().findAll { it }
+
+        tasks.named('test') { exclude archunitIncludes }
+
+        tasks.register('nitpickerArchunit', Test) {
+            group = 'nitpicker'
+            dependsOn tasks.named('testClasses')
+            testClassesDirs = sourceSets.test.output.classesDirs
+            classpath = sourceSets.test.runtimeClasspath
+            include archunitIncludes
+            useJUnitPlatform()
+            ignoreFailures = true // violations are findings; the Nitpicker side reads the XML
+            reports {
+                junitXml.outputLocation = reportDir.map { it.dir('archunit') }
+                html.required = false
+            }
+        }
+
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
             dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
@@ -104,15 +130,19 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check and JaCoCo; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo and ArchUnit rule tests; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'nitpickerArchunit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                 }
+                def testRoots = sourceSets.test.allJava.sourceDirectories.files.collect {
+                    project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
-                    versions   : pinned,
-                    sourceRoots: roots,
+                    versions       : pinned,
+                    sourceRoots    : roots,
+                    testSourceRoots: testRoots,
                 ])
             }
         }

@@ -17,6 +17,7 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-diff.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
+  'adapters/ingest/archunit.mjs',
   'adapters/ingest/format-check.mjs',
   'adapters/ingest/jacoco.mjs',
   'adapters/ingest/sarif.mjs',
