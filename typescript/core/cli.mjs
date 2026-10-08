@@ -6,7 +6,8 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
-import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import { applyThresholds, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
@@ -51,11 +52,14 @@ export function runCli({
 
     const selectedProjectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
+    // The config is read from the head checkout and applies to both sides of the comparison.
+    const config = loadConfig(selectedProjectRoot);
+    const configure = (list) => applyThresholds(applyDisable(list, config), config.thresholds);
     if (options.all) {
       return runSnapshotCli({
         options,
         currentProjectRoot: selectedProjectRoot,
-        analyzers: snapshotAnalyzers,
+        analyzers: configure(snapshotAnalyzers),
         stdout,
       });
     }
@@ -63,7 +67,8 @@ export function runCli({
       options,
       environment,
       currentProjectRoot: selectedProjectRoot,
-      analyzers,
+      analyzers: configure(analyzers),
+      config,
       stdout,
       executeFixCommand,
     });
@@ -144,6 +149,7 @@ function runComparisonCli({
   environment,
   currentProjectRoot,
   analyzers,
+  config,
   stdout,
   executeFixCommand,
 }) {
@@ -154,7 +160,7 @@ function runComparisonCli({
   const base = resolveBase({
     repositoryRoot,
     explicitBase: options.baseRef,
-    configuredBase: undefined,
+    configuredBase: config.base,
     environment,
   });
   const outputRoot =
@@ -194,6 +200,7 @@ function runComparisonCli({
     analyzers: selectedAnalyzers,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
+    configOverrides: describeConfigOverrides(config),
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(

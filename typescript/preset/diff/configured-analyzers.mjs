@@ -76,20 +76,46 @@ export const configuredAnalyzers = [
   ),
   ...qualityAreaChecks
     .filter((check) => check.name !== 'policy-tests')
-    .map((check) =>
-      createQualityAreaAnalyzer({
-        ...check,
-        configurationHash: hashFiles(
-          [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
-          check.adapterArguments,
-        ),
-      }),
-    ),
+    .map((check) => createQualityAreaCheckAnalyzer(check)),
 ];
 
-for (const analyzer of configuredAnalyzers) {
+function createQualityAreaCheckAnalyzer(check, adapterArguments = check.adapterArguments) {
+  return createQualityAreaAnalyzer({
+    ...check,
+    adapterArguments,
+    configurationHash: hashFiles(
+      [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
+      adapterArguments,
+    ),
+  });
+}
+
+function withPackagePolicy(analyzer) {
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
+  return analyzer;
+}
+
+/** Applies config thresholds by rebuilding the affected analyzers; others pass through. */
+export function applyThresholds(analyzers, thresholds = {}) {
+  const crapCheck = qualityAreaChecks.find(({ name }) => name === 'crap');
+  if (thresholds.crapLimit === undefined || crapCheck === undefined) {
+    return analyzers;
+  }
+  return analyzers.map((analyzer) =>
+    analyzer.name === 'crap'
+      ? withPackagePolicy(
+          createQualityAreaCheckAnalyzer(crapCheck, [
+            '--crap-score-limit',
+            String(thresholds.crapLimit),
+          ]),
+        )
+      : analyzer,
+  );
+}
+
+for (const analyzer of configuredAnalyzers) {
+  withPackagePolicy(analyzer);
   if (analyzer.name === 'coding-standards') {
     const packageHash = analyzer.configurationHash;
     analyzer.resolveConfigurationHash = (projectRoot) => {

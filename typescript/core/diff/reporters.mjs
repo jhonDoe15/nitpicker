@@ -52,6 +52,11 @@ export function renderTextReport(report) {
     `Tool errors: ${String(report.toolErrors.length)}`,
   ];
 
+  const configOverrides = report.summary.configOverrides ?? [];
+  if (configOverrides.length > 0) {
+    lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
+  }
+
   if (report.summary.tools.length === 0) {
     lines.push('Analyzers: none configured');
   } else {

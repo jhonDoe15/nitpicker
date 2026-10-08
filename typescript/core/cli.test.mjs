@@ -1,4 +1,5 @@
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -471,6 +472,111 @@ describe('nitpicker CLI', () => {
   });
 });
 
+describe('nitpicker config file', () => {
+  function runWithConfig(config, { extraArguments = ['--base', 'HEAD'], analyzers } = {}) {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    if (config !== undefined) {
+      writeFiles(repository.root, {
+        'nitpicker.config.json': typeof config === 'string' ? config : JSON.stringify(config),
+      });
+    }
+    const output = captureOutput();
+    const outputRoot = makeOutputRoot();
+    const exitCode = runCli({
+      arguments_: ['--output', outputRoot, ...extraArguments],
+      environment: {},
+      currentProjectRoot: repository.root,
+      analyzers: analyzers ?? [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    const summaryPath = path.join(outputRoot, 'summary.json');
+    const summary = existsSync(summaryPath)
+      ? JSON.parse(readFileSync(summaryPath, 'utf8'))
+      : undefined;
+    return { exitCode, output, summary, outputRoot };
+  }
+
+  it('works with no config and reports no overrides', () => {
+    const { exitCode, summary } = runWithConfig(undefined);
+
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([]);
+  });
+
+  it('uses base from the config file', () => {
+    const { exitCode, output } = runWithConfig({ base: 'HEAD' }, { extraArguments: [] });
+
+    expect(exitCode).toBe(0);
+    expect(output.stdoutText).toContain('Base: HEAD (config)');
+  });
+
+  it('lets an explicit --base win over the config base', () => {
+    const { output } = runWithConfig({ base: 'does-not-exist' });
+
+    expect(output.stdoutText).toContain('Base: HEAD (argument)');
+  });
+
+  it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
+    const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
+    const plain = runWithConfig(undefined, { analyzers });
+    const disabled = runWithConfig({ disable: ['second-analyzer'] }, { analyzers });
+
+    expect(plain.summary.tools.map(({ name }) => name)).toEqual([
+      'fake-quality-analyzer',
+      'second-analyzer',
+    ]);
+    expect(disabled.summary.tools.map(({ name }) => name)).toEqual(['fake-quality-analyzer']);
+    expect(disabled.summary.configOverrides).toEqual(['disable: ["second-analyzer"]']);
+    expect(disabled.summary.policyHash).not.toBe(plain.summary.policyHash);
+    expect(readFileSync(path.join(disabled.outputRoot, 'report.txt'), 'utf8')).toContain(
+      'disable: ["second-analyzer"]',
+    );
+  });
+
+  it('rejects disabling an unknown analyzer', () => {
+    const { exitCode, output } = runWithConfig({ disable: ['nope'] });
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toContain('unknown analyzers: nope');
+  });
+
+  it('reports every parsed key and changes the policy hash for each', () => {
+    const hashes = new Set([runWithConfig(undefined).summary.policyHash]);
+    for (const [key, value] of [
+      ['preset', 'typescript'],
+      ['thresholds', { crapLimit: 12 }],
+      ['exclude', ['generated/**']],
+      ['layout', { source: ['lib'] }],
+      ['analyzers', [{ name: 'custom', command: './check.sh' }]],
+    ]) {
+      const { summary, exitCode } = runWithConfig({ [key]: value });
+      expect(exitCode).toBe(0);
+      expect(summary.configOverrides).toEqual([`${key}: ${JSON.stringify(value)}`]);
+      hashes.add(summary.policyHash);
+    }
+    expect(hashes.size).toBe(6);
+  });
+
+  it.each([
+    [{ unknownKey: true }, /unknown key "unknownKey"/],
+    [{ preset: 'strict' }, /"preset" must be one of: typescript/],
+    [{ thresholds: { crapLimit: 'x' } }, /positive number/],
+    [{ thresholds: { other: 1 } }, /unknown threshold "other"/],
+    [{ base: '' }, /"base" must be a non-empty string/],
+    [{ analyzers: [{ name: 'a' }] }, /needs a non-empty "name" and "command"/],
+    ['{not json', /not valid JSON/],
+  ])('fails for an invalid config %j', (config, message) => {
+    const { exitCode, output } = runWithConfig(config);
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toMatch(message);
+  });
+});
+
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
   git(root, ['init', '-q', '--initial-branch=main']);
@@ -489,9 +595,9 @@ function createRepository(initialFiles) {
   return { root, baseSha, baseRef };
 }
 
-function fakeAnalyzer() {
+function fakeAnalyzer(name = 'fake-quality-analyzer') {
   return {
-    name: 'fake-quality-analyzer',
+    name,
     version: '1.0.0',
     configurationHash: 'fixture-policy',
     exclusions: [],
