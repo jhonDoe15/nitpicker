@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { comparisonKey } from './fingerprint.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
+const JUNIT_REPORT_FILE_NAME = 'report.junit.xml';
+const SARIF_REPORT_FILE_NAME = 'report.sarif';
 
 export const REPORT_FILE_NAMES = [
   'summary.json',
@@ -10,7 +14,8 @@ export const REPORT_FILE_NAMES = [
   'changed-metrics.json',
   'tool-errors.json',
   TEXT_REPORT_FILE_NAME,
-  'report.junit.xml',
+  JUNIT_REPORT_FILE_NAME,
+  SARIF_REPORT_FILE_NAME,
 ];
 
 export function clearDiffReports(outputRoot) {
@@ -29,7 +34,8 @@ export function writeDiffReports(outputRoot, report) {
 
   const text = renderTextReport(report);
   writeFileSync(path.join(outputRoot, TEXT_REPORT_FILE_NAME), text);
-  writeFileSync(path.join(outputRoot, 'report.junit.xml'), renderJunitReport(report));
+  writeFileSync(path.join(outputRoot, JUNIT_REPORT_FILE_NAME), renderJunitReport(report));
+  writeFileSync(path.join(outputRoot, SARIF_REPORT_FILE_NAME), renderSarifReport(report));
   return text;
 }
 
@@ -113,11 +119,20 @@ export function renderRuleFilterSection(report, ruleFilters) {
 }
 
 export function renderJunitReport(report) {
-  const failures = report.toolErrors.length;
   const testCases = report.summary.tools.map(
     (tool) =>
       `  <testcase classname="quality.diff" name="${escapeXml(tool.name)}" time="${((tool.elapsedMs ?? 0) / 1000).toFixed(3)}"></testcase>`,
   );
+  const violations = report.newFindings.filter(
+    ({ classification }) => classification === 'enforceable',
+  );
+  for (const finding of violations) {
+    const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
+    const name = `${finding.tool}/${finding.rule} ${finding.path}${location}`;
+    testCases.push(
+      `  <testcase classname="quality.diff.new-findings" name="${escapeXml(name)}" time="0"><failure message="${escapeXml(singleLine(finding.message))}" type="${escapeXml(`${finding.tool}/${finding.rule}`)}">${escapeXml(finding.message)}</failure></testcase>`,
+    );
+  }
   for (const error of report.toolErrors) {
     testCases.push(
       `  <testcase classname="quality.diff" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
@@ -126,6 +141,7 @@ export function renderJunitReport(report) {
   if (testCases.length === 0) {
     testCases.push('  <testcase classname="quality.diff" name="framework" time="0"></testcase>');
   }
+  const failures = violations.length + report.toolErrors.length;
   const tests = testCases.length;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
@@ -134,6 +150,67 @@ export function renderJunitReport(report) {
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
+const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
+
+/**
+ * SARIF 2.1.0 log with one result per new finding (the findings the gate is about). The finding's
+ * comparison key, hashed, is `partialFingerprints["nitpickerIdentity/v1"]`, so consumers can match
+ * the same finding across runs even when its line moves. Tool errors become unsuccessful
+ * tool-execution notifications.
+ */
+export function renderSarifReport(report) {
+  const rules = new Map();
+  const results = report.newFindings.map((finding) => {
+    const ruleId = `${finding.tool}/${finding.rule}`;
+    if (!rules.has(ruleId)) {
+      rules.set(ruleId, { id: ruleId, name: finding.rule });
+    }
+    const physicalLocation = { artifactLocation: { uri: finding.path } };
+    if (finding.location !== undefined) {
+      physicalLocation.region = {
+        startLine: finding.location.line,
+        ...(finding.location.column === undefined ? {} : { startColumn: finding.location.column }),
+      };
+    }
+    return {
+      ruleId,
+      level: finding.classification === 'enforceable' ? 'error' : 'note',
+      message: { text: finding.message },
+      locations: [{ physicalLocation }],
+      partialFingerprints: {
+        [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(comparisonKey(finding)).digest('hex'),
+      },
+    };
+  });
+  const log = {
+    $schema: SARIF_SCHEMA_URL,
+    version: '2.1.0',
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: 'nitpicker',
+            informationUri: 'https://github.com/jhonDoe15/nitpicker',
+            rules: [...rules.values()],
+          },
+        },
+        invocations: [
+          {
+            executionSuccessful: report.toolErrors.length === 0,
+            toolExecutionNotifications: report.toolErrors.map((error) => ({
+              level: 'error',
+              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+            })),
+          },
+        ],
+        results,
+      },
+    ],
+  };
+  return `${JSON.stringify(log, null, 2)}\n`;
 }
 
 function appendFindingSection(lines, heading, findings) {
@@ -245,6 +322,7 @@ function writeJson(filePath, value) {
 
 function escapeXml(value) {
   return String(value)
+    .replaceAll(/[^\u0009\u000A\u000D -퟿-�\u{10000}-\u{10FFFF}]/gu, '�')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
