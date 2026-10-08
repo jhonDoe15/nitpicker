@@ -82,6 +82,9 @@ const POLICY_FILES = [
  * config plus the rules and shared policy it loads), never a dial's adapter implementation.
  * Each dial hashes its own adapter files on top of this list, so a change to how a dial invokes
  * ESLint invalidates only that dial's comparison baseline, not the other dial's.
+ *
+ * `shardWeight` is relative wall time for CI sharding. The numbers come from measurements
+ * (`scripts/measure-shard-weights.mjs`); see docs/shard-weights.md before changing them.
  */
 export const eslintChecks = [
   {
@@ -90,7 +93,7 @@ export const eslintChecks = [
     patterns: [...sourceGlobs, ...testGlobs],
     exclusions: generalExclusions,
     policyFiles: ['preset/defaults/tsconfig.quality.json'],
-    shardWeight: 49,
+    shardWeight: 25,
     configurationFiles: [
       'preset/defaults/eslint.config.mjs',
       'preset/defaults/tsconfig.quality.json',
@@ -103,7 +106,7 @@ export const eslintChecks = [
     patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
-    shardWeight: 4,
+    shardWeight: 9,
     configurationFiles: [
       'preset/eslint-config/base.mjs',
       'preset/eslint-config/errors.mjs',
@@ -116,7 +119,7 @@ export const eslintChecks = [
     patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
-    shardWeight: 5,
+    shardWeight: 9,
     configurationFiles: [
       'preset/eslint-config/base.mjs',
       'preset/eslint-config/logging.mjs',
@@ -129,7 +132,7 @@ export const eslintChecks = [
     patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
-    shardWeight: 4,
+    shardWeight: 11,
     configurationFiles: [
       'preset/eslint-config/base.mjs',
       'preset/eslint-config/module-effects.mjs',
@@ -143,7 +146,7 @@ export const entryPointsCheck = {
   sourceRoot,
   exclusions: productionExclusions,
   version: dependencyCruiserVersion,
-  shardWeight: 8,
+  shardWeight: 7,
   logicalFiles: [
     'preset/layout.mjs',
     'preset/entry-points/analyze.mjs',
@@ -170,7 +173,7 @@ export const staticChecks = [
     exclusions: generalExclusions,
     configRelativePath: 'preset/defaults/.prettierrc.json',
     ignoreRelativePath: 'preset/defaults/.prettierignore',
-    shardWeight: 24,
+    shardWeight: 8,
     configurationFiles: [
       'preset/layout.mjs',
       'preset/defaults/.prettierrc.json',
@@ -184,7 +187,7 @@ export const staticChecks = [
     patterns: [],
     exclusions: ['**/dist/**', '**/*.d.ts'],
     configRelativePath: 'preset/defaults/tsconfig.quality.json',
-    shardWeight: 17,
+    shardWeight: 9,
     configurationFiles: ['preset/layout.mjs', 'preset/defaults/tsconfig.quality.json'],
   },
   {
@@ -196,7 +199,7 @@ export const staticChecks = [
     configRelativePath: 'preset/defaults/dependency-cruiser.config.mjs',
     includeOnly: graphIncludeOnly,
     exclude: ARCHITECTURE_EXCLUSION,
-    shardWeight: 9,
+    shardWeight: 7,
     configurationFiles: [
       'preset/layout.mjs',
       'preset/defaults/dependency-cruiser.config.mjs',
@@ -221,7 +224,7 @@ export const qualityAreaChecks = [
     version: eslintVersion,
     exclusions: generalExclusions,
     timeoutMs: 2 * MINUTE_MS,
-    shardWeight: 17,
+    shardWeight: 10,
     configurationFiles: [
       'preset/coding-standards/check.mjs',
       'preset/eslint-config/coding-standards.mjs',
@@ -234,7 +237,7 @@ export const qualityAreaChecks = [
     version: dependencyCruiserVersion,
     exclusions: productionExclusions,
     timeoutMs: 2 * MINUTE_MS,
-    shardWeight: 8,
+    shardWeight: 7,
     configurationFiles: [
       'preset/dependency-graph/config.mjs',
       'preset/dependency-graph/cruise.mjs',
@@ -264,7 +267,7 @@ export const qualityAreaChecks = [
     version: typeScriptVersion,
     exclusions: productionExclusions,
     timeoutMs: MINUTE_MS,
-    shardWeight: 2,
+    shardWeight: 4,
     configurationFiles: [
       'preset/layout.mjs',
       'preset/dependency-graph/cruise.mjs',
@@ -277,7 +280,7 @@ export const qualityAreaChecks = [
     version: jscpdVersion,
     exclusions: productionExclusions,
     timeoutMs: MINUTE_MS,
-    shardWeight: 1,
+    shardWeight: 2,
     configurationFiles: ['preset/defaults/jscpd.json'],
   },
   {
@@ -286,7 +289,7 @@ export const qualityAreaChecks = [
     version: knipVersion,
     exclusions: generalExclusions,
     timeoutMs: 2 * MINUTE_MS,
-    shardWeight: 4,
+    shardWeight: 5,
     configurationFiles: ['preset/defaults/knip.json'],
   },
   {
@@ -297,7 +300,7 @@ export const qualityAreaChecks = [
     concurrencyWeight: 2,
     concurrencyGroup: 'test-execution',
     executionPriority: 1,
-    shardWeight: 154,
+    shardWeight: 16,
     timeoutMs: 5 * MINUTE_MS,
     configurationFiles: ['preset/defaults/vitest.quality.config.ts'],
   },
@@ -320,7 +323,7 @@ export const qualityAreaChecks = [
     concurrencyWeight: 2,
     concurrencyGroup: 'test-execution',
     executionPriority: 1,
-    shardWeight: 58,
+    shardWeight: 90,
     timeoutMs: 30 * MINUTE_MS,
     configurationFiles: [
       'preset/defaults/stryker.config.mjs',
