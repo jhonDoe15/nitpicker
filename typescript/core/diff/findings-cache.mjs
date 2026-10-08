@@ -1,24 +1,9 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { createDirectoryStore, resolveCacheDirectory } from './cache-stores.mjs';
 import { parseAnalyzerReport } from './finding-schema.mjs';
 import { resolveAnalyzerMetadata } from './run-analyzers.mjs';
 
 const CACHE_SCHEMA = 1;
-
-/**
- * Where findings are cached: `NITPICKER_CACHE_DIR` when set, else `node_modules/.cache/nitpicker`
- * of the project when it has a `node_modules` folder. Without either there is no cache.
- */
-export function resolveCacheDirectory({ projectRoot, environment = process.env }) {
-  const configured = environment.NITPICKER_CACHE_DIR;
-  if (typeof configured === 'string' && configured.length > 0) {
-    return path.resolve(projectRoot, configured);
-  }
-  return existsSync(path.join(projectRoot, 'node_modules'))
-    ? path.join(projectRoot, 'node_modules/.cache/nitpicker')
-    : undefined;
-}
 
 /** One cache key per analyzer: base commit, project, analyzer, tool version, head policy. */
 export function cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides = [] }) {
@@ -37,23 +22,38 @@ export function cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOv
     .digest('hex');
 }
 
+export { resolveCacheDirectory };
+
+/**
+ * The findings cache over a store (see `cache-stores.mjs`); `directory` is shorthand for a local
+ * directory store. Entries carry their own key, so an entry stored under the wrong name is a miss.
+ */
 export function createFindingsCache({
+  store = undefined,
   directory,
   mergeBaseSha,
   projectRelativePath,
   configOverrides = [],
 }) {
-  const fileFor = (analyzer) =>
-    path.join(
-      directory,
-      `${cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides })}.json`,
-    );
+  const backend = store ?? createDirectoryStore(directory);
+  const keyFor = (analyzer) =>
+    cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides });
   return {
-    /** Returns the cached report, or undefined on a miss or an unreadable entry. */
+    /** Returns the cached report, or undefined on a miss, an unreadable or a mismatched entry. */
     read(analyzer) {
       try {
-        const entry = JSON.parse(readFileSync(fileFor(analyzer), 'utf8'));
-        return parseAnalyzerReport(entry, analyzer.name);
+        const key = keyFor(analyzer);
+        const text = backend.get(key);
+        if (text === undefined) {
+          return undefined;
+        }
+        const entry = JSON.parse(text);
+        if (entry?.key !== key) {
+          return undefined;
+        }
+        const report = parseAnalyzerReport(entry, analyzer.name);
+        backend.keep?.(key, text);
+        return report;
       } catch {
         return undefined;
       }
@@ -61,13 +61,10 @@ export function createFindingsCache({
     /** Best effort: a cache that cannot be written never fails the comparison. */
     write(analyzer, report) {
       try {
-        mkdirSync(directory, { recursive: true });
-        const target = fileFor(analyzer);
-        const temporary = `${target}.${String(process.pid)}.tmp`;
-        writeFileSync(temporary, `${JSON.stringify({ findings: report.findings })}\n`);
-        renameSync(temporary, target);
+        const key = keyFor(analyzer);
+        return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
       } catch {
-        // Ignore: the next run just analyzes the base again.
+        return false;
       }
     },
   };
@@ -121,7 +118,7 @@ export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
   return result;
 }
 
-function isCacheable(analyzer, report, toolErrors) {
+export function isCacheable(analyzer, report, toolErrors) {
   return (
     !toolErrors.some((error) => error.tool === analyzer.name) &&
     report.findings.every((finding) => finding.classification !== 'tool-error')
