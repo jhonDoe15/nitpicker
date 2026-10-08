@@ -6,7 +6,11 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
-import { applyThresholds, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import {
+  applyLegacyInventory,
+  applyThresholds,
+  configuredAnalyzers,
+} from '../preset/diff/configured-analyzers.mjs';
 import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
@@ -54,7 +58,11 @@ export function runCli({
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
     // The config is read from the head checkout and applies to both sides of the comparison.
     const config = loadConfig(selectedProjectRoot);
-    const configure = (list) => applyThresholds(applyDisable(list, config), config.thresholds);
+    const configure = (list) =>
+      applyLegacyInventory(
+        applyThresholds(applyDisable(list, config), config.thresholds),
+        config.legacyInventory,
+      );
     if (options.all) {
       return runSnapshotCli({
         options,

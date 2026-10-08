@@ -551,6 +551,7 @@ describe('nitpicker config file', () => {
       ['thresholds', { crapLimit: 12 }],
       ['exclude', ['generated/**']],
       ['layout', { source: ['lib'] }],
+      ['legacyInventory', 'config/legacy.json'],
       ['analyzers', [{ name: 'custom', command: './check.sh' }]],
     ]) {
       const { summary, exitCode } = runWithConfig({ [key]: value });
@@ -558,7 +559,7 @@ describe('nitpicker config file', () => {
       expect(summary.configOverrides).toEqual([`${key}: ${JSON.stringify(value)}`]);
       hashes.add(summary.policyHash);
     }
-    expect(hashes.size).toBe(6);
+    expect(hashes.size).toBe(7);
   });
 
   it.each([
@@ -566,6 +567,12 @@ describe('nitpicker config file', () => {
     [{ preset: 'strict' }, /"preset" must be one of: typescript/],
     [{ thresholds: { crapLimit: 'x' } }, /positive number/],
     [{ thresholds: { other: 1 } }, /unknown threshold "other"/],
+    [
+      { legacyInventory: '/abs/legacy.json' },
+      /"legacyInventory" must be a path inside the project/,
+    ],
+    [{ legacyInventory: '../legacy.json' }, /"legacyInventory" must be a path inside the project/],
+    [{ legacyInventory: '' }, /"legacyInventory" must be a non-empty string/],
     [{ base: '' }, /"base" must be a non-empty string/],
     [{ analyzers: [{ name: 'a' }] }, /needs a non-empty "name" and "command"/],
     ['{not json', /not valid JSON/],

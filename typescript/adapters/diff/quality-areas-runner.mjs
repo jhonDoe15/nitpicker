@@ -12,6 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
 import {
   sourceRoot,
@@ -106,7 +107,7 @@ function runPolicyTests(options) {
 
 async function runCodingStandards(options) {
   const checker = await importPolicyModule(options, 'preset/coding-standards/check.mjs');
-  const baselineRelativePath = 'preset/coding-standards/legacy-sites.json';
+  const baselineRelativePath = options.legacyInventory;
   const baseline = readOptionalBaseline(options.projectPolicyRoot, baselineRelativePath);
   const signals = [
     ...(await checker.collectSignals(options.projectRoot, options.policyRoot)),
@@ -1193,6 +1194,7 @@ function parseArguments(arguments_) {
         '--snapshot',
         '--baseline-root',
         '--crap-score-limit',
+        '--legacy-inventory',
       ].includes(name)
     ) {
       throw new Error(`Unknown quality-area adapter argument: ${name}`);
@@ -1233,6 +1235,7 @@ function parseArguments(arguments_) {
         ? PACKAGE_ROOT
         : realpathSync(values.get('--live-project-root')),
     snapshot,
+    legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,
     crapScoreLimit:
       values.get('--crap-score-limit') === undefined
         ? DEFAULT_CRAP_SCORE_LIMIT

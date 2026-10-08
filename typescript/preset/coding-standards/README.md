@@ -23,8 +23,8 @@ feature files.
 
 ## Existing debt
 
-An optional `legacy-sites.json` next to `check.mjs` records pre-existing violations at adoption.
-A missing file means an empty inventory: every site fails. Coding identities include file, rule,
+An optional `nitpicker.legacy.json` at the consumer project's root records pre-existing violations
+at adoption (the `legacyInventory` key in `nitpicker.config.json` points elsewhere). A missing file means an empty inventory: every site fails. Coding identities include file, rule,
 normalized source and occurrence count; public contract identities include file, contract and
 method. A violation in another file, a changed site or an extra occurrence fails. Removed sites
 must be removed from the inventory so their return fails too. Do not expand this inventory to
