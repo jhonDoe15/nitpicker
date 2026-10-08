@@ -38,6 +38,8 @@ export const restrictedAdapterSyntax = [
 // Syntactic strict rules for `features/<name>/adapters/`. These work without type information.
 // The preset enables them; they are not in the default preset yet. Another config that sets
 // `no-restricted-syntax` for the same files replaces this selector list, so merge lists instead.
+// Zod is a documented expectation of the preset, not a dependency of nitpicker: the rule works on
+// syntax and its messages name the zod schema as the allowed form.
 export default [
   { ignores: excludedGlobs },
   {
@@ -49,6 +51,7 @@ export default [
       'no-empty': ['error', { allowEmptyCatch: false }],
       'nitpicker/no-silent-catch': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
+      'nitpicker/no-handwritten-boundary-guard': 'error',
     },
   },
 ];
