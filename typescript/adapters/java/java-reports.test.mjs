@@ -21,7 +21,7 @@ const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
       <counter type="LINE" missed="3" covered="0"/>
     </method>
   </class>
-  <sourcefile name="Bad.java"><counter type="LINE" missed="3" covered="1"/></sourcefile>
+  <sourcefile name="Bad.java"><line nr="9" mi="2" ci="0" mb="2" cb="0"/><counter type="LINE" missed="3" covered="1"/></sourcefile>
 </package></report>`;
 
 // Writes a Gradle project directory holding the reports the init script would produce. `shift`
@@ -33,7 +33,10 @@ function projectWithReports({ shift = 0 } = {}) {
   const sourceFile = path.join(root, 'src/main/java/demo/Bad.java');
   mkdirSync(reports, { recursive: true });
   mkdirSync(path.dirname(sourceFile), { recursive: true });
-  writeFileSync(sourceFile, 'package demo;\n');
+  // Line 9 (moved down by `shift`) holds the branch JaCoCo reports as uncovered.
+  const sourceLines = Array.from({ length: 9 + shift }, () => '');
+  sourceLines[8 + shift] = '    return new String(bytes);';
+  writeFileSync(sourceFile, `${sourceLines.join('\n')}\n`);
   writeFileSync(
     path.join(reports, 'manifest.json'),
     JSON.stringify({ versions: {}, sourceRoots: ['src/main/java', 'src/missing/java'] }),
@@ -80,7 +83,10 @@ function projectWithReports({ shift = 0 } = {}) {
     ),
   );
   writeFileSync(path.join(reports, 'format.txt'), `${sourceFile}\n`);
-  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(
+    path.join(reports, 'jacoco.xml'),
+    JACOCO.replace('nr="9"', `nr="${String(9 + shift)}"`),
+  );
   return root;
 }
 
@@ -101,6 +107,7 @@ describe('readJavaFindings', () => {
       ['google-java-format', 'format', bad, 'format'],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
+      ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
     ]);
   });
 
@@ -108,13 +115,14 @@ describe('readJavaFindings', () => {
     const { findings } = readJavaFindings(projectWithReports());
 
     expect(
-      Object.fromEntries(findings.map((finding) => [finding.tool, finding.classification])),
-    ).toEqual({
-      pmd: 'enforceable',
-      spotbugs: 'enforceable',
-      'google-java-format': 'enforceable',
-      jacoco: 'descriptive',
-    });
+      [...new Set(findings.map((finding) => `${finding.tool} ${finding.classification}`))].sort(),
+    ).toEqual([
+      'google-java-format enforceable',
+      'jacoco descriptive',
+      'jacoco enforceable', // only changed-branch-coverage
+      'pmd enforceable',
+      'spotbugs enforceable',
+    ]);
   });
 
   it('keeps identities when every reported line moves', () => {
