@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/a.js",
+      "identity": "i",
+      "message": "r in src/a.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/a.js",
+      "identity": "i",
+      "message": "again",
+      "classification": "enforceable"
+    }
+  ]
+}

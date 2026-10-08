@@ -1,0 +1,20 @@
+{
+  "findings": [
+    {
+      "tool": "eslint",
+      "rule": "no-console",
+      "path": "src/a.js",
+      "identity": "a:1",
+      "message": "no-console in src/a.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "eslint",
+      "rule": "no-eval",
+      "path": "src/b.js",
+      "identity": "b:1",
+      "message": "no-eval in src/b.js",
+      "classification": "enforceable"
+    }
+  ]
+}

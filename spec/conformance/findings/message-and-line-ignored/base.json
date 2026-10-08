@@ -1,0 +1,15 @@
+{
+  "findings": [
+    {
+      "tool": "eslint",
+      "rule": "no-console",
+      "path": "src/a.js",
+      "identity": "a:1",
+      "message": "old wording",
+      "classification": "enforceable",
+      "location": {
+        "line": 3
+      }
+    }
+  ]
+}

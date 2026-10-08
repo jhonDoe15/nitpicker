@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/new.js",
+      "identity": "i",
+      "message": "r in src/new.js",
+      "classification": "enforceable"
+    }
+  ]
+}
