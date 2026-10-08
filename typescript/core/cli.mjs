@@ -8,6 +8,7 @@ import {
 } from '../adapters/diff/static-checks-runner.mjs';
 import {
   applyLayout,
+  applyLegacyInventory,
   applyThresholds,
   configuredAnalyzers,
 } from '../preset/diff/configured-analyzers.mjs';
@@ -62,13 +63,16 @@ export function runCli({
     const config = loadConfig(selectedProjectRoot);
     const headPolicy = resolveHeadPolicy(config);
     const configure = (list) =>
-      addCustomAnalyzers(
-        applyThresholds(
-          applyLayout(applyDisable(list, config), headPolicy),
-          config.thresholds,
-          headPolicy,
+      applyLegacyInventory(
+        addCustomAnalyzers(
+          applyThresholds(
+            applyLayout(applyDisable(list, config), headPolicy),
+            config.thresholds,
+            headPolicy,
+          ),
+          config.analyzers,
         ),
-        config.analyzers,
+        config.legacyInventory,
       );
     if (options.all) {
       return runSnapshotCli({

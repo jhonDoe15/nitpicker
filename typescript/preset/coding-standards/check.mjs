@@ -6,9 +6,10 @@ import { analyzePublicContractUsage } from '../architecture/public-contract-usag
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mjs';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { DEFAULT_LEGACY_INVENTORY } from './inventory-path.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
-const defaultLegacyInventoryPath = path.join(import.meta.dirname, 'legacy-sites.json');
+const defaultLegacyInventoryPath = path.join(projectRoot, DEFAULT_LEGACY_INVENTORY);
 
 /** Keep exact legacy sites visible without allowing new sites or duplicate occurrences. */
 export function compareSignals(actual, allowed) {
