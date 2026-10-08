@@ -7,6 +7,7 @@
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
 //   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
+//   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 
 def pinned = [
@@ -14,7 +15,14 @@ def pinned = [
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     jacoco          : '0.8.12',
+    lizard          : '1.24.1',
 ]
+
+// lizard is a Python tool, not a JVM artifact, so Gradle cannot download it. It is provisioned by
+// the environment: `lizard` on the PATH, or the executable named by NITPICKER_LIZARD. Its version
+// must equal the pinned one; a missing or different lizard fails the build (the CLI reports that
+// as a tool-error finding). Install it with `pip install lizard==<pinned version>`.
+def lizardExecutable = System.getenv('NITPICKER_LIZARD') ?: 'lizard'
 
 allprojects {
     plugins.withId('java') {
@@ -87,6 +95,44 @@ allprojects {
             }
         }
 
+        tasks.register('nitpickerLizard') {
+            group = 'nitpicker'
+            doLast {
+                def run = { List<String> command ->
+                    def process = new ProcessBuilder(command).directory(projectDir)
+                        .redirectErrorStream(true).start()
+                    def output = process.inputStream.getText('UTF-8')
+                    [process.waitFor(), output]
+                }
+                def version
+                try {
+                    version = run([lizardExecutable, '--version'])
+                } catch (IOException e) {
+                    throw new GradleException("lizard ${pinned.lizard} is required for the CRAP check but " +
+                        "'${lizardExecutable}' could not be started (${e.message}). " +
+                        "Install it with 'pip install lizard==${pinned.lizard}' or set NITPICKER_LIZARD.")
+                }
+                if (version[0] != 0 || version[1].trim() != pinned.lizard) {
+                    throw new GradleException("lizard ${pinned.lizard} is required but " +
+                        "'${lizardExecutable} --version' reported: ${version[1].trim()}")
+                }
+                reportDir.get().asFile.mkdirs()
+                def roots = mainSources.files.findAll { it.exists() }.collect {
+                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                def csv = reportDir.get().file('lizard.csv').asFile
+                if (roots.isEmpty()) {
+                    csv.text = ''
+                    return
+                }
+                def result = run([lizardExecutable, '--csv', '-l', 'java'] + roots)
+                if (result[0] != 0) {
+                    throw new GradleException("lizard failed: ${result[1].trim()}")
+                }
+                csv.text = result[1]
+            }
+        }
+
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
             dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
@@ -104,8 +150,8 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check and JaCoCo; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo and lizard; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'nitpickerLizard'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')

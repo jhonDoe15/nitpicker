@@ -1,6 +1,6 @@
 # Java preset
 
-Status: slices 1 (ticket X11) and 2 (ticket J2) implemented; later slices are planned below. The scope is a proposal
+Status: slices 1 (ticket X11), 2 (ticket J2) and 5 (ticket J5) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
 The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
@@ -53,7 +53,7 @@ mapping, tests, and this document.
 | 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | this PR |
 | 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | later   |
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | later   |
-| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | later   |
+| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | this PR |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
 | 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | later   |
 | 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | later   |
@@ -135,9 +135,42 @@ Notes on the glue in `java-reports.mjs`:
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
 
+## Slice 5: CRAP via lizard
+
+- **Tool and report.** `lizard --csv -l java <source roots>` (pinned `lizard 1.24.1` in the init
+  script's version map) writes `build/nitpicker/lizard.csv`: one row per function with its
+  cyclomatic complexity (CCN). The Gradle task `nitpickerLizard` is part of `nitpickerJava`.
+- **Provisioning (decision to review).** lizard is a Python tool, so Gradle cannot download it.
+  The most conservative choice: the environment provides it. The init script runs the executable
+  named by `NITPICKER_LIZARD`, else `lizard` from the PATH; the version it reports must equal the
+  pinned one, otherwise the build fails with a message saying what to install
+  (`pip install lizard==1.24.1`). On the CLI path that becomes the usual `java/gradle-failure`
+  `tool-error`; nothing is skipped and no CRAP is guessed. Not done on purpose: auto-installing
+  with pip, a bundled copy, a virtualenv managed by nitpicker.
+- **Ingester.** `ingestCrap` (`adapters/ingest/crap.mjs`) joins lizard's functions with the JaCoCo
+  report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a lizard function when the
+  file, the method name (`<init>` is the class name) and the line match: the method's first line
+  lies in the function's line range. This also joins methods of anonymous classes. Lambdas and
+  `<clinit>` have no lizard function of their own and stay out of the join (a lambda body counts
+  toward its enclosing method's complexity but not toward its coverage).
+- **Rules, as in the TypeScript `crap` check.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, where
+  coverage is the lower of the method's JaCoCo line coverage and branch coverage (whichever have
+  counters). `crap-score-limit` (enforceable) when `crap >= 9`: a method at exactly the limit
+  fails, as it does for TypeScript. `crap-coverage-unknown` (enforceable) when no JaCoCo method
+  matches or the method has neither line nor branch counters. Only violations are findings; the
+  per-function metric findings of the TypeScript check are not produced.
+- **Identity.** `function:<lizard long name>`, for example `function:Calc::classify( int a , int b , String s)`:
+  class, method and parameter text, never a line. Repeats get `#2`, `#3` in report order. The path
+  is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
+  its findings as resolved plus new. Changing a method's parameters is a different function, as in
+  the TypeScript check, where an edit that moves a function changes its identity too.
+- **Tests.** `adapters/ingest/crap.test.mjs` against the committed samples
+  `fixtures/lizard.csv` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
+  the gated e2e test has a case adding a ten-branch untested method (needs lizard 1.24.1).
+
 ## Slice 1: what is deliberately not included
 
-- ArchUnit, CRAP via lizard, jscpd, PIT: slices 4 to 7.
+- ArchUnit, jscpd, PIT: slices 4, 6 and 7 (CRAP via lizard is slice 5, below).
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
@@ -151,7 +184,7 @@ Notes on the glue in `java-reports.mjs`:
 - `adapters/java/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
 - `adapters/java/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`
-  in `typescript/`). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+  in `typescript/`). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`adapters/java/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
