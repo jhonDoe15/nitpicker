@@ -56,8 +56,10 @@ describe('analyzer scheduler', () => {
   it('caps the default and accepts an explicit slot count', () => {
     expect(resolveMaxParallel({}, 16)).toBe(4);
     expect(resolveMaxParallel({}, 2)).toBe(2);
-    expect(resolveMaxParallel({ QUALITY_MAX_PARALLEL: '6' }, 2)).toBe(6);
-    expect(() => resolveMaxParallel({ QUALITY_MAX_PARALLEL: '0' }, 4)).toThrow(/positive integer/);
+    expect(resolveMaxParallel({ NITPICKER_MAX_PARALLEL: '6' }, 2)).toBe(6);
+    expect(() => resolveMaxParallel({ NITPICKER_MAX_PARALLEL: '0' }, 4)).toThrow(
+      /positive integer/,
+    );
   });
 
   it('runs independent analyzers concurrently within the slot budget', async () => {

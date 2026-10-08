@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-const mode = process.env.QUALITY_DIFF_FAKE_ESLINT_MODE;
+const mode = process.env.NITPICKER_DIFF_FAKE_ESLINT_MODE;
 
 if (mode === 'malformed') {
   process.stdout.write('{not-json');

@@ -18,6 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
+import { trackTemporaryPath } from '../temporary-files.mjs';
 import { existingRoots, projectCodeFiles } from '../../preset/layout.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -311,7 +312,7 @@ function createArchitectureConfig(options) {
   const policyConfig = policyFile(options, options.configRelativePath);
   const wrapperConfig = path.join(
     options.projectRoot,
-    '.quality-diff-dependency-cruiser.config.mjs',
+    '.nitpicker-diff-dependency-cruiser.config.mjs',
   );
   if (existsSync(wrapperConfig)) {
     throw new Error('Temporary architecture policy path already exists');
@@ -321,8 +322,9 @@ function createArchitectureConfig(options) {
       options,
       path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
     ),
-    path.join(options.projectRoot, '.quality-diff-tsconfig.json'),
+    path.join(options.projectRoot, '.nitpicker-diff-tsconfig.json'),
   );
+  trackTemporaryPath(wrapperConfig);
   try {
     writeFileSync(
       wrapperConfig,
@@ -355,7 +357,7 @@ function createArchitectureConfig(options) {
 function installTypeScriptConfig(options) {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
-    path.join(options.projectRoot, '.quality-diff-typecheck.json'),
+    path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
   );
 }
 
@@ -365,11 +367,13 @@ function installPrettierPolicy(options) {
   if (options.projectRoot === options.policyRoot) {
     return { configPath: policyConfig, ignorePath: policyIgnore, remove() {} };
   }
-  const configPath = path.join(options.projectRoot, '.quality-diff-prettier.json');
-  const ignorePath = path.join(options.projectRoot, '.quality-diff-prettierignore');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-prettier.json');
+  const ignorePath = path.join(options.projectRoot, '.nitpicker-diff-prettierignore');
   if (existsSync(configPath) || existsSync(ignorePath)) {
     throw new Error('Temporary Prettier policy path already exists');
   }
+  trackTemporaryPath(configPath);
+  trackTemporaryPath(ignorePath);
   symlinkSync(policyConfig, configPath, 'file');
   try {
     symlinkSync(policyIgnore, ignorePath, 'file');

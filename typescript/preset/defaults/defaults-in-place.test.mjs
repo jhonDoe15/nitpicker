@@ -25,6 +25,7 @@ import {
 const packageRoot = path.resolve(import.meta.dirname, '../..');
 const POLICY_PATHS = [
   'adapters/policy-links.mjs',
+  'adapters/temporary-files.mjs',
   'preset/defaults',
   'preset/layout.mjs',
   'preset/dependency-graph',
@@ -257,7 +258,7 @@ function oldLayoutFiles() {
 }
 
 function temporaryPolicyLinks(projectRoot) {
-  return readdirSync(projectRoot).filter((entry) => entry.startsWith('.quality-'));
+  return readdirSync(projectRoot).filter((entry) => entry.startsWith('.nitpicker-'));
 }
 
 function writeFiles(root, files) {

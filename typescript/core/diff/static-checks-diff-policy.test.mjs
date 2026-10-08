@@ -141,7 +141,7 @@ describe('static differential adapters', () => {
   it('ignores generated quality-diff files during formatting checks', () => {
     const projectRoot = generatedSnapshot();
     writeFiles(projectRoot, {
-      '.quality-diff-dependency-cruiser.config.mjs': 'export default{temporary:true}\n',
+      '.nitpicker-diff-dependency-cruiser.config.mjs': 'export default{temporary:true}\n',
       'src/main/formatted.ts': 'export const formatted = true;\n',
     });
 
