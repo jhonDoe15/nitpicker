@@ -4,6 +4,7 @@ import boundedContainerTeardown from './rules/bounded-container-teardown.mjs';
 import noFixedSleepSynchronization from './rules/no-fixed-sleep-synchronization.mjs';
 import noIntervalPollingInTests from './rules/no-interval-polling-in-tests.mjs';
 import noManagedResourceConstructionOutsideCompositionRoots from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
+import noHandwrittenBoundaryGuard from './rules/no-handwritten-boundary-guard.mjs';
 import noMockingSubjectUnderTest from './rules/no-mocking-subject-under-test.mjs';
 import noProductionConsole from './rules/no-production-console.mjs';
 import noSilentCatch from './rules/no-silent-catch.mjs';
@@ -30,6 +31,7 @@ export default {
     'preserve-error-cause': preserveErrorCause,
     'no-internal-module-mocks': noInternalModuleMocks,
     'integration-test-uses-approved-harness': integrationTestUsesApprovedHarness,
+    'no-handwritten-boundary-guard': noHandwrittenBoundaryGuard,
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
