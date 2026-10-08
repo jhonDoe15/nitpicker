@@ -26,6 +26,9 @@ npx nitpicker
 
 Run it from anywhere inside your project. It needs no configuration.
 
+Using a coding agent? Copy the [agent guidance snippet](../docs/agents-snippet.md) into your
+`AGENTS.md`.
+
 ### What it compares
 
 - **Base**: the merge base of the base ref and `HEAD`.
