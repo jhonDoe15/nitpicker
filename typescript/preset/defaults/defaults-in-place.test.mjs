@@ -28,6 +28,7 @@ const POLICY_PATHS = [
   'adapters/temporary-files.mjs',
   'preset/defaults',
   'preset/layout.mjs',
+  'preset/head-policy.mjs',
   'preset/dependency-graph',
   'preset/entry-points/analyze.mjs',
   'preset/test-runtime/analyze.mjs',
