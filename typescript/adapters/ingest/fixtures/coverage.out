@@ -1,0 +1,5 @@
+mode: set
+github.com/acme/app/pkg/a.go:10.20,12.2 2 1
+github.com/acme/app/pkg/a.go:14.20,16.2 2 0
+github.com/acme/app/pkg/a.go:18.2,19.3 1 1
+github.com/acme/app/main.go:5.14,7.2 3 0
