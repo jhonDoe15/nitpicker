@@ -3,6 +3,9 @@ import path from 'node:path';
 import { resolveProjectRoot } from '../../adapters/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
+import { resolveHeadPolicy } from '../../preset/head-policy.mjs';
+import { configureAnalyzers } from '../configure-analyzers.mjs';
+import { describeConfigOverrides, loadConfig } from '../config.mjs';
 import {
   clearDiffReports,
   relativeTextReportPath,
@@ -29,6 +32,7 @@ export function aggregateShardReports({
   shardCount,
   liveProjectRoot,
   policyRoot,
+  configOverrides = [],
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
   const analyzerResolutionErrors = [];
@@ -72,7 +76,8 @@ export function aggregateShardReports({
   );
   const summary = {
     ...commonSummary(shardReports[0].summary),
-    policyHash: policyHash(analyzers),
+    policyHash: policyHash(analyzers, configOverrides),
+    configOverrides,
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),
     elapsedMs: Math.max(...shardReports.map(({ summary: shardSummary }) => shardSummary.elapsedMs)),
@@ -129,10 +134,12 @@ export function runAggregateCli({
       options.outputRoot ?? 'reports/quality/diff/combined',
     );
     clearDiffReports(outputRoot);
+    const config = loadConfig(currentProjectRoot);
     const report = aggregateShardReports({
       inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
       outputRoot,
-      analyzers,
+      analyzers: configureAnalyzers(analyzers, config, resolveHeadPolicy(config)),
+      configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
       liveProjectRoot: currentProjectRoot,
       policyRoot:

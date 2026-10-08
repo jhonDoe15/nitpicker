@@ -1,5 +1,7 @@
 import path from 'node:path';
-import { sourceRoot, isTestFile } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const layout = readLayout();
 
 export default {
   meta: {
@@ -38,9 +40,10 @@ export default {
         const resolved = source.startsWith('.')
           ? path.resolve(path.dirname(context.filename), source).replaceAll('\\\\', '/')
           : source;
+        const sourceRoot = layout.sourceRootOf(resolved);
         if (
-          !resolved.includes(`/${sourceRoot}/`) ||
-          isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
+          sourceRoot === undefined ||
+          layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
         )
           return;
         context.report({ node, messageId: 'internalMock', data: { source } });

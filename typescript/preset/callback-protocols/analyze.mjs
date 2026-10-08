@@ -2,7 +2,7 @@ import ts from 'typescript';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { callbackProtocolContracts } from './contracts.mjs';
-import { sourceRoot as defaultSourceRoot, isSourceFile } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 function unwrap(node) {
   while (
@@ -267,7 +267,9 @@ export function analyzeCallbackProtocols(
 
 /** Discover all production sources. Tests/build outputs are excluded by file role, never feature. */
 export function analyzeProductionCallbacks({
-  sourceRoot = defaultSourceRoot,
+  layout = defaultResolvedLayout,
+  sourceRoot = layout.sourceRoot,
+  displayRoot = sourceRoot,
   contracts = callbackProtocolContracts,
 } = {}) {
   function sources(directory) {
@@ -277,8 +279,10 @@ export function analyzeProductionCallbacks({
         return /^(?:__tests__|tests|dist|build|node_modules)$/.test(entry.name)
           ? []
           : sources(fullPath);
+      const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
       return entry.isFile() &&
-        isSourceFile(`src/${path.relative(sourceRoot, fullPath).replaceAll('\\', '/')}`)
+        layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+        !layout.isExcluded(path.posix.join(displayRoot.replaceAll('\\', '/'), relative))
         ? [fullPath]
         : [];
     });

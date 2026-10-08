@@ -7,6 +7,8 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
 import { linkPolicyFile, lstatIfExists, removeOwnedLink } from '../policy-links.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -80,9 +82,9 @@ function runEslint(options) {
         env: {
           ...process.env,
           ...options.environment,
-          QUALITY_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
-          QUALITY_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
-          QUALITY_DIFF_ESLINT_PROJECT_CONFIG: installedProjectConfig ?? '',
+          NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
+          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
+          NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: installedProjectConfig ?? '',
         },
         encoding: 'utf8',
         maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
@@ -201,9 +203,13 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
           positiveInteger(message.endLine, `${context}.endLine`) - 1,
           positiveInteger(message.endColumn, `${context}.endColumn`) - 1,
         );
-  const locatedNode = findReportedNode(sourceFile, sourcePosition, endPosition);
+  const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
+  const locatedNode =
+    comment === undefined
+      ? findReportedNode(sourceFile, sourcePosition, endPosition)
+      : findStartedNode(sourceFile, sourcePosition);
   const reportedNode = stableSyntaxAnchor(locatedNode);
-  const nodeType = eslintNodeType(reportedNode);
+  const nodeType = comment === undefined ? eslintNodeType(reportedNode) : 'Comment';
   const symbol = enclosingSymbol(reportedNode);
   const messageIdentity =
     typeof message.messageId === 'string' && message.messageId.length > 0
@@ -217,7 +223,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     identity: [
       `message:${messageIdentity}`,
       `node:${nodeType}`,
-      `syntax:${syntaxFingerprint(reportedNode, nodeType)}`,
+      `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
     ].join('|'),
     message: messageText,
     location: { line, column },
@@ -227,6 +233,42 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     finding.symbol = symbol;
   }
   return finding;
+}
+
+// A finding reported on a comment (no-comments, ts-ignore directives, disabled inline config) is
+// anchored to the comment text. Comments are trivia, so the nearest syntax node is the code that
+// follows them and editing that code would otherwise change the fingerprint.
+function commentAt(text, position, endPosition) {
+  const isLine = text.startsWith('//', position);
+  if (!isLine && !text.startsWith('/*', position)) {
+    return undefined;
+  }
+  if (endPosition !== undefined && endPosition > position) {
+    return text.slice(position, endPosition);
+  }
+  if (isLine) {
+    const lineEnd = text.indexOf('\n', position);
+    return text.slice(position, lineEnd === -1 ? text.length : lineEnd);
+  }
+  const close = text.indexOf('*/', position + 2);
+  return text.slice(position, close === -1 ? text.length : close + 2);
+}
+
+function commentFingerprint(comment) {
+  return createHash('sha256').update(normalizeMessageText(comment)).digest('hex').slice(0, 24);
+}
+
+// The deepest node whose own text (excluding leading trivia) contains the position.
+function findStartedNode(sourceFile, position) {
+  let deepest = sourceFile;
+  function visit(node) {
+    if (node.getStart(sourceFile) <= position && position < node.end) {
+      deepest = node;
+      ts.forEachChild(node, visit);
+    }
+  }
+  ts.forEachChild(sourceFile, visit);
+  return deepest;
 }
 
 function findReportedNode(sourceFile, position, endPosition) {
@@ -391,6 +433,7 @@ function removeDependencyLinks(linkedDependencies) {
 
 function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
   const installedFiles = [];
+  const layout = readLayout();
   try {
     for (const [index, relativePath] of policyFiles.entries()) {
       const sourcePath = validatedContainedFile(
@@ -402,7 +445,8 @@ function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
       installedFiles.push(
         linkPolicyFile(
           sourcePath,
-          path.join(projectRoot, `.quality-diff-policy-${String(index)}${extension}`),
+          path.join(projectRoot, `.nitpicker-diff-policy-${String(index)}${extension}`),
+          layoutTransformFor(relativePath, layout),
         ),
       );
     }
@@ -422,6 +466,9 @@ function restorePolicyFiles(installedFiles) {
 function nonRuleDiagnosticId(message, context) {
   if (message.startsWith('Unused eslint-disable directive')) {
     return 'eslint/unused-disable-directive';
+  }
+  if (message.includes("has no effect because you have 'noInlineConfig' setting")) {
+    return 'eslint/inline-config-disabled';
   }
   throw new Error(`${context} has no rule identifier: ${message}`);
 }

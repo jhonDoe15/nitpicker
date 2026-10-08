@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { analyzerName } from './report-model.mjs';
 import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
+import { headPolicyEnvironment } from '../../preset/head-policy.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
@@ -52,6 +53,7 @@ export function runAnalyzers({
   snapshot,
   baselineRoot,
   liveProjectRoot,
+  headPolicyFile,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
     throw new TypeError('liveProjectRoot is required');
@@ -106,7 +108,7 @@ export function runAnalyzers({
 
   if (tasks.length > 0) {
     try {
-      const scheduled = runScheduler(tasks);
+      const scheduled = runScheduler(tasks, headPolicyFile);
       for (const [name, report] of scheduled.reports) {
         reports.set(name, report);
       }
@@ -128,10 +130,13 @@ export function runAnalyzers({
   return { reports, timings, toolErrors };
 }
 
-function runScheduler(tasks) {
+function runScheduler(tasks, headPolicyFile) {
   const result = spawnSync(process.execPath, [schedulerPath], {
     input: JSON.stringify({ tasks }),
-    env: process.env,
+    env:
+      headPolicyFile === undefined
+        ? process.env
+        : { ...process.env, ...headPolicyEnvironment(headPolicyFile) },
     encoding: 'utf8',
     maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
   });

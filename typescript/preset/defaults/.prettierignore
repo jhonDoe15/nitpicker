@@ -2,4 +2,4 @@ src/main/dist/
 coverage/
 reports/
 .stryker-tmp/
-.quality-diff-*
+.nitpicker-*

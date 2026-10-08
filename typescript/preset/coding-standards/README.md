@@ -14,6 +14,15 @@ exit 1; parser, configuration, and analyzer failures fail with exit 2.
 - Carry correlation input through asynchronous outcome callbacks; keep snapshot merging
   and external publication side effects out of source callbacks.
 - Give public contract methods a production consumer. Tests alone do not justify an API.
+- Strict set, `adapters/` (`preset/eslint-config/strict-adapters.mjs`, files matching
+  `src/main/features/*/adapters/**`): parse untrusted input with a zod schema. Zod is an
+  expectation of the preset, not a dependency of nitpicker. `nitpicker/no-handwritten-boundary-guard`
+  reports (1) any `x is T` or `asserts x is T` return type, since a hand-written guard is the
+  banned form, and (2) a `JSON.parse(...)` call whose result is neither passed directly to
+  `.parse`/`.safeParse`/`.parseAsync`/`.safeParseAsync` nor bound to a `const` that is later passed
+  as an argument to one of them. It works on syntax only, so it cannot tell external data from
+  internal data (every predicate is reported) and does not follow data through other functions or
+  other sources such as `response.json()`.
 
 Rules and synthetic fixtures use arbitrary names. Architecture assignments live separately
 in `architecture/runtime-dependency-boundaries.config.mjs`; API callback roles live in
@@ -23,8 +32,8 @@ feature files.
 
 ## Existing debt
 
-An optional `legacy-sites.json` next to `check.mjs` records pre-existing violations at adoption.
-A missing file means an empty inventory: every site fails. Coding identities include file, rule,
+An optional `nitpicker.legacy.json` at the consumer project's root records pre-existing violations
+at adoption (the `legacyInventory` key in `nitpicker.config.json` points elsewhere). A missing file means an empty inventory: every site fails. Coding identities include file, rule,
 normalized source and occurrence count; public contract identities include file, contract and
 method. A violation in another file, a changed site or an extra occurrence fails. Removed sites
 must be removed from the inventory so their return fails too. Do not expand this inventory to

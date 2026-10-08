@@ -4,6 +4,9 @@ A differential quality gate. It analyzes the merge base and `HEAD`, fingerprints
 fails only on new enforceable findings. Unchanged debt stays baselined, and findings follow renamed
 files.
 
+Using nitpicker in a TypeScript project? See [typescript/README.md](typescript/README.md): install,
+first run, configuration, exit codes, sharding and adoption on existing code.
+
 ## Layout
 
 Each top-level folder is one language. Inside it:

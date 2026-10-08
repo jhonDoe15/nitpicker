@@ -7,6 +7,9 @@ import {
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import { resolveHeadPolicy } from '../preset/head-policy.mjs';
+import { configureAnalyzers } from './configure-analyzers.mjs';
+import { describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
@@ -27,6 +30,7 @@ import {
 import { runQualityDiff } from './diff/run-diff.mjs';
 import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
+import { runAggregateCli } from './diff/aggregate-shards.mjs';
 
 export function runCli({
   arguments_ = process.argv.slice(2),
@@ -38,24 +42,41 @@ export function runCli({
   stderr = process.stderr,
   executeFixCommand,
 } = {}) {
+  if (arguments_[0] === 'aggregate') {
+    return runAggregateCli({
+      arguments_: arguments_.slice(1),
+      currentProjectRoot,
+      analyzers,
+      stdout,
+      stderr,
+      environment,
+    });
+  }
   try {
     const options = parseArguments(arguments_);
     if (options.help) {
       stdout.write(
         'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
           ' [--analyzer <name>]... [--rule <substring>]...' +
-          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n',
+          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n' +
+          '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
+          ' [--output <directory>] [--policy-root <directory>]\n',
       );
       return 0;
     }
 
     const selectedProjectRoot =
       currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
+    // The config is read from the head checkout and applies to both sides of the comparison.
+    const config = loadConfig(selectedProjectRoot);
+    const headPolicy = resolveHeadPolicy(config);
+    const configure = (list) => configureAnalyzers(list, config, headPolicy);
     if (options.all) {
       return runSnapshotCli({
         options,
         currentProjectRoot: selectedProjectRoot,
-        analyzers: snapshotAnalyzers,
+        analyzers: configure(snapshotAnalyzers),
+        headPolicy,
         stdout,
       });
     }
@@ -63,7 +84,9 @@ export function runCli({
       options,
       environment,
       currentProjectRoot: selectedProjectRoot,
-      analyzers,
+      analyzers: configure(analyzers),
+      config,
+      headPolicy,
       stdout,
       executeFixCommand,
     });
@@ -144,6 +167,8 @@ function runComparisonCli({
   environment,
   currentProjectRoot,
   analyzers,
+  config,
+  headPolicy,
   stdout,
   executeFixCommand,
 }) {
@@ -154,7 +179,7 @@ function runComparisonCli({
   const base = resolveBase({
     repositoryRoot,
     explicitBase: options.baseRef,
-    configuredBase: undefined,
+    configuredBase: config.base,
     environment,
   });
   const outputRoot =
@@ -167,6 +192,7 @@ function runComparisonCli({
         projectRoot: currentProjectRoot,
         baseRef: base.baseRef,
         executeFixCommand,
+        headPolicy,
       })
     : { fixedFiles: [], toolErrors: [] };
   if (options.fix) {
@@ -194,6 +220,8 @@ function runComparisonCli({
     analyzers: selectedAnalyzers,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
+    configOverrides: describeConfigOverrides(config),
+    headPolicy,
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
@@ -212,7 +240,7 @@ function runComparisonCli({
   return report.summary.newEnforceableFindings > 0 ? 1 : 0;
 }
 
-function runSnapshotCli({ options, currentProjectRoot, analyzers, stdout }) {
+function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, stdout }) {
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/snapshot')
@@ -246,6 +274,7 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, stdout }) {
         policyRoot: snapshotRoot,
         toolRoot: PACKAGE_ROOT,
         liveProjectRoot: currentProjectRoot,
+        headPolicy,
       });
     } finally {
       removeSnapshotDependencies(dependencies);

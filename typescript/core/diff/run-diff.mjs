@@ -1,13 +1,15 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
 import { compareFindings } from './compare.mjs';
-import { captureWorkingTree, readRenameMap, resolveComparison } from './git.mjs';
+import { captureWorkingTree, readChangedLines, readRenameMap, resolveComparison } from './git.mjs';
 import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../../adapters/diff/static-checks-runner.mjs';
+import { withHeadPolicyFile } from '../../preset/head-policy.mjs';
+import { isStrictRule } from '../../preset/strict-rules.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -20,6 +22,8 @@ export function runQualityDiff({
   analyzers,
   includeWorkingTree = false,
   additionalToolErrors = [],
+  configOverrides = [],
+  headPolicy = {},
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -35,6 +39,15 @@ export function runQualityDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
+  const touchedCode = {
+    changedLines: readChangedLines({
+      repositoryRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
+      headSha: comparison.headSha,
+      projectRelativePath,
+    }),
+    isStrictRule,
+  };
 
   const report = withTemporaryWorktree(
     repositoryRoot,
@@ -43,34 +56,39 @@ export function runQualityDiff({
       withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktreeRoot) => {
         const baseProjectRoot = path.join(baseWorktreeRoot, projectRelativePath);
         const headSnapshotRoot = path.join(headWorktreeRoot, projectRelativePath);
-        const compareSnapshots = () => {
-          const baseRun = runAnalyzers({
-            analyzers,
-            projectRoot: baseProjectRoot,
-            policyRoot: headSnapshotRoot,
-            toolRoot: PACKAGE_ROOT,
-            liveProjectRoot: headProjectRoot,
-            snapshot: 'base',
+        const compareSnapshots = () =>
+          withHeadPolicyFile(headPolicy, (headPolicyFile) => {
+            const baseRun = runAnalyzers({
+              analyzers,
+              projectRoot: baseProjectRoot,
+              policyRoot: headSnapshotRoot,
+              toolRoot: PACKAGE_ROOT,
+              liveProjectRoot: headProjectRoot,
+              headPolicyFile,
+              snapshot: 'base',
+            });
+            const headRun = runAnalyzers({
+              analyzers,
+              projectRoot: headSnapshotRoot,
+              policyRoot: headSnapshotRoot,
+              toolRoot: PACKAGE_ROOT,
+              liveProjectRoot: headProjectRoot,
+              headPolicyFile,
+              snapshot: 'head',
+              baselineRoot: baseProjectRoot,
+            });
+            return combineAnalyzerReports({
+              analyzers,
+              baseRun,
+              headRun,
+              baseToHeadRenames,
+              touchedCode,
+              comparison,
+              startedAt,
+              additionalToolErrors,
+              configOverrides,
+            });
           });
-          const headRun = runAnalyzers({
-            analyzers,
-            projectRoot: headSnapshotRoot,
-            policyRoot: headSnapshotRoot,
-            toolRoot: PACKAGE_ROOT,
-            liveProjectRoot: headProjectRoot,
-            snapshot: 'head',
-            baselineRoot: baseProjectRoot,
-          });
-          return combineAnalyzerReports({
-            analyzers,
-            baseRun,
-            headRun,
-            baseToHeadRenames,
-            comparison,
-            startedAt,
-            additionalToolErrors,
-          });
-        };
         return requiresPreparedDependencies(analyzers)
           ? withPreparedAnalyzerDependencies(
               {
@@ -132,9 +150,11 @@ function combineAnalyzerReports({
   baseRun,
   headRun,
   baseToHeadRenames,
+  touchedCode,
   comparison,
   startedAt,
   additionalToolErrors,
+  configOverrides,
 }) {
   const newFindings = [];
   const resolvedFindings = [];
@@ -163,6 +183,7 @@ function combineAnalyzerReports({
           baseFindings,
           headFindings,
           baseToHeadRenames,
+          touchedCode,
         });
         newFindings.push(...result.newFindings);
         resolvedFindings.push(...result.resolvedFindings);
@@ -212,7 +233,8 @@ function combineAnalyzerReports({
       resolvedBaseSha: comparison.resolvedBaseSha,
       mergeBaseSha: comparison.mergeBaseSha,
       headSha: comparison.headSha,
-      policyHash: policyHash(analyzers),
+      policyHash: policyHash(analyzers, configOverrides),
+      configOverrides,
       tools,
       exclusions,
       renamedPaths: baseToHeadRenames.size,

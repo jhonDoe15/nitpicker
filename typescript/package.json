@@ -12,7 +12,8 @@
     "node": ">=22.14"
   },
   "scripts": {
-    "test": "vitest run --config vitest.config.mts"
+    "test": "vitest run --config vitest.config.mts",
+    "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs"
   },
   "prettier": "./preset/defaults/.prettierrc.json",
   "files": [
@@ -40,6 +41,7 @@
     "@vitest/eslint-plugin": "1.6.27",
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
+    "eslint-plugin-functional": "10.0.1",
     "eslint-plugin-sonarjs": "4.2.0",
     "globals": "17.11.0",
     "jscpd": "5.0.16",

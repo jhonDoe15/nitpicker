@@ -131,7 +131,7 @@ describe('quality shard aggregation', () => {
     const fixture = createFixture();
     const repositoryRoot = path.join(path.dirname(fixture.inputRoot), 'repository');
     const liveProjectRoot = path.join(repositoryRoot, 'project');
-    const inventoryPath = path.join(liveProjectRoot, 'legacy-sites.json');
+    const inventoryPath = path.join(liveProjectRoot, 'nitpicker.legacy.json');
     mkdirSync(liveProjectRoot, { recursive: true });
     writeFileSync(inventoryPath, '{"sites":["head"]}');
     runGitCommand(repositoryRoot, ['init', '--quiet']);
@@ -145,7 +145,7 @@ describe('quality shard aggregation', () => {
     const codingStandards = analyzer('coding-standards');
     codingStandards.resolveVersion = () => '1.0.0';
     codingStandards.resolveConfigurationHash = (root) =>
-      readFileSync(path.join(root, 'legacy-sites.json'), 'utf8');
+      readFileSync(path.join(root, 'nitpicker.legacy.json'), 'utf8');
     const headPolicyHash = '{"sites":["head"]}';
     writeShard(fixture.inputRoot, 0, {
       tools: ['coding-standards'],
