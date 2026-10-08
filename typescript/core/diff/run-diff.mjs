@@ -19,6 +19,7 @@ export function runQualityDiff({
   outputRoot,
   analyzers,
   includeWorkingTree = false,
+  additionalToolErrors = [],
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -67,6 +68,7 @@ export function runQualityDiff({
             baseToHeadRenames,
             comparison,
             startedAt,
+            additionalToolErrors,
           });
         };
         return requiresPreparedDependencies(analyzers)
@@ -132,12 +134,13 @@ function combineAnalyzerReports({
   baseToHeadRenames,
   comparison,
   startedAt,
+  additionalToolErrors,
 }) {
   const newFindings = [];
   const resolvedFindings = [];
   const unchangedFindings = [];
   const changedMetrics = [];
-  const toolErrors = [...baseRun.toolErrors, ...headRun.toolErrors];
+  const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const tools = [];
 
   for (const [index, analyzer] of analyzers.entries()) {
