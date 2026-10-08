@@ -21,6 +21,7 @@ import {
   isSourceFile,
   isRunnableTestFile,
 } from '../../preset/layout.mjs';
+import { trackTemporaryPath } from '../temporary-files.mjs';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
@@ -173,11 +174,12 @@ async function runStructure(options) {
 }
 
 function runDuplicates(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-jscpd.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-jscpd.json');
   const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
   const config = parseReportJson(
     readFileSync(path.join(options.policyRoot, 'preset/defaults/jscpd.json'), 'utf8'),
   );
+  trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
     `${JSON.stringify({ ...config, reporters: ['json'], output: outputDirectory })}\n`,
@@ -199,7 +201,8 @@ function runDuplicates(options) {
 }
 
 function runDeadCode(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-knip.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
+  trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
     readFileSync(path.join(options.policyRoot, 'preset/defaults/knip.json'), 'utf8'),
@@ -221,11 +224,13 @@ function runDeadCode(options) {
 }
 
 function runCoverage(options) {
-  const configPath = path.join(options.projectRoot, '.quality-diff-vitest.config.ts');
-  const testReportPath = path.join(options.projectRoot, '.quality-diff-vitest-report.json');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-vitest.config.ts');
+  const testReportPath = path.join(options.projectRoot, '.nitpicker-diff-vitest-report.json');
   if (existsSync(testReportPath)) {
     throw new Error(`Temporary coverage report already exists: ${testReportPath}`);
   }
+  trackTemporaryPath(configPath);
+  trackTemporaryPath(testReportPath);
   writeFileSync(
     configPath,
     readFileSync(path.join(options.policyRoot, 'preset/defaults/vitest.quality.config.ts'), 'utf8'),
@@ -342,7 +347,7 @@ function runCrap(options) {
     absoluteToolPath: path.join(options.policyRoot, 'preset/crap/report.mjs'),
     arguments_: [],
     cwd: options.projectRoot,
-    environment: { QUALITY_PROJECT_ROOT: options.projectRoot },
+    environment: { NITPICKER_PROJECT_ROOT: options.projectRoot },
     acceptedStatuses: [0],
   });
   const report = parseReportJson(
@@ -361,20 +366,20 @@ async function runMutation(options) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
-  const configPath = path.join(options.projectRoot, '.quality-diff-stryker.config.mjs');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const reportPath = 'reports/quality/mutation/mutation.json';
   const createdFiles = [];
   try {
     const tsconfigPath = installMutationCompanion(
       options,
       sourceConfig.tsconfigFile,
-      '.quality-diff-tsconfig.stryker.json',
+      '.nitpicker-diff-tsconfig.stryker.json',
       createdFiles,
     );
     const vitestConfigPath = installMutationCompanion(
       options,
       sourceConfig.vitest?.configFile,
-      '.quality-diff-stryker.vitest.config.ts',
+      '.nitpicker-diff-stryker.vitest.config.ts',
       createdFiles,
     );
     const config = {
@@ -1144,6 +1149,7 @@ function writeTemporaryFile(filePath, contents, createdFiles) {
   if (existsSync(filePath)) {
     throw new Error(`Temporary mutation config already exists: ${filePath}`);
   }
+  trackTemporaryPath(filePath);
   createdFiles.push(filePath);
   writeFileSync(filePath, contents);
 }
