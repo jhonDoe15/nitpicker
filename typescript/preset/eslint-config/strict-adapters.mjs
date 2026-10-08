@@ -3,7 +3,12 @@ import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
-export const adapterGlobs = [`src/main/features/*/adapters/**/*.${codeExtensions}`];
+/** The I/O folders of every feature, below each source root of the layout. */
+export function adapterGlobsFor(sourceRoots) {
+  return sourceRoots.map((root) => `${root}/main/features/*/adapters/**/*.${codeExtensions}`);
+}
+
+export const adapterGlobs = adapterGlobsFor(['src']);
 
 const loopMessage = 'for...of is the only loop in adapters; iterate the items with for...of.';
 const promiseChainMessage =
@@ -36,8 +41,9 @@ export const restrictedAdapterSyntax = [
 ];
 
 // Syntactic strict rules for `features/<name>/adapters/`. These work without type information.
-// The preset enables them; they are not in the default preset yet. Another config that sets
-// `no-restricted-syntax` for the same files replaces this selector list, so merge lists instead.
+// The preset enables them through strict.mjs, which merges `restrictedAdapterSyntax` with the
+// selectors that apply everywhere: a config that sets `no-restricted-syntax` for the same files
+// replaces this list, so this standalone config is for tests of the adapters rules on their own.
 // Zod is a documented expectation of the preset, not a dependency of nitpicker: the rule works on
 // syntax and its messages name the zod schema as the allowed form.
 export default [

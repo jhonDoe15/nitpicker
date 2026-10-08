@@ -30,6 +30,8 @@ const POLICY_PATHS = [
   'preset/layout.mjs',
   'preset/head-policy.mjs',
   'preset/tool-configs.mjs',
+  'preset/architecture/strict-boundary-rules.mjs',
+  'preset/architecture/strict-layout.mjs',
   'preset/dependency-graph',
   'preset/entry-points/analyze.mjs',
   'preset/test-runtime/analyze.mjs',

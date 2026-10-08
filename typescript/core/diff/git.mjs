@@ -149,6 +149,75 @@ export function readRenameMap({ repositoryRoot, mergeBaseSha, headSha, projectRe
   return renames;
 }
 
+/**
+ * The lines each file has on the head side that differ from the merge base, as
+ * `Map<path, { path, added, ranges }>` with 1-based inclusive `[start, end]` line ranges. A new
+ * file has `added: true`. A pure rename or move without content changes has no hunks and is not
+ * listed.
+ */
+export function readChangedLines({ repositoryRoot, mergeBaseSha, headSha, projectRelativePath }) {
+  const output = runGit(repositoryRoot, [
+    '-c',
+    'core.quotePath=false',
+    'diff',
+    '--unified=0',
+    '--find-renames',
+    '--no-color',
+    '--no-ext-diff',
+    `${mergeBaseSha}...${headSha}`,
+    '--',
+    projectRelativePath,
+  ]);
+  return parseChangedLines(output, normalizeGitPath(projectRelativePath).replace(/\/$/, ''));
+}
+
+const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+
+export function parseChangedLines(diffText, projectRelativePath = '.') {
+  const changed = new Map();
+  let current;
+  let isNewFile = false;
+  for (const line of diffText.split('\n')) {
+    if (line.startsWith('diff --git ')) {
+      current = undefined;
+      isNewFile = false;
+    } else if (line.startsWith('new file mode')) {
+      isNewFile = true;
+    } else if (line.startsWith('+++ ')) {
+      const filePath = diffTargetPath(line.slice(4));
+      current =
+        filePath === undefined
+          ? undefined
+          : {
+              path: relativeToProject(filePath, projectRelativePath),
+              added: isNewFile,
+              ranges: [],
+            };
+      if (current !== undefined) {
+        changed.set(current.path, current);
+      }
+    } else if (current !== undefined) {
+      const hunk = HUNK_HEADER.exec(line);
+      if (hunk !== null) {
+        const start = Number(hunk[1]);
+        const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
+        if (count > 0) {
+          current.ranges.push([start, start + count - 1]);
+        }
+      }
+    }
+  }
+  return changed;
+}
+
+function diffTargetPath(target) {
+  const unquoted = target.startsWith('"') ? JSON.parse(target) : target.replace(/\t.*$/, '');
+  if (unquoted === '/dev/null') {
+    return undefined;
+  }
+  return unquoted.replace(/^b\//, '');
+}
+
 function fetchSuggestion(repositoryRoot, requestedBaseRef, isShallow) {
   const remotes = new Set(
     runGit(repositoryRoot, ['remote'])

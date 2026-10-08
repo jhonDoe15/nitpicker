@@ -5,13 +5,19 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
+import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
 // The head policy comes from nitpicker.config.json; without it the preset defaults apply.
 const policy = readHeadPolicy();
 
-const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = readLayout();
+const layout = readLayout();
+const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
+const parserOptions = {
+  project: './tsconfig.quality.json',
+  tsconfigRootDir: import.meta.dirname,
+};
 const productionFiles = sourceGlobs;
 const testFiles = testGlobs;
 const selectedFiles = [...productionFiles, ...testFiles];
@@ -26,22 +32,16 @@ const presetConfig = tseslint.config(
     files: selectedFiles,
     languageOptions: {
       globals: globals.node,
-      parserOptions: {
-        project: './tsconfig.quality.json',
-        tsconfigRootDir: import.meta.dirname,
-      },
+      parserOptions,
     },
     plugins: {
       sonarjs,
     },
     rules: {
-      '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
-      '@typescript-eslint/explicit-member-accessibility': 'error',
-      '@typescript-eslint/no-unsafe-type-assertion': 'error',
       'sonarjs/cognitive-complexity': ['error', 15],
     },
   },
@@ -54,6 +54,15 @@ const presetConfig = tseslint.config(
     rules: {
       'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
+    },
+  },
+  ...strictPresetConfig(layout, parserOptions),
+  {
+    files: productionFiles,
+    ignores: [...testFiles, ...layout.sourceTestDirectoryGlobs],
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-non-null-assertion': 'off',
     },
   },
   {
