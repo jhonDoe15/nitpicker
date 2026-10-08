@@ -4,6 +4,7 @@ import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
 import strictDomainConfig from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
+import { adapterFailureMessageCases } from './adapter-cases.mjs';
 
 function strictCase([name, banned, allowed]) {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
@@ -221,4 +222,5 @@ export const failureMessageCases = [
     banned: 'try { run(); } catch (error) { throw new Error(String(error)); }',
     allowed: 'original cause',
   },
+  ...adapterFailureMessageCases,
 ];
