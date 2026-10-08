@@ -1,0 +1,8 @@
+{
+  "description": "The merge base is the fork point even though the base branch has advanced.",
+  "baseRef": "main",
+  "projectPath": ".",
+  "mergeBase": "fork-point",
+  "head": "head",
+  "renames": {}
+}

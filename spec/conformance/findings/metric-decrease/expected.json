@@ -1,0 +1,18 @@
+{
+  "description": "A metric that drops yields a negative delta.",
+  "new": [],
+  "resolved": [],
+  "unchanged": [],
+  "changedMetrics": [
+    {
+      "tool": "complexity",
+      "rule": "cyclomatic",
+      "path": "src/a.js",
+      "identity": "fn:a",
+      "metric": "cyclomatic",
+      "baseValue": 9,
+      "headValue": 4,
+      "delta": -5
+    }
+  ]
+}

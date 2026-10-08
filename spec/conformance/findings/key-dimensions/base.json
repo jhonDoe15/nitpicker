@@ -1,0 +1,53 @@
+{
+  "findings": [
+    {
+      "tool": "t1",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "message": "r in p.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r1",
+      "path": "p.js",
+      "identity": "i",
+      "message": "r1 in p.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p1.js",
+      "identity": "i",
+      "message": "r in p1.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "message": "r in p.js",
+      "classification": "enforceable",
+      "symbol": "s"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i1",
+      "message": "r in p.js",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "message": "r in p.js",
+      "classification": "enforceable"
+    }
+  ]
+}

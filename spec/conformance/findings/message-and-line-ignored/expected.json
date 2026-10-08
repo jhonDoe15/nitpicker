@@ -1,0 +1,15 @@
+{
+  "description": "Message text and location are not part of the comparison key; a finding that only moves lines or is reworded is unchanged. The head version is the one reported.",
+  "new": [],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "eslint",
+      "rule": "no-console",
+      "path": "src/a.js",
+      "identity": "a:1",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}

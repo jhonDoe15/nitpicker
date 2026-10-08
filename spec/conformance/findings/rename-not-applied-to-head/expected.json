@@ -1,0 +1,26 @@
+{
+  "description": "Renames apply to the base side only. A head finding still at the old path is new; the remapped base finding is resolved.",
+  "renames": {
+    "src/old.js": "src/new.js"
+  },
+  "new": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/old.js",
+      "identity": "j",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "eslint",
+      "rule": "r",
+      "path": "src/old.js",
+      "identity": "i",
+      "classification": "enforceable"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}
