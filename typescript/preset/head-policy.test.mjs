@@ -33,7 +33,12 @@ afterEach(() => {
 
 describe('head policy reader', () => {
   it('falls back to preset layout defaults without a policy file', () => {
-    expect(readHeadPolicy({})).toEqual({ exclude: [], layout: defaultLayout, thresholds: {} });
+    expect(readHeadPolicy({})).toEqual({
+      exclude: [],
+      layout: defaultLayout,
+      exceptions: [],
+      thresholds: {},
+    });
   });
 
   it('merges the head policy over the defaults', () => {
@@ -46,6 +51,7 @@ describe('head policy reader', () => {
       expect(readHeadPolicy({ NITPICKER_POLICY: policyFile })).toEqual({
         exclude: ['**/legacy/**'],
         layout: { ...defaultLayout, sourceRoots: ['lib'] },
+        exceptions: [],
         thresholds: { crapLimit: 12 },
       });
     });
@@ -122,6 +128,7 @@ describe('head policy delivery', () => {
       expect(run.policy).toEqual({
         exclude: ['**/legacy/**'],
         layout: { ...defaultLayout, sourceRoots: ['lib'] },
+        exceptions: [],
         thresholds: { crapLimit: 12 },
       });
     }
