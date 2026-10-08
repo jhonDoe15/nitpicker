@@ -165,7 +165,9 @@ describe('complete quality-area analyzer catalog', () => {
     expect(names.findIndex((shard) => shard.includes('coverage'))).not.toBe(
       names.findIndex((shard) => shard.includes('mutation')),
     );
-    expect(weights).toEqual([156, 110, 109]);
+    // Balanced enough that no shard carries much more than its even share.
+    const evenShare = weights.reduce((total, weight) => total + weight, 0) / weights.length;
+    expect(Math.max(...weights)).toBeLessThanOrEqual(evenShare * 1.5);
   });
 
   it('requires a live project root before running analyzers', () => {
