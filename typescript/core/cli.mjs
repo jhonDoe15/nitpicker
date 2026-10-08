@@ -7,6 +7,7 @@ import {
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
 import { applyThresholds, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
+import { resolveHeadPolicy } from '../preset/head-policy.mjs';
 import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
@@ -60,6 +61,7 @@ export function runCli({
         options,
         currentProjectRoot: selectedProjectRoot,
         analyzers: configure(snapshotAnalyzers),
+        headPolicy: resolveHeadPolicy(config),
         stdout,
       });
     }
@@ -201,6 +203,7 @@ function runComparisonCli({
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
+    headPolicy: resolveHeadPolicy(config),
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
@@ -219,7 +222,7 @@ function runComparisonCli({
   return report.summary.newEnforceableFindings > 0 ? 1 : 0;
 }
 
-function runSnapshotCli({ options, currentProjectRoot, analyzers, stdout }) {
+function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, stdout }) {
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/snapshot')
@@ -253,6 +256,7 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, stdout }) {
         policyRoot: snapshotRoot,
         toolRoot: PACKAGE_ROOT,
         liveProjectRoot: currentProjectRoot,
+        headPolicy,
       });
     } finally {
       removeSnapshotDependencies(dependencies);

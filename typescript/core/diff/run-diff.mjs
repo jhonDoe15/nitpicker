@@ -8,6 +8,7 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../../adapters/diff/static-checks-runner.mjs';
+import { withHeadPolicyFile } from '../../preset/head-policy.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -21,6 +22,7 @@ export function runQualityDiff({
   includeWorkingTree = false,
   additionalToolErrors = [],
   configOverrides = [],
+  headPolicy = {},
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -44,35 +46,38 @@ export function runQualityDiff({
       withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktreeRoot) => {
         const baseProjectRoot = path.join(baseWorktreeRoot, projectRelativePath);
         const headSnapshotRoot = path.join(headWorktreeRoot, projectRelativePath);
-        const compareSnapshots = () => {
-          const baseRun = runAnalyzers({
-            analyzers,
-            projectRoot: baseProjectRoot,
-            policyRoot: headSnapshotRoot,
-            toolRoot: PACKAGE_ROOT,
-            liveProjectRoot: headProjectRoot,
-            snapshot: 'base',
+        const compareSnapshots = () =>
+          withHeadPolicyFile(headPolicy, (headPolicyFile) => {
+            const baseRun = runAnalyzers({
+              analyzers,
+              projectRoot: baseProjectRoot,
+              policyRoot: headSnapshotRoot,
+              toolRoot: PACKAGE_ROOT,
+              liveProjectRoot: headProjectRoot,
+              headPolicyFile,
+              snapshot: 'base',
+            });
+            const headRun = runAnalyzers({
+              analyzers,
+              projectRoot: headSnapshotRoot,
+              policyRoot: headSnapshotRoot,
+              toolRoot: PACKAGE_ROOT,
+              liveProjectRoot: headProjectRoot,
+              headPolicyFile,
+              snapshot: 'head',
+              baselineRoot: baseProjectRoot,
+            });
+            return combineAnalyzerReports({
+              analyzers,
+              baseRun,
+              headRun,
+              baseToHeadRenames,
+              comparison,
+              startedAt,
+              additionalToolErrors,
+              configOverrides,
+            });
           });
-          const headRun = runAnalyzers({
-            analyzers,
-            projectRoot: headSnapshotRoot,
-            policyRoot: headSnapshotRoot,
-            toolRoot: PACKAGE_ROOT,
-            liveProjectRoot: headProjectRoot,
-            snapshot: 'head',
-            baselineRoot: baseProjectRoot,
-          });
-          return combineAnalyzerReports({
-            analyzers,
-            baseRun,
-            headRun,
-            baseToHeadRenames,
-            comparison,
-            startedAt,
-            additionalToolErrors,
-            configOverrides,
-          });
-        };
         return requiresPreparedDependencies(analyzers)
           ? withPreparedAnalyzerDependencies(
               {
