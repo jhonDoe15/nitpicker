@@ -1,5 +1,6 @@
 import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
+import nitpickerRules from '../eslint-plugin/index.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
 export const domainGlobs = [`src/main/features/*/domain/**/*.${codeExtensions}`];
@@ -78,10 +79,12 @@ export default [
   {
     files: domainGlobs,
     languageOptions: { parser: tseslint.parser },
-    plugins: { functional },
+    plugins: { functional, nitpicker: nitpickerRules },
     rules: {
       ...domainFunctionalRules,
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
+      'nitpicker/no-self-recursion': 'error',
+      'nitpicker/no-throw': 'error',
     },
   },
 ];
