@@ -43,6 +43,7 @@ const POLICY_FILES = [
   'preset/eslint-plugin/rules/integration-test-uses-approved-harness.mjs',
   'preset/eslint-plugin/rules/no-managed-resource-construction-outside-composition-roots.mjs',
   'preset/eslint-plugin/rules/no-mocking-subject-under-test.mjs',
+  'preset/eslint-plugin/rules/no-module-level-let.mjs',
   'preset/eslint-plugin/rules/no-production-console.mjs',
   'preset/eslint-plugin/rules/no-silent-catch.mjs',
   'preset/eslint-plugin/rules/report-module-load-effects.mjs',

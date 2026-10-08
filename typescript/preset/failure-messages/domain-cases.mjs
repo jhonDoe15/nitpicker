@@ -1,0 +1,64 @@
+import strictDomainConfig from '../eslint-config/strict-domain.mjs';
+
+const filename = 'src/main/features/billing/domain/invoice.ts';
+
+function domainCase(name, banned, allowed) {
+  return { name: `domain: ${name}`, config: strictDomainConfig, filename, banned, allowed };
+}
+
+export const domainFailureMessageCases = [
+  domainCase('let names const', 'let total = 1;', 'const'),
+  domainCase(
+    'for loop names map',
+    'const run = (xs: readonly number[]) => { for (const x of xs) { x; } };',
+    'map, filter, flatMap',
+  ),
+  domainCase(
+    'while loop names map',
+    'const run = () => { while (false) { 1; } };',
+    'Object.groupBy',
+  ),
+  domainCase(
+    'forEach names map',
+    'const run = (xs: readonly number[]) => xs.forEach((x) => x);',
+    'Object.fromEntries',
+  ),
+  domainCase(
+    'reduce names map',
+    'const run = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0);',
+    'flatMap',
+  ),
+  domainCase(
+    'push names a new array',
+    'const run = (xs: readonly number[]) => xs.push(1);',
+    'new array',
+  ),
+  domainCase(
+    'property assignment names spread',
+    'const run = (o: { readonly a: number }) => { o.a = 2; };',
+    'new object with spread',
+  ),
+  domainCase(
+    'property increment names spread',
+    'const run = (o: { readonly a: number }) => { o.a++; };',
+    'new object with spread',
+  ),
+  domainCase(
+    'delete names Object.fromEntries',
+    'const run = (o: { readonly a: number }) => { delete o.a; };',
+    'Object.fromEntries',
+  ),
+  domainCase('class names functions', 'class Invoice {}', 'functions'),
+  domainCase('this names functions', 'function run() { return this; }', 'functions'),
+  domainCase(
+    'mutable array parameter names readonly',
+    'function run(xs: number[]) { return xs; }',
+    'readonly T[]',
+  ),
+  domainCase(
+    'Array generic names ReadonlyArray',
+    'function run(xs: Array<number>) { return xs; }',
+    'ReadonlyArray',
+  ),
+  domainCase('mutable property names readonly', 'type Invoice = { total: number };', 'readonly'),
+];
