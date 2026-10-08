@@ -28,9 +28,7 @@ describe('structural metrics report', () => {
 
     expect(report.summary.files).toBe(2);
     expect(report.functions.map((entry) => entry.source)).not.toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/dist|build|generated|__tests__/),
-      ]),
+      expect.arrayContaining([expect.stringMatching(/dist|build|generated|__tests__/)]),
     );
     expect(complex).toMatchObject({ parameters: 5, maxControlNesting: 3 });
     expect(complex.statements).toBeGreaterThan(4);
