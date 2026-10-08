@@ -1,5 +1,6 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
+  existsSync,
   lstatSync,
   mkdtempSync,
   mkdirSync,
@@ -220,6 +221,7 @@ suite('packed nitpicker in a separate consumer', () => {
 
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));
+        expect(existsSync(path.join(packageLocation, 'README.md'))).toBe(true);
         if (!strategy) {
           const eslint = path.dirname(
             execFileSync(

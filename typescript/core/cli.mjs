@@ -6,15 +6,10 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
-import {
-  applyLayout,
-  applyLegacyInventory,
-  applyThresholds,
-  configuredAnalyzers,
-} from '../preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
-import { addCustomAnalyzers } from '../adapters/diff/custom-analyzer.mjs';
-import { applyDisable, describeConfigOverrides, loadConfig } from './config.mjs';
+import { configureAnalyzers } from './configure-analyzers.mjs';
+import { describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
@@ -75,18 +70,7 @@ export function runCli({
     // The config is read from the head checkout and applies to both sides of the comparison.
     const config = loadConfig(selectedProjectRoot);
     const headPolicy = resolveHeadPolicy(config);
-    const configure = (list) =>
-      applyLegacyInventory(
-        addCustomAnalyzers(
-          applyThresholds(
-            applyLayout(applyDisable(list, config), headPolicy),
-            config.thresholds,
-            headPolicy,
-          ),
-          config.analyzers,
-        ),
-        config.legacyInventory,
-      );
+    const configure = (list) => configureAnalyzers(list, config, headPolicy);
     if (options.all) {
       return runSnapshotCli({
         options,
