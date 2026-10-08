@@ -1,4 +1,5 @@
 import loggingConfig from '../eslint-config/logging.mjs';
+import { domainFailureMessageCases } from './domain-cases.mjs';
 
 // Add one entry per banned form. `config` is any ESLint flat config array; `banned` is a fixture
 // that must fail; `allowed` is the wording the message must use to name the allowed form.
@@ -10,4 +11,5 @@ export const failureMessageCases = [
     banned: 'console.log("started");',
     allowed: 'application logger',
   },
+  ...domainFailureMessageCases,
 ];
