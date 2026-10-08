@@ -1,10 +1,13 @@
-import { sourceGlobs, testGlobs, excludedGlobs, testRoots } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
+
+const { sourceGlobs, testGlobs, excludedGlobs, testRoots, sourceRoots, sourceTestDirectoryGlobs } =
+  readLayout();
 
 export default {
   mutate: [
     ...sourceGlobs,
     ...excludedGlobs.map((glob) => `!${glob}`),
-    '!src/**/__tests__/**',
+    ...sourceTestDirectoryGlobs.map((glob) => `!${glob}`),
     ...testGlobs.map((glob) => `!${glob}`),
   ],
   testRunner: 'vitest',
@@ -23,5 +26,9 @@ export default {
   thresholds: {
     break: null,
   },
-  ignorePatterns: ['src/dist', ...testRoots.map((root) => `${root}/integration`), 'reports'],
+  ignorePatterns: [
+    ...sourceRoots.map((root) => `${root}/dist`),
+    ...testRoots.map((root) => `${root}/integration`),
+    'reports',
+  ],
 };

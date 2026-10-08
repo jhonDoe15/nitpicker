@@ -6,7 +6,7 @@ import {
   isTypeOnlyDependency,
   normalizePath,
 } from '../dependency-graph/cruise.mjs';
-import { sourceRoot as defaultSourceRoot, testRoots, isSourceUnderRoot } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mjs';
 
 const TEST_FILE = /(?:^|\/).+\.(?:test|spec)\.[cm]?[jt]sx?$/;
 
@@ -39,15 +39,16 @@ function sourceEvidence(sourceText) {
   return { dynamicImports };
 }
 
-function isPathExcludedTest(source) {
+function isPathExcludedTest(source, layout) {
   return (
     isExcludedPath(source) ||
-    new RegExp(`(?:^|/)(?:${testRoots.join('|')})/contract(?:/|$)`).test(source)
+    layout.isExcluded(source) ||
+    new RegExp(`(?:^|/)(?:${layout.testRoots.join('|')})/contract(?:/|$)`).test(source)
   );
 }
 
-function isProduction(source, productionRoot) {
-  return isSourceUnderRoot(source, productionRoot);
+function isProduction(source, productionRoots, layout) {
+  return productionRoots.some((root) => layout.isSourceUnderRoot(source, root));
 }
 
 function isDynamicDependency(dependency) {
@@ -103,7 +104,7 @@ function runtimeReachability(source, dependencies) {
   return { direct, visited };
 }
 
-function typeOnlyProductionReachability(source, dependencies, productionRoot) {
+function typeOnlyProductionReachability(source, dependencies, productionRoots, layout) {
   const visited = new Set();
   const production = new Set();
   const pending = (dependencies.get(source) ?? []).map((edge) => ({
@@ -118,7 +119,7 @@ function typeOnlyProductionReachability(source, dependencies, productionRoot) {
       continue;
     }
     visited.add(key);
-    if (current.usedTypeOnlyEdge && isProduction(current.target, productionRoot)) {
+    if (current.usedTypeOnlyEdge && isProduction(current.target, productionRoots, layout)) {
       production.add(current.target);
     }
     for (const edge of dependencies.get(current.target) ?? []) {
@@ -157,38 +158,43 @@ export async function loadModuleSources(graph, rootDirectory) {
 export function analyzeTestRuntime(
   graph,
   {
-    productionRoot = defaultSourceRoot,
+    layout = defaultResolvedLayout,
+    productionRoot = layout.sourceRoot,
+    productionRoots = [productionRoot],
     sourceTexts = new Map(),
-    subprocessBridges = testRoots.map((root) => `${root}/fixtures/app-process.ts`),
+    subprocessBridges = layout.testRoots.map((root) => `${root}/fixtures/app-process.ts`),
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
 
-  const normalizedProductionRoot = normalizePath(productionRoot).replace(/\/$/, '');
+  const normalizedProductionRoots = productionRoots.map((root) =>
+    normalizePath(root).replace(/\/$/, ''),
+  );
   const bridges = subprocessBridges.map(normalizePath);
   const dependencies = dependencyMap(graph, sourceTexts);
   const allTests = graph.modules
     .map((module) => normalizePath(module.source))
     .filter(isTest)
     .sort();
-  const pathExcluded = allTests.filter(isPathExcludedTest);
-  const tests = allTests.filter((source) => !isPathExcludedTest(source));
+  const pathExcluded = allTests.filter((source) => isPathExcludedTest(source, layout));
+  const tests = allTests.filter((source) => !isPathExcludedTest(source, layout));
 
   const results = tests.map((source) => {
     const { direct, visited } = runtimeReachability(source, dependencies);
     const directProductionEdges = direct.filter((edge) =>
-      isProduction(edge.target, normalizedProductionRoot),
+      isProduction(edge.target, normalizedProductionRoots, layout),
     );
     const runtimeProductionModules = [...visited]
-      .filter((target) => isProduction(target, normalizedProductionRoot))
+      .filter((target) => isProduction(target, normalizedProductionRoots, layout))
       .sort();
     const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
     const typeOnlyProductionModules = typeOnlyProductionReachability(
       source,
       dependencies,
-      normalizedProductionRoot,
+      normalizedProductionRoots,
+      layout,
     );
 
     let category;

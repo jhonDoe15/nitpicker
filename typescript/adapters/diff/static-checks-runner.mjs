@@ -18,7 +18,10 @@ import { pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
-import { existingRoots, projectCodeFiles } from '../../preset/layout.mjs';
+import { trackTemporaryPath } from '../temporary-files.mjs';
+import { existingRoots } from '../../preset/layout.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
@@ -72,6 +75,7 @@ async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
+  const layout = readLayout();
   if (
     !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
   )
@@ -89,6 +93,7 @@ async function runPrettier(options) {
         '--list-different',
         '--no-error-on-unmatched-pattern',
         ...options.patterns,
+        ...layout.exclude.map((glob) => `!${glob}`),
       ],
       acceptedStatuses: [0, 1],
     });
@@ -163,8 +168,15 @@ function runTypecheck(options) {
       options: parsedConfig.options,
       projectReferences: parsedConfig.projectReferences,
     });
+    const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
-      diagnostics: ts.getPreEmitDiagnostics(program),
+      diagnostics: ts
+        .getPreEmitDiagnostics(program)
+        .filter(
+          (diagnostic) =>
+            diagnostic.file === undefined ||
+            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+        ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath: options.configRelativePath,
@@ -182,7 +194,8 @@ function runArchitecture(options) {
   if (options.patterns.length === 0) {
     throw new Error('Architecture requires at least one --pattern');
   }
-  if (projectCodeFiles(options.projectRoot).length === 0) return [];
+  const layout = readLayout();
+  if (layout.projectCodeFiles(options.projectRoot).length === 0) return [];
   const patterns = existingRoots(options.projectRoot, options.patterns);
   if (patterns.length === 0) return [];
   const generatedConfig = createArchitectureConfig(options);
@@ -191,8 +204,11 @@ function runArchitecture(options) {
     if (options.includeOnly !== undefined) {
       arguments_.push('--include-only', options.includeOnly);
     }
-    if (options.exclude !== undefined) {
-      arguments_.push('--exclude', options.exclude);
+    const exclusion = [options.exclude, layout.excludePattern]
+      .filter((pattern) => pattern !== undefined)
+      .join('|');
+    if (exclusion.length > 0) {
+      arguments_.push('--exclude', exclusion);
     }
     const result = runNodeTool({
       options,
@@ -311,7 +327,7 @@ function createArchitectureConfig(options) {
   const policyConfig = policyFile(options, options.configRelativePath);
   const wrapperConfig = path.join(
     options.projectRoot,
-    '.quality-diff-dependency-cruiser.config.mjs',
+    '.nitpicker-diff-dependency-cruiser.config.mjs',
   );
   if (existsSync(wrapperConfig)) {
     throw new Error('Temporary architecture policy path already exists');
@@ -321,8 +337,10 @@ function createArchitectureConfig(options) {
       options,
       path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
     ),
-    path.join(options.projectRoot, '.quality-diff-tsconfig.json'),
+    path.join(options.projectRoot, '.nitpicker-diff-tsconfig.json'),
+    layoutTransformFor('tsconfig.quality.json', readLayout()),
   );
+  trackTemporaryPath(wrapperConfig);
   try {
     writeFileSync(
       wrapperConfig,
@@ -355,7 +373,8 @@ function createArchitectureConfig(options) {
 function installTypeScriptConfig(options) {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
-    path.join(options.projectRoot, '.quality-diff-typecheck.json'),
+    path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
+    layoutTransformFor(options.configRelativePath, readLayout()),
   );
 }
 
@@ -365,11 +384,13 @@ function installPrettierPolicy(options) {
   if (options.projectRoot === options.policyRoot) {
     return { configPath: policyConfig, ignorePath: policyIgnore, remove() {} };
   }
-  const configPath = path.join(options.projectRoot, '.quality-diff-prettier.json');
-  const ignorePath = path.join(options.projectRoot, '.quality-diff-prettierignore');
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-prettier.json');
+  const ignorePath = path.join(options.projectRoot, '.nitpicker-diff-prettierignore');
   if (existsSync(configPath) || existsSync(ignorePath)) {
     throw new Error('Temporary Prettier policy path already exists');
   }
+  trackTemporaryPath(configPath);
+  trackTemporaryPath(ignorePath);
   symlinkSync(policyConfig, configPath, 'file');
   try {
     symlinkSync(policyIgnore, ignorePath, 'file');

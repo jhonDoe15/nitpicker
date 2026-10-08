@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import vitestQualityConfig from '../../preset/defaults/vitest.quality.config.ts';
-import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
+import { applyThresholds, configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../adapters/tool-resolution.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
-import { hashFiles, resolveCrapScoreLimit } from '../../preset/quality-checks.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT, hashFiles } from '../../preset/quality-checks.mjs';
 import { compareFindings } from './compare.mjs';
 import { runAnalyzers, selectAnalyzers } from './run-analyzers.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
@@ -271,7 +271,7 @@ describe('complete quality-area analyzer catalog', () => {
 
       expect(invocation.args.slice(-2)).toEqual([
         '--crap-score-limit',
-        String(resolveCrapScoreLimit()),
+        String(DEFAULT_CRAP_SCORE_LIMIT),
       ]);
     },
   );
@@ -679,12 +679,22 @@ describe('complete quality-area analyzer catalog', () => {
     );
   });
 
-  it('uses 9 by default and accepts an explicit CRAP limit', () => {
-    expect(resolveCrapScoreLimit({})).toBe(9);
-    expect(resolveCrapScoreLimit({ QUALITY_CRAP_SCORE_LIMIT: '12' })).toBe(12);
-    expect(() => resolveCrapScoreLimit({ QUALITY_CRAP_SCORE_LIMIT: 'invalid' })).toThrow(
-      /positive number/,
+  it('uses 9 by default and takes an explicit CRAP limit from the config thresholds', () => {
+    expect(DEFAULT_CRAP_SCORE_LIMIT).toBe(9);
+    const [configured] = applyThresholds(
+      configuredAnalyzers.filter(({ name }) => name === 'crap'),
+      { crapLimit: 12 },
     );
+    const invocation = configured.createInvocation({
+      projectRoot: '/project',
+      policyRoot: '/policy',
+      toolRoot: '/tools',
+      snapshot: 'head',
+    });
+    expect(invocation.args.slice(-2)).toEqual(['--crap-score-limit', '12']);
+    const defaultCrap = configuredAnalyzers.find(({ name }) => name === 'crap');
+    expect(configured.configurationHash).not.toBe(defaultCrap.configurationHash);
+    expect(typeof configured.resolveVersion).toBe('function');
   });
 
   it('includes the active CRAP limit in the configuration hash', () => {
@@ -840,14 +850,14 @@ describe('complete quality-area analyzer catalog', () => {
           vitest: { configFile: 'stryker.vitest.config.ts', related: false },
         },
         {
-          tsconfigFile: '.quality-diff-tsconfig.stryker.json',
-          vitestConfigFile: '.quality-diff-stryker.vitest.config.ts',
+          tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
+          vitestConfigFile: '.nitpicker-diff-stryker.vitest.config.ts',
         },
       ),
     ).toEqual({
-      tsconfigFile: '.quality-diff-tsconfig.stryker.json',
+      tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
       vitest: {
-        configFile: '.quality-diff-stryker.vitest.config.ts',
+        configFile: '.nitpicker-diff-stryker.vitest.config.ts',
         related: false,
       },
     });

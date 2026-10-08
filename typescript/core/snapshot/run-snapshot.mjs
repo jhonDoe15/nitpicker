@@ -1,4 +1,5 @@
 import { analyzerMetadata, analyzerName } from '../diff/report-model.mjs';
+import { withHeadPolicyFile } from '../../preset/head-policy.mjs';
 import { runAnalyzers } from '../diff/run-analyzers.mjs';
 
 export function runQualitySnapshot({
@@ -8,15 +9,19 @@ export function runQualitySnapshot({
   toolRoot = projectRoot,
   liveProjectRoot = projectRoot,
   startedAt = Date.now(),
+  headPolicy = {},
 }) {
-  const { reports, toolErrors } = runAnalyzers({
-    analyzers,
-    projectRoot,
-    policyRoot,
-    toolRoot,
-    liveProjectRoot,
-    snapshot: 'head',
-  });
+  const { reports, toolErrors } = withHeadPolicyFile(headPolicy, (headPolicyFile) =>
+    runAnalyzers({
+      analyzers,
+      projectRoot,
+      policyRoot,
+      toolRoot,
+      liveProjectRoot,
+      headPolicyFile,
+      snapshot: 'head',
+    }),
+  );
 
   const findings = [];
   const tools = [];

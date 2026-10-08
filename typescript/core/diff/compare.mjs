@@ -1,6 +1,18 @@
 import { comparisonKey } from './fingerprint.mjs';
 
-export function compareFindings({ baseFindings, headFindings, baseToHeadRenames = new Map() }) {
+/**
+ * Splits findings into new, resolved, unchanged and changed-metric. When `touchedCode` is given, an
+ * enforceable finding of a strict rule that sits in code this change touched is new even though the
+ * base has it: `touchedCode.isStrictRule(rule)` names the strict rules and
+ * `touchedCode.changedLines` comes from `readChangedLines`. Findings in untouched code stay
+ * baselined.
+ */
+export function compareFindings({
+  baseFindings,
+  headFindings,
+  baseToHeadRenames = new Map(),
+  touchedCode,
+}) {
   const baseByKey = indexFindings(baseFindings, baseToHeadRenames, 'base');
   const headByKey = indexFindings(headFindings, new Map(), 'head');
   const newFindings = [];
@@ -28,6 +40,8 @@ export function compareFindings({ baseFindings, headFindings, baseToHeadRenames 
         headValue: headFinding.metric.value,
         delta: headFinding.metric.value - baseFinding.metric.value,
       });
+    } else if (isInTouchedCode(headFinding, touchedCode)) {
+      newFindings.push(headFinding);
     } else {
       unchangedFindings.push(headFinding);
     }
@@ -45,6 +59,24 @@ export function compareFindings({ baseFindings, headFindings, baseToHeadRenames 
     unchangedFindings: sortFindings(unchangedFindings),
     changedMetrics: changedMetrics.sort(compareDisplayOrder),
   };
+}
+
+function isInTouchedCode(finding, touchedCode) {
+  if (touchedCode === undefined || finding.classification !== 'enforceable') {
+    return false;
+  }
+  if (!touchedCode.isStrictRule(finding.rule)) {
+    return false;
+  }
+  const changed = touchedCode.changedLines.get(finding.path);
+  if (changed === undefined) {
+    return false;
+  }
+  if (changed.added) {
+    return true;
+  }
+  const line = finding.location?.line;
+  return line !== undefined && changed.ranges.some(([start, end]) => start <= line && line <= end);
 }
 
 function indexFindings(findings, renames, snapshot) {

@@ -10,13 +10,13 @@ const FORCE_KILL_DELAY_MS = 1_000;
 const activeChildren = new Set();
 
 export function resolveMaxParallel(environment = process.env, available = availableParallelism()) {
-  const configured = environment.QUALITY_MAX_PARALLEL;
+  const configured = environment.NITPICKER_MAX_PARALLEL;
   if (configured === undefined) {
     return Math.max(1, Math.min(DEFAULT_MAX_PARALLEL, available));
   }
   const value = Number(configured);
   if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('QUALITY_MAX_PARALLEL must be a positive integer');
+    throw new TypeError('NITPICKER_MAX_PARALLEL must be a positive integer');
   }
   return value;
 }
