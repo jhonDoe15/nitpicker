@@ -4,3 +4,4 @@ coverage/
 .stryker-tmp/
 .nitpicker-*
 .pi/
+evals/results/
