@@ -25,7 +25,8 @@ import {
   renderConsoleSummary,
   renderRuleFilterSection,
 } from './diff/reporters.mjs';
-import { resolveCacheDirectory } from './diff/findings-cache.mjs';
+import { createLayeredStore, resolveCacheStore } from './diff/cache-stores.mjs';
+import { publishBaseSnapshot } from './diff/publish-cache.mjs';
 import { runQualityDiff } from './diff/run-diff.mjs';
 import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
@@ -41,12 +42,23 @@ export function runCli({
   executeFixCommand,
 } = {}) {
   try {
+    if (arguments_[0] === 'cache') {
+      return runCacheCommand({
+        arguments_: arguments_.slice(1),
+        environment,
+        currentProjectRoot,
+        analyzers,
+        stdout,
+        stderr,
+      });
+    }
     const options = parseArguments(arguments_);
     if (options.help) {
       stdout.write(
         'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
           ' [--analyzer <name>]... [--rule <substring>]...' +
-          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n',
+          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n' +
+          '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n',
       );
       return 0;
     }
@@ -71,12 +83,69 @@ export function runCli({
       analyzers: configure(analyzers),
       config,
       stdout,
+      stderr,
       executeFixCommand,
     });
   } catch (error) {
     stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
     return 2;
   }
+}
+
+/** `nitpicker cache publish`: analyze the checked-out commit and upload its findings as a base snapshot. */
+function runCacheCommand({
+  arguments_,
+  environment,
+  currentProjectRoot,
+  analyzers,
+  stdout,
+  stderr,
+}) {
+  const { analyzerNames, shardCount, shardIndex, remainingArguments } =
+    parseDrillDownOptions(arguments_);
+  if (remainingArguments.length !== 1 || remainingArguments[0] !== 'publish') {
+    throw new Error(
+      remainingArguments.length === 0 || remainingArguments[0] === 'publish'
+        ? 'Usage: nitpicker cache publish'
+        : `Unknown cache command: ${remainingArguments.join(' ')}`,
+    );
+  }
+  const projectRoot =
+    currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
+  const config = loadConfig(projectRoot);
+  const configured = applyThresholds(applyDisable(analyzers, config), config.thresholds);
+  const selected =
+    shardCount === undefined
+      ? selectAnalyzers(configured, analyzerNames)
+      : selectAnalyzerShard(configured, shardCount, shardIndex);
+  if (selected.length === 0) {
+    throw new Error('No quality analyzers are configured.');
+  }
+  const { remote, warnings } = resolveCacheStore({ projectRoot, environment });
+  for (const warning of warnings) {
+    stderr.write(`nitpicker: ${warning}\n`);
+  }
+  if (remote === undefined) {
+    throw new Error('nitpicker cache publish requires NITPICKER_CACHE_URL');
+  }
+  const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
+  const result = publishBaseSnapshot({
+    repositoryRoot,
+    projectRelativePath: path.relative(repositoryRoot, projectRoot) || '.',
+    liveProjectRoot: projectRoot,
+    analyzers: selected,
+    // Publishing succeeds only when the remote accepted the entry, so it skips the local store.
+    store: createLayeredStore({ remote, writeRemote: true }),
+    configOverrides: describeConfigOverrides(config),
+  });
+  stdout.write(
+    `Published ${String(result.published.length)} of ${String(selected.length)} base snapshots` +
+      ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
+  );
+  for (const skipped of result.skipped) {
+    stdout.write(`Not published: ${skipped}\n`);
+  }
+  return result.skipped.length === 0 ? 0 : 2;
 }
 
 function parseArguments(arguments_) {
@@ -158,6 +227,7 @@ function runComparisonCli({
   analyzers,
   config,
   stdout,
+  stderr,
   executeFixCommand,
 }) {
   const repositoryRoot = realpathSync(
@@ -188,6 +258,15 @@ function runComparisonCli({
     );
   }
   clearDiffReports(outputRoot);
+  const { store: cacheStore, warnings } = resolveCacheStore({
+    projectRoot: currentProjectRoot,
+    environment,
+  });
+  if (options.cache) {
+    for (const warning of warnings) {
+      stderr.write(`nitpicker: ${warning}\n`);
+    }
+  }
   const selectedAnalyzers =
     options.shardCount === undefined
       ? selectAnalyzers(analyzers, options.analyzerNames)
@@ -205,9 +284,7 @@ function runComparisonCli({
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers: selectedAnalyzers,
-    cacheDirectory: options.cache
-      ? resolveCacheDirectory({ projectRoot: currentProjectRoot, environment })
-      : undefined,
+    cacheStore: options.cache ? cacheStore : undefined,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
