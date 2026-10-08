@@ -32,11 +32,8 @@ it('compares both sides using the head coding inventory when that inventory entr
   expect(legacySignals).toContainEqual(
     expect.objectContaining({ rule: '@typescript-eslint/no-explicit-any' }),
   );
-  mkdirSync(path.join(baseProjectRoot, 'preset/coding-standards'), {
-    recursive: true,
-  });
   writeFileSync(
-    path.join(baseProjectRoot, 'preset/coding-standards/legacy-sites.json'),
+    path.join(baseProjectRoot, 'nitpicker.legacy.json'),
     `${JSON.stringify({ sites: legacySignals.map((site) => ({ ...site, count: 1 })) })}\n`,
   );
 

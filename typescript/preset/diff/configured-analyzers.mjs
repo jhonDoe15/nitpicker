@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { DEFAULT_LEGACY_INVENTORY } from '../coding-standards/inventory-path.mjs';
 import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/diff/eslint.mjs';
@@ -95,20 +96,17 @@ function createQualityAreaCheckAnalyzer(check, adapterArguments = check.adapterA
 function withPackagePolicy(analyzer) {
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
-  if (analyzer.name === 'coding-standards') {
-    const packageHash = analyzer.configurationHash;
-    analyzer.resolveConfigurationHash = (projectRoot) => {
-      const inventory = path.join(projectRoot, 'preset/coding-standards/legacy-sites.json');
-      return existsSync(inventory)
-        ? createHash('sha256').update(packageHash).update(readFileSync(inventory)).digest('hex')
-        : packageHash;
-    };
-  }
   return analyzer;
 }
 
 function buildPackageAnalyzers(layout) {
-  return buildAnalyzers(createQualityChecks(layout)).map(withPackagePolicy);
+  return buildAnalyzers(createQualityChecks(layout))
+    .map(withPackagePolicy)
+    .map((analyzer) =>
+      analyzer.name === 'coding-standards'
+        ? withLegacyInventory(analyzer, DEFAULT_LEGACY_INVENTORY)
+        : analyzer,
+    );
 }
 
 export const configuredAnalyzers = buildPackageAnalyzers(resolveLayout());
@@ -154,4 +152,32 @@ export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {
         )
       : analyzer,
   );
+}
+
+/** Points the coding-standards analyzer at the project's legacy inventory file. */
+export function applyLegacyInventory(analyzers, legacyInventory = DEFAULT_LEGACY_INVENTORY) {
+  return analyzers.map((analyzer) =>
+    analyzer.name === 'coding-standards'
+      ? withLegacyInventory(analyzer, legacyInventory)
+      : analyzer,
+  );
+}
+
+function withLegacyInventory(analyzer, legacyInventory) {
+  const packageHash = analyzer.packageConfigurationHash ?? analyzer.configurationHash;
+  return {
+    ...analyzer,
+    packageConfigurationHash: packageHash,
+    legacyInventory,
+    createInvocation: (context) => {
+      const invocation = analyzer.createInvocation(context);
+      return { ...invocation, args: [...invocation.args, '--legacy-inventory', legacyInventory] };
+    },
+    resolveConfigurationHash: (projectRoot) => {
+      const inventory = path.join(projectRoot, legacyInventory);
+      return existsSync(inventory)
+        ? createHash('sha256').update(packageHash).update(readFileSync(inventory)).digest('hex')
+        : packageHash;
+    },
+  };
 }
