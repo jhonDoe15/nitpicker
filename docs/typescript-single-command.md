@@ -57,8 +57,8 @@ review.
 The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
 both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, and `analyzers`. Unknown keys are an error. `analyzers` is validated and reported but not
-yet applied; `exclude` and `layout` are applied everywhere (see below).
+`layout`, and `analyzers`. Unknown keys are an error. `exclude` and `layout` are applied everywhere
+(see below); `analyzers` are run as custom analyzers (see below).
 
 ### Head policy delivery
 
@@ -126,6 +126,16 @@ Decision (proposed, pending owner review):
 - `--fix` applies the same policy: excluded files are not fixed and the roots are used.
 - The CRAP tool only expands directories named `src`, so for other roots the files inside are
   passed explicitly.
+### Custom analyzers
+
+Each `analyzers` entry is `{ "name", "command", "args"? }`. The command runs on both the base and
+the head checkout, with that checkout as its working directory (so `"command": "./scripts/check"`
+resolves inside each side) and `NITPICKER_ANALYZER`, `NITPICKER_PROJECT_ROOT` and
+`NITPICKER_SNAPSHOT` set. It prints `{"findings": [...]}` on stdout and exits 0. Findings use the
+built-in finding schema and must carry `tool` equal to the entry's `name`; they are fingerprinted and
+classified exactly like built-in findings. A non-zero exit, invalid JSON, or a schema violation is a
+tool error. Names must not clash with built-in analyzers. The command and args are part of the
+policy hash.
 
 ## Packaging
 
