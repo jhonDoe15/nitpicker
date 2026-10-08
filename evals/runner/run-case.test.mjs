@@ -74,6 +74,9 @@ describe('loading cases', () => {
     expect(cases.map((entry) => entry.id)).toEqual([
       'add-farewell-feature',
       'add-greet-endpoint',
+      'add-shout-feature',
+      'add-tally-feature',
+      'describe-zero-count',
       'fix-count-bug',
       'trivial',
     ]);
