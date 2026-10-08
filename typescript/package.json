@@ -13,7 +13,9 @@
   },
   "scripts": {
     "test": "vitest run --config vitest.config.mts",
-    "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs"
+    "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
+    "test:conformance": "vitest run --config vitest.config.mts core/diff/conformance.test.mjs",
+    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts adapters/java/java-preset.e2e.test.mjs"
   },
   "prettier": "./preset/defaults/.prettierrc.json",
   "files": [

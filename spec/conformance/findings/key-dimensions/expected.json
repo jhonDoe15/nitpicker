@@ -1,0 +1,95 @@
+{
+  "description": "Findings differing in tool, rule, path, symbol, identity or classification are distinct keys. Each base finding has one head counterpart that differs in exactly one key dimension, so every base finding is resolved and every head finding is new.",
+  "new": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "symbol": "s2",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i2",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r2",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p2.js",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t2",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "symbol": "s",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r1",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t",
+      "rule": "r",
+      "path": "p1.js",
+      "identity": "i",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "t1",
+      "rule": "r",
+      "path": "p.js",
+      "identity": "i",
+      "classification": "enforceable"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}

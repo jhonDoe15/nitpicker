@@ -1,0 +1,43 @@
+{
+  "description": "Results are ordered by tool, then path, then rule, then identity (locale compare), independent of input order.",
+  "new": [
+    {
+      "tool": "a",
+      "rule": "q",
+      "path": "a.js",
+      "identity": "1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "2",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "a",
+      "rule": "r",
+      "path": "b.js",
+      "identity": "1",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "z",
+      "rule": "r",
+      "path": "a.js",
+      "identity": "1",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [],
+  "changedMetrics": []
+}

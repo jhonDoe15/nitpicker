@@ -1,0 +1,4 @@
+{
+  "description": "Two findings in one snapshot with the same key are an error and are not merged. The message names the snapshot ('base' or 'head'), the tool, the rule and the path.",
+  "error": "head analyzer output contains duplicate stable identity for eslint/r at src/a.js"
+}

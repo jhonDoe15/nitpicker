@@ -19,13 +19,12 @@ import { createRequire } from 'node:module';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
 import { trackTemporaryPath } from '../temporary-files.mjs';
+import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
-const DEPENDENCY_MANIFESTS = ['package.json', 'package-lock.json'];
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
 let ts;
@@ -429,18 +428,24 @@ function runNodeTool({ options, relativeToolPath, arguments_, acceptedStatuses }
   return result;
 }
 
-export function dependencyPreparationMode({ projectRoot, liveProjectRoot = PACKAGE_ROOT }) {
+export function dependencyPreparationMode({
+  projectRoot,
+  liveProjectRoot = PACKAGE_ROOT,
+  dependencyHook = resolveDependencyHook(),
+}) {
   if (projectRoot === liveProjectRoot) {
     return 'existing';
   }
-  if (!existsSync(path.join(projectRoot, 'package.json'))) {
+  if (!existsSync(path.join(projectRoot, dependencyHook.manifests[0]))) {
     return 'link';
   }
-  return dependencyManifestsDiffer(projectRoot, liveProjectRoot) ? 'install' : 'link';
+  return dependencyManifestsDiffer(projectRoot, liveProjectRoot, dependencyHook)
+    ? 'install'
+    : 'link';
 }
 
-function dependencyManifestsDiffer(projectRoot, liveProjectRoot) {
-  return DEPENDENCY_MANIFESTS.some((relativePath) => {
+function dependencyManifestsDiffer(projectRoot, liveProjectRoot, dependencyHook) {
+  return dependencyHook.manifests.some((relativePath) => {
     const projectPath = path.join(projectRoot, relativePath);
     const policyPath = path.join(liveProjectRoot, relativePath);
     const projectManifestExists = existsSync(projectPath);
@@ -453,31 +458,37 @@ function dependencyManifestsDiffer(projectRoot, liveProjectRoot) {
 }
 
 export function prepareSnapshotDependencies(options) {
-  const mode = dependencyPreparationMode(options);
+  const dependencyHook = options.dependencyHook ?? resolveDependencyHook();
+  const mode = dependencyPreparationMode({ ...options, dependencyHook });
   if (mode === 'existing') {
     return undefined;
   }
-  const dependencyPath = path.join(options.projectRoot, 'node_modules');
+  const dependencyPath = path.join(options.projectRoot, dependencyHook.directory);
   if (existsSync(dependencyPath)) {
-    validatePreparedDependencies(mode, dependencyPath, options.liveProjectRoot ?? PACKAGE_ROOT);
+    validatePreparedDependencies(
+      mode,
+      dependencyPath,
+      options.liveProjectRoot ?? PACKAGE_ROOT,
+      dependencyHook,
+    );
     return undefined;
   }
   switch (mode) {
     case 'install':
-      return installSnapshotDependencies(options.projectRoot);
+      return dependencyHook.install(options.projectRoot);
     case 'link':
-      return linkDependencies(options);
+      return linkDependencies(options, dependencyHook);
     default:
       throw new Error('Unsupported dependency preparation mode');
   }
 }
 
-function validatePreparedDependencies(mode, dependencyPath, liveProjectRoot) {
+function validatePreparedDependencies(mode, dependencyPath, liveProjectRoot, dependencyHook) {
   const entry = lstatSync(dependencyPath);
   if (mode === 'install' && entry.isDirectory() && !entry.isSymbolicLink()) {
     return;
   }
-  const dependencyRoot = realpathSync(path.join(liveProjectRoot, 'node_modules'));
+  const dependencyRoot = realpathSync(path.join(liveProjectRoot, dependencyHook.directory));
   if (
     mode === 'link' &&
     entry.isSymbolicLink() &&
@@ -488,45 +499,14 @@ function validatePreparedDependencies(mode, dependencyPath, liveProjectRoot) {
   throw new Error(`Existing dependencies at ${dependencyPath} do not match the snapshot manifests`);
 }
 
-function installSnapshotDependencies(projectRoot) {
-  const dependencyPath = path.join(projectRoot, 'node_modules');
-  if (existsSync(dependencyPath)) {
-    throw new Error(`Refusing to replace existing dependencies at ${dependencyPath}`);
-  }
-  const result = spawnSync(
-    process.platform === 'win32' ? 'npm.cmd' : 'npm',
-    ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: DEPENDENCY_INSTALL_TIMEOUT_MS,
-    },
-  );
-  if (result.error !== undefined || result.status !== 0) {
-    rmSync(dependencyPath, { recursive: true, force: true });
-    if (result.error !== undefined) {
-      throw result.error;
-    }
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`Failed to install merge-base dependencies: ${detail}`);
-  }
-  const entry = lstatSync(dependencyPath);
-  if (!entry.isDirectory() || entry.isSymbolicLink()) {
-    rmSync(dependencyPath, { recursive: true, force: true });
-    throw new Error('Installed merge-base dependencies are not a regular directory');
-  }
-  return { kind: 'installed', dependencyPath };
-}
-
-function linkDependencies(options) {
+function linkDependencies(options, dependencyHook) {
   if (options.projectRoot === (options.liveProjectRoot ?? PACKAGE_ROOT)) {
     return undefined;
   }
   const dependencyRoot = realpathSync(
-    path.join(options.liveProjectRoot ?? PACKAGE_ROOT, 'node_modules'),
+    path.join(options.liveProjectRoot ?? PACKAGE_ROOT, dependencyHook.directory),
   );
-  const linkPath = path.join(options.projectRoot, 'node_modules');
+  const linkPath = path.join(options.projectRoot, dependencyHook.directory);
   if (existsSync(linkPath)) {
     const entry = lstatSync(linkPath);
     if (entry.isSymbolicLink() && realpathSync(linkPath) === dependencyRoot) {

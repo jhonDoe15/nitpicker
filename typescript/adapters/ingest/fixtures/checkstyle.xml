@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="10.12.0">
+  <file name="/work/app/src/main/java/com/acme/Foo.java">
+    <error line="12" column="9" severity="error" message="&apos;42&apos; is a magic number." source="com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck"/>
+    <error line="30" column="9" severity="error" message="&apos;42&apos; is a magic number." source="com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck"/>
+    <error line="40" severity="warning" message="Line is longer than 100 characters &lt;found 120&gt;." source="com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck"/>
+    <error line="41" severity="info" message="Todo comment." source="com.puppycrawl.tools.checkstyle.checks.TodoCommentCheck"/>
+  </file>
+  <file name="/work/app/src/main/java/com/acme/Clean.java"></file>
+  <!-- comment -->
+  <file name="/elsewhere/Outside.java">
+    <error line="1" severity="error" message="x" source="Y"/>
+  </file>
+</checkstyle>
