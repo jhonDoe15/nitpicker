@@ -14,6 +14,15 @@ exit 1; parser, configuration, and analyzer failures fail with exit 2.
 - Carry correlation input through asynchronous outcome callbacks; keep snapshot merging
   and external publication side effects out of source callbacks.
 - Give public contract methods a production consumer. Tests alone do not justify an API.
+- Strict set, `adapters/` (`preset/eslint-config/strict-adapters.mjs`, files matching
+  `src/main/features/*/adapters/**`): parse untrusted input with a zod schema. Zod is an
+  expectation of the preset, not a dependency of nitpicker. `nitpicker/no-handwritten-boundary-guard`
+  reports (1) any `x is T` or `asserts x is T` return type, since a hand-written guard is the
+  banned form, and (2) a `JSON.parse(...)` call whose result is neither passed directly to
+  `.parse`/`.safeParse`/`.parseAsync`/`.safeParseAsync` nor bound to a `const` that is later passed
+  as an argument to one of them. It works on syntax only, so it cannot tell external data from
+  internal data (every predicate is reported) and does not follow data through other functions or
+  other sources such as `response.json()`.
 
 Rules and synthetic fixtures use arbitrary names. Architecture assignments live separately
 in `architecture/runtime-dependency-boundaries.config.mjs`; API callback roles live in
