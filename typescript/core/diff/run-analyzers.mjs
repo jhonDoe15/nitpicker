@@ -45,6 +45,16 @@ export function selectAnalyzers(analyzers, analyzerNames) {
   return analyzers.filter((analyzer) => selectedNames.has(analyzer.name));
 }
 
+/** Fills in the version and configuration hash that depend on the live project and head policy. */
+export function resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot }) {
+  if (typeof analyzer.resolveVersion === 'function') {
+    analyzer.version = analyzer.resolveVersion(liveProjectRoot);
+  }
+  if (typeof analyzer.resolveConfigurationHash === 'function') {
+    analyzer.configurationHash = analyzer.resolveConfigurationHash(policyRoot);
+  }
+}
+
 export function runAnalyzers({
   analyzers,
   projectRoot,
@@ -67,12 +77,7 @@ export function runAnalyzers({
   for (const [index, analyzer] of analyzers.entries()) {
     const name = analyzerName(analyzer, index);
     try {
-      if (typeof analyzer.resolveVersion === 'function') {
-        analyzer.version = analyzer.resolveVersion(liveProjectRoot);
-      }
-      if (typeof analyzer.resolveConfigurationHash === 'function') {
-        analyzer.configurationHash = analyzer.resolveConfigurationHash(policyRoot);
-      }
+      resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
       validateAnalyzer(analyzer);
       const invocation = analyzer.createInvocation({
         projectRoot,
