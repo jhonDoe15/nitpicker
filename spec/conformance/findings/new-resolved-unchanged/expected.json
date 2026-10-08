@@ -1,0 +1,31 @@
+{
+  "description": "One finding of each outcome: a is unchanged, b is resolved (only in base), c is new (only in head).",
+  "new": [
+    {
+      "tool": "eslint",
+      "rule": "no-var",
+      "path": "src/c.js",
+      "identity": "c:1",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "eslint",
+      "rule": "no-eval",
+      "path": "src/b.js",
+      "identity": "b:1",
+      "classification": "enforceable"
+    }
+  ],
+  "unchanged": [
+    {
+      "tool": "eslint",
+      "rule": "no-console",
+      "path": "src/a.js",
+      "identity": "a:1",
+      "classification": "enforceable"
+    }
+  ],
+  "changedMetrics": []
+}
