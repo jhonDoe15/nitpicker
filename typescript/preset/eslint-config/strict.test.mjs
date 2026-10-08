@@ -30,3 +30,29 @@ describe('strict escape-hatch rules', () => {
     ]);
   });
 });
+
+describe('strict declaration and control-flow rules', () => {
+  it.each([
+    ['type alias', 'export type Shape = { readonly size: number };'],
+    ['string literal union', "export type Mode = 'read' | 'write';"],
+    ['ambient module declaration', 'declare module "x" { export const a: number; }'],
+    ['function declaration', 'export function read() { return 1; }'],
+    ['arrow callback', 'export const doubled = [1, 2].map((value) => value * 2);'],
+    ['Error subclass', 'export class ReadError extends Error {}'],
+    ['qualified Error subclass', 'export class ReadError extends errors.BaseError {}'],
+    ['named export', 'export const value = 1;'],
+    ['early return', 'export function read(a) { if (a) { return 1; } return 2; }'],
+    ['else without return', 'export function read(a) { if (a) { log(); } else { return 2; } }'],
+    ['single ternary', 'export const value = a ? 1 : 2;'],
+  ])('allows %s', (_name, code) => {
+    expect(messages(code)).toEqual([]);
+  });
+
+  it('allows a default export in a config file', () => {
+    expect(messages('export default { a: 1 };', 'src/app.config.ts')).toEqual([]);
+  });
+
+  it('still bans other forms in a config file', () => {
+    expect(messages('enum A { B }', 'src/app.config.ts')).toHaveLength(1);
+  });
+});
