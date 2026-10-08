@@ -8,11 +8,12 @@ export const HEAD_POLICY_ENV = 'NITPICKER_POLICY';
 /** Layout used when the config file does not override it. */
 export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
 
-/** The validated config reduced to the three keys that change what runners analyze. */
+/** The validated config reduced to the four keys that change what runners analyze. */
 export function resolveHeadPolicy(config = {}) {
   return {
     exclude: config.exclude ?? [],
     layout: config.layout ?? {},
+    exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
   };
 }
@@ -51,6 +52,7 @@ export function readHeadPolicy(environment = process.env) {
   return {
     exclude: policy.exclude ?? [],
     layout: { ...defaultLayout, ...policy.layout },
+    exceptions: policy.exceptions ?? [],
     thresholds: policy.thresholds ?? {},
   };
 }

@@ -3,8 +3,19 @@ import path from 'node:path';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 const SUPPORTED_PRESETS = ['typescript'];
-const KEYS = ['base', 'preset', 'disable', 'thresholds', 'exclude', 'layout', 'analyzers'];
+const KEYS = [
+  'base',
+  'preset',
+  'disable',
+  'thresholds',
+  'exclude',
+  'layout',
+  'exceptions',
+  'analyzers',
+];
 const THRESHOLD_KEYS = ['crapLimit'];
+const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs'];
+const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 /** Reads the optional config file from a project root; zero config yields an empty config. */
@@ -51,8 +62,11 @@ export function validateConfig(config) {
   if (config.exclude !== undefined) {
     validateStringArray(config.exclude, 'exclude');
   }
-  if (config.layout !== undefined && !isPlainObject(config.layout)) {
-    throw configError('"layout" must be an object');
+  if (config.layout !== undefined) {
+    validateLayout(config.layout);
+  }
+  if (config.exceptions !== undefined) {
+    validateExceptions(config.exceptions);
   }
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);
@@ -62,8 +76,10 @@ export function validateConfig(config) {
 
 /** One line per override, so the report and the policy hash show every weakened check. */
 export function describeConfigOverrides(config) {
-  return KEYS.filter((key) => config[key] !== undefined).map(
-    (key) => `${key}: ${JSON.stringify(config[key])}`,
+  return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
+    key === 'exceptions'
+      ? config.exceptions.map((entry) => `exception: ${JSON.stringify(entry)}`)
+      : [`${key}: ${JSON.stringify(config[key])}`],
   );
 }
 
@@ -90,6 +106,50 @@ export function applyDisable(analyzers, config) {
     }
   }
   return remaining;
+}
+
+function validateLayout(layout) {
+  if (!isPlainObject(layout)) {
+    throw configError('"layout" must be an object');
+  }
+  for (const [key, value] of Object.entries(layout)) {
+    if (!LAYOUT_KEYS.includes(key)) {
+      throw configError(`unknown layout key "${key}". Allowed keys: ${LAYOUT_KEYS.join(', ')}`);
+    }
+    validateStringArray(value, `layout.${key}`);
+  }
+}
+
+/** Each exception names one rule, the files it is lifted for and why. The reason is mandatory. */
+function validateExceptions(exceptions) {
+  if (!Array.isArray(exceptions)) {
+    throw configError('"exceptions" must be an array');
+  }
+  for (const [index, entry] of exceptions.entries()) {
+    const label = `exceptions[${String(index)}]`;
+    if (!isPlainObject(entry)) {
+      throw configError(`"${label}" must be an object`);
+    }
+    for (const key of Object.keys(entry)) {
+      if (!EXCEPTION_KEYS.includes(key)) {
+        throw configError(
+          `unknown key "${key}" in "${label}". Allowed keys: ${EXCEPTION_KEYS.join(', ')}`,
+        );
+      }
+    }
+    if (!isNonEmptyString(entry.rule)) {
+      throw configError(`"${label}.rule" must be a non-empty rule id`);
+    }
+    validateStringArray(entry.paths, `${label}.paths`);
+    if (entry.paths.length === 0) {
+      throw configError(`"${label}.paths" needs at least one path glob`);
+    }
+    if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+      throw configError(
+        `"${label}.reason" is required: say why the rule is lifted for these paths`,
+      );
+    }
+  }
 }
 
 function validateThresholds(thresholds) {

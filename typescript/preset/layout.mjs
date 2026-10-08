@@ -22,6 +22,22 @@ export const excludedGlobs = [
   '**/target/**',
   '**/*.d.ts',
 ];
+/** Source, test and excluded globs for a layout; the preset defaults apply to omitted keys. */
+export function layoutGlobs({
+  sourceRoots: sources = sourceRoots,
+  testRoots: tests = testRoots,
+  excludedGlobs: excluded = excludedGlobs,
+} = {}) {
+  return {
+    sourceGlobs: sources.map((root) => `${root}/**/*.${codeExtensions}`),
+    testGlobs: [
+      ...tests.map((root) => `${root}/**/*.${codeExtensions}`),
+      ...sources.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`),
+    ],
+    excludedGlobs: excluded,
+  };
+}
+
 export const graphRoots = [...sourceRoots, ...testRoots];
 export const graphIncludeOnly = '^(src|test|tests)(?:/|$)';
 

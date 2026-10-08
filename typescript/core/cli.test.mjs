@@ -550,7 +550,7 @@ describe('nitpicker config file', () => {
       ['preset', 'typescript'],
       ['thresholds', { crapLimit: 12 }],
       ['exclude', ['generated/**']],
-      ['layout', { source: ['lib'] }],
+      ['layout', { sourceRoots: ['lib'] }],
       ['analyzers', [{ name: 'custom', command: './check.sh' }]],
     ]) {
       const { summary, exitCode } = runWithConfig({ [key]: value });
@@ -559,6 +559,19 @@ describe('nitpicker config file', () => {
       hashes.add(summary.policyHash);
     }
     expect(hashes.size).toBe(6);
+  });
+
+  it('reports a strict exception and changes the policy hash', () => {
+    const exception = {
+      rule: 'nitpicker/preserve-error-cause',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy module until migration',
+    };
+    const plain = runWithConfig(undefined).summary.policyHash;
+    const { summary, exitCode } = runWithConfig({ exceptions: [exception] });
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([`exception: ${JSON.stringify(exception)}`]);
+    expect(summary.policyHash).not.toBe(plain);
   });
 
   it.each([
