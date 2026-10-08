@@ -16,14 +16,6 @@ const packageRoot = path.resolve(import.meta.dirname, '..');
 const MINUTE_MS = 60 * 1000;
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
-export function resolveCrapScoreLimit(environment = process.env) {
-  const configuredValue = environment.QUALITY_CRAP_SCORE_LIMIT;
-  if (configuredValue === undefined) {
-    return DEFAULT_CRAP_SCORE_LIMIT;
-  }
-  return parsePositiveNumber(configuredValue, 'QUALITY_CRAP_SCORE_LIMIT');
-}
-
 export function parsePositiveNumber(value, name) {
   const number = Number(value);
   if (!Number.isFinite(number) || number <= 0) {
@@ -31,8 +23,6 @@ export function parsePositiveNumber(value, name) {
   }
   return number;
 }
-
-const activeCrapScoreLimit = resolveCrapScoreLimit();
 
 // Versions are resolved only for selected analyzers, against the binaries that will run.
 export const eslintVersion = 'unresolved';
@@ -309,7 +299,7 @@ export const qualityAreaChecks = [
     dependencies: ['coverage'],
     shardWeight: 2,
     timeoutMs: 2 * MINUTE_MS,
-    adapterArguments: ['--crap-score-limit', String(activeCrapScoreLimit)],
+    adapterArguments: ['--crap-score-limit', String(DEFAULT_CRAP_SCORE_LIMIT)],
     configurationFiles: ['preset/defaults/crap.config.mjs', 'preset/crap/report.mjs'],
   },
   {

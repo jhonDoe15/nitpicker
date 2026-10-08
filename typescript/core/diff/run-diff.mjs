@@ -20,6 +20,7 @@ export function runQualityDiff({
   analyzers,
   includeWorkingTree = false,
   additionalToolErrors = [],
+  configOverrides = [],
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -69,6 +70,7 @@ export function runQualityDiff({
             comparison,
             startedAt,
             additionalToolErrors,
+            configOverrides,
           });
         };
         return requiresPreparedDependencies(analyzers)
@@ -135,6 +137,7 @@ function combineAnalyzerReports({
   comparison,
   startedAt,
   additionalToolErrors,
+  configOverrides,
 }) {
   const newFindings = [];
   const resolvedFindings = [];
@@ -212,7 +215,8 @@ function combineAnalyzerReports({
       resolvedBaseSha: comparison.resolvedBaseSha,
       mergeBaseSha: comparison.mergeBaseSha,
       headSha: comparison.headSha,
-      policyHash: policyHash(analyzers),
+      policyHash: policyHash(analyzers, configOverrides),
+      configOverrides,
       tools,
       exclusions,
       renamedPaths: baseToHeadRenames.size,
