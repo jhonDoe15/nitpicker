@@ -2,8 +2,10 @@ import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../../adapters/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
-import { applyThresholds, configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
-import { applyDisable, describeConfigOverrides, loadConfig } from '../config.mjs';
+import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
+import { resolveHeadPolicy } from '../../preset/head-policy.mjs';
+import { configureAnalyzers } from '../configure-analyzers.mjs';
+import { describeConfigOverrides, loadConfig } from '../config.mjs';
 import {
   clearDiffReports,
   relativeTextReportPath,
@@ -136,7 +138,7 @@ export function runAggregateCli({
     const report = aggregateShardReports({
       inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
       outputRoot,
-      analyzers: applyThresholds(applyDisable(analyzers, config), config.thresholds),
+      analyzers: configureAnalyzers(analyzers, config, resolveHeadPolicy(config)),
       configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
       liveProjectRoot: currentProjectRoot,
