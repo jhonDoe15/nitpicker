@@ -75,9 +75,11 @@ written its reports; use it only for shard workers that are followed by `nitpick
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
-          [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]
+          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
+nitpicker cache publish [--analyzer <name>]...
+          [--shard-count <n> --shard-index <i>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -90,7 +92,25 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--output <dir>`: where reports go.
 
-nitpicker has no findings cache on this version, so there is no `--no-cache` option.
+- `--no-cache`: do not read or write the findings cache for this run (local and remote).
+- `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
+  cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
+  everything was uploaded and 2 otherwise.
+
+### Findings cache
+
+The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
+merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
+config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`) with the
+legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
+
+- `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
+  `node_modules/.cache/nitpicker`.
+- `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
+  Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
+  read the remote; give write credentials only to the job that runs `cache publish` on `main`.
+
+See `docs/typescript-single-command.md` for the full model.
 
 ## Configuration
 
