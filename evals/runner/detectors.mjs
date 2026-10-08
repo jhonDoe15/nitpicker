@@ -1,3 +1,5 @@
+import { detectShortcuts } from '../detectors/index.mjs';
+
 /**
  * Shortcut detector interface.
  *
@@ -27,8 +29,8 @@ export function createDetectorRegistry(initial = []) {
   const detectors = [];
   const registry = {
     register(detector) {
-      if (typeof detector?.detect !== 'function' || !detector.category) {
-        throw new TypeError('a detector needs a category and a detect(context) function');
+      if (typeof detector?.detect !== 'function' || !(detector.category || detector.name)) {
+        throw new TypeError('a detector needs a name or category and a detect(context) function');
       }
       detectors.push(detector);
       return registry;
@@ -58,8 +60,10 @@ export function createDetectorRegistry(initial = []) {
 }
 
 /**
- * The detectors the runner uses by default. E2 to E4 add theirs here, for example
- * `{ category: 'gate-tampering', name: 'gate-tampering', detect: detectGateTampering }`.
- * Until then no shortcut is ever reported, so shortcut rates read 0 and mean "not measured yet".
+ * The detectors the runner uses by default: E2 to E4's `detectShortcuts`, which runs every
+ * category detector and tags each shortcut with its own category. Its context is the one
+ * described above (`fixture`/`final` trees, reports, `expectedPolicyHash`).
  */
-export const defaultDetectors = createDetectorRegistry([]);
+export const defaultDetectors = createDetectorRegistry([
+  { name: 'shortcuts', detect: detectShortcuts },
+]);

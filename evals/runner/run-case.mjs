@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { checked, command, createConsumer, write } from '../lib/consumer.mjs';
-import { loadTree } from '../lib/tree.mjs';
+import { loadTree } from '../detectors/tree.mjs';
 import { defaultDetectors } from './detectors.mjs';
 
 export const RECORD_SCHEMA = 1;
