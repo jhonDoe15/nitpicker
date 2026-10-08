@@ -7,6 +7,7 @@ import { decodeEntities, parseXml } from './common.mjs';
 import { ingestGoCoverprofile } from './gocover.mjs';
 import { ingestJacoco } from './jacoco.mjs';
 import { ingestLcov } from './lcov.mjs';
+import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 
@@ -17,12 +18,20 @@ const shifters = {
   lcov: (text) => text.replace(/^(DA|FN):(\d+)/gm, (_, kind, n) => `${kind}:${Number(n) + SHIFT}`),
   jacoco: (text) =>
     text.replace(/ (line|nr)="(\d+)"/g, (_, attr, n) => ` ${attr}="${Number(n) + SHIFT}"`),
+  pit: (text) => text.replace(/<lineNumber>(\d+)/g, (_, n) => `<lineNumber>${Number(n) + SHIFT}`),
   gocover: (text) =>
     text.replace(
       /:(\d+)\.(\d+),(\d+)\./g,
       (_, a, b, c) => `:${Number(a) + SHIFT}.${b},${Number(c) + SHIFT}.`,
     ),
 };
+
+// Stands in for the Java glue: demo.Calc + Calc.java -> src/main/java/demo/Calc.java, and nothing for
+// classes without a source file in the project (generated code).
+const resolveMainPath = (className, sourceFile) =>
+  className === 'demo.Generated'
+    ? undefined
+    : `src/main/java/${className.split('.').slice(0, -1).join('/')}/${sourceFile}`;
 
 const formats = [
   {
@@ -42,6 +51,12 @@ const formats = [
     file: 'jacoco.xml',
     ingest: (text) => ingestJacoco(text, { sourceRoot: 'src/main/java' }),
     count: 2,
+  },
+  {
+    name: 'pit',
+    file: 'pit-mutations.xml',
+    ingest: (text) => ingestPit(text, { resolvePath: resolveMainPath }),
+    count: 8,
   },
   {
     name: 'gocover',
@@ -100,6 +115,64 @@ describe('checkstyle', () => {
 
   it('rejects other documents', () => {
     expect(() => ingestCheckstyle('<report/>')).toThrow('<checkstyle>');
+  });
+});
+
+describe('pit', () => {
+  const { findings } = ingestPit(fixture('pit-mutations.xml'), { resolvePath: resolveMainPath });
+  const summary = (rule) => findings.filter((finding) => finding.rule === rule);
+
+  it('enforces survived and uncovered mutants; other statuses only describe', () => {
+    expect(
+      findings
+        .filter((finding) => finding.rule !== 'mutation-summary')
+        .map(({ rule, classification, path: file }) => [rule, classification, file]),
+    ).toEqual([
+      ['mutant-survived', 'enforceable', 'src/main/java/demo/Calc.java'],
+      ['mutant-survived', 'enforceable', 'src/main/java/demo/Calc.java'],
+      ['mutant-nocoverage', 'enforceable', 'src/main/java/demo/Greeter.java'],
+      ['mutant-timeout', 'descriptive', 'src/main/java/demo/Greeter.java'],
+    ]);
+  });
+
+  it('identifies mutants by class, method, mutator and description, never by line', () => {
+    expect(findings.slice(0, 2).map((finding) => finding.identity)).toEqual([
+      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+    ]);
+    expect(findings[2].identity).toContain('replaced return value with "" for demo/Greeter::shout');
+    expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
+  });
+
+  it('numbers repeated mutants in source order whatever order PIT reports them in', () => {
+    const [first, second] = fixture('pit-mutations.xml')
+      .split('\n')
+      .filter((line) => line.includes('changed conditional boundary'));
+    const swapped = fixture('pit-mutations.xml')
+      .replace(first, '@@')
+      .replace(second, first)
+      .replace('@@', second);
+    const identityAtLine = (report, line) =>
+      ingestPit(report, { resolvePath: resolveMainPath }).findings.find(
+        (finding) => finding.location?.line === line,
+      ).identity;
+
+    expect(identityAtLine(swapped, 5)).toBe(identityAtLine(fixture('pit-mutations.xml'), 5));
+    expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
+  });
+
+  it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {
+    expect(
+      summary('mutation-summary').map((finding) => [finding.metric.name, finding.metric.value]),
+    ).toEqual([
+      ['Survived', 3],
+      ['Killed', 1],
+      ['NoCoverage', 1],
+      ['Timeout', 1],
+    ]);
+    expect(findings.some((finding) => finding.identity.includes('Generated'))).toBe(false);
+    expect(() => ingestPit('<report/>')).toThrow('<mutations>');
+    expect(ingestPit('<mutations/>').findings).toEqual([]);
   });
 });
 

@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, pit/mutations.xml, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -55,7 +55,7 @@ mapping, tests, and this document.
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | later   |
 | 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | later   |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
-| 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | later   |
+| 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | this PR |
 | 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | later   |
 
 PMD and SpotBugs appear before the other tools because both emit SARIF 2.1.0 and need no new
@@ -63,6 +63,42 @@ ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Pyt
 for jscpd, a long-running PIT) and each is expensive enough to deserve its own review. Slices 5 and
 8 depend on slice 1's JaCoCo output; 5 additionally needs lizard installed, which is the first tool
 that is not a JVM artifact, so it needs a decision on how tools are provisioned.
+
+## Slice 7: mutation with PIT
+
+- **Profile.** As decided in [`mutation-testing.md`](mutation-testing.md) (X10): one default
+  profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (the
+  packages found in the compiled main classes), against the project's own tests. The only profile
+  can produce enforceable findings.
+- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
+  `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
+  `build/nitpicker/pit/mutations.xml`. Tests are named class by class (`--targetTests`), and
+  `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
+  Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
+  launcher of the project's engine version added when the project does not declare one. PIT
+  requires a green test run: a failing test suite fails the task, which is a Gradle failure
+  (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
+  JUnit 5 (Jupiter) projects are the tested case; JUnit 4 projects are not covered by the e2e test.
+- **Ingester.** `adapters/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
+  Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
+  `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
+  descriptive `mutant-timeout`, `mutant-runtimeerror`, `mutant-compileerror`, `mutant-ignored`;
+  killed mutants produce no finding. `mutation-summary` carries one descriptive count per status
+  (`path` `.`, identity `status:<Status>`).
+- **Identity.** `<mutated class>|<method><descriptor>|<mutator>|<description>#<n>`. There is no
+  line number: `n` is the mutant's position among those with the same key and status, ordered by
+  line and then block index, so the numbering follows source order and not PIT's (multi-threaded)
+  report order. Edits above a mutant keep it; a second identical mutation in the same method is a
+  new occurrence. Removing the first of two identical mutants renumbers the second, which the gate
+  then shows as one resolved and one new; this mirrors the TypeScript area's occurrence counter.
+  Unlike Stryker, PIT's report has no source text for the mutant, so the key cannot include a hash
+  of the mutated expression.
+- **Path.** The source file of the mutated class, found under the manifest's source roots from the
+  class's package and PIT's `sourceFile`. Mutants of classes without a source file there
+  (generated code) are skipped.
+- **Tests.** `ingesters.test.mjs` (sample report `fixtures/pit-mutations.xml`), `java-reports.test.mjs`
+  (glue), and gated e2e cases: a tested change with a surviving boundary mutant fails; the clean
+  change now adds a test for its new method, because new untested code is a new `mutant-nocoverage`.
 
 ## Slice 2: CLI and reporter integration
 
@@ -137,7 +173,7 @@ Notes on the glue in `java-reports.mjs`:
 
 ## Slice 1: what is deliberately not included
 
-- ArchUnit, CRAP via lizard, jscpd, PIT: slices 4 to 7.
+- ArchUnit, CRAP via lizard, jscpd, PIT: slices 4 to 7 (PIT is slice 7).
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
