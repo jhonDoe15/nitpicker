@@ -9,11 +9,12 @@ runs `npx nitpicker`.
   with the current checkout: committed, staged, unstaged, and untracked changes. Ignored files are
   excluded. In CI the checkout is clean, so the same command checks the committed `HEAD`.
 - `nitpicker --all` replaces `nitpicker snapshot`: it reports every finding, without a baseline.
-- `nitpicker --fix` replaces `--fix-safe`. It applies safe fixes to the checkout first, then runs
-  the comparison.
+- `nitpicker --fix` replaces `--fix-safe`. It applies ESLint and Prettier fixes to the changed files
+  in the checkout, using the gate's own configs and the old safety rules, then runs the
+  comparison. A fixer that fails is reported as a tool error; the other fixer and the comparison
+  still run. `--fix` cannot be combined with `--all`.
 - Both modes use the diff engine and its full analyzer set. Every finding keeps the
-  enforceable/descriptive/tool-error classification and its fingerprint. The separate working-tree
-  checkers retire once `--fix` no longer needs them.
+  enforceable/descriptive/tool-error classification and its fingerprint. The old CLIs are removed.
 
 ## The head side
 

@@ -14,6 +14,7 @@ import {
 } from './snapshot/reporters.mjs';
 import { runQualitySnapshot } from './snapshot/run-snapshot.mjs';
 import { parseDrillDownOptions } from './diff/cli.mjs';
+import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveBase } from './diff/base-ref.mjs';
 import { captureWorkingTree, runGit } from './diff/git.mjs';
 import { withTemporaryWorktree } from './diff/worktree.mjs';
@@ -35,12 +36,13 @@ export function runCli({
   snapshotAnalyzers = analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
+  executeFixCommand,
 } = {}) {
   try {
     const options = parseArguments(arguments_);
     if (options.help) {
       stdout.write(
-        'Usage: nitpicker [--base <ref>] [--output <dir>] [--all]' +
+        'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
           ' [--analyzer <name>]... [--rule <substring>]...' +
           ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n',
       );
@@ -63,6 +65,7 @@ export function runCli({
       currentProjectRoot: selectedProjectRoot,
       analyzers,
       stdout,
+      executeFixCommand,
     });
   } catch (error) {
     stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -74,6 +77,7 @@ function parseArguments(arguments_) {
   const { analyzerNames, ruleFilters, shardCount, shardIndex, deferExit, remainingArguments } =
     parseDrillDownOptions(arguments_);
   let all = false;
+  let fix = false;
   let baseRef;
   let outputRoot;
   let help = false;
@@ -82,6 +86,10 @@ function parseArguments(arguments_) {
     const argument = remainingArguments[index];
     if (argument === '--all') {
       all = true;
+      continue;
+    }
+    if (argument === '--fix') {
+      fix = true;
       continue;
     }
     if (argument === '--help') {
@@ -104,6 +112,9 @@ function parseArguments(arguments_) {
     throw new Error(`Unknown argument: ${argument}`);
   }
 
+  if (all && fix) {
+    throw new Error('--fix cannot be combined with --all');
+  }
   if (all && baseRef !== undefined) {
     throw new Error('--all cannot be combined with --base');
   }
@@ -116,6 +127,7 @@ function parseArguments(arguments_) {
 
   return {
     all,
+    fix,
     baseRef,
     outputRoot,
     analyzerNames,
@@ -127,7 +139,14 @@ function parseArguments(arguments_) {
   };
 }
 
-function runComparisonCli({ options, environment, currentProjectRoot, analyzers, stdout }) {
+function runComparisonCli({
+  options,
+  environment,
+  currentProjectRoot,
+  analyzers,
+  stdout,
+  executeFixCommand,
+}) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
@@ -142,6 +161,19 @@ function runComparisonCli({ options, environment, currentProjectRoot, analyzers,
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
+  const fixResult = options.fix
+    ? fixWorkingTree({
+        repositoryRoot,
+        projectRoot: currentProjectRoot,
+        baseRef: base.baseRef,
+        executeFixCommand,
+      })
+    : { fixedFiles: [], toolErrors: [] };
+  if (options.fix) {
+    stdout.write(
+      `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
+    );
+  }
   clearDiffReports(outputRoot);
   const selectedAnalyzers =
     options.shardCount === undefined
@@ -161,6 +193,7 @@ function runComparisonCli({ options, environment, currentProjectRoot, analyzers,
     outputRoot,
     analyzers: selectedAnalyzers,
     includeWorkingTree: true,
+    additionalToolErrors: fixResult.toolErrors,
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(

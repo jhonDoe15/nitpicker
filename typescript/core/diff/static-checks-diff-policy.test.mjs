@@ -18,7 +18,6 @@ import {
 } from '../../adapters/diff/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { runQualityDiff } from './run-diff.mjs';
-import { snapshotAnalyzers } from '../../preset/snapshot/configured-analyzers.mjs';
 
 const toolRoot = path.resolve(import.meta.dirname, '../..');
 const staticCheckRunner = path.join(toolRoot, 'adapters/diff/static-checks-runner.mjs');
@@ -318,18 +317,18 @@ describe('static differential adapters', () => {
     expect(result.stderr).toContain('must be inside a generated quality-diff worktree');
   });
 
-  it.each([
-    ['differential', configuredAnalyzers],
-    ['snapshot', snapshotAnalyzers],
-  ])('includes all deterministic static checks in the %s analyzer catalog', (_dial, analyzers) => {
-    expect(analyzers.map(({ name }) => name)).toEqual(
-      expect.arrayContaining([
-        'prettier-format',
-        'typescript-typecheck',
-        'dependency-architecture',
-      ]),
-    );
-  });
+  it.each([['single-command', configuredAnalyzers]])(
+    'includes all deterministic static checks in the %s analyzer catalog',
+    (_dial, analyzers) => {
+      expect(analyzers.map(({ name }) => name)).toEqual(
+        expect.arrayContaining([
+          'prettier-format',
+          'typescript-typecheck',
+          'dependency-architecture',
+        ]),
+      );
+    },
+  );
 });
 
 function fixtureAnalyzers() {

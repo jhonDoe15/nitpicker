@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -134,6 +142,60 @@ describe('nitpicker CLI', () => {
     expect(output.stderrText).toBe('');
   });
 
+  it('returns a tool error for a crashing --all analyzer', () => {
+    const repository = createRepository({
+      'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--output', makeOutputRoot()],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      }),
+    ).toBe(2);
+    expect(output.stdoutText).toContain('Status: tool-error');
+  });
+
+  it('supports --all analyzer selection and rule drill-down', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/existing.ts': findingLine(finding({ rule: 'match-me' })),
+    });
+    const output = captureOutput();
+    expect(
+      runCli({
+        arguments_: [
+          '--all',
+          '--analyzer',
+          'fake-quality-analyzer',
+          '--rule',
+          'match-me',
+          '--output',
+          makeOutputRoot(),
+        ],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      }),
+    ).toBe(1);
+    expect(output.stdoutText).toContain('Findings matching --rule match-me:');
+    const unknown = captureOutput();
+    expect(
+      runCli({
+        arguments_: ['--all', '--analyzer', 'unknown'],
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: unknown.stdout,
+        stderr: unknown.stderr,
+      }),
+    ).toBe(2);
+    expect(unknown.stderrText).toContain('Unknown --analyzer: unknown');
+  });
+
   it('runs the packaged prettier preset against a consumer snapshot', () => {
     const repository = createRepository({
       'src/main/example.ts': 'export const example=1\n',
@@ -178,6 +240,195 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toContain('untracked.ts');
     expect(git(repository.root, ['status', '--porcelain=v1'])).toBe(beforeStatus);
     expect(git(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
+  });
+
+  it('fixes changed ESLint and Prettier violations before comparing without touching unchanged files or the index', () => {
+    const repository = createRepository({
+      'src/main/changed.ts': 'export const changed = 1;\n',
+      'src/main/format.mjs': 'export const format = 1;\n',
+      'src/main/unchanged.ts': 'export const unchanged=1\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(import.meta.dirname, '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    writeFiles(repository.root, {
+      'src/main/changed.ts': 'export let changed=2;\n',
+    });
+    git(repository.root, ['add', 'src/main/changed.ts']);
+    writeFiles(repository.root, {
+      'src/main/changed.ts': 'export let changed=3;\n',
+      'src/main/format.mjs': 'export const format=2\n',
+    });
+    const indexBefore = git(repository.root, ['ls-files', '--stage']);
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: [
+        '--fix',
+        '--base',
+        repository.baseRef,
+        '--analyzer',
+        'eslint-lint',
+        '--analyzer',
+        'prettier-format',
+        '--output',
+        makeOutputRoot(),
+      ],
+      currentProjectRoot: repository.root,
+      environment: {},
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
+    expect(readFileSync(path.join(repository.root, 'src/main/changed.ts'), 'utf8')).toBe(
+      'export const changed = 3;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/format.mjs'), 'utf8')).toBe(
+      'export const format = 2;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/unchanged.ts'), 'utf8')).toBe(
+      'export const unchanged=1\n',
+    );
+    expect(git(repository.root, ['ls-files', '--stage'])).toBe(indexBefore);
+    expect(output.stdoutText).toMatch(
+      /Fixed files:\nsrc\/main\/changed.ts\nsrc\/main\/format.mjs\nBase:/,
+    );
+  });
+
+  it('continues remaining fixers and comparison when a fixer fails', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/changed.ts': 'export const changed = 1;\n',
+      'src/main/format.mjs': 'export const format = 1;\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    symlinkSync(
+      path.join(import.meta.dirname, '../node_modules'),
+      path.join(repository.root, 'node_modules'),
+      'dir',
+    );
+    writeFiles(repository.root, {
+      'src/main/changed.ts': 'export let changed=3;\n',
+      'src/main/format.mjs': 'export const format=2\n',
+    });
+    const output = captureOutput();
+    const outputRoot = makeOutputRoot();
+    const exitCode = runCli({
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', outputRoot],
+      currentProjectRoot: repository.root,
+      environment: {},
+      analyzers: [fakeAnalyzer()],
+      executeFixCommand({ operation }) {
+        if (operation === 'eslint-fix') {
+          return { status: 2, stderr: 'fixture ESLint failure' };
+        }
+      },
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(readFileSync(path.join(repository.root, 'src/main/format.mjs'), 'utf8')).toBe(
+      'export const format = 2;\n',
+    );
+    expect(output.stdoutText).toContain(`Base: ${repository.baseRef} (argument)`);
+    expect(output.stdoutText).toContain('Quality gate summary');
+    expect(output.stdoutText).toContain('eslint-fix');
+    expect(output.stderrText).toBe('');
+    expect(JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'))).toEqual(
+      expect.objectContaining({ overallStatus: 'tool-error' }),
+    );
+    expect(JSON.parse(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual(
+      expect.arrayContaining([expect.objectContaining({ tool: 'eslint-fix', snapshot: 'fix' })]),
+    );
+  });
+
+  it('uses a renamed file base path for Prettier fix eligibility', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/legacy.json':
+        '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n',
+    });
+    git(repository.root, ['mv', 'src/main/legacy.json', 'src/main/legacy.md']);
+    writeFiles(repository.root, {
+      'src/main/legacy.md':
+        '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n\n#  Heading\n\nSome   text\n',
+    });
+    const output = captureOutput();
+    let checkedBasePath;
+    const exitCode = runCli({
+      arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
+      currentProjectRoot: repository.root,
+      environment: {},
+      analyzers: [fakeAnalyzer()],
+      executeFixCommand({ operation, input }) {
+        if (operation === 'prettier-base-check') {
+          checkedBasePath = JSON.parse(input).files[0].filePath;
+        }
+      },
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(0);
+    expect(readFileSync(path.join(repository.root, 'src/main/legacy.md'), 'utf8')).toBe(
+      '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n\n#  Heading\n\nSome   text\n',
+    );
+    expect(checkedBasePath).toBe(path.join(repository.root, 'src/main/legacy.json'));
+    expect(output.stdoutText).toContain('Fixed files:\n(none)\n');
+    expect(output.stderrText).toBe('');
+  });
+
+  it('formats new and base-clean changes but not edited legacy formatting', () => {
+    const repository = createRepository({
+      'src/main/clean.mjs': 'export const clean = true;\n',
+      'src/main/legacy.mjs': 'export const legacy=true\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/clean.mjs': 'export const clean=false\n',
+      'src/main/legacy.mjs': 'export const legacy=false\n',
+      'src/main/new.mjs': 'export const fresh=true\n',
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: [
+        '--fix',
+        '--base',
+        repository.baseRef,
+        '--analyzer',
+        'prettier-format',
+        '--output',
+        makeOutputRoot(),
+      ],
+      currentProjectRoot: repository.root,
+      environment: {},
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    expect(exitCode, output.stdoutText + output.stderrText).toBe(1);
+    expect(readFileSync(path.join(repository.root, 'src/main/clean.mjs'), 'utf8')).toBe(
+      'export const clean = false;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/new.mjs'), 'utf8')).toBe(
+      'export const fresh = true;\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/legacy.mjs'), 'utf8')).toBe(
+      'export const legacy=false\n',
+    );
+    expect(output.stdoutText).toMatch(
+      /Fixed files:\nsrc\/main\/clean.mjs\nsrc\/main\/new.mjs\nBase:/,
+    );
+  });
+
+  it('rejects --fix combined with --all', () => {
+    const output = captureOutput();
+    expect(
+      runCli({ arguments_: ['--fix', '--all'], stdout: output.stdout, stderr: output.stderr }),
+    ).toBe(2);
+    expect(output.stderrText).toContain('--fix cannot be combined with --all');
   });
 
   it('rejects --all combined with --base', () => {
@@ -228,6 +479,7 @@ function createRepository(initialFiles) {
   writeFiles(root, {
     'package.json': '{"name":"cli-fixture","version":"1.0.0"}\n',
     'package-lock.json': '{"name":"cli-fixture","lockfileVersion":3}\n',
+    '.gitignore': 'node_modules/\n',
     ...initialFiles,
   });
   commit(root, 'base');

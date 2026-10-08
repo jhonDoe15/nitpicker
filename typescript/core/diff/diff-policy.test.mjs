@@ -13,7 +13,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from './compare.mjs';
-import { parseDrillDownOptions, resolveBaseRef, runCli } from './cli.mjs';
+import { parseDrillDownOptions } from './cli.mjs';
+import { runCli } from '../cli.mjs';
 import { parseFinding } from './finding-schema.mjs';
 import { canonicalCycleIdentity } from './fingerprint.mjs';
 import { runGit } from './git.mjs';
@@ -570,25 +571,6 @@ describe('quality diff identities and arguments', () => {
     ]);
 
     expect(first).toBe(second);
-  });
-
-  it('requires an explicit base unless a pull-request target is available', () => {
-    expect(() => resolveBaseRef([], {})).toThrow(/base ref is required/i);
-    expect(resolveBaseRef([], { CHANGE_TARGET: 'master' })).toEqual({
-      kind: 'run',
-      baseRef: 'origin/master',
-      outputRoot: undefined,
-    });
-    expect(resolveBaseRef([], { CHANGE_TARGET: '', GITHUB_BASE_REF: 'main' })).toEqual({
-      kind: 'run',
-      baseRef: 'origin/main',
-      outputRoot: undefined,
-    });
-    expect(resolveBaseRef(['--base', 'upstream/main'], {})).toEqual({
-      kind: 'run',
-      baseRef: 'upstream/main',
-      outputRoot: undefined,
-    });
   });
 
   it('does not match different metric names under one descriptive identity', () => {

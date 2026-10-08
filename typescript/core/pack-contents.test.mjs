@@ -45,6 +45,7 @@ describe('npm package contents', () => {
     }
     const files = new Set(listing[0].files.map(({ path: file }) => file));
     assertRuntimeFiles(files);
+    expect(files.has('core/fix/run-fix.mjs')).toBe(true);
     expect(
       [...files].filter(
         (file) =>

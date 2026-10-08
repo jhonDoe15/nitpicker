@@ -25,6 +25,8 @@ it('resolves installed tool versions and binaries outside snapshots', () => {
   const tool = resolveTool('eslint', { bin: 'bin/eslint.js' });
   expect(tool.version).toBe('10.9.1');
   expect(tool.binPath.startsWith(tool.root + path.sep)).toBe(true);
+  const prettier = resolveTool('prettier', { bin: 'bin/prettier.cjs' });
+  expect(prettier.binPath.startsWith(prettier.root + path.sep)).toBe(true);
   expect(resolveTool('vitest', { projectRoot: PACKAGE_ROOT }).version).toBe('4.1.11');
 });
 

@@ -16,7 +16,7 @@ Only `typescript/` exists today.
 
 ## Status
 
-Early. The TypeScript engine and preset are ported and their policy tests pass:
+The TypeScript engine and preset are available through the single `nitpicker` command. `--all` reports every finding; `--fix` applies safe checkout fixes before comparison. Run the policy tests:
 
 ```sh
 cd typescript
@@ -24,5 +24,4 @@ npm ci
 npm test
 ```
 
-Not yet done: a single `nitpicker` command with automatic base detection, packaging for use as a
-dependency, and a shared language-neutral `spec/` (findings schema and conformance fixtures).
+Not yet done: a shared language-neutral `spec/` (findings schema and conformance fixtures).

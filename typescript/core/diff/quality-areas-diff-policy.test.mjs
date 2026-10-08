@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import vitestQualityConfig from '../../preset/defaults/vitest.quality.config.ts';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
-import { snapshotAnalyzers } from '../../preset/snapshot/configured-analyzers.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../adapters/tool-resolution.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
 import { hashFiles, resolveCrapScoreLimit } from '../../preset/quality-checks.mjs';
@@ -44,19 +43,14 @@ const EXPECTED_ANALYZER_NAMES = [
 ];
 
 describe('complete quality-area analyzer catalog', () => {
-  it.each([
-    ['differential', configuredAnalyzers],
-    ['snapshot', snapshotAnalyzers],
-  ])('runs the supported quality areas in the %s dial', (dial, analyzers) => {
-    expect(analyzers.map(({ name }) => name)).toEqual(
-      dial === 'differential'
-        ? EXPECTED_ANALYZER_NAMES.filter((name) => name !== 'policy-tests')
-        : EXPECTED_ANALYZER_NAMES,
+  it('runs the supported quality areas in the single-command catalog', () => {
+    expect(configuredAnalyzers.map(({ name }) => name)).toEqual(
+      EXPECTED_ANALYZER_NAMES.filter((name) => name !== 'policy-tests'),
     );
   });
 
-  it('reports a resolved tool version for snapshot analyzers', () => {
-    const prettier = snapshotAnalyzers.find(({ name }) => name === 'prettier-format');
+  it('reports a resolved tool version for the single-command analyzers', () => {
+    const prettier = configuredAnalyzers.find(({ name }) => name === 'prettier-format');
     const report = runQualitySnapshot({
       analyzers: [
         {
@@ -77,58 +71,58 @@ describe('complete quality-area analyzer catalog', () => {
     expect(report.summary.tools[0].version).not.toBe('unresolved');
   });
 
-  it('resolves a real version for every snapshot analyzer', () => {
-    for (const analyzer of snapshotAnalyzers) {
+  it('resolves a real version for every analyzer', () => {
+    for (const analyzer of configuredAnalyzers) {
       expect(analyzer.resolveVersion(PACKAGE_ROOT), analyzer.name).not.toBe('unresolved');
     }
   });
 
-  it.each([
-    ['differential', configuredAnalyzers],
-    ['snapshot', snapshotAnalyzers],
-  ])('runs coverage before CRAP when CRAP alone is selected in the %s dial', (_dial, analyzers) => {
-    expect(selectAnalyzers(analyzers, ['crap']).map(({ name }) => name)).toEqual([
-      'coverage',
-      'crap',
-    ]);
-  });
+  it.each([['single-command', configuredAnalyzers]])(
+    'runs coverage before CRAP when CRAP alone is selected in the %s dial',
+    (_dial, analyzers) => {
+      expect(selectAnalyzers(analyzers, ['crap']).map(({ name }) => name)).toEqual([
+        'coverage',
+        'crap',
+      ]);
+    },
+  );
 
-  it.each([
-    ['differential', configuredAnalyzers],
-    ['snapshot', snapshotAnalyzers],
-  ])('configures expensive analyzer scheduling metadata in the %s dial', (dial, analyzers) => {
-    const weights = Object.fromEntries(
-      analyzers.map(({ name, concurrencyWeight = 1 }) => [name, concurrencyWeight]),
-    );
-    const priorities = Object.fromEntries(
-      analyzers.map(({ name, executionPriority = 0 }) => [name, executionPriority]),
-    );
-    const eslintConcurrencyGroup =
-      dial === 'differential' ? 'eslint-snapshot-dependencies' : undefined;
+  it.each([['differential', configuredAnalyzers]])(
+    'configures expensive analyzer scheduling metadata in the %s dial',
+    (dial, analyzers) => {
+      const weights = Object.fromEntries(
+        analyzers.map(({ name, concurrencyWeight = 1 }) => [name, concurrencyWeight]),
+      );
+      const priorities = Object.fromEntries(
+        analyzers.map(({ name, executionPriority = 0 }) => [name, executionPriority]),
+      );
+      const eslintConcurrencyGroup =
+        dial === 'differential' ? 'eslint-snapshot-dependencies' : undefined;
 
-    expect(weights.coverage).toBe(2);
-    expect(weights.mutation).toBe(2);
-    expect(weights.crap).toBe(1);
-    expect(weights['eslint-lint']).toBe(1);
-    expect(priorities.coverage).toBe(1);
-    expect(priorities.mutation).toBe(1);
-    expect(
-      Object.entries(priorities).filter(([, executionPriority]) => executionPriority !== 0),
-    ).toEqual([
-      ['coverage', 1],
-      ['mutation', 1],
-    ]);
-    expect(
-      analyzers
-        .filter(({ name }) => name === 'coverage' || name === 'mutation')
-        .map(({ concurrencyGroup }) => concurrencyGroup),
-    ).toEqual(['test-execution', 'test-execution']);
-    expect(
-      analyzers
-        .filter(({ name }) => name.startsWith('eslint-'))
-        .map(({ concurrencyGroup }) => concurrencyGroup),
-    ).toEqual(Array(4).fill(eslintConcurrencyGroup));
-  });
+      expect(weights.coverage).toBe(2);
+      expect(weights.mutation).toBe(2);
+      expect(weights.crap).toBe(1);
+      expect(weights['eslint-lint']).toBe(1);
+      expect(priorities.coverage).toBe(1);
+      expect(priorities.mutation).toBe(1);
+      expect(
+        Object.entries(priorities).filter(([, executionPriority]) => executionPriority !== 0),
+      ).toEqual([
+        ['coverage', 1],
+        ['mutation', 1],
+      ]);
+      expect(
+        analyzers
+          .filter(({ name }) => name === 'coverage' || name === 'mutation')
+          .map(({ concurrencyGroup }) => concurrencyGroup),
+      ).toEqual(['test-execution', 'test-execution']);
+      expect(
+        analyzers
+          .filter(({ name }) => name.startsWith('eslint-'))
+          .map(({ concurrencyGroup }) => concurrencyGroup),
+      ).toEqual(Array(4).fill(eslintConcurrencyGroup));
+    },
+  );
 
   it('bounds coverage worker processes independently of host CPU visibility', () => {
     expect(vitestQualityConfig.test.maxWorkers).toBe(4);
@@ -264,23 +258,23 @@ describe('complete quality-area analyzer catalog', () => {
     ]);
   });
 
-  it.each([
-    ['differential', configuredAnalyzers],
-    ['snapshot', snapshotAnalyzers],
-  ])('passes the active CRAP limit to the %s dial', (_dial, analyzers) => {
-    const analyzer = analyzers.find(({ name }) => name === 'crap');
-    const invocation = analyzer.createInvocation({
-      projectRoot: '/project',
-      policyRoot: '/policy',
-      toolRoot: '/tools',
-      snapshot: 'head',
-    });
+  it.each([['differential', configuredAnalyzers]])(
+    'passes the active CRAP limit to the %s dial',
+    (_dial, analyzers) => {
+      const analyzer = analyzers.find(({ name }) => name === 'crap');
+      const invocation = analyzer.createInvocation({
+        projectRoot: '/project',
+        policyRoot: '/policy',
+        toolRoot: '/tools',
+        snapshot: 'head',
+      });
 
-    expect(invocation.args.slice(-2)).toEqual([
-      '--crap-score-limit',
-      String(resolveCrapScoreLimit()),
-    ]);
-  });
+      expect(invocation.args.slice(-2)).toEqual([
+        '--crap-score-limit',
+        String(resolveCrapScoreLimit()),
+      ]);
+    },
+  );
 
   it('reports coding-standard baseline growth as enforceable', () => {
     const site = {
