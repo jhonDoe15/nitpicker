@@ -6,22 +6,56 @@ import {
   escapeHatchRules,
   escapeHatchSelectors,
 } from './strict-escape-hatches.mjs';
+import {
+  configFileGlobs,
+  declarationRules,
+  declarationSelectors,
+  defaultExportSelectors,
+  typedDeclarationRules,
+} from './strict-declarations.mjs';
 
 // `no-restricted-syntax` is replaced, not merged, so every strict selector is listed here once.
-export const strictRestrictedSyntax = [...escapeHatchSelectors];
+const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectors];
+const notInConfigFileSelectors = [...defaultExportSelectors];
 
-// The strict rule set. It is not the default preset; the preset enables it explicitly.
-export default [
+// Rules that need only the syntax tree. This is the default export and runs without a TypeScript
+// program. It is not the default preset; the preset enables it explicitly.
+const strictSyntaxConfig = [
   { ignores: excludedGlobs },
   {
     files: sourceGlobs,
     ignores: testGlobs,
     languageOptions: { parser: tseslint.parser },
     linterOptions: escapeHatchLinterOptions,
-    plugins: { nitpicker: nitpickerRules },
+    plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
     rules: {
       ...escapeHatchRules,
-      'no-restricted-syntax': ['error', ...strictRestrictedSyntax],
+      ...declarationRules,
+      'no-restricted-syntax': ['error', ...everywhereSelectors, ...notInConfigFileSelectors],
     },
   },
+  {
+    files: configFileGlobs,
+    rules: { 'no-restricted-syntax': ['error', ...everywhereSelectors] },
+  },
 ];
+
+export default strictSyntaxConfig;
+
+// Rules that need type information. `parserOptions` is how typescript-eslint finds the program,
+// for example `{ project: './tsconfig.quality.json', tsconfigRootDir }`.
+export function strictTypedConfig(parserOptions) {
+  return [
+    {
+      files: sourceGlobs,
+      ignores: testGlobs,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { '@typescript-eslint': tseslint.plugin },
+      rules: typedDeclarationRules,
+    },
+  ];
+}
+
+export function strictConfig(parserOptions) {
+  return [...strictSyntaxConfig, ...strictTypedConfig(parserOptions)];
+}

@@ -1,9 +1,15 @@
+import path from 'node:path';
 import loggingConfig from '../eslint-config/logging.mjs';
-import strictConfig from '../eslint-config/strict.mjs';
+import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
 
 function strictCase([name, banned, allowed]) {
-  return { name, config: strictConfig, filename: 'src/fixture.ts', banned, allowed };
+  return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
 }
+
+const typedStrictConfig = strictConfig({
+  projectService: { allowDefaultProject: ['src/*.ts'] },
+  tsconfigRootDir: process.cwd(),
+});
 
 // Add one entry per banned form. `config` is any ESLint flat config array; `banned` is a fixture
 // that must fail; `allowed` is the wording the message must use to name the allowed form.
@@ -53,5 +59,57 @@ export const failureMessageCases = [
       '/* explains */\nconst value = 1;',
       'descriptive identifier',
     ],
+    ['interface names type', 'interface Shape { size: number }', '`type`'],
+    [
+      'enum names a union of string literals',
+      'enum Mode { Read, Write }',
+      'union of string literals',
+    ],
+    [
+      'namespace names a module with named exports',
+      'namespace Tools { export const a = 1; }',
+      'named exports',
+    ],
+    ['class names Error subclasses', 'class Service { run() {} }', '`Error` subclasses'],
+    [
+      'class expression names Error subclasses',
+      'const Service = class { run() {} };',
+      '`Error` subclasses',
+    ],
+    ['arrow function names the function keyword', 'const read = () => 1;', '`function` keyword'],
+    [
+      'function expression names the function keyword',
+      'const read = function () { return 1; };',
+      '`function` keyword',
+    ],
+    [
+      'default export names a named export',
+      'export default function read() { return 1; }',
+      'named export',
+    ],
+    [
+      'default specifier names a named export',
+      'const read = 1; export { read as default };',
+      'named export',
+    ],
+    [
+      'else after return names early return',
+      'function read(a) { if (a) { return 1; } else { return 2; } }',
+      'return early',
+    ],
+    [
+      'else-if after return names early return',
+      'function read(a) { if (a) { return 1; } else if (a > 1) { return 2; } return 3; }',
+      'return early',
+    ],
+    ['nested ternary names early returns', 'const value = a ? 1 : b ? 2 : 3;', 'early returns'],
   ].map(strictCase),
+  {
+    name: 'non-exhaustive switch names exhaustive handling',
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
+    allowed: 'exhaustive',
+  },
 ];
