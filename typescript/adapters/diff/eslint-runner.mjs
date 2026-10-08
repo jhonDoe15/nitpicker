@@ -201,9 +201,13 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
           positiveInteger(message.endLine, `${context}.endLine`) - 1,
           positiveInteger(message.endColumn, `${context}.endColumn`) - 1,
         );
-  const locatedNode = findReportedNode(sourceFile, sourcePosition, endPosition);
+  const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
+  const locatedNode =
+    comment === undefined
+      ? findReportedNode(sourceFile, sourcePosition, endPosition)
+      : findStartedNode(sourceFile, sourcePosition);
   const reportedNode = stableSyntaxAnchor(locatedNode);
-  const nodeType = eslintNodeType(reportedNode);
+  const nodeType = comment === undefined ? eslintNodeType(reportedNode) : 'Comment';
   const symbol = enclosingSymbol(reportedNode);
   const messageIdentity =
     typeof message.messageId === 'string' && message.messageId.length > 0
@@ -217,7 +221,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     identity: [
       `message:${messageIdentity}`,
       `node:${nodeType}`,
-      `syntax:${syntaxFingerprint(reportedNode, nodeType)}`,
+      `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
     ].join('|'),
     message: messageText,
     location: { line, column },
@@ -227,6 +231,42 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     finding.symbol = symbol;
   }
   return finding;
+}
+
+// A finding reported on a comment (no-comments, ts-ignore directives, disabled inline config) is
+// anchored to the comment text. Comments are trivia, so the nearest syntax node is the code that
+// follows them and editing that code would otherwise change the fingerprint.
+function commentAt(text, position, endPosition) {
+  const isLine = text.startsWith('//', position);
+  if (!isLine && !text.startsWith('/*', position)) {
+    return undefined;
+  }
+  if (endPosition !== undefined && endPosition > position) {
+    return text.slice(position, endPosition);
+  }
+  if (isLine) {
+    const lineEnd = text.indexOf('\n', position);
+    return text.slice(position, lineEnd === -1 ? text.length : lineEnd);
+  }
+  const close = text.indexOf('*/', position + 2);
+  return text.slice(position, close === -1 ? text.length : close + 2);
+}
+
+function commentFingerprint(comment) {
+  return createHash('sha256').update(normalizeMessageText(comment)).digest('hex').slice(0, 24);
+}
+
+// The deepest node whose own text (excluding leading trivia) contains the position.
+function findStartedNode(sourceFile, position) {
+  let deepest = sourceFile;
+  function visit(node) {
+    if (node.getStart(sourceFile) <= position && position < node.end) {
+      deepest = node;
+      ts.forEachChild(node, visit);
+    }
+  }
+  ts.forEachChild(sourceFile, visit);
+  return deepest;
 }
 
 function findReportedNode(sourceFile, position, endPosition) {
@@ -422,6 +462,9 @@ function restorePolicyFiles(installedFiles) {
 function nonRuleDiagnosticId(message, context) {
   if (message.startsWith('Unused eslint-disable directive')) {
     return 'eslint/unused-disable-directive';
+  }
+  if (message.includes("has no effect because you have 'noInlineConfig' setting")) {
+    return 'eslint/inline-config-disabled';
   }
   throw new Error(`${context} has no rule identifier: ${message}`);
 }
