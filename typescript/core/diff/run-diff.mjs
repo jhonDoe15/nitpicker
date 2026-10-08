@@ -22,7 +22,7 @@ export function runQualityDiff({
   includeWorkingTree = false,
   additionalToolErrors = [],
   configOverrides = [],
-  cacheDirectory,
+  cacheStore,
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -58,11 +58,11 @@ export function runQualityDiff({
             });
           // Only the base side is cached: it is a committed tree, so it cannot change under the key.
           const baseRun =
-            cacheDirectory === undefined
+            cacheStore === undefined
               ? runBase(analyzers)
               : runBaseWithCache({
                   cache: createFindingsCache({
-                    directory: cacheDirectory,
+                    store: cacheStore,
                     mergeBaseSha: comparison.mergeBaseSha,
                     projectRelativePath,
                     configOverrides,
