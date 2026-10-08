@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runCli } from './cli.mjs';
+import { startTestHttpServer } from './diff/test-http-server.mjs';
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'diff/fixtures/fake-analyzer.mjs');
 const temporaryRoots = [];
@@ -804,6 +805,153 @@ if (mode === 'json') {
 function customAnalyzerEntry(mode) {
   return { name: 'custom', command: process.execPath, args: ['custom-analyzer.mjs', mode] };
 }
+
+describe('findings cache', () => {
+  function setup() {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/old.ts': findingLine(finding({ identity: 'old-finding' })),
+    });
+    writeFiles(repository.root, {
+      'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
+    });
+    const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
+    const snapshots = [];
+    const run = ({ extraArguments = [], configurationHash = 'fixture-policy' } = {}) => {
+      const analyzer = fakeAnalyzer();
+      analyzer.configurationHash = configurationHash;
+      const createInvocation = analyzer.createInvocation;
+      analyzer.createInvocation = (context) => {
+        snapshots.push(context.snapshot);
+        return createInvocation(context);
+      };
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot(), ...extraArguments],
+        environment: { NITPICKER_CACHE_DIR: cacheDirectory },
+        currentProjectRoot: repository.root,
+        analyzers: [analyzer],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return { exitCode, output };
+    };
+    return { run, snapshots };
+  }
+
+  it('skips base analysis on a second run against the same base', () => {
+    const { run, snapshots } = setup();
+
+    const first = run();
+    const second = run();
+
+    expect(first.exitCode).toBe(1);
+    expect(second.exitCode).toBe(1);
+    expect(second.output.stdoutText).toContain('new.ts');
+    expect(snapshots).toEqual(['base', 'head', 'head']);
+  });
+
+  it('analyzes the base again with --no-cache', () => {
+    const { run, snapshots } = setup();
+
+    run();
+    run({ extraArguments: ['--no-cache'] });
+
+    expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
+  });
+
+  it('analyzes the base again when the head policy hash changes', () => {
+    const { run, snapshots } = setup();
+
+    run();
+    run({ configurationHash: 'changed-policy' });
+
+    expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
+  });
+});
+
+describe('remote findings cache', () => {
+  async function setup() {
+    const remote = await startTestHttpServer();
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/old.ts': findingLine(finding({ identity: 'old-finding' })),
+    });
+    writeFiles(repository.root, {
+      'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
+    });
+    const snapshots = [];
+    const execute = (arguments_, url = remote.url) => {
+      const analyzer = fakeAnalyzer();
+      const createInvocation = analyzer.createInvocation;
+      analyzer.createInvocation = (context) => {
+        snapshots.push(context.snapshot);
+        return createInvocation(context);
+      };
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_,
+        environment: {
+          NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-'),
+          NITPICKER_CACHE_URL: url,
+        },
+        currentProjectRoot: repository.root,
+        analyzers: [analyzer],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return { exitCode, output };
+    };
+    const compare = (url) =>
+      execute(['--base', repository.baseRef, '--output', makeOutputRoot()], url);
+    return { remote, snapshots, execute, compare };
+  }
+
+  it('publishes a base snapshot that a fresh checkout then reuses', async () => {
+    const { remote, snapshots, execute, compare } = await setup();
+    try {
+      const published = execute(['cache', 'publish']);
+      expect(published.exitCode).toBe(0);
+      expect(published.output.stdoutText).toContain('Published 1 of 1 base snapshots');
+      expect(await remote.keys()).toHaveLength(1);
+
+      const result = compare();
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output.stdoutText).toContain('new.ts');
+      expect(snapshots).toEqual(['base', 'head']);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it('still gates when the remote cache is unreachable', async () => {
+    const { remote, snapshots, compare } = await setup();
+    await remote.failWith(500);
+    try {
+      const result = compare();
+
+      expect(result.exitCode).toBe(1);
+      expect(result.output.stdoutText).toContain('new.ts');
+      expect(snapshots).toEqual(['base', 'head']);
+    } finally {
+      await remote.close();
+    }
+  });
+
+  it('fails publishing without a remote URL, and reports an unreachable one', async () => {
+    const { remote, execute } = await setup();
+    try {
+      expect(execute(['cache', 'publish'], '').exitCode).toBe(2);
+      await remote.failWith(500);
+      const result = execute(['cache', 'publish']);
+      expect(result.exitCode).toBe(2);
+      expect(result.output.stdoutText).toContain('Not published: fake-quality-analyzer');
+    } finally {
+      await remote.close();
+    }
+  });
+});
 
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));

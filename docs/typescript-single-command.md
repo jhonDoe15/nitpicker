@@ -182,8 +182,48 @@ Status: implemented. The consumer installs one npm dev dependency and runs `npx 
 
 Not yet addressed: ESLint plugin versions are not part of the policy hash.
 
-## Later: findings cache
+## Findings cache
 
-Key it by merge-base SHA, project path, analyzer name, tool version, and the configuration hash
-taken from the head policy. Start with a local cache. Later options are a remote cache, or base
-snapshots published after each merge to `main`.
+Status: implemented for the base side only. The head side always runs, because it changes with every
+edit; the base is a committed tree and cannot change under its key.
+
+- Key, one entry per analyzer: merge-base SHA, project path relative to the repository, analyzer
+  name, analyzer (tool) version, the analyzer's configuration hash taken from the head policy, and
+  the config-file overrides. The value is the analyzer's findings JSON, parsed with the finding
+  schema on read. A corrupt or unreadable entry is a miss, and a cache that cannot be written never
+  fails the run.
+- Location: `NITPICKER_CACHE_DIR` when set (relative to the project root), else
+  `node_modules/.cache/nitpicker` in the project. With neither, caching is off. A project-local
+  directory avoids sharing entries between checkouts with different dependencies and needs no OS
+  cache-directory lookup.
+- Only clean reports are stored: nothing is cached for an analyzer with a tool error or a
+  `tool-error` finding. An analyzer that depends on an uncached one is rerun together with it.
+- Opt out with `--no-cache`.
+- Limit: the key covers the analyzer version and configuration hash, not project files that only
+  feed the head policy (for example a `tsconfig.json` change on the head branch). Use `--no-cache`
+  or clear the directory after changing such files.
+
+### Remote findings cache
+
+The cache sits behind a small synchronous store interface (`get`/`put` of text under a hex key,
+never throwing). Backends: a local directory (above) and plain HTTP.
+
+- Enable: `NITPICKER_CACHE_URL=https://host/prefix`. An entry is `GET`/`PUT` at
+  `<url>/<key>.json`. Optional `NITPICKER_CACHE_AUTH_HEADER` holds a full header line such as
+  `Authorization: Bearer <token>` (read from the environment, never from a file or the command
+  line) and `NITPICKER_CACHE_TIMEOUT_MS` bounds each request (default 5000). No AWS SDK: S3 works
+  through a public or CDN-fronted prefix, or any proxy that signs requests; SigV4 is not built in.
+- Lookup order: the local directory, then the remote. A remote hit is validated and copied into the
+  local directory. `--no-cache` disables both.
+- Failure model: any remote error, timeout, bad status or invalid entry is a miss, and after the
+  first failure the remote is not contacted again in that run. The gate result never depends on it.
+- Trust model: comparison runs only read the remote. Entries are validated with the finding schema
+  and must carry their own key, but they are not signed, so whoever can write to the store can hide
+  findings. Give write credentials only to the job that runs on `main`; give pull-request jobs read
+  access only.
+- Publish: after each merge to `main`, run `nitpicker cache publish` on the new tip (optionally
+  with `--analyzer` or `--shard-count`/`--shard-index`). It analyzes the committed `HEAD` tree under
+  `HEAD`'s own policy and uploads one entry per clean analyzer, under the key a later branch uses
+  when `HEAD` is its merge base. Exit 0 when everything was uploaded, 2 when an analysis failed or
+  an upload was refused, and it requires `NITPICKER_CACHE_URL`. Branches whose head policy differs
+  from `main`'s miss and analyze the base themselves.
