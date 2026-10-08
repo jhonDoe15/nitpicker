@@ -1,6 +1,11 @@
 import path from 'node:path';
 import loggingConfig from '../eslint-config/logging.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
+import { domainFailureMessageCases } from './domain-cases.mjs';
+import strictDomainConfig from '../eslint-config/strict-domain.mjs';
+import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
+import { adapterFailureMessageCases } from './adapter-cases.mjs';
+import compositionRootConfig from '../eslint-config/strict-composition-root.mjs';
 
 function strictCase([name, banned, allowed]) {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
@@ -111,5 +116,133 @@ export const failureMessageCases = [
     banned:
       "type Shape = { kind: 'a' } | { kind: 'b' };\nexport function read(shape: Shape) { switch (shape.kind) { case 'a': return 1; } return 0; }",
     allowed: 'exhaustive',
+  },
+  ...domainFailureMessageCases,
+  {
+    name: 'domain recursion names flatMap',
+    config: strictDomainConfig,
+    filename: 'src/main/features/billing/domain/total.ts',
+    banned: 'function total(items) { return items.length === 0 ? 0 : 1 + total(items.slice(1)); }',
+    allowed: 'flatMap',
+  },
+  {
+    name: 'domain arrow recursion names flatMap',
+    config: strictDomainConfig,
+    filename: 'src/main/features/billing/domain/walk.ts',
+    banned: 'const walk = (node) => node.children.flatMap((child) => walk(child));',
+    allowed: 'flatMap',
+  },
+  {
+    name: 'domain throw names the discriminated-union result',
+    config: strictDomainConfig,
+    filename: 'src/main/features/billing/domain/parse.ts',
+    banned: 'function parse(input) { if (!input) { throw new Error("empty"); } return input; }',
+    allowed: 'discriminated-union failure result',
+  },
+  {
+    name: 'adapter for(;;) names for...of',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'for (let i = 0; i < 3; i++) { run(i); }',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter for...in names for...of',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'for (const key in record) { run(key); }',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter while names for...of',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'while (queue.length > 0) { run(queue.pop()); }',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter do-while names for...of',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'do { run(); } while (more());',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter forEach names for...of',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'items.forEach((item) => run(item));',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter then chain names async/await',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'fetchOne().then((value) => use(value));',
+    allowed: 'async/await',
+  },
+  {
+    name: 'adapter catch chain names async/await',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'fetchOne().catch((error) => use(error));',
+    allowed: 'try/catch',
+  },
+  {
+    name: 'adapter bare Error names Error subclass',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: "function f() { throw new Error('failed'); }",
+    allowed: 'Error subclass',
+  },
+  {
+    name: 'adapter literal throw names Error subclass',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: "function f() { throw 'failed'; }",
+    allowed: 'preserves cause',
+  },
+  {
+    name: 'adapter silent catch names logging',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'try { run(); } catch (error) { cleanup(); }',
+    allowed: 'log',
+  },
+  {
+    name: 'adapter empty catch is rejected',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'try { run(); } catch (error) {}',
+    allowed: 'caught value',
+  },
+  {
+    name: 'adapter lost cause names cause',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'try { run(); } catch (error) { throw new Error(String(error)); }',
+    allowed: 'original cause',
+  },
+  ...adapterFailureMessageCases,
+  {
+    name: 'construction in a factory-named file names the composition root',
+    config: compositionRootConfig,
+    filename: 'src/main/widget-factory.ts',
+    banned: 'const client = new WidgetClient();',
+    allowed: 'only in the composition root',
+  },
+  {
+    name: 'construction in a feature names passing it in as a parameter',
+    config: compositionRootConfig,
+    filename: 'src/main/features/auth/handler.ts',
+    banned: 'const client = new WidgetClient();',
+    allowed: 'pass it in as a parameter',
+  },
+  {
+    name: 'module-level let names const',
+    config: compositionRootConfig,
+    filename: 'src/main/state.ts',
+    banned: 'let counter = 0;',
+    allowed: "use 'const'",
   },
 ];

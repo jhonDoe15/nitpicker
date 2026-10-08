@@ -4,10 +4,14 @@ import boundedContainerTeardown from './rules/bounded-container-teardown.mjs';
 import noFixedSleepSynchronization from './rules/no-fixed-sleep-synchronization.mjs';
 import noIntervalPollingInTests from './rules/no-interval-polling-in-tests.mjs';
 import noManagedResourceConstructionOutsideCompositionRoots from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
+import noHandwrittenBoundaryGuard from './rules/no-handwritten-boundary-guard.mjs';
+import noModuleLevelLet from './rules/no-module-level-let.mjs';
 import noMockingSubjectUnderTest from './rules/no-mocking-subject-under-test.mjs';
 import noComments from './rules/no-comments.mjs';
 import noProductionConsole from './rules/no-production-console.mjs';
+import noSelfRecursion from './rules/no-self-recursion.mjs';
 import noSilentCatch from './rules/no-silent-catch.mjs';
+import noThrow from './rules/no-throw.mjs';
 import reportModuleLoadEffects from './rules/report-module-load-effects.mjs';
 import structuredCatchLogging from './rules/structured-catch-logging.mjs';
 import testMustUseProductionRuntime from './rules/test-must-use-production-runtime.mjs';
@@ -31,12 +35,16 @@ export default {
     'preserve-error-cause': preserveErrorCause,
     'no-internal-module-mocks': noInternalModuleMocks,
     'integration-test-uses-approved-harness': integrationTestUsesApprovedHarness,
+    'no-handwritten-boundary-guard': noHandwrittenBoundaryGuard,
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
+    'no-module-level-let': noModuleLevelLet,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'no-comments': noComments,
     'no-production-console': noProductionConsole,
+    'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-throw': noThrow,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,
