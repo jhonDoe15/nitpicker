@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 
 // The Java preset as one analyzer of the differential framework. It makes the Gradle project run
@@ -15,6 +16,7 @@ const CONFIGURATION_FILES = [
   'java/nitpicker.init.gradle',
   'adapters/java/java-analyzer.mjs',
   'adapters/java/java-diff.mjs',
+  'adapters/java/java-duplicates.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
   'adapters/ingest/format-check.mjs',
@@ -31,7 +33,7 @@ export function readPinnedVersions(initScript = INIT_SCRIPT) {
   if (versions.length === 0) {
     throw new Error(`No pinned tool versions found in ${initScript}`);
   }
-  return versions.join(';');
+  return [...versions, `jscpd@${jscpdVersion()}`].join(';');
 }
 
 function hashConfiguration() {
@@ -50,8 +52,8 @@ export function createJavaAnalyzer() {
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
-    // One Gradle run yields the findings of all four tools.
-    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco'],
+    // One Gradle run yields the findings of all five tools.
+    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'duplicates'],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {

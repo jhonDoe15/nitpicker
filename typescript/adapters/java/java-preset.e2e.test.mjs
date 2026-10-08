@@ -61,6 +61,18 @@ public final class Bad {
 }
 `;
 
+// The same sizeable method in two classes: a new clone for jscpd.
+const clonedClass = (name) => `package demo;
+
+public final class ${name} {
+  public int total(int a, int b) {
+    int total = 0;
+${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i});\n    if (total > ${i * 10}) {\n      total -= ${i + 1};\n    }`).join('\n')}
+    return total;
+  }
+}
+`;
+
 let repository;
 const sourceDirectory = 'src/main/java/demo';
 
@@ -107,6 +119,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('clean', { 'Greeter.java': FAREWELL });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
   });
 
   afterAll(() => {
@@ -166,6 +179,19 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
       );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new clone found by jscpd',
+    () => {
+      const result = diffOf('clone');
+
+      expect(result.failed).toBe(true);
+      expect(
+        summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
+      ).toEqual(['duplicates duplicate-clone Left.java']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

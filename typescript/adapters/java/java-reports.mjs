@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readDuplicateFindings } from './java-duplicates.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
@@ -34,6 +35,8 @@ export function readJavaFindings(projectRoot) {
       message: 'File is not formatted with google-java-format',
     }).findings,
   );
+
+  findings.push(...readDuplicateFindings(reportRoot));
 
   const jacoco = readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
   for (const sourceRoot of sourceRoots) {

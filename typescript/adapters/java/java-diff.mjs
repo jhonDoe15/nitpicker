@@ -4,6 +4,7 @@ import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
 import { captureWorkingTree, readRenameMap, resolveComparison } from '../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../core/diff/worktree.mjs';
+import { runJavaDuplicates } from './java-duplicates.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 
 // Runs the Java preset (java/nitpicker.init.gradle) on a project and compares base with head.
@@ -36,6 +37,7 @@ export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INI
 /** Runs the preset and returns the validated findings of one snapshot. */
 export function collectJavaFindings(projectRoot, options) {
   runJavaPreset(projectRoot, options);
+  runJavaDuplicates(projectRoot);
   return parseAnalyzerReport(readJavaFindings(projectRoot), 'java').findings;
 }
 
