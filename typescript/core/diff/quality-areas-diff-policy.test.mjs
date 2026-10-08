@@ -850,14 +850,14 @@ describe('complete quality-area analyzer catalog', () => {
           vitest: { configFile: 'stryker.vitest.config.ts', related: false },
         },
         {
-          tsconfigFile: '.quality-diff-tsconfig.stryker.json',
-          vitestConfigFile: '.quality-diff-stryker.vitest.config.ts',
+          tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
+          vitestConfigFile: '.nitpicker-diff-stryker.vitest.config.ts',
         },
       ),
     ).toEqual({
-      tsconfigFile: '.quality-diff-tsconfig.stryker.json',
+      tsconfigFile: '.nitpicker-diff-tsconfig.stryker.json',
       vitest: {
-        configFile: '.quality-diff-stryker.vitest.config.ts',
+        configFile: '.nitpicker-diff-stryker.vitest.config.ts',
         related: false,
       },
     });
