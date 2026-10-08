@@ -1,5 +1,6 @@
 import { codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
 const { sourceRoots, testRoots, excludePattern } = readLayout();
 const sourceRootPattern = `(?:^|/)(?:${sourceRoots.join('|')})/`;
@@ -20,6 +21,7 @@ export default {
       from: { path: productionSource },
       to: { circular: true },
     },
+    ...strictBoundaryRules,
   ],
   required: [],
   options: {

@@ -740,6 +740,19 @@ describe('nitpicker config file', () => {
     });
   });
 
+  it('reports a strict exception and changes the policy hash', () => {
+    const exception = {
+      rule: 'nitpicker/preserve-error-cause',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy module until migration',
+    };
+    const plain = runWithConfig(undefined).summary.policyHash;
+    const { summary, exitCode } = runWithConfig({ exceptions: [exception] });
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([`exception: ${JSON.stringify(exception)}`]);
+    expect(summary.policyHash).not.toBe(plain);
+  });
+
   it.each([
     [{ unknownKey: true }, /unknown key "unknownKey"/],
     [{ preset: 'strict' }, /"preset" must be one of: typescript/],
