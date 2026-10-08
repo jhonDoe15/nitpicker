@@ -5,6 +5,7 @@ import { domainFailureMessageCases } from './domain-cases.mjs';
 import strictDomainConfig from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
+import compositionRootConfig from '../eslint-config/strict-composition-root.mjs';
 
 function strictCase([name, banned, allowed]) {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
@@ -223,4 +224,25 @@ export const failureMessageCases = [
     allowed: 'original cause',
   },
   ...adapterFailureMessageCases,
+  {
+    name: 'construction in a factory-named file names the composition root',
+    config: compositionRootConfig,
+    filename: 'src/main/widget-factory.ts',
+    banned: 'const client = new WidgetClient();',
+    allowed: 'only in the composition root',
+  },
+  {
+    name: 'construction in a feature names passing it in as a parameter',
+    config: compositionRootConfig,
+    filename: 'src/main/features/auth/handler.ts',
+    banned: 'const client = new WidgetClient();',
+    allowed: 'pass it in as a parameter',
+  },
+  {
+    name: 'module-level let names const',
+    config: compositionRootConfig,
+    filename: 'src/main/state.ts',
+    banned: 'let counter = 0;',
+    allowed: "use 'const'",
+  },
 ];

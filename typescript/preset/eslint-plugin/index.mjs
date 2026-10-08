@@ -5,6 +5,7 @@ import noFixedSleepSynchronization from './rules/no-fixed-sleep-synchronization.
 import noIntervalPollingInTests from './rules/no-interval-polling-in-tests.mjs';
 import noManagedResourceConstructionOutsideCompositionRoots from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
 import noHandwrittenBoundaryGuard from './rules/no-handwritten-boundary-guard.mjs';
+import noModuleLevelLet from './rules/no-module-level-let.mjs';
 import noMockingSubjectUnderTest from './rules/no-mocking-subject-under-test.mjs';
 import noComments from './rules/no-comments.mjs';
 import noProductionConsole from './rules/no-production-console.mjs';
@@ -37,6 +38,7 @@ export default {
     'no-handwritten-boundary-guard': noHandwrittenBoundaryGuard,
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
+    'no-module-level-let': noModuleLevelLet,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'no-comments': noComments,
     'no-production-console': noProductionConsole,
