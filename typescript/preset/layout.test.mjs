@@ -6,6 +6,7 @@ import {
   testGlobs,
   isSourceFile,
   isTestFile,
+  resolveLayout,
   sourceRoot,
   testRoots,
 } from './layout.mjs';
@@ -36,5 +37,13 @@ describe('common layout', () => {
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
     expect(isSourceFile('src/generated/service.ts')).toBe(false);
     expect(isSourceFile('src/service.d.ts')).toBe(false);
+  });
+});
+
+describe('layout.excludedGlobs', () => {
+  it('replaces the built-in excluded globs and keeps the config exclude globs', () => {
+    const layout = resolveLayout({ excludedGlobs: ['**/vendor/**'] }, ['legacy/**']);
+
+    expect(layout.excludedGlobs).toEqual(['**/vendor/**', 'legacy/**']);
   });
 });

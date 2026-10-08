@@ -26,8 +26,6 @@ export default [
     ignores: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts'],
     rules: {
       'nitpicker/structured-catch-logging': 'error',
-      '@typescript-eslint/consistent-type-assertions': ['error', { assertionStyle: 'never' }],
-      '@typescript-eslint/no-explicit-any': 'error',
     },
   },
 ];

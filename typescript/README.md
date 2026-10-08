@@ -104,22 +104,30 @@ is visible in review.
   "disable": ["mutation"],
   "thresholds": { "crapLimit": 12 },
   "exclude": ["src/vendor/**"],
-  "layout": { "sourceRoots": ["lib"], "testRoots": ["spec"] },
+  "layout": { "sourceRoots": ["lib"], "testRoots": ["spec"], "excludedGlobs": ["**/vendor/**"] },
+  "exceptions": [
+    {
+      "rule": "nitpicker/preserve-error-cause",
+      "paths": ["lib/legacy/**"],
+      "reason": "Legacy module until the migration"
+    }
+  ],
   "analyzers": [{ "name": "house-rules", "command": "./scripts/house-rules", "args": ["--ci"] }],
   "legacyInventory": "config/nitpicker.legacy.json"
 }
 ```
 
-| Key               | Type           | Meaning                                                                                                                                                                                                                                                                             |
-| ----------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`            | string         | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                |
-| `preset`          | `"typescript"` | The preset. `typescript` is the only value.                                                                                                                                                                                                                                         |
-| `disable`         | string[]       | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                               |
-| `thresholds`      | object         | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9.                                                                                                                                                                               |
-| `exclude`         | string[]       | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. |
-| `layout`          | object         | `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project. No absolute paths, `..` or globs. Other keys are an error.                                                                                     |
-| `analyzers`       | object[]       | Custom analyzers; see below.                                                                                                                                                                                                                                                        |
-| `legacyInventory` | string         | Path of the coding-standards legacy inventory, inside the project. Default `nitpicker.legacy.json`; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code).                                                                                                |
+| Key               | Type           | Meaning                                                                                                                                                                                                                                                                                                                                             |
+| ----------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `base`            | string         | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                                                                                |
+| `preset`          | `"typescript"` | The preset. `typescript` is the only value.                                                                                                                                                                                                                                                                                                         |
+| `disable`         | string[]       | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                               |
+| `thresholds`      | object         | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9.                                                                                                                                                                                                                                               |
+| `exclude`         | string[]       | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph.                                                                 |
+| `layout`          | object         | `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
+| `exceptions`      | object[]       | Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                         |
+| `analyzers`       | object[]       | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                        |
+| `legacyInventory` | string         | Path of the coding-standards legacy inventory, inside the project. Default `nitpicker.legacy.json`; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code).                                                                                                                                                                |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -137,6 +145,51 @@ the built-in finding schema and carries `tool` equal to the entry's `name`. Find
 fingerprinted and classified exactly like built-in ones. A non-zero exit, invalid JSON or a schema
 violation is a tool error. A name must not clash with a built-in analyzer. The command and its
 arguments are part of the policy hash.
+
+## The strict preset
+
+The `typescript` preset is strict, and it is the only preset: there is no lax mode and no
+`preset: "strict"` value. It allows one way to write each construct and fails every other with a
+message that names the allowed form. Existing violations are baselined by the differential gate;
+new and touched code must comply.
+
+- **Everywhere in production code**: `type`, never `interface`; no `enum` or `namespace`; classes
+  only as `Error` subclasses; named functions use the `function` keyword (arrow functions only as
+  callbacks); named exports only (config files may default-export); early returns, no `else` after
+  `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
+  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
+  `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
+  `@ts-expect-error` or `@ts-nocheck`.
+- **Layout**: features live in `src/main/features/<name>/` and are imported only through their
+  `index.ts`; shared code does not import features; features do not import the composition root
+  (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
+  composition root; no module-level `let`.
+- **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
+  `forEach` or `reduce` (use `map`, `filter`, `flatMap`, `Object.fromEntries`, `Object.groupBy`), no
+  classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
+  Node I/O, network or database clients, loggers or module state.
+- **`features/<name>/adapters/`** does the I/O: `for...of` is the only loop, `async`/`await` with no
+  `.then()` chains and no floating promises, throw only `Error` subclasses that keep `cause`, no
+  silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
+  an expectation of the preset, not a dependency of nitpicker: install it in your project.
+- **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
+  edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
+  the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
+  Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
+- **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
+  `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
+  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
+- **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
+
+A small project that follows all of this is kept in `preset/fixtures/strict-clean` of the nitpicker
+repository, and its tests assert that `nitpicker --all` reports no enforceable findings for it.
+
+### Upgrading from the earlier rules
+
+Strict replaced the earlier ESLint rules in a single release. nitpicker analyzes the base checkout
+with the head's policy, so the existing violations appear on both sides and stay baselined; the
+policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
+by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
 
 ## Adopting nitpicker on existing code
 

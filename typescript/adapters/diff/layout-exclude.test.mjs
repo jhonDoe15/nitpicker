@@ -288,7 +288,8 @@ function violations(directory) {
     [`lib/${directory}/dup-a.ts`]: clone,
     [`lib/${directory}/dup-b.ts`]: clone,
     [`lib/${directory}/unused.ts`]: 'export const unused = 1;\n',
-    [`lib/${directory}/assertion.ts`]: 'export const asserted = 1 as number;\n',
+    [`lib/${directory}/assertion.ts`]:
+      'export function asserted() {\n  try {\n    run();\n  } catch (error) {\n    throw new Error(String(error));\n  }\n}\n',
     [`lib/${directory}/bypass.ts`]:
       "import { internal } from '../alpha/internal.js';\n\nexport const bypass = internal;\n",
   };

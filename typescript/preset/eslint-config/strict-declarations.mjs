@@ -1,5 +1,3 @@
-export const configFileGlobs = ['src/**/*.config.*', 'src/**/.*rc.*'];
-
 export const declarationSelectors = [
   {
     selector: 'TSEnumDeclaration',

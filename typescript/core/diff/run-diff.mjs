@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
 import { compareFindings } from './compare.mjs';
-import { captureWorkingTree, readRenameMap, resolveComparison } from './git.mjs';
+import { captureWorkingTree, readChangedLines, readRenameMap, resolveComparison } from './git.mjs';
 import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import {
@@ -9,6 +9,7 @@ import {
   removeSnapshotDependencies,
 } from '../../adapters/diff/static-checks-runner.mjs';
 import { withHeadPolicyFile } from '../../preset/head-policy.mjs';
+import { isStrictRule } from '../../preset/strict-rules.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -38,6 +39,15 @@ export function runQualityDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
+  const touchedCode = {
+    changedLines: readChangedLines({
+      repositoryRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
+      headSha: comparison.headSha,
+      projectRelativePath,
+    }),
+    isStrictRule,
+  };
 
   const report = withTemporaryWorktree(
     repositoryRoot,
@@ -72,6 +82,7 @@ export function runQualityDiff({
               baseRun,
               headRun,
               baseToHeadRenames,
+              touchedCode,
               comparison,
               startedAt,
               additionalToolErrors,
@@ -139,6 +150,7 @@ function combineAnalyzerReports({
   baseRun,
   headRun,
   baseToHeadRenames,
+  touchedCode,
   comparison,
   startedAt,
   additionalToolErrors,
@@ -171,6 +183,7 @@ function combineAnalyzerReports({
           baseFindings,
           headFindings,
           baseToHeadRenames,
+          touchedCode,
         });
         newFindings.push(...result.newFindings);
         resolvedFindings.push(...result.resolvedFindings);
