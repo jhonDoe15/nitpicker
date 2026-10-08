@@ -54,6 +54,12 @@ Optional; zero config must work. Overrides are limited to:
 Every override appears in the report and changes the policy hash, so a weakened check is visible in
 review.
 
+The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
+both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
+`thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
+`layout`, and `analyzers`. Unknown keys are an error. `exclude`, `layout`, and `analyzers` are
+validated and reported but not yet applied.
+
 ## Packaging
 
 Status: implemented. The consumer installs one npm dev dependency and runs `npx nitpicker`.

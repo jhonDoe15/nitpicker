@@ -9,7 +9,7 @@ export function analyzerName(analyzer, index) {
     : `unknown-analyzer-${String(index)}`;
 }
 
-export function policyHash(analyzers) {
+export function policyHash(analyzers, configOverrides = []) {
   const policy = analyzers.map((analyzer, index) => ({
     name: analyzerName(analyzer, index),
     version: analyzerMetadata(analyzer, 'version'),
@@ -19,7 +19,9 @@ export function policyHash(analyzers) {
         ? analyzer.exclusions
         : [],
   }));
-  return createHash('sha256').update(JSON.stringify(policy)).digest('hex');
+  // Zero config keeps the original hash input; any override changes it.
+  const hashed = configOverrides.length === 0 ? policy : { policy, configOverrides };
+  return createHash('sha256').update(JSON.stringify(hashed)).digest('hex');
 }
 
 export function sortByToolAndPath(entries) {
