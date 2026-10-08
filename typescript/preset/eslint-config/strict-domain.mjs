@@ -46,6 +46,12 @@ export const domainRestrictedSyntax = [
       'domain/ code does not mutate properties: return a new object with spread, e.g. { ...value, count: value.count + 1 }.',
   },
   {
+    selector:
+      "CallExpression[callee.object.name='Date'][callee.property.name='now'], NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.object.name='Math'][callee.property.name='random'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
+    message:
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
+  },
+  {
     selector: "UnaryExpression[operator='delete']",
     message:
       'domain/ code does not use delete: build a new object without the key using Object.fromEntries and filter.',
@@ -76,7 +82,7 @@ export const domainFunctionalRules = {
 // preset's typed config; the standalone domain config below runs without a type program.
 export const domainTypeAwareFunctionalRules = {
   'functional/immutable-data': 'error',
-  'functional/prefer-immutable-types': 'error',
+  'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }],
 };
 
 export default [
