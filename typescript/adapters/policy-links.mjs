@@ -1,16 +1,19 @@
 import { lstatSync, realpathSync, symlinkSync, unlinkSync } from 'node:fs';
+import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
 
 export function linkPolicyFile(sourcePath, targetPath) {
   const canonicalSource = realpathSync(sourcePath);
   if (lstatIfExists(targetPath) !== undefined) {
     throw new Error(`Temporary policy target already exists: ${targetPath}`);
   }
+  trackTemporaryPath(targetPath);
   symlinkSync(canonicalSource, targetPath, 'file'); // nosemgrep: javascript.express.file.fs-express.fs-express
   return {
     sourcePath: canonicalSource,
     targetPath,
     remove() {
       removeOwnedLink(targetPath, canonicalSource, 'policy');
+      untrackTemporaryPath(targetPath);
     },
   };
 }

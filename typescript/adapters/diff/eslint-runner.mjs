@@ -80,9 +80,9 @@ function runEslint(options) {
         env: {
           ...process.env,
           ...options.environment,
-          QUALITY_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
-          QUALITY_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
-          QUALITY_DIFF_ESLINT_PROJECT_CONFIG: installedProjectConfig ?? '',
+          NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
+          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
+          NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: installedProjectConfig ?? '',
         },
         encoding: 'utf8',
         maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
@@ -402,7 +402,7 @@ function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
       installedFiles.push(
         linkPolicyFile(
           sourcePath,
-          path.join(projectRoot, `.quality-diff-policy-${String(index)}${extension}`),
+          path.join(projectRoot, `.nitpicker-diff-policy-${String(index)}${extension}`),
         ),
       );
     }

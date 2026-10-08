@@ -151,6 +151,7 @@ export const entryPointsCheck = {
     'preset/dependency-graph/config.mjs',
     POLICY_TYPESCRIPT_CONFIG,
     'adapters/policy-links.mjs',
+    'adapters/temporary-files.mjs',
   ],
 };
 
@@ -240,6 +241,7 @@ export const qualityAreaChecks = [
       'preset/dependency-graph/cruise.mjs',
       POLICY_TYPESCRIPT_CONFIG,
       'adapters/policy-links.mjs',
+      'adapters/temporary-files.mjs',
       'preset/coupling/analyze.mjs',
     ],
   },
@@ -255,6 +257,7 @@ export const qualityAreaChecks = [
       'preset/dependency-graph/cruise.mjs',
       POLICY_TYPESCRIPT_CONFIG,
       'adapters/policy-links.mjs',
+      'adapters/temporary-files.mjs',
       'preset/test-runtime/analyze.mjs',
     ],
   },

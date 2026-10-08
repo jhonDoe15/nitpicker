@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const policyConfigPath = requiredEnvironmentPath('QUALITY_DIFF_ESLINT_POLICY_CONFIG');
-const projectRoot = requiredEnvironmentPath('QUALITY_DIFF_ESLINT_PROJECT_ROOT');
-const projectConfigPath = optionalEnvironmentPath('QUALITY_DIFF_ESLINT_PROJECT_CONFIG');
+const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');
+const projectRoot = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_ROOT');
+const projectConfigPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_CONFIG');
 const policyModule = await import(pathToFileURL(policyConfigPath).href);
 
 if (!Array.isArray(policyModule.default)) {
