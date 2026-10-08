@@ -138,3 +138,11 @@ gate run produced; `referenceReport` is a report the harness produces itself out
   assertions into a helper counts as removal), tautologies such as `expect(true).toBe(true)`, matchers
   loosened to `toBeDefined`, `toBeTruthy`, `expect.anything()` and similar, and `vi.mock` or `vi.spyOn`
   of the module the test is named after.
+- `code-shortcuts`: only occurrences added relative to the fixture count (compared per file and
+  signature, not by line). Reports `as` and `<T>` assertions (not `as const`), `any`, non-null `!`;
+  relative imports that reach into another feature's internals instead of its `index`, from another
+  feature or from outside `src/main/features` (`featuresRoot` option); more `if`, `case` or `?:`
+  branches in an existing shared file under `src/` outside the features directory; empty or
+  return-only `catch` blocks and no-op `.catch()` handlers; and `forEach`, `for(;;)`, `for...in`,
+  `while`, `.then()` chains, `enum`, `namespace` and `interface`. The construct list follows the
+  strict preset decisions and is meant to be extended as the preset's rules land.
