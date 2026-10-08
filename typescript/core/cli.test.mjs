@@ -477,6 +477,7 @@ describe('nitpicker config file', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
+      'custom-analyzer.mjs': customAnalyzerScript,
     });
     if (config !== undefined) {
       writeFiles(repository.root, {
@@ -551,7 +552,7 @@ describe('nitpicker config file', () => {
       ['thresholds', { crapLimit: 12 }],
       ['exclude', ['generated/**']],
       ['layout', { source: ['lib'] }],
-      ['analyzers', [{ name: 'custom', command: './check.sh' }]],
+      ['analyzers', [customAnalyzerEntry('clean')]],
     ]) {
       const { summary, exitCode } = runWithConfig({ [key]: value });
       expect(exitCode).toBe(0);
@@ -559,6 +560,60 @@ describe('nitpicker config file', () => {
       hashes.add(summary.policyHash);
     }
     expect(hashes.size).toBe(6);
+  });
+
+  describe('custom analyzers', () => {
+    it('classifies findings from a valid analyzer like built-in findings', () => {
+      const repository = createRepository({
+        'quality-policy.json': policy(),
+        'custom-analyzer.mjs': customAnalyzerScript,
+        'src/main/old.txt': 'legacy\n',
+      });
+      writeFiles(repository.root, {
+        'nitpicker.config.json': JSON.stringify({ analyzers: [customAnalyzerEntry('files')] }),
+        'src/main/new.txt': 'added\n',
+      });
+      const output = captureOutput();
+      const outputRoot = makeOutputRoot();
+
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', outputRoot],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+
+      const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+      const tool = summary.tools.find(({ name }) => name === 'custom');
+      expect(exitCode).toBe(1);
+      expect(tool).toMatchObject({ base: 1, head: 2, new: 1, unchanged: 1 });
+      expect(output.stdoutText).toContain('src/main/new.txt');
+    });
+
+    it.each([
+      ['json', /custom did not produce valid JSON/],
+      ['shape', /custom output must contain a findings array/],
+      ['crash', /custom crashed with exit 3: custom analyzer failed/],
+    ])('reports a %s failure as a tool error', (mode, message) => {
+      const { exitCode, output, summary } = runWithConfig({
+        analyzers: [customAnalyzerEntry(mode)],
+      });
+
+      expect(exitCode).toBe(2);
+      expect(summary.overallStatus).toBe('tool-error');
+      expect(output.stdoutText).toMatch(message);
+    });
+
+    it('rejects a name that clashes with a built-in analyzer', () => {
+      const { exitCode, output } = runWithConfig({
+        analyzers: [{ ...customAnalyzerEntry('clean'), name: 'fake-quality-analyzer' }],
+      });
+
+      expect(exitCode).toBe(2);
+      expect(output.stderrText).toContain('clashes with another analyzer name');
+    });
   });
 
   it.each([
@@ -576,6 +631,36 @@ describe('nitpicker config file', () => {
     expect(output.stderrText).toMatch(message);
   });
 });
+
+const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
+const mode = process.argv[2];
+if (mode === 'crash') {
+  process.stderr.write('custom analyzer failed\\n');
+  process.exit(3);
+}
+if (mode === 'json') {
+  process.stdout.write('{not-json');
+} else if (mode === 'shape') {
+  process.stdout.write('{"items":[]}');
+} else {
+  const files = mode === 'files' && existsSync('src/main') ? readdirSync('src/main').sort() : [];
+  const findings = files
+    .filter((file) => file.endsWith('.txt'))
+    .map((file) => ({
+      tool: 'custom',
+      rule: 'text-file',
+      path: 'src/main/' + file,
+      identity: 'text-file:' + file,
+      message: 'Text file ' + file,
+      classification: 'enforceable',
+    }));
+  process.stdout.write(JSON.stringify({ findings }));
+}
+`;
+
+function customAnalyzerEntry(mode) {
+  return { name: 'custom', command: process.execPath, args: ['custom-analyzer.mjs', mode] };
+}
 
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
