@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-import { realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { snapshotAnalyzers as configuredSnapshotAnalyzers } from '../preset/snapshot/configured-analyzers.mjs';
+import { PACKAGE_ROOT, resolveProjectRoot } from '../adapters/tool-resolution.mjs';
+import {
+  prepareSnapshotDependencies,
+  removeSnapshotDependencies,
+} from '../adapters/diff/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import {
   clearSnapshotReports,
@@ -11,7 +15,8 @@ import {
 import { runQualitySnapshot } from './snapshot/run-snapshot.mjs';
 import { parseDrillDownOptions } from './diff/cli.mjs';
 import { resolveBase } from './diff/base-ref.mjs';
-import { runGit } from './diff/git.mjs';
+import { captureWorkingTree, runGit } from './diff/git.mjs';
+import { withTemporaryWorktree } from './diff/worktree.mjs';
 import {
   clearDiffReports,
   relativeTextReportPath,
@@ -22,14 +27,12 @@ import { runQualityDiff } from './diff/run-diff.mjs';
 import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
 
-const projectRoot = path.resolve(import.meta.dirname, '..');
-
 export function runCli({
   arguments_ = process.argv.slice(2),
   environment = process.env,
-  currentProjectRoot = projectRoot,
+  currentProjectRoot,
   analyzers = configuredAnalyzers,
-  snapshotAnalyzers = configuredSnapshotAnalyzers,
+  snapshotAnalyzers = analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
 } = {}) {
@@ -44,10 +47,13 @@ export function runCli({
       return 0;
     }
 
+    const selectedProjectRoot =
+      currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
+    validateProject(selectedProjectRoot);
     if (options.all) {
       return runSnapshotCli({
         options,
-        currentProjectRoot: realpathSync(currentProjectRoot),
+        currentProjectRoot: selectedProjectRoot,
         analyzers: snapshotAnalyzers,
         stdout,
       });
@@ -55,13 +61,32 @@ export function runCli({
     return runComparisonCli({
       options,
       environment,
-      currentProjectRoot: realpathSync(currentProjectRoot),
+      currentProjectRoot: selectedProjectRoot,
       analyzers,
       stdout,
     });
   } catch (error) {
     stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
     return 2;
+  }
+}
+
+function validateProject(root) {
+  if (!existsSync(path.join(root, 'package-lock.json'))) {
+    throw new Error(
+      'Phase 1 supports single-package npm projects only: package-lock.json is required',
+    );
+  }
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+  } catch (error) {
+    throw new Error(`Invalid package.json at ${root}`, { cause: error });
+  }
+  if (manifest.workspaces !== undefined) {
+    throw new Error(
+      'Phase 1 supports single-package npm projects only: npm workspaces are unsupported',
+    );
   }
 }
 
@@ -185,9 +210,33 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, stdout }) {
     throw new Error('No quality analyzers are configured.');
   }
 
-  const report = runQualitySnapshot({
-    analyzers: selectedAnalyzers,
-    projectRoot: currentProjectRoot,
+  const repositoryRoot = realpathSync(
+    runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
+  );
+  const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
+  const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
+  const capturedSha = captureWorkingTree(repositoryRoot, headSha);
+  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) => {
+    const snapshotRoot = path.join(worktreeRoot, relativeProjectPath);
+    const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
+    const dependencies = needsDependencies
+      ? prepareSnapshotDependencies({
+          projectRoot: snapshotRoot,
+          liveProjectRoot: currentProjectRoot,
+          toolRoot: PACKAGE_ROOT,
+        })
+      : undefined;
+    try {
+      return runQualitySnapshot({
+        analyzers: selectedAnalyzers,
+        projectRoot: snapshotRoot,
+        policyRoot: snapshotRoot,
+        toolRoot: PACKAGE_ROOT,
+        liveProjectRoot: currentProjectRoot,
+      });
+    } finally {
+      removeSnapshotDependencies(dependencies);
+    }
   });
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);

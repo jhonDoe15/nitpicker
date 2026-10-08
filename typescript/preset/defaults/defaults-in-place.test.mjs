@@ -82,6 +82,7 @@ function runInPlace(analyzer, projectRoot) {
     projectRoot,
     policyRoot: projectRoot,
     toolRoot: packageRoot,
+    liveProjectRoot: packageRoot,
     snapshot: 'head',
   });
 }

@@ -1,11 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-const TRUSTED_TOOL_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
+const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
 try {
   const options = parseArguments(process.argv.slice(2));
@@ -34,17 +36,24 @@ async function loadPolicyModules(policyRoot) {
     import(pathToFileURL(entryPointsModule).href),
     import(pathToFileURL(dependencyGraphModule).href),
   ]);
-  return { analyzeEntryPoints, excludedPathPattern, withProjectTypeScriptConfig };
+  return {
+    analyzeEntryPoints,
+    excludedPathPattern,
+    withProjectTypeScriptConfig,
+  };
 }
 
 function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }) {
-  const dependencyCruiser = path.join(
-    options.toolRoot,
-    'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
-  );
+  const dependencyCruiser = resolveTool('dependency-cruiser', {
+    bin: 'bin/dependency-cruise.mjs',
+  }).binPath;
   const config = path.join(options.policyRoot, 'preset/dependency-graph/config.mjs');
   const result = withProjectTypeScriptConfig(
-    { policyRoot: options.policyRoot, projectRoot: options.projectRoot, name: 'entry-points' },
+    {
+      policyRoot: options.policyRoot,
+      projectRoot: options.projectRoot,
+      name: 'entry-points',
+    },
     (environment) =>
       spawnSync(
         process.execPath,
@@ -78,7 +87,14 @@ function loadGraph(options, { excludedPathPattern, withProjectTypeScriptConfig }
     );
   }
 
-  const graph = JSON.parse(result.stdout);
+  let graph;
+  try {
+    graph = JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error('dependency-cruiser returned invalid JSON', {
+      cause: error,
+    });
+  }
   if (!Array.isArray(graph.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
@@ -105,11 +121,25 @@ function parseArguments(arguments_) {
   }
 
   return {
-    projectRoot: realpathSync(requiredValue(values, '--project-root')),
-    policyRoot: realpathSync(requiredValue(values, '--policy-root')),
+    projectRoot: validatedRoot(requiredValue(values, '--project-root'), '--project-root'),
+    policyRoot: validatedRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
     sourceRoot: relativePath(requiredValue(values, '--source-root'), '--source-root'),
   };
+}
+
+function validatedRoot(value, name) {
+  const root = realpathSync(value);
+  if (root === PACKAGE_ROOT) {
+    return root;
+  }
+  const segments = path.relative(realpathSync(tmpdir()), root).split(path.sep);
+  if (segments.length >= 2 && segments[0].startsWith('nitpicker-diff-') && segments[1] === 'base') {
+    return root;
+  }
+  throw new Error(
+    `${name} must be inside a generated quality-diff worktree or the trusted package`,
+  );
 }
 
 function requiredValue(values, name) {

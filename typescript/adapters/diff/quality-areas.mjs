@@ -28,7 +28,15 @@ export function createQualityAreaAnalyzer({
     executionPriority,
     shardWeight,
     requiresDependencies: true,
-    createInvocation({ projectRoot, policyRoot, toolRoot, snapshot, baselineRoot }) {
+    createInvocation({
+      projectRoot,
+      policyRoot,
+      projectPolicyRoot,
+      toolRoot,
+      snapshot,
+      baselineRoot,
+      liveProjectRoot,
+    }) {
       return {
         command: process.execPath,
         args: [
@@ -45,6 +53,8 @@ export function createQualityAreaAnalyzer({
           toolRoot,
           '--snapshot',
           snapshot,
+          ...(liveProjectRoot === undefined ? [] : ['--live-project-root', liveProjectRoot]),
+          ...(projectPolicyRoot === undefined ? [] : ['--project-policy-root', projectPolicyRoot]),
           ...(baselineRoot === undefined ? [] : ['--baseline-root', baselineRoot]),
           ...adapterArguments,
         ],

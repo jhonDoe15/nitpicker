@@ -71,6 +71,41 @@ Decided:
   default set.
 - Default file globs cover common layouts (`src/`, `test/`, `tests/`) instead of only `src/main`
   and `tests`. The config file can change them.
+- `vitest`, `@vitest/coverage-v8`, and `typescript` are required peer dependencies resolved from
+  the consumer. The report records the versions that ran. The other tools are exact-pinned
+  dependencies resolved from nitpicker's own package.
+- Phase 1 supports single-package npm projects. The `nitpicker` command checks this before it
+  analyzes anything and fails clearly otherwise; the diff engine itself does not. npm workspaces,
+  pnpm, and yarn come later.
+- Runners keep the `--tool-root` argument, pinned to nitpicker's package folder.
+- Project-owned policy files, such as the coding-standards legacy inventory, are read from the head
+  commit and applied to both sides of the comparison, so base and head are measured with one policy.
+- Tools nitpicker owns come from its own package and must match its pinned versions. Neither the
+  base nor the head tree can choose them. Peer tools come from the consumer's install, so the head
+  can change them; the report records the version that ran, which makes such a change visible but
+  does not prevent it.
+
+Known risks, not yet addressed:
+
+- A snapshot that commits a real `node_modules/` directory and changes `package.json` skips
+  `npm ci`, so vitest can load the coverage provider or `vitest/config` from the committed files.
+- The snapshot's `node_modules` links to the consumer's live install, so tools that cache under
+  `node_modules` write into the consumer's checkout.
+- ESLint plugin versions are not part of the policy hash yet.
+- Project-owned policy files, such as the coding-standards legacy inventory, are read from the head
+  commit and applied to both sides of the comparison, so base and head are measured with one policy.
+- Tools nitpicker owns come from its own package and must match its pinned versions. Neither the
+  base nor the head tree can choose them. Peer tools come from the consumer's install, so the head
+  can change them; the report records the version that ran, which makes such a change visible but
+  does not prevent it.
+
+Known risks, not yet addressed:
+
+- A snapshot that commits a real `node_modules/` directory and changes `package.json` skips
+  `npm ci`, so vitest can load the coverage provider or `vitest/config` from the committed files.
+- The snapshot's `node_modules` links to the consumer's live install, so tools that cache under
+  `node_modules` write into the consumer's checkout.
+- ESLint plugin versions are not part of the policy hash yet.
 
 ## Later: findings cache
 

@@ -13,9 +13,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
-const TRUSTED_TOOL_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
+const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const QUALITY_AREA_RUNNERS = new Map([
   ['policy-tests', runPolicyTests],
   ['coding-standards', runCodingStandards],
@@ -84,7 +85,7 @@ function runPolicyTests(options) {
 async function runCodingStandards(options) {
   const checker = await importPolicyModule(options, 'preset/coding-standards/check.mjs');
   const baselineRelativePath = 'preset/coding-standards/legacy-sites.json';
-  const baseline = readOptionalBaseline(options.policyRoot, baselineRelativePath);
+  const baseline = readOptionalBaseline(options.projectPolicyRoot, baselineRelativePath);
   const signals = [
     ...(await checker.collectSignals(options.projectRoot, options.policyRoot)),
     ...checker.collectArchitectureSignals(options.projectRoot),
@@ -111,7 +112,7 @@ function readOptionalBaseline(root, relativePath) {
   if (!existsSync(baselinePath)) {
     return { sites: [] };
   }
-  return JSON.parse(readFileSync(baselinePath, 'utf8'));
+  return parseReportJson(readFileSync(baselinePath, 'utf8'));
 }
 
 async function runCoupling(options) {
@@ -149,7 +150,7 @@ async function runStructure(options) {
 function runDuplicates(options) {
   const configPath = path.join(options.projectRoot, '.quality-diff-jscpd.json');
   const outputDirectory = path.join(options.projectRoot, 'reports/quality/duplicates');
-  const config = JSON.parse(
+  const config = parseReportJson(
     readFileSync(path.join(options.policyRoot, 'preset/defaults/jscpd.json'), 'utf8'),
   );
   writeFileSync(
@@ -319,7 +320,7 @@ function runCrap(options) {
     environment: { QUALITY_PROJECT_ROOT: options.projectRoot },
     acceptedStatuses: [0],
   });
-  const report = JSON.parse(
+  const report = parseReportJson(
     readFileSync(path.join(options.projectRoot, 'reports/quality/crap/report.json'), 'utf8'),
   );
   return normalizeCrap(
@@ -661,7 +662,12 @@ export function normalizeDeadCode(report, analyzerName) {
             : 'descriptive',
           ...(positiveInteger(entry?.line) === undefined
             ? {}
-            : { location: { line: entry.line, column: positiveInteger(entry.col) ?? 1 } }),
+            : {
+                location: {
+                  line: entry.line,
+                  column: positiveInteger(entry.col) ?? 1,
+                },
+              }),
         });
       }
     }
@@ -1012,7 +1018,11 @@ async function runDependencyCruiser(options, sourcePaths) {
     'preset/dependency-graph/cruise.mjs',
   );
   const result = withProjectTypeScriptConfig(
-    { policyRoot: options.policyRoot, projectRoot: options.projectRoot, name: options.kind },
+    {
+      policyRoot: options.policyRoot,
+      projectRoot: options.projectRoot,
+      name: options.kind,
+    },
     (environment) =>
       runNodeTool({
         options,
@@ -1030,7 +1040,7 @@ async function runDependencyCruiser(options, sourcePaths) {
         acceptedStatuses: [0],
       }),
   );
-  const report = JSON.parse(result.stdout);
+  const report = parseReportJson(result.stdout);
   if (!Array.isArray(report.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
@@ -1046,8 +1056,13 @@ function runNodeTool({
   environment = {},
   acceptedStatuses,
 }) {
+  const name = relativeToolPath === undefined ? undefined : toolNameForPath(relativeToolPath);
   const toolPath =
-    absoluteToolPath ?? path.join(options.toolRoot, 'node_modules', relativeToolPath);
+    absoluteToolPath ??
+    resolveTool(name, {
+      projectRoot: options.liveProjectRoot,
+      bin: relativeToolPath.slice(name.length + 1),
+    }).binPath;
   const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
     cwd,
     env: { ...process.env, ...environment },
@@ -1148,6 +1163,8 @@ function parseArguments(arguments_) {
         '--project-root',
         '--policy-root',
         '--tool-root',
+        '--live-project-root',
+        '--project-policy-root',
         '--snapshot',
         '--baseline-root',
         '--crap-score-limit',
@@ -1169,12 +1186,27 @@ function parseArguments(arguments_) {
   if (toolRoot !== TRUSTED_TOOL_ROOT) {
     throw new Error('--tool-root must be the project checkout containing this adapter');
   }
+  const projectRoot = validatedSnapshotRoot(
+    requiredValue(values, '--project-root'),
+    '--project-root',
+  );
+  const projectPolicyValue = values.get('--project-policy-root');
+  const projectPolicyRoot =
+    projectPolicyValue === undefined ? projectRoot : realpathSync(path.resolve(projectPolicyValue));
+  if (!lstatSync(projectPolicyRoot).isDirectory()) {
+    throw new Error('--project-policy-root must be a directory');
+  }
   return {
     analyzerName: requiredValue(values, '--analyzer-name'),
     kind,
-    projectRoot: validatedSnapshotRoot(requiredValue(values, '--project-root'), '--project-root'),
+    projectRoot,
+    projectPolicyRoot,
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
+    liveProjectRoot:
+      values.get('--live-project-root') === undefined
+        ? PACKAGE_ROOT
+        : realpathSync(values.get('--live-project-root')),
     snapshot,
     crapScoreLimit:
       values.get('--crap-score-limit') === undefined
@@ -1219,6 +1251,14 @@ function prefixedPath(prefix, value) {
     normalizedValue.startsWith(`${prefix}/`)
     ? normalizedValue
     : `${prefix}/${normalizedValue}`;
+}
+
+function parseReportJson(text) {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    throw new Error('Invalid quality area JSON report', { cause: error });
+  }
 }
 
 function positiveInteger(value) {

@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { analyzerName } from './report-model.mjs';
+import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
@@ -50,7 +51,12 @@ export function runAnalyzers({
   toolRoot,
   snapshot,
   baselineRoot,
+  liveProjectRoot,
 }) {
+  if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
+    throw new TypeError('liveProjectRoot is required');
+  }
+
   const reports = new Map();
   const timings = new Map();
   const toolErrors = [];
@@ -59,13 +65,21 @@ export function runAnalyzers({
   for (const [index, analyzer] of analyzers.entries()) {
     const name = analyzerName(analyzer, index);
     try {
+      if (typeof analyzer.resolveVersion === 'function') {
+        analyzer.version = analyzer.resolveVersion(liveProjectRoot);
+      }
+      if (typeof analyzer.resolveConfigurationHash === 'function') {
+        analyzer.configurationHash = analyzer.resolveConfigurationHash(policyRoot);
+      }
       validateAnalyzer(analyzer);
       const invocation = analyzer.createInvocation({
         projectRoot,
-        policyRoot,
+        policyRoot: analyzer.policyFromPackage === true ? PACKAGE_ROOT : policyRoot,
+        projectPolicyRoot: policyRoot,
         toolRoot,
         snapshot,
         baselineRoot,
+        liveProjectRoot,
       });
       validateInvocation(analyzer.name, invocation);
       tasks.push({
@@ -79,6 +93,9 @@ export function runAnalyzers({
         invocation,
       });
     } catch (error) {
+      if (typeof analyzer?.resolveVersion === 'function' && analyzer.version === 'unresolved') {
+        analyzer.version = 'unknown';
+      }
       toolErrors.push({
         tool: name,
         snapshot,
@@ -125,7 +142,13 @@ function runScheduler(tasks) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
     throw new Error(`Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`);
   }
-  return JSON.parse(result.stdout);
+  try {
+    return JSON.parse(result.stdout);
+  } catch (error) {
+    throw new Error('Analyzer scheduler returned invalid JSON', {
+      cause: error,
+    });
+  }
 }
 
 function validateInvocation(analyzerName, invocation) {

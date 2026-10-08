@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { resolveProjectRoot } from '../../adapters/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import {
@@ -8,10 +9,11 @@ import {
   renderConsoleSummary,
   writeDiffReports,
 } from './reporters.mjs';
-import { policyHash, sortByToolAndPath } from './report-model.mjs';
+import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
+import { runGit } from './git.mjs';
+import { withTemporaryWorktree } from './worktree.mjs';
 
-const projectRoot = path.resolve(import.meta.dirname, '../..');
 const COMMON_SUMMARY_PROPERTIES = [
   'requestedBaseRef',
   'resolvedBaseSha',
@@ -25,8 +27,32 @@ export function aggregateShardReports({
   outputRoot,
   analyzers = configuredAnalyzers,
   shardCount,
+  liveProjectRoot,
+  policyRoot,
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
+  const analyzerResolutionErrors = [];
+  resolveAnalyzerVersions(analyzers, liveProjectRoot, analyzerResolutionErrors);
+
+  if (policyRoot !== undefined) {
+    resolveAnalyzerConfigurationHashes(analyzers, policyRoot, analyzerResolutionErrors);
+  } else if (
+    liveProjectRoot !== undefined &&
+    analyzers.some((analyzer) => typeof analyzer.resolveConfigurationHash === 'function')
+  ) {
+    try {
+      const headSha = readJson(path.join(inputRoot, '0'), 'summary.json', 0).headSha;
+      withHeadProjectRoot(liveProjectRoot, headSha, (headProjectRoot) => {
+        resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, analyzerResolutionErrors);
+      });
+    } catch (error) {
+      for (const [index, analyzer] of analyzers.entries()) {
+        if (typeof analyzer.resolveConfigurationHash === 'function') {
+          recordAnalyzerResolutionError(analyzer, index, error, analyzerResolutionErrors);
+        }
+      }
+    }
+  }
   const shardReports = plan.map((shardAnalyzers, index) =>
     readAndValidateShard(inputRoot, index, shardAnalyzers),
   );
@@ -36,6 +62,11 @@ export function aggregateShardReports({
   const resolvedFindings = mergeEntries(shardReports, 'resolvedFindings');
   const changedMetrics = mergeEntries(shardReports, 'changedMetrics');
   const toolErrors = mergeEntries(shardReports, 'toolErrors');
+  for (const error of analyzerResolutionErrors) {
+    if (!toolErrors.some(({ tool }) => tool === error.tool)) {
+      toolErrors.push(error);
+    }
+  }
   const toolsByName = new Map(
     shardReports.flatMap(({ summary }) => summary.tools.map((tool) => [tool.name, tool])),
   );
@@ -74,7 +105,8 @@ export function aggregateShardReports({
 
 export function runAggregateCli({
   arguments_ = process.argv.slice(2),
-  currentProjectRoot = projectRoot,
+  currentProjectRoot,
+  policyRoot,
   analyzers = configuredAnalyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -86,10 +118,12 @@ export function runAggregateCli({
     if (options.kind === 'help') {
       stdout.write(
         'Usage: node core/diff/aggregate-shards.mjs --input-root <directory>' +
-          ' --shard-count <count> [--output <directory>]\n',
+          ' --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
       );
       return 0;
     }
+    currentProjectRoot =
+      currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
     outputRoot = path.resolve(
       currentProjectRoot,
       options.outputRoot ?? 'reports/quality/diff/combined',
@@ -100,6 +134,13 @@ export function runAggregateCli({
       outputRoot,
       analyzers,
       shardCount: options.shardCount,
+      liveProjectRoot: currentProjectRoot,
+      policyRoot:
+        policyRoot === undefined
+          ? options.policyRoot === undefined
+            ? undefined
+            : realpathSync(path.resolve(currentProjectRoot, options.policyRoot))
+          : realpathSync(policyRoot),
     });
     stdout.write(
       renderConsoleSummary(report, {
@@ -122,6 +163,69 @@ export function runAggregateCli({
   }
 }
 
+function resolveAnalyzerVersions(analyzers, liveProjectRoot, errors) {
+  if (liveProjectRoot === undefined) {
+    return;
+  }
+  for (const [index, analyzer] of analyzers.entries()) {
+    try {
+      if (typeof analyzer?.resolveVersion === 'function') {
+        analyzer.version = analyzer.resolveVersion(liveProjectRoot);
+      }
+    } catch (error) {
+      recordAnalyzerResolutionError(analyzer, index, error, errors);
+    }
+  }
+}
+
+function resolveAnalyzerConfigurationHashes(analyzers, configurationRoot, errors) {
+  for (const [index, analyzer] of analyzers.entries()) {
+    try {
+      const resolveConfigurationHash =
+        /** @type {{ resolveConfigurationHash?: (root: string) => string }} */ (analyzer)
+          ?.resolveConfigurationHash;
+      if (typeof resolveConfigurationHash === 'function') {
+        analyzer.configurationHash = resolveConfigurationHash(configurationRoot);
+      }
+    } catch (error) {
+      recordAnalyzerResolutionError(analyzer, index, error, errors);
+    }
+  }
+}
+
+function recordAnalyzerResolutionError(analyzer, index, error, errors) {
+  if (analyzer?.version === 'unresolved') {
+    analyzer.version = 'unknown';
+  }
+  const tool = analyzerName(analyzer, index);
+  if (!errors.some((resolutionError) => resolutionError.tool === tool)) {
+    errors.push({
+      tool,
+      snapshot: 'aggregation',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
+  if (typeof headSha !== 'string' || headSha.length === 0) {
+    throw new Error('Shard 0 has no headSha for policy resolution');
+  }
+  const liveRoot = realpathSync(liveProjectRoot);
+  const repositoryRoot = realpathSync(runGit(liveRoot, ['rev-parse', '--show-toplevel']).trim());
+  const projectRelativePath = path.relative(repositoryRoot, liveRoot);
+  if (
+    projectRelativePath === '..' ||
+    projectRelativePath.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(projectRelativePath)
+  ) {
+    throw new Error('Live project root is outside its Git repository');
+  }
+  return withTemporaryWorktree(repositoryRoot, headSha, (headWorktreeRoot) =>
+    operation(path.join(headWorktreeRoot, projectRelativePath)),
+  );
+}
+
 function parseArguments(arguments_) {
   const values = {};
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -129,7 +233,7 @@ function parseArguments(arguments_) {
     if (argument === '--help') {
       return { kind: 'help' };
     }
-    if (!['--input-root', '--output', '--shard-count'].includes(argument)) {
+    if (!['--input-root', '--output', '--shard-count', '--policy-root'].includes(argument)) {
       throw new Error(`Unknown argument: ${argument}`);
     }
     const value = arguments_[index + 1];
@@ -150,6 +254,7 @@ function parseArguments(arguments_) {
     inputRoot: values['--input-root'],
     outputRoot: values['--output'],
     shardCount: Number(values['--shard-count']),
+    policyRoot: values['--policy-root'],
   };
 }
 

@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
+import { resolveProjectRoot } from '../../adapters/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { runGit } from './git.mjs';
@@ -11,8 +13,6 @@ import {
 import { selectAnalyzers } from './run-analyzers.mjs';
 import { runQualityDiff } from './run-diff.mjs';
 import { selectAnalyzerShard } from './sharding.mjs';
-
-const projectRoot = path.resolve(import.meta.dirname, '../..');
 
 export function resolveBaseRef(arguments_, environment) {
   let baseRef;
@@ -115,7 +115,7 @@ export function parseDrillDownOptions(arguments_) {
 export function runCli({
   arguments_ = process.argv.slice(2),
   environment = process.env,
-  currentProjectRoot = projectRoot,
+  currentProjectRoot,
   analyzers = configuredAnalyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -132,6 +132,8 @@ export function runCli({
       );
       return 0;
     }
+    currentProjectRoot =
+      currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
     const outputRoot =
       options.outputRoot === undefined
         ? path.join(currentProjectRoot, 'reports/quality/diff')
@@ -147,7 +149,9 @@ export function runCli({
       );
     }
 
-    const repositoryRoot = runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim();
+    const repositoryRoot = realpathSync(
+      runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
+    );
     const projectRelativePath = path.relative(repositoryRoot, currentProjectRoot) || '.';
     const report = runQualityDiff({
       repositoryRoot,

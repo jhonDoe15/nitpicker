@@ -1,12 +1,20 @@
 import { analyzerMetadata, analyzerName } from '../diff/report-model.mjs';
 import { runAnalyzers } from '../diff/run-analyzers.mjs';
 
-export function runQualitySnapshot({ analyzers, projectRoot, startedAt = Date.now() }) {
+export function runQualitySnapshot({
+  analyzers,
+  projectRoot,
+  policyRoot = projectRoot,
+  toolRoot = projectRoot,
+  liveProjectRoot = projectRoot,
+  startedAt = Date.now(),
+}) {
   const { reports, toolErrors } = runAnalyzers({
     analyzers,
-    projectRoot: projectRoot,
-    policyRoot: projectRoot,
-    toolRoot: projectRoot,
+    projectRoot,
+    policyRoot,
+    toolRoot,
+    liveProjectRoot,
     snapshot: 'head',
   });
 

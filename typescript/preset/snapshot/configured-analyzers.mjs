@@ -2,6 +2,7 @@ import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/diff/quality-areas.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/diff/static-checks.mjs';
 import { createEslintSnapshotAnalyzer } from '../../adapters/snapshot/eslint.mjs';
+import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
 import {
   entryPointsCheck,
   eslintChecks,
@@ -85,3 +86,7 @@ export const snapshotAnalyzers = [
     }),
   ),
 ];
+
+for (const analyzer of snapshotAnalyzers) {
+  analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
+}
