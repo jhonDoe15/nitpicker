@@ -222,6 +222,8 @@ suite('packed nitpicker in a separate consumer', () => {
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));
         expect(existsSync(path.join(packageLocation, 'README.md'))).toBe(true);
+        // The Java preset's Gradle init script is resolved relative to the installed package.
+        expect(existsSync(path.join(packageLocation, 'java/nitpicker.init.gradle'))).toBe(true);
         if (!strategy) {
           const eslint = path.dirname(
             execFileSync(
