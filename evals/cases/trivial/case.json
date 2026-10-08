@@ -1,0 +1,9 @@
+{
+  "id": "trivial",
+  "title": "Add a triple function",
+  "prompt": "In src/main/math.ts add an exported function triple(value: number): number that returns the value multiplied by three, and add a test for it in test/math.test.ts. Run nitpicker-gate until it exits 0.",
+  "gateArguments": ["--analyzer", "prettier-format", "--analyzer", "eslint-lint"],
+  "acceptance": {
+    "command": ["npx", "--no-install", "vitest", "run", "test/triple.acceptance.test.ts"]
+  }
+}
