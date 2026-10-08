@@ -7,6 +7,7 @@ import boundedContainerTeardown from './rules/bounded-container-teardown.mjs';
 import noFixedSleepSynchronization from './rules/no-fixed-sleep-synchronization.mjs';
 import noIntervalPollingInTests from './rules/no-interval-polling-in-tests.mjs';
 import noManagedResourceConstructionOutsideCompositionRoots from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
+import noModuleLevelLet from './rules/no-module-level-let.mjs';
 import noMockingSubjectUnderTest from './rules/no-mocking-subject-under-test.mjs';
 import noProductionConsole from './rules/no-production-console.mjs';
 import noSilentCatch from './rules/no-silent-catch.mjs';
@@ -185,10 +186,6 @@ ruleTester.run(
         code: 'const cache = new WidgetCache();',
       },
       {
-        filename: '/repo/src/main/widget-factory.ts',
-        code: 'const client = new WidgetClient();',
-      },
-      {
         filename: '/repo/src/main/features/handler.ts',
         code: 'const command = new RefreshCommand(); const values = new Map();',
       },
@@ -197,15 +194,25 @@ ruleTester.run(
         code: 'const registry = new RegistryService();',
         options: [{ compositionRootPattern: '/wiring/' }],
       },
+      {
+        filename: '/repo/src/main/server.ts',
+        code: 'const client = new WidgetClient();',
+        options: [{ compositionRootPattern: '/wiring/' }],
+      },
     ],
     invalid: [
+      {
+        filename: '/repo/src/main/widget-factory.ts',
+        code: 'const client = new WidgetClient();',
+        errors: [{ messageId: 'outsideRoot', data: { name: 'WidgetClient' } }],
+      },
       {
         filename: '/repo/src/main/features/handler.ts',
         code: 'const client = new WidgetClient();',
         errors: [{ messageId: 'outsideRoot', data: { name: 'WidgetClient' } }],
       },
       {
-        filename: '/repo/src/main/server.ts',
+        filename: '/repo/src/main/features/handler.ts',
         code: 'const client = new WidgetClient();',
         options: [{ compositionRootPattern: '/wiring/' }],
         errors: [{ messageId: 'outsideRoot', data: { name: 'WidgetClient' } }],
@@ -213,6 +220,21 @@ ruleTester.run(
     ],
   },
 );
+
+ruleTester.run('no-module-level-let', noModuleLevelLet, {
+  valid: [
+    { code: 'const limit = 1;' },
+    { code: 'export const limit = 1;' },
+    { code: 'function count() { let total = 0; return total; }' },
+    { code: 'for (let index = 0; index < 3; index += 1) {}' },
+    { code: 'if (flag) { let inner = 1; }' },
+  ],
+  invalid: [
+    { code: 'let counter = 0;', errors: [{ messageId: 'moduleLet' }] },
+    { code: 'export let counter = 0;', errors: [{ messageId: 'moduleLet' }] },
+    { code: 'let a = 1, b = 2;', errors: [{ messageId: 'moduleLet' }] },
+  ],
+});
 
 ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime, {
   valid: [
