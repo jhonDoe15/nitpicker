@@ -459,6 +459,78 @@ describe('nitpicker CLI', () => {
     expect(output.stderrText).toBe('');
   });
 
+  it('merges two shard reports through the aggregate subcommand', () => {
+    const root = realpathSync(makeTemporaryRoot('nitpicker-cli-aggregate-'));
+    const analyzers = ['first', 'second'].map((name) => ({
+      name,
+      version: '1.0.0',
+      configurationHash: `hash-${name}`,
+      exclusions: [],
+      dependencies: [],
+      shardWeight: 1,
+    }));
+    const finding = {
+      tool: 'second',
+      rule: 'example',
+      path: 'src/main/example.ts',
+      identity: 'example',
+      message: 'example finding',
+      classification: 'enforceable',
+    };
+    for (const [index, { name }] of analyzers.entries()) {
+      const findings = index === 1 ? [finding] : [];
+      const shardRoot = path.join(root, 'shards', String(index));
+      mkdirSync(shardRoot, { recursive: true });
+      const files = {
+        'summary.json': {
+          requestedBaseRef: 'origin/main',
+          resolvedBaseSha: 'base',
+          mergeBaseSha: 'merge-base',
+          headSha: 'head',
+          policyHash: `shard-${String(index)}`,
+          tools: [{ name, version: '1.0.0', configurationHash: `hash-${name}` }],
+          exclusions: [],
+          renamedPaths: 0,
+          elapsedMs: 10,
+          overallStatus: 'completed',
+          newEnforceableFindings: findings.length,
+        },
+        'new-findings.json': findings,
+        'resolved-findings.json': [],
+        'changed-metrics.json': [],
+        'tool-errors.json': [],
+      };
+      for (const [fileName, value] of Object.entries(files)) {
+        writeFileSync(path.join(shardRoot, fileName), JSON.stringify(value));
+      }
+    }
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: [
+        'aggregate',
+        '--input-root',
+        'shards',
+        '--shard-count',
+        '2',
+        '--output',
+        'combined',
+      ],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      analyzers,
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText).toContain('src/main/example.ts');
+    expect(output.stderrText).toBe('');
+    const summary = JSON.parse(readFileSync(path.join(root, 'combined', 'summary.json'), 'utf8'));
+    expect(summary.tools.map(({ name }) => name)).toEqual(['first', 'second']);
+    expect(summary.newEnforceableFindings).toBe(1);
+  });
+
   it('runs when launched through a symlinked bin', () => {
     const binPath = path.join(makeTemporaryRoot('nitpicker-cli-bin-'), 'nitpicker');
     symlinkSync(path.join(import.meta.dirname, 'cli.mjs'), binPath);

@@ -27,6 +27,7 @@ import {
 import { runQualityDiff } from './diff/run-diff.mjs';
 import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
+import { runAggregateCli } from './diff/aggregate-shards.mjs';
 
 export function runCli({
   arguments_ = process.argv.slice(2),
@@ -38,13 +39,25 @@ export function runCli({
   stderr = process.stderr,
   executeFixCommand,
 } = {}) {
+  if (arguments_[0] === 'aggregate') {
+    return runAggregateCli({
+      arguments_: arguments_.slice(1),
+      currentProjectRoot,
+      analyzers,
+      stdout,
+      stderr,
+      environment,
+    });
+  }
   try {
     const options = parseArguments(arguments_);
     if (options.help) {
       stdout.write(
         'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
           ' [--analyzer <name>]... [--rule <substring>]...' +
-          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n',
+          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n' +
+          '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
+          ' [--output <directory>] [--policy-root <directory>]\n',
       );
       return 0;
     }
