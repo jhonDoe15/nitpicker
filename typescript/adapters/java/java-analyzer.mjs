@@ -17,6 +17,7 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-diff.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
+  'adapters/ingest/crap.mjs',
   'adapters/ingest/format-check.mjs',
   'adapters/ingest/jacoco.mjs',
   'adapters/ingest/sarif.mjs',
@@ -50,8 +51,8 @@ export function createJavaAnalyzer() {
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
-    // One Gradle run yields the findings of all four tools.
-    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco'],
+    // One Gradle run yields the findings of all five tools.
+    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'crap'],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {

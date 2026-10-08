@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { ingestCrap } from '../ingest/crap.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
@@ -43,6 +44,13 @@ export function readJavaFindings(projectRoot) {
       ),
     );
   }
+
+  // CRAP: lizard's complexity per function joined with the same JaCoCo report.
+  findings.push(
+    ...ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
+      sourceRoots,
+    }).findings,
+  );
   return { findings };
 }
 

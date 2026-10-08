@@ -6,8 +6,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from './java-diff.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
-// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format and JaCoCo), so it
-// only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`). NITPICKER_GRADLE overrides `gradle`.
+// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format and JaCoCo), and
+// lizard (pip install lizard==<version pinned in java/nitpicker.init.gradle>, on the PATH or named
+// by NITPICKER_LIZARD), so it only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`).
+// NITPICKER_GRADLE overrides `gradle`.
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -61,6 +63,54 @@ public final class Bad {
 }
 `;
 
+// Nine branches and no test: CRAP = 10^2 * 1 + 10 = 110, over the limit of 9 (formatted, no PMD hit).
+const COMPLEX = `package demo;
+
+public final class Complex {
+  private static final int T0 = 0;
+  private static final int T1 = 1;
+  private static final int T2 = 2;
+  private static final int T3 = 3;
+  private static final int T4 = 4;
+  private static final int T5 = 5;
+  private static final int T6 = 6;
+  private static final int T7 = 7;
+  private static final int T8 = 8;
+
+  public int classify(int value) {
+    int result = 0;
+    if (value > T0) {
+      result += 1;
+    }
+    if (value > T1) {
+      result += 1;
+    }
+    if (value > T2) {
+      result += 1;
+    }
+    if (value > T3) {
+      result += 1;
+    }
+    if (value > T4) {
+      result += 1;
+    }
+    if (value > T5) {
+      result += 1;
+    }
+    if (value > T6) {
+      result += 1;
+    }
+    if (value > T7) {
+      result += 1;
+    }
+    if (value > T8) {
+      result += 1;
+    }
+    return result;
+  }
+}
+`;
+
 let repository;
 const sourceDirectory = 'src/main/java/demo';
 
@@ -107,6 +157,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('clean', { 'Greeter.java': FAREWELL });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('complex', { 'Complex.java': COMPLEX });
   });
 
   afterAll(() => {
@@ -166,6 +217,17 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
       );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new method over the CRAP limit',
+    () => {
+      const result = diffOf('complex');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual(['crap crap-score-limit Complex.java']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
