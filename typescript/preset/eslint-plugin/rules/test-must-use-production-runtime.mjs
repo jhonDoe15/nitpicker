@@ -23,15 +23,18 @@ function isProductionModule(filename, source) {
   const sourceRoot = layout.sourceRoots.find(
     (root) => source.includes(`/${root}/`) || source.startsWith(`${root}/`),
   );
-  if (sourceRoot !== undefined) {
-    return layout.isSourceFile(source.slice(source.indexOf(`${sourceRoot}/`)));
+  if (
+    sourceRoot !== undefined &&
+    layout.isSourceFile(source.slice(source.indexOf(`${sourceRoot}/`)))
+  ) {
+    return true;
   }
   if (!source.startsWith('.')) {
     return false;
   }
 
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  return layout.sourceRootOf(resolved) !== undefined && !TEST_SUPPORT.test(resolved);
+  return layout.sourceRootOf(`${resolved}/`) !== undefined && !TEST_SUPPORT.test(resolved);
 }
 
 export default {
