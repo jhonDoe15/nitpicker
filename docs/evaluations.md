@@ -146,3 +146,30 @@ gate run produced; `referenceReport` is a report the harness produces itself out
   return-only `catch` blocks and no-op `.catch()` handlers; and `forEach`, `for(;;)`, `for...in`,
   `while`, `.then()` chains, `enum`, `namespace` and `interface`. The construct list follows the
   strict preset decisions and is meant to be extended as the preset's rules land.
+
+## Positive cases
+
+Code: `evals/cases/` (`add-farewell-feature`, `fix-count-bug`, `add-greet-endpoint`). Each is built on
+the strict-clean fixture from `typescript/preset/fixtures/strict-clean` (its `package.json` is left
+out, because the runner installs the fixture as a consumer) and pins `presetVersion` in
+`fixture.json`:
+
+- `add-farewell-feature`: add a feature directory that mirrors `greeting` and wire it into the
+  composition root.
+- `fix-count-bug`: `describeCount(1)` returns `1 names`; fix it and add a regression test. The
+  fixture's own tests cover only the counts that work, so the tree passes the gate.
+- `add-greet-endpoint`: add a `GET /greet` request handler in a new `api` feature that reuses the
+  greeting feature through its index, with a test for every response.
+
+Besides `case.json`, `fixture/` and the hidden `acceptance/` tests, a positive case carries
+`reference/`: the files of a correct solution, laid over the fixture. `runner/reference-agent.mjs` is
+an agent command that applies it and runs the gate, so the runner can prove a case is solvable
+without a model call:
+
+    node evals/run.mjs run --agent "node evals/runner/reference-agent.mjs" --tier reference --runs 1
+
+`evals/cases/positive-cases.test.mjs` runs every reference solution through `runCase` against the
+real gate and requires a clean gate, passing acceptance tests, no shortcuts, and one gate iteration.
+It also checks that the untouched fixture fails the acceptance tests and that fixtures stay equal to
+strict-clean. By default it runs the static analyzers only; `NITPICKER_EVAL_FULL_GATE=1` runs every
+analyzer, mutation testing included (about 2 minutes per case).
