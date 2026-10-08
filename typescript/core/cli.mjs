@@ -25,6 +25,7 @@ import {
   renderConsoleSummary,
   renderRuleFilterSection,
 } from './diff/reporters.mjs';
+import { resolveCacheDirectory } from './diff/findings-cache.mjs';
 import { runQualityDiff } from './diff/run-diff.mjs';
 import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
@@ -45,7 +46,7 @@ export function runCli({
       stdout.write(
         'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
           ' [--analyzer <name>]... [--rule <substring>]...' +
-          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--help]\n',
+          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n',
       );
       return 0;
     }
@@ -86,6 +87,7 @@ function parseArguments(arguments_) {
   let baseRef;
   let outputRoot;
   let help = false;
+  let cache = true;
 
   for (let index = 0; index < remainingArguments.length; index += 1) {
     const argument = remainingArguments[index];
@@ -95,6 +97,10 @@ function parseArguments(arguments_) {
     }
     if (argument === '--fix') {
       fix = true;
+      continue;
+    }
+    if (argument === '--no-cache') {
+      cache = false;
       continue;
     }
     if (argument === '--help') {
@@ -140,6 +146,7 @@ function parseArguments(arguments_) {
     shardCount,
     shardIndex,
     deferExit,
+    cache,
     help,
   };
 }
@@ -198,6 +205,9 @@ function runComparisonCli({
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers: selectedAnalyzers,
+    cacheDirectory: options.cache
+      ? resolveCacheDirectory({ projectRoot: currentProjectRoot, environment })
+      : undefined,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
