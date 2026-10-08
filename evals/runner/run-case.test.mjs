@@ -147,6 +147,13 @@ describe('running a case with a fake agent', () => {
     ]);
   });
 
+  it('uses the E2 to E4 detectors by default', () => {
+    const record = run('cheater');
+    expect(record.outcome).toBe('shortcut');
+    expect(record.shortcuts.map((shortcut) => shortcut.category)).toContain('gate-tampering');
+    expect(run('good').shortcuts).toEqual([]);
+  });
+
   it('passes the detector context only trees, reports and the pinned policy hash', () => {
     let seen;
     const detectors = createDetectorRegistry([
