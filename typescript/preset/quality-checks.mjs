@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '..');
-const packageLock = JSON.parse(readFileSync(path.join(packageRoot, 'package-lock.json'), 'utf8'));
 const MINUTE_MS = 60 * 1000;
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
@@ -26,18 +25,16 @@ export function parsePositiveNumber(value, name) {
 
 const activeCrapScoreLimit = resolveCrapScoreLimit();
 
-export const eslintVersion = requiredInstalledVersion(packageLock, 'eslint');
-export const dependencyCruiserVersion = requiredInstalledVersion(packageLock, 'dependency-cruiser');
-export const prettierVersion = requiredInstalledVersion(packageLock, 'prettier');
-export const typeScriptVersion = requiredInstalledVersion(packageLock, 'typescript');
-export const vitestVersion = requiredInstalledVersion(packageLock, 'vitest');
-export const jscpdVersion = requiredInstalledVersion(packageLock, 'jscpd');
-export const knipVersion = requiredInstalledVersion(packageLock, 'knip');
-export const crapVersion = requiredInstalledVersion(
-  packageLock,
-  '@barney-media/crap-typescript-core',
-);
-export const strykerVersion = requiredInstalledVersion(packageLock, '@stryker-mutator/core');
+// Versions are resolved only for selected analyzers, against the binaries that will run.
+export const eslintVersion = 'unresolved';
+export const dependencyCruiserVersion = 'unresolved';
+export const prettierVersion = 'unresolved';
+export const typeScriptVersion = 'unresolved';
+export const vitestVersion = 'unresolved';
+export const jscpdVersion = 'unresolved';
+export const knipVersion = 'unresolved';
+export const crapVersion = 'unresolved';
+export const strykerVersion = 'unresolved';
 
 export const generalExclusions = [
   'src/main/dist/**',
@@ -60,8 +57,6 @@ export const productionExclusions = [
   'target/**',
   '.stryker-tmp/**',
 ];
-
-const LEGACY_INVENTORY_FILE = 'preset/coding-standards/legacy-sites.json';
 
 const POLICY_FILES = [
   'preset/eslint-config/error-wrapping-policy.mjs',
@@ -226,7 +221,6 @@ export const qualityAreaChecks = [
     shardWeight: 17,
     configurationFiles: [
       'preset/coding-standards/check.mjs',
-      ...optionalFiles([LEGACY_INVENTORY_FILE]),
       'preset/eslint-config/coding-standards.mjs',
       ...POLICY_FILES,
     ],
@@ -342,16 +336,4 @@ export function hashFiles(relativePaths, configurationValues = []) {
     hash.update('\0');
   }
   return hash.digest('hex');
-}
-
-function optionalFiles(relativePaths) {
-  return relativePaths.filter((relativePath) => existsSync(path.join(packageRoot, relativePath)));
-}
-
-function requiredInstalledVersion(lockfile, packageName) {
-  const version = lockfile.packages?.[`node_modules/${packageName}`]?.version;
-  if (typeof version !== 'string' || version.length === 0) {
-    throw new Error(`package-lock.json does not contain an installed ${packageName} version`);
-  }
-  return version;
 }

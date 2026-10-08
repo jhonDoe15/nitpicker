@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/diff/eslint.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/diff/quality-areas.mjs';
@@ -70,13 +74,29 @@ export const configuredAnalyzers = [
       configurationHash: hashFiles([...STATIC_CHECK_ADAPTER_FILES, ...check.configurationFiles]),
     }),
   ),
-  ...qualityAreaChecks.map((check) =>
-    createQualityAreaAnalyzer({
-      ...check,
-      configurationHash: hashFiles(
-        [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
-        check.adapterArguments,
-      ),
-    }),
-  ),
+  ...qualityAreaChecks
+    .filter((check) => check.name !== 'policy-tests')
+    .map((check) =>
+      createQualityAreaAnalyzer({
+        ...check,
+        configurationHash: hashFiles(
+          [...QUALITY_AREA_ADAPTER_FILES, ...check.configurationFiles],
+          check.adapterArguments,
+        ),
+      }),
+    ),
 ];
+
+for (const analyzer of configuredAnalyzers) {
+  analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
+  analyzer.policyFromPackage = true;
+  if (analyzer.name === 'coding-standards') {
+    const packageHash = analyzer.configurationHash;
+    analyzer.resolveConfigurationHash = (projectRoot) => {
+      const inventory = path.join(projectRoot, 'preset/coding-standards/legacy-sites.json');
+      return existsSync(inventory)
+        ? createHash('sha256').update(packageHash).update(readFileSync(inventory)).digest('hex')
+        : packageHash;
+    };
+  }
+}

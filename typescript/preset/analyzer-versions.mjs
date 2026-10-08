@@ -1,0 +1,44 @@
+import { PACKAGE_ROOT, resolveTool } from '../adapters/tool-resolution.mjs';
+
+const TOOL_BY_ANALYZER = {
+  'entry-points': 'dependency-cruiser',
+  'prettier-format': 'prettier',
+  'typescript-typecheck': 'typescript',
+  'dependency-architecture': 'dependency-cruiser',
+  'policy-tests': 'vitest',
+  'coding-standards': 'eslint',
+  coupling: 'dependency-cruiser',
+  'test-runtime': 'dependency-cruiser',
+  structure: 'typescript',
+  duplicates: 'jscpd',
+  'dead-code': 'knip',
+  coverage: 'vitest',
+  crap: '@barney-media/crap-typescript-core',
+  mutation: '@stryker-mutator/core',
+};
+const TYPESCRIPT_CONSUMERS = new Set([
+  'coding-standards',
+  'test-runtime',
+  'eslint-lint',
+  'eslint-errors',
+  'eslint-logging',
+  'eslint-module-effects',
+]);
+
+export function resolveAnalyzerVersion(analyzerName, liveProjectRoot) {
+  const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
+  if (toolName === undefined) {
+    throw new Error(`No tool is configured for analyzer ${analyzerName}`);
+  }
+
+  const toolRoot = analyzerName === 'structure' ? PACKAGE_ROOT : liveProjectRoot;
+  const version = resolveTool(toolName, { projectRoot: toolRoot }).version;
+  if (!TYPESCRIPT_CONSUMERS.has(analyzerName)) {
+    return version;
+  }
+
+  const typeScriptVersion = resolveTool('typescript', {
+    projectRoot: PACKAGE_ROOT,
+  }).version;
+  return `${toolName}@${version};typescript@${typeScriptVersion}`;
+}

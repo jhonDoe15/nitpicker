@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import vitestQualityConfig from '../../preset/defaults/vitest.quality.config.ts';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { snapshotAnalyzers } from '../../preset/snapshot/configured-analyzers.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../../adapters/tool-resolution.mjs';
+import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
 import { hashFiles, resolveCrapScoreLimit } from '../../preset/quality-checks.mjs';
 import { compareFindings } from './compare.mjs';
 import { runAnalyzers, selectAnalyzers } from './run-analyzers.mjs';
@@ -45,8 +47,40 @@ describe('complete quality-area analyzer catalog', () => {
   it.each([
     ['differential', configuredAnalyzers],
     ['snapshot', snapshotAnalyzers],
-  ])('runs all 18 quality areas in the %s dial', (_dial, analyzers) => {
-    expect(analyzers.map(({ name }) => name)).toEqual(EXPECTED_ANALYZER_NAMES);
+  ])('runs the supported quality areas in the %s dial', (dial, analyzers) => {
+    expect(analyzers.map(({ name }) => name)).toEqual(
+      dial === 'differential'
+        ? EXPECTED_ANALYZER_NAMES.filter((name) => name !== 'policy-tests')
+        : EXPECTED_ANALYZER_NAMES,
+    );
+  });
+
+  it('reports a resolved tool version for snapshot analyzers', () => {
+    const prettier = snapshotAnalyzers.find(({ name }) => name === 'prettier-format');
+    const report = runQualitySnapshot({
+      analyzers: [
+        {
+          ...prettier,
+          createInvocation: () => ({
+            command: process.execPath,
+            args: ['-e', 'process.stdout.write(JSON.stringify({ findings: [] }))'],
+            cwd: PACKAGE_ROOT,
+          }),
+        },
+      ],
+      projectRoot: PACKAGE_ROOT,
+      liveProjectRoot: PACKAGE_ROOT,
+    });
+
+    expect(report.toolErrors).toEqual([]);
+    expect(report.summary.tools[0].version).toBe(resolveTool('prettier').version);
+    expect(report.summary.tools[0].version).not.toBe('unresolved');
+  });
+
+  it('resolves a real version for every snapshot analyzer', () => {
+    for (const analyzer of snapshotAnalyzers) {
+      expect(analyzer.resolveVersion(PACKAGE_ROOT), analyzer.name).not.toBe('unresolved');
+    }
   });
 
   it.each([
@@ -137,7 +171,19 @@ describe('complete quality-area analyzer catalog', () => {
     expect(names.findIndex((shard) => shard.includes('coverage'))).not.toBe(
       names.findIndex((shard) => shard.includes('mutation')),
     );
-    expect(weights).toEqual([156, 120, 120]);
+    expect(weights).toEqual([156, 110, 109]);
+  });
+
+  it('requires a live project root before running analyzers', () => {
+    expect(() =>
+      runAnalyzers({
+        analyzers: [],
+        projectRoot: import.meta.dirname,
+        policyRoot: import.meta.dirname,
+        toolRoot: import.meta.dirname,
+        snapshot: 'head',
+      }),
+    ).toThrow('liveProjectRoot is required');
   });
 
   it('rejects invalid analyzer execution priority before invocation creation', () => {
@@ -159,6 +205,7 @@ describe('complete quality-area analyzer catalog', () => {
       projectRoot: import.meta.dirname,
       policyRoot: import.meta.dirname,
       toolRoot: import.meta.dirname,
+      liveProjectRoot: PACKAGE_ROOT,
       snapshot: 'head',
     });
 
@@ -203,6 +250,7 @@ describe('complete quality-area analyzer catalog', () => {
       projectRoot: import.meta.dirname,
       policyRoot: import.meta.dirname,
       toolRoot: import.meta.dirname,
+      liveProjectRoot: PACKAGE_ROOT,
       snapshot: 'head',
     });
 
@@ -616,15 +664,24 @@ describe('complete quality-area analyzer catalog', () => {
       expect.objectContaining({ classification: 'enforceable' }),
     );
     expect(normalizeCrap({ functions: [functionEntry(9, 'limit')] }, 'crap')).toContainEqual(
-      expect.objectContaining({ rule: 'crap-score-limit', classification: 'enforceable' }),
+      expect.objectContaining({
+        rule: 'crap-score-limit',
+        classification: 'enforceable',
+      }),
     );
     expect(normalizeCrap({ functions: [functionEntry(null, 'unknown')] }, 'crap')).toContainEqual(
-      expect.objectContaining({ rule: 'crap-coverage-unknown', classification: 'enforceable' }),
+      expect.objectContaining({
+        rule: 'crap-coverage-unknown',
+        classification: 'enforceable',
+      }),
     );
     expect(
       normalizeCrap({ functions: [functionEntry(undefined, 'missing')] }, 'crap'),
     ).toContainEqual(
-      expect.objectContaining({ rule: 'crap-coverage-unknown', classification: 'enforceable' }),
+      expect.objectContaining({
+        rule: 'crap-coverage-unknown',
+        classification: 'enforceable',
+      }),
     );
   });
 
@@ -665,7 +722,9 @@ describe('complete quality-area analyzer catalog', () => {
     });
     expect(compareFindings({ baseFindings, headFindings }).newFindings).toEqual([]);
     expect(
-      normalizeCrap({ functions: [functionEntry(12)] }, 'crap', { scoreLimit: 12 }),
+      normalizeCrap({ functions: [functionEntry(12)] }, 'crap', {
+        scoreLimit: 12,
+      }),
     ).toContainEqual(
       expect.objectContaining({
         rule: 'crap-score-limit',
@@ -698,12 +757,21 @@ describe('complete quality-area analyzer catalog', () => {
     const base = crapFindingsFor('base');
 
     expect(
-      compareFindings({ baseFindings: base, headFindings: crapFindingsFor('base') }).newFindings,
+      compareFindings({
+        baseFindings: base,
+        headFindings: crapFindingsFor('base'),
+      }).newFindings,
     ).toEqual([]);
     expect(
-      compareFindings({ baseFindings: base, headFindings: crapFindingsFor('changed') }).newFindings,
+      compareFindings({
+        baseFindings: base,
+        headFindings: crapFindingsFor('changed'),
+      }).newFindings,
     ).toContainEqual(
-      expect.objectContaining({ rule: 'crap-score-limit', classification: 'enforceable' }),
+      expect.objectContaining({
+        rule: 'crap-score-limit',
+        classification: 'enforceable',
+      }),
     );
   });
 

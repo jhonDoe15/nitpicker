@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
+import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
 import { linkPolicyFile, lstatIfExists, removeOwnedLink } from '../policy-links.mjs';
 import {
   prepareSnapshotDependencies,
@@ -13,7 +14,7 @@ import {
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
-const TRUSTED_TOOL_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
+const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
 // Guarded so other adapters (for example the snapshot ESLint runner) can import
 // normalizeEslintResults without triggering this file's own CLI behavior.
@@ -35,7 +36,7 @@ if (
 }
 
 function runEslint(options) {
-  const dependencyRoot = realpathSync(path.join(options.toolRoot, 'node_modules'));
+  const dependencyRoot = realpathSync(path.join(options.liveProjectRoot, 'node_modules'));
   if (!statSync(dependencyRoot).isDirectory()) {
     throw new Error(`Installed ESLint dependencies are missing at ${dependencyRoot}`);
   }
@@ -46,14 +47,16 @@ function runEslint(options) {
 
   try {
     preparedDependencies = prepareSnapshotDependencies(options);
-    linkedDependencies = linkDependencies({
-      dependencyRoot,
-      roots: [options.policyRoot],
-    });
+    if (options.policyRoot !== PACKAGE_ROOT) {
+      linkedDependencies = linkDependencies({
+        dependencyRoot,
+        roots: [options.policyRoot],
+      });
+    }
     installedPolicyFiles = installPolicyFiles(options);
     const installedProjectConfig = installedPolicyFiles.at(0)?.targetPath;
     const eslintCliPath =
-      options.eslintCliPath ?? path.join(dependencyRoot, 'eslint/bin/eslint.js');
+      options.eslintCliPath ?? resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath;
     const wrapperConfigPath = path.join(import.meta.dirname, 'eslint-config-wrapper.mjs');
     const policyConfigPath = validatedContainedFile(
       options.policyRoot,
@@ -106,7 +109,9 @@ function runEslint(options) {
     } catch (error) {
       const detail = result.stderr.trim();
       const suffix = detail.length === 0 ? '' : `: ${detail}`;
-      throw new Error(`ESLint did not produce valid JSON${suffix}`, { cause: error });
+      throw new Error(`ESLint did not produce valid JSON${suffix}`, {
+        cause: error,
+      });
     }
     return normalizeEslintResults({
       value: eslintResults,
@@ -523,6 +528,7 @@ function parseArguments(arguments_) {
       name !== '--project-root' &&
       name !== '--policy-root' &&
       name !== '--tool-root' &&
+      name !== '--live-project-root' &&
       name !== '--config' &&
       name !== '--timeout-ms' &&
       name !== '--eslint-cli' &&
@@ -563,7 +569,11 @@ function parseArguments(arguments_) {
       requiredArgument(values, '--project-root'),
       '--project-root',
     ),
-    policyRoot: validatedSnapshotRoot(requiredArgument(values, '--policy-root'), '--policy-root'),
+    policyRoot: validatedPolicyRoot(requiredArgument(values, '--policy-root')),
+    liveProjectRoot:
+      values.get('--live-project-root') === undefined
+        ? PACKAGE_ROOT
+        : realpathSync(values.get('--live-project-root')),
     toolRoot: validatedToolRoot(requiredArgument(values, '--tool-root')),
     configRelativePath: normalizedRelativePath(requiredArgument(values, '--config'), '--config'),
     timeoutMs: positiveInteger(
@@ -598,6 +608,11 @@ function validatedSnapshotRoot(value, context) {
     throw new Error(`${context} must be inside a generated quality-diff worktree`);
   }
   return canonicalRoot;
+}
+
+function validatedPolicyRoot(value) {
+  const root = realpathSync(path.resolve(value));
+  return root === PACKAGE_ROOT ? root : validatedSnapshotRoot(value, '--policy-root');
 }
 
 function validatedToolRoot(value) {

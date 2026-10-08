@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
 import { compareFindings } from './compare.mjs';
 import { captureWorkingTree, readRenameMap, resolveComparison } from './git.mjs';
 import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
@@ -46,14 +47,16 @@ export function runQualityDiff({
             analyzers,
             projectRoot: baseProjectRoot,
             policyRoot: headSnapshotRoot,
-            toolRoot: headProjectRoot,
+            toolRoot: PACKAGE_ROOT,
+            liveProjectRoot: headProjectRoot,
             snapshot: 'base',
           });
           const headRun = runAnalyzers({
             analyzers,
             projectRoot: headSnapshotRoot,
             policyRoot: headSnapshotRoot,
-            toolRoot: headProjectRoot,
+            toolRoot: PACKAGE_ROOT,
+            liveProjectRoot: headProjectRoot,
             snapshot: 'head',
             baselineRoot: baseProjectRoot,
           });
@@ -71,7 +74,7 @@ export function runQualityDiff({
               {
                 baseProjectRoot,
                 headSnapshotRoot,
-                toolRoot: headProjectRoot,
+                liveProjectRoot: headProjectRoot,
               },
               compareSnapshots,
             )
@@ -91,15 +94,15 @@ function requiresPreparedDependencies(analyzers) {
 }
 
 function withPreparedAnalyzerDependencies(
-  { baseProjectRoot, headSnapshotRoot, toolRoot },
+  { baseProjectRoot, headSnapshotRoot, liveProjectRoot },
   operation,
 ) {
   const preparedDependencies = [];
   try {
     const baseDependencies = prepareSnapshotDependencies({
       projectRoot: baseProjectRoot,
-      policyRoot: headSnapshotRoot,
-      toolRoot,
+      liveProjectRoot,
+      toolRoot: PACKAGE_ROOT,
     });
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
@@ -107,8 +110,8 @@ function withPreparedAnalyzerDependencies(
 
     const headDependencies = prepareSnapshotDependencies({
       projectRoot: headSnapshotRoot,
-      policyRoot: headSnapshotRoot,
-      toolRoot,
+      liveProjectRoot,
+      toolRoot: PACKAGE_ROOT,
     });
     if (headDependencies !== undefined) {
       preparedDependencies.push(headDependencies);
@@ -153,7 +156,11 @@ function combineAnalyzerReports({
       !toolErrors.some((error) => error.tool === name)
     ) {
       try {
-        result = compareFindings({ baseFindings, headFindings, baseToHeadRenames });
+        result = compareFindings({
+          baseFindings,
+          headFindings,
+          baseToHeadRenames,
+        });
         newFindings.push(...result.newFindings);
         resolvedFindings.push(...result.resolvedFindings);
         unchangedFindings.push(...result.unchangedFindings);

@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { aggregateShardReports, runAggregateCli } from './aggregate-shards.mjs';
+import { PACKAGE_ROOT } from '../../adapters/tool-resolution.mjs';
 
 const temporaryDirectories = [];
 
@@ -33,7 +34,20 @@ function createFixture() {
   };
 }
 
-function writeShard(inputRoot, index, { tools, headSha = 'head', findings = [], elapsedMs = 10 }) {
+function writeShard(
+  inputRoot,
+  index,
+  {
+    tools,
+    headSha = 'head',
+    findings = [],
+    toolErrors = [],
+    toolVersions = {},
+    configurationHashes = {},
+    overallStatus = 'completed',
+    elapsedMs = 10,
+  },
+) {
   const shardRoot = path.join(inputRoot, String(index));
   mkdirSync(shardRoot, { recursive: true });
   writeJson(path.join(shardRoot, 'summary.json'), {
@@ -44,8 +58,8 @@ function writeShard(inputRoot, index, { tools, headSha = 'head', findings = [], 
     policyHash: `shard-${String(index)}`,
     tools: tools.map((name) => ({
       name,
-      version: '1.0.0',
-      configurationHash: `hash-${name}`,
+      version: toolVersions[name] ?? '1.0.0',
+      configurationHash: configurationHashes[name] ?? `hash-${name}`,
       base: 0,
       head: 0,
       new: findings.filter(({ tool }) => tool === name).length,
@@ -59,13 +73,13 @@ function writeShard(inputRoot, index, { tools, headSha = 'head', findings = [], 
     exclusions: ['generated/**'],
     renamedPaths: 0,
     elapsedMs,
-    overallStatus: 'completed',
+    overallStatus,
     newEnforceableFindings: findings.length,
   });
   writeJson(path.join(shardRoot, 'new-findings.json'), findings);
   writeJson(path.join(shardRoot, 'resolved-findings.json'), []);
   writeJson(path.join(shardRoot, 'changed-metrics.json'), []);
-  writeJson(path.join(shardRoot, 'tool-errors.json'), []);
+  writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
 }
 
 describe('quality shard aggregation', () => {
@@ -87,7 +101,10 @@ describe('quality shard aggregation', () => {
       classification: 'enforceable',
     };
     writeShard(fixture.inputRoot, 0, { tools: ['largest'], elapsedMs: 30 });
-    writeShard(fixture.inputRoot, 1, { tools: ['coverage', 'crap'], elapsedMs: 40 });
+    writeShard(fixture.inputRoot, 1, {
+      tools: ['coverage', 'crap'],
+      elapsedMs: 40,
+    });
     writeShard(fixture.inputRoot, 2, {
       tools: ['medium', 'small'],
       findings: [finding],
@@ -108,6 +125,74 @@ describe('quality shard aggregation', () => {
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
       'New enforceable findings: 1',
     );
+  });
+
+  it('uses the shard head policy when the live inventory has uncommitted changes', () => {
+    const fixture = createFixture();
+    const repositoryRoot = path.join(path.dirname(fixture.inputRoot), 'repository');
+    const liveProjectRoot = path.join(repositoryRoot, 'project');
+    const inventoryPath = path.join(liveProjectRoot, 'legacy-sites.json');
+    mkdirSync(liveProjectRoot, { recursive: true });
+    writeFileSync(inventoryPath, '{"sites":["head"]}');
+    runGitCommand(repositoryRoot, ['init', '--quiet']);
+    runGitCommand(repositoryRoot, ['config', 'user.name', 'Nitpicker Test']);
+    runGitCommand(repositoryRoot, ['config', 'user.email', 'nitpicker-test@example.com']);
+    runGitCommand(repositoryRoot, ['add', '--all']);
+    runGitCommand(repositoryRoot, ['commit', '--quiet', '-m', 'head policy']);
+    const headSha = runGitCommand(repositoryRoot, ['rev-parse', 'HEAD']);
+    writeFileSync(inventoryPath, '{"sites":["live"]}');
+
+    const codingStandards = analyzer('coding-standards');
+    codingStandards.resolveVersion = () => '1.0.0';
+    codingStandards.resolveConfigurationHash = (root) =>
+      readFileSync(path.join(root, 'legacy-sites.json'), 'utf8');
+    const headPolicyHash = '{"sites":["head"]}';
+    writeShard(fixture.inputRoot, 0, {
+      tools: ['coding-standards'],
+      headSha,
+      configurationHashes: { 'coding-standards': headPolicyHash },
+    });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [codingStandards],
+      shardCount: 1,
+      liveProjectRoot,
+    });
+
+    expect(report.summary.overallStatus).toBe('completed');
+    expect(report.summary.tools[0].configurationHash).toBe(headPolicyHash);
+  });
+
+  it('records shard-classified analyzer tool errors without aborting aggregation', () => {
+    const fixture = createFixture();
+    const error = {
+      tool: 'missing-tool',
+      snapshot: 'head',
+      message: 'Required tool missing-tool is not installed',
+    };
+    const missingTool = analyzer('missing-tool');
+    missingTool.version = 'unresolved';
+    missingTool.resolveVersion = () => {
+      throw new Error(error.message);
+    };
+    writeShard(fixture.inputRoot, 0, {
+      tools: ['missing-tool'],
+      toolErrors: [error],
+      toolVersions: { 'missing-tool': 'unknown' },
+      overallStatus: 'tool-error',
+    });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [missingTool],
+      shardCount: 1,
+      liveProjectRoot: PACKAGE_ROOT,
+    });
+
+    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(report.summary.tools[0].version).toBe('unknown');
+    expect(report.toolErrors).toEqual([error]);
   });
 
   it('rejects a missing shard instead of silently reducing analyzer coverage', () => {
@@ -244,6 +329,17 @@ describe('quality shard aggregation', () => {
     expect(result.stdout).toContain('Usage: node core/diff/aggregate-shards.mjs');
   });
 });
+
+function runGitCommand(repositoryRoot, arguments_) {
+  const result = spawnSync('git', arguments_, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.error?.message || 'git command failed');
+  }
+  return result.stdout.trim();
+}
 
 function writeJson(filePath, value) {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);

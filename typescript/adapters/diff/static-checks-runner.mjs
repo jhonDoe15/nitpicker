@@ -14,14 +14,24 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { createRequire } from 'node:module';
+import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
 const DEPENDENCY_MANIFESTS = ['package.json', 'package-lock.json'];
-const TRUSTED_TOOL_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
+const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
+let ts;
+
+function loadTypeScript(projectRoot = PACKAGE_ROOT) {
+  if (ts === undefined) {
+    const root = resolveTool('typescript', { projectRoot }).root;
+    ts = createRequire(import.meta.url)(path.join(root, 'lib/typescript.js'));
+  }
+  return ts;
+}
 
 const invokedPath = process.argv[1];
 if (
@@ -83,7 +93,7 @@ async function runPrettier(options) {
       throw new Error(`Prettier reported formatting differences without file paths`);
     }
     const prettier = await import(
-      pathToFileURL(path.join(options.toolRoot, 'node_modules/prettier/index.mjs')).href
+      pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
     );
     let prettierOptions;
     try {
@@ -116,6 +126,7 @@ async function runPrettier(options) {
 }
 
 function runTypecheck(options) {
+  loadTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig;
   try {
@@ -184,7 +195,9 @@ function runArchitecture(options) {
     try {
       report = JSON.parse(result.stdout);
     } catch (error) {
-      throw new Error('dependency-cruiser did not produce valid JSON', { cause: error });
+      throw new Error('dependency-cruiser did not produce valid JSON', {
+        cause: error,
+      });
     }
     return normalizeArchitectureViolations(report, options.analyzerName);
   } finally {
@@ -198,6 +211,7 @@ export function normalizeTypeScriptDiagnostics({
   analyzerName,
   configRelativePath,
 }) {
+  loadTypeScript();
   const occurrences = new Map();
   return diagnostics.map((diagnostic) => {
     const message = formatDiagnostic(diagnostic);
@@ -230,7 +244,10 @@ export function normalizeTypeScriptDiagnostics({
     }
     if (diagnostic.file !== undefined && diagnostic.start !== undefined) {
       const location = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-      finding.location = { line: location.line + 1, column: location.character + 1 };
+      finding.location = {
+        line: location.line + 1,
+        column: location.character + 1,
+      };
     }
     return finding;
   });
@@ -362,7 +379,11 @@ function installPrettierPolicy(options) {
 }
 
 function runNodeTool({ options, relativeToolPath, arguments_, acceptedStatuses }) {
-  const toolPath = path.join(options.toolRoot, 'node_modules', relativeToolPath);
+  const name = toolNameForPath(relativeToolPath);
+  const toolPath = resolveTool(name, {
+    projectRoot: options.liveProjectRoot,
+    bin: relativeToolPath.slice(name.length + 1),
+  }).binPath;
   const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
     cwd: options.projectRoot,
     encoding: 'utf8',
@@ -378,17 +399,20 @@ function runNodeTool({ options, relativeToolPath, arguments_, acceptedStatuses }
   return result;
 }
 
-export function dependencyPreparationMode({ projectRoot, policyRoot, toolRoot }) {
-  if (projectRoot === toolRoot) {
+export function dependencyPreparationMode({ projectRoot, liveProjectRoot = PACKAGE_ROOT }) {
+  if (projectRoot === liveProjectRoot) {
     return 'existing';
   }
-  return dependencyManifestsDiffer(projectRoot, policyRoot) ? 'install' : 'link';
+  if (!existsSync(path.join(projectRoot, 'package.json'))) {
+    return 'link';
+  }
+  return dependencyManifestsDiffer(projectRoot, liveProjectRoot) ? 'install' : 'link';
 }
 
-function dependencyManifestsDiffer(projectRoot, policyRoot) {
+function dependencyManifestsDiffer(projectRoot, liveProjectRoot) {
   return DEPENDENCY_MANIFESTS.some((relativePath) => {
     const projectPath = path.join(projectRoot, relativePath);
-    const policyPath = path.join(policyRoot, relativePath);
+    const policyPath = path.join(liveProjectRoot, relativePath);
     const projectManifestExists = existsSync(projectPath);
     const policyManifestExists = existsSync(policyPath);
     if (!projectManifestExists || !policyManifestExists) {
@@ -405,7 +429,7 @@ export function prepareSnapshotDependencies(options) {
   }
   const dependencyPath = path.join(options.projectRoot, 'node_modules');
   if (existsSync(dependencyPath)) {
-    validatePreparedDependencies(mode, dependencyPath, options.toolRoot);
+    validatePreparedDependencies(mode, dependencyPath, options.liveProjectRoot ?? PACKAGE_ROOT);
     return undefined;
   }
   switch (mode) {
@@ -418,12 +442,12 @@ export function prepareSnapshotDependencies(options) {
   }
 }
 
-function validatePreparedDependencies(mode, dependencyPath, toolRoot) {
+function validatePreparedDependencies(mode, dependencyPath, liveProjectRoot) {
   const entry = lstatSync(dependencyPath);
   if (mode === 'install' && entry.isDirectory() && !entry.isSymbolicLink()) {
     return;
   }
-  const dependencyRoot = realpathSync(path.join(toolRoot, 'node_modules'));
+  const dependencyRoot = realpathSync(path.join(liveProjectRoot, 'node_modules'));
   if (
     mode === 'link' &&
     entry.isSymbolicLink() &&
@@ -466,10 +490,12 @@ function installSnapshotDependencies(projectRoot) {
 }
 
 function linkDependencies(options) {
-  if (options.projectRoot === options.toolRoot) {
+  if (options.projectRoot === (options.liveProjectRoot ?? PACKAGE_ROOT)) {
     return undefined;
   }
-  const dependencyRoot = realpathSync(path.join(options.toolRoot, 'node_modules'));
+  const dependencyRoot = realpathSync(
+    path.join(options.liveProjectRoot ?? PACKAGE_ROOT, 'node_modules'),
+  );
   const linkPath = path.join(options.projectRoot, 'node_modules');
   if (existsSync(linkPath)) {
     const entry = lstatSync(linkPath);
@@ -583,6 +609,7 @@ function parseArguments(arguments_) {
         '--project-root',
         '--policy-root',
         '--tool-root',
+        '--live-project-root',
         '--config',
         '--ignore-path',
         '--include-only',
@@ -607,6 +634,10 @@ function parseArguments(arguments_) {
     projectRoot: validatedSnapshotRoot(requiredValue(values, '--project-root'), '--project-root'),
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
+    liveProjectRoot:
+      values.get('--live-project-root') === undefined
+        ? PACKAGE_ROOT
+        : directoryRoot(values.get('--live-project-root'), '--live-project-root'),
     configRelativePath: normalizedRelativePath(requiredValue(values, '--config'), '--config'),
     ignoreRelativePath:
       values.get('--ignore-path') === undefined

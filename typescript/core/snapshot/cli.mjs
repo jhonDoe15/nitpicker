@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
+import { resolveProjectRoot } from '../../adapters/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { snapshotAnalyzers } from '../../preset/snapshot/configured-analyzers.mjs';
 import {
@@ -8,8 +10,6 @@ import {
 } from './reporters.mjs';
 import { selectAnalyzers } from '../diff/run-analyzers.mjs';
 import { runQualitySnapshot } from './run-snapshot.mjs';
-
-const projectRoot = path.resolve(import.meta.dirname, '..', '..');
 
 export function parseArguments(arguments_) {
   const analyzerNames = [];
@@ -42,7 +42,7 @@ export function parseArguments(arguments_) {
 
 export function runCli({
   arguments_ = process.argv.slice(2),
-  currentProjectRoot = projectRoot,
+  currentProjectRoot,
   analyzers = snapshotAnalyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -56,6 +56,8 @@ export function runCli({
       );
       return 0;
     }
+    currentProjectRoot =
+      currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
     const outputRoot =
       options.outputRoot === undefined
         ? path.join(currentProjectRoot, 'reports/quality/snapshot')

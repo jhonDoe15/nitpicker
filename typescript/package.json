@@ -9,19 +9,33 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.14"
   },
   "scripts": {
     "test": "vitest run --config vitest.config.mts"
   },
-  "devDependencies": {
+  "files": [
+    "core/**/*.mjs",
+    "adapters/**/*.mjs",
+    "preset/**",
+    "!**/*.test.mjs",
+    "!**/fixtures/**",
+    "!**/README.md"
+  ],
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "peerDependencies": {
+    "@vitest/coverage-v8": "^4.1.11",
+    "typescript": ">=5",
+    "vitest": "^4.1.11"
+  },
+  "dependencies": {
     "@barney-media/crap-typescript-core": "0.5.0",
     "@eslint/js": "10.0.1",
     "@stryker-mutator/core": "10.0.0",
     "@stryker-mutator/typescript-checker": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
-    "@types/node": "25.6.0",
-    "@vitest/coverage-v8": "4.1.11",
     "@vitest/eslint-plugin": "1.6.27",
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
@@ -30,8 +44,12 @@
     "jscpd": "5.0.16",
     "knip": "6.32.3",
     "prettier": "3.9.6",
+    "typescript-eslint": "8.68.0"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "@vitest/coverage-v8": "4.1.11",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.68.0",
     "vitest": "4.1.11"
   }
 }

@@ -184,7 +184,12 @@ describe('quality diff Git comparison', () => {
     expect(report.resolvedFindings).toEqual([]);
     expect(report.unchangedFindings).toEqual([]);
     expect(report.changedMetrics).toEqual([
-      expect.objectContaining({ metric: 'fanOut', baseValue: 2, headValue: 5, delta: 3 }),
+      expect.objectContaining({
+        metric: 'fanOut',
+        baseValue: 2,
+        headValue: 5,
+        delta: 3,
+      }),
     ]);
   });
 
@@ -256,7 +261,9 @@ describe('quality diff Git comparison', () => {
     });
     commitFiles(
       repository.root,
-      { 'src/main/new.ts': findingLine(finding({ identity: 'nonzero-finding' })) },
+      {
+        'src/main/new.ts': findingLine(finding({ identity: 'nonzero-finding' })),
+      },
       'add finding',
     );
 
@@ -315,8 +322,12 @@ describe('quality diff Git comparison', () => {
 
     expect(exitCode).toBe(2);
     expect(readJson(repository.root, 'reports/quality/diff/tool-errors.json')).toEqual([
-      expect.objectContaining({ message: expect.stringContaining('timed out after 100 ms') }),
-      expect.objectContaining({ message: expect.stringContaining('timed out after 100 ms') }),
+      expect.objectContaining({
+        message: expect.stringContaining('timed out after 100 ms'),
+      }),
+      expect.objectContaining({
+        message: expect.stringContaining('timed out after 100 ms'),
+      }),
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
   });
@@ -423,7 +434,9 @@ describe('quality diff Git comparison', () => {
 
   it('uses an explicit dependency from the head checkout for base analysis', () => {
     const repository = createRepository({
-      'quality-policy.json': policy({ markerDependency: 'fake-policy/marker.txt' }),
+      'quality-policy.json': policy({
+        markerDependency: 'fake-policy/marker.txt',
+      }),
       'src/main/policy.ts': findingLine(
         finding({ identity: 'head-dependency' }),
         'DEPENDENCY_QUALITY',
@@ -525,7 +538,9 @@ describe('quality diff against the working tree', () => {
       'src/main/untracked.ts': 'export {};\n',
     });
     git(repository.root, ['add', 'src/main/staged.ts']);
-    writeFiles(repository.root, { 'src/main/staged.ts': 'export const unstaged = 1;\n' });
+    writeFiles(repository.root, {
+      'src/main/staged.ts': 'export const unstaged = 1;\n',
+    });
     const statusBefore = git(repository.root, ['status', '--porcelain']);
     const stagedBefore = git(repository.root, ['diff', '--cached']);
     const refsBefore = git(repository.root, ['for-each-ref']);
@@ -584,7 +599,10 @@ describe('quality diff identities and arguments', () => {
     });
     const head = { ...base, metric: { name: 'fanOut', value: 2 } };
 
-    const comparison = compareFindings({ baseFindings: [base], headFindings: [head] });
+    const comparison = compareFindings({
+      baseFindings: [base],
+      headFindings: [head],
+    });
 
     expect(comparison.changedMetrics).toEqual([]);
     expect(comparison.newFindings).toHaveLength(1);
@@ -937,7 +955,7 @@ function fakeAnalyzer(overrides = {}) {
     configurationHash: 'fixture-policy',
     exclusions: COMMON_EXCLUSIONS,
     findingExitCodes: [1],
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
+    createInvocation({ projectRoot, policyRoot, liveProjectRoot }) {
       return {
         command: process.execPath,
         args: [
@@ -947,7 +965,7 @@ function fakeAnalyzer(overrides = {}) {
           '--policy-root',
           policyRoot,
           '--tool-root',
-          toolRoot,
+          liveProjectRoot,
         ],
         cwd: policyRoot,
       };
@@ -1010,7 +1028,10 @@ function git(repositoryRoot, arguments_) {
 function removeWorkingTreeFiles(repositoryRoot) {
   for (const entry of readdirSync(repositoryRoot)) {
     if (entry !== '.git') {
-      rmSync(path.join(repositoryRoot, entry), { recursive: true, force: true });
+      rmSync(path.join(repositoryRoot, entry), {
+        recursive: true,
+        force: true,
+      });
     }
   }
 }

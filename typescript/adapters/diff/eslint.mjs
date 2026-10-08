@@ -24,7 +24,7 @@ export function createEslintAnalyzer({
     timeoutMs,
     shardWeight,
     concurrencyGroup: 'eslint-snapshot-dependencies',
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
+    createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
         runnerPath,
         '--analyzer-name',
@@ -38,6 +38,9 @@ export function createEslintAnalyzer({
         '--config',
         configRelativePath,
       ];
+      if (liveProjectRoot !== undefined) {
+        args.push('--live-project-root', liveProjectRoot);
+      }
       if (eslintTimeoutMs !== undefined) {
         args.push('--timeout-ms', String(eslintTimeoutMs));
       }

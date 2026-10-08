@@ -1,4 +1,6 @@
 import path from 'node:path';
+import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { analyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
 import { compareFindings } from './compare.mjs';
@@ -65,16 +67,25 @@ describe('entry-point differential adapter', () => {
       exclusions: [],
       sourceRoot: 'src/main',
     });
-    const run = runAnalyzers({
-      analyzers: [analyzer],
-      projectRoot: path.join(packageRoot, 'preset/entry-points/fixtures/signals'),
-      policyRoot: packageRoot,
-      toolRoot: packageRoot,
-      snapshot: 'head',
+    const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
+    const projectRoot = path.join(temporaryRoot, 'base');
+    cpSync(path.join(packageRoot, 'preset/entry-points/fixtures/signals'), projectRoot, {
+      recursive: true,
     });
-
-    expect(run.toolErrors).toEqual([]);
-    expect(run.reports.get('entry-points')?.findings).toHaveLength(3);
+    try {
+      const run = runAnalyzers({
+        analyzers: [analyzer],
+        projectRoot,
+        policyRoot: packageRoot,
+        toolRoot: packageRoot,
+        liveProjectRoot: packageRoot,
+        snapshot: 'head',
+      });
+      expect(run.toolErrors).toEqual([]);
+      expect(run.reports.get('entry-points')?.findings).toHaveLength(3);
+    } finally {
+      rmSync(temporaryRoot, { recursive: true, force: true });
+    }
   });
 
   it('includes entry-point bypasses in the production differential analyzers', () => {

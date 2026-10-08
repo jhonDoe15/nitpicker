@@ -1,5 +1,13 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -23,101 +31,113 @@ afterEach(() => {
 });
 
 describe('static differential adapters', () => {
-  it('reports new formatting, type, and architecture findings', { timeout: 120_000 }, () => {
-    const repository = createRepository({
-      ...policyFiles(),
-      'src/main/server.ts': 'export const server = true;\n',
-      'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
-      'src/main/ignored/ignored.ts': 'export const ignored=true\n',
-      'tests/placeholder.ts': 'export const placeholder = true;\n',
-    });
-    writeFiles(repository.root, {
-      'src/main/auth/logic.ts': [
-        "import { server } from '../server.js'",
-        "export const valid:number = 'broken'",
-        'void server',
-        '',
-      ].join('\n'),
-    });
-    commit(repository.root, 'introduce static findings');
+  it(
+    'reports new formatting, type, and architecture findings',
+    {
+      timeout: 120_000,
+    },
+    () => {
+      const repository = createRepository({
+        ...policyFiles(),
+        'src/main/server.ts': 'export const server = true;\n',
+        'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
+        'src/main/ignored/ignored.ts': 'export const ignored=true\n',
+        'tests/placeholder.ts': 'export const placeholder = true;\n',
+      });
+      writeFiles(repository.root, {
+        'src/main/auth/logic.ts': [
+          "import { server } from '../server.js'",
+          "export const valid:number = 'broken'",
+          'void server',
+          '',
+        ].join('\n'),
+      });
+      commit(repository.root, 'introduce static findings');
 
-    const report = runQualityDiff({
-      repositoryRoot: repository.root,
-      projectRelativePath: '.',
-      headProjectRoot: toolRoot,
-      requestedBaseRef: repository.baseRef,
-      outputRoot: path.join(repository.root, 'reports/quality/diff'),
-      analyzers: fixtureAnalyzers(),
-    });
+      const report = runQualityDiff({
+        repositoryRoot: repository.root,
+        projectRelativePath: '.',
+        headProjectRoot: toolRoot,
+        requestedBaseRef: repository.baseRef,
+        outputRoot: path.join(repository.root, 'reports/quality/diff'),
+        analyzers: fixtureAnalyzers(),
+      });
 
-    expect(report.toolErrors).toEqual([]);
-    expect(report.summary.overallStatus).toBe('completed');
-    expect(new Set(report.newFindings.map((finding) => finding.tool))).toEqual(
-      new Set(['prettier-format', 'typescript-typecheck', 'dependency-architecture']),
-    );
-    expect(report.newFindings).toEqual(
-      expect.arrayContaining([
+      expect(report.toolErrors).toEqual([]);
+      expect(report.summary.overallStatus).toBe('completed');
+      expect(new Set(report.newFindings.map((finding) => finding.tool))).toEqual(
+        new Set(['prettier-format', 'typescript-typecheck', 'dependency-architecture']),
+      );
+      expect(report.newFindings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            tool: 'prettier-format',
+            path: 'src/main/auth/logic.ts',
+            rule: 'prettier/prettier',
+          }),
+          expect.objectContaining({
+            tool: 'typescript-typecheck',
+            path: 'src/main/auth/logic.ts',
+            rule: 'TS2322',
+          }),
+          expect.objectContaining({
+            tool: 'dependency-architecture',
+            path: 'src/main/auth/logic.ts',
+            rule: 'features-do-not-import-bootstrap',
+          }),
+        ]),
+      );
+    },
+  );
+
+  it(
+    'reports added formatting drift in an already unformatted file',
+    {
+      timeout: 120_000,
+    },
+    () => {
+      const repository = createRepository({
+        ...policyFiles(),
+        'src/main/auth/logic.ts': 'export const first={value:1}\n',
+        'tests/placeholder.ts': 'export const placeholder = true;\n',
+      });
+      writeFiles(repository.root, {
+        'src/main/auth/logic.ts': [
+          'export const first={value:1}',
+          'export const second={value:2}',
+          '',
+        ].join('\n'),
+      });
+      commit(repository.root, 'add formatting drift');
+
+      const report = runQualityDiff({
+        repositoryRoot: repository.root,
+        projectRelativePath: '.',
+        headProjectRoot: toolRoot,
+        requestedBaseRef: repository.baseRef,
+        outputRoot: path.join(repository.root, 'reports/quality/diff'),
+        analyzers: [
+          analyzer({
+            name: 'prettier-format',
+            kind: 'prettier',
+            configRelativePath: '.prettierrc.json',
+            ignoreRelativePath: '.prettierignore',
+            patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
+          }),
+        ],
+      });
+
+      expect(report.toolErrors).toEqual([]);
+      expect(report.newFindings).toEqual([
         expect.objectContaining({
           tool: 'prettier-format',
           path: 'src/main/auth/logic.ts',
-          rule: 'prettier/prettier',
         }),
-        expect.objectContaining({
-          tool: 'typescript-typecheck',
-          path: 'src/main/auth/logic.ts',
-          rule: 'TS2322',
-        }),
-        expect.objectContaining({
-          tool: 'dependency-architecture',
-          path: 'src/main/auth/logic.ts',
-          rule: 'features-do-not-import-bootstrap',
-        }),
-      ]),
-    );
-  });
-
-  it('reports added formatting drift in an already unformatted file', { timeout: 120_000 }, () => {
-    const repository = createRepository({
-      ...policyFiles(),
-      'src/main/auth/logic.ts': 'export const first={value:1}\n',
-      'tests/placeholder.ts': 'export const placeholder = true;\n',
-    });
-    writeFiles(repository.root, {
-      'src/main/auth/logic.ts': [
-        'export const first={value:1}',
-        'export const second={value:2}',
-        '',
-      ].join('\n'),
-    });
-    commit(repository.root, 'add formatting drift');
-
-    const report = runQualityDiff({
-      repositoryRoot: repository.root,
-      projectRelativePath: '.',
-      headProjectRoot: toolRoot,
-      requestedBaseRef: repository.baseRef,
-      outputRoot: path.join(repository.root, 'reports/quality/diff'),
-      analyzers: [
-        analyzer({
-          name: 'prettier-format',
-          kind: 'prettier',
-          configRelativePath: '.prettierrc.json',
-          ignoreRelativePath: '.prettierignore',
-          patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
-        }),
-      ],
-    });
-
-    expect(report.toolErrors).toEqual([]);
-    expect(report.newFindings).toEqual([
-      expect.objectContaining({
-        tool: 'prettier-format',
-        path: 'src/main/auth/logic.ts',
-      }),
-    ]);
-    expect(report.resolvedFindings).toHaveLength(1);
-    expect(report.unchangedFindings).toEqual([]);
-  });
+      ]);
+      expect(report.resolvedFindings).toHaveLength(1);
+      expect(report.unchangedFindings).toEqual([]);
+    },
+  );
 
   it('ignores generated quality-diff files during formatting checks', () => {
     const projectRoot = generatedSnapshot();
@@ -176,86 +196,104 @@ describe('static differential adapters', () => {
       'package-lock.json': '{"lockfileVersion":3}\n',
     });
 
-    expect(dependencyPreparationMode({ projectRoot, policyRoot, toolRoot: toolRoot })).toBe('link');
+    expect(dependencyPreparationMode({ projectRoot, liveProjectRoot: policyRoot })).toBe('link');
 
     writeFiles(policyRoot, {
       'package-lock.json': '{"lockfileVersion":3,"packages":{"node_modules/example":{}}}\n',
     });
 
-    expect(dependencyPreparationMode({ projectRoot, policyRoot, toolRoot: toolRoot })).toBe(
-      'install',
-    );
+    expect(dependencyPreparationMode({ projectRoot, liveProjectRoot: policyRoot })).toBe('install');
     expect(
       dependencyPreparationMode({
         projectRoot: toolRoot,
-        policyRoot: toolRoot,
-        toolRoot: toolRoot,
+        liveProjectRoot: toolRoot,
       }),
     ).toBe('existing');
   });
 
-  it('typechecks the merge base with its own dependency tree', { timeout: 120_000 }, () => {
-    const projectRoot = generatedSnapshot();
-    const policyRoot = generatedSnapshot();
-    const packageJson = {
-      name: 'base-dependency-fixture',
-      version: '1.0.0',
-      private: true,
-      dependencies: {
-        'fixture-types': 'file:vendor/fixture-types',
-      },
-    };
-    const typeScriptConfig = JSON.stringify({
-      compilerOptions: {
-        target: 'ES2022',
-        module: 'ESNext',
-        moduleResolution: 'Bundler',
-        strict: true,
-        skipLibCheck: true,
-      },
-      include: ['src/**/*.ts'],
-    });
-    writeFiles(projectRoot, {
-      'package.json': `${JSON.stringify(packageJson)}\n`,
-      'vendor/fixture-types/package.json':
-        '{"name":"fixture-types","version":"1.0.0","types":"index.d.ts"}\n',
-      'vendor/fixture-types/index.d.ts':
-        'export interface FixtureValue { readonly value: string }\n',
-      'src/fixture.ts': [
-        "import type { FixtureValue } from 'fixture-types';",
-        "export const fixture: FixtureValue = { value: 'base' };",
-        '',
-      ].join('\n'),
-      'tsconfig.quality.json': `${typeScriptConfig}\n`,
-    });
-    execFileSync(
-      process.platform === 'win32' ? 'npm.cmd' : 'npm',
-      ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-      { cwd: projectRoot, encoding: 'utf8' },
-    );
-    writeFiles(policyRoot, {
-      'package.json': `${JSON.stringify({ ...packageJson, version: '2.0.0' })}\n`,
-      'package-lock.json': readFileSync(path.join(projectRoot, 'package-lock.json'), 'utf8'),
-      'tsconfig.quality.json': `${typeScriptConfig}\n`,
-    });
+  it(
+    'typechecks the merge base with its own dependency tree',
+    {
+      timeout: 120_000,
+    },
+    () => {
+      const projectRoot = generatedSnapshot();
+      const policyRoot = generatedSnapshot();
+      const packageJson = {
+        name: 'base-dependency-fixture',
+        version: '1.0.0',
+        private: true,
+        dependencies: {
+          'fixture-types': 'file:vendor/fixture-types',
+        },
+      };
+      const typeScriptConfig = JSON.stringify({
+        compilerOptions: {
+          target: 'ES2022',
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+          strict: true,
+          skipLibCheck: true,
+        },
+        include: ['src/**/*.ts'],
+      });
+      writeFiles(projectRoot, {
+        'package.json': `${JSON.stringify(packageJson)}\n`,
+        'vendor/fixture-types/package.json':
+          '{"name":"fixture-types","version":"1.0.0","types":"index.d.ts"}\n',
+        'vendor/fixture-types/index.d.ts':
+          'export interface FixtureValue { readonly value: string }\n',
+        'src/fixture.ts': [
+          "import type { FixtureValue } from 'fixture-types';",
+          "export const fixture: FixtureValue = { value: 'base' };",
+          '',
+        ].join('\n'),
+        'tsconfig.quality.json': `${typeScriptConfig}\n`,
+      });
+      execFileSync(
+        process.platform === 'win32' ? 'npm.cmd' : 'npm',
+        ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
+        { cwd: projectRoot, encoding: 'utf8' },
+      );
+      const packageLock = readFileSync(path.join(projectRoot, 'package-lock.json'), 'utf8');
+      const liveProjectRoot = temporaryDirectory('live-project-dependencies-');
+      const livePackageJson = { ...packageJson, version: '2.0.0' };
+      writeFiles(policyRoot, {
+        'package.json': `${JSON.stringify(livePackageJson)}\n`,
+        'package-lock.json': packageLock,
+        'tsconfig.quality.json': `${typeScriptConfig}\n`,
+      });
+      writeFiles(liveProjectRoot, {
+        'package.json': `${JSON.stringify(livePackageJson)}\n`,
+        'package-lock.json': packageLock,
+      });
+      symlinkSync(
+        path.join(toolRoot, 'node_modules'),
+        path.join(liveProjectRoot, 'node_modules'),
+        'dir',
+      );
+      expect(dependencyPreparationMode({ projectRoot, liveProjectRoot })).toBe('install');
 
-    const result = runStaticCheckAdapter([
-      '--analyzer-name',
-      'typescript-typecheck',
-      '--kind',
-      'typecheck',
-      '--project-root',
-      projectRoot,
-      '--policy-root',
-      policyRoot,
-      '--config',
-      'tsconfig.quality.json',
-    ]);
+      const result = runStaticCheckAdapter([
+        '--analyzer-name',
+        'typescript-typecheck',
+        '--kind',
+        'typecheck',
+        '--project-root',
+        projectRoot,
+        '--live-project-root',
+        liveProjectRoot,
+        '--policy-root',
+        policyRoot,
+        '--config',
+        'tsconfig.quality.json',
+      ]);
 
-    expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout)).toEqual({ findings: [] });
-    expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
-  });
+      expect(result.status).toBe(0);
+      expect(JSON.parse(result.stdout)).toEqual({ findings: [] });
+      expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
+    },
+  );
 
   it('rejects filesystem roots outside trusted or generated worktrees', () => {
     const untrustedRoot = temporaryDirectory('untrusted-static-root-');

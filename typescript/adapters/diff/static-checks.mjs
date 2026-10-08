@@ -23,7 +23,7 @@ export function createStaticCheckAnalyzer({
     exclusions,
     timeoutMs,
     shardWeight,
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
+    createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
         runnerPath,
         '--analyzer-name',
@@ -39,6 +39,9 @@ export function createStaticCheckAnalyzer({
         '--config',
         configRelativePath,
       ];
+      if (liveProjectRoot !== undefined) {
+        args.push('--live-project-root', liveProjectRoot);
+      }
       if (ignoreRelativePath !== undefined) {
         args.push('--ignore-path', ignoreRelativePath);
       }
