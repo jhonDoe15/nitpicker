@@ -6,7 +6,9 @@ import noIntervalPollingInTests from './rules/no-interval-polling-in-tests.mjs';
 import noManagedResourceConstructionOutsideCompositionRoots from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
 import noMockingSubjectUnderTest from './rules/no-mocking-subject-under-test.mjs';
 import noProductionConsole from './rules/no-production-console.mjs';
+import noSelfRecursion from './rules/no-self-recursion.mjs';
 import noSilentCatch from './rules/no-silent-catch.mjs';
+import noThrow from './rules/no-throw.mjs';
 import reportModuleLoadEffects from './rules/report-module-load-effects.mjs';
 import structuredCatchLogging from './rules/structured-catch-logging.mjs';
 import testMustUseProductionRuntime from './rules/test-must-use-production-runtime.mjs';
@@ -34,7 +36,9 @@ export default {
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'no-production-console': noProductionConsole,
+    'no-self-recursion': noSelfRecursion,
     'no-silent-catch': noSilentCatch,
+    'no-throw': noThrow,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,
