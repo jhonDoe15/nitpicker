@@ -80,7 +80,15 @@ function projectWithReports({ shift = 0 } = {}) {
     ),
   );
   writeFileSync(path.join(reports, 'format.txt'), `${sourceFile}\n`);
-  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(
+    path.join(reports, 'jacoco.xml'),
+    JACOCO.replace('line="9"', `line="${String(9 + shift)}"`),
+  );
+  // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
+  writeFileSync(
+    path.join(reports, 'lizard.csv'),
+    `9,12,60,1,7,"Bad::decode@${String(8 + shift)}-${String(14 + shift)}@src/main/java/demo/Bad.java","src/main/java/demo/Bad.java","Bad::decode","Bad::decode( byte[] bytes)",${String(8 + shift)},${String(14 + shift)}\n`,
+  );
   return root;
 }
 
@@ -101,6 +109,7 @@ describe('readJavaFindings', () => {
       ['google-java-format', 'format', bad, 'format'],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
+      ['crap', 'crap-score-limit', bad, 'function:Bad::decode( byte[] bytes)'],
     ]);
   });
 
@@ -114,6 +123,7 @@ describe('readJavaFindings', () => {
       spotbugs: 'enforceable',
       'google-java-format': 'enforceable',
       jacoco: 'descriptive',
+      crap: 'enforceable',
     });
   });
 
