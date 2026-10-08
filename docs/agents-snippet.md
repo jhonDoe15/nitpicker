@@ -1,0 +1,66 @@
+# Agent guidance snippet
+
+Optional. Copy the section below into your project's `AGENTS.md` (or `CLAUDE.md`) so a coding agent
+runs nitpicker and handles its findings correctly. Every statement in it matches the
+[nitpicker README](../typescript/README.md); keep the two in step.
+
+---
+
+## Quality gate (nitpicker)
+
+This project uses nitpicker, a differential quality gate. It compares your checkout with the merge
+base and fails only on **new enforceable findings**. Existing debt is baselined and never fails.
+
+### Run it
+
+- `npx nitpicker` checks your changes (committed, staged, unstaged and untracked) against the merge
+  base. Run it from anywhere inside the project, and run it before you finish a task.
+- `npx nitpicker --fix` first applies ESLint and Prettier fixes to the changed files, then runs the
+  comparison. Use it to clear formatting and auto-fixable lint findings. It cannot be combined with
+  `--all`.
+- `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
+  example `--base origin/develop`).
+- `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
+  violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
+  with `--base`, `--fix`, sharding or `--defer-exit`.
+- `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
+  runs one analyzer only, which is faster while iterating.
+
+### Exit codes
+
+| Code | Meaning                                                                          |
+| ---- | -------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done.                                |
+| 1    | Completed with at least one new enforceable finding. Fix the findings and rerun. |
+| 2    | A tool error, invalid arguments, invalid config, or any other failure to decide. |
+
+Exit 2 is not a pass. Read the tool errors, fix the cause (a missing peer such as `vitest` or
+`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun.
+
+### Read the report
+
+The console summary lists each new enforceable violation as `<tool>/<rule> <path>:<line>` followed
+by its message. Full reports are written to `reports/quality/diff/` (`reports/quality/snapshot/`
+for `--all`):
+
+- `report.txt`: the readable report. Start here.
+- `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
+  location and message.
+- `resolved-findings.json` and `changed-metrics.json`: informational.
+- `tool-errors.json`: why a run exited 2.
+- `summary.json` and `report.junit.xml`: totals and CI output.
+
+Only new enforceable findings fail the run. Resolved and unchanged findings, descriptive findings
+and metric changes are reported but never fail.
+
+### Handle a finding
+
+1. Read the message. It says what is wrong.
+2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0.
+3. **Never suppress a finding.** Do not add `eslint-disable` comments, `@ts-ignore` or
+   `@ts-expect-error`, edit the rule configuration, add to `exclude` or `disable` in
+   `nitpicker.config.json`, add to `nitpicker.legacy.json`, or delete or weaken tests to make the
+   gate pass. Those overrides are listed in the report and change the policy hash, so they are
+   visible in review.
+4. If a finding looks wrong, or fixing it needs a decision you cannot make, stop and ask the
+   maintainer. Do not work around it.
