@@ -126,6 +126,52 @@ describe('readJavaFindings', () => {
   });
 });
 
+describe('readJavaFindings: ArchUnit', () => {
+  const failure = (lines) =>
+    `<testsuite name="demo.ArchitectureTest"><testcase name="no_dates" classname="demo.ArchitectureTest"><failure message="${lines.join('&#10;')}"/></testcase></testsuite>`;
+
+  function withArchunit(lines) {
+    const root = projectWithReports();
+    const manifest = path.join(root, 'build/nitpicker/manifest.json');
+    writeFileSync(
+      manifest,
+      JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] }),
+    );
+    mkdirSync(path.join(root, 'build/nitpicker/archunit'));
+    writeFileSync(
+      path.join(root, 'build/nitpicker/archunit/TEST-demo.ArchitectureTest.xml'),
+      failure(lines),
+    );
+    return root;
+  }
+
+  it('attaches violations to the offending class source file, not the line', () => {
+    const lines = (line) => [
+      'Architecture Violation - Rule &apos;no dates&apos; was violated (1 times):',
+      `Method &lt;demo.Bad.decode()&gt; calls constructor &lt;java.util.Date.&lt;init&gt;()&gt; in (Bad.java:${String(line)})`,
+    ];
+    const before = readJavaFindings(withArchunit(lines(9))).findings.filter(
+      (finding) => finding.tool === 'archunit',
+    );
+    const after = readJavaFindings(withArchunit(lines(40))).findings.filter(
+      (finding) => finding.tool === 'archunit',
+    );
+
+    expect(parseAnalyzerReport({ findings: before }, 'java').findings).toEqual(before);
+    expect(identities(before)).toEqual([
+      ['archunit', 'no_dates', 'src/main/java/demo/Bad.java', 'demo.Bad'],
+    ]);
+    expect(identities(after)).toEqual(identities(before));
+    expect(before[0].classification).toBe('enforceable');
+  });
+
+  it('reads nothing when the project has no ArchUnit report', () => {
+    const { findings } = readJavaFindings(projectWithReports());
+
+    expect(findings.some((finding) => finding.tool === 'archunit')).toBe(false);
+  });
+});
+
 describe('ingestFormatCheck', () => {
   it('reports each listed file once with a path-independent identity', () => {
     const { findings } = ingestFormatCheck(
