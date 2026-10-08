@@ -1,4 +1,4 @@
-// Nitpicker Java preset (slice 1). Applied with `gradle -I java/nitpicker.init.gradle nitpickerJava`
+// Nitpicker Java preset (slice 1). Applied with `gradle -I typescript/java/nitpicker.init.gradle nitpickerJava`
 // so the consumer build needs no edits and the base snapshot can be analyzed the same way.
 // Every tool version is pinned exactly; bump them here only.
 //

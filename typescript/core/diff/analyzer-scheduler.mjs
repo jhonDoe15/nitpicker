@@ -204,7 +204,7 @@ export function executeAnalyzerTask(task) {
           return;
         }
         try {
-          resolve(parseReport(stdoutText, task.name));
+          resolve(parseReport(stdoutText, task.name, task.reportedTools));
         } catch (error) {
           reject(error);
         }
@@ -280,7 +280,7 @@ function installShutdownHandlers(shutdownController) {
   }
 }
 
-function parseReport(stdout, analyzerName) {
+function parseReport(stdout, analyzerName, reportedTools = []) {
   let rawReport;
   try {
     rawReport = JSON.parse(stdout);
@@ -288,7 +288,10 @@ function parseReport(stdout, analyzerName) {
     throw new Error(`${analyzerName} did not produce valid JSON`, { cause: error });
   }
   const report = parseAnalyzerReport(rawReport, analyzerName);
-  const mismatchedFinding = report.findings.find((finding) => finding.tool !== analyzerName);
+  // An analyzer may report findings of the tools it wraps (the Java preset: pmd, spotbugs, ...).
+  const mismatchedFinding = report.findings.find(
+    (finding) => finding.tool !== analyzerName && !reportedTools.includes(finding.tool),
+  );
   if (mismatchedFinding !== undefined) {
     throw new Error(
       `${analyzerName} emitted a finding for unexpected tool ${mismatchedFinding.tool}`,

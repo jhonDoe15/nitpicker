@@ -8,7 +8,7 @@ import { readJavaFindings } from './java-reports.mjs';
 
 // Runs the Java preset (java/nitpicker.init.gradle) on a project and compares base with head.
 
-export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../../../java/nitpicker.init.gradle');
+export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../../java/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
