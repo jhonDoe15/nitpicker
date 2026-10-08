@@ -1,0 +1,6 @@
+{
+  "description": "Histories with no common ancestor are an error that points at fetching history.",
+  "baseRef": "main",
+  "projectPath": ".",
+  "error": "Cannot find a merge base between HEAD and \"main\"."
+}

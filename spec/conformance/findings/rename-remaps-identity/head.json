@@ -1,0 +1,12 @@
+{
+  "findings": [
+    {
+      "tool": "deps",
+      "rule": "cycle",
+      "path": "src/new.js",
+      "identity": "src/new.js->src/x.js",
+      "message": "cycle in src/new.js",
+      "classification": "enforceable"
+    }
+  ]
+}
