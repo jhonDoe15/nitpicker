@@ -2,6 +2,9 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { TYPESCRIPT_CONFIG_ENVIRONMENT } from './cruise.mjs';
 import { codeExtensionNames } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
+
+const { excludePattern } = readLayout();
 
 const projectTypeScriptConfig = requiredTypeScriptConfig();
 
@@ -10,7 +13,12 @@ export default {
   required: [],
   options: {
     doNotFollow: {
-      path: '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
+      path: [
+        '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
+        excludePattern,
+      ]
+        .filter((pattern) => pattern !== undefined)
+        .join('|'),
     },
     tsConfig: { fileName: projectTypeScriptConfig },
     tsPreCompilationDeps: 'specify',

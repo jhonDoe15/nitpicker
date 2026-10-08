@@ -19,7 +19,9 @@ import { createRequire } from 'node:module';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
 import { linkPolicyFile } from '../policy-links.mjs';
 import { trackTemporaryPath } from '../temporary-files.mjs';
-import { existingRoots, projectCodeFiles } from '../../preset/layout.mjs';
+import { existingRoots } from '../../preset/layout.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
@@ -73,6 +75,7 @@ async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
+  const layout = readLayout();
   if (
     !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
   )
@@ -90,6 +93,7 @@ async function runPrettier(options) {
         '--list-different',
         '--no-error-on-unmatched-pattern',
         ...options.patterns,
+        ...layout.exclude.map((glob) => `!${glob}`),
       ],
       acceptedStatuses: [0, 1],
     });
@@ -164,8 +168,15 @@ function runTypecheck(options) {
       options: parsedConfig.options,
       projectReferences: parsedConfig.projectReferences,
     });
+    const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
-      diagnostics: ts.getPreEmitDiagnostics(program),
+      diagnostics: ts
+        .getPreEmitDiagnostics(program)
+        .filter(
+          (diagnostic) =>
+            diagnostic.file === undefined ||
+            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+        ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath: options.configRelativePath,
@@ -183,7 +194,8 @@ function runArchitecture(options) {
   if (options.patterns.length === 0) {
     throw new Error('Architecture requires at least one --pattern');
   }
-  if (projectCodeFiles(options.projectRoot).length === 0) return [];
+  const layout = readLayout();
+  if (layout.projectCodeFiles(options.projectRoot).length === 0) return [];
   const patterns = existingRoots(options.projectRoot, options.patterns);
   if (patterns.length === 0) return [];
   const generatedConfig = createArchitectureConfig(options);
@@ -192,8 +204,11 @@ function runArchitecture(options) {
     if (options.includeOnly !== undefined) {
       arguments_.push('--include-only', options.includeOnly);
     }
-    if (options.exclude !== undefined) {
-      arguments_.push('--exclude', options.exclude);
+    const exclusion = [options.exclude, layout.excludePattern]
+      .filter((pattern) => pattern !== undefined)
+      .join('|');
+    if (exclusion.length > 0) {
+      arguments_.push('--exclude', exclusion);
     }
     const result = runNodeTool({
       options,
@@ -323,6 +338,7 @@ function createArchitectureConfig(options) {
       path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
     ),
     path.join(options.projectRoot, '.nitpicker-diff-tsconfig.json'),
+    layoutTransformFor('tsconfig.quality.json', readLayout()),
   );
   trackTemporaryPath(wrapperConfig);
   try {
@@ -358,6 +374,7 @@ function installTypeScriptConfig(options) {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
+    layoutTransformFor(options.configRelativePath, readLayout()),
   );
 }
 

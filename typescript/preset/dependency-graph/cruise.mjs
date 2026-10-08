@@ -1,6 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { linkPolicyFile } from '../../adapters/policy-links.mjs';
+import { readLayout } from '../head-policy.mjs';
+import { layoutTransformFor } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const dependencyCruiser = path.join(
@@ -22,6 +24,7 @@ export function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, nam
   const linkedConfig = linkPolicyFile(
     path.join(policyRoot, POLICY_TYPESCRIPT_CONFIG),
     path.join(root, `.nitpicker-${name}-tsconfig.json`),
+    layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, readLayout()),
   );
   try {
     return operation({ [TYPESCRIPT_CONFIG_ENVIRONMENT]: linkedConfig.targetPath });
@@ -51,7 +54,9 @@ export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
           '--config',
           config,
           '--exclude',
-          EXCLUDED_PATH_PATTERN,
+          [EXCLUDED_PATH_PATTERN, readLayout().excludePattern]
+            .filter((pattern) => pattern !== undefined)
+            .join('|'),
           '--output-type',
           'json',
         ],

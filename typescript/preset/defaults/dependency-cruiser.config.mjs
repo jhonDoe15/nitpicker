@@ -1,7 +1,9 @@
-import { codeExtensionNames, sourceRoot as layoutSourceRoot, testRoots } from '../layout.mjs';
+import { codeExtensionNames } from '../layout.mjs';
+import { readLayout } from '../head-policy.mjs';
 
-const sourceRoot = `(?:^|/)${layoutSourceRoot}/`;
-const productionSource = `${sourceRoot}(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))`;
+const { sourceRoots, testRoots, excludePattern } = readLayout();
+const sourceRootPattern = `(?:^|/)(?:${sourceRoots.join('|')})/`;
+const productionSource = `${sourceRootPattern}(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))`;
 export default {
   forbidden: [
     {
@@ -9,7 +11,7 @@ export default {
       severity: 'error',
       from: { path: productionSource },
       to: {
-        path: `(?:^|/)(?:${testRoots.join('|')}/|${layoutSourceRoot}/.*/__tests__/|${layoutSourceRoot}/.*\\.(?:test|spec)\\.)`,
+        path: `(?:^|/)(?:${testRoots.join('|')}/|(?:${sourceRoots.join('|')})/.*/__tests__/|(?:${sourceRoots.join('|')})/.*\\.(?:test|spec)\\.)`,
       },
     },
     {
@@ -22,7 +24,12 @@ export default {
   required: [],
   options: {
     doNotFollow: {
-      path: '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
+      path: [
+        '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
+        excludePattern,
+      ]
+        .filter((pattern) => pattern !== undefined)
+        .join('|'),
     },
     tsConfig: {
       fileName: 'tsconfig.quality.json',

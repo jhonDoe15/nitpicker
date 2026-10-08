@@ -1,4 +1,6 @@
-import { testRoots } from '../../layout.mjs';
+import { readLayout } from '../../head-policy.mjs';
+
+const { testRoots } = readLayout();
 
 const DEFAULT_APPROVED_FUNCTIONS = ['startApp'];
 const DEFAULT_APPROVED_SUBPROCESSES = ['AppProcess'];

@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { excludedGlobs, sourceRoots, testRoots } from './layout.mjs';
+import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 
 export const HEAD_POLICY_ENV = 'NITPICKER_POLICY';
 
@@ -53,6 +53,15 @@ export function readHeadPolicy(environment = process.env) {
     layout: { ...defaultLayout, ...policy.layout },
     thresholds: policy.thresholds ?? {},
   };
+}
+
+/**
+ * The layout every runner and package-owned config works from: the head policy's source and test
+ * roots plus its `exclude` globs, resolved once into globs, patterns and predicates.
+ */
+export function readLayout(environment = process.env) {
+  const policy = readHeadPolicy(environment);
+  return resolveLayout(policy.layout, policy.exclude);
 }
 
 function parsePolicy(policyFile, text) {

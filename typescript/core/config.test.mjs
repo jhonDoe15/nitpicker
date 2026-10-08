@@ -12,7 +12,7 @@ describe('config file', () => {
         disable: ['knip'],
         thresholds: { crapLimit: 12 },
         exclude: ['generated/**'],
-        layout: {},
+        layout: { sourceRoots: ['lib'], testRoots: ['spec', 'tests'] },
         analyzers: [{ name: 'custom', command: './check.sh', args: ['--json'] }],
       }),
     ).toBeDefined();
@@ -25,6 +25,12 @@ describe('config file', () => {
     [{ thresholds: { crapLimit: 0 } }, /positive number/],
     [{ exclude: [1] }, /"exclude" must be an array/],
     [{ layout: [] }, /"layout" must be an object/],
+    [{ layout: { source: ['lib'] } }, /unknown layout key "source"/],
+    [{ layout: { sourceRoots: 'lib' } }, /"layout.sourceRoots" must be an array/],
+    [{ layout: { sourceRoots: [] } }, /"layout.sourceRoots" must not be empty/],
+    [{ layout: { testRoots: ['../spec'] } }, /entries must be directories inside the project/],
+    [{ layout: { sourceRoots: ['/abs'] } }, /entries must be directories inside the project/],
+    [{ layout: { sourceRoots: ['lib/**'] } }, /entries must be directories inside the project/],
     [{ analyzers: [{ name: 'a', command: 'b', extra: 1 }] }, /unknown key "extra"/],
   ])('rejects %j', (config, message) => {
     expect(() => validateConfig(config)).toThrow(message);

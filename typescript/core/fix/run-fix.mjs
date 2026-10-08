@@ -4,6 +4,13 @@ import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../adapters/tool-resolution.mjs';
 import { linkPolicyFile } from '../../adapters/policy-links.mjs';
 import { eslintChecks, staticChecks } from '../../preset/quality-checks.mjs';
+import { resolveLayout } from '../../preset/layout.mjs';
+import {
+  headPolicyEnvironment,
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from '../../preset/head-policy.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
@@ -29,13 +36,31 @@ const prettierExtensions = new Set([
 ]);
 const prettierExclusions = [/^(?:coverage|reports|\.stryker-tmp)\//, /^src\/main\/dist\//];
 
-export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFixCommand }) {
+/** Fixes the changed files that the head policy does not exclude, with the policy's layout. */
+export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options }) {
+  return withHeadPolicyFile(headPolicy, (policyFile) =>
+    fixWithPolicy({
+      ...options,
+      layout: resolveLayout(headPolicy.layout, headPolicy.exclude),
+      policyEnvironment: headPolicyEnvironment(policyFile),
+    }),
+  );
+}
+
+function fixWithPolicy({
+  repositoryRoot,
+  projectRoot,
+  baseRef,
+  executeFixCommand,
+  layout,
+  policyEnvironment,
+}) {
   const { comparison, changes } = collectWorkingTreeChanges({
     repositoryRoot,
     projectRoot,
     baseRef,
   });
-  const files = changes.filter(({ isFile }) => isFile);
+  const files = changes.filter(({ isFile, path: name }) => isFile && !layout.isExcluded(name));
   const eslintFiles = files.filter(({ path: name }) =>
     typescriptExtensions.has(path.posix.extname(name).toLowerCase()),
   );
@@ -56,6 +81,7 @@ export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFi
       linked = linkPolicyFile(
         path.join(PACKAGE_ROOT, eslintPolicy.policyFiles[0]),
         path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
+        layoutTransformFor(eslintPolicy.policyFiles[0], layout),
       );
       run(
         'eslint-fix',
@@ -71,6 +97,7 @@ export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFi
         projectRoot,
         [0, 1],
         {
+          ...policyEnvironment,
           NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(
             PACKAGE_ROOT,
             eslintPolicy.configRelativePath,
@@ -152,7 +179,7 @@ export function fixWorkingTree({ repositoryRoot, projectRoot, baseRef, executeFi
         ],
         projectRoot,
         [0],
-        {},
+        policyEnvironment,
         undefined,
         executeFixCommand,
       );
