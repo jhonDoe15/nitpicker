@@ -160,6 +160,41 @@ You can also relax the gate while you adopt it: `disable` analyzers you are not 
 `exclude` generated or vendored code, and set `layout` if your sources are not under `src/`. Each
 of these is visible in the report. Remove them as the codebase improves.
 
+## Container image
+
+The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
+on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
+entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
+published yet.
+
+```sh
+docker build -t nitpicker .
+docker run --rm -v "$PWD":/work nitpicker            # same as: npx nitpicker
+docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/quality/diff
+```
+
+Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
+owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
+codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
+(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
+its history must contain the merge base. Reports are written under the mount, owned by the
+container user; add `--user "$(id -u):$(id -g)"` to own them yourself.
+
+GitHub Actions:
+
+```yaml
+jobs:
+  nitpicker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: npm ci
+      - run: docker build -t nitpicker path/to/nitpicker
+      - run: docker run --rm -v "$PWD":/work -e GITHUB_BASE_REF nitpicker
+```
+
 ## Sharding in CI
 
 Split the analyzers over parallel jobs, then combine the results. Every shard must see the same
