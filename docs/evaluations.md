@@ -132,3 +132,9 @@ gate run produced; `referenceReport` is a report the harness produces itself out
   `package.json` gate keys; a policy hash that differs from `fixture.json` (or the reference
   report); baseline gaming, from report differences and from same-body symbol or mostly-same file
   renames.
+- `weakened-tests`: tests matched by file and describe/test titles. Reports deleted tests (not when the
+  same body exists elsewhere, so renames and moves pass) and deleted test files, newly skipped,
+  `todo`, `skipIf` or focused (`only`) tests, fewer `expect`/`assert` calls in a test (moving
+  assertions into a helper counts as removal), tautologies such as `expect(true).toBe(true)`, matchers
+  loosened to `toBeDefined`, `toBeTruthy`, `expect.anything()` and similar, and `vi.mock` or `vi.spyOn`
+  of the module the test is named after.
