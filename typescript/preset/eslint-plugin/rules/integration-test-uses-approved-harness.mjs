@@ -1,3 +1,5 @@
+import { testRoots } from '../../layout.mjs';
+
 const DEFAULT_APPROVED_FUNCTIONS = ['startApp'];
 const DEFAULT_APPROVED_SUBPROCESSES = ['AppProcess'];
 
@@ -23,7 +25,7 @@ export default {
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
-    if (!filename.includes('/tests/integration/')) {
+    if (!testRoots.some((root) => filename.includes(`/${root}/integration/`))) {
       return {};
     }
 

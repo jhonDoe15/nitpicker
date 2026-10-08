@@ -5,12 +5,22 @@
     "moduleResolution": "Node16",
     "lib": ["ES2022"],
     "esModuleInterop": true,
+    "allowJs": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/main/**/*.ts", "stryker.vitest.config.ts"],
-  "exclude": ["src/main/dist/**", "**/*.d.ts"]
+  "include": ["src/**/*", "test/**/*", "tests/**/*", "stryker.vitest.config.ts"],
+  "exclude": [
+    "**/dist/**",
+    "**/build/**",
+    "**/generated/**",
+    "**/node_modules/**",
+    "**/coverage/**",
+    "**/reports/**",
+    "**/target/**",
+    "**/*.d.ts"
+  ]
 }

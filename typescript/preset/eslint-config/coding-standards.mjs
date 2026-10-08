@@ -1,11 +1,12 @@
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
+import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
 
 export default [
-  { ignores: ['**/dist/**', '**/node_modules/**'] },
+  { ignores: excludedGlobs },
   {
-    files: ['src/main/**/*.ts', 'tests/**/*.ts'],
+    files: [...sourceGlobs, ...testGlobs],
     languageOptions: { parser: tseslint.parser },
     plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
     rules: {
@@ -15,11 +16,11 @@ export default [
     },
   },
   {
-    files: ['src/main/**/__tests__/**/*.ts', 'tests/unit/**/*.ts'],
+    files: ['src/**/__tests__/**/*.ts', 'test/unit/**/*.ts', 'tests/unit/**/*.ts'],
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   {
-    files: ['src/main/**/*.ts'],
+    files: sourceGlobs,
     ignores: ['**/__tests__/**', '**/*.test.ts', '**/*.spec.ts'],
     rules: {
       'nitpicker/structured-catch-logging': 'error',

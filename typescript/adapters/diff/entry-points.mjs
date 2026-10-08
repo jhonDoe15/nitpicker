@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { sourceRoot as defaultSourceRoot } from '../../preset/layout.mjs';
 
 const ANALYZER_NAME = 'entry-points';
 const PUBLIC_ALTERNATIVE_BYPASS = 'public-alternative-bypass';
@@ -8,7 +9,7 @@ export function createEntryPointAnalyzer({
   version,
   configurationHash,
   exclusions,
-  sourceRoot = 'src/main',
+  sourceRoot = defaultSourceRoot,
   shardWeight = 1,
 }) {
   return {

@@ -2,6 +2,15 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
+import {
+  sourceRoot,
+  sourceGlobs,
+  testGlobs,
+  testRoots,
+  graphRoots,
+  graphIncludeOnly,
+  excludedGlobs,
+} from './layout.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const MINUTE_MS = 60 * 1000;
@@ -36,29 +45,17 @@ export const knipVersion = 'unresolved';
 export const crapVersion = 'unresolved';
 export const strykerVersion = 'unresolved';
 
-export const generalExclusions = [
-  'src/main/dist/**',
-  'coverage/**',
-  'reports/**',
-  '.stryker-tmp/**',
-];
+export const generalExclusions = [...excludedGlobs, '.stryker-tmp/**'];
 
 export const productionExclusions = [
-  'src/main/**/__tests__/**',
-  'src/main/**/*.test.ts',
-  'src/main/**/*.spec.ts',
-  '**/dist/**',
-  '**/build/**',
-  '**/generated/**',
-  'src/main/**/*.d.ts',
-  'node_modules/**',
-  'coverage/**',
-  'reports/**',
-  'target/**',
+  ...excludedGlobs,
+  'src/**/__tests__/**',
+  ...testGlobs,
   '.stryker-tmp/**',
 ];
 
 const POLICY_FILES = [
+  'preset/layout.mjs',
   'preset/eslint-config/error-wrapping-policy.mjs',
   'preset/eslint-plugin/index.mjs',
   'preset/eslint-plugin/rules/no-wait-for-with-fake-timers.mjs',
@@ -90,7 +87,7 @@ export const eslintChecks = [
   {
     name: 'eslint-lint',
     configRelativePath: 'preset/defaults/eslint.config.mjs',
-    patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
+    patterns: [...sourceGlobs, ...testGlobs],
     exclusions: generalExclusions,
     policyFiles: ['preset/defaults/tsconfig.quality.json'],
     shardWeight: 49,
@@ -103,7 +100,7 @@ export const eslintChecks = [
   {
     name: 'eslint-errors',
     configRelativePath: 'preset/eslint-config/errors.mjs',
-    patterns: ['src/main/**/*.ts'],
+    patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
     shardWeight: 4,
@@ -116,7 +113,7 @@ export const eslintChecks = [
   {
     name: 'eslint-logging',
     configRelativePath: 'preset/eslint-config/logging.mjs',
-    patterns: ['src/main/**/*.ts'],
+    patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
     shardWeight: 5,
@@ -129,7 +126,7 @@ export const eslintChecks = [
   {
     name: 'eslint-module-effects',
     configRelativePath: 'preset/eslint-config/module-effects.mjs',
-    patterns: ['src/main/**/*.ts'],
+    patterns: sourceGlobs,
     exclusions: productionExclusions,
     policyFiles: [],
     shardWeight: 4,
@@ -143,11 +140,12 @@ export const eslintChecks = [
 
 export const entryPointsCheck = {
   name: 'entry-points',
-  sourceRoot: 'src/main',
+  sourceRoot,
   exclusions: productionExclusions,
   version: dependencyCruiserVersion,
   shardWeight: 8,
   logicalFiles: [
+    'preset/layout.mjs',
     'preset/entry-points/analyze.mjs',
     'preset/dependency-graph/cruise.mjs',
     'preset/dependency-graph/config.mjs',
@@ -165,15 +163,19 @@ export const staticChecks = [
     kind: 'prettier',
     version: prettierVersion,
     patterns: [
-      'src/main/**/*.{ts,mts,mjs,json,yaml,yml}',
-      'tests/**/*.{ts,mts,mjs,json}',
+      `${sourceRoot}/**/*.{ts,mts,mjs,json,yaml,yml}`,
+      ...testRoots.map((root) => `${root}/**/*.{ts,mts,mjs,json}`),
       '*.{ts,mts,mjs,json}',
     ],
     exclusions: generalExclusions,
     configRelativePath: 'preset/defaults/.prettierrc.json',
     ignoreRelativePath: 'preset/defaults/.prettierignore',
     shardWeight: 24,
-    configurationFiles: ['preset/defaults/.prettierrc.json', 'preset/defaults/.prettierignore'],
+    configurationFiles: [
+      'preset/layout.mjs',
+      'preset/defaults/.prettierrc.json',
+      'preset/defaults/.prettierignore',
+    ],
   },
   {
     name: 'typescript-typecheck',
@@ -183,19 +185,20 @@ export const staticChecks = [
     exclusions: ['**/dist/**', '**/*.d.ts'],
     configRelativePath: 'preset/defaults/tsconfig.quality.json',
     shardWeight: 17,
-    configurationFiles: ['preset/defaults/tsconfig.quality.json'],
+    configurationFiles: ['preset/layout.mjs', 'preset/defaults/tsconfig.quality.json'],
   },
   {
     name: 'dependency-architecture',
     kind: 'architecture',
     version: dependencyCruiserVersion,
-    patterns: ['src/main', 'tests'],
+    patterns: graphRoots,
     exclusions: [ARCHITECTURE_EXCLUSION],
     configRelativePath: 'preset/defaults/dependency-cruiser.config.mjs',
-    includeOnly: '^(src/main|tests)',
+    includeOnly: graphIncludeOnly,
     exclude: ARCHITECTURE_EXCLUSION,
     shardWeight: 9,
     configurationFiles: [
+      'preset/layout.mjs',
       'preset/defaults/dependency-cruiser.config.mjs',
       'preset/defaults/tsconfig.quality.json',
     ],
@@ -262,7 +265,11 @@ export const qualityAreaChecks = [
     exclusions: productionExclusions,
     timeoutMs: MINUTE_MS,
     shardWeight: 2,
-    configurationFiles: ['preset/dependency-graph/cruise.mjs', 'preset/structure/analyze.mjs'],
+    configurationFiles: [
+      'preset/layout.mjs',
+      'preset/dependency-graph/cruise.mjs',
+      'preset/structure/analyze.mjs',
+    ],
   },
   {
     name: 'duplicates',

@@ -1,4 +1,5 @@
-import { internalEdges, isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
+import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
+import { isSourceUnderRoot } from '../layout.mjs';
 
 function rounded(value) {
   return Math.round(value * 10_000) / 10_000;
@@ -52,13 +53,7 @@ export function analyzeCoupling(graph, sourceRoot) {
   const normalizedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
   const files = graph.modules
     .map((module) => normalizePath(module.source))
-    .filter(
-      (source) =>
-        (source === normalizedRoot || source.startsWith(`${normalizedRoot}/`)) &&
-        !isExcludedPath(source) &&
-        !source.includes('/__tests__/') &&
-        !/\.(?:test|spec)\.[cm]?ts$/.test(source),
-    )
+    .filter((source) => isSourceUnderRoot(source, normalizedRoot))
     .sort();
   const fileSet = new Set(files);
   const edges = internalEdges(graph, normalizedRoot).filter(

@@ -1,11 +1,11 @@
+import { sourceGlobs, testGlobs, excludedGlobs, testRoots } from '../layout.mjs';
+
 export default {
   mutate: [
-    'src/main/**/*.ts',
-    '!src/main/**/__tests__/**',
-    '!src/main/**/*.test.ts',
-    '!src/main/**/*.spec.ts',
-    '!src/main/**/*.d.ts',
-    '!src/main/dist/**',
+    ...sourceGlobs,
+    ...excludedGlobs.map((glob) => `!${glob}`),
+    '!src/**/__tests__/**',
+    ...testGlobs.map((glob) => `!${glob}`),
   ],
   testRunner: 'vitest',
   checkers: ['typescript'],
@@ -23,5 +23,5 @@ export default {
   thresholds: {
     break: null,
   },
-  ignorePatterns: ['src/main/dist', 'tests/integration', 'reports'],
+  ignorePatterns: ['src/dist', ...testRoots.map((root) => `${root}/integration`), 'reports'],
 };

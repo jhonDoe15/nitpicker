@@ -1,10 +1,10 @@
 import path from 'node:path';
+import { sourceRoot, testRoots, isSourceFile } from '../../layout.mjs';
 
-const DEFAULT_EXEMPT_PATTERN = String.raw`/tests/contract/|\.policy\.test\.[cm]?[jt]s$`;
-// `utils` deliberately excluded: src/main/**/utils is ordinary production code
-// (e.g. src/main/utils/format.ts), not a test-support directory —
-// only `/tests/` and `/fixtures/` legitimately host test-only helpers.
-const TEST_SUPPORT = /(?:^|\/)(?:__tests__|tests|fixtures)(?:\/|$)|\.(?:test|spec)\.[cm]?[jt]s$/;
+const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
+const TEST_SUPPORT = new RegExp(
+  `(?:^|/)(?:__tests__|${testRoots.join('|')}|fixtures)(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
+);
 
 function isRuntimeImport(node) {
   if (node.importKind === 'type') {
@@ -17,15 +17,15 @@ function isRuntimeImport(node) {
 }
 
 function isProductionModule(filename, source) {
-  if (source.includes('/src/main/') || source.startsWith('src/main/')) {
-    return true;
+  if (source.includes(`/${sourceRoot}/`) || source.startsWith(`${sourceRoot}/`)) {
+    return isSourceFile(source.slice(source.indexOf(`${sourceRoot}/`)));
   }
   if (!source.startsWith('.')) {
     return false;
   }
 
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  return resolved.includes('/src/main/') && !TEST_SUPPORT.test(resolved);
+  return resolved.includes(`/${sourceRoot}/`) && !TEST_SUPPORT.test(resolved);
 }
 
 export default {

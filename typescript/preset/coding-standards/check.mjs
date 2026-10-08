@@ -1,10 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
 import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mjs';
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mjs';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mjs';
+import { sourceRoot as layoutSourceRoot, projectCodeFiles } from '../layout.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const defaultLegacyInventoryPath = path.join(import.meta.dirname, 'legacy-sites.json');
@@ -31,7 +32,9 @@ export async function collectSignals(root = projectRoot, policyRoot = root) {
     overrideConfigFile: path.join(policyRoot, 'preset/eslint-config/coding-standards.mjs'),
     allowInlineConfig: false,
   });
-  const results = await eslint.lintFiles(['src/main/**/*.ts', 'tests/**/*.ts']);
+  const files = projectCodeFiles(root);
+  if (files.length === 0) return [];
+  const results = await eslint.lintFiles(files);
   const signals = [];
   for (const result of results) {
     if (result.fatalErrorCount > 0)
@@ -64,7 +67,11 @@ export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath) 
     if (error?.code === 'ENOENT') return { sites: [] };
     throw error;
   }
-  return JSON.parse(contents);
+  try {
+    return JSON.parse(contents);
+  } catch (error) {
+    throw new SyntaxError(`Invalid legacy inventory: ${inventoryPath}`, { cause: error });
+  }
 }
 
 export async function check() {
@@ -84,16 +91,19 @@ export async function check() {
 }
 
 export function collectArchitectureSignals(root = projectRoot) {
-  const sourceRoot = path.join(root, 'src/main');
-  const contracts = analyzePublicContractUsage(path.join(sourceRoot, 'tsconfig.json')).map(
-    (item) => ({
-      file: `src/main/${item.file}`,
-      rule: 'public-contract-production-use',
-      source: `${item.contract}.${item.method}`,
-    }),
-  );
+  const sourceRoot = path.join(root, layoutSourceRoot);
+  if (!existsSync(sourceRoot)) return [];
+  const configPath = [
+    path.join(sourceRoot, 'tsconfig.json'),
+    path.join(root, 'tsconfig.json'),
+  ].find(existsSync);
+  const contracts = (configPath ? analyzePublicContractUsage(configPath) : []).map((item) => ({
+    file: `${layoutSourceRoot}/${item.file}`,
+    rule: 'public-contract-production-use',
+    source: `${item.contract}.${item.method}`,
+  }));
   const boundaries = analyzeRuntimeBoundaries(sourceRoot).findings.map((item) => ({
-    file: `src/main/${item.source}`,
+    file: `${layoutSourceRoot}/${item.source}`,
     rule: `runtime-boundary/${item.rule}`,
     source: `${item.role}:${item.target}`,
   }));

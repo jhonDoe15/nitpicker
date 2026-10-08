@@ -1,3 +1,5 @@
+import { isTestFixture } from '../../layout.mjs';
+
 export default {
   meta: {
     type: 'problem',
@@ -7,7 +9,7 @@ export default {
     },
   },
   create(context) {
-    if (context.filename.replaceAll('\\', '/').includes('/tests/fixtures/')) return {};
+    if (isTestFixture(context.filename)) return {};
     return {
       CallExpression(node) {
         const callee = node.callee;

@@ -1,3 +1,5 @@
+import { isTestFixture } from '../../layout.mjs';
+
 function callsResolveTimeout(node, resolveName) {
   if (!node || typeof node !== 'object') return false;
   if (
@@ -27,7 +29,7 @@ export default {
     },
   },
   create(context) {
-    if (context.filename.replaceAll('\\', '/').includes('/tests/fixtures/')) return {};
+    if (isTestFixture(context.filename)) return {};
     return {
       AwaitExpression(node) {
         const argument = node.argument;

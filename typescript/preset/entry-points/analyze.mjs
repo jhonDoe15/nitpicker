@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { internalEdges, isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
+import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
+import { isSourceUnderRoot } from '../layout.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
 const DEFAULT_COMPOSITION_ROOTS = new Set(['composition-root.ts', 'main.ts', 'server.ts']);
@@ -14,12 +15,8 @@ function componentName(modulePath, sourceRoot) {
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
-function isProductionModule(modulePath) {
-  return (
-    !modulePath.includes('/__tests__/') &&
-    !/\.(?:test|spec)\.[cm]?ts$/.test(modulePath) &&
-    !isExcludedPath(modulePath)
-  );
+function isProductionModule(modulePath, sourceRoot) {
+  return isSourceUnderRoot(modulePath, sourceRoot);
 }
 
 function exportReachability(graph, sourceRoot) {
@@ -79,10 +76,23 @@ export function analyzeEntryPoints(
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
 
-  const normalizedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
+  const requestedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
+  const legacyRoot = `${requestedRoot}/main`;
+  const sources = graph.modules.map((module) => normalizePath(module.source));
+  const normalizedRoot =
+    requestedRoot === 'src' &&
+    sources.some((source) => isSourceUnderRoot(source, legacyRoot)) &&
+    !sources.some(
+      (source) => isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
+    )
+      ? legacyRoot
+      : requestedRoot;
   const productionModules = graph.modules
     .map((module) => normalizePath(module.source))
-    .filter((source) => source.startsWith(`${normalizedRoot}/`) && isProductionModule(source));
+    .filter(
+      (source) =>
+        source.startsWith(`${normalizedRoot}/`) && isProductionModule(source, normalizedRoot),
+    );
   const components = new Set(
     productionModules
       .map((source) => componentName(source, normalizedRoot))
@@ -102,7 +112,10 @@ export function analyzeEntryPoints(
   const concreteCrossBoundaryImports = [];
 
   for (const edge of internalEdges(graph, normalizedRoot)) {
-    if (!isProductionModule(edge.source) || !isProductionModule(edge.target)) {
+    if (
+      !isProductionModule(edge.source, normalizedRoot) ||
+      !isProductionModule(edge.target, normalizedRoot)
+    ) {
       continue;
     }
     const sourceComponent = componentName(edge.source, normalizedRoot);

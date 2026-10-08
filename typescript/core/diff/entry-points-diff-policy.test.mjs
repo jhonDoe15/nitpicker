@@ -88,6 +88,14 @@ describe('entry-point differential adapter', () => {
     }
   });
 
+  it('preserves legacy src/main bypasses with the common source root', () => {
+    const report = analyzeEntryPoints(graph(true), 'src');
+    expect(report.publicAlternativeBypasses.map((entry) => entry.source)).toEqual([
+      'src/main/alpha/existing.ts',
+      'src/main/gamma/introduced.ts',
+    ]);
+  });
+
   it('includes entry-point bypasses in the production differential analyzers', () => {
     expect(configuredAnalyzers.map(({ name }) => name)).toContain('entry-points');
   });

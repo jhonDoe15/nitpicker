@@ -5,18 +5,15 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
+import { sourceGlobs, testGlobs, excludedGlobs } from '../layout.mjs';
 
-const productionFiles = ['src/main/**/*.ts'];
-const testFiles = [
-  'src/main/**/__tests__/**/*.test.ts',
-  'src/main/**/*.test.ts',
-  'tests/**/*.test.ts',
-];
-const selectedFiles = [...productionFiles, 'tests/**/*.ts'];
+const productionFiles = sourceGlobs;
+const testFiles = testGlobs;
+const selectedFiles = [...productionFiles, ...testFiles];
 
 export default tseslint.config(
   {
-    ignores: ['src/main/dist/**', 'coverage/**', 'reports/**', '.stryker-tmp/**'],
+    ignores: [...excludedGlobs, '.stryker-tmp/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -88,7 +85,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/main/**/__tests__/**/*.ts', 'tests/unit/**/*.ts'],
+    files: ['src/**/__tests__/**/*.ts', 'test/unit/**/*.ts', 'tests/unit/**/*.ts'],
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
 );

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { sourceRoot, isTestFile } from '../../layout.mjs';
 
 const EXPLICIT_INFRASTRUCTURE_SEAM = /(?:^|[/.-])(?:fixtures?|infrastructure|seams?)(?:[/.-]|$)/;
 
@@ -12,10 +13,13 @@ function isRuntimeImport(node) {
 
 function isProductionModule(filename, source) {
   if (!source.startsWith('.')) {
-    return source.includes('/src/main/');
+    return source.includes(`/${sourceRoot}/`);
   }
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  return resolved.includes('/src/main/') && !/(?:__tests__|\.test\.|\.spec\.)/.test(resolved);
+  return (
+    resolved.includes(`/${sourceRoot}/`) &&
+    !isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
+  );
 }
 
 function mockedSource(node) {

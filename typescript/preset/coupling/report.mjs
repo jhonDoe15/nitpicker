@@ -2,14 +2,15 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cruise } from '../dependency-graph/cruise.mjs';
 import { analyzeCoupling } from './analyze.mjs';
+import { sourceRoot, existingRoots } from '../layout.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const outputPath = path.join(projectRoot, 'reports/quality/coupling/report.json');
 const report = {
   analyzer: 'dependency-cruiser + project coupling metrics',
   policy: 'report-only; no coupling thresholds',
-  sourceRoot: 'src/main',
-  ...analyzeCoupling(cruise(['src/main']), 'src/main'),
+  sourceRoot,
+  ...analyzeCoupling(cruise(existingRoots(projectRoot, [sourceRoot])), sourceRoot),
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });

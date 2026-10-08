@@ -1,3 +1,5 @@
+import { isTestFixture } from '../../layout.mjs';
+
 export default {
   meta: {
     type: 'problem',
@@ -8,8 +10,7 @@ export default {
     },
   },
   create(context) {
-    if (context.filename.replaceAll('\\', '/').endsWith('/tests/fixtures/container-teardown.ts'))
-      return {};
+    if (isTestFixture(context.filename, 'container-teardown.ts')) return {};
     return {
       CallExpression(node) {
         const callee = node.callee;

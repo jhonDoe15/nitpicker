@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022"],
     "allowSyntheticDefaultImports": true,
+    "allowJs": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
@@ -14,6 +15,15 @@
     "strict": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/main/**/*.ts", "tests/**/*.ts", "vitest*.ts"],
-  "exclude": ["**/dist/**", "**/*.d.ts"]
+  "include": ["src/**/*", "test/**/*", "tests/**/*", "vitest*.ts"],
+  "exclude": [
+    "**/dist/**",
+    "**/build/**",
+    "**/generated/**",
+    "**/node_modules/**",
+    "**/coverage/**",
+    "**/reports/**",
+    "**/target/**",
+    "**/*.d.ts"
+  ]
 }
