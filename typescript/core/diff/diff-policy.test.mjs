@@ -407,6 +407,7 @@ describe('quality diff Git comparison', () => {
       'tool-errors.json',
       'report.txt',
       'report.junit.xml',
+      'report.sarif',
     ]) {
       expect(existsSync(path.join(repository.outputRoot, reportName))).toBe(true);
     }
