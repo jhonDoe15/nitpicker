@@ -57,7 +57,7 @@ review.
 The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
 both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
-`layout`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
+`layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
 applied everywhere (see below); `analyzers` are run as custom analyzers (see below).
 
 ### Head policy delivery
@@ -101,7 +101,8 @@ Alternatives considered:
 Decision (proposed, pending owner review):
 
 - `layout` accepts `sourceRoots` and `testRoots`: non-empty arrays of project-relative directories
-  (no absolute paths, `..` or globs). Other keys are an error. The defaults stay `["src"]` and
+  (no absolute paths, `..` or globs), and `excludedGlobs`: an array of globs that replaces the
+  built-in exclusions. Other keys are an error. The defaults stay `["src"]` and
   `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
   `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,
   `coverage`, `reports`, `target`, `*.d.ts`).

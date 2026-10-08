@@ -3,7 +3,12 @@ import tseslint from 'typescript-eslint';
 import nitpickerRules from '../eslint-plugin/index.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
-export const domainGlobs = [`src/main/features/*/domain/**/*.${codeExtensions}`];
+/** The pure-logic folders of every feature, below each source root of the layout. */
+export function domainGlobsFor(sourceRoots) {
+  return sourceRoots.map((root) => `${root}/main/features/*/domain/**/*.${codeExtensions}`);
+}
+
+export const domainGlobs = domainGlobsFor(['src']);
 
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
@@ -67,8 +72,8 @@ export const domainFunctionalRules = {
   'functional/no-this-expressions': 'error',
 };
 
-// Rules that need type information (parserOptions.projectService). They are not enabled by the
-// default domain config because the analyzers lint without a type program.
+// Rules that need type information (a parserOptions program). strict.mjs enables them in the
+// preset's typed config; the standalone domain config below runs without a type program.
 export const domainTypeAwareFunctionalRules = {
   'functional/immutable-data': 'error',
   'functional/prefer-immutable-types': 'error',
