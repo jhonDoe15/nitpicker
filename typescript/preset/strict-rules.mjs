@@ -35,6 +35,8 @@ export const strictEslintRuleIds = [
   'no-restricted-syntax',
 ];
 
+const PRETTIER_RULE = 'prettier/prettier';
+
 const strictRuleIds = new Set([
   ...strictEslintRuleIds,
   ...strictBoundaryRules.map(({ name }) => name),
@@ -48,5 +50,5 @@ const strictRuleIds = new Set([
  * `changed-branch-coverage` (see adapters/java/touched-rules.mjs) is held to the same standard.
  */
 export function isStrictRule(rule, finding) {
-  return strictRuleIds.has(rule) || isJavaTouchedRule(rule, finding);
+  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isJavaTouchedRule(rule, finding);
 }
