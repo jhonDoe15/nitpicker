@@ -109,8 +109,9 @@ export function renderRuleFilterSection(report, ruleFilters) {
   if (ruleFilters.length === 0) {
     return '';
   }
-  const matches = (finding) =>
-    ruleFilters.some((filter) => `${finding.tool}/${finding.rule}`.includes(filter));
+  function matches(finding) {
+    return ruleFilters.some((filter) => `${finding.tool}/${finding.rule}`.includes(filter));
+  }
   const lines = ['', `Findings matching --rule ${ruleFilters.join(', ')}:`];
   appendFindingSection(lines, '  New', report.newFindings.filter(matches));
   appendFindingSection(lines, '  Unchanged', report.unchangedFindings.filter(matches));
@@ -339,7 +340,7 @@ function writeJson(filePath, value) {
 
 function escapeXml(value) {
   return String(value)
-    .replaceAll(/[^\u0009\u000A\u000D -퟿-�\u{10000}-\u{10FFFF}]/gu, '�')
+    .replaceAll(/[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/gu, '�')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')

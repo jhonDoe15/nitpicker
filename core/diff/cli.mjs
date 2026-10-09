@@ -6,7 +6,12 @@ export function parseDrillDownOptions(arguments_) {
   let deferExit = false;
   let shardCount;
   let shardIndex;
-  for (let index = 0; index < arguments_.length; index += 1) {
+  let skipNext = false;
+  for (const index of arguments_.keys()) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
     const argument = arguments_[index];
     if (
       argument === '--analyzer' ||
@@ -22,7 +27,7 @@ export function parseDrillDownOptions(arguments_) {
       else if (argument === '--rule') ruleFilters.push(value);
       else if (argument === '--shard-count') shardCount = Number(value);
       else shardIndex = Number(value);
-      index += 1;
+      skipNext = true;
       continue;
     }
     if (argument === '--defer-exit') {

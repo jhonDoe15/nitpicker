@@ -25,10 +25,7 @@ const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 // Guarded so other adapters (for example the snapshot ESLint runner) can import
 // normalizeEslintResults without triggering this file's own CLI behavior.
 const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
+if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
   try {
     const options = parseArguments(process.argv.slice(2));
     const findings = runEslint(options);
@@ -324,9 +321,13 @@ function stableSyntaxAnchor(node) {
   return node;
 }
 
+function nodeChain(node) {
+  return node === undefined ? [] : [node, ...nodeChain(node.parent)];
+}
+
 function enclosingSymbol(node) {
   const names = [];
-  for (let current = node; current !== undefined; current = current.parent) {
+  for (const current of nodeChain(node)) {
     const name = declarationName(current);
     if (name !== undefined && names.at(-1) !== name) {
       names.push(name);
@@ -556,7 +557,12 @@ function scriptKind(filePath) {
 function parseArguments(arguments_) {
   const values = new Map();
   const patterns = [];
-  for (let index = 0; index < arguments_.length; index += 1) {
+  let skipNext = false;
+  for (const index of arguments_.keys()) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
     const name = arguments_[index];
     const value = arguments_[index + 1];
     if (name === '--pattern') {
@@ -564,7 +570,7 @@ function parseArguments(arguments_) {
         throw new Error('--pattern requires a value');
       }
       patterns.push(value);
-      index += 1;
+      skipNext = true;
       continue;
     }
     if (name === '--policy-file') {
@@ -572,7 +578,7 @@ function parseArguments(arguments_) {
         throw new Error('--policy-file requires a value');
       }
       values.set(`policy-file:${String(values.size)}`, value);
-      index += 1;
+      skipNext = true;
       continue;
     }
     if (
@@ -600,7 +606,7 @@ function parseArguments(arguments_) {
     } else {
       values.set(name, value);
     }
-    index += 1;
+    skipNext = true;
   }
 
   if (patterns.length === 0) {

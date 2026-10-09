@@ -43,10 +43,7 @@ function loadTypeScript(projectRoot = PACKAGE_ROOT) {
 }
 
 const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
+if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
   try {
     const options = parseArguments(process.argv.slice(2));
     const findings = await runStaticCheck(options);
@@ -548,6 +545,10 @@ export function removeSnapshotDependencies(dependencies) {
   unlinkSync(dependencies.dependencyPath);
 }
 
+function nodeChain(node) {
+  return node === undefined ? [] : [node, ...nodeChain(node.parent)];
+}
+
 function enclosingSymbol(sourceFile, position) {
   let node = sourceFile;
   function visit(candidate) {
@@ -558,7 +559,7 @@ function enclosingSymbol(sourceFile, position) {
   }
   visit(sourceFile);
   const names = [];
-  for (let current = node; current !== undefined; current = current.parent) {
+  for (const current of nodeChain(node)) {
     if (
       (ts.isFunctionDeclaration(current) ||
         ts.isClassDeclaration(current) ||
@@ -609,7 +610,10 @@ function policyFile(options, relativePath) {
 function parseArguments(arguments_) {
   const values = new Map();
   const patterns = [];
-  for (let index = 0; index < arguments_.length; index += 2) {
+  for (const index of arguments_.keys()) {
+    if (index % 2 !== 0) {
+      continue;
+    }
     const name = arguments_[index];
     const value = arguments_[index + 1];
     if (value === undefined) {
