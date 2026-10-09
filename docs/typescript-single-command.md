@@ -196,8 +196,11 @@ edit; the base is a committed tree and cannot change under its key.
 
 - Key, one entry per analyzer: merge-base SHA, project path relative to the repository, analyzer
   name, analyzer (tool) version, the analyzer's configuration hash taken from the head policy, and
-  the config-file overrides. The value is the analyzer's findings JSON, parsed with the finding
-  schema on read. A corrupt or unreadable entry is a miss, and a cache that cannot be written never
+  the config-file overrides. The configuration hash covers the check's `configurationFiles` in
+  `preset/quality-checks.mjs`, which list only the logical policy (the tool config plus the rules
+  and shared policy it loads), and each dial adds its own adapter files on top, so a change to how
+  one dial invokes a tool invalidates only that dial's baseline. The value is the analyzer's
+  findings JSON, parsed with the finding schema on read. A corrupt or unreadable entry is a miss, and a cache that cannot be written never
   fails the run.
 - Location: `NITPICKER_CACHE_DIR` when set (relative to the project root), else
   `node_modules/.cache/nitpicker` in the project. With neither, caching is off. A project-local
