@@ -3,6 +3,7 @@ import path from 'node:path';
 import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
+import { readDuplicateFindings } from './java-duplicates.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
@@ -48,6 +49,7 @@ export function readJavaFindings(projectRoot) {
       ),
     );
   }
+  findings.push(...readDuplicateFindings(reportRoot));
 
   const jacoco = readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
   for (const sourceRoot of sourceRoots) {
