@@ -8,7 +8,7 @@ import ts from 'typescript';
 import { PACKAGE_ROOT, resolveTool } from '../tool-resolution.mjs';
 import { linkPolicyFile, lstatIfExists, removeOwnedLink } from '../policy-links.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
-import { policyTransformFor } from '../../preset/tool-configs.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -446,7 +446,7 @@ function installPolicyFiles({ policyFiles, policyRoot, projectRoot }) {
         linkPolicyFile(
           sourcePath,
           path.join(projectRoot, `.nitpicker-diff-policy-${String(index)}${extension}`),
-          policyTransformFor(relativePath, layout, { projectRoot }),
+          layoutTransformFor(relativePath, layout),
         ),
       );
     }

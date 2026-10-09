@@ -16,7 +16,7 @@ export default {
   disableTypeChecks: false,
   coverageAnalysis: 'perTest',
   vitest: {
-    configFile: 'stryker.vitest.config.ts',
+    configFile: 'vitest.quality.config.ts',
     related: false,
   },
   reporters: ['clear-text', 'progress', 'json'],
@@ -30,8 +30,6 @@ export default {
     ...sourceRoots.map((root) => `${root}/dist`),
     ...testRoots.map((root) => `${root}/integration`),
     'reports',
-    // Other analyzers create and delete their temporary files while Stryker copies the project
-    // into its sandbox. Only mutation's own companions belong there.
     '.nitpicker-*',
     '!.nitpicker-diff-stryker.*',
     '!.nitpicker-diff-tsconfig.stryker.json',
