@@ -28,8 +28,8 @@ export function selectAnalyzers(analyzers, analyzerNames) {
 
   const selectedNames = new Set(analyzerNames);
   const pendingNames = [...analyzerNames];
-  while (pendingNames.length > 0) {
-    const analyzer = analyzersByName.get(pendingNames.pop());
+  for (const pendingName of pendingNames) {
+    const analyzer = analyzersByName.get(pendingName);
     for (const dependencyName of analyzer.dependencies ?? []) {
       const dependency = analyzersByName.get(dependencyName);
       if (dependency === undefined) {

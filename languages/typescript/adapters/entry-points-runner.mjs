@@ -132,7 +132,10 @@ function parseGraph(stdout) {
 function parseArguments(arguments_) {
   const values = new Map();
   const sourceRoots = [];
-  for (let index = 0; index < arguments_.length; index += 2) {
+  for (const index of arguments_.keys()) {
+    if (index % 2 !== 0) {
+      continue;
+    }
     const name = arguments_[index];
     const value = arguments_[index + 1];
     if (
