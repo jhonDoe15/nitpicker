@@ -20,6 +20,7 @@ const CONFIGURATION_FILES = [
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
   'adapters/ingest/archunit.mjs',
+  'adapters/ingest/crap.mjs',
   'adapters/ingest/format-check.mjs',
   'adapters/ingest/jacoco.mjs',
   'adapters/ingest/sarif.mjs',
@@ -53,8 +54,8 @@ export function createJavaAnalyzer() {
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
-    // One Gradle run yields the findings of all five tools.
-    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'checkstyle'],
+    // One Gradle run yields the findings of all the tools.
+    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'checkstyle', 'crap'],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {
