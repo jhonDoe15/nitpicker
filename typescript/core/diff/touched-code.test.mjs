@@ -134,7 +134,7 @@ describe('strict rules in touched code', () => {
     expect(isStrictRule('no-restricted-syntax')).toBe(true);
     expect(isStrictRule('nitpicker/no-comments')).toBe(true);
     expect(isStrictRule('domain-does-not-import-adapters')).toBe(true);
-    expect(isStrictRule('prettier/prettier')).toBe(false);
+    expect(isStrictRule('prettier/prettier')).toBe(true);
     expect(isStrictRule('sonarjs/cognitive-complexity')).toBe(false);
   });
 

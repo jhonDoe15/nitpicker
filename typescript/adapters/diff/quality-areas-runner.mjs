@@ -433,14 +433,12 @@ async function runMutation(options) {
   try {
     const tsconfigPath = installMutationCompanion(
       options,
-      sourceConfig.tsconfigFile,
-      '.nitpicker-diff-tsconfig.stryker.json',
+      [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
       createdFiles,
     );
     const vitestConfigPath = installMutationCompanion(
       options,
-      sourceConfig.vitest?.configFile,
-      '.nitpicker-diff-stryker.vitest.config.ts',
+      [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
       createdFiles,
     );
     const config = {
@@ -948,7 +946,7 @@ export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigF
   };
 }
 
-function installMutationCompanion(options, sourceRelativePath, targetName, createdFiles) {
+function installMutationCompanion(options, [sourceRelativePath, targetName], createdFiles) {
   const sourcePath = policyFile(
     options.policyRoot,
     companionPath(path.posix.dirname(STRYKER_CONFIG_PATH), sourceRelativePath),
@@ -956,7 +954,11 @@ function installMutationCompanion(options, sourceRelativePath, targetName, creat
   const targetPath = path.join(options.projectRoot, targetName);
   const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout());
   const text = readFileSync(sourcePath, 'utf8');
-  writeTemporaryFile(targetPath, transform === undefined ? text : transform(text), createdFiles);
+  writeTemporaryFile(
+    targetPath,
+    transform === undefined ? text : transform(text, targetPath),
+    createdFiles,
+  );
   return targetPath;
 }
 

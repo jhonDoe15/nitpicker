@@ -14,6 +14,7 @@ import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/diff/eslint.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/diff/static-checks.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/diff/quality-areas.mjs';
+import { withDefaultAnalyzerParallelism } from '../../core/diff/fixtures/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../core/diff/run-analyzers.mjs';
 import {
   entryPointsCheck,
@@ -89,123 +90,142 @@ describe('default configs used in place', () => {
     for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
   });
 
-  it('reports no error for every file-driven quality analyzer with no source or tests', () => {
-    const projectRoot = createProject({});
-    const checks = qualityAreaChecks.filter(({ kind }) => kind !== 'policy-tests');
-    const run = runAnalyzers({
-      analyzers: checks.map((check) =>
-        createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
-      ),
+  // Tests that look at the same project share one run of all their analyzers, side by side, so the
+  // slowest tool sets the time instead of the sum, and the project is copied once.
+  describe('with no source or tests', () => {
+    let shared;
+    const fileDrivenChecks = qualityAreaChecks.filter(({ kind }) => kind !== 'policy-tests');
+    const staticNames = ['prettier-format', 'typescript-typecheck', 'dependency-architecture'];
+    const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+
+    function runEmptyProject() {
+      shared ??= runInPlace(
+        [
+          ...fileDrivenChecks.map((check) =>
+            createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
+          ),
+          createEntryPointAnalyzer({
+            version: 'fixture',
+            configurationHash: 'fixture',
+            exclusions: entryPointsCheck.exclusions,
+            sourceRoot: entryPointsCheck.sourceRoot,
+          }),
+          createEslintAnalyzer({ ...lintCheck, version: 'fixture', configurationHash: 'fixture' }),
+          ...staticNames.map((name) =>
+            createStaticCheckAnalyzer({
+              ...staticChecks.find((entry) => entry.name === name),
+              configurationHash: 'fixture',
+            }),
+          ),
+        ],
+        createProject({}),
+      );
+      return shared;
+    }
+
+    const toolErrorsFor = (run, names) => run.toolErrors.filter(({ tool }) => names.includes(tool));
+
+    it('reports no error for every file-driven quality analyzer with no source or tests', () => {
+      const run = runEmptyProject();
+      const names = fileDrivenChecks.map(({ name }) => name);
+      expect(toolErrorsFor(run, names)).toEqual([]);
+      for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
+    });
+
+    it('reports no error for entry points and ESLint when both layouts are absent', () => {
+      const run = runEmptyProject();
+      expect(toolErrorsFor(run, ['entry-points', 'eslint-lint'])).toEqual([]);
+      expect(run.reports.get('entry-points')?.findings).toEqual([]);
+      expect(run.reports.get('eslint-lint')?.findings).toEqual([]);
+    });
+
+    it('reports no error when source and test directories are absent', () => {
+      const run = runEmptyProject();
+      expect(toolErrorsFor(run, staticNames)).toEqual([]);
+      for (const name of staticNames) expect(run.reports.get(name)?.findings, name).toEqual([]);
+    });
+  });
+
+  // The old layout plus a JavaScript source and test: the files the ESLint test needs. The
+  // dependency-cruiser and entry-point tests look at the same project (more files, same claim).
+  describe('with the old layout', () => {
+    let shared;
+
+    function runOldLayoutProject() {
+      if (shared === undefined) {
+        const projectRoot = createProject({
+          ...oldLayoutFiles(),
+          'src/service.js': 'export const service = 1;\n',
+          'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
+        });
+        const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+        const cruiseCheck = staticChecks.find(({ name }) => name === 'dependency-architecture');
+        shared = runInPlace(
+          [
+            createEslintAnalyzer({
+              name: lintCheck.name,
+              version: 'fixture',
+              configurationHash: 'fixture',
+              exclusions: lintCheck.exclusions,
+              configRelativePath: lintCheck.configRelativePath,
+              patterns: lintCheck.patterns,
+              policyFiles: lintCheck.policyFiles,
+            }),
+            createStaticCheckAnalyzer({ ...cruiseCheck, configurationHash: 'fixture' }),
+            createEntryPointAnalyzer({
+              version: 'fixture',
+              configurationHash: 'fixture',
+              exclusions: entryPointsCheck.exclusions,
+              sourceRoot: entryPointsCheck.sourceRoot,
+            }),
+          ],
+          projectRoot,
+        );
+        // Read now: the per-test cleanup removes the project after the first test.
+        shared.temporaryPolicyLinks = temporaryPolicyLinks(projectRoot);
+      }
+      return shared;
+    }
+
+    it('lint a project with the default ESLint config without parse or tool errors', () => {
+      const run = runOldLayoutProject();
+      expect(run.toolErrors.filter(({ tool }) => tool === 'eslint-lint')).toEqual([]);
+      expect(run.reports.get('eslint-lint')?.findings).toEqual([]);
+      expect(
+        run.reports
+          .get('eslint-lint')
+          ?.findings.every(({ rule }) => rule !== 'eslint/parser-error'),
+      ).toBe(true);
+      expect(run.temporaryPolicyLinks).toEqual([]);
+    });
+
+    it('cruise a project with the default dependency-cruiser config without tool errors', () => {
+      const run = runOldLayoutProject();
+      expect(run.toolErrors.filter(({ tool }) => tool === 'dependency-architecture')).toEqual([]);
+      expect(run.reports.get('dependency-architecture')?.findings).toEqual([]);
+      expect(run.temporaryPolicyLinks).toEqual([]);
+    });
+
+    it('builds the dependency graph with the policy TypeScript config without tool errors', () => {
+      const run = runOldLayoutProject();
+      expect(run.toolErrors.filter(({ tool }) => tool === 'entry-points')).toEqual([]);
+      expect(run.reports.get('entry-points')?.findings).toEqual([]);
+      expect(run.temporaryPolicyLinks).toEqual([]);
+    });
+  });
+});
+
+function runInPlace(analyzers, projectRoot) {
+  return withDefaultAnalyzerParallelism(() =>
+    runAnalyzers({
+      analyzers: Array.isArray(analyzers) ? analyzers : [analyzers],
       projectRoot,
       policyRoot: projectRoot,
       toolRoot: packageRoot,
       liveProjectRoot: packageRoot,
       snapshot: 'head',
-    });
-    expect(run.toolErrors).toEqual([]);
-    for (const check of checks)
-      expect(run.reports.get(check.name)?.findings, check.name).toEqual([]);
-  });
-
-  it('reports no error for entry points and ESLint when both layouts are absent', () => {
-    const projectRoot = createProject({});
-    const entry = runInPlace(
-      createEntryPointAnalyzer({
-        version: 'fixture',
-        configurationHash: 'fixture',
-        exclusions: entryPointsCheck.exclusions,
-        sourceRoot: entryPointsCheck.sourceRoot,
-      }),
-      projectRoot,
-    );
-    expect(entry.toolErrors).toEqual([]);
-    expect(entry.reports.get('entry-points')?.findings).toEqual([]);
-    const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
-    const lint = runInPlace(
-      createEslintAnalyzer({ ...check, version: 'fixture', configurationHash: 'fixture' }),
-      projectRoot,
-    );
-    expect(lint.toolErrors).toEqual([]);
-    expect(lint.reports.get('eslint-lint')?.findings).toEqual([]);
-  });
-
-  it('reports no error when source and test directories are absent', () => {
-    const projectRoot = createProject({});
-    for (const name of ['prettier-format', 'typescript-typecheck', 'dependency-architecture']) {
-      const check = staticChecks.find((entry) => entry.name === name);
-      const run = runInPlace(
-        createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
-        projectRoot,
-      );
-      expect(run.toolErrors).toEqual([]);
-      expect(run.reports.get(name)?.findings).toEqual([]);
-    }
-  });
-  it('lint a project with the default ESLint config without parse or tool errors', () => {
-    const projectRoot = createProject({
-      ...oldLayoutFiles(),
-      'src/service.js': 'export const service = 1;\n',
-      'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
-    });
-    const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
-    const analyzer = createEslintAnalyzer({
-      name: check.name,
-      version: 'fixture',
-      configurationHash: 'fixture',
-      exclusions: check.exclusions,
-      configRelativePath: check.configRelativePath,
-      patterns: check.patterns,
-      policyFiles: check.policyFiles,
-    });
-
-    const run = runInPlace(analyzer, projectRoot);
-
-    expect(run.toolErrors).toEqual([]);
-    expect(run.reports.get('eslint-lint')?.findings).toEqual([]);
-    expect(
-      run.reports.get('eslint-lint')?.findings.every(({ rule }) => rule !== 'eslint/parser-error'),
-    ).toBe(true);
-    expect(temporaryPolicyLinks(projectRoot)).toEqual([]);
-  });
-
-  it('cruise a project with the default dependency-cruiser config without tool errors', () => {
-    const projectRoot = createProject();
-    const check = staticChecks.find(({ name }) => name === 'dependency-architecture');
-    const analyzer = createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' });
-
-    const run = runInPlace(analyzer, projectRoot);
-
-    expect(run.toolErrors).toEqual([]);
-    expect(run.reports.get('dependency-architecture')?.findings).toEqual([]);
-    expect(temporaryPolicyLinks(projectRoot)).toEqual([]);
-  });
-
-  it('builds the dependency graph with the policy TypeScript config without tool errors', () => {
-    const projectRoot = createProject();
-    const analyzer = createEntryPointAnalyzer({
-      version: 'fixture',
-      configurationHash: 'fixture',
-      exclusions: entryPointsCheck.exclusions,
-      sourceRoot: entryPointsCheck.sourceRoot,
-    });
-
-    const run = runInPlace(analyzer, projectRoot);
-
-    expect(run.toolErrors).toEqual([]);
-    expect(run.reports.get('entry-points')?.findings).toEqual([]);
-    expect(temporaryPolicyLinks(projectRoot)).toEqual([]);
-  });
-});
-
-function runInPlace(analyzers, projectRoot) {
-  return runAnalyzers({
-    analyzers: Array.isArray(analyzers) ? analyzers : [analyzers],
-    projectRoot,
-    policyRoot: projectRoot,
-    toolRoot: packageRoot,
-    liveProjectRoot: packageRoot,
-    snapshot: 'head',
-  });
+    }),
+  );
 }
 
 function createProject(files = oldLayoutFiles()) {

@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: typescript/package-lock.json
       - run: npm ci
@@ -41,3 +41,35 @@ jobs:
       - run: npm test -- --maxWorkers=2
       - name: Conformance suite (spec/conformance)
         run: npm run test:conformance
+
+  # nitpicker gates its own repository: only new findings on lines a PR touches fail, everything
+  # already in the merge base stays baselined. A separate job, not a step after the tests, because it
+  # needs only `npm ci` (about 2 minutes), so it reports in parallel with the 5 to 20 minute test job
+  # and a failing gate never hides test results (or the other way round). Pull requests only: on a
+  # push to main there is no base to compare with.
+  self-gate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: typescript
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge base with the target branch must be reachable.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: typescript/package-lock.json
+      - run: npm ci
+      # The CLI takes the base from GITHUB_BASE_REF (origin/<target branch>); policy is typescript/nitpicker.config.json.
+      - name: nitpicker on itself
+        run: node core/cli.mjs --output reports/nitpicker
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: nitpicker-report
+          path: typescript/reports/nitpicker
