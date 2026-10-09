@@ -53,6 +53,27 @@ function waitForFile(filePath) {
 }
 
 describe('analyzer scheduler', () => {
+  it('accepts findings of declared wrapped tools and rejects any other tool', async () => {
+    const report = (tool) =>
+      `process.stdout.write(JSON.stringify({findings:[{tool:'${tool}',rule:'r',path:'a',identity:'i',message:'m',classification:'enforceable'}]}))`;
+    const withTool = (tool, reportedTools) => ({
+      ...task('wrapper'),
+      reportedTools,
+      invocation: {
+        command: process.execPath,
+        args: ['-e', report(tool)],
+        cwd: import.meta.dirname,
+      },
+    });
+
+    await expect(executeAnalyzerTask(withTool('inner', ['inner']))).resolves.toMatchObject({
+      findings: [{ tool: 'inner' }],
+    });
+    await expect(executeAnalyzerTask(withTool('inner', []))).rejects.toThrow(
+      'wrapper emitted a finding for unexpected tool inner',
+    );
+  });
+
   it('caps the default and accepts an explicit slot count', () => {
     expect(resolveMaxParallel({}, 16)).toBe(4);
     expect(resolveMaxParallel({}, 2)).toBe(2);

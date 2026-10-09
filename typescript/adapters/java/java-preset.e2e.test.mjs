@@ -1,13 +1,15 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from './java-diff.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
-// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format and JaCoCo), so it
-// only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`). NITPICKER_GRADLE overrides `gradle`.
+// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), and
+// lizard (pip install lizard==<version pinned in java/nitpicker.init.gradle>, on the PATH or named
+// by NITPICKER_LIZARD), so it only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`).
+// NITPICKER_GRADLE overrides `gradle`.
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -40,8 +42,54 @@ public final class Greeter {
     return name.trim().toUpperCase(java.util.Locale.ROOT);
   }
 
+  /** Says goodbye. */
   public String farewell(String name) {
     return "Goodbye, " + name + ".";
+  }
+}
+`;
+
+// The clean change's test: PIT would report a new uncovered mutant for `farewell` without it.
+const GREETER_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class GreeterTest {
+  @Test
+  void greetsByName() {
+    assertEquals("Hello, Ada!", new Greeter().greet("Ada"));
+  }
+
+  @Test
+  void saysFarewell() {
+    assertEquals("Goodbye, Ada.", new Greeter().farewell("Ada"));
+  }
+}
+`;
+
+// Tested, but not at the boundary: the `>` to `>=` mutant of clamp survives.
+const CALC = `package demo;
+
+public final class Calc {
+  public int clamp(int value) {
+    return value > 10 ? 10 : value;
+  }
+}
+`;
+
+const CALC_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class CalcTest {
+  @Test
+  void clampsAboveTen() {
+    assertEquals(10, new Calc().clamp(20));
+    assertEquals(5, new Calc().clamp(5));
   }
 }
 `;
@@ -60,6 +108,137 @@ public final class Bad {
         public void sloppy() { }
 }
 `;
+
+// What Checkstyle's bundled google_checks.xml (the default) reports on Bad.java.
+const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
+const CHECKSTYLE_ON_BAD = [
+  'blocks.EmptyCatchBlockCheck',
+  'indentation.IndentationCheck',
+  'javadoc.MissingJavadocMethodCheck',
+  'javadoc.MissingJavadocMethodCheck',
+  'javadoc.MissingJavadocTypeCheck',
+  'regexp.RegexpSinglelineJavaCheck',
+  'whitespace.EmptyLineSeparatorCheck',
+];
+// Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
+// with otherwise clean code.
+const STAMP = `package demo;
+
+import java.util.Date;
+
+public final class Stamp {
+  public long now() {
+    return new Date().getTime();
+  }
+
+  public static final class Inner {
+    public long later() {
+      return new Date().getTime() + 1;
+    }
+  }
+}
+`;
+
+// Never exercised by a test: the `if` line has two uncovered branch outcomes on the base.
+const BRANCHY = `package demo;
+
+public final class Branchy {
+  public int larger(int left, int right) {
+    if (left > right) {
+      return left;
+    }
+    return right;
+  }
+}
+`;
+
+// Nine branches and no test: CRAP = 10^2 * 1 + 10 = 110, over the limit of 9 (formatted, no PMD hit).
+const COMPLEX = `package demo;
+
+public final class Complex {
+  private static final int T0 = 0;
+  private static final int T1 = 1;
+  private static final int T2 = 2;
+  private static final int T3 = 3;
+  private static final int T4 = 4;
+  private static final int T5 = 5;
+  private static final int T6 = 6;
+  private static final int T7 = 7;
+  private static final int T8 = 8;
+
+  public int classify(int value) {
+    int result = 0;
+    if (value > T0) {
+      result += 1;
+    }
+    if (value > T1) {
+      result += 1;
+    }
+    if (value > T2) {
+      result += 1;
+    }
+    if (value > T3) {
+      result += 1;
+    }
+    if (value > T4) {
+      result += 1;
+    }
+    if (value > T5) {
+      result += 1;
+    }
+    if (value > T6) {
+      result += 1;
+    }
+    if (value > T7) {
+      result += 1;
+    }
+    if (value > T8) {
+      result += 1;
+    }
+    return result;
+  }
+}
+`;
+
+// The same sizeable method in two classes: a new clone for jscpd.
+const clonedClass = (name) => `package demo;
+
+public final class ${name} {
+  public int total(int a, int b) {
+    int total = 0;
+${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i});\n    if (total > ${i * 10}) {\n      total -= ${i + 1};\n    }`).join('\n')}
+    return total;
+  }
+}
+`;
+const BRANCHY_MOVED = BRANCHY.replace(
+  '  public int larger',
+  '  // Picks the larger value.\n  public int larger',
+);
+const BRANCHY_EDITED = BRANCHY.replace('left > right', 'left >= right');
+const BRANCHY_ADDED = BRANCHY.replace(
+  '    return right;\n  }\n',
+  `    return right;
+  }
+
+  public int smaller(int left, int right) {
+    if (left < right) {
+      return left;
+    }
+    return right;
+  }
+`,
+);
+
+// What the other analyzers add for a class with no test and no javadoc (e.g. Calc, Stamp): the
+// google_checks javadoc rules, and one `pit mutant-nocoverage` per mutant.
+const javadocOn = (file, { methods = 1, types = 1 } = {}) => [
+  ...Array(methods).fill(
+    `checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocMethodCheck ${file}`,
+  ),
+  ...Array(types).fill(`checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocTypeCheck ${file}`),
+];
+const repeated = (count, entry) => Array(count).fill(entry);
 
 let repository;
 const sourceDirectory = 'src/main/java/demo';
@@ -84,7 +263,10 @@ function git(...args) {
 function branchWith(name, files) {
   git('checkout', '-q', '-b', name, 'main');
   for (const [file, content] of Object.entries(files)) {
-    writeFileSync(path.join(repository, sourceDirectory, file), content);
+    // A key with a slash is relative to the repository root, otherwise to the main source directory.
+    const target = file.includes('/') ? file : path.join(sourceDirectory, file);
+    mkdirSync(path.dirname(path.join(repository, target)), { recursive: true });
+    writeFileSync(path.join(repository, target), content);
   }
   git('add', '-A');
   git('commit', '-q', '-m', name);
@@ -101,12 +283,23 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     });
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
+    writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
-    branchWith('clean', { 'Greeter.java': FAREWELL });
+    branchWith('clean', {
+      'Greeter.java': FAREWELL,
+      'src/test/java/demo/GreeterTest.java': GREETER_TEST,
+    });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('architecture', { 'Stamp.java': STAMP });
+    branchWith('complex', { 'Complex.java': COMPLEX });
+    branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
+    branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
+    branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
+    branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
+    branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
   });
 
   afterAll(() => {
@@ -153,18 +346,137 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new PMD, SpotBugs and formatter violations as new',
+    'fails new PMD, SpotBugs, Checkstyle and formatter violations, and untested code, as new',
     () => {
       const result = diffOf('violation');
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
+        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
         'google-java-format format Bad.java',
+        'pit mutant-nocoverage Bad.java', // Bad.decode has no test
         'pmd EmptyCatchBlock Bad.java',
         'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new ArchUnit violation, once per rule and offending class',
+    () => {
+      const result = diffOf('architecture');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'archunit no_classes_use_legacy_date Stamp.java',
+        'archunit no_classes_use_legacy_date Stamp.java',
+        ...javadocOn('Stamp.java', { methods: 2, types: 2 }),
+        ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
+      ]);
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'archunit')
+          .map((finding) => finding.identity)
+          .sort(),
+      ).toEqual(['demo.Stamp', 'demo.Stamp$Inner']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new method over the CRAP limit',
+    () => {
+      const result = diffOf('complex');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        ...javadocOn('Complex.java'),
+        'crap crap-score-limit Complex.java',
+        ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
+        ...repeated(28, 'pit mutant-nocoverage Complex.java'),
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new clone found by jscpd',
+    () => {
+      const result = diffOf('clone');
+
+      expect(result.failed).toBe(true);
+      expect(
+        summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
+      ).toEqual(['duplicates duplicate-clone Left.java']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new surviving mutant in changed code',
+    () => {
+      const survivor = diffOf('survivor');
+
+      expect(survivor.failed).toBe(true);
+      expect(summarize(survivor.newEnforceable)).toEqual([
+        ...javadocOn('Calc.java'),
+        'pit mutant-survived Calc.java',
+      ]);
+      expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toContain(
+        'changed conditional boundary',
+      );
+      // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
+      expect(summarize(survivor.unchangedFindings)).toEqual(
+        expect.arrayContaining(['pit mutant-nocoverage Greeter.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'baselines an uncovered branch whose line only moves',
+    () => {
+      const result = diffOf('branch-moved');
+
+      expect(result.failed).toBe(false);
+      expect(summarize(result.newEnforceable)).toEqual([]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails an uncovered branch on a changed line',
+    () => {
+      const result = diffOf('branch-edited');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'jacoco changed-branch-coverage Branchy.java',
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new uncovered branch and keeps the old one baselined',
+    () => {
+      const result = diffOf('branch-added');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        ...javadocOn('Branchy.java', { types: 0 }),
+        'jacoco changed-branch-coverage Branchy.java',
+        ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
+      ]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
       );
     },
     GRADLE_STEP_TIMEOUT_MS,

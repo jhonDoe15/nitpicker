@@ -18,6 +18,22 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
+  it('accepts the java preset and rejects other presets', () => {
+    expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
+    expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
+      '"preset" must be one of: typescript, java',
+    );
+  });
+
+  it.each(['thresholds', 'exclude', 'layout', 'exceptions', 'legacyInventory'])(
+    'rejects %s with the java preset instead of ignoring it',
+    (key) => {
+      expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
+        `"${key}" is not supported with "preset": "java"`,
+      );
+    },
+  );
+
   it.each([
     [[], /must be a JSON object/],
     [{ disable: 'knip' }, /"disable" must be an array/],

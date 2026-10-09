@@ -96,6 +96,7 @@ export function runAnalyzers({
         concurrencyGroup: analyzer.concurrencyGroup,
         executionPriority: analyzer.executionPriority ?? 0,
         timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
+        reportedTools: analyzer.reportedTools ?? [],
         acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
         invocation,
       });
@@ -224,6 +225,13 @@ function validateAnalyzer(analyzer) {
       analyzer.findingExitCodes.some((exitCode) => !Number.isInteger(exitCode) || exitCode < 1))
   ) {
     throw new TypeError(`${analyzer.name} findingExitCodes must contain positive integers`);
+  }
+  if (
+    analyzer.reportedTools !== undefined &&
+    (!Array.isArray(analyzer.reportedTools) ||
+      analyzer.reportedTools.some((tool) => typeof tool !== 'string' || tool.length === 0))
+  ) {
+    throw new TypeError(`${analyzer.name} reportedTools must contain non-empty strings`);
   }
   if (
     analyzer.timeoutMs !== undefined &&
