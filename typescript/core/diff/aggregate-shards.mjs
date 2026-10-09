@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../preset/head-policy.mjs';
 import { configureAnalyzers } from '../configure-analyzers.mjs';
+import { presetAnalyzers } from '../preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../config.mjs';
 import {
   clearDiffReports,
@@ -112,7 +113,7 @@ export function runAggregateCli({
   arguments_ = process.argv.slice(2),
   currentProjectRoot,
   policyRoot,
-  analyzers = configuredAnalyzers,
+  analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
   environment = process.env,
@@ -138,7 +139,11 @@ export function runAggregateCli({
     const report = aggregateShardReports({
       inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
       outputRoot,
-      analyzers: configureAnalyzers(analyzers, config, resolveHeadPolicy(config)),
+      analyzers: configureAnalyzers(
+        presetAnalyzers(config, analyzers),
+        config,
+        resolveHeadPolicy(config),
+      ),
       configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
       liveProjectRoot: currentProjectRoot,
