@@ -71,9 +71,18 @@ function run(mode, options = {}) {
 describe('loading cases', () => {
   it('lists the trivial case with its pin and gate arguments', () => {
     const cases = listCases(casesDirectory);
-    expect(cases.map((entry) => entry.id)).toEqual(['trivial']);
-    expect(cases[0].pin.presetVersion).toBe('0.0.0');
-    expect(cases[0].gateArguments).toEqual([
+    expect(cases.map((entry) => entry.id)).toEqual([
+      'add-farewell-feature',
+      'add-greet-endpoint',
+      'add-shout-feature',
+      'add-tally-feature',
+      'describe-zero-count',
+      'fix-count-bug',
+      'trivial',
+    ]);
+    const trivial = cases.find((entry) => entry.id === 'trivial');
+    expect(trivial.pin.presetVersion).toBe('0.0.0');
+    expect(trivial.gateArguments).toEqual([
       '--analyzer',
       'prettier-format',
       '--analyzer',
@@ -82,7 +91,7 @@ describe('loading cases', () => {
   });
 
   it('treats a case as stale when its pinned preset version differs from the current one', () => {
-    const [trivial] = listCases(casesDirectory);
+    const trivial = listCases(casesDirectory).find((entry) => entry.id === 'trivial');
     expect(isStale(trivial, '0.0.0')).toBe(false);
     expect(isStale(trivial, '0.1.0')).toBe(true);
   });
