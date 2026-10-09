@@ -125,8 +125,9 @@ describe('complete quality-area analyzer catalog', () => {
     },
   );
 
-  it('bounds coverage worker processes independently of host CPU visibility', () => {
-    expect(vitestQualityConfig.test.maxWorkers).toBe(4);
+  it('bounds coverage worker processes independently of host CPU visibility', async () => {
+    const config = await vitestQualityConfig({ command: 'serve', mode: 'test' });
+    expect(config.test.maxWorkers).toBe(4);
   });
 
   it('reports failed Vitest assertions from the JSON report', () => {

@@ -171,6 +171,58 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toContain('Status: tool-error');
   });
 
+  describe.each([
+    ['comparison', (repository) => ['--base', repository.baseRef]],
+    ['--all', () => ['--all']],
+  ])('exit code in %s mode', (mode, modeArguments) => {
+    const run = ({ withFinding, withToolError }) => {
+      const repository = createRepository({
+        'quality-policy.json': policy(),
+        'src/main/clean.ts': 'export const clean = true;\n',
+      });
+      if (withFinding) {
+        writeFiles(repository.root, {
+          'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
+        });
+        if (mode === 'comparison') {
+          commit(repository.root, 'add finding');
+        }
+      }
+      const output = captureOutput();
+      const analyzers = [fakeAnalyzer(), ...(withToolError ? [crashingAnalyzer()] : [])];
+      const exitCode = runCli({
+        arguments_: [...modeArguments(repository), '--output', makeOutputRoot()],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers,
+        snapshotAnalyzers: analyzers,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        runTasks: undefined,
+      });
+      return { exitCode, output };
+    };
+
+    it('exits 1 for findings plus a tool error and still lists the error', () => {
+      const { exitCode, output } = run({ withFinding: true, withToolError: true });
+      expect(exitCode).toBe(1);
+      expect(output.stdoutText).toContain('crashing-analyzer');
+      expect(output.stdoutText).toContain('new.ts');
+    });
+
+    it('exits 2 for a tool error without findings', () => {
+      expect(run({ withFinding: false, withToolError: true }).exitCode).toBe(2);
+    });
+
+    it('exits 1 for findings without a tool error', () => {
+      expect(run({ withFinding: true, withToolError: false }).exitCode).toBe(1);
+    });
+
+    it('exits 0 when clean', () => {
+      expect(run({ withFinding: false, withToolError: false }).exitCode).toBe(0);
+    });
+  });
+
   it('supports --all analyzer selection and rule drill-down', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
@@ -1034,6 +1086,19 @@ function fakeAnalyzer(name = 'fake-quality-analyzer') {
   };
 }
 
+function crashingAnalyzer() {
+  return {
+    ...fakeAnalyzer('crashing-analyzer'),
+    createInvocation({ policyRoot }) {
+      return {
+        command: process.execPath,
+        args: ['-e', 'process.exit(2)'],
+        cwd: policyRoot,
+      };
+    },
+  };
+}
+
 function finding(overrides = {}) {
   return {
     tool: 'fake-quality-analyzer',
@@ -1066,7 +1131,15 @@ function commit(root, message) {
   git(root, ['commit', '-q', '-m', message]);
 }
 
-// Identity is passed per call, so fixture repositories need no `git config` spawns.
+// Identity is passed per call, so fixture repositories need no `git config` spawns. The global and
+// system config is ignored too: a developer's commit signing (`commit.gpgsign`) adds about 120 ms
+// to every fixture commit, and the fixtures must not depend on it.
+const gitFixtureEnvironment = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
+};
+
 function git(root, arguments_) {
   return execFileSync(
     'git',
@@ -1081,6 +1154,7 @@ function git(root, arguments_) {
       cwd: root,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
+      env: gitFixtureEnvironment,
     },
   );
 }

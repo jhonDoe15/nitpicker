@@ -275,6 +275,51 @@ describe('quality shard aggregation', () => {
     expect(output.stderrText).toBe('');
   });
 
+  it.each([
+    ['findings plus a tool error', true, true, 1],
+    ['a tool error only', false, true, 2],
+    ['findings only', true, false, 1],
+    ['a clean run', false, false, 0],
+  ])('exits per the combined result for %s', (_name, withFinding, withToolError, expected) => {
+    const fixture = createFixture();
+    const analyzers = [analyzer('only')];
+    writeShard(fixture.inputRoot, 0, {
+      tools: ['only'],
+      findings: withFinding
+        ? [
+            {
+              tool: 'only',
+              rule: 'example',
+              path: 'src/main/example.ts',
+              identity: 'example',
+              message: 'example finding',
+              classification: 'enforceable',
+            },
+          ]
+        : [],
+      toolErrors: withToolError
+        ? [{ tool: 'only', rule: 'tool-error', path: '', identity: 'boom', message: 'boom' }]
+        : [],
+      overallStatus: withToolError ? 'tool-error' : 'completed',
+    });
+    const output = captureOutput();
+
+    const exitCode = runAggregateCli({
+      arguments_: ['--input-root', 'shards', '--shard-count', '1', '--output', 'combined'],
+      currentProjectRoot: path.dirname(fixture.inputRoot),
+      analyzers,
+      stdout: output.stdout,
+      stderr: output.stderr,
+      environment: {},
+    });
+
+    expect(exitCode).toBe(expected);
+    const summary = JSON.parse(
+      readFileSync(path.join(path.dirname(fixture.inputRoot), 'combined/summary.json'), 'utf8'),
+    );
+    expect(summary.overallStatus).toBe(withToolError ? 'tool-error' : 'completed');
+  });
+
   it('supports a concise color-free success summary', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('only')];
