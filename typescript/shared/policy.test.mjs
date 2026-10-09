@@ -87,10 +87,12 @@ describe('shared layer import direction', () => {
         (match) => match[1],
       );
       for (const specifier of specifiers) {
-        expect(
-          specifier.startsWith('./') || specifier.startsWith('node:'),
-          `${file} imports ${specifier}`,
-        ).toBe(true);
+        const staysInShared =
+          specifier.startsWith('.') &&
+          path.resolve(path.dirname(file), specifier).startsWith(`${sharedRoot}${path.sep}`);
+        expect(staysInShared || specifier.startsWith('node:'), `${file} imports ${specifier}`).toBe(
+          true,
+        );
       }
     }
   });
