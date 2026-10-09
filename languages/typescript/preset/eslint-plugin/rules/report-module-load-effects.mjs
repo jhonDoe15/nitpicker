@@ -31,7 +31,7 @@ function executesAtModuleLoad(node) {
   return false;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

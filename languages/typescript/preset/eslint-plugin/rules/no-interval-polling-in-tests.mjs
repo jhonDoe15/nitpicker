@@ -2,7 +2,7 @@ import { readLayout } from '../../head-policy.mjs';
 
 const { isTestFixture } = readLayout();
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

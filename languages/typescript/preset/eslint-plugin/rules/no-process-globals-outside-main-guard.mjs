@@ -35,7 +35,7 @@ function insideMainGuard(node) {
   return false;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

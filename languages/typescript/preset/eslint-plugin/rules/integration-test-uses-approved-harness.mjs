@@ -5,7 +5,7 @@ const { testRoots } = readLayout();
 const DEFAULT_APPROVED_FUNCTIONS = ['startApp'];
 const DEFAULT_APPROVED_SUBPROCESSES = ['AppProcess'];
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {
