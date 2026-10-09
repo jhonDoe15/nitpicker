@@ -1,7 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeDuplicates } from '../diff/quality-areas-runner.mjs';
+import { evaluateDuplicates } from '../../shared/rules/duplicates.mjs';
+import { jscpdClones } from '../jscpd-clones.mjs';
 import { DUPLICATES_MODE } from '../../shared/policy.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 
@@ -78,5 +79,7 @@ export function runJavaDuplicates(projectRoot) {
 /** Findings from `build/nitpicker/duplicates.json`; jscpd names files relative to their root. */
 export function readDuplicateFindings(reportRoot) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
-  return runs.flatMap(({ root, report }) => normalizeDuplicates(report, DUPLICATES_TOOL, [root]));
+  return runs.flatMap(({ root, report }) =>
+    evaluateDuplicates(jscpdClones(report, [root]), DUPLICATES_TOOL),
+  );
 }
