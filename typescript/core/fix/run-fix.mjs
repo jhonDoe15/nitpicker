@@ -10,7 +10,7 @@ import {
   resolveHeadPolicy,
   withHeadPolicyFile,
 } from '../../preset/head-policy.mjs';
-import { policyTransformFor } from '../../preset/tool-configs.mjs';
+import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
@@ -81,7 +81,7 @@ function fixWithPolicy({
       linked = linkPolicyFile(
         path.join(PACKAGE_ROOT, eslintPolicy.policyFiles[0]),
         path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
-        policyTransformFor(eslintPolicy.policyFiles[0], layout, { projectRoot }),
+        layoutTransformFor(eslintPolicy.policyFiles[0], layout),
       );
       run(
         'eslint-fix',
