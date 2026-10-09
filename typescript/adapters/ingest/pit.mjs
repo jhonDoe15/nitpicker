@@ -1,4 +1,4 @@
-import { ENFORCED_MUTATION_STATUSES, mutantRuleId } from '../../shared/policy.mjs';
+import { mutantFindings } from '../../shared/rules/mutation.mjs';
 import { decodeEntities } from './common.mjs';
 
 // PIT (pitest) XML mutation report -> findings, following the same mutation profile as the
@@ -39,7 +39,6 @@ export function ingestPit(xml, options = {}) {
 
   const statusCounts = new Map();
   const groups = new Map();
-  const findings = [];
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
@@ -60,21 +59,21 @@ export function ingestPit(xml, options = {}) {
     group.push({ mutant, status, key, filePath });
     groups.set(`${status}\0${key}`, group);
   }
+  const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
     group.forEach(({ mutant, status, key, filePath }, index) => {
-      findings.push({
-        tool,
-        rule: mutantRuleId(status),
+      neutral.push({
         path: filePath,
         identity: `${key}#${String(index + 1)}`,
-        message: `${status} ${mutator(mutant.mutator)}: ${mutant.description}`,
-        classification: ENFORCED_MUTATION_STATUSES.includes(status) ? 'enforceable' : 'descriptive',
+        status,
+        label: `${mutator(mutant.mutator)}: ${mutant.description}`,
         symbol: `${mutant.className}#${mutant.method}${mutant.methodDescription}`,
-        ...(mutant.line >= 1 ? { location: { line: mutant.line } } : {}),
+        line: mutant.line,
       });
     });
   }
+  const findings = mutantFindings(neutral, { tool });
   for (const [status, value] of statusCounts) {
     findings.push({
       tool,
