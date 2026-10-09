@@ -1,0 +1,14 @@
+{
+  "exceptions": [
+    {
+      "rule": "nitpicker/no-internal-module-mocks",
+      "paths": ["test/**"],
+      "reason": "Legacy tests"
+    },
+    {
+      "rule": "nitpicker/no-mocking-subject-under-test",
+      "paths": ["test/**"],
+      "reason": "Legacy tests"
+    }
+  ]
+}

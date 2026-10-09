@@ -206,7 +206,6 @@ export function createQualityChecks(layout = resolveLayout()) {
       patterns: layout.graphRoots,
       exclusions: [ARCHITECTURE_EXCLUSION, ...layout.exclude],
       configRelativePath: 'preset/defaults/dependency-cruiser.config.mjs',
-      includeOnly: layout.graphIncludeOnly,
       exclude: architectureExclusion,
       shardWeight: 7,
       configurationFiles: [
