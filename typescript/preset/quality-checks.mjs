@@ -37,6 +37,7 @@ const POLICY_FILES = [
   'preset/eslint-config/strict-declarations.mjs',
   'preset/eslint-config/strict-domain.mjs',
   'preset/eslint-config/strict-escape-hatches.mjs',
+  'preset/eslint-config/strict-tests.mjs',
   'preset/eslint-plugin/index.mjs',
   'preset/eslint-plugin/rules/no-comments.mjs',
   'preset/eslint-plugin/rules/no-handwritten-boundary-guard.mjs',
@@ -59,6 +60,14 @@ const POLICY_FILES = [
   'preset/eslint-plugin/rules/report-module-load-effects.mjs',
   'preset/eslint-plugin/rules/structured-catch-logging.mjs',
   'preset/eslint-plugin/rules/test-must-use-production-runtime.mjs',
+  'preset/eslint-plugin/rules/test-code-analysis.mjs',
+  'preset/eslint-plugin/rules/no-git-repository-per-test.mjs',
+  'preset/eslint-plugin/rules/hermetic-git-in-tests.mjs',
+  'preset/eslint-plugin/rules/no-node-process-per-test.mjs',
+  'preset/eslint-plugin/rules/no-server-or-worker-per-test.mjs',
+  'preset/eslint-plugin/rules/no-raised-test-timeout.mjs',
+  'preset/eslint-plugin/rules/no-process-globals-outside-main-guard.mjs',
+  'preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
 ];
 
 const ARCHITECTURE_EXCLUSION =
