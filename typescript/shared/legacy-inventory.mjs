@@ -10,28 +10,10 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { RULE_IDS } from './policy.mjs';
+import { numericAllowance, siteKey } from './rules/baseline-expansion.mjs';
 
 /** Where a consumer project records existing violations, relative to its root. */
 export const DEFAULT_LEGACY_INVENTORY = 'nitpicker.legacy.json';
-
-export function siteKey(site) {
-  if (
-    typeof site?.file !== 'string' ||
-    typeof site.rule !== 'string' ||
-    typeof site.source !== 'string'
-  ) {
-    throw new TypeError('Coding-standard baseline contains an invalid site');
-  }
-  return JSON.stringify([site.file, site.rule, site.source]);
-}
-
-export function numericAllowance(value) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('Coding-standard baseline counts must be positive integers');
-  }
-  return value;
-}
 
 /** Keep exact legacy sites visible without allowing new sites or duplicate occurrences. */
 export function compareSignals(actual, allowed) {
@@ -60,31 +42,6 @@ export function readOptionalInventory(root, relativePath) {
   } catch (error) {
     throw new SyntaxError(`Invalid legacy inventory: ${inventoryPath}`, { cause: error });
   }
-}
-
-/** One `baseline-expansion` finding per site whose allowance is higher on head than on base. */
-export function normalizeBaselineExpansions(baseSites, headSites, analyzerName) {
-  const baseCounts = new Map(
-    baseSites.map((site) => [siteKey(site), numericAllowance(site.count)]),
-  );
-  return headSites.flatMap((site) => {
-    const key = siteKey(site);
-    const baseCount = baseCounts.get(key) ?? 0;
-    const headCount = numericAllowance(site.count);
-    if (headCount <= baseCount) {
-      return [];
-    }
-    return [
-      {
-        tool: analyzerName,
-        rule: RULE_IDS.baselineExpansion,
-        path: site.file,
-        identity: `site:${createHash('sha256').update(String(key)).digest('hex').slice(0, 24)}`,
-        message: `Legacy allowance increased from ${String(baseCount)} to ${String(headCount)} for ${site.rule}`,
-        classification: 'enforceable',
-      },
-    ];
-  });
 }
 
 /**

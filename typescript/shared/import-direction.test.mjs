@@ -18,7 +18,7 @@ function sharedModules(directory = sharedRoot) {
 }
 
 describe('shared layer import direction', () => {
-  it('imports only node built-ins and other shared modules', () => {
+  it('imports only node built-ins and other shared modules (never preset/, adapters/, core/ or a tool package)', () => {
     const offenders = sharedModules().flatMap((file) =>
       [...readFileSync(file, 'utf8').matchAll(SPECIFIER)]
         .map((match) => match[1] ?? match[2])

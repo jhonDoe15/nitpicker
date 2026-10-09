@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   applyInventoryToFindings,
   compareSignals,
-  normalizeBaselineExpansions,
   readOptionalInventory,
 } from './legacy-inventory.mjs';
+import { evaluateBaselineExpansions } from './rules/baseline-expansion.mjs';
 
 const site = (count, source = 's') => ({ file: 'a.java', rule: 'r', source, count });
 const finding = (identity, classification = 'enforceable') => ({
@@ -44,9 +44,9 @@ describe('legacy inventory', () => {
   });
 
   it('flags a raised allowance and a new site, not a lowered or unchanged one', () => {
-    expect(normalizeBaselineExpansions([site(2)], [site(2)], 't')).toEqual([]);
-    expect(normalizeBaselineExpansions([site(2)], [site(1)], 't')).toEqual([]);
-    expect(normalizeBaselineExpansions([site(1)], [site(3)], 't')).toEqual([
+    expect(evaluateBaselineExpansions([site(2)], [site(2)], 't')).toEqual([]);
+    expect(evaluateBaselineExpansions([site(2)], [site(1)], 't')).toEqual([]);
+    expect(evaluateBaselineExpansions([site(1)], [site(3)], 't')).toEqual([
       expect.objectContaining({
         tool: 't',
         rule: 'baseline-expansion',
@@ -55,8 +55,8 @@ describe('legacy inventory', () => {
         message: 'Legacy allowance increased from 1 to 3 for r',
       }),
     ]);
-    expect(normalizeBaselineExpansions([], [site(1)], 't')).toHaveLength(1);
-    expect(() => normalizeBaselineExpansions([], [site(0)], 't')).toThrow(/positive integers/);
+    expect(evaluateBaselineExpansions([], [site(1)], 't')).toHaveLength(1);
+    expect(() => evaluateBaselineExpansions([], [site(0)], 't')).toThrow(/positive integers/);
   });
 
   it('baselines up to the allowance and keeps the rest and report-only findings', () => {

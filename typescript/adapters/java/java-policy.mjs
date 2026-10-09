@@ -2,10 +2,10 @@ import { createHash } from 'node:crypto';
 import { globToRegExp } from '../../shared/glob.mjs';
 import {
   applyInventoryToFindings,
-  normalizeBaselineExpansions,
   readOptionalInventory,
   withLegacyInventory,
 } from '../../shared/legacy-inventory.mjs';
+import { evaluateBaselineExpansions } from '../../shared/rules/baseline-expansion.mjs';
 
 // The project config as the Java preset honours it. The shared config layer (`thresholds`,
 // `exclude`, `legacyInventory`) reaches the Java analyzer as runner arguments, so they are part
@@ -86,6 +86,6 @@ export function applyJavaPolicy(
   const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
   return [
     ...baselined,
-    ...normalizeBaselineExpansions(baseInventory.sites, headInventory.sites, INVENTORY_TOOL),
+    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, INVENTORY_TOOL),
   ];
 }
