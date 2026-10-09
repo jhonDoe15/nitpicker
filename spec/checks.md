@@ -35,11 +35,11 @@ Each runs ESLint with a different config. Every ESLint message becomes an **enfo
 
 ## Static checks
 
-| Check                     | Rule                         | Threshold                        | Status                                                             |
-| ------------------------- | ---------------------------- | -------------------------------- | ------------------------------------------------------------------ |
-| `prettier-format`         | `prettier/prettier`          | none: any unformatted file fails | enforceable                                                        |
-| `typescript-typecheck`    | `TS<code>` per diagnostic    | none: any new diagnostic fails   | enforceable                                                        |
-| `dependency-architecture` | dependency-cruiser rule name | rule severity                    | `error` severity is enforceable; any other severity is report-only |
+| Check                     | Rule                         | Threshold                                         | Status                                                             |
+| ------------------------- | ---------------------------- | ------------------------------------------------- | ------------------------------------------------------------------ |
+| `prettier-format`         | `prettier/prettier`          | none: any new or touched unformatted region fails | enforceable                                                        |
+| `typescript-typecheck`    | `TS<code>` per diagnostic    | none: any new diagnostic fails                    | enforceable                                                        |
+| `dependency-architecture` | dependency-cruiser rule name | rule severity                                     | `error` severity is enforceable; any other severity is report-only |
 
 ## Quality-area checks
 
