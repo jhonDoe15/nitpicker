@@ -21,7 +21,9 @@ export function linkPolicyFile(sourcePath, targetPath, transform) {
   }
   trackTemporaryPath(targetPath);
   if (transform !== undefined) {
-    writeFileSync(targetPath, transform(readFileSync(canonicalSource, 'utf8')), { flag: 'wx' });
+    writeFileSync(targetPath, transform(readFileSync(canonicalSource, 'utf8'), targetPath), {
+      flag: 'wx',
+    });
     return {
       sourcePath: canonicalSource,
       targetPath,

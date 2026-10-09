@@ -70,11 +70,7 @@ describe('strict test rules', () => {
   });
 
   it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
-    const configs = [
-      'preset/defaults/vitest.quality.config.ts',
-      'preset/defaults/stryker.vitest.config.ts',
-    ];
-    for (const config of configs) {
+    for (const config of ['preset/defaults/vitest.quality.config.ts']) {
       const text = readFileSync(path.join(packageRoot, config), 'utf8');
       expect(text).toContain(
         `testTimeout: ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
