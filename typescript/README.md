@@ -217,6 +217,9 @@ new and touched code must comply.
   edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
   the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
   Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
+  Prettier works the same way: it reports one finding per unformatted region, located at the
+  region's first line, so a legacy unformatted file stays baselined until a change edits a line
+  inside such a region. An unformatted new file or newly unformatted lines fail the run.
 - **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
   `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.

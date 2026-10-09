@@ -129,6 +129,108 @@ describe('static differential adapters', () => {
     },
   );
 
+  describe('prettier findings by touched lines', () => {
+    const legacy = ['export const a={value:1}', ...filler(20), 'export const z = 1;', ''].join(
+      '\n',
+    );
+
+    function prettierDiff(initialFiles, changedFiles) {
+      const repository = createRepository({
+        ...policyFiles(),
+        'tests/placeholder.ts': 'export const placeholder = true;\n',
+        ...initialFiles,
+      });
+      writeFiles(repository.root, changedFiles);
+      commit(repository.root, 'change');
+      return runQualityDiff({
+        repositoryRoot: repository.root,
+        projectRelativePath: '.',
+        headProjectRoot: toolRoot,
+        requestedBaseRef: repository.baseRef,
+        outputRoot: path.join(repository.root, 'reports/quality/diff'),
+        analyzers: [
+          analyzer({
+            name: 'prettier-format',
+            kind: 'prettier',
+            configRelativePath: '.prettierrc.json',
+            ignoreRelativePath: '.prettierignore',
+            patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
+          }),
+        ],
+      });
+    }
+
+    it('keeps a legacy unformatted region baselined when the edit is far away', () => {
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': legacy },
+        { 'src/main/legacy.ts': legacy.replace('export const z = 1;', 'export const z = 2;') },
+      );
+
+      expect(report.toolErrors).toEqual([]);
+      expect(report.newFindings).toEqual([]);
+      expect(report.unchangedFindings).toEqual([
+        expect.objectContaining({ rule: 'prettier/prettier', location: { line: 1, endLine: 1 } }),
+      ]);
+    });
+
+    it('fails when the edit lands inside the unformatted region', () => {
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': legacy },
+        { 'src/main/legacy.ts': legacy.replace('value:1', 'value:2') },
+      );
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/legacy.ts', location: { line: 1, endLine: 1 } }),
+      ]);
+    });
+
+    it('keeps the finding identity stable when lines shift above the region', () => {
+      const base = ['export const top = 1;', legacy].join('\n');
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': base },
+        {
+          'src/main/legacy.ts': ['export const top = 1;', 'export const more = 1;', legacy].join(
+            '\n',
+          ),
+        },
+      );
+
+      expect(report.newFindings).toEqual([]);
+      expect(report.resolvedFindings).toEqual([]);
+      expect(report.unchangedFindings).toHaveLength(1);
+    });
+
+    it('fails a new unformatted file', () => {
+      const report = prettierDiff({}, { 'src/main/fresh.ts': 'export const fresh={a:1}\n' });
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/fresh.ts', rule: 'prettier/prettier' }),
+      ]);
+    });
+
+    it('fails a newly unformatted line in a formatted file', () => {
+      const formatted = 'export const a = 1;\n';
+      const report = prettierDiff(
+        { 'src/main/ok.ts': formatted },
+        { 'src/main/ok.ts': `${formatted}export const b={v:1}\n` },
+      );
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/ok.ts', location: { line: 2, endLine: 2 } }),
+      ]);
+    });
+
+    it('keeps a formatted file clean', () => {
+      const report = prettierDiff(
+        { 'src/main/ok.ts': 'export const a = 1;\n' },
+        { 'src/main/ok.ts': 'export const a = 2;\n' },
+      );
+
+      expect(report.newFindings).toEqual([]);
+      expect(report.unchangedFindings).toEqual([]);
+    });
+  });
+
   it('ignores generated quality-diff files during formatting checks', () => {
     const projectRoot = generatedSnapshot();
     writeFiles(projectRoot, {
@@ -405,6 +507,13 @@ function policyFiles() {
       '',
     ].join('\n'),
   };
+}
+
+function filler(count) {
+  return Array.from(
+    { length: count },
+    (_, index) => `export const f${String(index)} = ${String(index)};`,
+  );
 }
 
 function architectureReport(cycle, from = 'src/main/a.ts') {
