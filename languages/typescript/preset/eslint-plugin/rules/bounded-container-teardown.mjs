@@ -29,7 +29,7 @@ function isContainerExpression(node, sourceCode) {
   );
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

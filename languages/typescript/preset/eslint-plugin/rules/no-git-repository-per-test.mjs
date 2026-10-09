@@ -15,7 +15,7 @@ function createsRepository(described) {
   );
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

@@ -3,7 +3,7 @@ const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const toolDirective =
   /^\s*(?:eslint\b|prettier-ignore|istanbul\b|c8\b|v8\b|stryker\b|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {
