@@ -141,6 +141,14 @@ function temporaryDirectory() {
   return root;
 }
 
+// Hermetic fixture git: a developer's global config (commit signing adds about 150 ms per commit)
+// must not change the fixture's cost or behaviour.
+const gitFixtureEnvironment = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
+};
+
 function git(cwd, arguments_) {
-  return execFileSync('git', arguments_, { cwd, encoding: 'utf8' });
+  return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
 }
