@@ -59,7 +59,20 @@ describe('strict adapters syntactic rules', () => {
 describe('strict adapters type-aware rules', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'strict-adapters-'));
   afterAll(() => rmSync(root, { recursive: true, force: true }));
-  mkdirSync(path.join(root, 'src/main/features/billing/adapters'), { recursive: true });
+  const adapterDirectory = path.join(root, 'src/main/features/billing/adapters');
+  mkdirSync(adapterDirectory, { recursive: true });
+  // Write every fixture before the first lint: in CI, typescript-eslint builds the program once
+  // (single-run mode) and does not see files created after it.
+  const fixtures = {
+    'floating.ts':
+      'async function load(): Promise<number> { return 1; }\nasync function run() { load(); }\nexport { run };\n',
+    'awaited.ts':
+      'async function load(): Promise<number> { return 1; }\nasync function run() { await load(); }\nexport { run };\n',
+    'throw.ts': 'export function run(value: number) { throw value; }\n',
+  };
+  for (const [name, code] of Object.entries(fixtures)) {
+    writeFileSync(path.join(adapterDirectory, name), code);
+  }
   writeFileSync(
     path.join(root, 'tsconfig.json'),
     JSON.stringify({
@@ -82,18 +95,13 @@ describe('strict adapters type-aware rules', () => {
     ],
   });
 
-  async function messagesFor(name, code) {
-    const filePath = path.join(root, 'src/main/features/billing/adapters', name);
-    writeFileSync(filePath, code);
-    const [result] = await eslint.lintFiles([filePath]);
+  async function messagesFor(name) {
+    const [result] = await eslint.lintFiles([path.join(adapterDirectory, name)]);
     return result.messages;
   }
 
   it('rejects a floating promise and names await', async () => {
-    const messages = await messagesFor(
-      'floating.ts',
-      'async function load(): Promise<number> { return 1; }\nasync function run() { load(); }\nexport { run };\n',
-    );
+    const messages = await messagesFor('floating.ts');
     expect(messages.map((message) => message.ruleId)).toEqual([
       '@typescript-eslint/no-floating-promises',
     ]);
@@ -101,18 +109,12 @@ describe('strict adapters type-aware rules', () => {
   });
 
   it('accepts an awaited promise', async () => {
-    const messages = await messagesFor(
-      'awaited.ts',
-      'async function load(): Promise<number> { return 1; }\nasync function run() { await load(); }\nexport { run };\n',
-    );
+    const messages = await messagesFor('awaited.ts');
     expect(messages).toEqual([]);
   });
 
   it('rejects throwing a non-error value', async () => {
-    const messages = await messagesFor(
-      'throw.ts',
-      'export function run(value: number) { throw value; }\n',
-    );
+    const messages = await messagesFor('throw.ts');
     expect(messages.map((message) => message.ruleId)).toEqual([
       '@typescript-eslint/only-throw-error',
     ]);
