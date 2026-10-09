@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -45,6 +45,51 @@ public final class Greeter {
   /** Says goodbye. */
   public String farewell(String name) {
     return "Goodbye, " + name + ".";
+  }
+}
+`;
+
+// The clean change's test: PIT would report a new uncovered mutant for `farewell` without it.
+const GREETER_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class GreeterTest {
+  @Test
+  void greetsByName() {
+    assertEquals("Hello, Ada!", new Greeter().greet("Ada"));
+  }
+
+  @Test
+  void saysFarewell() {
+    assertEquals("Goodbye, Ada.", new Greeter().farewell("Ada"));
+  }
+}
+`;
+
+// Tested, but not at the boundary: the `>` to `>=` mutant of clamp survives.
+const CALC = `package demo;
+
+public final class Calc {
+  public int clamp(int value) {
+    return value > 10 ? 10 : value;
+  }
+}
+`;
+
+const CALC_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class CalcTest {
+  @Test
+  void clampsAboveTen() {
+    assertEquals(10, new Calc().clamp(20));
+    assertEquals(5, new Calc().clamp(5));
   }
 }
 `;
@@ -177,7 +222,10 @@ function git(...args) {
 function branchWith(name, files) {
   git('checkout', '-q', '-b', name, 'main');
   for (const [file, content] of Object.entries(files)) {
-    writeFileSync(path.join(repository, sourceDirectory, file), content);
+    // A key with a slash is relative to the repository root, otherwise to the main source directory.
+    const target = file.includes('/') ? file : path.join(sourceDirectory, file);
+    mkdirSync(path.dirname(path.join(repository, target)), { recursive: true });
+    writeFileSync(path.join(repository, target), content);
   }
   git('add', '-A');
   git('commit', '-q', '-m', name);
@@ -197,12 +245,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
-    branchWith('clean', { 'Greeter.java': FAREWELL });
+    branchWith('clean', {
+      'Greeter.java': FAREWELL,
+      'src/test/java/demo/GreeterTest.java': GREETER_TEST,
+    });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
+    branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
   });
 
   afterAll(() => {
@@ -249,7 +301,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails new PMD, SpotBugs, Checkstyle and formatter violations as new',
+    'fails new PMD, SpotBugs, Checkstyle and formatter violations, and untested code, as new',
     () => {
       const result = diffOf('violation');
 
@@ -257,6 +309,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).toEqual([
         ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
         'google-java-format format Bad.java',
+        'pit mutant-nocoverage Bad.java', // Bad.decode has no test
         'pmd EmptyCatchBlock Bad.java',
         'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
@@ -305,6 +358,22 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(
         summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
       ).toEqual(['duplicates duplicate-clone Left.java']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new surviving mutant in changed code',
+    () => {
+      const survivor = diffOf('survivor');
+
+      expect(survivor.failed).toBe(true);
+      expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
+      expect(survivor.newEnforceable[0].message).toContain('changed conditional boundary');
+      // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
+      expect(summarize(survivor.unchangedFindings)).toEqual(
+        expect.arrayContaining(['pit mutant-nocoverage Greeter.java']),
+      );
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
