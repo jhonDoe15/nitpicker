@@ -1,6 +1,6 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { globToRegExp, resolveLayout } from './layout.mjs';
@@ -156,8 +156,8 @@ describe('package-owned child configs', () => {
     layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
   };
 
-  it('eslint.config.mjs lints the custom roots and ignores excluded paths', () => {
-    const config = loadConfig('defaults/eslint.config.mjs', policy, FILE_SELECTION);
+  it('eslint.config.mjs lints the custom roots and ignores excluded paths', async () => {
+    const config = await loadConfig('defaults/eslint.config.mjs', policy, FILE_SELECTION);
     const ignores = config.flatMap((entry) =>
       entry.files === undefined ? (entry.ignores ?? []) : [],
     );
@@ -169,32 +169,30 @@ describe('package-owned child configs', () => {
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
   });
 
-  it('eslint-config/base.mjs and coding-standards.mjs follow the same layout', () => {
+  it('eslint-config/base.mjs and coding-standards.mjs follow the same layout', async () => {
     for (const relativePath of ['eslint-config/coding-standards.mjs']) {
-      const config = loadConfig(relativePath, policy, FILE_SELECTION);
+      const config = await loadConfig(relativePath, policy, FILE_SELECTION);
       expect(config[0].ignores).toContain('lib/legacy/**');
       expect(config.flatMap((entry) => entry.files ?? []).flat()).toContain(
         'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       );
     }
-    const production = loadModule(
-      'eslint-config/base.mjs',
-      policy,
-      'productionPolicyConfig({}).map(({ ignores }) => ({ ignores }))',
+    const production = await loadConfig('eslint-config/base.mjs', policy, (module) =>
+      module.productionPolicyConfig({}).map(({ ignores }) => ({ ignores })),
     );
     expect(production.flatMap((entry) => entry.ignores ?? [])).toContain('lib/legacy/**');
     expect(production.flatMap((entry) => entry.ignores ?? [])).toContain('lib/**/__tests__/**');
   });
 
-  it('crap.config.mjs measures the custom source roots and skips excluded paths', () => {
-    const config = loadConfig('defaults/crap.config.mjs', policy);
+  it('crap.config.mjs measures the custom source roots and skips excluded paths', async () => {
+    const config = await loadConfig('defaults/crap.config.mjs', policy);
     expect(config.sourcePaths).toEqual(['lib']);
     expect(config.excludes).toContain('lib/legacy/**');
     expect(config.excludes).toContain('spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
   });
 
-  it('stryker.config.mjs mutates the custom source roots and skips excluded paths', () => {
-    const config = loadConfig('defaults/stryker.config.mjs', policy);
+  it('stryker.config.mjs mutates the custom source roots and skips excluded paths', async () => {
+    const config = await loadConfig('defaults/stryker.config.mjs', policy);
     expect(config.mutate).toContain('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
     expect(config.mutate).toContain('!lib/legacy/**');
     expect(config.mutate).toContain('!lib/**/__tests__/**');
@@ -202,8 +200,8 @@ describe('package-owned child configs', () => {
     expect(config.ignorePatterns).toEqual(['lib/dist', 'spec/integration', 'reports']);
   });
 
-  it('dependency-cruiser.config.mjs rules and exclusions use the custom roots', () => {
-    const config = loadConfig('defaults/dependency-cruiser.config.mjs', policy);
+  it('dependency-cruiser.config.mjs rules and exclusions use the custom roots', async () => {
+    const config = await loadConfig('defaults/dependency-cruiser.config.mjs', policy);
     const [productionToTest] = config.forbidden;
     expect(new RegExp(productionToTest.from.path).test('lib/live/a.ts')).toBe(true);
     expect(new RegExp(productionToTest.from.path).test('src/a.ts')).toBe(false);
@@ -215,8 +213,8 @@ describe('package-owned child configs', () => {
     expect(doNotFollow.test('lib/live/new.ts')).toBe(false);
   });
 
-  it('the copied vitest configs run the custom roots and skip excluded paths', () => {
-    const coverage = loadTypeScriptConfig('defaults/vitest.quality.config.ts', policy);
+  it('the copied vitest configs run the custom roots and skip excluded paths', async () => {
+    const coverage = await loadConfig('defaults/vitest.quality.config.ts', policy);
     const [unit, integration] = coverage.test.projects.map(({ test }) => test);
     expect(unit.include).toEqual(['lib/**/*.test.ts', 'lib/**/*.spec.ts']);
     expect(unit.exclude).toContain('lib/legacy/**');
@@ -224,7 +222,7 @@ describe('package-owned child configs', () => {
     expect(integration.exclude).toContain('lib/legacy/**');
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect(coverage.test.coverage.exclude).toContain('lib/legacy/**');
-    const mutation = loadTypeScriptConfig('defaults/stryker.vitest.config.ts', policy);
+    const mutation = await loadConfig('defaults/stryker.vitest.config.ts', policy);
     expect(mutation.test.include).toEqual([
       'lib/**/*.test.ts',
       'lib/**/*.spec.ts',
@@ -233,8 +231,8 @@ describe('package-owned child configs', () => {
     expect(mutation.test.exclude).toContain('lib/legacy/**');
   });
 
-  it('the copied vitest configs keep the default roots without a policy', () => {
-    const coverage = loadTypeScriptConfig('defaults/vitest.quality.config.ts', undefined);
+  it('the copied vitest configs keep the default roots without a policy', async () => {
+    const coverage = await loadConfig('defaults/vitest.quality.config.ts', undefined);
     expect(coverage.test.projects[0].test.include).toEqual([
       'src/**/*.test.ts',
       'src/**/*.spec.ts',
@@ -244,52 +242,41 @@ describe('package-owned child configs', () => {
   });
 });
 
-const FILE_SELECTION = 'module.default.map(({ files, ignores }) => ({ files, ignores }))';
+const FILE_SELECTION = (module) => module.default.map(({ files, ignores }) => ({ files, ignores }));
 
-function loadConfig(relativePath, policy, expression = 'module.default') {
-  return loadModule(relativePath, policy, expression);
+// Config modules read the head policy once, at import time. Each distinct policy therefore gets
+// its own module instance (a unique query string), while shared dependencies such as
+// typescript-eslint load once per test file instead of once per process.
+let policyImportCount = 0;
+
+async function loadConfig(relativePath, policy, read = (module) => module.default) {
+  const restore = setPolicyEnvironment(policy);
+  try {
+    policyImportCount += 1;
+    const url = pathToFileURL(path.join(import.meta.dirname, relativePath));
+    url.search = `policy=${String(policyImportCount)}`;
+    return read(await import(url.href));
+  } finally {
+    restore();
+  }
 }
 
-function loadModule(relativePath, policy, expression) {
-  return runWithPolicy(
-    [
-      '--input-type=module',
-      '-e',
-      `const module = await import(${JSON.stringify(path.join(import.meta.dirname, relativePath))});` +
-        `const { productionPolicyConfig } = module; process.stdout.write(JSON.stringify(${expression}));`,
-    ],
-    policy,
-  );
-}
-
-function loadTypeScriptConfig(relativePath, policy) {
-  return runWithPolicy(
-    [
-      '--experimental-strip-types',
-      '--input-type=module',
-      '-e',
-      `const module = await import(${JSON.stringify(path.join(import.meta.dirname, relativePath))});` +
-        'process.stdout.write(JSON.stringify(module.default));',
-    ],
-    policy,
-  );
-}
-
-function runWithPolicy(arguments_, policy) {
-  const environment = { ...process.env };
-  delete environment.NITPICKER_POLICY;
-  if (policy !== undefined) {
+function setPolicyEnvironment(policy) {
+  const previous = process.env.NITPICKER_POLICY;
+  if (policy === undefined) {
+    delete process.env.NITPICKER_POLICY;
+  } else {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-config-'));
     temporaryRoots.push(root);
     const policyFile = path.join(root, 'policy.json');
     writeFileSync(policyFile, JSON.stringify(policy));
-    environment.NITPICKER_POLICY = policyFile;
+    process.env.NITPICKER_POLICY = policyFile;
   }
-  return JSON.parse(
-    execFileSync(process.execPath, arguments_, {
-      env: environment,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }),
-  );
+  return () => {
+    if (previous === undefined) {
+      delete process.env.NITPICKER_POLICY;
+    } else {
+      process.env.NITPICKER_POLICY = previous;
+    }
+  };
 }

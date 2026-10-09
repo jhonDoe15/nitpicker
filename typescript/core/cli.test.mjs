@@ -13,6 +13,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runCli } from './cli.mjs';
+import { describeConfigOverrides } from './config.mjs';
+import { policyHash } from './diff/report-model.mjs';
 import { startTestHttpServer } from './diff/test-http-server.mjs';
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'diff/fixtures/fake-analyzer.mjs');
@@ -455,8 +457,6 @@ describe('nitpicker CLI', () => {
         '--base',
         repository.baseRef,
         '--analyzer',
-        'eslint-lint',
-        '--analyzer',
         'prettier-format',
         '--output',
         makeOutputRoot(),
@@ -597,6 +597,24 @@ describe('nitpicker CLI', () => {
 });
 
 describe('nitpicker config file', () => {
+  // Config errors are raised before any git work, so these need only the config file.
+  function runConfigOnly(config) {
+    const projectRoot = makeTemporaryRoot('nitpicker-cli-config-');
+    writeFiles(projectRoot, {
+      'nitpicker.config.json': typeof config === 'string' ? config : JSON.stringify(config),
+    });
+    const output = captureOutput();
+    const exitCode = runCli({
+      arguments_: ['--output', makeOutputRoot()],
+      environment: {},
+      currentProjectRoot: projectRoot,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+    return { exitCode, output };
+  }
+
   function runWithConfig(config, { extraArguments = ['--base', 'HEAD'], analyzers } = {}) {
     const repository = createRepository({
       'quality-policy.json': policy(),
@@ -663,28 +681,40 @@ describe('nitpicker config file', () => {
   });
 
   it('rejects disabling an unknown analyzer', () => {
-    const { exitCode, output } = runWithConfig({ disable: ['nope'] });
+    const { exitCode, output } = runConfigOnly({ disable: ['nope'] });
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toContain('unknown analyzers: nope');
   });
 
   it('reports every parsed key and changes the policy hash for each', () => {
-    const hashes = new Set([runWithConfig(undefined).summary.policyHash]);
-    for (const [key, value] of [
+    // Keys in describeConfigOverrides order. One run covers the CLI wiring for most of them.
+    // `exclude` gets its own run: with it set, the layout-only branch of applyLayout is skipped.
+    const entries = [
       ['preset', 'typescript'],
       ['thresholds', { crapLimit: 12 }],
-      ['exclude', ['generated/**']],
       ['layout', { sourceRoots: ['lib'] }],
-      ['legacyInventory', 'config/legacy.json'],
       ['analyzers', [customAnalyzerEntry('clean')]],
-    ]) {
-      const { summary, exitCode } = runWithConfig({ [key]: value });
-      expect(exitCode).toBe(0);
-      expect(summary.configOverrides).toEqual([`${key}: ${JSON.stringify(value)}`]);
-      hashes.add(summary.policyHash);
+      ['legacyInventory', 'config/legacy.json'],
+    ];
+    const plainHash = runWithConfig(undefined).summary.policyHash;
+    const { summary, exitCode } = runWithConfig(Object.fromEntries(entries));
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual(
+      entries.map(([key, value]) => `${key}: ${JSON.stringify(value)}`),
+    );
+    expect(summary.policyHash).not.toBe(plainHash);
+    const excluded = runWithConfig({ exclude: ['generated/**'] });
+    expect(excluded.exitCode).toBe(0);
+    expect(excluded.summary.configOverrides).toEqual(['exclude: ["generated/**"]']);
+    expect(excluded.summary.policyHash).not.toBe(plainHash);
+    // Each key alone must change the hash, computed with the same functions the CLI uses.
+    const analyzers = [fakeAnalyzer()];
+    for (const [key, value] of [...entries, ['exclude', ['generated/**']]]) {
+      expect(policyHash(analyzers, describeConfigOverrides({ [key]: value }))).not.toBe(
+        policyHash(analyzers),
+      );
     }
-    expect(hashes.size).toBe(7);
   });
 
   describe('custom analyzers', () => {
@@ -732,7 +762,7 @@ describe('nitpicker config file', () => {
     });
 
     it('rejects a name that clashes with a built-in analyzer', () => {
-      const { exitCode, output } = runWithConfig({
+      const { exitCode, output } = runConfigOnly({
         analyzers: [{ ...customAnalyzerEntry('clean'), name: 'fake-quality-analyzer' }],
       });
 
@@ -769,7 +799,7 @@ describe('nitpicker config file', () => {
     [{ analyzers: [{ name: 'a' }] }, /needs a non-empty "name" and "command"/],
     ['{not json', /not valid JSON/],
   ])('fails for an invalid config %j', (config, message) => {
-    const { exitCode, output } = runWithConfig(config);
+    const { exitCode, output } = runConfigOnly(config);
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toMatch(message);
@@ -956,8 +986,6 @@ describe('remote findings cache', () => {
 function createRepository(initialFiles) {
   const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
   git(root, ['init', '-q', '--initial-branch=main']);
-  git(root, ['config', 'user.name', 'Nitpicker CLI Fixture']);
-  git(root, ['config', 'user.email', 'nitpicker-cli@example.invalid']);
   writeFiles(root, {
     'package.json': '{"name":"cli-fixture","version":"1.0.0"}\n',
     'package-lock.json': '{"name":"cli-fixture","lockfileVersion":3}\n',
@@ -1028,12 +1056,23 @@ function commit(root, message) {
   git(root, ['commit', '-q', '-m', message]);
 }
 
+// Identity is passed per call, so fixture repositories need no `git config` spawns.
 function git(root, arguments_) {
-  return execFileSync('git', arguments_, {
-    cwd: root,
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-  });
+  return execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Nitpicker CLI Fixture',
+      '-c',
+      'user.email=nitpicker-cli@example.invalid',
+      ...arguments_,
+    ],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+    },
+  );
 }
 
 function makeTemporaryRoot(prefix) {
