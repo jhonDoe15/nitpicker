@@ -307,9 +307,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     rmSync(repository, { recursive: true, force: true });
   });
 
-  const diffOf = (branch) => {
+  const diffOf = (branch, policy) => {
     git('checkout', '-q', branch);
-    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle });
+    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
   };
 
   it(
@@ -399,6 +399,27 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
         ...repeated(28, 'pit mutant-nocoverage Complex.java'),
       ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'honours thresholds.crapLimit: a high limit lets the complex method pass the CRAP rule',
+    () => {
+      const result = diffOf('complex', { crapLimit: 1_000_000 });
+
+      expect(summarize(result.newEnforceable)).not.toContain('crap crap-score-limit Complex.java');
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'honours exclude: findings under an excluded path are dropped',
+    () => {
+      const result = diffOf('violation', { exclude: [`${sourceDirectory}/Bad.java`] });
+
+      expect(result.failed).toBe(false);
+      expect(result.newFindings.some((finding) => finding.path.endsWith('Bad.java'))).toBe(false);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

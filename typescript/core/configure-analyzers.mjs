@@ -1,3 +1,6 @@
+import { DEFAULT_LEGACY_INVENTORY } from '../shared/legacy-inventory.mjs';
+import { JAVA_ANALYZER_NAME } from '../adapters/java/java-analyzer.mjs';
+import { configureJavaAnalyzer } from '../adapters/java/java-policy.mjs';
 import { addCustomAnalyzers } from '../adapters/diff/custom-analyzer.mjs';
 import {
   applyLayout,
@@ -13,13 +16,29 @@ import { applyDisable } from './config.mjs';
 export function configureAnalyzers(analyzers, config, headPolicy) {
   return applyLegacyInventory(
     addCustomAnalyzers(
-      applyThresholds(
-        applyLayout(applyDisable(analyzers, config), headPolicy),
-        config.thresholds,
-        headPolicy,
+      applyJavaConfig(
+        applyThresholds(
+          applyLayout(applyDisable(analyzers, config), headPolicy),
+          config.thresholds,
+          headPolicy,
+        ),
+        config,
       ),
       config.analyzers,
     ),
     config.legacyInventory,
+  );
+}
+
+/** The shared keys (`thresholds`, `exclude`, `legacyInventory`) reach the Java analyzer here. */
+function applyJavaConfig(analyzers, config) {
+  return analyzers.map((analyzer) =>
+    analyzer.name === JAVA_ANALYZER_NAME
+      ? configureJavaAnalyzer(analyzer, {
+          thresholds: config.thresholds,
+          exclude: config.exclude,
+          legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
+        })
+      : analyzer,
   );
 }
