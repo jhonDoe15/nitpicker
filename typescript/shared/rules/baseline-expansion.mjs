@@ -10,11 +10,13 @@ import { RULE_IDS } from '../policy.mjs';
 import { hash } from './finding-helpers.mjs';
 
 export function evaluateBaselineExpansions(baseSites, headSites, analyzerName) {
-  const baseCounts = new Map(baseSites.map((site) => [siteKey(site), allowance(site.count)]));
+  const baseCounts = new Map(
+    baseSites.map((site) => [siteKey(site), numericAllowance(site.count)]),
+  );
   return headSites.flatMap((site) => {
     const key = siteKey(site);
     const baseCount = baseCounts.get(key) ?? 0;
-    const headCount = allowance(site.count);
+    const headCount = numericAllowance(site.count);
     if (headCount <= baseCount) {
       return [];
     }
@@ -31,7 +33,7 @@ export function evaluateBaselineExpansions(baseSites, headSites, analyzerName) {
   });
 }
 
-function siteKey(site) {
+export function siteKey(site) {
   if (
     typeof site?.file !== 'string' ||
     typeof site.rule !== 'string' ||
@@ -42,7 +44,7 @@ function siteKey(site) {
   return JSON.stringify([site.file, site.rule, site.source]);
 }
 
-function allowance(value) {
+export function numericAllowance(value) {
   if (!Number.isInteger(value) || value < 1) {
     throw new TypeError('Coding-standard baseline counts must be positive integers');
   }

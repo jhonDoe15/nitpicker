@@ -24,6 +24,8 @@ const CONFIGURATION_FILES = [
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
   'shared/policy.mjs',
+  'shared/rules/baseline-expansion.mjs',
+  'shared/rules/finding-helpers.mjs',
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
   'adapters/ingest/archunit.mjs',
