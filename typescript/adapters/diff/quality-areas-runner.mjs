@@ -732,7 +732,7 @@ export function normalizeDeadCode(report, analyzerName) {
           path: issue.file,
           identity: `name:${name}|occurrence:${String(occurrence)}${
             ENFORCED_DEAD_CODE_CATEGORIES.has(category)
-              ? `|source:${issue.sourceHash ?? hash(issue.file)}`
+              ? `|source:${entry?.sourceHash ?? hash(issue.file)}`
               : ''
           }`,
           message: `${category}: ${name}`,
@@ -1027,11 +1027,26 @@ function withDeadCodeSourceHashes(report, projectRoot) {
       path: file,
       sourceHash: hash(readProjectSource(projectRoot, file)),
     })),
-    issues: (report.issues ?? []).map((issue) => ({
-      ...issue,
-      sourceHash: hash(readProjectSource(projectRoot, issue.file)),
-    })),
+    issues: (report.issues ?? []).map((issue) => {
+      const lines = readProjectSource(projectRoot, issue.file).split('\n');
+      return Object.fromEntries(
+        Object.entries(issue).map(([category, entries]) => [
+          category,
+          Array.isArray(entries)
+            ? entries.map((entry) => withDeclarationSourceHash(entry, lines))
+            : entries,
+        ]),
+      );
+    }),
   };
+}
+
+function withDeclarationSourceHash(entry, lines) {
+  const line = positiveInteger(entry?.line);
+  if (typeof entry !== 'object' || line === undefined || line > lines.length) {
+    return entry;
+  }
+  return { ...entry, sourceHash: hash(lines[line - 1].trim()) };
 }
 
 function withMutationSourceHashes(report, projectRoot) {

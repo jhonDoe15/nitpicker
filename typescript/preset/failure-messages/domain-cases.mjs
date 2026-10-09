@@ -28,6 +28,18 @@ export const domainFailureMessageCases = [
     'const run = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0);',
     'flatMap',
   ),
+  domainCase('Date.now names a parameter', 'export const now = Date.now();', 'as a parameter'),
+  domainCase('new Date() names a parameter', 'export const now = new Date();', 'as a parameter'),
+  domainCase(
+    'Math.random names a parameter',
+    'export const roll = Math.random();',
+    'as a parameter',
+  ),
+  domainCase(
+    'randomUUID names a parameter',
+    'export const id = crypto.randomUUID();',
+    'as a parameter',
+  ),
   domainCase(
     'push names a new array',
     'const run = (xs: readonly number[]) => xs.push(1);',

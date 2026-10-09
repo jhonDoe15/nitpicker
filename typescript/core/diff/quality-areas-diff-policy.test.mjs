@@ -382,6 +382,18 @@ describe('complete quality-area analyzer catalog', () => {
     ]);
   });
 
+  it('keys unused exports by their declaration, not by the whole file', () => {
+    const report = (sourceHash) => ({
+      issues: [{ file: 'src/a.ts', exports: [{ name: 'unused', line: 3, col: 1, sourceHash }] }],
+    });
+    const [before] = normalizeDeadCode(report('declaration'), 'dead-code');
+    const [after] = normalizeDeadCode(report('declaration'), 'dead-code');
+    const [edited] = normalizeDeadCode(report('edited-declaration'), 'dead-code');
+
+    expect(after.identity).toBe(before.identity);
+    expect(edited.identity).not.toBe(before.identity);
+  });
+
   it('normalizes duplicate clone size as descriptive metrics', () => {
     const findings = normalizeDuplicates(
       {

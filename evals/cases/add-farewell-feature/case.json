@@ -1,0 +1,8 @@
+{
+  "id": "add-farewell-feature",
+  "title": "Add a farewell feature directory",
+  "prompt": "Add a new feature directory src/main/features/farewell that mirrors src/main/features/greeting. Its domain code (domain/farewell.ts) exposes farewell(name: string), which returns { kind: 'farewell', text: 'Goodbye, <trimmed name>!' } for a non-blank name and { kind: 'empty-name' } for a blank one. Its adapter runFarewell(names, writer) writes one line per name (the text followed by a newline, or 'No name given' for a blank name) to the writer. The feature's index.ts exports runFarewell and nothing else. Wire it into src/main/composition-root.ts as a new exported function farewellMain(names: readonly string[]): void that writes to standard output, next to main. Do not change the greeting feature. Add tests in test/farewell.test.ts. Run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": ["npx", "--no-install", "vitest", "run", "test/farewell.acceptance.test.ts"]
+  }
+}
