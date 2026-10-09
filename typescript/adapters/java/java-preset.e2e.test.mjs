@@ -211,6 +211,43 @@ ${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i})
   }
 }
 `;
+// --- coupling (SH6) fixtures: client -> stable -> churn -> leaf. `stable` (instability 1/3, used by
+// both clients) depends on `churn` (instability 1/2), a less stable package.
+const stabilityClass = (packageName, name, body) => `package ${packageName};
+
+public final class ${name} {
+${body}
+}
+`;
+const STABILITY_FILES = {
+  'src/main/java/client/ClientOne.java': stabilityClass(
+    'client',
+    'ClientOne',
+    '  public int run() {\n    return new stable.Core().value();\n  }',
+  ),
+  'src/main/java/client/ClientTwo.java': stabilityClass(
+    'client',
+    'ClientTwo',
+    '  public int run() {\n    return new stable.Core().value() + 1;\n  }',
+  ),
+  'src/main/java/stable/Core.java': stabilityClass(
+    'stable',
+    'Core',
+    '  public int value() {\n    return new churn.Volatile().value();\n  }',
+  ),
+  'src/main/java/churn/Volatile.java': stabilityClass(
+    'churn',
+    'Volatile',
+    '  public int value() {\n    return new leaf.Leaf().value();\n  }',
+  ),
+  'src/main/java/leaf/Leaf.java': stabilityClass(
+    'leaf',
+    'Leaf',
+    '  public int value() {\n    return 1;\n  }',
+  ),
+};
+// --- end coupling fixtures ---
+
 const BRANCHY_MOVED = BRANCHY.replace(
   '  public int larger',
   '  // Picks the larger value.\n  public int larger',
@@ -300,6 +337,20 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
     branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
+    // --- coupling (SH6) branches ---
+    branchWith('stability', STABILITY_FILES);
+    git('checkout', '-q', '-b', 'stability-edited', 'stability');
+    writeFileSync(
+      path.join(repository, 'src/main/java/stable/Core.java'),
+      stabilityClass(
+        'stable',
+        'Core',
+        '  // Delegates to the volatile package.\n  public int value() {\n    return new churn.Volatile().value();\n  }',
+      ),
+    );
+    git('add', '-A');
+    git('commit', '-q', '-m', 'stability-edited');
+    // --- end coupling branches ---
   });
 
   afterAll(() => {
@@ -481,4 +532,59 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
+
+  // --- coupling (SH6) cases ---
+  it(
+    'fails a package depending on a less stable package and reports coupling metrics as descriptive',
+    () => {
+      const result = diffOf('stability');
+
+      expect(result.failed).toBe(true);
+      const coupling = (findings) => findings.filter((finding) => finding.tool === 'coupling');
+      expect(
+        coupling(result.newEnforceable).map(({ rule, identity, message }) => ({
+          rule,
+          identity,
+          message,
+        })),
+      ).toEqual([
+        {
+          rule: 'stability-direction',
+          identity: 'package-edge:stable->churn',
+          message: 'stable depends on less stable package churn',
+        },
+      ]);
+      const metrics = coupling(result.newFindings).filter(
+        (finding) => finding.classification === 'descriptive',
+      );
+      expect(
+        metrics.find((finding) => finding.identity === 'package:stable:instability').metric,
+      ).toEqual({ name: 'instability', value: 0.3333 });
+      expect(
+        metrics.find((finding) => finding.identity === 'package:churn:instability').metric,
+      ).toEqual({ name: 'instability', value: 0.5 });
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps an existing stability-direction violation baselined when the package is edited',
+    () => {
+      git('checkout', '-q', 'stability-edited');
+      const result = runJavaDiff({
+        repositoryRoot: repository,
+        requestedBaseRef: 'stability',
+        gradle,
+      });
+
+      expect(result.newFindings.filter((finding) => finding.tool === 'coupling')).toEqual([]);
+      expect(
+        result.unchangedFindings
+          .filter((finding) => finding.rule === 'stability-direction')
+          .map((finding) => finding.identity),
+      ).toEqual(['package-edge:stable->churn']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+  // --- end coupling cases ---
 });

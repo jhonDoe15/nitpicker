@@ -15,12 +15,15 @@ const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 const CONFIGURATION_FILES = [
   'java/nitpicker.init.gradle',
   'adapters/java/java-analyzer.mjs',
+  'adapters/java/java-coupling.mjs',
   'adapters/java/java-diff.mjs',
   'adapters/java/java-duplicates.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
   'adapters/java/touched-rules.mjs',
   'shared/policy.mjs',
+  'shared/rules/coupling.mjs',
+  'shared/rules/finding-helpers.mjs',
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
   'adapters/ingest/archunit.mjs',
@@ -61,7 +64,17 @@ export function createJavaAnalyzer() {
     configurationHash: hashConfiguration(),
     exclusions: [],
     // One Gradle run yields the findings of all the tools.
-    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'checkstyle', 'crap', 'duplicates', 'pit'],
+    reportedTools: [
+      'pmd',
+      'spotbugs',
+      'google-java-format',
+      'jacoco',
+      'checkstyle',
+      'crap',
+      'duplicates',
+      'pit',
+      'coupling',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {
