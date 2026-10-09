@@ -80,12 +80,20 @@ function projectWithReports({ shift = 0 } = {}) {
     ),
   );
   writeFileSync(path.join(reports, 'format.txt'), `${sourceFile}\n`);
-  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(
+    path.join(reports, 'jacoco.xml'),
+    JACOCO.replace('line="9"', `line="${String(9 + shift)}"`),
+  );
   writeFileSync(
     path.join(reports, 'checkstyle.xml'),
     readFileSync(path.join(import.meta.dirname, 'fixtures/checkstyle.xml'), 'utf8')
       .replaceAll('@SOURCE@', sourceFile)
       .replace(/line="(\d+)"/g, (_, line) => `line="${Number(line) + shift}"`),
+  );
+  // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
+  writeFileSync(
+    path.join(reports, 'lizard.csv'),
+    `9,12,60,1,7,"Bad::decode@${String(8 + shift)}-${String(14 + shift)}@src/main/java/demo/Bad.java","src/main/java/demo/Bad.java","Bad::decode","Bad::decode( byte[] bytes)",${String(8 + shift)},${String(14 + shift)}\n`,
   );
   return root;
 }
@@ -113,6 +121,7 @@ describe('readJavaFindings', () => {
       ['checkstyle', CS_LENGTH, bad, expect.stringMatching(/^[0-9a-f]+/)],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
+      ['crap', 'crap-score-limit', bad, 'function:Bad::decode( byte[] bytes)'],
     ]);
   });
 
@@ -127,6 +136,7 @@ describe('readJavaFindings', () => {
       'google-java-format': 'enforceable',
       checkstyle: 'enforceable',
       jacoco: 'descriptive',
+      crap: 'enforceable',
     });
   });
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report name="demo">
+  <package name="demo">
+    <class name="demo/Calc" sourcefilename="Calc.java">
+      <method name="&lt;init&gt;" desc="(I)V" line="9">
+        <counter type="LINE" missed="0" covered="3"/>
+      </method>
+      <method name="&lt;clinit&gt;" desc="()V" line="6">
+        <counter type="LINE" missed="1" covered="0"/>
+      </method>
+      <method name="classify" desc="(IILjava/lang/String;)I" line="14">
+        <counter type="LINE" missed="11" covered="1"/>
+        <counter type="BRANCH" missed="14" covered="2"/>
+      </method>
+      <method name="doubler" desc="()Ljava/util/function/IntUnaryOperator;" line="28">
+        <counter type="LINE" missed="0" covered="1"/>
+      </method>
+      <method name="lambda$doubler$0" desc="(I)I" line="28">
+        <counter type="LINE" missed="1" covered="0"/>
+      </method>
+      <method name="anon" desc="()Ljava/lang/Runnable;" line="32">
+        <counter type="LINE" missed="0" covered="1"/>
+      </method>
+    </class>
+    <class name="demo/Calc$1" sourcefilename="Calc.java">
+      <method name="run" desc="()V" line="35">
+        <counter type="LINE" missed="0" covered="2"/>
+        <counter type="BRANCH" missed="1" covered="1"/>
+      </method>
+    </class>
+    <sourcefile name="Calc.java">
+      <counter type="LINE" missed="13" covered="7"/>
+    </sourcefile>
+  </package>
+</report>
