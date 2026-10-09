@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/harness.mjs';
+import { forEachSelectors, loopSelectors } from './strict-control-flow.mjs';
 import strictSyntaxConfig, { restrictedSyntaxByScope } from './strict.mjs';
 
 const asserted = 'export const value = input as string;';
@@ -36,15 +37,41 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
     expect(messages(defaultExport, file)).toEqual([expect.stringContaining('Use a named export')]);
   });
 
-  it('keeps the scoped bans out of other source files', () => {
-    expect(messages(loop, 'src/main/shared/run.ts')).toEqual([]);
-    expect(messages(thenChain, 'src/main/features/x/service.ts')).toEqual([]);
+  it('applies the control-flow bans to shared and plain source files, not to tests', () => {
+    for (const file of ['src/main/shared/run.ts', 'src/run.ts', 'src/main/features/x/service.ts']) {
+      expect(messages('export function run() { while (more()) { step(); } }', file)).toEqual([
+        expect.stringContaining('for...of is the only loop'),
+      ]);
+      expect(messages(thenChain, file)).toEqual([expect.stringContaining('Use async/await')]);
+      expect(messages('export const same = a == b;', file)).toEqual([
+        expect.stringContaining("'==='"),
+      ]);
+      expect(messages(loop, file)).toEqual([]);
+    }
+    expect(messages('export function run() { while (more()) {} }', 'src/run.test.ts')).toEqual([
+      expect.stringContaining('No matching configuration'),
+    ]);
+  });
+
+  it('reports a domain loop or forEach once, with the domain message', () => {
+    const file = 'src/main/features/x/domain/run.ts';
+
+    expect(messages('export function run() { while (more()) {} }', file)).toEqual([
+      expect.stringContaining('domain/ code has no loops'),
+    ]);
+    expect(messages('export function run(xs) { xs.forEach(use); }', file)).toEqual([
+      expect.stringContaining('domain/ code does not use forEach'),
+    ]);
   });
 
   it('gives every scope the complete list of the scopes it is nested in', () => {
     const { source, domain, adapters, configFile } = restrictedSyntaxByScope;
 
-    expect(domain).toEqual(expect.arrayContaining(source));
+    const replacedByDomain = [...loopSelectors, ...forEachSelectors];
+
+    expect(domain).toEqual(
+      expect.arrayContaining(source.filter((selector) => !replacedByDomain.includes(selector))),
+    );
     expect(adapters).toEqual(expect.arrayContaining(source));
     expect(source).toEqual(expect.arrayContaining(configFile));
     expect(domain.length).toBeGreaterThan(source.length);
