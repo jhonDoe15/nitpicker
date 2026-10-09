@@ -13,9 +13,16 @@ on:
       - 'spec/**'
       - '.github/workflows/typescript.yml'
 
+# A new push to a pull request cancels its run still in progress; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    # A healthy run takes 5 to 20 minutes; this stops a hung one well before the 6-hour default.
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: typescript
