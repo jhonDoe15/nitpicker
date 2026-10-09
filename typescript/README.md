@@ -61,13 +61,15 @@ console output.
 
 ## Exit codes
 
-| Code | Meaning                                                                          |
-| ---- | -------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                      |
-| 1    | Completed with at least one new enforceable finding (`--all`: any violation).    |
-| 2    | A tool error, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings.                                                                      |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. With `--defer-exit`, a comparison always exits 0 once it has
+A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+tool errors are still listed in the console and reports and recorded in `summary.json`
+(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
 ## Command line
@@ -176,7 +178,7 @@ SpotBugs, google-java-format and JaCoCo run on the merge base and on head (throu
 `java/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
-failure is reported as a `java/gradle-failure` tool error (exit 2), never thrown.
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
 Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
 Only `base`, `disable` and `analyzers` apply; `thresholds`, `exclude`, `layout`, `exceptions` and
