@@ -15,11 +15,8 @@ import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventor
 import { parsePositiveNumber } from '../../preset/quality-checks.mjs';
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
-  ENFORCED_MUTATION_STATUSES,
   MESSAGES,
-  MINIMUM_BRANCH_COVERAGE,
   RULE_IDS,
-  mutantRuleId,
   renderMessage,
 } from '../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../shared/rules/baseline-expansion.mjs';
@@ -35,6 +32,9 @@ import {
 import { evaluateStructure } from '../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../shared/rules/test-runtime.mjs';
 import { jscpdClones } from '../jscpd-clones.mjs';
+import { branchCoverageFindings } from '../../shared/rules/branch-coverage.mjs';
+import { crapFindings } from '../../shared/rules/crap.mjs';
+import { mutantFindings } from '../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import {
@@ -589,30 +589,20 @@ export function normalizeCoverage(report, analyzerName, projectRoot, { testCount
       metricName: 'branches',
       value: coveragePercent(branchOutcomes),
     });
-    const occurrences = new Map();
-    for (const [branchId, outcomes] of branchEntries) {
-      const branchCoverage = coveragePercent(outcomes);
-      if (branchCoverage >= MINIMUM_BRANCH_COVERAGE) {
-        continue;
-      }
-      const branchSourceHash =
+    const branches = branchEntries.map(([branchId, outcomes]) => ({
+      path: relativePath,
+      key:
         coverage.branchSourceHashes?.[branchId] ??
-        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId }));
-      const occurrence = nextOccurrence(occurrences, branchSourceHash);
-      const line = positiveInteger(coverage.branchMap?.[branchId]?.loc?.start?.line);
-      findings.push({
+        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
+      percent: coveragePercent(outcomes),
+      line: coverage.branchMap?.[branchId]?.loc?.start?.line,
+    }));
+    findings.push(
+      ...branchCoverageFindings(branches, {
         tool: analyzerName,
-        rule: RULE_IDS.changedBranchCoverage,
-        path: relativePath,
-        identity: `branch-source:${branchSourceHash}:occurrence:${String(occurrence)}`,
-        message: renderMessage(MESSAGES.changedBranchCoverage, {
-          percent: branchCoverage.toFixed(2),
-          minimum: MINIMUM_BRANCH_COVERAGE,
-        }),
-        classification: 'enforceable',
-        ...(line === undefined ? {} : { location: { line } }),
-      });
-    }
+        identify: (key, occurrence) => `branch-source:${key}:occurrence:${String(occurrence)}`,
+      }),
+    );
   }
   if (Number.isInteger(testCount) && testCount > 0) {
     addMetric(findings, {
@@ -658,37 +648,20 @@ export function normalizeCrap(
       entry.sourceHash ??
       hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`);
     const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
-    if (typeof entry.crap !== 'number' || !Number.isFinite(entry.crap)) {
-      findings.push({
-        tool: analyzerName,
-        rule: RULE_IDS.crapCoverageUnknown,
-        path: entry.source,
-        identity: violationIdentity,
-        message: renderMessage(MESSAGES.crapCoverageUnknown, { name: entry.function }),
-        classification: 'enforceable',
-        symbol: entry.function,
-        ...(positiveInteger(entry.lines?.start) === undefined
-          ? {}
-          : { location: { line: entry.lines.start } }),
-      });
-    } else if (entry.crap >= scoreLimit) {
-      findings.push({
-        tool: analyzerName,
-        rule: RULE_IDS.crapScoreLimit,
-        path: entry.source,
-        identity: violationIdentity,
-        message: renderMessage(MESSAGES.crapScoreLimit, {
-          name: entry.function,
-          crap: entry.crap.toFixed(2),
-          limit: scoreLimit,
-        }),
-        classification: 'enforceable',
-        symbol: entry.function,
-        ...(positiveInteger(entry.lines?.start) === undefined
-          ? {}
-          : { location: { line: entry.lines.start } }),
-      });
-    }
+    findings.push(
+      ...crapFindings(
+        [
+          {
+            path: entry.source,
+            name: entry.function,
+            identity: violationIdentity,
+            line: entry.lines?.start,
+            crap: entry.crap,
+          },
+        ],
+        { tool: analyzerName, limit: scoreLimit },
+      ),
+    );
     const values = {
       complexity: entry.complexity,
       statementCoverage: entry.statementCoverage?.percent,
@@ -714,7 +687,7 @@ export function normalizeCrap(
 }
 
 export function normalizeMutation(report, analyzerName) {
-  const findings = [];
+  const mutants = [];
   const statusCounts = new Map();
   const occurrences = new Map();
   for (const [filePath, file] of Object.entries(report.files ?? {})) {
@@ -731,17 +704,16 @@ export function normalizeMutation(report, analyzerName) {
         mutant.sourceHash ?? hash(filePath),
       ].join('|');
       const occurrence = nextOccurrence(occurrences, `${filePath}\0${status}\0${semanticIdentity}`);
-      findings.push({
-        tool: analyzerName,
-        rule: mutantRuleId(status),
+      mutants.push({
         path: filePath,
         identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-        message: `${status} ${mutant.mutatorName ?? 'mutant'}`,
-        classification: ENFORCED_MUTATION_STATUSES.includes(status) ? 'enforceable' : 'descriptive',
-        ...(positiveInteger(line) === undefined ? {} : { location: { line } }),
+        status,
+        label: mutant.mutatorName ?? 'mutant',
+        line,
       });
     }
   }
+  const findings = mutantFindings(mutants, { tool: analyzerName });
   for (const [status, value] of statusCounts) {
     addMetric(findings, {
       analyzerName,
