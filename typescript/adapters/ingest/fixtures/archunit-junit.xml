@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="demo.ArchitectureTest" tests="3" skipped="0" failures="2" errors="0" timestamp="2026-01-01T00:00:00" hostname="ci" time="0.5">
+  <properties/>
+  <testcase name="services_do_not_use_dao" classname="demo.ArchitectureTest" time="0.2">
+    <failure message="java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] - Rule &apos;no classes that reside in a package &apos;..service..&apos; should depend on classes that reside in a package &apos;..dao..&apos;&apos; was violated (4 times):&#10;Constructor &lt;demo.service.OrderService.&lt;init&gt;(demo.dao.OrderDao)&gt; has parameter of type &lt;demo.dao.OrderDao&gt; in (OrderService.java:0)&#10;Method &lt;demo.service.OrderService.place()&gt; calls method &lt;demo.dao.OrderDao.save()&gt; in (OrderService.java:21)&#10;Method &lt;demo.service.OrderService.cancel()&gt; calls method &lt;demo.dao.OrderDao.delete()&gt; in (OrderService.java:30)&#10;Field &lt;demo.service.Audit$Entry.dao&gt; has type &lt;demo.dao.OrderDao&gt; in (Audit.java:0)" type="java.lang.AssertionError">
+      <![CDATA[java.lang.AssertionError: Architecture Violation [Priority: MEDIUM] ...
+	at com.tngtech.archunit.lang.ArchRule$Assertions.assertNoViolation(ArchRule.java:94)
+]]>
+    </failure>
+  </testcase>
+  <testcase name="no_cycles" classname="demo.ArchitectureTest" time="0.1">
+    <failure message="java.lang.IllegalStateException: Could not import classes" type="java.lang.IllegalStateException"/>
+  </testcase>
+  <testcase name="layers_are_respected" classname="demo.ArchitectureTest" time="0.1"/>
+</testsuite>
