@@ -61,13 +61,15 @@ console output.
 
 ## Exit codes
 
-| Code | Meaning                                                                          |
-| ---- | -------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                      |
-| 1    | Completed with at least one new enforceable finding (`--all`: any violation).    |
-| 2    | A tool error, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings.                                                                      |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. With `--defer-exit`, a comparison always exits 0 once it has
+A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+tool errors are still listed in the console and reports and recorded in `summary.json`
+(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
 ## Command line
@@ -176,7 +178,7 @@ SpotBugs, google-java-format and JaCoCo run on the merge base and on head (throu
 `java/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
-failure is reported as a `java/gradle-failure` tool error (exit 2), never thrown.
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
 Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
 Only `base`, `disable` and `analyzers` apply; `thresholds`, `exclude`, `layout`, `exceptions` and
@@ -195,17 +197,20 @@ new and touched code must comply.
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
-  `@ts-expect-error` or `@ts-nocheck`.
+  `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
+  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
+  bans.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
   composition root; no module-level `let`.
 - **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
-  `forEach` or `reduce` (use `map`, `filter`, `flatMap`, `Object.fromEntries`, `Object.groupBy`), no
+  `forEach`, `reduceRight` or `reduce` without an initial value (use `map`, `filter`, `flatMap`,
+  `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
   classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
   Node I/O, network or database clients, loggers or module state.
-- **`features/<name>/adapters/`** does the I/O: `for...of` is the only loop, `async`/`await` with no
-  `.then()` chains and no floating promises, throw only `Error` subclasses that keep `cause`, no
+- **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
   silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
   an expectation of the preset, not a dependency of nitpicker: install it in your project.
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
