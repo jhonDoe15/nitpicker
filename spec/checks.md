@@ -90,7 +90,7 @@ rule and it fails the gate; "not enforced" means the check does not exist for th
 | `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | not enforced |
 | `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
 | `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
-| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | not enforced |
+| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     |
 | `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced |
 
 <!-- generated:custom-rules end -->
