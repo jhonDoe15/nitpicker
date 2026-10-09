@@ -2,7 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runQualitySnapshot } from './run-snapshot.mjs';
+import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
+import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mjs';
+
+// Most tests here are about snapshot report logic, so the analyzer task graph and the fixture
+// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
+// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
+const runQualitySnapshot = (options) =>
+  runQualitySnapshotWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, '../diff/fixtures/fake-analyzer.mjs');
 const temporaryRoots = [];
@@ -91,7 +98,11 @@ describe('quality snapshot run', () => {
       'quality-policy.json': policy({ mode: 'crash' }),
     });
 
-    const report = runQualitySnapshot({ analyzers: [fakeAnalyzer()], projectRoot });
+    const report = runQualitySnapshot({
+      analyzers: [fakeAnalyzer()],
+      projectRoot,
+      runTasks: undefined,
+    });
 
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(1);

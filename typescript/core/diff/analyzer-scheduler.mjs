@@ -195,16 +195,15 @@ export function executeAnalyzerTask(task) {
           reject(childError);
           return;
         }
-        const stdoutText = Buffer.concat(stdout).toString('utf8');
-        const stderrText = Buffer.concat(stderr).toString('utf8');
-        if (!task.acceptedExitCodes.includes(status)) {
-          const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
-          const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
-          reject(new Error(`${task.name} crashed with ${exit}: ${detail}`));
-          return;
-        }
         try {
-          resolve(parseReport(stdoutText, task.name, task.reportedTools));
+          resolve(
+            reportFromAnalyzerOutput(task, {
+              status,
+              signal,
+              stdoutText: Buffer.concat(stdout).toString('utf8'),
+              stderrText: Buffer.concat(stderr).toString('utf8'),
+            }),
+          );
         } catch (error) {
           reject(error);
         }
@@ -236,6 +235,16 @@ export function executeAnalyzerTask(task) {
       operation();
     }
   });
+}
+
+/** Turns a finished analyzer process (exit status, signal and output) into its parsed report. */
+export function reportFromAnalyzerOutput(task, { status, signal, stdoutText, stderrText }) {
+  if (!task.acceptedExitCodes.includes(status)) {
+    const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
+    const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
+    throw new Error(`${task.name} crashed with ${exit}: ${detail}`);
+  }
+  return parseReport(stdoutText, task.name, task.reportedTools);
 }
 
 function signalChildProcess(child, signal) {

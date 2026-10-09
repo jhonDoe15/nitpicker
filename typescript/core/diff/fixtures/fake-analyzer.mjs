@@ -1,60 +1,90 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 
-const arguments_ = parseArguments(process.argv.slice(2));
-const policy = JSON.parse(
-  readFileSync(path.join(arguments_.policyRoot, 'quality-policy.json'), 'utf8'),
-);
-
-if (policy.mode === 'crash') {
-  process.stderr.write('fake analyzer crash\n');
-  process.exit(2);
-}
-if (policy.mode === 'malformed') {
-  process.stdout.write('{not-json');
-  process.exit(0);
-}
-if (policy.mode === 'hang') {
-  setInterval(() => {}, 60_000);
-}
-
-const dependencyMarker =
-  typeof policy.markerDependency === 'string'
-    ? readFileSync(
-        path.join(arguments_.toolRoot, 'node_modules', policy.markerDependency),
-        'utf8',
-      ).trim()
-    : undefined;
-const marker =
-  dependencyMarker ?? (typeof policy.marker === 'string' ? policy.marker : 'QUALITY_FINDING');
-const findings = [];
-for (const filePath of selectedFiles(arguments_.root)) {
-  const relativePath = normalizePath(path.relative(arguments_.root, filePath));
-  const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
-  for (const [index, line] of lines.entries()) {
-    const markerIndex = line.indexOf(`${marker} `);
-    if (markerIndex === -1) {
-      continue;
-    }
-    const encodedFinding = line.slice(markerIndex + marker.length + 1);
-    const finding = JSON.parse(encodedFinding);
-    findings.push({
-      tool: finding.tool,
-      rule: finding.rule,
-      path: finding.path ?? relativePath,
-      symbol: finding.symbol,
-      identity: finding.identityFromPath === true ? `path:${relativePath}` : finding.identity,
-      message: finding.message,
-      location: finding.location ?? { line: index + 1, column: markerIndex + 1 },
-      classification: finding.classification,
-      metric: finding.metric,
-    });
+/**
+ * Runs the fake analyzer on `argv` and returns what its process would: `{ status, signal,
+ * stdoutText, stderrText }`, or undefined for the `hang` mode, which only a process can do.
+ */
+export function runFakeAnalyzer(argv) {
+  try {
+    return analyze(argv);
+  } catch (error) {
+    // An uncaught error in the process: exit 1, nothing on stdout, the stack on stderr.
+    return { status: 1, signal: null, stdoutText: '', stderrText: `${error?.stack ?? error}\n` };
   }
 }
 
-process.stdout.write(`${JSON.stringify({ findings })}\n`);
-if (policy.exitCodeWhenFindings === 1 && findings.length > 0) {
-  process.exitCode = 1;
+function analyze(argv) {
+  const arguments_ = parseArguments(argv);
+  const policy = JSON.parse(
+    readFileSync(path.join(arguments_.policyRoot, 'quality-policy.json'), 'utf8'),
+  );
+
+  if (policy.mode === 'crash') {
+    return { status: 2, signal: null, stdoutText: '', stderrText: 'fake analyzer crash\n' };
+  }
+  if (policy.mode === 'malformed') {
+    return { status: 0, signal: null, stdoutText: '{not-json', stderrText: '' };
+  }
+  if (policy.mode === 'hang') {
+    return undefined;
+  }
+
+  const dependencyMarker =
+    typeof policy.markerDependency === 'string'
+      ? readFileSync(
+          path.join(arguments_.toolRoot, 'node_modules', policy.markerDependency),
+          'utf8',
+        ).trim()
+      : undefined;
+  const marker =
+    dependencyMarker ?? (typeof policy.marker === 'string' ? policy.marker : 'QUALITY_FINDING');
+  const findings = [];
+  for (const filePath of selectedFiles(arguments_.root)) {
+    const relativePath = normalizePath(path.relative(arguments_.root, filePath));
+    const lines = readFileSync(filePath, 'utf8').split(/\r?\n/);
+    for (const [index, line] of lines.entries()) {
+      const markerIndex = line.indexOf(`${marker} `);
+      if (markerIndex === -1) {
+        continue;
+      }
+      const encodedFinding = line.slice(markerIndex + marker.length + 1);
+      const finding = JSON.parse(encodedFinding);
+      findings.push({
+        tool: finding.tool,
+        rule: finding.rule,
+        path: finding.path ?? relativePath,
+        symbol: finding.symbol,
+        identity: finding.identityFromPath === true ? `path:${relativePath}` : finding.identity,
+        message: finding.message,
+        location: finding.location ?? { line: index + 1, column: markerIndex + 1 },
+        classification: finding.classification,
+        metric: finding.metric,
+      });
+    }
+  }
+
+  return {
+    status: policy.exitCodeWhenFindings === 1 && findings.length > 0 ? 1 : 0,
+    signal: null,
+    stdoutText: `${JSON.stringify({ findings })}\n`,
+    stderrText: '',
+  };
+}
+
+if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {
+  const arguments_ = process.argv.slice(2);
+  const policy = JSON.parse(
+    readFileSync(path.join(parseArguments(arguments_).policyRoot, 'quality-policy.json'), 'utf8'),
+  );
+  if (policy.mode === 'hang') {
+    setInterval(() => {}, 60_000);
+  } else {
+    const result = analyze(arguments_);
+    process.stdout.write(result.stdoutText);
+    process.stderr.write(result.stderrText);
+    process.exitCode = result.status;
+  }
 }
 
 function selectedFiles(root) {
