@@ -6,6 +6,7 @@ import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
+import { ingestPit } from '../ingest/pit.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 // Reads the reports written by java/nitpicker.init.gradle (build/nitpicker/*) and turns them into
@@ -83,6 +84,16 @@ export function readJavaFindings(projectRoot) {
       sourceRoots,
     }).findings,
   );
+  // PIT: absent only when the project has no main classes.
+  const pitReport = path.join(reportRoot, 'pit/mutations.xml');
+  if (existsSync(pitReport)) {
+    findings.push(
+      ...ingestPit(readFileSync(pitReport, 'utf8'), {
+        resolvePath: (className, sourceFile) =>
+          sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
+      }).findings,
+    );
+  }
   return { findings };
 }
 
