@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { main } from '../src/main/composition-root.js';
-import { describeResult, greet } from '../src/main/features/greeting/domain/greet.js';
+import { describeResult, greet, greetAll } from '../src/main/features/greeting/domain/greet.js';
 import { runGreeting } from '../src/main/features/greeting/index.js';
 
 describe('greeting', () => {
   it('greets a trimmed name', () => {
     expect(greet('  Ada ')).toEqual({ kind: 'greeted', text: 'Hello, Ada!' });
+  });
+
+  it('greets every name', () => {
+    expect(greetAll(['Ada', ''])).toEqual([greet('Ada'), { kind: 'empty-name' }]);
   });
 
   it('reports an empty name', () => {
