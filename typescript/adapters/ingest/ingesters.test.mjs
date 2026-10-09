@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
+import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
 import { ingestGoCoverprofile } from './gocover.mjs';
 import { ingestJacoco } from './jacoco.mjs';
 import { ingestLcov } from './lcov.mjs';
+import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 
@@ -17,12 +19,30 @@ const shifters = {
   lcov: (text) => text.replace(/^(DA|FN):(\d+)/gm, (_, kind, n) => `${kind}:${Number(n) + SHIFT}`),
   jacoco: (text) =>
     text.replace(/ (line|nr)="(\d+)"/g, (_, attr, n) => ` ${attr}="${Number(n) + SHIFT}"`),
+  archunit: (text) =>
+    text.replace(/(\.java:)(\d+)/g, (_, head, n) => `${head}${Number(n) + SHIFT}`),
+  pit: (text) => text.replace(/<lineNumber>(\d+)/g, (_, n) => `<lineNumber>${Number(n) + SHIFT}`),
   gocover: (text) =>
     text.replace(
       /:(\d+)\.(\d+),(\d+)\./g,
       (_, a, b, c) => `:${Number(a) + SHIFT}.${b},${Number(c) + SHIFT}.`,
     ),
 };
+
+// Stands in for the Java glue: `demo.service.Foo$Inner` -> src/main/java/demo/service/Foo.java
+// (test classes live under src/test/java).
+const resolveJavaPath = (className, fileName) => {
+  const parts = className.split('.');
+  const simple = parts.pop().split('$')[0];
+  const root = simple.endsWith('Test') ? 'src/test/java' : 'src/main/java';
+  return [root, ...parts, fileName ?? `${simple}.java`].join('/');
+};
+// Stands in for the Java glue: demo.Calc + Calc.java -> src/main/java/demo/Calc.java, and nothing for
+// classes without a source file in the project (generated code).
+const resolveMainPath = (className, sourceFile) =>
+  className === 'demo.Generated'
+    ? undefined
+    : `src/main/java/${className.split('.').slice(0, -1).join('/')}/${sourceFile}`;
 
 const formats = [
   {
@@ -42,6 +62,16 @@ const formats = [
     file: 'jacoco.xml',
     ingest: (text) => ingestJacoco(text, { sourceRoot: 'src/main/java' }),
     count: 2,
+  },
+  {
+    name: 'archunit',
+    file: 'archunit-junit.xml',
+    ingest: (text) => ingestArchunit(text, { resolvePath: resolveJavaPath }),
+    count: 3,
+    name: 'pit',
+    file: 'pit-mutations.xml',
+    ingest: (text) => ingestPit(text, { resolvePath: resolveMainPath }),
+    count: 8,
   },
   {
     name: 'gocover',
@@ -100,6 +130,107 @@ describe('checkstyle', () => {
 
   it('rejects other documents', () => {
     expect(() => ingestCheckstyle('<report/>')).toThrow('<checkstyle>');
+  });
+});
+
+describe('archunit', () => {
+  const { findings } = ingestArchunit(fixture('archunit-junit.xml'), {
+    resolvePath: resolveJavaPath,
+  });
+
+  it('reports one enforceable finding per violated rule and offending class', () => {
+    expect(
+      findings.map(({ rule, path: file, identity, classification }) => [
+        rule,
+        file,
+        identity,
+        classification,
+      ]),
+    ).toEqual([
+      [
+        'services_do_not_use_dao',
+        'src/main/java/demo/service/OrderService.java',
+        'demo.service.OrderService',
+        'enforceable',
+      ],
+      [
+        'services_do_not_use_dao',
+        'src/main/java/demo/service/Audit.java',
+        'demo.service.Audit$Entry',
+        'enforceable',
+      ],
+      [
+        'no_cycles',
+        'src/test/java/demo/ArchitectureTest.java',
+        'demo.ArchitectureTest:test-failure',
+        'enforceable',
+      ],
+    ]);
+    expect(findings[0].message).toContain('3 violations');
+    expect(findings[0].message).not.toMatch(/\.java:\d/);
+  });
+
+  it('ignores passing test cases and rejects other documents', () => {
+    expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
+    expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');
+  });
+});
+
+describe('pit', () => {
+  const { findings } = ingestPit(fixture('pit-mutations.xml'), { resolvePath: resolveMainPath });
+  const summary = (rule) => findings.filter((finding) => finding.rule === rule);
+
+  it('enforces survived and uncovered mutants; other statuses only describe', () => {
+    expect(
+      findings
+        .filter((finding) => finding.rule !== 'mutation-summary')
+        .map(({ rule, classification, path: file }) => [rule, classification, file]),
+    ).toEqual([
+      ['mutant-survived', 'enforceable', 'src/main/java/demo/Calc.java'],
+      ['mutant-survived', 'enforceable', 'src/main/java/demo/Calc.java'],
+      ['mutant-nocoverage', 'enforceable', 'src/main/java/demo/Greeter.java'],
+      ['mutant-timeout', 'descriptive', 'src/main/java/demo/Greeter.java'],
+    ]);
+  });
+
+  it('identifies mutants by class, method, mutator and description, never by line', () => {
+    expect(findings.slice(0, 2).map((finding) => finding.identity)).toEqual([
+      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+    ]);
+    expect(findings[2].identity).toContain('replaced return value with "" for demo/Greeter::shout');
+    expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
+  });
+
+  it('numbers repeated mutants in source order whatever order PIT reports them in', () => {
+    const [first, second] = fixture('pit-mutations.xml')
+      .split('\n')
+      .filter((line) => line.includes('changed conditional boundary'));
+    const swapped = fixture('pit-mutations.xml')
+      .replace(first, '@@')
+      .replace(second, first)
+      .replace('@@', second);
+    const identityAtLine = (report, line) =>
+      ingestPit(report, { resolvePath: resolveMainPath }).findings.find(
+        (finding) => finding.location?.line === line,
+      ).identity;
+
+    expect(identityAtLine(swapped, 5)).toBe(identityAtLine(fixture('pit-mutations.xml'), 5));
+    expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
+  });
+
+  it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {
+    expect(
+      summary('mutation-summary').map((finding) => [finding.metric.name, finding.metric.value]),
+    ).toEqual([
+      ['Survived', 3],
+      ['Killed', 1],
+      ['NoCoverage', 1],
+      ['Timeout', 1],
+    ]);
+    expect(findings.some((finding) => finding.identity.includes('Generated'))).toBe(false);
+    expect(() => ingestPit('<report/>')).toThrow('<mutations>');
+    expect(ingestPit('<mutations/>').findings).toEqual([]);
   });
 });
 
