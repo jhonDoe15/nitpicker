@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../core/cli.mjs';
+import { withDefaultAnalyzerParallelism } from '../../core/diff/fixtures/analyzer-parallelism.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../..');
 const fixtureRoot = path.join(import.meta.dirname, 'strict-clean');
@@ -40,13 +41,17 @@ function runSnapshot(root, extraArguments = []) {
   const output = path.join(root, 'reports/snapshot');
   let stdoutText = '';
   let stderrText = '';
-  const exitCode = runCli({
-    arguments_: ['--all', '--output', output, ...extraArguments],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: { write: (text) => (stdoutText += text) },
-    stderr: { write: (text) => (stderrText += text) },
-  });
+  // The full run overlaps its independent tools the way a user's run does; the suite's pin of one
+  // analyzer at a time would add the others' time (about 20 s) on top of the mutation run.
+  const exitCode = withDefaultAnalyzerParallelism(() =>
+    runCli({
+      arguments_: ['--all', '--output', output, ...extraArguments],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      stdout: { write: (text) => (stdoutText += text) },
+      stderr: { write: (text) => (stderrText += text) },
+    }),
+  );
   const summary = JSON.parse(readFileSync(path.join(output, 'summary.json'), 'utf8'));
   return { exitCode, stdoutText, stderrText, summary };
 }
