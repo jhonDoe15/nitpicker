@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, duplicates.json, pit/mutations.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -312,6 +312,44 @@ resolved plus a new finding, as in the TypeScript check.
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
+
+## Structure limits (SH5)
+
+- **Rules.** The shared structure rule (`shared/rules/structure.mjs`) runs on Java too, so a method
+  over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
+  (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+  `function-parameters-limit`) and the same message (`{name} has {value} {metric}; limit is
+  {limit}`) as TypeScript. `shared/policy.mjs` marks the four rules as enforced for Java; the
+  catalog in `spec/checks.md` is generated from it.
+- **Metric source (decision to review).** `java/StructureMetrics.java` parses the main sources
+  (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
+  source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
+  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. All four
+  metrics come from this one source so they are consistent; lizard is not used, because it has no
+  statement count or control nesting and mixing two counters for one rule would make lines disagree
+  between tools. PMD's metrics were rejected too (not in the SARIF output, and its rules do not
+  expose per-method statements). A small JavaParser step was the alternative; it would add a
+  pinned artifact for nothing the JDK does not already provide.
+- **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
+  method and constructor with a body. `lines`: last line - first line + 1, annotations and
+  modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
+  initializers and updates, `catch` parameters and `try` resources are not statements).
+  `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
+  (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
+  declared parameters. Anonymous, local and member class bodies are separate units and do not count
+  towards the method that contains them; lambda bodies count towards the enclosing method.
+- **Findings.** `adapters/java/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+  the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
+  TypeScript check are not emitted, since they would add four findings per method to every report.
+  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
+  identity: name, occurrence among equal names in the file and a hash of the method text with
+  indentation removed, no line number. A moved or re-indented method stays baselined; editing a
+  method that already violates produces a new finding, as in TypeScript.
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+  rule files are in the Java analyzer's configuration hash.
+- **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
+  the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
+  oversize method baselined.
 
 ## Slice 1: what is deliberately not included
 

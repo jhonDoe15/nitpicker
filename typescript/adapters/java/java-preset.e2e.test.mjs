@@ -26,6 +26,36 @@ public final class Legacy {
 }
 `;
 
+// SH5: a legacy method over the parameter limit (baselined), and the same method with new methods
+// over the parameter and control nesting limits (the new ones fail).
+const WIDE = `package demo;
+
+public final class Wide {
+  public int sum(int a, int b, int c, int d) {
+    return a + b + c + d;
+  }
+}
+`;
+
+const WIDE_EXTENDED = WIDE.replace(
+  '  public int sum',
+  `  public int deep(int a) {
+    int total = 0;
+    if (a > 0) {
+      for (int i = 0; i < a; i++) {
+        if (i % 2 == 0) {
+          total += i;
+        }
+      }
+    }
+    return total;
+  }
+
+  public int sum`,
+);
+
+const WIDE_REFORMATTED = WIDE.replace('  public int sum', '  // Still too wide.\n  public int sum');
+
 const LEGACY_MOVED = LEGACY.replace(
   '  private int leftover;',
   '  // Kept for compatibility.\n  // See ticket 12.\n  private int leftover;',
@@ -284,6 +314,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
     writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
+    writeFileSync(path.join(repository, sourceDirectory, 'Wide.java'), WIDE);
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
@@ -300,6 +331,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
     branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
+    branchWith('structure-new', { 'Wide.java': WIDE_EXTENDED });
+    branchWith('structure-moved', { 'Wide.java': WIDE_REFORMATTED });
   });
 
   afterAll(() => {
@@ -398,6 +431,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'crap crap-score-limit Complex.java',
         ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
         ...repeated(28, 'pit mutant-nocoverage Complex.java'),
+        'structure function-statements-limit Complex.java', // the method has more than 15 statements
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -478,6 +512,40 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
       );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  // SH5: the shared structure rule on Java methods.
+  const structureOf = (findings) =>
+    findings
+      .filter((finding) => finding.tool === 'structure')
+      .map(({ rule, symbol }) => `${rule} ${symbol}`);
+
+  it(
+    'fails a new method over the nesting limit and keeps the legacy wide method baselined',
+    () => {
+      const result = diffOf('structure-new');
+
+      expect(result.failed).toBe(true);
+      expect(structureOf(result.newEnforceable)).toEqual([
+        'function-control-nesting-limit Wide.deep',
+      ]);
+      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+        'Wide.deep has 3 maxControlNesting; limit is 2',
+      );
+      expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps a method over the parameter limit baselined when its line moves',
+    () => {
+      const result = diffOf('structure-moved');
+
+      expect(structureOf(result.newFindings)).toEqual([]);
+      expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
