@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import { existsSync, mkdtempSync, rmSync, watch } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { executeAnalyzerTask, resolveMaxParallel, runTaskGraph } from './analyzer-scheduler.mjs';
 
 const schedulerPath = path.join(import.meta.dirname, 'analyzer-scheduler.mjs');
@@ -348,15 +348,32 @@ describe('analyzer scheduler', () => {
   });
 
   it('force-kills an analyzer that ignores timeout termination', async () => {
+    // The analyzer marks that its SIGTERM handler is installed, so the timeout can only send a
+    // SIGTERM it ignores. The timeout and the SIGKILL after it are timers of this process, so they
+    // run on fake time instead of waiting out the real 500 ms and 1 s.
+    const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'analyzer-scheduler-force-kill-'));
+    const readyMarker = path.join(fixtureRoot, 'ready');
     const analyzerTask = task('stuck');
     analyzerTask.timeoutMs = 500;
     analyzerTask.invocation.args = [
       '--input-type=module',
       '-e',
-      "process.on('SIGTERM', () => {}); setInterval(() => {}, 1_000)",
+      `import { writeFileSync } from 'node:fs'; process.on('SIGTERM', () => {}); writeFileSync(${JSON.stringify(readyMarker)}, ''); setInterval(() => {}, 1_000);`,
     ];
 
-    await expect(executeAnalyzerTask(analyzerTask)).rejects.toThrow('stuck timed out after 500 ms');
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const outcome = expect(executeAnalyzerTask(analyzerTask)).rejects.toThrow(
+        'stuck timed out after 500 ms',
+      );
+      await waitForFile(readyMarker);
+      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(1_000);
+      await outcome;
+    } finally {
+      vi.useRealTimers();
+      rmSync(fixtureRoot, { recursive: true, force: true });
+    }
   });
 
   it.each(['SIGINT', 'SIGTERM'])(

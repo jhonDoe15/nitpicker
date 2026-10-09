@@ -6,6 +6,7 @@ import strictDomainConfig from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
 import compositionRootConfig from '../eslint-config/strict-composition-root.mjs';
+import { testFailureMessageCases } from './test-cases.mjs';
 
 function strictCase([name, banned, allowed, filename = 'src/fixture.ts']) {
   return { name, config: strictSyntaxConfig, filename, banned, allowed };
@@ -271,4 +272,5 @@ export const failureMessageCases = [
     banned: 'let counter = 0;',
     allowed: "use 'const'",
   },
+  ...testFailureMessageCases,
 ];
