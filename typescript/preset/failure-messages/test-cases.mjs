@@ -1,4 +1,16 @@
+import tseslint from 'typescript-eslint';
+import nitpickerRules from '../eslint-plugin/index.mjs';
+import { strictProductionRules } from '../eslint-config/strict.mjs';
 import strictTestsConfig from '../eslint-config/strict-tests.mjs';
+
+const productionRulesConfig = [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { nitpicker: nitpickerRules },
+    rules: strictProductionRules,
+  },
+];
 
 const testFile = 'test/integration/repository.test.ts';
 const childProcess = "import { execFileSync, spawnSync } from 'node:child_process';\n";
@@ -39,6 +51,32 @@ export const testFailureMessageCases = [
     "it('x', () => {}, Number(process.env.T));",
     'number of at most 10000 ms',
   ),
+  testCase(
+    'first-test-charged setup names beforeAll and the exception path',
+    "let built;\nasync function build() { built ??= await compile(); return built; }\nit('x', async () => { await build(); });",
+    'Compute it once in beforeAll',
+  ),
+  testCase(
+    'first-test-charged setup names nitpicker.config.json',
+    "let cache;\nfunction load() { if (!cache) cache = readAll(); return cache; }\nit('x', () => { load(); });",
+    'exception for this rule in nitpicker.config.json',
+  ),
+  {
+    name: 'uninjectable delay names the option with the constant as its default',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      'const KILL_DELAY_MS = 1_000;\nexport function stop() { setTimeout(kill, KILL_DELAY_MS); }',
+    allowed: 'Accept the delay as an option with KILL_DELAY_MS as its default',
+  },
+  {
+    name: 'uninjectable delay names nitpicker.config.json',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned:
+      'const KILL_DELAY_MS = 1_000;\nexport function stop() { setTimeout(kill, KILL_DELAY_MS); }',
+    allowed: 'exception for this rule in nitpicker.config.json',
+  },
   testCase(
     'unpinned test tsconfig names types and lib',
     'writeFileSync(file, JSON.stringify({ compilerOptions: { strict: true } }));',
