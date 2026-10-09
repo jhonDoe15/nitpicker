@@ -73,6 +73,24 @@ const CHECKSTYLE_ON_BAD = [
   'regexp.RegexpSinglelineJavaCheck',
   'whitespace.EmptyLineSeparatorCheck',
 ];
+// Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
+// with otherwise clean code.
+const STAMP = `package demo;
+
+import java.util.Date;
+
+public final class Stamp {
+  public long now() {
+    return new Date().getTime();
+  }
+
+  public static final class Inner {
+    public long later() {
+      return new Date().getTime() + 1;
+    }
+  }
+}
+`;
 
 let repository;
 const sourceDirectory = 'src/main/java/demo';
@@ -120,6 +138,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('clean', { 'Greeter.java': FAREWELL });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('architecture', { 'Stamp.java': STAMP });
   });
 
   afterAll(() => {
@@ -180,6 +199,24 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
       );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new ArchUnit violation, once per rule and offending class',
+    () => {
+      const result = diffOf('architecture');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'archunit no_classes_use_legacy_date Stamp.java',
+        'archunit no_classes_use_legacy_date Stamp.java',
+      ]);
+      expect(result.newEnforceable.map((finding) => finding.identity).sort()).toEqual([
+        'demo.Stamp',
+        'demo.Stamp$Inner',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
