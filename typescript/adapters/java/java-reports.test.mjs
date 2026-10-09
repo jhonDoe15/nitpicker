@@ -95,6 +95,18 @@ function projectWithReports({ shift = 0 } = {}) {
     path.join(reports, 'lizard.csv'),
     `9,12,60,1,7,"Bad::decode@${String(8 + shift)}-${String(14 + shift)}@src/main/java/demo/Bad.java","src/main/java/demo/Bad.java","Bad::decode","Bad::decode( byte[] bytes)",${String(8 + shift)},${String(14 + shift)}\n`,
   );
+  // The jscpd sample report (one clone); `shift` moves its start lines like the other reports.
+  const jscpd = JSON.parse(
+    readFileSync(path.join(import.meta.dirname, 'fixtures/jscpd-report.json'), 'utf8'),
+  );
+  for (const clone of jscpd.duplicates) {
+    clone.firstFile.start += shift;
+    clone.secondFile.start += shift;
+  }
+  writeFileSync(
+    path.join(reports, 'duplicates.json'),
+    JSON.stringify({ runs: [{ root: 'src/main/java', report: jscpd }] }),
+  );
   return root;
 }
 
@@ -119,6 +131,16 @@ describe('readJavaFindings', () => {
       ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+/)],
       ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+.*#2$/)],
       ['checkstyle', CS_LENGTH, bad, expect.stringMatching(/^[0-9a-f]+/)],
+      [
+        'duplicates',
+        'duplicate-clone',
+        'src/main/java/demo/Bad.java',
+        expect.stringMatching(
+          /^pair:src\/main\/java\/demo\/Bad\.java\|src\/main\/java\/demo\/Copy\.java:fragment:[0-9a-f]+:occurrence:1$/,
+        ),
+      ],
+      ['duplicates', 'duplicate-clone-size', bad, expect.stringContaining(':lines')],
+      ['duplicates', 'duplicate-clone-size', bad, expect.stringContaining(':tokens')],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
       ['crap', 'crap-score-limit', bad, 'function:Bad::decode( byte[] bytes)'],
@@ -128,16 +150,25 @@ describe('readJavaFindings', () => {
   it('enforces PMD, SpotBugs (even at level note) and formatting; coverage only describes', () => {
     const { findings } = readJavaFindings(projectWithReports());
 
-    expect(
-      Object.fromEntries(findings.map((finding) => [finding.tool, finding.classification])),
-    ).toEqual({
+    const byTool = (rule) =>
+      Object.fromEntries(
+        findings
+          .filter(
+            (finding) =>
+              rule === undefined || finding.tool !== 'duplicates' || finding.rule === rule,
+          )
+          .map((finding) => [finding.tool, finding.classification]),
+      );
+    expect(byTool('duplicate-clone')).toEqual({
       pmd: 'enforceable',
       spotbugs: 'enforceable',
       'google-java-format': 'enforceable',
       checkstyle: 'enforceable',
+      duplicates: 'enforceable',
       jacoco: 'descriptive',
       crap: 'enforceable',
     });
+    expect(byTool('duplicate-clone-size').duplicates).toBe('descriptive');
   });
 
   it('keeps identities when every reported line moves', () => {
