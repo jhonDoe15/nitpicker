@@ -19,7 +19,8 @@ const SUPPRESSION_PATTERNS = [
 
 // Files that configure the gate. An agent finishing a task has no reason to touch any of them.
 const CONFIG_FILE_PATTERNS = [
-  /(^|\/)nitpicker\.config\.[cm]?[jt]s$/,
+  /(^|\/)nitpicker\.config\.([cm]?[jt]s|json)$/,
+  /(^|\/)nitpicker\.legacy\.json$/,
   /(^|\/)\.?nitpickerrc(\.[a-z]+)?$/,
   /(^|\/)eslint\.config\.[cm]?[jt]s$/,
   /(^|\/)\.eslintrc(\.[a-z]+)?$/,
