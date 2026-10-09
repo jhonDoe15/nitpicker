@@ -37,8 +37,9 @@ config file is an exception like any other.
 
 - `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters and data types
   are `readonly`.
-- Transforms use `map`, `filter`, `flatMap`, `Object.fromEntries`, and `Object.groupBy`. No loops,
-  `forEach`, or `reduce`.
+- Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
+sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
+  an initial value, or `reduceRight`.
 - No classes and no `this`. No recursion: a custom rule flags a function that calls itself.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
