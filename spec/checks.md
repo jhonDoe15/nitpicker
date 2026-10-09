@@ -77,10 +77,10 @@ rule and it fails the gate; "not enforced" means the check does not exist for th
 
 | Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         |
 | --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
-| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | not enforced |
-| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | not enforced |
-| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | not enforced |
-| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | not enforced |
+| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     |
+| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     |
+| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     |
+| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     |
 | `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     |
 | `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     |
 | `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     |
