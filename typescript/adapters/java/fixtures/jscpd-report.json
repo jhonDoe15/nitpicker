@@ -1,0 +1,13 @@
+{
+  "duplicates": [
+    {
+      "firstFile": { "name": "demo/Bad.java", "start": 4, "end": 31 },
+      "secondFile": { "name": "demo/Copy.java", "start": 4, "end": 31 },
+      "format": "java",
+      "fragment": "int run(int a, int b) {\n    int total = 0;\n    return total;\n  }",
+      "lines": 27,
+      "tokens": 310
+    }
+  ],
+  "statistics": { "total": { "clones": 1 } }
+}

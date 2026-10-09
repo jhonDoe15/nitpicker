@@ -121,6 +121,34 @@ describe('nitpicker with "preset": "java"', () => {
     );
   });
 
+  it('fails a newly added clone', () => {
+    const body = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `    int v${i} = compute(a, b) + ${i} * helper(a);\n    if (v${i} > 10) { total += v${i}; }`,
+    ).join('\n');
+    const source = (name) =>
+      `package demo;\n\npublic final class ${name} {\n  int run(int a, int b) {\n    int total = 0;\n${body}\n    return total;\n  }\n}\n`;
+    const root = gradleRepository({ 'src/main/java/demo/First.java': source('First') });
+    write(root, { 'src/main/java/demo/Second.java': source('Second') });
+    commit(root, 'copy the class');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    const clones = result
+      .json('new-findings.json')
+      .filter((finding) => finding.rule === 'duplicate-clone');
+    expect(clones).toEqual([
+      expect.objectContaining({
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/main/java/demo/First.java',
+        classification: 'enforceable',
+      }),
+    ]);
+  });
+
   it('reports a Gradle failure on head as a tool error with exit 2 instead of throwing', () => {
     const root = gradleRepository();
     write(root, { GRADLE_FAIL: 'Execution failed for task :compileJava\n' });
@@ -187,7 +215,7 @@ describe('Java analyzer', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
