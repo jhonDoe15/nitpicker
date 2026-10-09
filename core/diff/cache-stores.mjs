@@ -33,8 +33,7 @@ export function createDirectoryStore(directory) {
     get(key) {
       try {
         return readFileSync(fileFor(key), 'utf8');
-      } catch (error) {
-        void error;
+      } catch {
         return undefined;
       }
     },
@@ -46,8 +45,7 @@ export function createDirectoryStore(directory) {
         writeFileSync(temporary, text);
         renameSync(temporary, target);
         return true;
-      } catch (error) {
-        void error;
+      } catch {
         return false;
       }
     },

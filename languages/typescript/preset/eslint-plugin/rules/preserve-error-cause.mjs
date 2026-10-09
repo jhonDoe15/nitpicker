@@ -53,8 +53,6 @@ export const rule = {
             ),
           );
         }
-        // A fresh bounded error may deliberately sanitize external data. A generic
-        // wrapper derived from the caught value must retain that value's cause.
         if (wrapper.classificationIndex === undefined) {
           if (!referencesCatch(node)) return;
         }

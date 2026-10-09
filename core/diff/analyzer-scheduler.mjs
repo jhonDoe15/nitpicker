@@ -276,9 +276,7 @@ function signalChildProcess(child, signal) {
   }
   try {
     child.kill(signal);
-  } catch (error) {
-    void error;
-  }
+  } catch {}
 }
 
 function installShutdownHandlers(shutdownController) {
