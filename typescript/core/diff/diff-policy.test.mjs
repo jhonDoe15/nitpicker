@@ -897,10 +897,12 @@ describe('quality diff identities and arguments', () => {
 
   it('does not report success before real analyzer adapters are configured', () => {
     const output = captureOutput();
+    const repository = createRepository({ 'src/service.ts': 'export const service = 1;\n' });
 
     const exitCode = runCli({
       arguments_: ['--base', 'origin/master'],
       environment: {},
+      currentProjectRoot: repository.root,
       analyzers: [],
       stdout: output.stdout,
       stderr: output.stderr,
