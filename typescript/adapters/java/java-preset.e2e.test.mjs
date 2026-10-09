@@ -139,6 +139,19 @@ public final class Stamp {
 }
 `;
 
+// Never exercised by a test: the `if` line has two uncovered branch outcomes on the base.
+const BRANCHY = `package demo;
+
+public final class Branchy {
+  public int larger(int left, int right) {
+    if (left > right) {
+      return left;
+    }
+    return right;
+  }
+}
+`;
+
 // Nine branches and no test: CRAP = 10^2 * 1 + 10 = 110, over the limit of 9 (formatted, no PMD hit).
 const COMPLEX = `package demo;
 
@@ -198,6 +211,34 @@ ${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i})
   }
 }
 `;
+const BRANCHY_MOVED = BRANCHY.replace(
+  '  public int larger',
+  '  // Picks the larger value.\n  public int larger',
+);
+const BRANCHY_EDITED = BRANCHY.replace('left > right', 'left >= right');
+const BRANCHY_ADDED = BRANCHY.replace(
+  '    return right;\n  }\n',
+  `    return right;
+  }
+
+  public int smaller(int left, int right) {
+    if (left < right) {
+      return left;
+    }
+    return right;
+  }
+`,
+);
+
+// What the other analyzers add for a class with no test and no javadoc (e.g. Calc, Stamp): the
+// google_checks javadoc rules, and one `pit mutant-nocoverage` per mutant.
+const javadocOn = (file, { methods = 1, types = 1 } = {}) => [
+  ...Array(methods).fill(
+    `checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocMethodCheck ${file}`,
+  ),
+  ...Array(types).fill(`checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocTypeCheck ${file}`),
+];
+const repeated = (count, entry) => Array(count).fill(entry);
 
 let repository;
 const sourceDirectory = 'src/main/java/demo';
@@ -242,6 +283,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     });
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
+    writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
@@ -255,6 +297,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('complex', { 'Complex.java': COMPLEX });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
     branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
+    branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
+    branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
+    branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
   });
 
   afterAll(() => {
@@ -329,11 +374,15 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).toEqual([
         'archunit no_classes_use_legacy_date Stamp.java',
         'archunit no_classes_use_legacy_date Stamp.java',
+        ...javadocOn('Stamp.java', { methods: 2, types: 2 }),
+        ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
-      expect(result.newEnforceable.map((finding) => finding.identity).sort()).toEqual([
-        'demo.Stamp',
-        'demo.Stamp$Inner',
-      ]);
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'archunit')
+          .map((finding) => finding.identity)
+          .sort(),
+      ).toEqual(['demo.Stamp', 'demo.Stamp$Inner']);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -344,7 +393,12 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       const result = diffOf('complex');
 
       expect(result.failed).toBe(true);
-      expect(summarize(result.newEnforceable)).toEqual(['crap crap-score-limit Complex.java']);
+      expect(summarize(result.newEnforceable)).toEqual([
+        ...javadocOn('Complex.java'),
+        'crap crap-score-limit Complex.java',
+        ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
+        ...repeated(28, 'pit mutant-nocoverage Complex.java'),
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -368,11 +422,61 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       const survivor = diffOf('survivor');
 
       expect(survivor.failed).toBe(true);
-      expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
-      expect(survivor.newEnforceable[0].message).toContain('changed conditional boundary');
+      expect(summarize(survivor.newEnforceable)).toEqual([
+        ...javadocOn('Calc.java'),
+        'pit mutant-survived Calc.java',
+      ]);
+      expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toContain(
+        'changed conditional boundary',
+      );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect(summarize(survivor.unchangedFindings)).toEqual(
         expect.arrayContaining(['pit mutant-nocoverage Greeter.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'baselines an uncovered branch whose line only moves',
+    () => {
+      const result = diffOf('branch-moved');
+
+      expect(result.failed).toBe(false);
+      expect(summarize(result.newEnforceable)).toEqual([]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails an uncovered branch on a changed line',
+    () => {
+      const result = diffOf('branch-edited');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        'jacoco changed-branch-coverage Branchy.java',
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'fails a new uncovered branch and keeps the old one baselined',
+    () => {
+      const result = diffOf('branch-added');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual([
+        ...javadocOn('Branchy.java', { types: 0 }),
+        'jacoco changed-branch-coverage Branchy.java',
+        ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
+      ]);
+      expect(summarize(result.unchangedFindings)).toEqual(
+        expect.arrayContaining(['jacoco changed-branch-coverage Branchy.java']),
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
