@@ -1,0 +1,10 @@
+{
+  "sites": [
+    {
+      "file": "test/tally.test.ts",
+      "rule": "nitpicker/no-internal-module-mocks",
+      "source": "vi.mock('../src/main/features/tally/index.js', () => ({ runTally: vi.fn() }))",
+      "count": 1
+    }
+  ]
+}
