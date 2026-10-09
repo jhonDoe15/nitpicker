@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readCouplingFindings } from './java-coupling.mjs';
 import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
@@ -108,6 +109,9 @@ export function readJavaFindings(projectRoot) {
       }).findings,
     );
   }
+  // --- coupling (SH6): jdeps class graph through the shared coupling rule ---
+  findings.push(...readCouplingFindings(reportRoot, { projectRoot, sourceRoots }));
+  // --- end coupling ---
   return { findings };
 }
 
