@@ -15,6 +15,13 @@ import {
   typedDeclarationRules,
 } from './strict-declarations.mjs';
 import {
+  controlFlowRules,
+  controlFlowSelectors,
+  controlFlowTypedRules,
+  forEachSelectors,
+  loopSelectors,
+} from './strict-control-flow.mjs';
+import {
   domainFunctionalRules,
   domainGlobsFor,
   domainRestrictedSyntax,
@@ -32,13 +39,25 @@ import { strictTestConfigFor } from './strict-tests.mjs';
 // everywhere plus the ones for that scope. Add a selector to the list of its scope here, never as a
 // separate `no-restricted-syntax` entry for a narrower glob.
 const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectors];
+// Control flow applies to all production code except config files. `domain/` has its own, stricter
+// loop and forEach selectors, so it takes only the promise-chain ones to avoid a duplicate message.
+const productionSelectors = [
+  ...everywhereSelectors,
+  ...defaultExportSelectors,
+  ...controlFlowSelectors,
+];
 
 /** The complete `no-restricted-syntax` selector list for each scope of the strict preset. */
 export const restrictedSyntaxByScope = {
   configFile: everywhereSelectors,
-  source: [...everywhereSelectors, ...defaultExportSelectors],
-  domain: [...everywhereSelectors, ...defaultExportSelectors, ...domainRestrictedSyntax],
-  adapters: [...everywhereSelectors, ...defaultExportSelectors, ...restrictedAdapterSyntax],
+  source: productionSelectors,
+  domain: [
+    ...productionSelectors.filter(
+      (selector) => ![...loopSelectors, ...forEachSelectors].includes(selector),
+    ),
+    ...domainRestrictedSyntax,
+  ],
+  adapters: [...productionSelectors, ...restrictedAdapterSyntax],
 };
 
 function configFileGlobsFor(layout) {
@@ -65,6 +84,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
       rules: {
         ...escapeHatchRules,
         ...declarationRules,
+        ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.source],
       },
     },
@@ -113,7 +133,7 @@ export function strictTypedConfigFor(layout, parserOptions) {
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin },
-      rules: typedDeclarationRules,
+      rules: { ...typedDeclarationRules, ...controlFlowTypedRules },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),
@@ -138,6 +158,12 @@ export function strictConfig(parserOptions) {
   return [...strictSyntaxConfig, ...strictTypedConfig(parserOptions)];
 }
 
+/** Rules for every production file that need no scope of their own. */
+export const strictProductionRules = {
+  'nitpicker/no-module-level-let': 'error',
+  'nitpicker/no-uninjectable-delay': 'error',
+};
+
 /** Everything the strict preset adds to the project's own ESLint config, for one layout. */
 export function strictPresetConfig(layout, parserOptions) {
   return [
@@ -147,7 +173,7 @@ export function strictPresetConfig(layout, parserOptions) {
       files: layout.sourceGlobs,
       ...productionScope(layout),
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-module-level-let': 'error' },
+      rules: strictProductionRules,
     },
     ...strictTestConfigFor(layout),
   ];

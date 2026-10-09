@@ -331,10 +331,11 @@ function runComparisonCli({
   if (options.deferExit) {
     return 0;
   }
-  if (report.summary.overallStatus !== 'completed') {
-    return 2;
+  // New violations win over tool errors so CI can tell "violations" from "broken".
+  if (report.summary.newEnforceableFindings > 0) {
+    return 1;
   }
-  return report.summary.newEnforceableFindings > 0 ? 1 : 0;
+  return report.summary.overallStatus === 'completed' ? 0 : 2;
 }
 
 function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, stdout, runTasks }) {
@@ -381,10 +382,11 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, st
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
-  if (report.summary.overallStatus === 'tool-error') {
-    return 2;
+  // `overallStatus` reports tool health first; the exit code puts violations first.
+  if (report.summary.enforceableFindings > 0) {
+    return 1;
   }
-  return report.summary.overallStatus === 'violations' ? 1 : 0;
+  return report.summary.overallStatus === 'tool-error' ? 2 : 0;
 }
 
 const invokedPath = process.argv[1];
