@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { analyzeJavaSnapshot } from '../../../adapters/java/java-runner.mjs';
+import { analyzeJavaSnapshot, parseRunnerArguments } from '../../../adapters/java/java-runner.mjs';
 import { headPolicyEnvironment } from '../../../preset/head-policy.mjs';
 import { reportFromAnalyzerOutput } from '../analyzer-scheduler.mjs';
 import { runFakeAnalyzer } from './fake-analyzer.mjs';
@@ -143,9 +143,12 @@ function spawnedOutput(task, environment) {
 }
 
 function runJavaRunner(argv) {
-  if (argv[0] !== '--project-root' || argv[1] === undefined) {
-    return { status: 2, signal: null, stdoutText: '', stderrText: 'Usage: java-runner.mjs' };
+  let parsed;
+  try {
+    parsed = parseRunnerArguments(argv);
+  } catch (error) {
+    return { status: 2, signal: null, stdoutText: '', stderrText: error.message };
   }
-  const report = analyzeJavaSnapshot(realpathSync(argv[1]));
+  const report = analyzeJavaSnapshot(realpathSync(parsed.projectRoot), { policy: parsed.policy });
   return { status: 0, signal: null, stdoutText: `${JSON.stringify(report)}\n`, stderrText: '' };
 }

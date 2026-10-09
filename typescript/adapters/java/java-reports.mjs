@@ -16,7 +16,7 @@ import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
-export function readJavaFindings(projectRoot) {
+export function readJavaFindings(projectRoot, { crapLimit } = {}) {
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   const sourceRoots = manifest.sourceRoots ?? [];
@@ -83,6 +83,7 @@ export function readJavaFindings(projectRoot) {
   findings.push(
     ...ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
       sourceRoots,
+      limit: crapLimit,
     }).findings,
   );
   // PIT: absent only when the project has no main classes.

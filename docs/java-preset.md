@@ -160,9 +160,21 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Gradle binary.** `gradle` from the PATH, or the command in `NITPICKER_GRADLE` (as the e2e test
   already allowed). The Gradle wrapper is not used; a consumer who needs it sets
   `NITPICKER_GRADLE=./gradlew`.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude`,
-  `layout`, `exceptions` and `legacyInventory` tune the TypeScript analyzers and have no Java
-  counterpart yet; with `"preset": "java"` they are a config error instead of being ignored.
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
+  `legacyInventory` are shared with the TypeScript preset (`typescript/shared/config.mjs`,
+  `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
+  part of the analyzer's configuration hash:
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
+    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
+    the tools still run on those files.
+  - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
+    `{ "file", "rule", "source", "count" }`, where `source` is the finding's `identity`. Up to
+    `count` enforceable findings per site are baselined on both snapshots, read from the head's
+    inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
+    (a new site counts as 0 before).
+  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
+    meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `typescript/java/` and `java/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `java/nitpicker.init.gradle`
   ships.

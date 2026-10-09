@@ -17,9 +17,12 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-analyzer.mjs',
   'adapters/java/java-diff.mjs',
   'adapters/java/java-duplicates.mjs',
+  'adapters/java/java-policy.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
   'adapters/java/touched-rules.mjs',
+  'shared/glob.mjs',
+  'shared/legacy-inventory.mjs',
   'shared/policy.mjs',
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
@@ -61,7 +64,16 @@ export function createJavaAnalyzer() {
     configurationHash: hashConfiguration(),
     exclusions: [],
     // One Gradle run yields the findings of all the tools.
-    reportedTools: ['pmd', 'spotbugs', 'google-java-format', 'jacoco', 'checkstyle', 'crap', 'duplicates', 'pit'],
+    reportedTools: [
+      'pmd',
+      'spotbugs',
+      'google-java-format',
+      'jacoco',
+      'checkstyle',
+      'crap',
+      'duplicates',
+      'pit',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {
