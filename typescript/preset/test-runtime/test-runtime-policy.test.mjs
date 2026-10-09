@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruise } from '../dependency-graph/cruise.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
@@ -8,7 +8,7 @@ const fixtureRoot = 'preset/test-runtime/fixtures';
 
 async function analyzeFixture(name, options = {}) {
   const root = `${fixtureRoot}/${name}`;
-  const graph = cruise([root], { typeScriptRoot: root });
+  const graph = await cruise([root], { typeScriptRoot: root });
   return analyzeTestRuntime(graph, {
     productionRoot: `${root}/src/main`,
     sourceTexts: await loadModuleSources(graph, projectRoot),

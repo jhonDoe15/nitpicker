@@ -17,6 +17,7 @@ import {
   normalizeArchitectureViolations,
 } from '../../adapters/diff/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
+import { withDefaultAnalyzerParallelism } from './fixtures/analyzer-parallelism.mjs';
 import { runQualityDiff } from './run-diff.mjs';
 
 const toolRoot = path.resolve(import.meta.dirname, '../..');
@@ -30,37 +31,58 @@ afterEach(() => {
 });
 
 describe('static differential adapters', () => {
-  it(
-    'reports new formatting, type, and architecture findings',
-    {
-      timeout: 120_000,
-    },
-    () => {
-      const repository = createRepository({
-        ...policyFiles(),
-        'src/main/server.ts': 'export const server = true;\n',
-        'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
-        'src/main/ignored/ignored.ts': 'export const ignored=true\n',
-        'tests/placeholder.ts': 'export const placeholder = true;\n',
-      });
-      writeFiles(repository.root, {
-        'src/main/auth/logic.ts': [
-          "import { server } from '../server.js'",
-          "export const valid:number = 'broken'",
-          'void server',
-          '',
-        ].join('\n'),
-      });
-      commit(repository.root, 'introduce static findings');
+  // One difference run (prettier, tsc and dependency-cruiser on the merge base and on the head)
+  // answers both tests below: `logic.ts` gains a formatting, a type and an architecture finding,
+  // and `drift.ts` is unformatted on both sides and gains another unformatted line.
+  let difference;
+  function runStaticDifference() {
+    if (difference !== undefined) {
+      return difference;
+    }
+    const repository = createRepository({
+      ...policyFiles(),
+      'src/main/server.ts': 'export const server = true;\n',
+      'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
+      'src/main/auth/drift.ts': 'export const first={value:1}\n',
+      'src/main/ignored/ignored.ts': 'export const ignored=true\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/auth/logic.ts': [
+        "import { server } from '../server.js'",
+        "export const valid:number = 'broken'",
+        'void server',
+        '',
+      ].join('\n'),
+      'src/main/auth/drift.ts': [
+        'export const first={value:1}',
+        'export const second={value:2}',
+        '',
+      ].join('\n'),
+    });
+    commit(repository.root, 'introduce static findings');
 
-      const report = runQualityDiff({
+    difference = withDefaultAnalyzerParallelism(() =>
+      runQualityDiff({
         repositoryRoot: repository.root,
         projectRelativePath: '.',
         headProjectRoot: toolRoot,
         requestedBaseRef: repository.baseRef,
         outputRoot: path.join(repository.root, 'reports/quality/diff'),
         analyzers: fixtureAnalyzers(),
-      });
+      }),
+    );
+    return difference;
+  }
+  const atPath = (findings, filePath) => findings.filter((finding) => finding.path === filePath);
+
+  it(
+    'reports new formatting, type, and architecture findings',
+    {
+      timeout: 120_000,
+    },
+    () => {
+      const report = runStaticDifference();
 
       expect(report.toolErrors).toEqual([]);
       expect(report.summary.overallStatus).toBe('completed');
@@ -95,46 +117,15 @@ describe('static differential adapters', () => {
       timeout: 120_000,
     },
     () => {
-      const repository = createRepository({
-        ...policyFiles(),
-        'src/main/auth/logic.ts': 'export const first={value:1}\n',
-        'tests/placeholder.ts': 'export const placeholder = true;\n',
-      });
-      writeFiles(repository.root, {
-        'src/main/auth/logic.ts': [
-          'export const first={value:1}',
-          'export const second={value:2}',
-          '',
-        ].join('\n'),
-      });
-      commit(repository.root, 'add formatting drift');
-
-      const report = runQualityDiff({
-        repositoryRoot: repository.root,
-        projectRelativePath: '.',
-        headProjectRoot: toolRoot,
-        requestedBaseRef: repository.baseRef,
-        outputRoot: path.join(repository.root, 'reports/quality/diff'),
-        analyzers: [
-          analyzer({
-            name: 'prettier-format',
-            kind: 'prettier',
-            configRelativePath: '.prettierrc.json',
-            ignoreRelativePath: '.prettierignore',
-            patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
-          }),
-        ],
-      });
+      const report = runStaticDifference();
+      const driftPath = 'src/main/auth/drift.ts';
 
       expect(report.toolErrors).toEqual([]);
-      expect(report.newFindings).toEqual([
-        expect.objectContaining({
-          tool: 'prettier-format',
-          path: 'src/main/auth/logic.ts',
-        }),
+      expect(atPath(report.newFindings, driftPath)).toEqual([
+        expect.objectContaining({ tool: 'prettier-format', path: driftPath }),
       ]);
-      expect(report.resolvedFindings).toHaveLength(1);
-      expect(report.unchangedFindings).toEqual([]);
+      expect(atPath(report.resolvedFindings, driftPath)).toHaveLength(1);
+      expect(atPath(report.unchangedFindings, driftPath)).toEqual([]);
     },
   );
 
@@ -353,12 +344,24 @@ describe('static differential adapters', () => {
         ].join('\n'),
         'tsconfig.quality.json': `${typeScriptConfig}\n`,
       });
-      execFileSync(
-        process.platform === 'win32' ? 'npm.cmd' : 'npm',
-        ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-        { cwd: projectRoot, encoding: 'utf8' },
-      );
-      const packageLock = readFileSync(path.join(projectRoot, 'package-lock.json'), 'utf8');
+      // What `npm install --package-lock-only` writes for this package.json (checked in as a literal:
+      // the fixture's setup, not the code under test, so it does not need its own npm process).
+      const packageLock = `${JSON.stringify({
+        name: packageJson.name,
+        version: packageJson.version,
+        lockfileVersion: 3,
+        requires: true,
+        packages: {
+          '': {
+            name: packageJson.name,
+            version: packageJson.version,
+            dependencies: packageJson.dependencies,
+          },
+          'node_modules/fixture-types': { resolved: 'vendor/fixture-types', link: true },
+          'vendor/fixture-types': { version: '1.0.0' },
+        },
+      })}\n`;
+      writeFiles(projectRoot, { 'package-lock.json': packageLock });
       const liveProjectRoot = temporaryDirectory('live-project-dependencies-');
       const livePackageJson = { ...packageJson, version: '2.0.0' };
       writeFiles(policyRoot, {
