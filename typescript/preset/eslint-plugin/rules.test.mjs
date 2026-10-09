@@ -136,6 +136,14 @@ ruleTester.run('no-fixed-sleep-synchronization', noFixedSleepSynchronization, {
       filename: '/repo/tests/fixtures/wait.ts',
       code: 'await sleep(500); await new Promise((resolve) => setTimeout(resolve, 500));',
     },
+    {
+      filename: '/repo/tests/fixtures/wait.ts',
+      code: "import { setTimeout } from 'node:timers/promises'; await setTimeout(50);",
+    },
+    {
+      filename: '/repo/tests/integration/poll.test.ts',
+      code: "import { setTimeout } from './clock.js'; await setTimeout(50);",
+    },
   ],
   invalid: [
     ...['sleep', 'delay', 'wait'].map((name) => ({
@@ -153,6 +161,19 @@ ruleTester.run('no-fixed-sleep-synchronization', noFixedSleepSynchronization, {
       code: 'await new Promise(function (done) { if (pending) setTimeout(done, 500); });',
       errors: [{ messageId: 'fixedSleep' }],
     },
+    // The form core/diff/cache-stores.test.mjs used, and the other spellings of the same sleep.
+    ...[
+      'await new Promise((resolve) => setTimeout(() => resolve(), 50));',
+      'await new Promise((resolve) => { globalThis.setTimeout(() => { resolve(); }, 50); });',
+      "import { setTimeout } from 'node:timers/promises'; await setTimeout(50);",
+      "import { setTimeout as pause } from 'timers/promises'; await pause(50);",
+      "import * as timers from 'node:timers/promises'; await timers.setTimeout(50);",
+      "import { scheduler } from 'node:timers/promises'; await scheduler.wait(50);",
+    ].map((code) => ({
+      filename: '/repo/tests/integration/poll.test.ts',
+      code,
+      errors: [{ messageId: 'fixedSleep' }],
+    })),
   ],
 });
 
