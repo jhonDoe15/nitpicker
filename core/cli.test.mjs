@@ -761,7 +761,7 @@ describe('nitpicker config file', () => {
     const { summary, exitCode } = runWithConfig(Object.fromEntries(entries));
     expect(exitCode).toBe(0);
     expect(summary.configOverrides).toEqual(
-      entries.map(([key, value]) => `${key}: ${JSON.stringify(value)}`),
+      entries.map(([key, value]) => `${String(key)}: ${JSON.stringify(value)}`),
     );
     expect(summary.policyHash).not.toBe(plainHash);
     const excluded = runWithConfig({ exclude: ['generated/**'] });
@@ -910,7 +910,7 @@ describe('findings cache', () => {
     const run = ({ extraArguments = [], configurationHash = 'fixture-policy' } = {}) => {
       const analyzer = fakeAnalyzer();
       analyzer.configurationHash = configurationHash;
-      const createInvocation = analyzer.createInvocation;
+      const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
         snapshots.push(context.snapshot);
         return createInvocation(context);
@@ -973,7 +973,7 @@ describe('remote findings cache', () => {
     const snapshots = [];
     const execute = (arguments_, url = remote.url, { subprocess = false } = {}) => {
       const analyzer = fakeAnalyzer();
-      const createInvocation = analyzer.createInvocation;
+      const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
         snapshots.push(context.snapshot);
         return createInvocation(context);
