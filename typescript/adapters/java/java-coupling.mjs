@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { evaluateCoupling } from '../../shared/rules/coupling.mjs';
+import { computeCoupling, evaluateCoupling } from '../../shared/rules/coupling.mjs';
 
 // Coupling and stability for the Java preset. The init script runs `jdeps -verbose:class
 // -filter:none` over the compiled main classes (build/nitpicker/jdeps.txt) and lists those classes
@@ -26,14 +26,6 @@ export const COUPLING_TOOL = 'coupling';
 export const JDEPS_REPORT = 'jdeps.txt';
 export const JDEPS_CLASSES = 'jdeps-classes.txt';
 const ROOT_PACKAGE = '(root)';
-
-function rounded(value) {
-  return Math.round(value * 10_000) / 10_000;
-}
-
-function instability(fanIn, fanOut) {
-  return fanIn + fanOut === 0 ? null : rounded(fanOut / (fanIn + fanOut));
-}
 
 /** `{ source, target }` class-name pairs from `jdeps -verbose:class` text output. */
 export function parseJdeps(text) {
@@ -73,78 +65,11 @@ export function analyzeJavaCoupling({ classes, edges, fileOf }) {
     }
   }
 
-  const distinct = (predicate, side) =>
-    new Set(moduleEdges.filter(predicate).map((edge) => edge[side]));
-  const moduleMetrics = modules.map((name) => {
-    const fanIn = distinct((edge) => edge.target === name, 'source').size;
-    const fanOut = distinct((edge) => edge.source === name, 'target').size;
-    return {
-      file: fileOf(name),
-      fanIn,
-      fanOut,
-      totalCoupling: fanIn + fanOut,
-      instability: instability(fanIn, fanOut),
-    };
-  });
-
-  const packageNames = [...new Set(modules.map(packageOf))].sort();
-  const packages = packageNames.map((name) => {
-    const members = modules.filter((module) => packageOf(module) === name);
-    const internal = moduleEdges.filter(
-      (edge) => packageOf(edge.source) === name && packageOf(edge.target) === name,
-    );
-    const fanIn = distinct(
-      (edge) => packageOf(edge.source) !== name && packageOf(edge.target) === name,
-      'source',
-    ).size;
-    const fanOut = distinct(
-      (edge) => packageOf(edge.source) === name && packageOf(edge.target) !== name,
-      'target',
-    ).size;
-    const componentSizes = connectedComponents(members, internal);
-    const possible = members.length * Math.max(members.length - 1, 0);
-    return {
-      name,
-      modules: members.length,
-      fanIn,
-      fanOut,
-      instability: instability(fanIn, fanOut),
-      cohesion: {
-        internalEdges: internal.length,
-        edgeDensity: possible === 0 ? null : rounded(internal.length / possible),
-        connectedComponents: componentSizes.length,
-        largestComponentShare:
-          members.length === 0 ? null : rounded((componentSizes[0] ?? 0) / members.length),
-      },
-    };
-  });
-
-  const instabilityOf = new Map(packages.map((entry) => [entry.name, entry.instability]));
-  const stabilityDirection = [];
-  const seen = new Set();
-  for (const edge of moduleEdges) {
-    const source = packageOf(edge.source);
-    const target = packageOf(edge.target);
-    const key = `${source}\0${target}`;
-    if (source === target || seen.has(key)) {
-      continue;
-    }
-    seen.add(key);
-    const sourceInstability = instabilityOf.get(source);
-    const targetInstability = instabilityOf.get(target);
-    if (
-      typeof sourceInstability === 'number' &&
-      typeof targetInstability === 'number' &&
-      sourceInstability < targetInstability
-    ) {
-      stabilityDirection.push({
-        source,
-        target,
-        delta: rounded(targetInstability - sourceInstability),
-      });
-    }
-  }
-  stabilityDirection.sort((left, right) => right.delta - left.delta);
+  const metrics = computeCoupling({ modules, edges: moduleEdges, packageOf });
+  // Java packages are listed in code-unit order, modules by file.
+  const packages = metrics.packages.sort((left, right) =>
+    left.name < right.name ? -1 : left.name > right.name ? 1 : 0,
+  );
 
   return {
     summary: {
@@ -152,40 +77,20 @@ export function analyzeJavaCoupling({ classes, edges, fileOf }) {
       dependencies: moduleEdges.length,
       packages: packages.length,
     },
-    modules: moduleMetrics,
+    modules: metrics.modules.map(({ module, fanIn, fanOut, totalCoupling, instability }) => ({
+      file: fileOf(module),
+      fanIn,
+      fanOut,
+      totalCoupling,
+      instability,
+    })),
     packages,
-    stabilityDirection,
+    stabilityDirection: metrics.stabilityDirection.map(({ source, target, delta }) => ({
+      source,
+      target,
+      delta,
+    })),
   };
-}
-
-function connectedComponents(members, edges) {
-  const adjacency = new Map(members.map((member) => [member, new Set()]));
-  for (const edge of edges) {
-    adjacency.get(edge.source)?.add(edge.target);
-    adjacency.get(edge.target)?.add(edge.source);
-  }
-  const visited = new Set();
-  const sizes = [];
-  for (const member of members) {
-    if (visited.has(member)) {
-      continue;
-    }
-    let size = 0;
-    const pending = [member];
-    visited.add(member);
-    while (pending.length > 0) {
-      const current = pending.pop();
-      size += 1;
-      for (const neighbor of adjacency.get(current) ?? []) {
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor);
-          pending.push(neighbor);
-        }
-      }
-    }
-    sizes.push(size);
-  }
-  return sizes.sort((left, right) => right - left);
 }
 
 /**

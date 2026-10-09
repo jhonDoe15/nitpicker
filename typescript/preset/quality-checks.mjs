@@ -256,6 +256,7 @@ export function createQualityChecks(layout = resolveLayout()) {
         'adapters/policy-links.mjs',
         'adapters/temporary-files.mjs',
         'preset/coupling/analyze.mjs',
+        'shared/rules/coupling.mjs',
       ],
     },
     {
