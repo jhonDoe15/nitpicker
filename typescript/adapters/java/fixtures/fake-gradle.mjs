@@ -40,3 +40,4 @@ writeFileSync('build/nitpicker/spotbugs.sarif', sarif('SpotBugs', []));
 writeFileSync('build/nitpicker/format.txt', '');
 writeFileSync('build/nitpicker/checkstyle.xml', '<checkstyle version="10.21.1"></checkstyle>');
 writeFileSync('build/nitpicker/jacoco.xml', '<report name="demo"></report>');
+writeFileSync('build/nitpicker/lizard.csv', '');
