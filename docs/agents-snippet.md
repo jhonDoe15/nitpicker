@@ -28,13 +28,13 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 ### Exit codes
 
-| Code | Meaning                                                                          |
-| ---- | -------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done.                                |
-| 1    | Completed with at least one new enforceable finding. Fix the findings and rerun. |
-| 2    | A tool error, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. Done.                                                                |
+| 1    | At least one new enforceable finding, even if a tool also errored. Fix and rerun.                                |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-Exit 2 is not a pass. Read the tool errors, fix the cause (a missing peer such as `vitest` or
+Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
 `typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun.
 
 ### Read the report
@@ -47,7 +47,7 @@ for `--all`):
 - `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
   location and message.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
-- `tool-errors.json`: why a run exited 2.
+- `tool-errors.json`: the tool errors, whatever the exit code.
 - `summary.json` and `report.junit.xml`: totals and CI output.
 
 Only new enforceable findings fail the run. Resolved and unchanged findings, descriptive findings

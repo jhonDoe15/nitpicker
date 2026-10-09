@@ -37,8 +37,9 @@ config file is an exception like any other.
 
 - `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters and data types
   are `readonly`.
-- Transforms use `map`, `filter`, `flatMap`, `Object.fromEntries`, and `Object.groupBy`. No loops,
-  `forEach`, or `reduce`.
+- Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
+sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
+  an initial value, or `reduceRight`.
 - No classes and no `this`. No recursion: a custom rule flags a function that calls itself.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
@@ -48,9 +49,6 @@ config file is an exception like any other.
 
 ## Inside `adapters/`
 
-- `for...of` is the only loop. No `forEach`, `for(;;)`, `for...in`, or `while`.
-- `async`/`await` and `Promise.all`. No `.then()` chains, and no promise left without being
-  awaited.
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary. No silent catches.
 - Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
@@ -58,6 +56,12 @@ config file is an exception like any other.
 
 ## Everywhere
 
+- `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
+  `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
+- `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
+  left without being awaited (`@typescript-eslint/no-floating-promises`).
+- `===` and `!==` only (`eqeqeq`).
+- Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`. No `enum` (use unions of string literals) and no `namespace`.
 - Classes only for `Error` subclasses.
@@ -104,6 +108,21 @@ not functions imported from other modules.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/no-first-test-charged-setup`: no lazily memoized shared setup that tests reach. It
+  reports a call whose value is stored in a module-level `let`/`var` only while that variable is
+  empty (`x ??= expensive()`, `x ||= call()`, `x = x ?? call()`, `if (!x) x = call()`,
+  `if (x === undefined) { x = call() }`, or `if (x) return x; x = call()`), when an `it`/`test`
+  body or `beforeEach` runs it, directly or through same-file helpers. The first test to run pays
+  for the setup, reports show that test as slow, and test order matters. Compute it in
+  `beforeAll`. Constants, `new` expressions and calls on `path`, `Math`, `Object`, `JSON` and
+  similar built-ins are not reported. A deliberate memo needs an exception in the config file.
+- `nitpicker/no-uninjectable-delay` (production code, not tests): `setTimeout`/`setInterval`
+  (global, `globalThis`, or from `node:timers`/`node:timers/promises`) whose delay is a module-level
+  `const` of 500 ms or more, inside an exported top-level function that has no parameter which
+  could carry the delay. A destructured, defaulted or rest parameter, or one named like
+  `options`/`config`/`delayMs`/`timeoutMs`, counts as able to carry it. Inline numbers, delays set
+  inside a non-exported helper and class methods are not reported. Tests cannot shorten such a
+  delay without fake timers, so accept it as an option with the constant as its default.
 - `nitpicker/test-tsconfig-pins-lib-and-types`: a tsconfig object a test serializes with
   `JSON.stringify` must set `compilerOptions.types` and `compilerOptions.lib` (or `noLib`), so a
   fixture `tsc` run does not load every `@types` package and the full default lib. If
@@ -118,7 +137,8 @@ Left out, from the same write-up: recomputing one expensive result in every test
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
 across tests, or what an assertion depends on), so a finding would not reliably mean a slow test.
 Vitest's worker count in CI is a CI setting, not code. It belongs in the CI workflow or in a check
-of the project's CI files, not in these rules.
+of the project's CI files, not in these rules. That check would need its own analyzer (a runner
+kind, a version entry, a check definition and project-level findings) and is not built yet.
 
 ## How it is enforced
 
@@ -131,7 +151,9 @@ of the project's CI files, not in these rules.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
-  the `domain` and `adapters` lists contain the `source` list plus their own selectors. Add a
+  the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
+  control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
+  the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
 - The test rules live in `preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),

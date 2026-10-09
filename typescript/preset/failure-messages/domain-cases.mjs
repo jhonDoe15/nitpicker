@@ -24,9 +24,14 @@ export const domainFailureMessageCases = [
     'Object.fromEntries',
   ),
   domainCase(
-    'reduce names map',
-    'const run = (xs: readonly number[]) => xs.reduce((a, x) => a + x, 0);',
-    'flatMap',
+    'reduce without an initial value names the initial value',
+    'const run = (xs: readonly number[]) => xs.reduce((a, x) => a + x);',
+    'pass one, e.g. xs.reduce((sum, x) => sum + x, 0)',
+  ),
+  domainCase(
+    'reduceRight names reduce with an initial value',
+    'const run = (xs: readonly number[]) => xs.reduceRight((a, x) => a + x, 0);',
+    'xs.reduce((sum, x) => sum + x, 0)',
   ),
   domainCase('Date.now names a parameter', 'export const now = Date.now();', 'as a parameter'),
   domainCase('new Date() names a parameter', 'export const now = new Date();', 'as a parameter'),
