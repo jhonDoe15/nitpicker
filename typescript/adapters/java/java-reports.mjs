@@ -4,6 +4,7 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readJavaStructureFindings } from './java-structure.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
@@ -96,6 +97,10 @@ export function readJavaFindings(projectRoot, { crapLimit } = {}) {
       }).findings,
     );
   }
+
+  // BEGIN SH5 structure limits: the shared structure rule on per-method metrics.
+  findings.push(...readJavaStructureFindings(reportRoot, projectRoot));
+  // END SH5 structure limits
 
   // Branches below the coverage minimum: gated on changed lines by the differential comparison.
   for (const sourceRoot of sourceRoots) {
