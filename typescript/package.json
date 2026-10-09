@@ -22,6 +22,7 @@
     "core/**/*.mjs",
     "adapters/**/*.mjs",
     "preset/**",
+    "java/**",
     "!**/*.test.mjs",
     "!**/fixtures/**",
     "!**/README.md"
