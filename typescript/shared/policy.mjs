@@ -159,7 +159,7 @@ export const RULES = [
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: BOTH,
   },
   {
     id: RULE_IDS.publicAlternativeBypass,

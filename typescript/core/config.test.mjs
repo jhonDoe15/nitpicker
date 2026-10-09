@@ -25,7 +25,23 @@ describe('config file', () => {
     );
   });
 
-  it.each(['thresholds', 'exclude', 'layout', 'exceptions', 'legacyInventory'])(
+  it('shares thresholds, exclude and legacyInventory between presets', () => {
+    const shared = {
+      thresholds: { crapLimit: 12 },
+      exclude: ['src/main/java/generated/**'],
+      legacyInventory: 'config/legacy.json',
+    };
+    expect(validateConfig({ preset: 'java', ...shared })).toEqual({ preset: 'java', ...shared });
+    expect(validateConfig({ preset: 'typescript', ...shared })).toBeDefined();
+    expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
+      /positive number/,
+    );
+    expect(() => validateConfig({ preset: 'java', legacyInventory: '../x.json' })).toThrow(
+      /inside the project/,
+    );
+  });
+
+  it.each(['layout', 'exceptions'])(
     'rejects %s with the java preset instead of ignoring it',
     (key) => {
       expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
