@@ -158,6 +158,12 @@ export function strictConfig(parserOptions) {
   return [...strictSyntaxConfig, ...strictTypedConfig(parserOptions)];
 }
 
+/** Rules for every production file that need no scope of their own. */
+export const strictProductionRules = {
+  'nitpicker/no-module-level-let': 'error',
+  'nitpicker/no-uninjectable-delay': 'error',
+};
+
 /** Everything the strict preset adds to the project's own ESLint config, for one layout. */
 export function strictPresetConfig(layout, parserOptions) {
   return [
@@ -167,7 +173,7 @@ export function strictPresetConfig(layout, parserOptions) {
       files: layout.sourceGlobs,
       ...productionScope(layout),
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-module-level-let': 'error' },
+      rules: strictProductionRules,
     },
     ...strictTestConfigFor(layout),
   ];
