@@ -6,9 +6,10 @@ import strictDomainConfig from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
 import compositionRootConfig from '../eslint-config/strict-composition-root.mjs';
+import { testFailureMessageCases } from './test-cases.mjs';
 
-function strictCase([name, banned, allowed]) {
-  return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
+function strictCase([name, banned, allowed, filename = 'src/fixture.ts']) {
+  return { name, config: strictSyntaxConfig, filename, banned, allowed };
 }
 
 const typedStrictConfig = strictConfig({
@@ -108,7 +109,33 @@ export const failureMessageCases = [
       'return early',
     ],
     ['nested ternary names early returns', 'const value = a ? 1 : b ? 2 : 3;', 'early returns'],
+    ...['src/main/shared/x.ts', 'src/x.ts'].flatMap((filename) =>
+      [
+        ['for(;;)', 'for (let i = 0; i < 3; i++) { run(i); }', 'for...of'],
+        ['for...in', 'for (const key in record) { run(key); }', 'for...of'],
+        ['while', 'while (queue.length > 0) { run(queue.pop()); }', 'for...of'],
+        ['do-while', 'do { run(); } while (more());', 'for...of'],
+        ['forEach', 'items.forEach((item) => run(item));', 'for...of'],
+        ['then chain', 'fetchOne().then((value) => use(value));', 'async/await'],
+        ['catch chain', 'fetchOne().catch((error) => use(error));', 'try/catch'],
+        ['finally chain', 'fetchOne().finally(() => done());', 'async/await'],
+        ['loose equality', 'const same = a == b;', "'==='"],
+        ['loose inequality', 'const differs = a != b;', "'!=='"],
+      ].map(([form, banned, allowed]) => [
+        `${filename} ${form} names ${allowed}`,
+        banned,
+        allowed,
+        filename,
+      ]),
+    ),
   ].map(strictCase),
+  {
+    name: 'floating promise in shared code names awaiting it',
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned: 'export async function load() { return 1; }\nexport function run() { load(); }',
+    allowed: 'awaited',
+  },
   {
     name: 'non-exhaustive switch names exhaustive handling',
     config: typedStrictConfig,
@@ -245,4 +272,5 @@ export const failureMessageCases = [
     banned: 'let counter = 0;',
     allowed: "use 'const'",
   },
+  ...testFailureMessageCases,
 ];

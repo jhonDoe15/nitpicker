@@ -19,6 +19,15 @@ import noWaitForWithFakeTimers from './rules/no-wait-for-with-fake-timers.mjs';
 import preserveErrorCause from './rules/preserve-error-cause.mjs';
 import noInternalModuleMocks from './rules/no-internal-module-mocks.mjs';
 import noExternalExecutables from './rules/no-external-executables-in-unit-tests.mjs';
+import noFirstTestChargedSetup from './rules/no-first-test-charged-setup.mjs';
+import noUninjectableDelay from './rules/no-uninjectable-delay.mjs';
+import noGitRepositoryPerTest from './rules/no-git-repository-per-test.mjs';
+import hermeticGitInTests from './rules/hermetic-git-in-tests.mjs';
+import noNodeProcessPerTest from './rules/no-node-process-per-test.mjs';
+import noServerOrWorkerPerTest from './rules/no-server-or-worker-per-test.mjs';
+import noRaisedTestTimeout from './rules/no-raised-test-timeout.mjs';
+import noProcessGlobalsOutsideMainGuard from './rules/no-process-globals-outside-main-guard.mjs';
+import testTsconfigPinsLibAndTypes from './rules/test-tsconfig-pins-lib-and-types.mjs';
 
 export default {
   meta: {
@@ -48,5 +57,14 @@ export default {
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,
     'test-must-use-production-runtime': testMustUseProductionRuntime,
+    'no-first-test-charged-setup': noFirstTestChargedSetup,
+    'no-uninjectable-delay': noUninjectableDelay,
+    'no-git-repository-per-test': noGitRepositoryPerTest,
+    'hermetic-git-in-tests': hermeticGitInTests,
+    'no-node-process-per-test': noNodeProcessPerTest,
+    'no-server-or-worker-per-test': noServerOrWorkerPerTest,
+    'no-raised-test-timeout': noRaisedTestTimeout,
+    'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
+    'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
   },
 };

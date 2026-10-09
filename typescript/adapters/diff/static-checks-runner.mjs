@@ -23,6 +23,7 @@ import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { formattingHunks } from './format-hunks.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -74,66 +75,68 @@ async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
-  const layout = readLayout();
   if (
     !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
   )
     return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'prettier/bin/prettier.cjs',
-      arguments_: [
-        '--config',
-        installedPolicy.configPath,
-        '--ignore-path',
-        installedPolicy.ignorePath,
-        '--list-different',
-        '--no-error-on-unmatched-pattern',
-        ...options.patterns,
-        ...layout.exclude.map((glob) => `!${glob}`),
-      ],
-      acceptedStatuses: [0, 1],
-    });
-    const unformattedFiles = result.stdout
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0);
-    if (result.status === 1 && unformattedFiles.length === 0) {
-      throw new Error(`Prettier reported formatting differences without file paths`);
-    }
-    const prettier = await import(
-      pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
-    );
-    let prettierOptions;
-    try {
-      prettierOptions = JSON.parse(readFileSync(installedPolicy.configPath, 'utf8'));
-    } catch (error) {
-      throw new Error('Prettier policy is not valid JSON', { cause: error });
-    }
-    return Promise.all(
-      unformattedFiles.map(async (filePath) => {
-        const relativePath = projectFile(options.projectRoot, filePath);
-        const absolutePath = path.join(options.projectRoot, relativePath);
-        const source = readFileSync(absolutePath, 'utf8');
-        const formatted = await prettier.format(source, {
-          ...prettierOptions,
-          filepath: absolutePath,
-        });
-        return {
-          tool: options.analyzerName,
-          rule: 'prettier/prettier',
-          path: relativePath,
-          identity: `format-diff:${hash(formattingDifference(source, formatted))}`,
-          message: 'Format this file with Prettier',
-          classification: 'enforceable',
-        };
-      }),
-    );
+    const unformattedFiles = listUnformattedFiles(options, installedPolicy);
+    return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
   } finally {
     installedPolicy.remove();
   }
+}
+
+function listUnformattedFiles(options, installedPolicy) {
+  const result = runNodeTool({
+    options,
+    relativeToolPath: 'prettier/bin/prettier.cjs',
+    arguments_: [
+      '--config',
+      installedPolicy.configPath,
+      '--ignore-path',
+      installedPolicy.ignorePath,
+      '--list-different',
+      '--no-error-on-unmatched-pattern',
+      ...options.patterns,
+      ...readLayout().exclude.map((glob) => `!${glob}`),
+    ],
+    acceptedStatuses: [0, 1],
+  });
+  const unformattedFiles = result.stdout
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (result.status === 1 && unformattedFiles.length === 0) {
+    throw new Error(`Prettier reported formatting differences without file paths`);
+  }
+  return unformattedFiles;
+}
+
+async function formattingFindingsOf(options, unformattedFiles, configPath) {
+  const prettier = await import(
+    pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
+  );
+  let prettierOptions;
+  try {
+    prettierOptions = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch (error) {
+    throw new Error('Prettier policy is not valid JSON', { cause: error });
+  }
+  const perFile = await Promise.all(
+    unformattedFiles.map(async (filePath) => {
+      const relativePath = projectFile(options.projectRoot, filePath);
+      const absolutePath = path.join(options.projectRoot, relativePath);
+      const source = readFileSync(absolutePath, 'utf8');
+      const formatted = await prettier.format(source, {
+        ...prettierOptions,
+        filepath: absolutePath,
+      });
+      return formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
+    }),
+  );
+  return perFile.flat();
 }
 
 function runTypecheck(options) {
@@ -716,22 +719,22 @@ function formatDiagnostic(diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
 
-function formattingDifference(source, formatted) {
-  let start = 0;
-  while (start < source.length && start < formatted.length && source[start] === formatted[start]) {
-    start += 1;
-  }
-  let sourceEnd = source.length;
-  let formattedEnd = formatted.length;
-  while (
-    sourceEnd > start &&
-    formattedEnd > start &&
-    source[sourceEnd - 1] === formatted[formattedEnd - 1]
-  ) {
-    sourceEnd -= 1;
-    formattedEnd -= 1;
-  }
-  return `${source.slice(start, sourceEnd)}\0${formatted.slice(start, formattedEnd)}`;
+function formattingFindings({ tool, relativePath, source }, formatted) {
+  const seen = new Map();
+  return formattingHunks(source, formatted).map((hunk) => {
+    const digest = hash(`${hunk.original}\0${hunk.formatted}`);
+    const occurrence = seen.get(digest) ?? 0;
+    seen.set(digest, occurrence + 1);
+    return {
+      tool,
+      rule: 'prettier/prettier',
+      path: relativePath,
+      identity: `format-diff:${digest}${occurrence === 0 ? '' : `#${String(occurrence)}`}`,
+      message: 'Format these lines with Prettier',
+      classification: 'enforceable',
+      location: { line: hunk.line, endLine: hunk.line + Math.max(hunk.count, 1) - 1 },
+    };
+  });
 }
 
 function hash(value) {

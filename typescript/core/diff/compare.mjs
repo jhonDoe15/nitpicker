@@ -76,7 +76,10 @@ function isInTouchedCode(finding, touchedCode) {
     return true;
   }
   const line = finding.location?.line;
-  return line !== undefined && changed.ranges.some(([start, end]) => start <= line && line <= end);
+  const endLine = finding.location?.endLine ?? line;
+  return (
+    line !== undefined && changed.ranges.some(([start, end]) => start <= endLine && line <= end)
+  );
 }
 
 function indexFindings(findings, renames, snapshot) {

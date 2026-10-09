@@ -61,13 +61,15 @@ console output.
 
 ## Exit codes
 
-| Code | Meaning                                                                          |
-| ---- | -------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                      |
-| 1    | Completed with at least one new enforceable finding (`--all`: any violation).    |
-| 2    | A tool error, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings.                                                                      |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. With `--defer-exit`, a comparison always exits 0 once it has
+A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+tool errors are still listed in the console and reports and recorded in `summary.json`
+(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
 ## Command line
@@ -176,7 +178,7 @@ SpotBugs, google-java-format and JaCoCo run on the merge base and on head (throu
 `java/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
-failure is reported as a `java/gradle-failure` tool error (exit 2), never thrown.
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
 Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared by both
@@ -202,23 +204,29 @@ new and touched code must comply.
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
-  `@ts-expect-error` or `@ts-nocheck`.
+  `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
+  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
+  bans.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
   composition root; no module-level `let`.
 - **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
-  `forEach` or `reduce` (use `map`, `filter`, `flatMap`, `Object.fromEntries`, `Object.groupBy`), no
+  `forEach`, `reduceRight` or `reduce` without an initial value (use `map`, `filter`, `flatMap`,
+  `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
   classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
   Node I/O, network or database clients, loggers or module state.
-- **`features/<name>/adapters/`** does the I/O: `for...of` is the only loop, `async`/`await` with no
-  `.then()` chains and no floating promises, throw only `Error` subclasses that keep `cause`, no
+- **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
   silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
   an expectation of the preset, not a dependency of nitpicker: install it in your project.
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
   edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
   the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
   Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
+  Prettier works the same way: it reports one finding per unformatted region, located at the
+  region's first line, so a legacy unformatted file stays baselined until a change edits a line
+  inside such a region. An unformatted new file or newly unformatted lines fail the run.
 - **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
   `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
@@ -233,6 +241,25 @@ Strict replaced the earlier ESLint rules in a single release. nitpicker analyzes
 with the head's policy, so the existing violations appear on both sides and stay baselined; the
 policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
 by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
+
+### Your TypeScript and Vitest configs
+
+nitpicker builds on the project's own configs, so type checking and tests see the project as its
+own tools do:
+
+- **Type checking** extends the project's `tsconfig.json` when there is one. The project keeps its
+  `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
+  (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables` and the
+  rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
+  test roots.
+- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
+  first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
+  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
+  coverage thresholds never decide nitpicker's findings.
+
+Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
 
 ## Adopting nitpicker on existing code
 

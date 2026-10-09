@@ -17,6 +17,7 @@ import {
   normalizeArchitectureViolations,
 } from '../../adapters/diff/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
+import { withDefaultAnalyzerParallelism } from './fixtures/analyzer-parallelism.mjs';
 import { runQualityDiff } from './run-diff.mjs';
 
 const toolRoot = path.resolve(import.meta.dirname, '../..');
@@ -30,37 +31,58 @@ afterEach(() => {
 });
 
 describe('static differential adapters', () => {
-  it(
-    'reports new formatting, type, and architecture findings',
-    {
-      timeout: 120_000,
-    },
-    () => {
-      const repository = createRepository({
-        ...policyFiles(),
-        'src/main/server.ts': 'export const server = true;\n',
-        'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
-        'src/main/ignored/ignored.ts': 'export const ignored=true\n',
-        'tests/placeholder.ts': 'export const placeholder = true;\n',
-      });
-      writeFiles(repository.root, {
-        'src/main/auth/logic.ts': [
-          "import { server } from '../server.js'",
-          "export const valid:number = 'broken'",
-          'void server',
-          '',
-        ].join('\n'),
-      });
-      commit(repository.root, 'introduce static findings');
+  // One difference run (prettier, tsc and dependency-cruiser on the merge base and on the head)
+  // answers both tests below: `logic.ts` gains a formatting, a type and an architecture finding,
+  // and `drift.ts` is unformatted on both sides and gains another unformatted line.
+  let difference;
+  function runStaticDifference() {
+    if (difference !== undefined) {
+      return difference;
+    }
+    const repository = createRepository({
+      ...policyFiles(),
+      'src/main/server.ts': 'export const server = true;\n',
+      'src/main/auth/logic.ts': 'export const valid: number = 1;\n',
+      'src/main/auth/drift.ts': 'export const first={value:1}\n',
+      'src/main/ignored/ignored.ts': 'export const ignored=true\n',
+      'tests/placeholder.ts': 'export const placeholder = true;\n',
+    });
+    writeFiles(repository.root, {
+      'src/main/auth/logic.ts': [
+        "import { server } from '../server.js'",
+        "export const valid:number = 'broken'",
+        'void server',
+        '',
+      ].join('\n'),
+      'src/main/auth/drift.ts': [
+        'export const first={value:1}',
+        'export const second={value:2}',
+        '',
+      ].join('\n'),
+    });
+    commit(repository.root, 'introduce static findings');
 
-      const report = runQualityDiff({
+    difference = withDefaultAnalyzerParallelism(() =>
+      runQualityDiff({
         repositoryRoot: repository.root,
         projectRelativePath: '.',
         headProjectRoot: toolRoot,
         requestedBaseRef: repository.baseRef,
         outputRoot: path.join(repository.root, 'reports/quality/diff'),
         analyzers: fixtureAnalyzers(),
-      });
+      }),
+    );
+    return difference;
+  }
+  const atPath = (findings, filePath) => findings.filter((finding) => finding.path === filePath);
+
+  it(
+    'reports new formatting, type, and architecture findings',
+    {
+      timeout: 120_000,
+    },
+    () => {
+      const report = runStaticDifference();
 
       expect(report.toolErrors).toEqual([]);
       expect(report.summary.overallStatus).toBe('completed');
@@ -95,21 +117,32 @@ describe('static differential adapters', () => {
       timeout: 120_000,
     },
     () => {
+      const report = runStaticDifference();
+      const driftPath = 'src/main/auth/drift.ts';
+
+      expect(report.toolErrors).toEqual([]);
+      expect(atPath(report.newFindings, driftPath)).toEqual([
+        expect.objectContaining({ tool: 'prettier-format', path: driftPath }),
+      ]);
+      expect(atPath(report.resolvedFindings, driftPath)).toHaveLength(1);
+      expect(atPath(report.unchangedFindings, driftPath)).toEqual([]);
+    },
+  );
+
+  describe('prettier findings by touched lines', () => {
+    const legacy = ['export const a={value:1}', ...filler(20), 'export const z = 1;', ''].join(
+      '\n',
+    );
+
+    function prettierDiff(initialFiles, changedFiles) {
       const repository = createRepository({
         ...policyFiles(),
-        'src/main/auth/logic.ts': 'export const first={value:1}\n',
         'tests/placeholder.ts': 'export const placeholder = true;\n',
+        ...initialFiles,
       });
-      writeFiles(repository.root, {
-        'src/main/auth/logic.ts': [
-          'export const first={value:1}',
-          'export const second={value:2}',
-          '',
-        ].join('\n'),
-      });
-      commit(repository.root, 'add formatting drift');
-
-      const report = runQualityDiff({
+      writeFiles(repository.root, changedFiles);
+      commit(repository.root, 'change');
+      return runQualityDiff({
         repositoryRoot: repository.root,
         projectRelativePath: '.',
         headProjectRoot: toolRoot,
@@ -125,18 +158,78 @@ describe('static differential adapters', () => {
           }),
         ],
       });
+    }
+
+    it('keeps a legacy unformatted region baselined when the edit is far away', () => {
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': legacy },
+        { 'src/main/legacy.ts': legacy.replace('export const z = 1;', 'export const z = 2;') },
+      );
 
       expect(report.toolErrors).toEqual([]);
-      expect(report.newFindings).toEqual([
-        expect.objectContaining({
-          tool: 'prettier-format',
-          path: 'src/main/auth/logic.ts',
-        }),
+      expect(report.newFindings).toEqual([]);
+      expect(report.unchangedFindings).toEqual([
+        expect.objectContaining({ rule: 'prettier/prettier', location: { line: 1, endLine: 1 } }),
       ]);
-      expect(report.resolvedFindings).toHaveLength(1);
+    });
+
+    it('fails when the edit lands inside the unformatted region', () => {
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': legacy },
+        { 'src/main/legacy.ts': legacy.replace('value:1', 'value:2') },
+      );
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/legacy.ts', location: { line: 1, endLine: 1 } }),
+      ]);
+    });
+
+    it('keeps the finding identity stable when lines shift above the region', () => {
+      const base = ['export const top = 1;', legacy].join('\n');
+      const report = prettierDiff(
+        { 'src/main/legacy.ts': base },
+        {
+          'src/main/legacy.ts': ['export const top = 1;', 'export const more = 1;', legacy].join(
+            '\n',
+          ),
+        },
+      );
+
+      expect(report.newFindings).toEqual([]);
+      expect(report.resolvedFindings).toEqual([]);
+      expect(report.unchangedFindings).toHaveLength(1);
+    });
+
+    it('fails a new unformatted file', () => {
+      const report = prettierDiff({}, { 'src/main/fresh.ts': 'export const fresh={a:1}\n' });
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/fresh.ts', rule: 'prettier/prettier' }),
+      ]);
+    });
+
+    it('fails a newly unformatted line in a formatted file', () => {
+      const formatted = 'export const a = 1;\n';
+      const report = prettierDiff(
+        { 'src/main/ok.ts': formatted },
+        { 'src/main/ok.ts': `${formatted}export const b={v:1}\n` },
+      );
+
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/ok.ts', location: { line: 2, endLine: 2 } }),
+      ]);
+    });
+
+    it('keeps a formatted file clean', () => {
+      const report = prettierDiff(
+        { 'src/main/ok.ts': 'export const a = 1;\n' },
+        { 'src/main/ok.ts': 'export const a = 2;\n' },
+      );
+
+      expect(report.newFindings).toEqual([]);
       expect(report.unchangedFindings).toEqual([]);
-    },
-  );
+    });
+  });
 
   it('ignores generated quality-diff files during formatting checks', () => {
     const projectRoot = generatedSnapshot();
@@ -251,12 +344,24 @@ describe('static differential adapters', () => {
         ].join('\n'),
         'tsconfig.quality.json': `${typeScriptConfig}\n`,
       });
-      execFileSync(
-        process.platform === 'win32' ? 'npm.cmd' : 'npm',
-        ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-        { cwd: projectRoot, encoding: 'utf8' },
-      );
-      const packageLock = readFileSync(path.join(projectRoot, 'package-lock.json'), 'utf8');
+      // What `npm install --package-lock-only` writes for this package.json (checked in as a literal:
+      // the fixture's setup, not the code under test, so it does not need its own npm process).
+      const packageLock = `${JSON.stringify({
+        name: packageJson.name,
+        version: packageJson.version,
+        lockfileVersion: 3,
+        requires: true,
+        packages: {
+          '': {
+            name: packageJson.name,
+            version: packageJson.version,
+            dependencies: packageJson.dependencies,
+          },
+          'node_modules/fixture-types': { resolved: 'vendor/fixture-types', link: true },
+          'vendor/fixture-types': { version: '1.0.0' },
+        },
+      })}\n`;
+      writeFiles(projectRoot, { 'package-lock.json': packageLock });
       const liveProjectRoot = temporaryDirectory('live-project-dependencies-');
       const livePackageJson = { ...packageJson, version: '2.0.0' };
       writeFiles(policyRoot, {
@@ -402,6 +507,13 @@ function policyFiles() {
       '',
     ].join('\n'),
   };
+}
+
+function filler(count) {
+  return Array.from(
+    { length: count },
+    (_, index) => `export const f${String(index)} = ${String(index)};`,
+  );
 }
 
 function architectureReport(cycle, from = 'src/main/a.ts') {
