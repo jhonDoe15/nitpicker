@@ -262,6 +262,11 @@ implemented there: `readChangedLines` in `core/diff/git.mjs`, applied by `compar
 - Scope is rule-level, not tool-wide: only rules marked `strict` in the preset promote, so
   descriptive metrics (CRAP, duplication) keep their delta logic.
 
+Prettier findings use the same promotion: the formatter reports one finding per differing region
+(identity from the region's own text, `location.line` to `location.endLine` in the head file), and
+`isStrictRule` includes `prettier/prettier`, so a legacy unformatted region stays baselined until an
+edit overlaps it.
+
 Rejected alternatives: whole-file promotion (a one-line edit in a large legacy file would force a
 large cleanup and discourage small fixes); function-level promotion using symbols (more precise but
 requires every analyzer to report symbol ranges, which they do not today). Function-level can replace
