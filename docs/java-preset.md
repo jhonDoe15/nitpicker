@@ -1,6 +1,6 @@
 # Java preset
 
-Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4), 5 (ticket J5), 6 (ticket J6) and 7 (ticket J7) implemented; later slices are planned below. The scope is a proposal
+Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4), 5 (ticket J5), 6 (ticket J6), 7 (ticket J7) and 8 (ticket J8) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
 The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
@@ -55,8 +55,8 @@ mapping, tests, and this document.
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | done    |
 | 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | done    |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | done    |
-| 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | this PR |
-| 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | later   |
+| 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | done    |
+| 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | this PR |
 
 PMD and SpotBugs appear before the other tools because both emit SARIF 2.1.0 and need no new
 ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Python for lizard, Node
@@ -282,9 +282,41 @@ identity when the value changes: editing such a line counts as a resolved plus a
 Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
 resolved plus a new finding, as in the TypeScript check.
 
+## Slice 8: gate on changed coverage
+
+- **Tool and report.** No new tool: the JaCoCo XML of slice 1 already has, per source line, the
+  covered and missed branch outcomes (`<line nr mb cb>`). The init script is unchanged.
+- **Findings.** `ingestJacocoBranches` (`adapters/ingest/jacoco-branches.mjs`) emits one enforceable
+  `jacoco` / `changed-branch-coverage` finding per source line whose covered branch outcomes are
+  below 95% (the TypeScript check's minimum); lines without branches are never reported. It runs on
+  both snapshots, so a branch that is uncovered on the base is baselined like any other finding.
+- **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
+  maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
+  the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
+  this rule when the finding comes from `jacoco` (`adapters/java/touched-rules.mjs`), so an
+  uncovered branch whose head line lies in a changed range, or in an added file, is new even if
+  the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
+  `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
+  rule name is unaffected (its identity keys on branch source; the predicate is tool-scoped).
+- **Identity.** A hash of the line's source text (trimmed, whitespace collapsed), `branch-source:<16 hex>`,
+  with `#2`, `#3` for identical lines in one file, in order. No line number: inserting code above
+  keeps the finding baselined (the lines around it are not in a changed range), and a renamed file
+  follows the rename map because the path is not part of the hash. Editing the line changes both
+  the identity and the changed range, so it is new.
+- **Granularity and limits.** JaCoCo reports branch outcomes per line, so a line with several
+  branches (`a && b || c`) is judged on all of its outcomes together; a method-level view is not
+  used. A line that is only reformatted counts as changed. Lines whose source text is empty after
+  trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
+  that is added or removed changes which branches are covered on head.
+- **Tests.** `adapters/ingest/jacoco-branches.test.mjs` (sample report, identity stability,
+  baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
+  for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
+  uncovered branch fails while the old one stays baselined).
+
 ## Slice 1: what is deliberately not included
 
-- Changed-line coverage: slice 8 (ArchUnit, CRAP via lizard, jscpd and PIT are slices 4 to 7).
+- Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP via lizard, jscpd, PIT and the changed-line
+  branch-coverage gate are described in their own sections.
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
