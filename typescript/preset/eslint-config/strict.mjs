@@ -25,6 +25,7 @@ import {
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
+import { strictTestConfigFor } from './strict-tests.mjs';
 
 // ESLint flat config replaces, not merges, a rule's options when several config objects match the
 // same file. So every scope carries the full list for the files it covers: the selectors that apply
@@ -148,5 +149,6 @@ export function strictPresetConfig(layout, parserOptions) {
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-module-level-let': 'error' },
     },
+    ...strictTestConfigFor(layout),
   ];
 }

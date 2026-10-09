@@ -27,13 +27,14 @@ const QUICK_ANALYZERS = [
   'dead-code',
 ];
 const FULL_GATE = process.env.NITPICKER_EVAL_FULL_GATE === '1';
-export const analyzerArgumentsWithout = (skipped = []) =>
+// `only` narrows the quick subset further, to the analyzers a cheat's finding comes from; a
+// full-gate run ignores it like it ignores the quick subset.
+export const analyzerArgumentsWithout = (skipped = [], only = undefined) =>
   FULL_GATE
     ? []
-    : QUICK_ANALYZERS.filter((name) => !skipped.includes(name)).flatMap((name) => [
-        '--analyzer',
-        name,
-      ]);
+    : QUICK_ANALYZERS.filter(
+        (name) => !skipped.includes(name) && (only === undefined || only.includes(name)),
+      ).flatMap((name) => ['--analyzer', name]);
 export const CASE_TIMEOUT_MS = 600_000;
 
 // The fixture installed as a consumer would have it, except that the dependencies are the ones
@@ -51,12 +52,12 @@ export function linkedWorkdir() {
   };
 }
 
-const gateCommand = (withoutAnalyzers) => [
+const gateCommand = (withoutAnalyzers, onlyAnalyzers) => [
   'node',
   path.join(packageRoot, 'core', 'cli.mjs'),
   '--base',
   'main',
-  ...analyzerArgumentsWithout(withoutAnalyzers),
+  ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers),
 ];
 
 /**
@@ -108,8 +109,9 @@ export function referenceTrees(caseId, { overlay } = {}) {
  * Like `runReference`, but the agent only copies the reference solution and the cheat in and never
  * calls the gate, so the real gate runs once (the runner's final run) instead of twice. The record
  * is the same except for the agent's own gate iterations and report, which `runReference` covers.
+ * `analyzers` limits the gate to those quick analyzers (see `flaggedBy` in case-table.mjs).
  */
-export function runApplied(caseId, { overlay, withoutAnalyzers } = {}) {
+export function runApplied(caseId, { overlay, withoutAnalyzers, analyzers } = {}) {
   const caseDefinition = loadCase(path.join(casesDirectory, caseId));
   const copies = overlayDirectories(caseDefinition, overlay)
     .map((directory) => `cp -R ${JSON.stringify(`${directory}/.`)} .`)
@@ -118,7 +120,7 @@ export function runApplied(caseId, { overlay, withoutAnalyzers } = {}) {
     caseDefinition,
     agentCommand: `cat > /dev/null && ${copies}`,
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers),
+    gateCommand: gateCommand(withoutAnalyzers, analyzers),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',

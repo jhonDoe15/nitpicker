@@ -1,13 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,6 +8,32 @@ import { runQualityDiff } from './run-diff.mjs';
 
 const toolRoot = path.resolve(import.meta.dirname, '../..');
 const fakeEslintCliPath = path.join(import.meta.dirname, 'fixtures/fake-eslint-cli.mjs');
+const replayEslintCliPath = path.join(import.meta.dirname, 'fixtures/replay-eslint-cli.mjs');
+const recordedEslintReportsPath = path.join(
+  import.meta.dirname,
+  'fixtures/eslint-recorded-reports.json',
+);
+// What `npm install --package-lock-only` writes for the fixture package.json used by the
+// changed-manifest test, inlined so the test does not start npm.
+const fixtureDependencyLockfile = `${JSON.stringify(
+  {
+    name: 'fixture',
+    version: '1.0.0',
+    lockfileVersion: 3,
+    requires: true,
+    packages: {
+      '': {
+        name: 'fixture',
+        version: '1.0.0',
+        dependencies: { 'fixture-dependency': 'file:vendor/fixture-dependency' },
+      },
+      'node_modules/fixture-dependency': { resolved: 'vendor/fixture-dependency', link: true },
+      'vendor/fixture-dependency': { version: '1.0.0' },
+    },
+  },
+  null,
+  2,
+)}\n`;
 const eslintRunnerPath = path.join(toolRoot, 'adapters/diff/eslint-runner.mjs');
 const temporaryRepositories = [];
 
@@ -87,7 +105,7 @@ describe('ESLint differential adapters', () => {
     renameFile(repository.root, 'src/main/old-name.ts', 'src/main/new-name.ts');
     commit(repository.root, 'change ESLint findings');
 
-    const report = compareRepository(repository, [fixtureAnalyzer('eslint-lint')]);
+    const report = compareRepository(repository, [recordedEslintAnalyzer('eslint-lint')]);
 
     expect(report.toolErrors).toEqual([]);
     expect(report.summary.overallStatus).toBe('completed');
@@ -136,10 +154,10 @@ describe('ESLint differential adapters', () => {
     commit(repository.root, 'add policy findings');
 
     const report = compareRepository(repository, [
-      fixtureAnalyzer('eslint-lint'),
-      fixtureAnalyzer('eslint-errors', 'preset/eslint-config/errors.mjs'),
-      fixtureAnalyzer('eslint-logging', 'preset/eslint-config/logging.mjs'),
-      fixtureAnalyzer('eslint-module-effects', 'preset/eslint-config/module-effects.mjs'),
+      recordedEslintAnalyzer('eslint-lint'),
+      recordedEslintAnalyzer('eslint-errors', 'preset/eslint-config/errors.mjs'),
+      recordedEslintAnalyzer('eslint-logging', 'preset/eslint-config/logging.mjs'),
+      recordedEslintAnalyzer('eslint-module-effects', 'preset/eslint-config/module-effects.mjs'),
     ]);
 
     expect(report.toolErrors).toEqual([]);
@@ -183,7 +201,7 @@ describe('ESLint differential adapters', () => {
     });
     commit(repository.root, 'move and add a repeated finding');
 
-    const report = compareRepository(repository, [fixtureAnalyzer('eslint-lint')]);
+    const report = compareRepository(repository, [recordedEslintAnalyzer('eslint-lint')]);
 
     expect(report.toolErrors).toEqual([]);
     expect(report.unchangedFindings).toHaveLength(2);
@@ -219,6 +237,8 @@ describe('ESLint differential adapters', () => {
     });
     commit(repository.root, 'format existing finding');
 
+    // One compare-policy test keeps running the real ESLint CLI, as the end-to-end check that
+    // the recorded reports stand for what ESLint does.
     const report = compareRepository(repository, [fixtureAnalyzer('eslint-lint')]);
 
     expect(report.toolErrors).toEqual([]);
@@ -241,7 +261,7 @@ describe('ESLint differential adapters', () => {
     writeFiles(repository.root, { 'head.txt': 'head\n' });
     commit(repository.root, 'create head');
 
-    const report = compareRepository(repository, [fixtureAnalyzer('eslint-lint')]);
+    const report = compareRepository(repository, [recordedEslintAnalyzer('eslint-lint')]);
 
     expect(report.toolErrors).toEqual([]);
     expect(report.unchangedFindings).toEqual([
@@ -297,21 +317,10 @@ describe('ESLint differential adapters', () => {
       dependencies: { 'fixture-dependency': 'file:vendor/fixture-dependency' },
       scripts: { check: 'old' },
     };
-    const packageRoot = mkdtempSync(path.join(tmpdir(), 'eslint-package-fixture-'));
-    temporaryRepositories.push(packageRoot);
-    writeFiles(packageRoot, {
-      'package.json': `${JSON.stringify(packageJson)}\n`,
-      'vendor/fixture-dependency/package.json': '{"name":"fixture-dependency","version":"1.0.0"}\n',
-    });
-    execFileSync(
-      process.platform === 'win32' ? 'npm.cmd' : 'npm',
-      ['install', '--package-lock-only', '--ignore-scripts', '--no-audit', '--no-fund'],
-      { cwd: packageRoot, encoding: 'utf8' },
-    );
     const repository = createRepository({
       ...policyFiles(),
       'package.json': `${JSON.stringify(packageJson)}\n`,
-      'package-lock.json': readFileSync(path.join(packageRoot, 'package-lock.json'), 'utf8'),
+      'package-lock.json': fixtureDependencyLockfile,
       'vendor/fixture-dependency/package.json': '{"name":"fixture-dependency","version":"1.0.0"}\n',
       'src/main/source.ts': 'export const source = true;\n',
     });
@@ -448,6 +457,17 @@ function fixtureAnalyzer(name, configRelativePath = 'eslint.config.mjs', overrid
   });
 }
 
+// Compare-policy tests replay ESLint reports recorded from real ESLint runs (see
+// fixtures/eslint-recorded-reports.json) instead of starting ESLint; the replay only matches the
+// exact snapshot each report was recorded from.
+function recordedEslintAnalyzer(name, configRelativePath = 'eslint.config.mjs', overrides = {}) {
+  return fixtureAnalyzer(name, configRelativePath, {
+    eslintCliPath: replayEslintCliPath,
+    environment: { NITPICKER_DIFF_REPLAY_RECORDINGS: recordedEslintReportsPath },
+    ...overrides,
+  });
+}
+
 function dependencyAnalyzer() {
   return {
     name: 'dependency-analyzer',
@@ -490,6 +510,10 @@ function policyFiles({ lintRule = 'no-debugger', withTypedProject = false } = {}
         module: 'ESNext',
         moduleResolution: 'Bundler',
         strict: true,
+        // The policy rules are syntactic; without lib files the typed program is created
+        // without parsing the default library, which halves the typed ESLint run.
+        noLib: true,
+        types: [],
       },
       include: ['src/main/**/*.ts'],
     })}\n`;
