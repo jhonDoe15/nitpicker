@@ -1,4 +1,10 @@
 import {
+  MESSAGES,
+  MINIMUM_BRANCH_COVERAGE,
+  RULE_IDS,
+  renderMessage,
+} from '../../shared/policy.mjs';
+import {
   childrenNamed,
   createIdentityCounter,
   hashIdentity,
@@ -22,8 +28,7 @@ import {
 // `options.sourceRoot` is prepended to JaCoCo's package-relative paths; `options.sourceText(path)`
 // returns the project-relative file's text (files it cannot read are skipped).
 
-export const CHANGED_BRANCH_COVERAGE_RULE = 'changed-branch-coverage';
-export const MINIMUM_BRANCH_COVERAGE = 95;
+export const CHANGED_BRANCH_COVERAGE_RULE = RULE_IDS.changedBranchCoverage;
 
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
@@ -69,7 +74,10 @@ function fileFindings(sourcefile, filePath, sourceLines, { tool, minimum }) {
       rule: CHANGED_BRANCH_COVERAGE_RULE,
       path: filePath,
       identity: unique(hashIdentity('branch-source', [source])),
-      message: `Branch coverage is ${percent.toFixed(2)}%; minimum is ${String(minimum)}%`,
+      message: renderMessage(MESSAGES.changedBranchCoverage, {
+        percent: percent.toFixed(2),
+        minimum,
+      }),
       classification: 'enforceable',
       location: { line: lineNumber },
     });

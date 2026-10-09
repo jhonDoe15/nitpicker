@@ -20,6 +20,7 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
   'adapters/java/touched-rules.mjs',
+  'shared/policy.mjs',
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
   'adapters/ingest/archunit.mjs',

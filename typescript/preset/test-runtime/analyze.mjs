@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import ts from 'typescript';
+import { RULE_IDS } from '../../shared/policy.mjs';
 import {
   isExcludedPath,
   isTypeOnlyDependency,
@@ -207,9 +208,9 @@ export function analyzeTestRuntime(
     } else if (bridgeModules.length > 0) {
       category = 'subprocess-production-runtime';
     } else if (typeOnlyProductionModules.length > 0) {
-      category = 'type-only-production-dependency';
+      category = RULE_IDS.typeOnlyProductionDependency;
     } else {
-      category = 'no-production-runtime';
+      category = RULE_IDS.noProductionRuntime;
     }
 
     return {
@@ -232,7 +233,7 @@ export function analyzeTestRuntime(
       ]),
   );
   const findings = results.filter((result) =>
-    ['no-production-runtime', 'type-only-production-dependency'].includes(result.category),
+    [RULE_IDS.noProductionRuntime, RULE_IDS.typeOnlyProductionDependency].includes(result.category),
   );
 
   return {
