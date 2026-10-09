@@ -160,10 +160,11 @@ export function runAggregateCli({
         diagnosticsPath: relativeTextReportPath(currentProjectRoot, outputRoot),
       }),
     );
-    if (report.summary.overallStatus !== 'completed') {
-      return 2;
+    // New violations win over tool errors so CI can tell "violations" from "broken".
+    if (report.summary.newEnforceableFindings > 0) {
+      return 1;
     }
-    return report.summary.newEnforceableFindings > 0 ? 1 : 0;
+    return report.summary.overallStatus === 'completed' ? 0 : 2;
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
