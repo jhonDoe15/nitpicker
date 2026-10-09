@@ -87,7 +87,7 @@ rule and it fails the gate; "not enforced" means the check does not exist for th
 | `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     |
 | `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     |
 | `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     |
-| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | not enforced |
+| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     |
 | `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
 | `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
 | `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     |

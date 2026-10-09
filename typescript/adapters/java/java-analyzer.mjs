@@ -15,6 +15,7 @@ const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 const CONFIGURATION_FILES = [
   'java/nitpicker.init.gradle',
   'adapters/java/java-analyzer.mjs',
+  'adapters/java/java-coupling.mjs',
   'adapters/java/java-diff.mjs',
   'adapters/java/java-duplicates.mjs',
   'adapters/java/java-policy.mjs',
@@ -23,12 +24,12 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-structure.mjs', // SH5
   'java/StructureMetrics.java', // SH5
   'shared/rules/structure.mjs', // SH5
-  'shared/rules/finding-helpers.mjs', // SH5
   'adapters/java/touched-rules.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
   'shared/policy.mjs',
   'shared/rules/baseline-expansion.mjs',
+  'shared/rules/coupling.mjs',
   'shared/rules/finding-helpers.mjs',
   'adapters/ingest/checkstyle.mjs',
   'adapters/ingest/common.mjs',
@@ -80,6 +81,7 @@ export function createJavaAnalyzer() {
       'duplicates',
       'pit',
       'structure',
+      'coupling',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {

@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -362,6 +362,41 @@ resolved plus a new finding, as in the TypeScript check.
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
+## Coupling and stability (ticket SH6)
+
+- **What runs.** The init script's `nitpickerJdeps` task (a dependency of `nitpickerJava`) runs the
+  JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
+  `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
+  jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
+  block is delimited by `// --- coupling (SH6)` comments in the init script.
+- **Conversion.** `adapters/java/java-coupling.mjs` parses the class graph, folds nested classes
+  into their top-level class, keeps only edges between two main classes, computes the metrics and
+  hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
+  the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
+  `stability-direction-metric` metrics, and the enforceable `stability-direction` finding
+  (`<package> depends on less stable package <package>`), under the tool name `coupling`. The
+  policy (`shared/policy.mjs`) marks `stability-direction` as enforced for Java.
+- **Same semantics as TypeScript, at Java granularity.** The TypeScript preset's module is a source
+  file and its package the top-level directory under the source root; here a module is a source
+  file (a top-level class with its nested classes) and a package a Java package. Fan-in and fan-out
+  count distinct files, a package's fan-in and fan-out count distinct files outside the package,
+  instability is `fanOut / (fanIn + fanOut)`, and a package pair whose source is more stable than
+  its target is reported once.
+- **Differences.** (1) Java packages are flat: `a.b` and `a.b.c` are different packages, so a
+  `stability-direction` finding can appear between a package and its sub-package; TypeScript groups
+  by the top-level directory. The default package is `(root)`. (2) jdeps cannot tell type-only from
+  runtime references, so the `runtime*` module metrics and the `runtimeDependencies` and
+  `typeOnlyDependencies` summaries are not reported. (3) A second top-level class in a file named
+  after another class is attributed to `<package>/<Class>.java`, which may not exist; only the
+  metric path is affected. (4) Reflection and other references that are not in the bytecode are
+  invisible to jdeps. (5) Test classes and library classes are not part of the graph.
+- **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
+  `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
+  only a new package edge, or a new instability inversion, fails.
+- **Tests.** `adapters/java/java-coupling.test.mjs` (parsing, metrics, stability edges, the
+  neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
+  (a package depending on a less stable package fails; the same violation on the base stays
+  baselined).
 
 ## Slice 1: what is deliberately not included
 
