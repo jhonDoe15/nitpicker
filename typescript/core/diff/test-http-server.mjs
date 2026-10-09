@@ -13,7 +13,7 @@ const server = http.createServer((request, response) => {
     const url = request.url;
     if (url === '/__control') {
       const control = JSON.parse(Buffer.concat(chunks).toString() || '{}');
-      if (control.failWith !== undefined) failWith = control.failWith;
+      if (control.reset) { objects.clear(); requests.length = 0; failWith = 0; } if (control.failWith !== undefined) failWith = control.failWith;
       response.end(JSON.stringify({ requests, keys: [...objects.keys()] }));
       return;
     }
@@ -66,4 +66,9 @@ export async function startTestHttpServer({ token } = {}) {
     failWith: (status) => control({ failWith: status }),
     close: () => worker.terminate(),
   };
+}
+
+/** Forgets the objects, requests and failure mode of a server from `startTestHttpServer`. */
+export async function resetTestHttpServer(url) {
+  await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify({ reset: true }) });
 }
