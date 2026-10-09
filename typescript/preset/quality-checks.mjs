@@ -80,33 +80,41 @@ const ARCHITECTURE_EXCLUSION =
  * layout; the CLI rebuilds the layout-dependent analyzers when the config file changes it.
  */
 export function createQualityChecks(layout = resolveLayout()) {
-  const generalExclusions = [...layout.excludedGlobs, '.stryker-tmp/**'];
-  const productionExclusions = [
-    ...layout.excludedGlobs,
-    ...layout.sourceTestDirectoryGlobs,
-    ...layout.testGlobs,
-    '.stryker-tmp/**',
-  ];
-  const architectureExclusion = [ARCHITECTURE_EXCLUSION, layout.excludePattern]
-    .filter((pattern) => pattern !== undefined)
-    .join('|');
+  const exclusions = checkExclusions(layout);
+  return {
+    generalExclusions: exclusions.general,
+    productionExclusions: exclusions.production,
+    eslintChecks: eslintChecksFor(layout, exclusions),
+    entryPointsCheck: entryPointsCheckFor(layout, exclusions),
+    staticChecks: [prettierCheckFor(layout, exclusions), ...typeAndArchitectureChecksFor(layout)],
+    qualityAreaChecks: [
+      ...standardsChecksFor(exclusions),
+      ...graphChecksFor(exclusions),
+      ...repositoryChecksFor(exclusions),
+      ...testExecutionChecksFor(exclusions),
+    ],
+  };
+}
 
-  /**
-   * The checks every quality dial (differential and snapshot) must agree exist. Each entry
-   * describes *what* to check; `configurationFiles` covers only the logical policy (the ESLint
-   * config plus the rules and shared policy it loads), never a dial's adapter implementation.
-   * Each dial hashes its own adapter files on top of this list, so a change to how a dial invokes
-   * ESLint invalidates only that dial's comparison baseline, not the other dial's.
-   *
-   * `shardWeight` is relative wall time for CI sharding. The numbers come from measurements
-   * (`scripts/measure-shard-weights.mjs`); see docs/shard-weights.md before changing them.
-   */
-  const eslintChecks = [
+function checkExclusions(layout) {
+  return {
+    general: [...layout.excludedGlobs, '.stryker-tmp/**'],
+    production: [
+      ...layout.excludedGlobs,
+      ...layout.sourceTestDirectoryGlobs,
+      ...layout.testGlobs,
+      '.stryker-tmp/**',
+    ],
+  };
+}
+
+function eslintChecksFor(layout, exclusions) {
+  return [
     {
       name: 'eslint-lint',
       configRelativePath: 'preset/defaults/eslint.config.mjs',
       patterns: [...layout.sourceGlobs, ...layout.testGlobs],
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       policyFiles: ['preset/defaults/tsconfig.quality.json'],
       shardWeight: 25,
       configurationFiles: [
@@ -115,52 +123,34 @@ export function createQualityChecks(layout = resolveLayout()) {
         ...POLICY_FILES,
       ],
     },
-    {
-      name: 'eslint-errors',
-      configRelativePath: 'preset/eslint-config/errors.mjs',
-      patterns: layout.sourceGlobs,
-      exclusions: productionExclusions,
-      policyFiles: [],
-      shardWeight: 9,
-      configurationFiles: [
-        'preset/eslint-config/base.mjs',
-        'preset/eslint-config/errors.mjs',
-        ...POLICY_FILES,
-      ],
-    },
-    {
-      name: 'eslint-logging',
-      configRelativePath: 'preset/eslint-config/logging.mjs',
-      patterns: layout.sourceGlobs,
-      exclusions: productionExclusions,
-      policyFiles: [],
-      shardWeight: 9,
-      configurationFiles: [
-        'preset/eslint-config/base.mjs',
-        'preset/eslint-config/logging.mjs',
-        ...POLICY_FILES,
-      ],
-    },
-    {
-      name: 'eslint-module-effects',
-      configRelativePath: 'preset/eslint-config/module-effects.mjs',
-      patterns: layout.sourceGlobs,
-      exclusions: productionExclusions,
-      policyFiles: [],
-      shardWeight: 11,
-      configurationFiles: [
-        'preset/eslint-config/base.mjs',
-        'preset/eslint-config/module-effects.mjs',
-        ...POLICY_FILES,
-      ],
-    },
+    productionEslintCheck(layout, exclusions, { name: 'errors', shardWeight: 9 }),
+    productionEslintCheck(layout, exclusions, { name: 'logging', shardWeight: 9 }),
+    productionEslintCheck(layout, exclusions, { name: 'module-effects', shardWeight: 11 }),
   ];
+}
 
-  const entryPointsCheck = {
+function productionEslintCheck(layout, exclusions, { name, shardWeight }) {
+  return {
+    name: `eslint-${name}`,
+    configRelativePath: `preset/eslint-config/${name}.mjs`,
+    patterns: layout.sourceGlobs,
+    exclusions: exclusions.production,
+    policyFiles: [],
+    shardWeight,
+    configurationFiles: [
+      'preset/eslint-config/base.mjs',
+      `preset/eslint-config/${name}.mjs`,
+      ...POLICY_FILES,
+    ],
+  };
+}
+
+function entryPointsCheckFor(layout, exclusions) {
+  return {
     name: 'entry-points',
     sourceRoot: layout.sourceRoot,
     sourceRoots: layout.sourceRoots,
-    exclusions: productionExclusions,
+    exclusions: exclusions.production,
     version: dependencyCruiserVersion,
     shardWeight: 7,
     logicalFiles: [
@@ -174,28 +164,33 @@ export function createQualityChecks(layout = resolveLayout()) {
       'adapters/temporary-files.mjs',
     ],
   };
+}
 
-  const staticChecks = [
-    {
-      name: 'prettier-format',
-      kind: 'prettier',
-      version: prettierVersion,
-      patterns: [
-        ...layout.sourceRoots.map((root) => `${root}/**/*.{ts,mts,mjs,json,yaml,yml}`),
-        ...layout.testRoots.map((root) => `${root}/**/*.{ts,mts,mjs,json}`),
-        '*.{ts,mts,mjs,json}',
-      ],
-      exclusions: generalExclusions,
-      configRelativePath: 'preset/defaults/.prettierrc.json',
-      ignoreRelativePath: 'preset/defaults/.prettierignore',
-      shardWeight: 8,
-      configurationFiles: [
-        'preset/layout.mjs',
-        'preset/head-policy.mjs',
-        'preset/defaults/.prettierrc.json',
-        'preset/defaults/.prettierignore',
-      ],
-    },
+function prettierCheckFor(layout, exclusions) {
+  return {
+    name: 'prettier-format',
+    kind: 'prettier',
+    version: prettierVersion,
+    patterns: [
+      ...layout.sourceRoots.map((root) => `${root}/**/*.{ts,mts,mjs,json,yaml,yml}`),
+      ...layout.testRoots.map((root) => `${root}/**/*.{ts,mts,mjs,json}`),
+      '*.{ts,mts,mjs,json}',
+    ],
+    exclusions: exclusions.general,
+    configRelativePath: 'preset/defaults/.prettierrc.json',
+    ignoreRelativePath: 'preset/defaults/.prettierignore',
+    shardWeight: 8,
+    configurationFiles: [
+      'preset/layout.mjs',
+      'preset/head-policy.mjs',
+      'preset/defaults/.prettierrc.json',
+      'preset/defaults/.prettierignore',
+    ],
+  };
+}
+
+function typeAndArchitectureChecksFor(layout) {
+  return [
     {
       name: 'typescript-typecheck',
       kind: 'typecheck',
@@ -217,7 +212,9 @@ export function createQualityChecks(layout = resolveLayout()) {
       patterns: layout.graphRoots,
       exclusions: [ARCHITECTURE_EXCLUSION, ...layout.exclude],
       configRelativePath: 'preset/defaults/dependency-cruiser.config.mjs',
-      exclude: architectureExclusion,
+      exclude: [ARCHITECTURE_EXCLUSION, layout.excludePattern]
+        .filter((pattern) => pattern !== undefined)
+        .join('|'),
       shardWeight: 7,
       configurationFiles: [
         'preset/layout.mjs',
@@ -229,13 +226,15 @@ export function createQualityChecks(layout = resolveLayout()) {
       ],
     },
   ];
+}
 
-  const qualityAreaChecks = [
+function standardsChecksFor(exclusions) {
+  return [
     {
       name: 'policy-tests',
       kind: 'policy-tests',
       version: vitestVersion,
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 21,
       configurationFiles: ['vitest.config.mts'],
@@ -244,7 +243,7 @@ export function createQualityChecks(layout = resolveLayout()) {
       name: 'coding-standards',
       kind: 'coding-standards',
       version: eslintVersion,
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 10,
       configurationFiles: [
@@ -253,43 +252,42 @@ export function createQualityChecks(layout = resolveLayout()) {
         ...POLICY_FILES,
       ],
     },
+  ];
+}
+
+const DEPENDENCY_GRAPH_FILES = [
+  'preset/dependency-graph/config.mjs',
+  'preset/dependency-graph/cruise.mjs',
+  POLICY_TYPESCRIPT_CONFIG,
+  'adapters/policy-links.mjs',
+  'adapters/temporary-files.mjs',
+];
+
+function graphChecksFor(exclusions) {
+  return [
     {
       name: 'coupling',
       kind: 'coupling',
       version: dependencyCruiserVersion,
-      exclusions: productionExclusions,
+      exclusions: exclusions.production,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 7,
-      configurationFiles: [
-        'preset/dependency-graph/config.mjs',
-        'preset/dependency-graph/cruise.mjs',
-        POLICY_TYPESCRIPT_CONFIG,
-        'adapters/policy-links.mjs',
-        'adapters/temporary-files.mjs',
-        'preset/coupling/analyze.mjs',
-      ],
+      configurationFiles: [...DEPENDENCY_GRAPH_FILES, 'preset/coupling/analyze.mjs'],
     },
     {
       name: 'test-runtime',
       kind: 'test-runtime',
       version: dependencyCruiserVersion,
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 9,
-      configurationFiles: [
-        'preset/dependency-graph/config.mjs',
-        'preset/dependency-graph/cruise.mjs',
-        POLICY_TYPESCRIPT_CONFIG,
-        'adapters/policy-links.mjs',
-        'adapters/temporary-files.mjs',
-        'preset/test-runtime/analyze.mjs',
-      ],
+      configurationFiles: [...DEPENDENCY_GRAPH_FILES, 'preset/test-runtime/analyze.mjs'],
     },
     {
       name: 'structure',
       kind: 'structure',
       version: typeScriptVersion,
-      exclusions: productionExclusions,
+      exclusions: exclusions.production,
       timeoutMs: MINUTE_MS,
       shardWeight: 4,
       configurationFiles: [
@@ -299,11 +297,16 @@ export function createQualityChecks(layout = resolveLayout()) {
         'preset/structure/analyze.mjs',
       ],
     },
+  ];
+}
+
+function repositoryChecksFor(exclusions) {
+  return [
     {
       name: 'duplicates',
       kind: 'duplicates',
       version: jscpdVersion,
-      exclusions: productionExclusions,
+      exclusions: exclusions.production,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
       configurationFiles: ['preset/defaults/jscpd.json'],
@@ -312,16 +315,21 @@ export function createQualityChecks(layout = resolveLayout()) {
       name: 'dead-code',
       kind: 'dead-code',
       version: knipVersion,
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 5,
       configurationFiles: ['preset/defaults/knip.json'],
     },
+  ];
+}
+
+function testExecutionChecksFor(exclusions) {
+  return [
     {
       name: 'coverage',
       kind: 'coverage',
       version: vitestVersion,
-      exclusions: generalExclusions,
+      exclusions: exclusions.general,
       concurrencyWeight: 2,
       concurrencyGroup: 'test-execution',
       executionPriority: 1,
@@ -333,7 +341,7 @@ export function createQualityChecks(layout = resolveLayout()) {
       name: 'crap',
       kind: 'crap',
       version: crapVersion,
-      exclusions: productionExclusions,
+      exclusions: exclusions.production,
       dependencies: ['coverage'],
       shardWeight: 2,
       timeoutMs: 2 * MINUTE_MS,
@@ -344,7 +352,7 @@ export function createQualityChecks(layout = resolveLayout()) {
       name: 'mutation',
       kind: 'mutation',
       version: strykerVersion,
-      exclusions: productionExclusions,
+      exclusions: exclusions.production,
       concurrencyWeight: 2,
       concurrencyGroup: 'test-execution',
       executionPriority: 1,
@@ -352,20 +360,11 @@ export function createQualityChecks(layout = resolveLayout()) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'preset/defaults/stryker.config.mjs',
-        'preset/defaults/stryker.vitest.config.ts',
+        'preset/defaults/vitest.quality.config.ts',
         'preset/defaults/tsconfig.stryker.json',
       ],
     },
   ];
-
-  return {
-    generalExclusions,
-    productionExclusions,
-    eslintChecks,
-    entryPointsCheck,
-    staticChecks,
-    qualityAreaChecks,
-  };
 }
 
 const defaultChecks = createQualityChecks();

@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs';
+import path from 'node:path';
+
 /**
  * Layout-aware versions of the JSON tool configurations in `preset/defaults/`. The files there
  * describe the default layout (`src`, `test`, `tests`); these functions rewrite their root-prefixed
@@ -75,8 +78,49 @@ const REWRITES = new Map([
   ['jscpd.json', layoutJscpdConfig],
 ]);
 
-/** The layout rewrite for a policy file by name, or undefined when it needs none. */
+const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', 'tsconfig.stryker.json']);
+
 export function layoutTransformFor(policyFileName, layout) {
-  const rewrite = REWRITES.get(policyFileName.split('/').at(-1));
-  return rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
+  const name = policyFileName.split('/').at(-1);
+  const rewrite = REWRITES.get(name);
+  const layoutTransform = rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
+  if (!TSCONFIG_POLICY_FILES.has(name)) {
+    return layoutTransform;
+  }
+  return (text, targetPath) =>
+    existsSync(path.join(path.dirname(targetPath), PROJECT_TSCONFIG))
+      ? `${JSON.stringify(projectLayeredTsconfig(JSON.parse(text), layout, name), null, 2)}\n`
+      : (layoutTransform?.(text) ?? text);
+}
+
+const PROJECT_TSCONFIG = 'tsconfig.json';
+
+const POLICY_COMPILER_OPTIONS = {
+  strict: true,
+  noImplicitAny: true,
+  strictNullChecks: true,
+  strictFunctionTypes: true,
+  strictBindCallApply: true,
+  strictPropertyInitialization: true,
+  noImplicitThis: true,
+  useUnknownInCatchVariables: true,
+  alwaysStrict: true,
+  noImplicitReturns: true,
+  noFallthroughCasesInSwitch: true,
+  forceConsistentCasingInFileNames: true,
+};
+
+const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
+
+function projectLayeredTsconfig(base, layout, policyFileName) {
+  if (policyFileName === 'tsconfig.stryker.json') {
+    return { extends: `./${PROJECT_TSCONFIG}`, compilerOptions: { skipLibCheck: true } };
+  }
+  const layered = layoutTsconfig(base, layout);
+  return {
+    extends: `./${PROJECT_TSCONFIG}`,
+    compilerOptions: { ...NO_EMIT_ANALYSIS_OPTIONS, ...POLICY_COMPILER_OPTIONS },
+    include: layered.include,
+    exclude: layered.exclude,
+  };
 }
