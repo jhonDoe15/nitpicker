@@ -45,8 +45,7 @@ function exportReachability(graph, sourceRoot) {
   return (entryPoint, target) => {
     const pending = [entryPoint];
     const visited = new Set();
-    while (pending.length > 0) {
-      const current = pending.pop();
+    for (const current of pending) {
       if (current === target) {
         return true;
       }

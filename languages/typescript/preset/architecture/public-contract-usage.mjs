@@ -81,7 +81,7 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
     }
   }
   for (const source of sources) {
-    const visit = (node, containingClass) => {
+    function visit(node, containingClass) {
       const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
       let symbol;
       if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
@@ -102,8 +102,10 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
           if (!method.implementations.has(currentClass)) method.used = true;
         }
       }
-      ts.forEachChild(node, (child) => visit(child, currentClass));
-    };
+      ts.forEachChild(node, (child) => {
+        visit(child, currentClass);
+      });
+    }
     visit(source, undefined);
   }
   const findings = [];
@@ -122,7 +124,7 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
 
 export function analyzePublicContractUsage(configPath) {
   const absoluteConfig = path.resolve(configPath);
-  const config = ts.readConfigFile(absoluteConfig, ts.sys.readFile);
+  const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
   if (config.error)
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));

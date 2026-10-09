@@ -1,4 +1,5 @@
 import { readLayout } from '../../head-policy.mjs';
+import { ancestorsOf, scopeChain } from './ancestry.mjs';
 
 const { isTestFixture } = readLayout();
 
@@ -9,8 +10,7 @@ function isContainerName(name) {
 const CONTAINER_TYPE = /Started\w*Container|TestAgent/;
 
 function hasContainerType(sourceCode, identifier) {
-  let scope = sourceCode.getScope(identifier);
-  for (; scope; scope = scope.upper) {
+  for (const scope of scopeChain(sourceCode.getScope(identifier))) {
     const variable = scope.set.get(identifier.name);
     if (!variable) continue;
     return variable.defs.some((def) => {
@@ -51,7 +51,7 @@ export const rule = {
           !isContainerExpression(callee.object, context.sourceCode)
         )
           return;
-        for (let current = node.parent; current; current = current.parent) {
+        for (const current of ancestorsOf(node)) {
           if (current.type !== 'CallExpression') continue;
           if (
             current.callee.type === 'Identifier' &&
