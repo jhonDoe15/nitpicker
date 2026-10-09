@@ -9,6 +9,7 @@ export const strictEslintRuleIds = [
   '@typescript-eslint/no-floating-promises',
   '@typescript-eslint/only-throw-error',
   '@typescript-eslint/switch-exhaustiveness-check',
+  'eqeqeq',
   'functional/immutable-data',
   'functional/no-classes',
   'functional/no-let',
