@@ -43,7 +43,7 @@ function isHermetic(context, described) {
   return HERMETIC_KEYS.every((key) => keys.has(key));
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

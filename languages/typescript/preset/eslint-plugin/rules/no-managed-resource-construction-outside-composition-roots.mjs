@@ -18,7 +18,7 @@ function constructedName(callee) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

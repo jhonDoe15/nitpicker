@@ -37,7 +37,7 @@ function knownKeys(context, node, seen = new Set()) {
   return keys;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

@@ -37,7 +37,7 @@ function isProductionModule(filename, source) {
   return layout.sourceRootOf(`${resolved}/`) !== undefined && !TEST_SUPPORT.test(resolved);
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

@@ -63,7 +63,7 @@ function callsResolveTimeout(node, resolveName) {
   );
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

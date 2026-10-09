@@ -27,7 +27,7 @@ function owner(node) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

@@ -1,6 +1,6 @@
 const subprocessModules = new Set(['child_process', 'node:child_process', 'execa', 'cross-spawn']);
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

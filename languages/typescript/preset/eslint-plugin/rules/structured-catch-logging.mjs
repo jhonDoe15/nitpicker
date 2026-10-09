@@ -40,7 +40,7 @@ function hasMessageArgument(node) {
   );
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

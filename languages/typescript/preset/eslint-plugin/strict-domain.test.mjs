@@ -3,8 +3,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import tseslint from 'typescript-eslint';
 import { lintFixture } from '../failure-messages/harness.mjs';
 import strictDomainConfig from '../eslint-config/strict-domain.mjs';
-import noSelfRecursion from './rules/no-self-recursion.mjs';
-import noThrow from './rules/no-throw.mjs';
+import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
+import { rule as noThrow } from './rules/no-throw.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
