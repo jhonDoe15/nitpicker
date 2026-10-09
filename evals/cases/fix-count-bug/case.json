@@ -1,0 +1,8 @@
+{
+  "id": "fix-count-bug",
+  "title": "Fix the singular count in the greeting summary",
+  "prompt": "describeCount(1) in src/main/features/greeting/domain/describe-count.ts returns '1 names', but it should return '1 name'; other counts are correct ('0 names', '2 names'). Fix the bug in that function and add a regression test for it in test/describe-count.test.ts. Do not change the behavior for other counts or the exports of src/main/composition-root.ts. Run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": ["npx", "--no-install", "vitest", "run", "test/describe-count.acceptance.test.ts"]
+  }
+}
