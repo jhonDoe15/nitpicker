@@ -70,6 +70,56 @@ config file is an exception like any other.
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions.
 
+## Inside tests
+
+These rules cover every file of the test layout area (`<testRoot>/**`, `*.test.*` and `*.spec.*`
+next to sources, and `__tests__/`). They ban forms that make a suite slow or non-hermetic. Each one
+came from nitpicker's own suite, where it cost CI minutes. "Per test" means code that runs in an
+`it`/`test` callback or in `beforeEach`. That includes same-file functions those callbacks call, but
+not functions imported from other modules.
+
+- `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
+  `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
+  `run('git', ['init'])`. Build a template repository once in `beforeAll` and `cpSync` it per test.
+- `nitpicker/hermetic-git-in-tests`: every git process a test-area file starts passes an `env`
+  object, written in that file, that sets `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`. Same-file
+  `const` objects and spreads count. An imported env object does not, because the rule cannot see
+  it. Keep the git helper in one fixture file so the env is written once.
+- `nitpicker/no-node-process-per-test`: no Node process per test. That covers `process.execPath`,
+  `node`, `npx`/`npm`/`pnpm`/`yarn`/`bunx`/`tsx`/`ts-node`, a `node_modules/.bin` path, and `fork`.
+  Import the function instead. Start the application as a process only through the `AppProcess`
+  harness in `<testRoot>/fixtures/app-process.ts`, the subprocess bridge that the `test-runtime`
+  analyzer recognizes. Spawning once in `beforeAll` is allowed.
+- `nitpicker/no-server-or-worker-per-test`: no `createServer`/`createSecureServer`/`new Server`
+  from `node:http`, `https`, `http2`, `net` or `tls`, and no `new Worker` from
+  `node:worker_threads`, per test. Start them once in `beforeAll` and reset state between tests, or
+  test the logic against an in-memory implementation.
+- `nitpicker/no-fixed-sleep-synchronization` (existing, extended): besides `await sleep()` and
+  `await new Promise((resolve) => setTimeout(resolve, n))`, it also flags
+  `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
+  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
+- `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
+  `testTimeout` nitpicker runs a project's tests with (`preset/defaults/vitest.quality.config.ts`,
+  `stryker.vitest.config.ts` and the coverage runner's `--testTimeout`; a test keeps them in step).
+  The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
+  `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
+  no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/test-tsconfig-pins-lib-and-types`: a tsconfig object a test serializes with
+  `JSON.stringify` must set `compilerOptions.types` and `compilerOptions.lib` (or `noLib`), so a
+  fixture `tsc` run does not load every `@types` package and the full default lib. If
+  `compilerOptions` spreads an object the rule cannot resolve, it is not checked.
+- `nitpicker/no-process-globals-outside-main-guard`: test helper and fixture scripts (test-area
+  files that are not `*.test.*`/`*.spec.*`) use `process.argv`, `process.exit` and
+  `process.exitCode` only inside a main guard: an `if` whose condition uses `import.meta` (such as
+  `import.meta.main`) or `require.main`. Export a function that takes the arguments and returns the
+  exit code, so tests can import it instead of spawning it.
+
+Left out, from the same write-up: recomputing one expensive result in every test, and running the
+whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
+across tests, or what an assertion depends on), so a finding would not reliably mean a slow test.
+Vitest's worker count in CI is a CI setting, not code. It belongs in the CI workflow or in a check
+of the project's CI files, not in these rules.
+
 ## How it is enforced
 
 - `preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
@@ -84,6 +134,9 @@ config file is an exception like any other.
   the `domain` and `adapters` lists contain the `source` list plus their own selectors. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
+- The test rules live in `preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
+  which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
+  so the differential gate holds touched test code to them.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`preset/architecture/strict-boundary-rules.mjs`) are part of the default
