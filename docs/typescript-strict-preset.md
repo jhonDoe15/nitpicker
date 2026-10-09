@@ -104,6 +104,21 @@ not functions imported from other modules.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/no-first-test-charged-setup`: no lazily memoized shared setup that tests reach. It
+  reports a call whose value is stored in a module-level `let`/`var` only while that variable is
+  empty (`x ??= expensive()`, `x ||= call()`, `x = x ?? call()`, `if (!x) x = call()`,
+  `if (x === undefined) { x = call() }`, or `if (x) return x; x = call()`), when an `it`/`test`
+  body or `beforeEach` runs it, directly or through same-file helpers. The first test to run pays
+  for the setup, reports show that test as slow, and test order matters. Compute it in
+  `beforeAll`. Constants, `new` expressions and calls on `path`, `Math`, `Object`, `JSON` and
+  similar built-ins are not reported. A deliberate memo needs an exception in the config file.
+- `nitpicker/no-uninjectable-delay` (production code, not tests): `setTimeout`/`setInterval`
+  (global, `globalThis`, or from `node:timers`/`node:timers/promises`) whose delay is a module-level
+  `const` of 500 ms or more, inside an exported top-level function that has no parameter which
+  could carry the delay. A destructured, defaulted or rest parameter, or one named like
+  `options`/`config`/`delayMs`/`timeoutMs`, counts as able to carry it. Inline numbers, delays set
+  inside a non-exported helper and class methods are not reported. Tests cannot shorten such a
+  delay without fake timers, so accept it as an option with the constant as its default.
 - `nitpicker/test-tsconfig-pins-lib-and-types`: a tsconfig object a test serializes with
   `JSON.stringify` must set `compilerOptions.types` and `compilerOptions.lib` (or `noLib`), so a
   fixture `tsc` run does not load every `@types` package and the full default lib. If
@@ -118,7 +133,8 @@ Left out, from the same write-up: recomputing one expensive result in every test
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
 across tests, or what an assertion depends on), so a finding would not reliably mean a slow test.
 Vitest's worker count in CI is a CI setting, not code. It belongs in the CI workflow or in a check
-of the project's CI files, not in these rules.
+of the project's CI files, not in these rules. That check would need its own analyzer (a runner
+kind, a version entry, a check definition and project-level findings) and is not built yet.
 
 ## How it is enforced
 
