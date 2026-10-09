@@ -24,6 +24,7 @@ export function publishBaseSnapshot({
   store,
   configOverrides = [],
   headPolicy = {},
+  runTasks,
 }) {
   const commitSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const cache = createFindingsCache({
@@ -50,6 +51,7 @@ export function publishBaseSnapshot({
           liveProjectRoot,
           headPolicyFile,
           snapshot: 'base',
+          runTasks,
         }),
       );
       for (const [index, analyzer] of analyzers.entries()) {

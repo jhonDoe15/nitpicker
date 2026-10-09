@@ -26,6 +26,7 @@ export function runQualityDiff({
   configOverrides = [],
   headPolicy = {},
   cacheStore,
+  runTasks,
 }) {
   const startedAt = Date.now();
   const committedComparison = resolveComparison(repositoryRoot, requestedBaseRef);
@@ -69,6 +70,7 @@ export function runQualityDiff({
                 liveProjectRoot: headProjectRoot,
                 headPolicyFile,
                 snapshot: 'base',
+                runTasks,
               });
             // Only the base side is cached: it is a committed tree, so it cannot change under the key.
             const baseRun =
@@ -98,6 +100,7 @@ export function runQualityDiff({
               headPolicyFile,
               snapshot: 'head',
               baselineRoot: baseProjectRoot,
+              runTasks,
             });
             return combineAnalyzerReports({
               analyzers,

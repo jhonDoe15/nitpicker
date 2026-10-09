@@ -16,12 +16,20 @@ import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from './compare.mjs';
 import { parseDrillDownOptions } from './cli.mjs';
-import { runCli } from '../cli.mjs';
+import { runCli as runCliWithSubprocesses } from '../cli.mjs';
 import { parseFinding } from './finding-schema.mjs';
 import { canonicalCycleIdentity } from './fingerprint.mjs';
 import { runGit } from './git.mjs';
 import { REPORT_FILE_NAMES } from './reporters.mjs';
-import { runQualityDiff } from './run-diff.mjs';
+import { runQualityDiff as runQualityDiffWithSubprocesses } from './run-diff.mjs';
+import { runTasksInProcess } from './fixtures/in-process-analyzers.mjs';
+
+// Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
+// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
+// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
+const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+const runQualityDiff = (options) =>
+  runQualityDiffWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'fixtures/fake-analyzer.mjs');
 const temporaryRepositories = [];
@@ -312,6 +320,7 @@ describe('quality diff Git comparison', () => {
         analyzers: [fakeAnalyzer()],
         stdout: output.stdout,
         stderr: output.stderr,
+        runTasks: undefined,
       });
 
       expect(exitCode).toBe(2);
@@ -335,6 +344,7 @@ describe('quality diff Git comparison', () => {
       analyzers: [fakeAnalyzer({ timeoutMs: 100 })],
       stdout: output.stdout,
       stderr: output.stderr,
+      runTasks: undefined,
     });
 
     expect(exitCode).toBe(2);

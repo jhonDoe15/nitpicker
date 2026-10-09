@@ -12,10 +12,16 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runCli } from './cli.mjs';
+import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { describeConfigOverrides } from './config.mjs';
 import { policyHash } from './diff/report-model.mjs';
 import { startTestHttpServer } from './diff/test-http-server.mjs';
+import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
+
+// Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
+// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
+// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
+const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'diff/fixtures/fake-analyzer.mjs');
 const temporaryRoots = [];
@@ -44,6 +50,7 @@ describe('nitpicker CLI', () => {
       analyzers: [fakeAnalyzer()],
       stdout: output.stdout,
       stderr: output.stderr,
+      runTasks: undefined,
     });
 
     expect(exitCode).toBe(1);
@@ -158,6 +165,7 @@ describe('nitpicker CLI', () => {
         analyzers: [fakeAnalyzer()],
         stdout: output.stdout,
         stderr: output.stderr,
+        runTasks: undefined,
       }),
     ).toBe(2);
     expect(output.stdoutText).toContain('Status: tool-error');
@@ -911,7 +919,7 @@ describe('remote findings cache', () => {
       'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
     });
     const snapshots = [];
-    const execute = (arguments_, url = remote.url) => {
+    const execute = (arguments_, url = remote.url, { subprocess = false } = {}) => {
       const analyzer = fakeAnalyzer();
       const createInvocation = analyzer.createInvocation;
       analyzer.createInvocation = (context) => {
@@ -929,6 +937,7 @@ describe('remote findings cache', () => {
         analyzers: [analyzer],
         stdout: output.stdout,
         stderr: output.stderr,
+        runTasks: subprocess ? undefined : runTasksInProcess,
       });
       return { exitCode, output };
     };
@@ -940,7 +949,8 @@ describe('remote findings cache', () => {
   it('publishes a base snapshot that a fresh checkout then reuses', async () => {
     const { remote, snapshots, execute, compare } = await setup();
     try {
-      const published = execute(['cache', 'publish']);
+      // The real scheduler subprocess publishes; the comparison then runs in-process.
+      const published = execute(['cache', 'publish'], remote.url, { subprocess: true });
       expect(published.exitCode).toBe(0);
       expect(published.output.stdoutText).toContain('Published 1 of 1 base snapshots');
       expect(await remote.keys()).toHaveLength(1);
