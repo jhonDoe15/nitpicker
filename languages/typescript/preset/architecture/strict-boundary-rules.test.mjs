@@ -51,6 +51,6 @@ describe('strict boundary rules', () => {
 
     expect(result.exitCode).not.toBe(0);
     expect(output).toContain(rule);
-    if (allowedForm !== null) expect(output).toContain(allowedForm);
+    expect(output).toContain(allowedForm ?? '');
   });
 });
