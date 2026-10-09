@@ -1,41 +1,31 @@
-import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { cruiseWithConfig } from './fixtures/strict-cruise.mjs';
+import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const dependencyCruiser = path.join(
-  projectRoot,
-  'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
-);
-const config = path.join(
-  projectRoot,
-  'preset/architecture/fixtures/dependency-cruiser.fixture.config.mjs',
-);
 
 function cruiseFixture(name) {
   const fixture = path.join(projectRoot, 'preset/architecture/fixtures', name);
-  return spawnSync(
-    process.execPath,
-    [dependencyCruiser, fixture, '--config', config, '--output-type', 'err-long'],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-    },
-  );
+  return cruiseWithConfig(config, {
+    baseDir: projectRoot,
+    paths: [fixture],
+    outputType: 'err-long',
+  });
 }
 
 describe('dependency architecture rules', () => {
-  it('accepts the allowed dependency direction', () => {
-    const result = cruiseFixture('allowed-direction');
+  it('accepts the allowed dependency direction', async () => {
+    const result = await cruiseFixture('allowed-direction');
 
-    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(result.exitCode, result.output).toBe(0);
   });
 
-  it('rejects the reverse dependency direction', () => {
-    const result = cruiseFixture('reverse-direction');
+  it('rejects the reverse dependency direction', async () => {
+    const result = await cruiseFixture('reverse-direction');
 
-    expect(result.status).not.toBe(0);
-    expect(result.stderr + result.stdout).toContain('features-do-not-import-bootstrap');
+    expect(result.exitCode).not.toBe(0);
+    expect(result.output).toContain('features-do-not-import-bootstrap');
   });
 });

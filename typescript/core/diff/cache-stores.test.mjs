@@ -2,7 +2,7 @@ import { createServer } from 'node:net';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import {
   createDirectoryStore,
   createHttpStore,
@@ -10,7 +10,7 @@ import {
   resolveCacheStore,
 } from './cache-stores.mjs';
 import { cacheKey, createFindingsCache } from './findings-cache.mjs';
-import { startTestHttpServer } from './test-http-server.mjs';
+import { resetTestHttpServer, startTestHttpServer } from './test-http-server.mjs';
 
 const cleanups = [];
 
@@ -20,11 +20,27 @@ afterEach(async () => {
   }
 });
 
-async function server(options) {
-  const started = await startTestHttpServer(options);
-  cleanups.push(() => started.close());
+// One server per configuration serves the whole file. Starting a worker thread and its first
+// request costs ~200 ms, so each test resets the server instead; the requests under test still
+// go through the real HTTP store and its subprocess.
+const sharedServers = new Map();
+
+async function server(options = {}) {
+  const key = JSON.stringify(options);
+  if (!sharedServers.has(key)) {
+    sharedServers.set(key, await startTestHttpServer(options));
+  }
+  const started = sharedServers.get(key);
+  await resetTestHttpServer(started.url);
   return started;
 }
+
+afterAll(async () => {
+  for (const started of sharedServers.values()) {
+    await started.close();
+  }
+  sharedServers.clear();
+});
 
 /**
  * A remote store kept in memory. The layered store and the findings cache only see the
