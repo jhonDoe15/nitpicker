@@ -137,6 +137,21 @@ describe('config and preset edits', () => {
     ]);
   });
 
+  it('reports the nitpicker config and the legacy inventory, added or edited', () => {
+    const result = detectGateTampering({
+      fixture: { 'nitpicker.legacy.json': '{"sites":[]}', 'src/a.ts': 'export const a = 1;\n' },
+      final: {
+        'nitpicker.legacy.json': '{"sites":[{"file":"src/a.ts"}]}',
+        'nitpicker.config.json': '{"disable":["mutation"]}',
+        'src/a.ts': 'export const a = 1;\n',
+      },
+    });
+    expect(result.map((shortcut) => `${shortcut.path}:${shortcut.detail}`)).toEqual([
+      'nitpicker.config.json:added gate configuration file',
+      'nitpicker.legacy.json:modified gate configuration file',
+    ]);
+  });
+
   it('reports edits to vendored preset files', () => {
     const base = { 'node_modules/nitpicker/preset/rules.mjs': 'a' };
     const result = detectGateTampering({
