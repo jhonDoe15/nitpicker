@@ -22,7 +22,7 @@ import { trackTemporaryPath } from '../temporary-files.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
-import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { policyTransformFor } from '../../preset/tool-configs.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -337,7 +337,7 @@ function createArchitectureConfig(options) {
       path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
     ),
     path.join(options.projectRoot, '.nitpicker-diff-tsconfig.json'),
-    layoutTransformFor('tsconfig.quality.json', readLayout()),
+    policyTransformFor('tsconfig.quality.json', readLayout(), { projectRoot: options.projectRoot }),
   );
   trackTemporaryPath(wrapperConfig);
   try {
@@ -373,7 +373,9 @@ function installTypeScriptConfig(options) {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
-    layoutTransformFor(options.configRelativePath, readLayout()),
+    policyTransformFor(options.configRelativePath, readLayout(), {
+      projectRoot: options.projectRoot,
+    }),
   );
 }
 
