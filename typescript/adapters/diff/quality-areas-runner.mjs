@@ -1,5 +1,4 @@
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import {
   existsSync,
   lstatSync,
@@ -17,13 +16,25 @@ import { parsePositiveNumber } from '../../preset/quality-checks.mjs';
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
   ENFORCED_MUTATION_STATUSES,
-  FUNCTION_STRUCTURE_LIMITS,
   MESSAGES,
   MINIMUM_BRANCH_COVERAGE,
   RULE_IDS,
   mutantRuleId,
   renderMessage,
 } from '../../shared/policy.mjs';
+import { evaluateBaselineExpansions } from '../../shared/rules/baseline-expansion.mjs';
+import { evaluateCoupling } from '../../shared/rules/coupling.mjs';
+import { evaluateDuplicates } from '../../shared/rules/duplicates.mjs';
+import {
+  addMetric,
+  hash,
+  nextOccurrence,
+  positiveInteger,
+  summaryMetrics,
+} from '../../shared/rules/finding-helpers.mjs';
+import { evaluateStructure } from '../../shared/rules/structure.mjs';
+import { evaluateTestRuntime } from '../../shared/rules/test-runtime.mjs';
+import { jscpdClones } from '../jscpd-clones.mjs';
 import { sourceRoot, existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import {
@@ -48,7 +59,6 @@ const QUALITY_AREA_RUNNERS = new Map([
   ['crap', runCrap],
   ['mutation', runMutation],
 ]);
-const STRUCTURAL_METADATA_FIELDS = new Set(['source', 'sourceHash', 'start', 'end']);
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 const STRYKER_CONFIG_PATH = 'preset/defaults/stryker.config.mjs';
@@ -465,241 +475,44 @@ async function runMutation(options) {
 }
 
 export function normalizeBaselineExpansions(baseSites, headSites, analyzerName) {
-  const baseCounts = new Map(
-    baseSites.map((site) => [baselineSiteKey(site), numericAllowance(site.count)]),
-  );
-  return headSites.flatMap((site) => {
-    const key = baselineSiteKey(site);
-    const baseCount = baseCounts.get(key) ?? 0;
-    const headCount = numericAllowance(site.count);
-    if (headCount <= baseCount) {
-      return [];
-    }
-    return [
-      {
-        tool: analyzerName,
-        rule: RULE_IDS.baselineExpansion,
-        path: site.file,
-        identity: `site:${hash(key)}`,
-        message: `Legacy allowance increased from ${String(baseCount)} to ${String(headCount)} for ${site.rule}`,
-        classification: 'enforceable',
-      },
-    ];
-  });
+  return evaluateBaselineExpansions(baseSites, headSites, analyzerName);
 }
 
 export function normalizeCoupling(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'coupling');
-  for (const module of report.modules ?? []) {
-    for (const metricName of [
-      'fanIn',
-      'fanOut',
-      'totalCoupling',
-      'instability',
-      'runtimeFanIn',
-      'runtimeFanOut',
-      'runtimeInstability',
-    ]) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'module-coupling',
-        path: module.source,
-        identity: `module:${metricName}`,
-        message: `${metricName} for ${module.source}`,
-        metricName,
-        value: module[metricName],
-      });
-    }
-  }
-  for (const packageMetric of report.packages ?? []) {
-    const values = {
-      modules: packageMetric.modules,
-      fanIn: packageMetric.fanIn,
-      fanOut: packageMetric.fanOut,
-      instability: packageMetric.instability,
-      internalEdges: packageMetric.cohesion?.internalEdges,
-      edgeDensity: packageMetric.cohesion?.edgeDensity,
-      connectedComponents: packageMetric.cohesion?.connectedComponents,
-      largestComponentShare: packageMetric.cohesion?.largestComponentShare,
-    };
-    for (const [metricName, value] of Object.entries(values)) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'package-coupling',
-        path: '.',
-        identity: `package:${packageMetric.name}:${metricName}`,
-        message: `${metricName} for package ${packageMetric.name}`,
-        metricName,
-        value,
-      });
-    }
-  }
-  for (const direction of report.stabilityDirection ?? []) {
-    findings.push({
-      tool: analyzerName,
-      rule: RULE_IDS.stabilityDirection,
-      path: '.',
-      identity: `package-edge:${direction.source}->${direction.target}`,
-      message: `${direction.source} depends on less stable package ${direction.target}`,
-      classification: 'enforceable',
-    });
-    addMetric(findings, {
-      analyzerName,
-      rule: 'stability-direction-metric',
-      path: '.',
-      identity: `package-edge:${direction.source}->${direction.target}`,
-      message: `${direction.source} depends on less stable package ${direction.target}`,
-      metricName: 'instabilityDelta',
-      value: direction.delta,
-    });
-  }
-  return findings;
+  return evaluateCoupling(
+    {
+      ...report,
+      modules: report.modules?.map(({ source, ...metrics }) => ({ file: source, ...metrics })),
+    },
+    analyzerName,
+  );
 }
 
 export function normalizeTestRuntime(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'test-runtime', ['categories']);
-  for (const [category, value] of Object.entries(report.summary?.categories ?? {})) {
-    addMetric(findings, {
-      analyzerName,
-      rule: 'category-count',
-      path: '.',
-      identity: `category:${category}`,
-      message: `Tests classified as ${category}`,
-      metricName: category,
-      value,
-    });
-  }
-  for (const finding of report.findings ?? []) {
-    findings.push({
-      tool: analyzerName,
-      rule: finding.category,
-      path: finding.test,
-      identity: `test:${finding.test}:source:${finding.sourceHash ?? hash(finding.test)}`,
-      message: `Test has ${finding.category.replaceAll('-', ' ')}`,
-      classification: 'enforceable',
-    });
-  }
-  return findings;
+  return evaluateTestRuntime(report, analyzerName);
 }
 
 export function normalizeStructure(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'structure');
-  for (const [kind, values] of Object.entries(report.distributions ?? {})) {
-    for (const [percentile, value] of Object.entries(values ?? {})) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'distribution',
-        path: '.',
-        identity: `${kind}:${percentile}`,
-        message: `${percentile} ${kind}`,
-        metricName: `${kind}.${percentile}`,
-        value,
-      });
-    }
-  }
-  addStructuralEntries(findings, analyzerName, report.functions, 'function');
-  addStructuralEntries(findings, analyzerName, report.classes, 'class');
-  return findings;
-}
-
-function addStructuralEntries(findings, analyzerName, entries = [], kind) {
-  const occurrences = new Map();
-  for (const entry of entries) {
-    const displayName = entry[kind];
-    const occurrenceKey = `${entry.source}\0${displayName}`;
-    const occurrence = nextOccurrence(occurrences, occurrenceKey);
-    if (kind === 'function') {
-      addFunctionStructureViolations(findings, analyzerName, entry, displayName, occurrence);
-    }
-    for (const [metricName, value] of Object.entries(entry)) {
-      if (metricName === kind || STRUCTURAL_METADATA_FIELDS.has(metricName)) {
-        continue;
-      }
-      addMetric(findings, {
-        analyzerName,
-        rule: `${kind}-structure`,
-        path: entry.source,
-        identity: `${kind}:${displayName}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `${metricName} for ${displayName}`,
-        metricName,
-        value,
-        symbol: displayName,
-        line: entry.start,
-      });
-    }
-  }
-}
-
-function addFunctionStructureViolations(findings, analyzerName, entry, displayName, occurrence) {
-  const sourceHash =
-    entry.sourceHash ?? hash(`${entry.source}:${String(entry.start)}:${String(entry.end)}`);
-  for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
-    if (typeof entry[metricName] !== 'number' || entry[metricName] <= limit) {
-      continue;
-    }
-    findings.push({
-      tool: analyzerName,
-      rule: ruleId,
-      path: entry.source,
-      identity: `function:${displayName}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: renderMessage(MESSAGES.functionStructure, {
-        name: displayName,
-        value: entry[metricName],
-        metric: metricName,
-        limit,
-      }),
-      classification: 'enforceable',
-      symbol: displayName,
-      ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
-    });
-  }
+  return evaluateStructure(
+    {
+      ...report,
+      functions: report.functions?.map(({ source, function: name, ...metrics }) => ({
+        file: source,
+        name,
+        ...metrics,
+      })),
+      classes: report.classes?.map(({ source, class: name, ...metrics }) => ({
+        file: source,
+        name,
+        ...metrics,
+      })),
+    },
+    analyzerName,
+  );
 }
 
 export function normalizeDuplicates(report, analyzerName, configuredPaths = [sourceRoot]) {
-  const findings = [];
-  const prefix =
-    Array.isArray(configuredPaths) && configuredPaths.length === 1
-      ? configuredPaths[0].replace(/\/$/, '')
-      : '';
-  const occurrences = new Map();
-  for (const duplicate of report.duplicates ?? []) {
-    const files = [
-      {
-        path: prefixedPath(prefix, duplicate.firstFile?.name),
-        line: duplicate.firstFile?.start,
-      },
-      {
-        path: prefixedPath(prefix, duplicate.secondFile?.name),
-        line: duplicate.secondFile?.start,
-      },
-    ].sort((left, right) => left.path.localeCompare(right.path));
-    const pairKey = files.map((file) => file.path).join('\0');
-    const occurrence = nextOccurrence(occurrences, pairKey);
-    findings.push({
-      tool: analyzerName,
-      rule: RULE_IDS.duplicateClone,
-      path: files[0].path,
-      identity: `pair:${files.map((file) => file.path).join('|')}:fragment:${hash(duplicate.fragment ?? '')}:occurrence:${String(occurrence)}`,
-      message: `Duplicate with ${files[1].path}`,
-      classification: 'enforceable',
-      ...(positiveInteger(files[0].line) === undefined
-        ? {}
-        : { location: { line: files[0].line } }),
-    });
-    for (const metricName of ['lines', 'tokens']) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'duplicate-clone-size',
-        path: files[0].path,
-        identity: `pair:${files.map((file) => file.path).join('|')}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `Duplicate with ${files[1].path}`,
-        metricName,
-        value: duplicate[metricName],
-        line: files[0].line,
-      });
-    }
-  }
-  return findings;
+  return evaluateDuplicates(jscpdClones(report, configuredPaths), analyzerName);
 }
 
 export function normalizeDeadCode(report, analyzerName) {
@@ -941,45 +754,6 @@ export function normalizeMutation(report, analyzerName) {
     });
   }
   return findings;
-}
-
-function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
-  const findings = [];
-  for (const [metricName, value] of Object.entries(summary)) {
-    if (ignored.includes(metricName)) {
-      continue;
-    }
-    addMetric(findings, {
-      analyzerName,
-      rule,
-      path: '.',
-      identity: `summary:${metricName}`,
-      message: `${metricName} summary`,
-      metricName,
-      value,
-    });
-  }
-  return findings;
-}
-
-function addMetric(
-  findings,
-  { analyzerName, rule, path: findingPath, identity, message, metricName, value, symbol, line },
-) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return;
-  }
-  findings.push({
-    tool: analyzerName,
-    rule,
-    path: findingPath,
-    identity,
-    message,
-    classification: 'descriptive',
-    metric: { name: metricName, value },
-    ...(typeof symbol === 'string' && symbol.length > 0 ? { symbol } : {}),
-    ...(positiveInteger(line) === undefined ? {} : { location: { line } }),
-  });
 }
 
 function coveragePercent(values) {
@@ -1354,18 +1128,6 @@ function validatedSnapshotRoot(value, name) {
   return root;
 }
 
-function prefixedPath(prefix, value) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError('Duplicate report contains an invalid file name');
-  }
-  const normalizedValue = value.replaceAll('\\', '/').replace(/^\.\//, '');
-  return prefix.length === 0 ||
-    normalizedValue === prefix ||
-    normalizedValue.startsWith(`${prefix}/`)
-    ? normalizedValue
-    : `${prefix}/${normalizedValue}`;
-}
-
 function parseReportJson(text) {
   try {
     return JSON.parse(text);
@@ -1374,42 +1136,10 @@ function parseReportJson(text) {
   }
 }
 
-function positiveInteger(value) {
-  return Number.isInteger(value) && value > 0 ? value : undefined;
-}
-
-function nextOccurrence(occurrences, key) {
-  const occurrence = (occurrences.get(key) ?? 0) + 1;
-  occurrences.set(key, occurrence);
-  return occurrence;
-}
-
-function baselineSiteKey(site) {
-  if (
-    typeof site?.file !== 'string' ||
-    typeof site.rule !== 'string' ||
-    typeof site.source !== 'string'
-  ) {
-    throw new TypeError('Coding-standard baseline contains an invalid site');
-  }
-  return JSON.stringify([site.file, site.rule, site.source]);
-}
-
-function numericAllowance(value) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('Coding-standard baseline counts must be positive integers');
-  }
-  return value;
-}
-
 function requiredValue(values, name) {
   const value = values.get(name);
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
-}
-
-function hash(value) {
-  return createHash('sha256').update(String(value)).digest('hex').slice(0, 24);
 }
