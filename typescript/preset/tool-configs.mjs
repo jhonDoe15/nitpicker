@@ -78,16 +78,23 @@ const REWRITES = new Map([
   ['jscpd.json', layoutJscpdConfig],
 ]);
 
-/** The layout rewrite for a policy file by name, or undefined when it needs none. */
+const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', 'tsconfig.stryker.json']);
+
 export function layoutTransformFor(policyFileName, layout) {
-  const rewrite = REWRITES.get(policyFileName.split('/').at(-1));
-  return rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
+  const name = policyFileName.split('/').at(-1);
+  const rewrite = REWRITES.get(name);
+  const layoutTransform = rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
+  if (!TSCONFIG_POLICY_FILES.has(name)) {
+    return layoutTransform;
+  }
+  return (text, targetPath) =>
+    existsSync(path.join(path.dirname(targetPath), PROJECT_TSCONFIG))
+      ? `${JSON.stringify(projectLayeredTsconfig(JSON.parse(text), layout, name), null, 2)}\n`
+      : (layoutTransform?.(text) ?? text);
 }
 
-// Compiler options that describe the project (target, module resolution, jsx, paths, extensions)
-// come from its own tsconfig.json. These are nitpicker's policy and always win over it: the strict
-// family is listed flag by flag, because an explicit `noImplicitAny: false` in the project would
-// otherwise survive `strict: true`.
+const PROJECT_TSCONFIG = 'tsconfig.json';
+
 const POLICY_COMPILER_OPTIONS = {
   strict: true,
   noImplicitAny: true,
@@ -103,45 +110,17 @@ const POLICY_COMPILER_OPTIONS = {
   forceConsistentCasingInFileNames: true,
 };
 
-// Settings that let the type program run without writing anything, whatever the project builds.
-const ANALYSIS_COMPILER_OPTIONS = { noEmit: true, skipLibCheck: true };
+const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
 
-const PROJECT_TSCONFIG = 'tsconfig.json';
-
-/**
- * `tsconfig.quality.json` layered on the project's own tsconfig.json: the project's options, then
- * the policy flags, over the layout's files. nitpicker's own compiler defaults are not mixed in,
- * because half of a module setup (module without moduleResolution, or the reverse) does not
- * compile. `tsconfig.stryker.json` keeps the project's options and files as they are, because
- * mutants only need to compile the way the project compiles.
- */
-export function projectLayeredTsconfig(base, layout, { policyFileName }) {
+function projectLayeredTsconfig(base, layout, policyFileName) {
   if (policyFileName === 'tsconfig.stryker.json') {
     return { extends: `./${PROJECT_TSCONFIG}`, compilerOptions: { skipLibCheck: true } };
   }
   const layered = layoutTsconfig(base, layout);
   return {
     extends: `./${PROJECT_TSCONFIG}`,
-    compilerOptions: { ...ANALYSIS_COMPILER_OPTIONS, ...POLICY_COMPILER_OPTIONS },
+    compilerOptions: { ...NO_EMIT_ANALYSIS_OPTIONS, ...POLICY_COMPILER_OPTIONS },
     include: layered.include,
     exclude: layered.exclude,
   };
-}
-
-/**
- * The rewrite for a policy file installed into `projectRoot`, or undefined when it can be linked
- * unchanged. A TypeScript config is layered on the project's tsconfig.json when one exists.
- */
-export function policyTransformFor(policyFileName, layout, { projectRoot }) {
-  const name = policyFileName.split('/').at(-1);
-  const isTsconfig = name === 'tsconfig.quality.json' || name === 'tsconfig.stryker.json';
-  if (isTsconfig && existsSync(path.join(projectRoot, PROJECT_TSCONFIG))) {
-    return (text) =>
-      `${JSON.stringify(
-        projectLayeredTsconfig(JSON.parse(text), layout, { policyFileName: name }),
-        null,
-        2,
-      )}\n`;
-  }
-  return layoutTransformFor(policyFileName, layout);
 }

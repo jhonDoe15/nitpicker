@@ -352,7 +352,7 @@ export function createQualityChecks(layout = resolveLayout()) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'preset/defaults/stryker.config.mjs',
-        'preset/defaults/stryker.vitest.config.ts',
+        'preset/defaults/vitest.quality.config.ts',
         'preset/defaults/tsconfig.stryker.json',
       ],
     },

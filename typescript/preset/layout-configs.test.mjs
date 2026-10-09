@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { linkPolicyFile } from '../adapters/policy-links.mjs';
 import { globToRegExp, resolveLayout } from './layout.mjs';
 import {
   layoutJscpdConfig,
   layoutKnipConfig,
   layoutTransformFor,
   layoutTsconfig,
-  policyTransformFor,
 } from './tool-configs.mjs';
 
 const defaults = path.join(import.meta.dirname, 'defaults');
@@ -126,28 +126,31 @@ describe('layout-aware tool configurations', () => {
   });
 
   it('link the shipped files unchanged for the default layout', () => {
-    for (const name of ['tsconfig.quality.json', 'knip.json', 'jscpd.json']) {
+    for (const name of ['knip.json', 'jscpd.json']) {
       expect(layoutTransformFor(name, defaultLayout)).toBeUndefined();
     }
-    expect(layoutTransformFor('tsconfig.quality.json', customLayout)).toBeTypeOf('function');
-    expect(layoutTransformFor('stryker.vitest.config.ts', customLayout)).toBeUndefined();
+    expect(layoutTransformFor('knip.json', customLayout)).toBeTypeOf('function');
+    expect(layoutTransformFor('vitest.quality.config.ts', customLayout)).toBeUndefined();
   });
 
-  it('keep linking the shipped tsconfig when the project has none', () => {
+  it('copy the shipped tsconfig, rewritten for the layout, when the project has none', () => {
     const projectRoot = temporaryProject({});
-    expect(policyTransformFor('tsconfig.quality.json', defaultLayout, { projectRoot })).toBe(
-      undefined,
+    const shipped = readFileSync(path.join(defaults, 'tsconfig.quality.json'), 'utf8');
+    const target = path.join(projectRoot, '.nitpicker-diff-tsconfig.json');
+    expect(layoutTransformFor('tsconfig.quality.json', defaultLayout)(shipped, target)).toBe(
+      shipped,
     );
-    expect(policyTransformFor('tsconfig.quality.json', customLayout, { projectRoot })).toBeTypeOf(
-      'function',
+    const custom = JSON.parse(
+      layoutTransformFor('tsconfig.quality.json', customLayout)(shipped, target),
     );
+    expect(custom.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
   });
 
   it('extend the project tsconfig with the policy flags for type checking', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
-    const transform = policyTransformFor('tsconfig.quality.json', customLayout, { projectRoot });
+    const transform = layoutTransformFor('tsconfig.quality.json', customLayout);
     const shipped = readFileSync(path.join(defaults, 'tsconfig.quality.json'), 'utf8');
-    const layered = JSON.parse(transform(shipped));
+    const layered = JSON.parse(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')));
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toMatchObject({
       noEmit: true,
@@ -164,18 +167,26 @@ describe('layout-aware tool configurations', () => {
 
   it('let mutation testing type-check with the project tsconfig as it is', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
-    const transform = policyTransformFor('tsconfig.stryker.json', defaultLayout, { projectRoot });
+    const transform = layoutTransformFor('tsconfig.stryker.json', defaultLayout);
     const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
-    expect(JSON.parse(transform(shipped))).toEqual({
+    expect(JSON.parse(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')))).toEqual({
       extends: './tsconfig.json',
       compilerOptions: { skipLibCheck: true },
     });
   });
 
-  it('leave other policy files to the layout transform', () => {
+  it('link through a real policy file installs the layered tsconfig', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
-    expect(policyTransformFor('knip.json', defaultLayout, { projectRoot })).toBeUndefined();
-    expect(policyTransformFor('knip.json', customLayout, { projectRoot })).toBeTypeOf('function');
+    const linked = linkPolicyFile(
+      path.join(defaults, 'tsconfig.quality.json'),
+      path.join(projectRoot, '.nitpicker-diff-tsconfig.json'),
+      layoutTransformFor('tsconfig.quality.json', defaultLayout),
+    );
+    try {
+      expect(JSON.parse(readFileSync(linked.targetPath, 'utf8')).extends).toBe('./tsconfig.json');
+    } finally {
+      linked.remove();
+    }
   });
 
   it('move the roots and add the exclude globs for a custom layout', () => {
@@ -281,15 +292,6 @@ describe('package-owned child configs', () => {
     expect(integration.exclude).toContain('lib/legacy/**');
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
     expect(coverage.test.coverage.exclude).toContain('lib/legacy/**');
-    const mutation = await resolveVitestConfig('defaults/stryker.vitest.config.ts', policy);
-    expect(mutation.test.include).toEqual([
-      'lib/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'spec/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-    ]);
-    expect(mutation.test.exclude).toContain('lib/legacy/**');
-    expect(mutation.test.environment).toBe('node');
   });
 
   it('the copied vitest configs keep the default roots without a policy', async () => {
@@ -340,17 +342,6 @@ describe('package-owned child configs', () => {
     expect(coverage.test.coverage.provider).toBe('v8');
     expect(coverage.test.coverage.thresholds).toBeUndefined();
     expect(coverage.test.coverage.include).toEqual(['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
-
-    const mutation = await resolveVitestConfig(
-      'defaults/stryker.vitest.config.ts',
-      policy,
-      projectFiles,
-    );
-    expect(mutation.test.environment).toBe('jsdom');
-    expect(mutation.test.setupFiles).toEqual(['./setup.ts']);
-    expect(mutation.test.dir).toBeUndefined();
-    expect(mutation.test.include).toContain('spec/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(mutation.test.testTimeout).toBe(10_000);
   });
 
   it('the copied vitest configs pick up a Vite config when there is no Vitest config', async () => {
