@@ -66,6 +66,8 @@ const POLICY_FILES = [
   'preset/eslint-plugin/rules/no-node-process-per-test.mjs',
   'preset/eslint-plugin/rules/no-server-or-worker-per-test.mjs',
   'preset/eslint-plugin/rules/no-raised-test-timeout.mjs',
+  'preset/eslint-plugin/rules/no-first-test-charged-setup.mjs',
+  'preset/eslint-plugin/rules/no-uninjectable-delay.mjs',
   'preset/eslint-plugin/rules/no-process-globals-outside-main-guard.mjs',
   'preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
 ];
