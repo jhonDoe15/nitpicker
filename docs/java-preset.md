@@ -1,6 +1,6 @@
 # Java preset
 
-Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4) and 5 (ticket J5) implemented; later slices are planned below. The scope is a proposal
+Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4), 5 (ticket J5) and 6 (ticket J6) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
 The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
@@ -53,8 +53,8 @@ mapping, tests, and this document.
 | 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | done    |
 | 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | done    |
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | done    |
-| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | this PR |
-| 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
+| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | done    |
+| 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | this PR |
 | 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | later   |
 | 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | later   |
 
@@ -107,8 +107,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   before. The key is read from the head checkout and applies to both snapshots, like the rest of
   the config.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
-  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`
-  and (slice 3) `checkstyle`. The analyzer declares them as `reportedTools`, the one scheduler change this slice
+  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
+  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5) and `duplicates` (slice 6). The analyzer declares them as `reportedTools`, the one scheduler change this slice
   needed (a finding for a tool that is neither the analyzer nor a declared one is still an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
   init script and the Java adapter files, so a tool bump invalidates the base cache.
@@ -224,9 +224,31 @@ identity when the value changes: editing such a line counts as a resolved plus a
   `fixtures/lizard.csv` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
   the gated e2e test has a case adding a ten-branch untested method (needs lizard 1.24.1).
 
+## Slice 6: duplicates
+
+- **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
+  does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
+  `adapters/java/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
+  `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
+  per existing main source root with `--format java --mode mild`, ignoring `build`, `generated`,
+  `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
+  `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
+  failure is a tool error like a Gradle failure.
+- **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
+  `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
+  (descriptive metrics `lines` and `tokens`). There is no extra threshold:
+  jscpd's defaults (5 lines, 50 tokens) apply, as for TypeScript.
+
+| Tool                 | Report                      | Ingester                                              | Classification                                                    | Identity                                                                                                                                                  |
+| -------------------- | --------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| jscpd (`duplicates`) | jscpd JSON, per source root | `normalizeDuplicates` (TypeScript `duplicates` check) | `duplicate-clone` enforceable; `duplicate-clone-size` descriptive | Sorted file pair, a hash of the cloned text, and the n-th occurrence of that pair; the size metrics use pair, occurrence and metric name. No line number. |
+
+Editing the cloned text changes its hash, so a clone that was changed (not only moved) counts as a
+resolved plus a new finding, as in the TypeScript check.
+
 ## Slice 1: what is deliberately not included
 
-- jscpd, PIT: slices 6 and 7 (ArchUnit is slice 4, CRAP via lizard is slice 5).
+- PIT: slice 7 (ArchUnit is slice 4, CRAP via lizard slice 5, jscpd slice 6).
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
