@@ -47,16 +47,9 @@ function editSteps(left, right, lengthAt) {
   const steps = [];
   let column = 0;
   for (const [row, line] of left.entries()) {
-    for (const candidate of indexesFrom(column, right.length)) {
-      if (
-        line === right[candidate] ||
-        lengthAt(row + 1, candidate) >= lengthAt(row, candidate + 1)
-      ) {
-        break;
-      }
-      steps.push({ kind: 'insert', row, line: right[candidate] });
-      column = candidate + 1;
-    }
+    const insertions = insertionsBefore({ row, line, column }, right, lengthAt);
+    steps.push(...insertions);
+    column += insertions.length;
     const matches = column < right.length && line === right[column];
     steps.push({ kind: matches ? 'keep' : 'delete', row, line });
     column += matches ? 1 : 0;
@@ -65,6 +58,16 @@ function editSteps(left, right, lengthAt) {
     steps.push({ kind: 'insert', row: left.length, line: right[candidate] });
   }
   return steps;
+}
+
+function insertionsBefore({ row, line, column }, right, lengthAt) {
+  const stop = indexesFrom(column, right.length).find(
+    (candidate) =>
+      line === right[candidate] || lengthAt(row + 1, candidate) >= lengthAt(row, candidate + 1),
+  );
+  return right
+    .slice(column, stop ?? right.length)
+    .map((inserted) => ({ kind: 'insert', row, line: inserted }));
 }
 
 function groupedRuns(steps) {
