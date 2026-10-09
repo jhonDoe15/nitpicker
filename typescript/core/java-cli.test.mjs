@@ -187,7 +187,7 @@ describe('Java analyzer', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
