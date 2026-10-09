@@ -219,7 +219,9 @@ allprojects {
                 // that share a package with the tests to the test engine.
                 def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
                 def tests = testClassDirs.collectMany { dir ->
-                    fileTree(dir) { include '**/*.class' }.files.collect {
+                    // ArchUnit rule classes are run by nitpickerArchunit, not by `test`, so they are no
+                    // part of PIT's green-suite baseline.
+                    fileTree(dir) { include '**/*.class'; exclude archunitIncludes }.files.collect {
                         dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                             .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
                     }
