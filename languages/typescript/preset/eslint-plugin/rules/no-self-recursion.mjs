@@ -1,3 +1,4 @@
+import { ancestorsOf, scopeChain } from './ancestry.mjs';
 const functionTypes = new Set([
   'FunctionDeclaration',
   'FunctionExpression',
@@ -33,7 +34,7 @@ export const rule = {
     const sourceCode = context.sourceCode;
 
     function resolve(identifier) {
-      for (let scope = sourceCode.getScope(identifier); scope; scope = scope.upper) {
+      for (const scope of scopeChain(sourceCode.getScope(identifier))) {
         const variable = scope.set.get(identifier.name);
         if (variable) return variable;
       }
@@ -41,11 +42,7 @@ export const rule = {
     }
 
     function enclosingFunctions(node) {
-      const found = [];
-      for (let current = node.parent; current; current = current.parent) {
-        if (functionTypes.has(current.type)) found.push(current);
-      }
-      return found;
+      return ancestorsOf(node).filter((current) => functionTypes.has(current.type));
     }
 
     return {

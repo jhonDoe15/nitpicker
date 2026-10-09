@@ -1,4 +1,5 @@
 import { constantNumber, resolveConstant } from './test-code-analysis.mjs';
+import { chainOf } from './ancestry.mjs';
 
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
 
@@ -7,10 +8,10 @@ const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
 const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', 'hookTimeout', 'teardownTimeout']);
 
 function rootName(callee) {
-  let current = callee;
-  while (current?.type === 'MemberExpression' || current?.type === 'CallExpression') {
-    current = current.type === 'MemberExpression' ? current.object : current.callee;
-  }
+  const current = chainOf(callee, (link) => {
+    if (link.type === 'MemberExpression') return link.object;
+    return link.type === 'CallExpression' ? link.callee : undefined;
+  }).at(-1);
   return current?.type === 'Identifier' ? current.name : undefined;
 }
 

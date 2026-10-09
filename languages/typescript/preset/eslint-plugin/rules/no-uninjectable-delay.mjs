@@ -4,6 +4,7 @@ import {
   importedCalleeName,
   moduleBindings,
 } from './test-code-analysis.mjs';
+import { ancestorsOf } from './ancestry.mjs';
 
 /** Delays below this are short enough that a test waiting them out is not worth a rule. */
 export const MIN_UNINJECTABLE_DELAY_MS = 500;
@@ -47,7 +48,7 @@ function exportedLocalNames(program) {
 /** The outermost function containing `node`, when it is a top-level declaration or const. */
 function topLevelFunction(node) {
   let outermost;
-  for (let current = node.parent; current && current.type !== 'Program'; current = current.parent) {
+  for (const current of ancestorsOf(node).filter((ancestor) => ancestor.type !== 'Program')) {
     if (isFunction(current)) outermost = current;
   }
   if (!outermost) return undefined;
