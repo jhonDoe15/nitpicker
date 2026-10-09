@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { cruise } from '../dependency-graph/cruise.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
 import { analyzeEntryPoints } from './analyze.mjs';
 
 const fixtureRoot = 'preset/entry-points/fixtures';
 const options = { foundationDirectories: new Set() };
 
 describe('production entry-point policy', () => {
-  it('accepts public, same-component, and composition-root imports', () => {
+  it('accepts public, same-component, and composition-root imports', async () => {
     const sourceRoot = `${fixtureRoot}/allowed/src/main`;
     const report = analyzeEntryPoints(
-      cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/allowed` }),
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/allowed` }),
       sourceRoot,
       options,
     );
@@ -20,10 +20,10 @@ describe('production entry-point policy', () => {
     expect(report.summary.throughEntryPoint).toBe(1);
   });
 
-  it('distinguishes a public bypass from unexported and missing targets', () => {
+  it('distinguishes a public bypass from unexported and missing targets', async () => {
     const sourceRoot = `${fixtureRoot}/signals/src/main`;
     const report = analyzeEntryPoints(
-      cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/signals` }),
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/signals` }),
       sourceRoot,
       options,
     );
