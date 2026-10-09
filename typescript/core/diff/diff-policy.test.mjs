@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import {
+  cpSync,
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -11,18 +13,29 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from './compare.mjs';
 import { parseDrillDownOptions } from './cli.mjs';
-import { runCli } from '../cli.mjs';
+import { runCli as runCliWithSubprocesses } from '../cli.mjs';
 import { parseFinding } from './finding-schema.mjs';
 import { canonicalCycleIdentity } from './fingerprint.mjs';
 import { runGit } from './git.mjs';
 import { REPORT_FILE_NAMES } from './reporters.mjs';
-import { runQualityDiff } from './run-diff.mjs';
+import { runQualityDiff as runQualityDiffWithSubprocesses } from './run-diff.mjs';
+import { runTasksInProcess } from './fixtures/in-process-analyzers.mjs';
+
+// Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
+// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
+// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
+const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+const runQualityDiff = (options) =>
+  runQualityDiffWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'fixtures/fake-analyzer.mjs');
 const temporaryRepositories = [];
+let templateRoot;
+const baseRepositories = new Map();
+const COMPARISON_BASE_REF = 'comparison-base';
 const COMMON_EXCLUSIONS = [
   '**/generated/**',
   '**/*.d.ts',
@@ -37,6 +50,17 @@ const COMMON_EXCLUSIONS = [
 afterEach(() => {
   for (const repositoryRoot of temporaryRepositories.splice(0)) {
     rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+afterAll(() => {
+  for (const { root } of baseRepositories.values()) {
+    rmSync(root, { recursive: true, force: true });
+  }
+  baseRepositories.clear();
+  if (templateRoot !== undefined) {
+    rmSync(templateRoot, { recursive: true, force: true });
+    templateRoot = undefined;
   }
 });
 
@@ -296,6 +320,7 @@ describe('quality diff Git comparison', () => {
         analyzers: [fakeAnalyzer()],
         stdout: output.stdout,
         stderr: output.stderr,
+        runTasks: undefined,
       });
 
       expect(exitCode).toBe(2);
@@ -319,6 +344,7 @@ describe('quality diff Git comparison', () => {
       analyzers: [fakeAnalyzer({ timeoutMs: 100 })],
       stdout: output.stdout,
       stderr: output.stderr,
+      runTasks: undefined,
     });
 
     expect(exitCode).toBe(2);
@@ -885,25 +911,51 @@ describe('quality diff identities and arguments', () => {
   });
 });
 
+/**
+ * Git setup is shared: one template repository per file (init, identity, and signing and
+ * maintenance settings that would otherwise cost extra processes per commit), and one base
+ * repository per distinct set of initial files. Each test copies a base repository directory,
+ * `.git` included, instead of spawning git again. Copies are never mutated; tests that need
+ * changes commit them into their own copy.
+ */
+function repositoryTemplate() {
+  if (templateRoot === undefined) {
+    templateRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'quality-diff-template-')));
+    git(templateRoot, ['init', '-q', '--initial-branch=main']);
+    git(templateRoot, ['config', 'user.name', 'Quality Diff Fixture']);
+    git(templateRoot, ['config', 'user.email', 'quality-diff@example.invalid']);
+    git(templateRoot, ['config', 'commit.gpgsign', 'false']);
+    git(templateRoot, ['config', 'maintenance.auto', 'false']);
+    git(templateRoot, ['config', 'gc.auto', '0']);
+  }
+  return templateRoot;
+}
+
+function baseRepositoryFor(initialFiles) {
+  const key = JSON.stringify(initialFiles);
+  let base = baseRepositories.get(key);
+  if (base === undefined) {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'quality-diff-base-')));
+    cpSync(path.join(repositoryTemplate(), '.git'), path.join(root, '.git'), { recursive: true });
+    writeFiles(root, initialFiles);
+    commit(root, 'base');
+    const baseSha = git(root, ['rev-parse', 'HEAD']).trim();
+    git(root, ['branch', COMPARISON_BASE_REF, baseSha]);
+    base = { root, baseSha };
+    baseRepositories.set(key, base);
+  }
+  return base;
+}
+
 function createRepository(initialFiles) {
-  const root = realpathSync(
-    execFileSync('mktemp', ['-d', path.join(tmpdir(), 'quality-diff-repo-XXXXXX')], {
-      encoding: 'utf8',
-    }).trim(),
-  );
+  const base = baseRepositoryFor(initialFiles);
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'quality-diff-repo-')));
   temporaryRepositories.push(root);
-  git(root, ['init', '-q', '--initial-branch=main']);
-  git(root, ['config', 'user.name', 'Quality Diff Fixture']);
-  git(root, ['config', 'user.email', 'quality-diff@example.invalid']);
-  writeFiles(root, initialFiles);
-  commit(root, 'base');
-  const baseSha = git(root, ['rev-parse', 'HEAD']).trim();
-  const baseRef = 'comparison-base';
-  git(root, ['branch', baseRef, baseSha]);
+  cpSync(base.root, root, { recursive: true });
   return {
     root,
-    baseSha,
-    baseRef,
+    baseSha: base.baseSha,
+    baseRef: COMPARISON_BASE_REF,
     outputRoot: path.join(root, 'reports/quality/diff'),
   };
 }

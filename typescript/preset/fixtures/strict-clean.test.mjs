@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../core/cli.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../..');
@@ -94,14 +94,25 @@ describe('strict rules in touched code', () => {
     '',
   ].join('\n');
 
-  function createProjectWithLegacyViolation() {
-    const root = createProject();
-    const target = path.join(root, 'src/main/legacy.ts');
-    writeFileSync(target, legacy);
-    git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'legacy violation');
-    git(root, 'switch', '-q', '-c', 'feature');
-    return { root, target };
+  // Both tests branch from the same committed base, so the second run reuses the base-side
+  // findings the first run cached (the base commit SHA is part of the cache key).
+  let sharedRoot;
+  const target = () => path.join(sharedRoot, 'src/main/legacy.ts');
+  beforeAll(() => {
+    sharedRoot = createProject();
+    // Owned by afterAll here, not by the per-test cleanup above.
+    temporaryRoots.splice(temporaryRoots.indexOf(sharedRoot), 1);
+    writeFileSync(target(), legacy);
+    git(sharedRoot, 'add', '-A');
+    git(sharedRoot, 'commit', '-q', '-m', 'legacy violation');
+  });
+  afterAll(() => {
+    rmSync(sharedRoot, { recursive: true, force: true });
+  });
+
+  function createProjectWithLegacyViolation(branch) {
+    git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
+    return { root: sharedRoot, target: target() };
   }
 
   function runDifference(root) {
@@ -120,7 +131,7 @@ describe('strict rules in touched code', () => {
   it(
     'keeps a legacy violation baselined when the edit is elsewhere in the file',
     () => {
-      const { root, target } = createProjectWithLegacyViolation();
+      const { root, target } = createProjectWithLegacyViolation('elsewhere');
       writeFileSync(target, legacy.replace('first = 1', 'first = 2'));
 
       const { exitCode, summary } = runDifference(root);
@@ -134,7 +145,7 @@ describe('strict rules in touched code', () => {
   it(
     'fails when the edit touches the line of a legacy violation',
     () => {
-      const { root, target } = createProjectWithLegacyViolation();
+      const { root, target } = createProjectWithLegacyViolation('touched');
       writeFileSync(target, legacy.replace('] as', ']  as'));
 
       const { exitCode, stdoutText } = runDifference(root);

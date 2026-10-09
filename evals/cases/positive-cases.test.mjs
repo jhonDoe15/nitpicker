@@ -7,17 +7,17 @@ import {
   CASE_TIMEOUT_MS,
   casesDirectory,
   linkedWorkdir,
+  runApplied,
   runReference,
   strictCleanRoot,
 } from './case-harness.mjs';
+import { END_TO_END, POSITIVE_CASES } from './case-table.mjs';
 
 // Fixture files a case may extend beyond strict-clean (the bug case wires its buggy function).
 const EXTENDED_BY_CASE = new Set([
   'src/main/composition-root.ts',
   'src/main/features/greeting/index.ts',
 ]);
-
-const POSITIVE_CASES = ['add-farewell-feature', 'fix-count-bug', 'add-greet-endpoint'];
 
 describe('positive case definitions', () => {
   it('lists at least three positive cases besides the trivial runner case', () => {
@@ -67,11 +67,15 @@ describe('the reference solutions pass the runner checks (no model calls)', () =
     it(
       `${caseId}: gate clean, acceptance tests pass, no shortcuts`,
       () => {
-        const record = runReference(caseId);
+        const endToEnd = caseId === END_TO_END.honest;
+        const record = (endToEnd ? runReference : runApplied)(caseId);
         expect(record.acceptance.passed, record.acceptance.output).toBe(true);
         expect(record.gate.final.exit, record.gate.final.output).toBe(0);
-        expect(record.gate.iterations).toBe(1);
-        expect(record.gate.iterationsToGreen).toBe(1);
+        if (endToEnd) {
+          // The whole flow: the agent ran the gate once through nitpicker-gate and it was green.
+          expect(record.gate.iterations).toBe(1);
+          expect(record.gate.iterationsToGreen).toBe(1);
+        }
         expect(record.shortcuts).toEqual([]);
         expect(record.detectorErrors).toEqual([]);
         expect(record.outcome).toBe('passed');
