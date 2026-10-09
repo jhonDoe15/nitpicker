@@ -35,7 +35,6 @@ export const strictEslintRuleIds = [
   'no-restricted-syntax',
 ];
 
-// Prettier findings are per formatting hunk and held to the same touched-lines standard.
 const PRETTIER_RULE = 'prettier/prettier';
 
 const strictRuleIds = new Set([

@@ -1,23 +1,14 @@
 const MAX_TABLE_CELLS = 40_000_000;
 
-/**
- * Compares a file with its Prettier output line by line and returns one hunk per run of differing
- * lines: `line` is the first line of the run in the original file, `original` and `formatted` are
- * the run's own text, and `count` is how many original lines it spans (0 for a pure insertion).
- */
 export function formattingHunks(source, formatted) {
   const left = source.split('\n');
   const right = formatted.split('\n');
-  let start = 0;
-  while (start < left.length && start < right.length && left[start] === right[start]) start += 1;
-  let leftEnd = left.length;
-  let rightEnd = right.length;
-  while (leftEnd > start && rightEnd > start && left[leftEnd - 1] === right[rightEnd - 1]) {
-    leftEnd -= 1;
-    rightEnd -= 1;
-  }
-  if (leftEnd === start && rightEnd === start) return [];
-  return alignedRuns(left.slice(start, leftEnd), right.slice(start, rightEnd)).map((run) => ({
+  const start = commonPrefixLength(left, right);
+  const end = commonPrefixLength(left.slice(start).toReversed(), right.slice(start).toReversed());
+  const changedLeft = left.slice(start, left.length - end);
+  const changedRight = right.slice(start, right.length - end);
+  if (changedLeft.length === 0 && changedRight.length === 0) return [];
+  return alignedRuns(changedLeft, changedRight).map((run) => ({
     line: start + run.leftStart + 1,
     count: run.original.length,
     original: run.original.join('\n'),
@@ -25,42 +16,71 @@ export function formattingHunks(source, formatted) {
   }));
 }
 
+function commonPrefixLength(left, right) {
+  const shorter = Math.min(left.length, right.length);
+  const firstDifference = indexesFrom(0, shorter).find((index) => left[index] !== right[index]);
+  return firstDifference ?? shorter;
+}
+
 function alignedRuns(left, right) {
   if (left.length * right.length > MAX_TABLE_CELLS) {
     return [{ leftStart: 0, original: left, formatted: right }];
   }
+  return groupedRuns(editSteps(left, right, commonSubsequenceLengths(left, right)));
+}
+
+function commonSubsequenceLengths(left, right) {
   const width = right.length + 1;
   const table = new Uint32Array((left.length + 1) * width);
-  for (let row = left.length - 1; row >= 0; row -= 1) {
-    for (let column = right.length - 1; column >= 0; column -= 1) {
+  for (const row of indexesFrom(0, left.length).toReversed()) {
+    for (const column of indexesFrom(0, right.length).toReversed()) {
       table[row * width + column] =
         left[row] === right[column]
           ? table[(row + 1) * width + column + 1] + 1
           : Math.max(table[(row + 1) * width + column], table[row * width + column + 1]);
     }
   }
+  return (row, column) => table[row * width + column];
+}
+
+function editSteps(left, right, lengthAt) {
+  const steps = [];
+  let column = 0;
+  for (const [row, line] of left.entries()) {
+    for (const candidate of indexesFrom(column, right.length)) {
+      if (
+        line === right[candidate] ||
+        lengthAt(row + 1, candidate) >= lengthAt(row, candidate + 1)
+      ) {
+        break;
+      }
+      steps.push({ kind: 'insert', row, line: right[candidate] });
+      column = candidate + 1;
+    }
+    const matches = column < right.length && line === right[column];
+    steps.push({ kind: matches ? 'keep' : 'delete', row, line });
+    column += matches ? 1 : 0;
+  }
+  for (const candidate of indexesFrom(column, right.length)) {
+    steps.push({ kind: 'insert', row: left.length, line: right[candidate] });
+  }
+  return steps;
+}
+
+function groupedRuns(steps) {
   const runs = [];
   let current;
-  let row = 0;
-  let column = 0;
-  while (row < left.length || column < right.length) {
-    if (row < left.length && column < right.length && left[row] === right[column]) {
+  for (const step of steps) {
+    if (step.kind === 'keep') {
       current = undefined;
-      row += 1;
-      column += 1;
       continue;
     }
-    current ??= runs[runs.push({ leftStart: row, original: [], formatted: [] }) - 1];
-    const dropLeft =
-      column >= right.length ||
-      (row < left.length && table[(row + 1) * width + column] >= table[row * width + column + 1]);
-    if (dropLeft) {
-      current.original.push(left[row]);
-      row += 1;
-    } else {
-      current.formatted.push(right[column]);
-      column += 1;
-    }
+    current ??= runs[runs.push({ leftStart: step.row, original: [], formatted: [] }) - 1];
+    (step.kind === 'delete' ? current.original : current.formatted).push(step.line);
   }
   return runs;
+}
+
+function indexesFrom(first, end) {
+  return Array.from({ length: Math.max(end - first, 0) }, (_, offset) => first + offset);
 }
