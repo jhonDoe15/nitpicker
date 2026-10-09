@@ -4,7 +4,7 @@ import { comparisonKey } from './fingerprint.mjs';
  * Splits findings into new, resolved, unchanged and changed-metric. When `touchedCode` is given, an
  * enforceable finding of a strict rule that sits in code this change touched is new even though the
  * base has it: `touchedCode.isStrictRule(rule, finding)` names the strict rules and
- * `touchedCode.changedLines` comes from `readChangedLines`. Findings in untouched code stay
+ * `touchedCode.changedLines` comes from `readChangedLines`. A finding that spans lines (`location.endLine`) is touched when an edit overlaps any of them. Findings in untouched code stay
  * baselined.
  */
 export function compareFindings({
@@ -76,7 +76,10 @@ function isInTouchedCode(finding, touchedCode) {
     return true;
   }
   const line = finding.location?.line;
-  return line !== undefined && changed.ranges.some(([start, end]) => start <= line && line <= end);
+  const endLine = finding.location?.endLine ?? line;
+  return (
+    line !== undefined && changed.ranges.some(([start, end]) => start <= endLine && line <= end)
+  );
 }
 
 function indexFindings(findings, renames, snapshot) {

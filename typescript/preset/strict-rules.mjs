@@ -3,6 +3,9 @@ import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { strictPresetConfig } from './eslint-config/strict.mjs';
 import { defaultResolvedLayout } from './layout.mjs';
 
+// Prettier findings are per formatting hunk and held to the same touched-lines standard.
+const PRETTIER_RULE = 'prettier/prettier';
+
 const strictRuleIds = new Set([
   ...strictPresetConfig(defaultResolvedLayout, {}).flatMap((entry) =>
     Object.keys(entry.rules ?? {}),
@@ -18,5 +21,5 @@ const strictRuleIds = new Set([
  * `changed-branch-coverage` (see adapters/java/touched-rules.mjs) is held to the same standard.
  */
 export function isStrictRule(rule, finding) {
-  return strictRuleIds.has(rule) || isJavaTouchedRule(rule, finding);
+  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isJavaTouchedRule(rule, finding);
 }

@@ -66,6 +66,9 @@ function parseLocation(value, context) {
   if (value.column !== undefined) {
     location.column = positiveInteger(value.column, `${context}.column`);
   }
+  if (value.endLine !== undefined) {
+    location.endLine = positiveInteger(value.endLine, `${context}.endLine`);
+  }
   return location;
 }
 

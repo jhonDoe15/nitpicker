@@ -23,6 +23,7 @@ import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { formattingHunks } from './format-hunks.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -112,7 +113,7 @@ async function runPrettier(options) {
     } catch (error) {
       throw new Error('Prettier policy is not valid JSON', { cause: error });
     }
-    return Promise.all(
+    const perFile = await Promise.all(
       unformattedFiles.map(async (filePath) => {
         const relativePath = projectFile(options.projectRoot, filePath);
         const absolutePath = path.join(options.projectRoot, relativePath);
@@ -121,16 +122,10 @@ async function runPrettier(options) {
           ...prettierOptions,
           filepath: absolutePath,
         });
-        return {
-          tool: options.analyzerName,
-          rule: 'prettier/prettier',
-          path: relativePath,
-          identity: `format-diff:${hash(formattingDifference(source, formatted))}`,
-          message: 'Format this file with Prettier',
-          classification: 'enforceable',
-        };
+        return formattingFindings(options.analyzerName, relativePath, source, formatted);
       }),
     );
+    return perFile.flat();
   } finally {
     installedPolicy.remove();
   }
@@ -716,22 +711,25 @@ function formatDiagnostic(diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
 
-function formattingDifference(source, formatted) {
-  let start = 0;
-  while (start < source.length && start < formatted.length && source[start] === formatted[start]) {
-    start += 1;
-  }
-  let sourceEnd = source.length;
-  let formattedEnd = formatted.length;
-  while (
-    sourceEnd > start &&
-    formattedEnd > start &&
-    source[sourceEnd - 1] === formatted[formattedEnd - 1]
-  ) {
-    sourceEnd -= 1;
-    formattedEnd -= 1;
-  }
-  return `${source.slice(start, sourceEnd)}\0${formatted.slice(start, formattedEnd)}`;
+// One finding per differing region, located at its first original line. The identity is the
+// region's own original and formatted text (plus an occurrence number for identical regions in one
+// file), never its position, so edits elsewhere in the file do not change it.
+function formattingFindings(tool, relativePath, source, formatted) {
+  const seen = new Map();
+  return formattingHunks(source, formatted).map((hunk) => {
+    const digest = hash(`${hunk.original}\0${hunk.formatted}`);
+    const occurrence = seen.get(digest) ?? 0;
+    seen.set(digest, occurrence + 1);
+    return {
+      tool,
+      rule: 'prettier/prettier',
+      path: relativePath,
+      identity: `format-diff:${digest}${occurrence === 0 ? '' : `#${String(occurrence)}`}`,
+      message: 'Format these lines with Prettier',
+      classification: 'enforceable',
+      location: { line: hunk.line, endLine: hunk.line + Math.max(hunk.count, 1) - 1 },
+    };
+  });
 }
 
 function hash(value) {
