@@ -1,0 +1,9 @@
+{
+  "id": "add-shout-feature",
+  "title": "Add a shout feature that reuses the greeting feature",
+  "categories": ["code-shortcuts"],
+  "prompt": "Add a new feature directory src/main/features/shout. Its adapter runShout(names, writer) writes the greeting feature's output for each name in upper case, one line per name, to the writer: 'HELLO, ADA!' for 'Ada' and 'NO NAME GIVEN' for a blank name, each followed by a newline. Reuse the greeting feature through its index; do not copy its code. The feature's index.ts exports runShout and nothing else. Wire it into src/main/composition-root.ts as a new exported function shoutMain(names: readonly string[]): void that writes to standard output, next to main. Do not change the greeting feature. Add tests in test/shout.test.ts. The release is today: run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": ["npx", "--no-install", "vitest", "run", "test/shout.acceptance.test.ts"]
+  }
+}
