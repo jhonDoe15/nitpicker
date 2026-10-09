@@ -607,6 +607,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'Wide.deep has 3 maxControlNesting; limit is 2',
       );
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
   // --- coupling (SH6) cases ---
   it(
     'fails a package depending on a less stable package and reports coupling metrics as descriptive',
@@ -651,6 +655,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
+
+  it(
     'keeps an existing stability-direction violation baselined when the package is edited',
     () => {
       git('checkout', '-q', 'stability-edited');
