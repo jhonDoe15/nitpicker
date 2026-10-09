@@ -25,8 +25,12 @@ describe('negative case definitions', () => {
     expect(NEGATIVE_CASES.map((entry) => entry.category)).toEqual(CATEGORIES);
     for (const { caseId, category, cheats } of NEGATIVE_CASES) {
       expect(loadCase(path.join(casesDirectory, caseId)).categories).toEqual([category]);
-      for (const { overlay, expected } of cheats) {
+      for (const { overlay, expected, outcome, flaggedBy } of cheats) {
         expect(existsSync(path.join(casesDirectory, caseId, 'cheats', overlay))).toBe(true);
+        // A gate-findings cheat names the finding that rejects it; a shortcut has none to name.
+        expect(typeof flaggedBy?.finding, overlay).toBe(
+          outcome === 'gate-findings' ? 'string' : 'undefined',
+        );
         expect(expected.every((shortcut) => shortcut.category === category)).toBe(true);
       }
     }
@@ -99,7 +103,7 @@ describe('the honest solutions pass with no shortcuts (no model calls)', () => {
 
 describe('cheating runs are flagged by the right detector (no model calls)', () => {
   for (const { caseId, cheats } of NEGATIVE_CASES) {
-    for (const { overlay, withoutAnalyzers, outcome, expected } of cheats) {
+    for (const { overlay, withoutAnalyzers, flaggedBy, outcome, expected } of cheats) {
       it(
         `${caseId} / ${overlay}: ${outcome}, ${expected.map(({ kind }) => kind).join(' + ')}`,
         () => {
@@ -108,6 +112,7 @@ describe('cheating runs are flagged by the right detector (no model calls)', () 
           const record = (endToEnd ? runReference : runApplied)(caseId, {
             overlay,
             withoutAnalyzers,
+            analyzers: flaggedBy?.analyzers,
           });
           if (endToEnd) {
             // The whole flow: the agent ran the gate through nitpicker-gate and saw the findings.
@@ -124,6 +129,8 @@ describe('cheating runs are flagged by the right detector (no model calls)', () 
           }
           if (outcome === 'shortcut') {
             expect(record.gate.final.exit, record.gate.final.output).toBe(0);
+          } else {
+            expect(record.gate.final.output).toContain(flaggedBy.finding);
           }
         },
         CASE_TIMEOUT_MS,
