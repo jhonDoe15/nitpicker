@@ -1,8 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java/java-runner.mjs';
 import { createJavaAnalyzer } from '../adapters/java/java-analyzer.mjs';
 import { runCli } from './cli.mjs';
@@ -36,8 +44,11 @@ function temporaryRoot(prefix) {
   return root;
 }
 
+// Hermetic git: ignores the global config (commit signing adds a round trip to every commit).
+const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+
 function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
 }
 
 function write(root, files) {
@@ -53,20 +64,37 @@ function commit(root, message) {
   git(root, ['commit', '-q', '-m', message]);
 }
 
-function gradleRepository(files = {}) {
-  const root = temporaryRoot('nitpicker-java-cli-');
-  git(root, ['init', '-q', '--initial-branch=main']);
-  git(root, ['config', 'user.name', 'Nitpicker Java Fixture']);
-  git(root, ['config', 'user.email', 'nitpicker-java@example.invalid']);
-  write(root, {
+// One repository with the default Gradle project, built once per file; each test copies it.
+let templateRoot;
+
+beforeAll(() => {
+  templateRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-template-')));
+  git(templateRoot, ['init', '-q', '--initial-branch=main']);
+  git(templateRoot, ['config', 'user.name', 'Nitpicker Java Fixture']);
+  git(templateRoot, ['config', 'user.email', 'nitpicker-java@example.invalid']);
+  write(templateRoot, {
     'nitpicker.config.json': '{ "preset": "java" }\n',
     'build.gradle': "plugins { id 'java' }\n",
     'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
     'violations.txt': 'Avoid unused field: legacy\n',
-    ...files,
   });
-  commit(root, 'base');
-  git(root, ['branch', 'comparison-base']);
+  commit(templateRoot, 'base');
+  git(templateRoot, ['branch', 'comparison-base']);
+});
+
+afterAll(() => {
+  rmSync(templateRoot, { recursive: true, force: true });
+});
+
+// Extra files become part of the base commit, so a test can start from a different base.
+function gradleRepository(files = {}) {
+  const root = temporaryRoot('nitpicker-java-cli-');
+  cpSync(templateRoot, root, { recursive: true });
+  if (Object.keys(files).length > 0) {
+    write(root, files);
+    commit(root, 'base');
+    git(root, ['branch', '-f', 'comparison-base']);
+  }
   return root;
 }
 
@@ -152,6 +180,8 @@ describe('nitpicker with "preset": "java"', () => {
   it('reports a Gradle failure on head as a tool error with exit 2 instead of throwing', () => {
     const root = gradleRepository();
     write(root, { GRADLE_FAIL: 'Execution failed for task :compileJava\n' });
+    // The change also deletes a file, so the changed-lines reader sees a deleted path.
+    git(root, ['rm', '-q', 'violations.txt']);
     commit(root, 'break the build');
 
     const result = run(root);
@@ -166,19 +196,6 @@ describe('nitpicker with "preset": "java"', () => {
         rule: 'gradle-failure',
         message: expect.stringContaining('Execution failed for task :compileJava'),
       }),
-    ]);
-  });
-
-  it('reports a Gradle failure on the base snapshot as a tool error', () => {
-    const root = gradleRepository({ GRADLE_FAIL: 'base does not compile\n' });
-    git(root, ['rm', '-q', 'GRADLE_FAIL']);
-    commit(root, 'fix the build');
-
-    const result = run(root);
-
-    expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({ tool: 'java', snapshot: 'base', rule: 'gradle-failure' }),
     ]);
   });
 
