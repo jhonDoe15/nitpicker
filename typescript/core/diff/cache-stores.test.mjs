@@ -1,3 +1,4 @@
+import { createServer } from 'node:net';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -23,6 +24,43 @@ async function server(options) {
   const started = await startTestHttpServer(options);
   cleanups.push(() => started.close());
   return started;
+}
+
+/**
+ * A remote store kept in memory. The layered store and the findings cache only see the
+ * `get`/`put` contract here; the HTTP transport has its own tests above.
+ */
+function memoryRemote() {
+  const objects = new Map();
+  return {
+    objects,
+    get: (key) => objects.get(key),
+    put: (key, text) => {
+      objects.set(key, text);
+      return true;
+    },
+  };
+}
+
+/** A TCP port that was free a moment ago: nothing listens on it. */
+async function closedPort() {
+  const probe = createServer();
+  await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
+  const { port } = probe.address();
+  await new Promise((resolve) => probe.close(resolve));
+  return port;
+}
+
+/** Accepts connections and never answers, so every request runs into its timeout. */
+async function silentServer() {
+  const sockets = [];
+  const silent = createServer((socket) => sockets.push(socket));
+  await new Promise((resolve) => silent.listen(0, '127.0.0.1', resolve));
+  cleanups.push(async () => {
+    for (const socket of sockets) socket.destroy();
+    await new Promise((resolve) => silent.close(resolve));
+  });
+  return `http://127.0.0.1:${String(silent.address().port)}`;
 }
 
 function temporaryDirectory() {
@@ -80,19 +118,22 @@ describe('http store', () => {
   });
 
   it('degrades to a miss when nothing listens or the server is too slow', async () => {
-    const remote = await server();
-    const unreachable = createHttpStore({ baseUrl: remote.url, timeoutMs: 500 });
-    remote.close();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    const unreachable = createHttpStore({
+      baseUrl: `http://127.0.0.1:${String(await closedPort())}`,
+      timeoutMs: 500,
+    });
     expect(unreachable.get('k')).toBeUndefined();
     expect(unreachable.put('k', 'v')).toBe(false);
+
+    const slow = createHttpStore({ baseUrl: await silentServer(), timeoutMs: 100 });
+    expect(slow.get('k')).toBeUndefined();
+    expect(slow.put('k', 'v')).toBe(false);
   });
 });
 
 describe('layered store', () => {
-  it('prefers local, falls back to remote, and writes remote only when asked', async () => {
-    const remote = await server();
-    const remoteStore = createHttpStore({ baseUrl: remote.url });
+  it('prefers local, falls back to remote, and writes remote only when asked', () => {
+    const remoteStore = memoryRemote();
     const local = createDirectoryStore(temporaryDirectory());
     remoteStore.put('only-remote', 'r');
     local.put('both', 'local');
@@ -107,10 +148,10 @@ describe('layered store', () => {
 
     readOnly.put('written', 'w');
     expect(local.get('written')).toBe('w');
-    expect(await remote.keys()).not.toContain('/written.json');
+    expect(remoteStore.objects.has('written')).toBe(false);
 
     createLayeredStore({ local, remote: remoteStore, writeRemote: true }).put('published', 'p');
-    expect(await remote.keys()).toContain('/published.json');
+    expect(remoteStore.objects.get('published')).toBe('p');
   });
 });
 
@@ -133,9 +174,8 @@ describe('findings cache over a remote store', () => {
     expect((await remote.requests()).length).toBe(requestsAfterFirstRead);
   });
 
-  it('rejects corrupt, schema-invalid and mis-keyed remote entries without keeping them', async () => {
-    const remote = await server();
-    const remoteStore = createHttpStore({ baseUrl: remote.url });
+  it('rejects corrupt, schema-invalid and mis-keyed remote entries without keeping them', () => {
+    const remoteStore = memoryRemote();
     const key = cacheKey({ ...cacheOptions, analyzer });
     const directory = temporaryDirectory();
     const cache = createFindingsCache({

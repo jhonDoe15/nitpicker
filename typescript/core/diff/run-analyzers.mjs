@@ -55,6 +55,10 @@ export function resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot 
   }
 }
 
+/**
+ * `runTasks(tasks, headPolicyFile)` runs the analyzer task graph and returns the scheduler's
+ * `{ reports, errors, timings }`; it defaults to the analyzer-scheduler subprocess.
+ */
 export function runAnalyzers({
   analyzers,
   projectRoot,
@@ -64,6 +68,7 @@ export function runAnalyzers({
   baselineRoot,
   liveProjectRoot,
   headPolicyFile,
+  runTasks = runScheduler,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
     throw new TypeError('liveProjectRoot is required');
@@ -114,7 +119,7 @@ export function runAnalyzers({
 
   if (tasks.length > 0) {
     try {
-      const scheduled = runScheduler(tasks, headPolicyFile);
+      const scheduled = runTasks(tasks, headPolicyFile);
       for (const [name, report] of scheduled.reports) {
         reports.set(name, report);
       }

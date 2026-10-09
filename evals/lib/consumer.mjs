@@ -17,7 +17,9 @@ export function command(cwd, executable, args, { env = {}, timeout = 180_000, in
     timeout,
     input,
   });
-  if (result.error && result.error.code !== 'ETIMEDOUT') throw result.error;
+  // EPIPE means the process exited without reading all of its input (an agent that ignores its
+  // prompt). That is the process's own outcome, recorded through its status, not a harness failure.
+  if (result.error && !['ETIMEDOUT', 'EPIPE'].includes(result.error.code)) throw result.error;
   return {
     status: result.status,
     output: `${result.stdout}${result.stderr}`,

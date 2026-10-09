@@ -43,6 +43,7 @@ export function runCli({
   stdout = process.stdout,
   stderr = process.stderr,
   executeFixCommand,
+  runTasks,
 } = {}) {
   if (arguments_[0] === 'aggregate') {
     return runAggregateCli({
@@ -63,6 +64,7 @@ export function runCli({
         analyzers,
         stdout,
         stderr,
+        runTasks,
       });
     }
     const options = parseArguments(arguments_);
@@ -91,6 +93,7 @@ export function runCli({
         analyzers: configure(presetAnalyzers(config, snapshotAnalyzers)),
         headPolicy,
         stdout,
+        runTasks,
       });
     }
     return runComparisonCli({
@@ -103,6 +106,7 @@ export function runCli({
       stdout,
       stderr,
       executeFixCommand,
+      runTasks,
     });
   } catch (error) {
     stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
@@ -118,6 +122,7 @@ function runCacheCommand({
   analyzers,
   stdout,
   stderr,
+  runTasks,
 }) {
   const { analyzerNames, shardCount, shardIndex, remainingArguments } =
     parseDrillDownOptions(arguments_);
@@ -157,6 +162,7 @@ function runCacheCommand({
     store: createLayeredStore({ remote, writeRemote: true }),
     configOverrides: describeConfigOverrides(config),
     headPolicy,
+    runTasks,
   });
   stdout.write(
     `Published ${String(result.published.length)} of ${String(selected.length)} base snapshots` +
@@ -250,6 +256,7 @@ function runComparisonCli({
   stdout,
   stderr,
   executeFixCommand,
+  runTasks,
 }) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
@@ -311,6 +318,7 @@ function runComparisonCli({
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
+    runTasks,
   });
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
@@ -329,7 +337,7 @@ function runComparisonCli({
   return report.summary.newEnforceableFindings > 0 ? 1 : 0;
 }
 
-function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, stdout }) {
+function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, stdout, runTasks }) {
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/snapshot')
@@ -364,6 +372,7 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, st
         toolRoot: PACKAGE_ROOT,
         liveProjectRoot: currentProjectRoot,
         headPolicy,
+        runTasks,
       });
     } finally {
       removeSnapshotDependencies(dependencies);
