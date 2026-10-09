@@ -1,6 +1,7 @@
-import { readFileSync, symlinkSync } from 'node:fs';
+import { existsSync, readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { write } from '../lib/consumer.mjs';
+import { loadTree } from '../detectors/tree.mjs';
 import { copiedWorkdir, loadCase, runCase } from '../runner/run-case.mjs';
 
 export const casesDirectory = import.meta.dirname;
@@ -37,19 +38,26 @@ export const CASE_TIMEOUT_MS = 600_000;
 
 // The fixture installed as a consumer would have it, except that the dependencies are the ones
 // already in typescript/node_modules (no install, no network). The real gate then runs against it.
+const GITIGNORE = 'node_modules/\nreports/\n';
+const consumerPackageJson = () => readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8');
+
 export function linkedWorkdir() {
   const prepare = copiedWorkdir();
   return ({ caseDefinition, workdir }) => {
-    write(workdir, '.gitignore', 'node_modules/\nreports/\n');
-    write(
-      workdir,
-      'package.json',
-      readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8'),
-    );
+    write(workdir, '.gitignore', GITIGNORE);
+    write(workdir, 'package.json', consumerPackageJson());
     symlinkSync(path.join(packageRoot, 'node_modules'), path.join(workdir, 'node_modules'));
     prepare({ caseDefinition, workdir });
   };
 }
+
+const gateCommand = (withoutAnalyzers) => [
+  'node',
+  path.join(packageRoot, 'core', 'cli.mjs'),
+  '--base',
+  'main',
+  ...analyzerArgumentsWithout(withoutAnalyzers),
+];
 
 /**
  * Runs a case with the reference agent against the real gate and no model call. `overlay` names a
@@ -63,13 +71,54 @@ export function runReference(caseId, { overlay, withoutAnalyzers } = {}) {
     caseDefinition: loadCase(path.join(casesDirectory, caseId)),
     agentCommand: ['node', referenceAgent, ...(overlay ? ['--overlay', overlay] : [])],
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: [
-      'node',
-      path.join(packageRoot, 'core', 'cli.mjs'),
-      '--base',
-      'main',
-      ...analyzerArgumentsWithout(withoutAnalyzers),
-    ],
+    gateCommand: gateCommand(withoutAnalyzers),
+    tier: 'reference',
+    model: overlay ? `cheat-${overlay}` : 'reference-solution',
+    nitpickerVersion: '0.0.0',
+  });
+}
+
+const overlayDirectories = (caseDefinition, overlay) => [
+  path.join(caseDefinition.directory, 'reference'),
+  ...(overlay ? [path.join(caseDefinition.directory, 'cheats', overlay)] : []),
+];
+
+/**
+ * The trees the runner hands the detectors for a reference-agent run, built in memory: `fixture` is
+ * the workdir `linkedWorkdir` prepares (node_modules is a symlink, which `loadTree` skips) and
+ * `final` is that tree with the reference solution and then the cheat laid over it, as
+ * reference-agent.mjs copies them.
+ */
+export function referenceTrees(caseId, { overlay } = {}) {
+  const caseDefinition = loadCase(path.join(casesDirectory, caseId));
+  const fixture = new Map([
+    ...loadTree(caseDefinition.fixtureDirectory),
+    ['.gitignore', GITIGNORE],
+    ['package.json', consumerPackageJson()],
+  ]);
+  const final = new Map(fixture);
+  for (const directory of overlayDirectories(caseDefinition, overlay)) {
+    if (!existsSync(directory)) throw new Error(`${caseId} has no ${directory}`);
+    for (const [file, text] of loadTree(directory)) final.set(file, text);
+  }
+  return { caseDefinition, fixture, final };
+}
+
+/**
+ * Like `runReference`, but the agent only copies the reference solution and the cheat in and never
+ * calls the gate, so the real gate runs once (the runner's final run) instead of twice. The record
+ * is the same except for the agent's own gate iterations and report, which `runReference` covers.
+ */
+export function runApplied(caseId, { overlay, withoutAnalyzers } = {}) {
+  const caseDefinition = loadCase(path.join(casesDirectory, caseId));
+  const copies = overlayDirectories(caseDefinition, overlay)
+    .map((directory) => `cp -R ${JSON.stringify(`${directory}/.`)} .`)
+    .join(' && ');
+  return runCase({
+    caseDefinition,
+    agentCommand: `cat > /dev/null && ${copies}`,
+    prepareWorkdir: linkedWorkdir(),
+    gateCommand: gateCommand(withoutAnalyzers),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
