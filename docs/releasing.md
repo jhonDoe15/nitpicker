@@ -1,0 +1,86 @@
+# Releasing
+
+Each language folder is released on its own. Only `typescript/` exists today, published to npm as
+`nitpicker` (MIT, unscoped). Nothing here runs automatically: a release is a manual sequence done by
+a maintainer.
+
+## Versioning and tags
+
+- First version: **0.1.0**. The engine, preset and report format are complete and tested, but the
+  README still lists a language-neutral `spec/` as not done and the report and config surface may
+  change, so the package starts below 1.0.0. Until 1.0.0, a minor bump may contain breaking changes
+  and a patch bump is fixes only. Move to 1.0.0 when the config keys, exit codes and report files
+  are declared stable.
+- Tag format: `<language>/v<version>`, for example `typescript/v0.1.0`. The tag must equal
+  `typescript/package.json` `version` and point at a commit on `main`. Tags are created only at
+  release time, never ahead of it.
+- Pre-releases use a suffix (`typescript/v0.2.0-rc.1`) and are published with
+  `npm publish --tag next`.
+
+## Checklist (TypeScript)
+
+Work from a clean checkout of `main` with full history.
+
+1. **Prerequisites.**
+   - Everything intended for the release is merged to `main` and CI (`typescript` workflow) is green.
+   - Node.js 22.14 or newer (the `engines` floor) and an npm account with publish rights on
+     `nitpicker` (2FA on). Run `npm whoami`.
+   - `LICENSE` at the repository root and `typescript/LICENSE` are identical (npm only packs a license
+     file found inside the package folder). The installed-package test asserts the packed copy
+     matches the root file.
+   - The README's claims match the release: the "Status" section, and the Docker section that says no
+     image is published yet (update it once the image is pushed).
+   - The comparison in [comparison.md](comparison.md) states no unmet prerequisite for the release;
+     re-read it if the fingerprinting or enforceable/report-only behaviour changed since it was
+     written.
+2. **Bump the version.** In `typescript/`:
+   `npm version <new-version> --no-git-tag-version`. This updates `package.json` and
+   `package-lock.json`. Commit it (`Release typescript v<new-version>`) through a normal PR to `main`.
+3. **Test.**
+   ```sh
+   cd typescript
+   npm ci
+   npx vitest run --config vitest.config.mts
+   npm run test:installed
+   ```
+   Both must be green. `test:installed` packs the tarball and installs it into hoisted, nested and
+   linked consumers, so it is the real check of the package contents.
+4. **Dry run.** `npm pack --dry-run` from `typescript/`. Confirm `LICENSE`, `README.md`,
+   `package.json`, `core/`, `adapters/` and `preset/` are listed, and no tests, fixtures,
+   `node_modules` or reports are. Then `npm publish --dry-run`.
+5. **Tag** the merged release commit and push the tag:
+   ```sh
+   git tag typescript/v<new-version> <commit>
+   git push origin typescript/v<new-version>
+   ```
+6. **Publish** from the package folder:
+   ```sh
+   cd typescript
+   npm publish
+   ```
+   Add `--tag next` for a pre-release. The package is unscoped, so no `--access` flag is needed.
+7. **Verify.** In an empty directory: `npm view nitpicker version`, then
+   `npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript && npx nitpicker --help`.
+8. **GitHub release.** Create a release from the tag with the changes since the previous tag.
+
+## Container image
+
+The root `Dockerfile` installs `typescript/` from source with `npm ci --omit=dev`, so it must be built
+from the same commit as the tag.
+
+```sh
+docker build -t nitpicker:<new-version> .
+docker run --rm nitpicker:<new-version> --help
+docker run --rm -v "$PWD":/work nitpicker:<new-version>   # against a checkout
+```
+
+Smoke-test it against a repository with a clean and a dirty branch, as the README describes. Pushing
+the image to a registry is a separate decision: no registry is configured, and the README says no
+image is published. If one is added, tag it with the same version (and `latest` for stable releases)
+and update the README sentence.
+
+## Automation
+
+There is no publish workflow, and none runs on push. If publishing is later automated it must be a
+manual `workflow_dispatch` job with npm provenance and an `NPM_TOKEN` secret, not a trigger on tags
+or branches.
