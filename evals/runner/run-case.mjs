@@ -82,17 +82,25 @@ export function copiedWorkdir() {
       write(workdir, relative, contents);
     }
     checked(workdir, 'git', ['add', '.']);
-    checked(workdir, 'git', [
-      '-c',
-      'user.name=Eval',
-      '-c',
-      'user.email=eval@example.invalid',
-      'commit',
-      '-m',
-      'fixture',
-    ]);
+    commitFixture(workdir);
     checked(workdir, 'git', ['switch', '-c', 'feature']);
   };
+}
+
+// A fixed date makes the fixture commit identical for every run of a case, so the gate's findings
+// cache (keyed by the merge-base commit) reuses the base-side analysis instead of redoing it.
+const FIXTURE_COMMIT_DATE = '2026-01-01T00:00:00Z';
+
+function commitFixture(workdir) {
+  const result = command(
+    workdir,
+    'git',
+    ['-c', 'user.name=Eval', '-c', 'user.email=eval@example.invalid', 'commit', '-m', 'fixture'],
+    { env: { GIT_AUTHOR_DATE: FIXTURE_COMMIT_DATE, GIT_COMMITTER_DATE: FIXTURE_COMMIT_DATE } },
+  );
+  if (result.status !== 0) {
+    throw new Error(`git commit exited ${result.status}\n${result.output}`);
+  }
 }
 
 function readGateLog(logFile) {

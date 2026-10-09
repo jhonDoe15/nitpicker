@@ -1,17 +1,13 @@
-import { execFileSync } from 'node:child_process';
-import { realpathSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveBase } from './base-ref.mjs';
+import {
+  createGitRepository,
+  fixtureGit,
+  removeGitRepositories,
+} from './fixtures/git-repository.mjs';
 
-const temporaryRepositories = [];
-
-afterEach(() => {
-  for (const repositoryRoot of temporaryRepositories.splice(0)) {
-    rmSync(repositoryRoot, { recursive: true, force: true });
-  }
-});
+afterEach(removeGitRepositories);
 
 describe('resolveBase', () => {
   it('prefers an explicit base over CI, config, and remote HEAD', () => {
@@ -156,25 +152,7 @@ describe('resolveBase', () => {
 });
 
 function createRepository() {
-  const repositoryRoot = realpathSync(
-    execFileSync('mktemp', ['-d', path.join(tmpdir(), 'nitpicker-base-ref-XXXXXX')], {
-      encoding: 'utf8',
-    }).trim(),
-  );
-  temporaryRepositories.push(repositoryRoot);
-  git(repositoryRoot, ['init', '-q', '--initial-branch=main']);
-  git(repositoryRoot, ['config', 'user.name', 'Nitpicker Fixture']);
-  git(repositoryRoot, ['config', 'user.email', 'nitpicker@example.invalid']);
-  git(repositoryRoot, [
-    '-c',
-    'core.hooksPath=/dev/null',
-    'commit',
-    '--allow-empty',
-    '-q',
-    '-m',
-    'base',
-  ]);
-  return repositoryRoot;
+  return createGitRepository({}, { prefix: 'nitpicker-base-ref-' }).root;
 }
 
 function addRemote(repositoryRoot, remote) {
@@ -195,8 +173,5 @@ function setRemoteHead(repositoryRoot, remote, branch) {
 }
 
 function git(repositoryRoot, arguments_) {
-  return execFileSync('git', arguments_, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-  });
+  return fixtureGit(repositoryRoot, arguments_);
 }

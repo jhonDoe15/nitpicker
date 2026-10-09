@@ -54,19 +54,17 @@ describe('default configs used in place', () => {
       'test/service.test.ts': "import { service } from '../src/service.js';\nvoid service;\n",
     });
     const check = staticChecks.find(({ name }) => name === 'dependency-architecture');
+    const runtime = qualityAreaChecks.find(({ name }) => name === 'test-runtime');
     const run = runInPlace(
-      createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
+      [
+        createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
+        createQualityAreaAnalyzer({ ...runtime, configurationHash: 'fixture' }),
+      ],
       projectRoot,
     );
     expect(run.toolErrors).toEqual([]);
     expect(run.reports.get('dependency-architecture')?.findings).toEqual([]);
-    const runtime = qualityAreaChecks.find(({ name }) => name === 'test-runtime');
-    const runtimeRun = runInPlace(
-      createQualityAreaAnalyzer({ ...runtime, configurationHash: 'fixture' }),
-      projectRoot,
-    );
-    expect(runtimeRun.toolErrors).toEqual([]);
-    expect(runtimeRun.reports.get('test-runtime')?.findings).not.toContainEqual(
+    expect(run.reports.get('test-runtime')?.findings).not.toContainEqual(
       expect.objectContaining({ path: 'test/service.test.ts', classification: 'enforceable' }),
     );
   });
@@ -76,15 +74,18 @@ describe('default configs used in place', () => {
       'src/service.ts': 'export const service = 1;\n',
       'test/helper.ts': 'export const helper = true;\n',
     });
-    for (const name of ['test-runtime', 'coverage', 'mutation']) {
-      const check = qualityAreaChecks.find((entry) => entry.name === name);
-      const run = runInPlace(
-        createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
-        projectRoot,
-      );
-      expect(run.toolErrors, name).toEqual([]);
-      expect(run.reports.get(name)?.findings, name).toEqual([]);
-    }
+    const names = ['test-runtime', 'coverage', 'mutation'];
+    const run = runInPlace(
+      names.map((name) =>
+        createQualityAreaAnalyzer({
+          ...qualityAreaChecks.find((entry) => entry.name === name),
+          configurationHash: 'fixture',
+        }),
+      ),
+      projectRoot,
+    );
+    expect(run.toolErrors).toEqual([]);
+    for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
   });
 
   it('reports no error for every file-driven quality analyzer with no source or tests', () => {
@@ -103,22 +104,6 @@ describe('default configs used in place', () => {
     expect(run.toolErrors).toEqual([]);
     for (const check of checks)
       expect(run.reports.get(check.name)?.findings, check.name).toEqual([]);
-  });
-
-  it('selects JavaScript source and tests in common locations without a parser error', () => {
-    const projectRoot = createProject({
-      'src/service.js': 'export const service = 1;\n',
-      'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
-    });
-    const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
-    const run = runInPlace(
-      createEslintAnalyzer({ ...check, version: 'fixture', configurationHash: 'fixture' }),
-      projectRoot,
-    );
-    expect(run.toolErrors).toEqual([]);
-    expect(
-      run.reports.get('eslint-lint')?.findings.every(({ rule }) => rule !== 'eslint/parser-error'),
-    ).toBe(true);
   });
 
   it('reports no error for entry points and ESLint when both layouts are absent', () => {
@@ -156,7 +141,11 @@ describe('default configs used in place', () => {
     }
   });
   it('lint a project with the default ESLint config without parse or tool errors', () => {
-    const projectRoot = createProject();
+    const projectRoot = createProject({
+      ...oldLayoutFiles(),
+      'src/service.js': 'export const service = 1;\n',
+      'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
+    });
     const check = eslintChecks.find(({ name }) => name === 'eslint-lint');
     const analyzer = createEslintAnalyzer({
       name: check.name,
@@ -172,6 +161,9 @@ describe('default configs used in place', () => {
 
     expect(run.toolErrors).toEqual([]);
     expect(run.reports.get('eslint-lint')?.findings).toEqual([]);
+    expect(
+      run.reports.get('eslint-lint')?.findings.every(({ rule }) => rule !== 'eslint/parser-error'),
+    ).toBe(true);
     expect(temporaryPolicyLinks(projectRoot)).toEqual([]);
   });
 
@@ -204,9 +196,9 @@ describe('default configs used in place', () => {
   });
 });
 
-function runInPlace(analyzer, projectRoot) {
+function runInPlace(analyzers, projectRoot) {
   return runAnalyzers({
-    analyzers: [analyzer],
+    analyzers: Array.isArray(analyzers) ? analyzers : [analyzers],
     projectRoot,
     policyRoot: projectRoot,
     toolRoot: packageRoot,
