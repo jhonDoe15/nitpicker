@@ -6,9 +6,9 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../adapters/diff/static-checks-runner.mjs';
-import { configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
+import { presetAnalyzers } from './preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
 import {
   clearSnapshotReports,
@@ -38,7 +38,7 @@ export function runCli({
   arguments_ = process.argv.slice(2),
   environment = process.env,
   currentProjectRoot,
-  analyzers = configuredAnalyzers,
+  analyzers,
   snapshotAnalyzers = analyzers,
   stdout = process.stdout,
   stderr = process.stderr,
@@ -88,7 +88,7 @@ export function runCli({
       return runSnapshotCli({
         options,
         currentProjectRoot: selectedProjectRoot,
-        analyzers: configure(snapshotAnalyzers),
+        analyzers: configure(presetAnalyzers(config, snapshotAnalyzers)),
         headPolicy,
         stdout,
       });
@@ -97,7 +97,7 @@ export function runCli({
       options,
       environment,
       currentProjectRoot: selectedProjectRoot,
-      analyzers: configure(analyzers),
+      analyzers: configure(presetAnalyzers(config, analyzers)),
       config,
       headPolicy,
       stdout,
@@ -132,7 +132,7 @@ function runCacheCommand({
     currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
   const config = loadConfig(projectRoot);
   const headPolicy = resolveHeadPolicy(config);
-  const configured = configureAnalyzers(analyzers, config, headPolicy);
+  const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   const selected =
     shardCount === undefined
       ? selectAnalyzers(configured, analyzerNames)

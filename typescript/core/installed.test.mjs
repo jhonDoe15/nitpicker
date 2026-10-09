@@ -231,6 +231,8 @@ suite('packed nitpicker in a separate consumer', () => {
         );
         expect(installedManifest.license).toBe('MIT');
         expect(installedManifest.private).toBeUndefined();
+        // The Java preset's Gradle init script is resolved relative to the installed package.
+        expect(existsSync(path.join(packageLocation, 'java/nitpicker.init.gradle'))).toBe(true);
         if (!strategy) {
           const eslint = path.dirname(
             execFileSync(

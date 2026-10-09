@@ -19,7 +19,10 @@ function sourceFiles(directory) {
 }
 
 function assertRuntimeFiles(files) {
-  for (const relative of ['package.json', ...['core', 'adapters', 'preset'].flatMap(sourceFiles)]) {
+  for (const relative of [
+    'package.json',
+    ...['core', 'adapters', 'preset', 'java'].flatMap(sourceFiles),
+  ]) {
     expect(files.has(relative), `missing runtime file ${relative}`).toBe(true);
   }
 }
@@ -46,6 +49,7 @@ describe('npm package contents', () => {
     const files = new Set(listing[0].files.map(({ path: file }) => file));
     assertRuntimeFiles(files);
     expect(files.has('core/fix/run-fix.mjs')).toBe(true);
+    expect(files.has('java/nitpicker.init.gradle')).toBe(true);
     expect(
       [...files].filter(
         (file) =>
