@@ -69,8 +69,7 @@ export function createFindingsCache({
         const report = parseAnalyzerReport(entry, analyzer.name);
         backend.keep?.(key, text);
         return report;
-      } catch (error) {
-        void error;
+      } catch {
         return undefined;
       }
     },
@@ -79,8 +78,7 @@ export function createFindingsCache({
       try {
         const key = keyFor(analyzer);
         return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
-      } catch (error) {
-        void error;
+      } catch {
         return false;
       }
     },
@@ -96,8 +94,7 @@ export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
   for (const analyzer of analyzers) {
     try {
       resolveAnalyzerMetadata(analyzer, resolveContext);
-    } catch (error) {
-      void error;
+    } catch {
       continue;
     }
     const report = cache.read(analyzer);

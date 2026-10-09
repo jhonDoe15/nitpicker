@@ -40,6 +40,12 @@ function hasMessageArgument(node) {
   );
 }
 
+function followInitializers(fields, initializers, visited) {
+  if (fields?.type !== 'Identifier' || visited.has(fields.name)) return fields;
+  visited.add(fields.name);
+  return followInitializers(initializers.get(fields.name), initializers, visited);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -83,12 +89,7 @@ export const rule = {
           return;
         }
 
-        let fields = node.arguments[0];
-        const visited = new Set();
-        while (fields?.type === 'Identifier' && !visited.has(fields.name)) {
-          visited.add(fields.name);
-          fields = currentCatch.initializers.get(fields.name);
-        }
+        const fields = followInitializers(node.arguments[0], currentCatch.initializers, new Set());
         const property = errorProperty(fields);
         const hasCaughtErrorProperty =
           property?.type === 'Property' &&

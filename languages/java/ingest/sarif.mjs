@@ -111,8 +111,7 @@ export function normalizeUri(uri, root) {
   let decoded = uri;
   try {
     decoded = decodeURIComponent(uri);
-  } catch (error) {
-    void error;
+  } catch {
     // keep the raw uri when it is not valid percent-encoding
   }
   let candidate = decoded.replace(/^file:\/\//, '').replaceAll('\\', '/');
