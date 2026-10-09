@@ -30,5 +30,10 @@ export default {
     ...sourceRoots.map((root) => `${root}/dist`),
     ...testRoots.map((root) => `${root}/integration`),
     'reports',
+    // Other analyzers create and delete their temporary files while Stryker copies the project
+    // into its sandbox. Only mutation's own companions belong there.
+    '.nitpicker-*',
+    '!.nitpicker-diff-stryker.*',
+    '!.nitpicker-diff-tsconfig.stryker.json',
   ],
 };

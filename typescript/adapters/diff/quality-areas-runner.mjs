@@ -19,7 +19,7 @@ import { readLayout } from '../../preset/head-policy.mjs';
 import {
   layoutJscpdConfig,
   layoutKnipConfig,
-  layoutTransformFor,
+  policyTransformFor,
 } from '../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../temporary-files.mjs';
 import { PACKAGE_ROOT, resolveTool, toolNameForPath } from '../tool-resolution.mjs';
@@ -1196,7 +1196,9 @@ function installMutationCompanion(options, sourceRelativePath, targetName, creat
     companionPath(path.posix.dirname(STRYKER_CONFIG_PATH), sourceRelativePath),
   );
   const targetPath = path.join(options.projectRoot, targetName);
-  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout());
+  const transform = policyTransformFor(sourceRelativePath ?? '', readLayout(), {
+    projectRoot: options.projectRoot,
+  });
   const text = readFileSync(sourcePath, 'utf8');
   writeTemporaryFile(targetPath, transform === undefined ? text : transform(text), createdFiles);
   return targetPath;

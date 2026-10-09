@@ -118,6 +118,13 @@ Decision (proposed, pending owner review):
   `knip.json`, `jscpd.json`) get a generated copy with the roots moved and the exclusions added
   (`preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
+- When the project has a `tsconfig.json`, the tsconfig copies extend it instead
+  (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `skipLibCheck`
+  and the layout's include and exclude globs; `tsconfig.stryker.json` adds only `skipLibCheck`, so
+  mutants are checked the way the project's own `tsc` checks them. The copied vitest configs merge
+  the project's `vitest.config.*` or `vite.config.*` (via Vite's `loadConfigFromFile`) with the
+  layout's test globs, clear `test.dir` and replace `test.coverage`. They are function configs,
+  because a CommonJS project cannot load a config with top-level `await`.
 - dependency-cruiser gets the exclusions as part of its `--exclude` and `doNotFollow` patterns, so
   excluded files are absent from the graph. TypeScript, ESLint and Prettier skip them in their
   file selection, and diagnostics for excluded files that other files import are dropped.
