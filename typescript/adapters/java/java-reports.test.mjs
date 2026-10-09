@@ -226,6 +226,44 @@ describe('readJavaFindings: ArchUnit', () => {
   });
 });
 
+describe('readJavaFindings: PIT', () => {
+  const mutation = (status, line) =>
+    `<mutation detected='false' status='${status}' numberOfTestsRun='1'><sourceFile>Bad.java</sourceFile><mutatedClass>demo.Bad</mutatedClass><mutatedMethod>decode</mutatedMethod><methodDescription>([B)Ljava/lang/String;</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><indexes><index>1</index></indexes><blocks><block>0</block></blocks><killingTest/><description>replaced return value</description></mutation>`;
+
+  function withPit(line) {
+    const root = projectWithReports();
+    mkdirSync(path.join(root, 'build/nitpicker/pit'));
+    writeFileSync(
+      path.join(root, 'build/nitpicker/pit/mutations.xml'),
+      `<mutations>${mutation('NO_COVERAGE', line)}</mutations>`,
+    );
+    return root;
+  }
+
+  it('attaches mutants to the project-relative source file, whatever the line', () => {
+    const pit = (line) =>
+      readJavaFindings(withPit(line)).findings.filter((finding) => finding.tool === 'pit');
+    const before = pit(9);
+
+    expect(parseAnalyzerReport({ findings: before }, 'java').findings).toEqual(before);
+    expect(
+      before.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([
+      ['mutant-nocoverage', 'src/main/java/demo/Bad.java', 'enforceable'],
+      ['mutation-summary', '.', 'descriptive'],
+    ]);
+    expect(pit(40).map((finding) => finding.identity)).toEqual(
+      before.map((finding) => finding.identity),
+    );
+  });
+
+  it('reads nothing when there is no PIT report', () => {
+    const { findings } = readJavaFindings(projectWithReports());
+
+    expect(findings.some((finding) => finding.tool === 'pit')).toBe(false);
+  });
+});
+
 describe('ingestFormatCheck', () => {
   it('reports each listed file once with a path-independent identity', () => {
     const { findings } = ingestFormatCheck(
