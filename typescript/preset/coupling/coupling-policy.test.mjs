@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { cruise } from '../dependency-graph/cruise.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
 import { analyzeCoupling } from './analyze.mjs';
 
 const fixtureRoot = 'preset/coupling/fixtures';
 
 describe('coupling report', () => {
-  it('reports a dependency hub and unstable consumers', () => {
+  it('reports a dependency hub and unstable consumers', async () => {
     const sourceRoot = `${fixtureRoot}/signal/src/main`;
     const report = analyzeCoupling(
-      cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/signal` }),
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/signal` }),
       sourceRoot,
     );
     const hub = report.modules.find((entry) => entry.source.endsWith('/shared/hub.ts'));
@@ -22,10 +22,10 @@ describe('coupling report', () => {
     expect(shared.cohesion).toMatchObject({ connectedComponents: 1, largestComponentShare: 1 });
   });
 
-  it('keeps a cohesive low-signal graph connected without inventing instability', () => {
+  it('keeps a cohesive low-signal graph connected without inventing instability', async () => {
     const sourceRoot = `${fixtureRoot}/low-signal/src/main`;
     const report = analyzeCoupling(
-      cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/low-signal` }),
+      await cruise([sourceRoot], { typeScriptRoot: `${fixtureRoot}/low-signal` }),
       sourceRoot,
     );
 
