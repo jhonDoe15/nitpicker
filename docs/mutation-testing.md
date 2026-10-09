@@ -13,6 +13,19 @@ through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites
 reporter, and turns `Survived` and `NoCoverage` mutants into findings. The mutation area is
 therefore already whole-`src` on both base and head.
 
+## Reusing base results on head
+
+Both sides run Stryker with `incremental: true`. The base run writes
+`reports/quality/mutation/incremental.json`. Before the head run, the gate copies that file into the
+head snapshot when every file changed between the two commits is a mutated source file or a runnable
+test file inside the project. Stryker then re-tests only the mutants in changed files and the
+mutants covered by changed tests, and reuses every other result.
+
+Any other change (a dependency, `package.json`, a config file, a test helper, a file outside the
+project) makes the head run test every mutant, because Stryker cannot see how such a change affects
+results it would reuse. When the base side comes from the findings cache there is no base file to
+copy, so head also runs every mutant.
+
 ## Question
 
 Should there be an optional, manually run, wider-scope mutation profile?
