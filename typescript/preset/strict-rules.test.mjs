@@ -9,7 +9,10 @@ describe('strict rule ids', () => {
     const fromConfig = strictPresetConfig(defaultResolvedLayout, {}).flatMap((entry) =>
       Object.keys(entry.rules ?? {}),
     );
-    expect(new Set(strictEslintRuleIds)).toEqual(new Set(fromConfig));
+    expect(
+      new Set(strictEslintRuleIds),
+      'a strict rule was added or removed: update strictEslintRuleIds in preset/strict-rules.mjs',
+    ).toEqual(new Set(fromConfig));
   });
 
   it('recognises every ESLint and boundary rule of the preset', () => {
