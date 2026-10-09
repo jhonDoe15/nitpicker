@@ -137,7 +137,12 @@ describe('nitpicker with "preset": "java"', () => {
 
     const result = run(root, [], { subprocess: true });
 
-    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect({
+      exitCode: result.exitCode,
+      output: result.output.out + result.output.err,
+    }).toMatchObject({
+      exitCode: 1,
+    });
     expect(result.output.out).toContain('A.java');
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({
@@ -190,7 +195,12 @@ describe('nitpicker with "preset": "java"', () => {
       });
       commit(root, 'add an unlisted violation');
       const result = run(root);
-      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+      expect({
+        exitCode: result.exitCode,
+        output: result.output.out + result.output.err,
+      }).toMatchObject({
+        exitCode: 1,
+      });
       expect(result.json('new-findings.json')).toEqual([
         expect.objectContaining({ rule: 'UnusedPrivateField', classification: 'enforceable' }),
       ]);
@@ -203,7 +213,12 @@ describe('nitpicker with "preset": "java"', () => {
 
       const result = run(root);
 
-      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+      expect({
+        exitCode: result.exitCode,
+        output: result.output.out + result.output.err,
+      }).toMatchObject({
+        exitCode: 1,
+      });
       expect(result.json('new-findings.json')).toEqual([
         expect.objectContaining({
           tool: 'java',
@@ -255,7 +270,12 @@ describe('nitpicker with "preset": "java"', () => {
 
     const result = run(root);
 
-    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect({
+      exitCode: result.exitCode,
+      output: result.output.out + result.output.err,
+    }).toMatchObject({
+      exitCode: 1,
+    });
     const clones = result
       .json('new-findings.json')
       .filter((finding) => finding.rule === 'duplicate-clone');

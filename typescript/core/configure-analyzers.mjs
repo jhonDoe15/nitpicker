@@ -30,7 +30,6 @@ export function configureAnalyzers(analyzers, config, headPolicy) {
   );
 }
 
-/** The shared keys (`thresholds`, `exclude`, `legacyInventory`) reach the Java analyzer here. */
 function applyJavaConfig(analyzers, config) {
   return analyzers.map((analyzer) =>
     analyzer.name === JAVA_ANALYZER_NAME

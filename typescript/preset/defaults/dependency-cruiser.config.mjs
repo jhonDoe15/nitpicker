@@ -12,7 +12,7 @@ export default {
       severity: 'error',
       from: { path: productionSource },
       to: {
-        path: `(?:^|/)(?:${testRoots.join('|')}/|(?:${sourceRoots.join('|')})/.*/__tests__/|(?:${sourceRoots.join('|')})/.*\\.(?:test|spec)\\.)`,
+        path: `(?:^|/)(?:(?:${testRoots.join('|')})/|(?:${sourceRoots.join('|')})/.*/__tests__/|(?:${sourceRoots.join('|')})/.*\\.(?:test|spec)\\.)`,
       },
     },
     {

@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../shared/glob.mjs';
 
-export { globToRegExp, globToRegExpSource };
+export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
 const defaultTestRoots = ['test', 'tests'];

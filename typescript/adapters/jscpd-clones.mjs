@@ -1,10 +1,3 @@
-// Reads a jscpd JSON report into the neutral clone list that shared/rules/duplicates.mjs takes.
-// Both languages run the same jscpd, so both adapters share this reader.
-
-/**
- * `configuredPaths` are the roots jscpd was run over; with exactly one, jscpd reports file names
- * relative to it, so the root is put back to make them project-relative.
- */
 export function jscpdClones(report, configuredPaths) {
   const prefix =
     Array.isArray(configuredPaths) && configuredPaths.length === 1

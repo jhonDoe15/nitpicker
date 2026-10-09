@@ -11,13 +11,7 @@ import {
   validateThresholds,
 } from '../shared/config.mjs';
 
-export { CONFIG_FILE_NAME };
-
 const SUPPORTED_PRESETS = ['typescript', 'java'];
-// Keys that describe the TypeScript layout and its ESLint rules. The Java preset has no
-// counterpart (it reads Gradle source sets and ruleset files), and a key that is silently ignored
-// would look like a weakened or tightened gate that it is not. `thresholds`, `exclude` and
-// `legacyInventory` are shared by both languages (shared/config.mjs).
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions'];
 const KEYS = [
   'base',
@@ -56,11 +50,22 @@ export function validateConfig(config) {
   if (!isPlainObject(config)) {
     throw configError('must be a JSON object');
   }
+  validateKeys(config);
+  validateScalars(config);
+  validateDisable(config.disable);
+  validateOptional(config);
+  return config;
+}
+
+function validateKeys(config) {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) {
       throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
     }
   }
+}
+
+function validateScalars(config) {
   if (config.base !== undefined && !isNonEmptyString(config.base)) {
     throw configError('"base" must be a non-empty string');
   }
@@ -68,19 +73,30 @@ export function validateConfig(config) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
   if (config.preset === 'java') {
-    const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
-    if (unsupported.length > 0) {
-      throw configError(
-        `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
-      );
-    }
+    validateJavaKeys(config);
   }
-  if (config.disable !== undefined) {
-    validateStringArray(config.disable, 'disable');
-    if (new Set(config.disable).size !== config.disable.length) {
-      throw configError('"disable" must not contain duplicates');
-    }
+}
+
+function validateJavaKeys(config) {
+  const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
+  if (unsupported.length > 0) {
+    throw configError(
+      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
+    );
   }
+}
+
+function validateDisable(disable) {
+  if (disable === undefined) {
+    return;
+  }
+  validateStringArray(disable, 'disable');
+  if (new Set(disable).size !== disable.length) {
+    throw configError('"disable" must not contain duplicates');
+  }
+}
+
+function validateOptional(config) {
   if (config.thresholds !== undefined) {
     validateThresholds(config.thresholds);
   }
@@ -99,7 +115,6 @@ export function validateConfig(config) {
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);
   }
-  return config;
 }
 
 /** One line per override, so the report and the policy hash show every weakened check. */

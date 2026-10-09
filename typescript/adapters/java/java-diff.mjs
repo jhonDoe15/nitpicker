@@ -41,11 +41,6 @@ export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INI
   }
 }
 
-/**
- * Runs the preset and returns the validated findings of one snapshot. `options.policy` carries the
- * project config (`crapLimit`, `exclude`, `legacyInventory` and where to read it; see
- * java-policy.mjs).
- */
 export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   runJavaDuplicates(projectRoot);

@@ -170,68 +170,21 @@ export function analyzeTestRuntime(
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
 
-  const normalizedProductionRoots = productionRoots.map((root) =>
-    normalizePath(root).replace(/\/$/, ''),
-  );
-  const bridges = subprocessBridges.map(normalizePath);
-  const dependencies = dependencyMap(graph, sourceTexts);
+  const context = {
+    layout,
+    dependencies: dependencyMap(graph, sourceTexts),
+    sourceTexts,
+    bridges: subprocessBridges.map(normalizePath),
+    productionRoots: productionRoots.map((root) => normalizePath(root).replace(/\/$/, '')),
+  };
   const allTests = graph.modules
     .map((module) => normalizePath(module.source))
     .filter(isTest)
     .sort();
-  const pathExcluded = allTests.filter((source) => isPathExcludedTest(source, layout));
-  const tests = allTests.filter((source) => !isPathExcludedTest(source, layout));
-
-  const results = tests.map((source) => {
-    const { direct, visited } = runtimeReachability(source, dependencies);
-    const directProductionEdges = direct.filter((edge) =>
-      isProduction(edge.target, normalizedProductionRoots, layout),
-    );
-    const runtimeProductionModules = [...visited]
-      .filter((target) => isProduction(target, normalizedProductionRoots, layout))
-      .sort();
-    const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
-    const typeOnlyProductionModules = typeOnlyProductionReachability(
-      source,
-      dependencies,
-      normalizedProductionRoots,
-      layout,
-    );
-
-    let category;
-    if (directProductionEdges.length > 0) {
-      category = directProductionEdges.every((edge) => edge.dynamic)
-        ? 'dynamic-production-runtime'
-        : 'direct-production-runtime';
-    } else if (runtimeProductionModules.length > 0) {
-      category = 'transitive-production-runtime';
-    } else if (bridgeModules.length > 0) {
-      category = 'subprocess-production-runtime';
-    } else if (typeOnlyProductionModules.length > 0) {
-      category = RULE_IDS.typeOnlyProductionDependency;
-    } else {
-      category = RULE_IDS.noProductionRuntime;
-    }
-
-    return {
-      test: source,
-      category,
-      directProductionModules: directProductionEdges.map((edge) => edge.target).sort(),
-      runtimeProductionModules,
-      typeOnlyProductionModules,
-      subprocessBridges: bridgeModules,
-    };
-  });
-  const excluded = [...pathExcluded].sort();
-
-  const categoryCounts = Object.fromEntries(
-    [...new Set(results.map((result) => result.category))]
-      .sort()
-      .map((category) => [
-        category,
-        results.filter((result) => result.category === category).length,
-      ]),
-  );
+  const excluded = allTests.filter((source) => isPathExcludedTest(source, layout)).sort();
+  const results = allTests
+    .filter((source) => !isPathExcludedTest(source, layout))
+    .map((source) => classifyTest(source, context));
   const findings = results.filter((result) =>
     [RULE_IDS.noProductionRuntime, RULE_IDS.typeOnlyProductionDependency].includes(result.category),
   );
@@ -242,10 +195,73 @@ export function analyzeTestRuntime(
       analyzedTests: results.length,
       excludedTests: excluded.length,
       findings: findings.length,
-      categories: categoryCounts,
+      categories: countCategories(results),
     },
     exclusions: excluded,
     tests: results,
     findings,
   };
+}
+
+function countCategories(results) {
+  return Object.fromEntries(
+    [...new Set(results.map((result) => result.category))]
+      .sort()
+      .map((category) => [
+        category,
+        results.filter((result) => result.category === category).length,
+      ]),
+  );
+}
+
+function classifyTest(source, { layout, dependencies, sourceTexts, bridges, productionRoots }) {
+  const { direct, visited } = runtimeReachability(source, dependencies);
+  const directProductionEdges = direct.filter((edge) =>
+    isProduction(edge.target, productionRoots, layout),
+  );
+  const runtimeProductionModules = [...visited]
+    .filter((target) => isProduction(target, productionRoots, layout))
+    .sort();
+  const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
+  const typeOnlyProductionModules = typeOnlyProductionReachability(
+    source,
+    dependencies,
+    productionRoots,
+    layout,
+  );
+  return {
+    test: source,
+    category: categoryOf({
+      directProductionEdges,
+      runtimeProductionModules,
+      bridgeModules,
+      typeOnlyProductionModules,
+    }),
+    directProductionModules: directProductionEdges.map((edge) => edge.target).sort(),
+    runtimeProductionModules,
+    typeOnlyProductionModules,
+    subprocessBridges: bridgeModules,
+  };
+}
+
+function categoryOf({
+  directProductionEdges,
+  runtimeProductionModules,
+  bridgeModules,
+  typeOnlyProductionModules,
+}) {
+  if (directProductionEdges.length > 0) {
+    return directProductionEdges.every((edge) => edge.dynamic)
+      ? 'dynamic-production-runtime'
+      : 'direct-production-runtime';
+  }
+  if (runtimeProductionModules.length > 0) {
+    return 'transitive-production-runtime';
+  }
+  if (bridgeModules.length > 0) {
+    return 'subprocess-production-runtime';
+  }
+  return typeOnlyProductionModules.length > 0
+    ? RULE_IDS.typeOnlyProductionDependency
+    : RULE_IDS.noProductionRuntime;
 }
