@@ -12,7 +12,7 @@ export default {
     schema: [],
     messages: {
       serverPerTest:
-        'Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests.',
+        'Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. If each test needs a fresh server, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
