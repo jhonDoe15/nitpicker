@@ -1,16 +1,6 @@
-import {
-  MESSAGES,
-  MINIMUM_BRANCH_COVERAGE,
-  RULE_IDS,
-  renderMessage,
-} from '../../shared/policy.mjs';
-import {
-  childrenNamed,
-  createIdentityCounter,
-  hashIdentity,
-  normalizeReportPath,
-  parseXml,
-} from './common.mjs';
+import { MINIMUM_BRANCH_COVERAGE, RULE_IDS } from '../../shared/policy.mjs';
+import { branchCoverageFindings } from '../../shared/rules/branch-coverage.mjs';
+import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
 
 // JaCoCo XML -> `changed-branch-coverage` findings, the Java counterpart of the TypeScript
 // coverage check: one enforceable finding per source line whose branch outcomes are covered below
@@ -54,33 +44,26 @@ export function ingestJacocoBranches(xml, options = {}) {
 }
 
 function fileFindings(sourcefile, filePath, sourceLines, { tool, minimum }) {
-  const unique = createIdentityCounter();
-  const findings = [];
+  const branches = [];
   for (const line of childrenNamed(sourcefile, 'line')) {
     const missed = Number.parseInt(line.attrs.mb, 10);
     const covered = Number.parseInt(line.attrs.cb, 10);
     const lineNumber = Number.parseInt(line.attrs.nr, 10);
     const total = missed + covered;
-    if (!(total > 0) || !Number.isInteger(lineNumber)) {
-      continue;
-    }
-    const percent = (covered / total) * 100;
     const source = sourceLines[lineNumber - 1]?.trim().replaceAll(/\s+/g, ' ');
-    if (percent >= minimum || source === undefined || source === '') {
+    if (!(total > 0) || !Number.isInteger(lineNumber) || source === undefined || source === '') {
       continue;
     }
-    findings.push({
-      tool,
-      rule: CHANGED_BRANCH_COVERAGE_RULE,
+    branches.push({
       path: filePath,
-      identity: unique(hashIdentity('branch-source', [source])),
-      message: renderMessage(MESSAGES.changedBranchCoverage, {
-        percent: percent.toFixed(2),
-        minimum,
-      }),
-      classification: 'enforceable',
-      location: { line: lineNumber },
+      key: hashIdentity('branch-source', [source]),
+      percent: (covered / total) * 100,
+      line: lineNumber,
     });
   }
-  return findings;
+  return branchCoverageFindings(branches, {
+    tool,
+    minimum,
+    identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
+  });
 }
