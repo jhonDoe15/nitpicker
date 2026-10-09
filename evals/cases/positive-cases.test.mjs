@@ -1,37 +1,15 @@
-import { existsSync, readFileSync, symlinkSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { write } from '../lib/consumer.mjs';
 import { loadTree } from '../detectors/tree.mjs';
-import { copiedWorkdir, listCases, loadCase, runCase } from '../runner/run-case.mjs';
-
-const casesDirectory = import.meta.dirname;
-const packageRoot = path.resolve(casesDirectory, '..', '..', 'typescript');
-const strictCleanRoot = path.join(packageRoot, 'preset', 'fixtures', 'strict-clean');
-const referenceAgent = path.join(casesDirectory, '..', 'runner', 'reference-agent.mjs');
-// The full gate includes mutation testing and takes minutes per case, so the default run uses the
-// static analyzers only. NITPICKER_EVAL_FULL_GATE=1 runs every analyzer, as the strict-clean
-// fixture test does.
-const QUICK_ANALYZERS = [
-  'eslint-lint',
-  'eslint-errors',
-  'eslint-logging',
-  'eslint-module-effects',
-  'entry-points',
-  'prettier-format',
-  'typescript-typecheck',
-  'dependency-architecture',
-  'coding-standards',
-  'coupling',
-  'structure',
-  'duplicates',
-  'dead-code',
-];
-const analyzerArguments =
-  process.env.NITPICKER_EVAL_FULL_GATE === '1'
-    ? []
-    : QUICK_ANALYZERS.flatMap((name) => ['--analyzer', name]);
-const CASE_TIMEOUT_MS = 600_000;
+import { listCases, loadCase, runCase } from '../runner/run-case.mjs';
+import {
+  CASE_TIMEOUT_MS,
+  casesDirectory,
+  linkedWorkdir,
+  runReference,
+  strictCleanRoot,
+} from './case-harness.mjs';
 
 // Fixture files a case may extend beyond strict-clean (the bug case wires its buggy function).
 const EXTENDED_BY_CASE = new Set([
@@ -40,40 +18,6 @@ const EXTENDED_BY_CASE = new Set([
 ]);
 
 const POSITIVE_CASES = ['add-farewell-feature', 'fix-count-bug', 'add-greet-endpoint'];
-
-// The fixture installed as a consumer would have it, except that the dependencies are the ones
-// already in typescript/node_modules (no install, no network). The real gate then runs against it.
-function linkedWorkdir() {
-  const prepare = copiedWorkdir();
-  return ({ caseDefinition, workdir }) => {
-    write(workdir, '.gitignore', 'node_modules/\nreports/\n');
-    write(
-      workdir,
-      'package.json',
-      readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8'),
-    );
-    symlinkSync(path.join(packageRoot, 'node_modules'), path.join(workdir, 'node_modules'));
-    prepare({ caseDefinition, workdir });
-  };
-}
-
-function runReference(caseId) {
-  return runCase({
-    caseDefinition: loadCase(path.join(casesDirectory, caseId)),
-    agentCommand: ['node', referenceAgent],
-    prepareWorkdir: linkedWorkdir(),
-    gateCommand: [
-      'node',
-      path.join(packageRoot, 'core', 'cli.mjs'),
-      '--base',
-      'main',
-      ...analyzerArguments,
-    ],
-    tier: 'reference',
-    model: 'reference-solution',
-    nitpickerVersion: '0.0.0',
-  });
-}
 
 describe('positive case definitions', () => {
   it('lists at least three positive cases besides the trivial runner case', () => {
