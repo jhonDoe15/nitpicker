@@ -75,60 +75,68 @@ async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
-  const layout = readLayout();
   if (
     !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
   )
     return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'prettier/bin/prettier.cjs',
-      arguments_: [
-        '--config',
-        installedPolicy.configPath,
-        '--ignore-path',
-        installedPolicy.ignorePath,
-        '--list-different',
-        '--no-error-on-unmatched-pattern',
-        ...options.patterns,
-        ...layout.exclude.map((glob) => `!${glob}`),
-      ],
-      acceptedStatuses: [0, 1],
-    });
-    const unformattedFiles = result.stdout
-      .split(/\r?\n/)
-      .map((value) => value.trim())
-      .filter((value) => value.length > 0);
-    if (result.status === 1 && unformattedFiles.length === 0) {
-      throw new Error(`Prettier reported formatting differences without file paths`);
-    }
-    const prettier = await import(
-      pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
-    );
-    let prettierOptions;
-    try {
-      prettierOptions = JSON.parse(readFileSync(installedPolicy.configPath, 'utf8'));
-    } catch (error) {
-      throw new Error('Prettier policy is not valid JSON', { cause: error });
-    }
-    const perFile = await Promise.all(
-      unformattedFiles.map(async (filePath) => {
-        const relativePath = projectFile(options.projectRoot, filePath);
-        const absolutePath = path.join(options.projectRoot, relativePath);
-        const source = readFileSync(absolutePath, 'utf8');
-        const formatted = await prettier.format(source, {
-          ...prettierOptions,
-          filepath: absolutePath,
-        });
-        return formattingFindings(options.analyzerName, relativePath, source, formatted);
-      }),
-    );
-    return perFile.flat();
+    const unformattedFiles = listUnformattedFiles(options, installedPolicy);
+    return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
   } finally {
     installedPolicy.remove();
   }
+}
+
+function listUnformattedFiles(options, installedPolicy) {
+  const result = runNodeTool({
+    options,
+    relativeToolPath: 'prettier/bin/prettier.cjs',
+    arguments_: [
+      '--config',
+      installedPolicy.configPath,
+      '--ignore-path',
+      installedPolicy.ignorePath,
+      '--list-different',
+      '--no-error-on-unmatched-pattern',
+      ...options.patterns,
+      ...readLayout().exclude.map((glob) => `!${glob}`),
+    ],
+    acceptedStatuses: [0, 1],
+  });
+  const unformattedFiles = result.stdout
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+  if (result.status === 1 && unformattedFiles.length === 0) {
+    throw new Error(`Prettier reported formatting differences without file paths`);
+  }
+  return unformattedFiles;
+}
+
+async function formattingFindingsOf(options, unformattedFiles, configPath) {
+  const prettier = await import(
+    pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
+  );
+  let prettierOptions;
+  try {
+    prettierOptions = JSON.parse(readFileSync(configPath, 'utf8'));
+  } catch (error) {
+    throw new Error('Prettier policy is not valid JSON', { cause: error });
+  }
+  const perFile = await Promise.all(
+    unformattedFiles.map(async (filePath) => {
+      const relativePath = projectFile(options.projectRoot, filePath);
+      const absolutePath = path.join(options.projectRoot, relativePath);
+      const source = readFileSync(absolutePath, 'utf8');
+      const formatted = await prettier.format(source, {
+        ...prettierOptions,
+        filepath: absolutePath,
+      });
+      return formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
+    }),
+  );
+  return perFile.flat();
 }
 
 function runTypecheck(options) {
@@ -711,10 +719,7 @@ function formatDiagnostic(diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
 
-// One finding per differing region, located at its first original line. The identity is the
-// region's own original and formatted text (plus an occurrence number for identical regions in one
-// file), never its position, so edits elsewhere in the file do not change it.
-function formattingFindings(tool, relativePath, source, formatted) {
+function formattingFindings({ tool, relativePath, source }, formatted) {
   const seen = new Map();
   return formattingHunks(source, formatted).map((hunk) => {
     const digest = hash(`${hunk.original}\0${hunk.formatted}`);
