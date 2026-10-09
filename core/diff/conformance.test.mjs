@@ -22,6 +22,19 @@ function readJson(...segments) {
   return JSON.parse(readFileSync(path.join(conformanceRoot, ...segments), 'utf8'));
 }
 
+function thrownMessage(operation) {
+  try {
+    operation();
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
+  return undefined;
+}
+
+function expectedFailure(error) {
+  return error === undefined ? undefined : expect.stringContaining(error);
+}
+
 function caseNames(kind) {
   return readdirSync(path.join(conformanceRoot, kind), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -58,8 +71,8 @@ describe('findings conformance fixtures', () => {
         baseToHeadRenames: new Map(Object.entries(expected.renames ?? {})),
       });
 
+    expect(thrownMessage(compare)).toEqual(expectedFailure(expected.error));
     if (expected.error !== undefined) {
-      expect(compare).toThrow(expected.error);
       return;
     }
     const result = compare();
@@ -91,8 +104,10 @@ describe('git conformance fixtures', () => {
       stdio: 'pipe',
     });
 
+    expect(thrownMessage(() => resolveComparison(repositoryRoot, expected.baseRef))).toEqual(
+      expectedFailure(expected.error),
+    );
     if (expected.error !== undefined) {
-      expect(() => resolveComparison(repositoryRoot, expected.baseRef)).toThrow(expected.error);
       return;
     }
     const resolve = (tag) => runGit(repositoryRoot, ['rev-parse', `${tag}^{commit}`]).trim();

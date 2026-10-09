@@ -58,7 +58,9 @@ describe('strict adapters syntactic rules', () => {
 
 describe('strict adapters type-aware rules', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'strict-adapters-'));
-  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   const adapterDirectory = path.join(root, 'src/main/features/billing/adapters');
   mkdirSync(adapterDirectory, { recursive: true });
   // Write every fixture before the first lint: in CI, typescript-eslint builds the program once

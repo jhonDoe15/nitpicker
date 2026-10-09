@@ -229,12 +229,12 @@ describe('renderJunitReport', () => {
   });
 
   it('rejects malformed XML in the checker itself', () => {
-    expect(() =>
-      expectWellFormedXml('<?xml version="1.0" encoding="UTF-8"?>\n<a><b></a>'),
-    ).toThrow();
-    expect(() =>
-      expectWellFormedXml('<?xml version="1.0" encoding="UTF-8"?>\n<a x=1></a>'),
-    ).toThrow();
+    expect(() => {
+      expectWellFormedXml('<?xml version="1.0" encoding="UTF-8"?>\n<a><b></a>');
+    }).toThrow();
+    expect(() => {
+      expectWellFormedXml('<?xml version="1.0" encoding="UTF-8"?>\n<a x=1></a>');
+    }).toThrow();
   });
 });
 
