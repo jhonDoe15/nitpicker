@@ -37,6 +37,7 @@ try {
   if (method === 'GET') {
     process.stdout.write(Buffer.from(await response.arrayBuffer()));
   }
-} catch {
+} catch (error) {
+  void error;
   process.exit(1);
 }

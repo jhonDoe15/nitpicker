@@ -35,7 +35,7 @@ export function comparisonKey(
 // can change which rotation is smallest, so the renamed cycle is re-rotated before comparing.
 function parseCycleIdentity(identity) {
   const match = /^cycle:([^|]+)(\|.*)?$/.exec(identity);
-  return match === null ? undefined : { members: match[1].split('>'), suffix: match[2] ?? '' };
+  return match === null ? undefined : { members: match[1].split('>'), suffix: match.at(2) ?? '' };
 }
 
 function remapCycle({ members, suffix }, baseToHeadRenames) {

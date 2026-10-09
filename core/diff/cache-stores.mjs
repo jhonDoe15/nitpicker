@@ -26,12 +26,15 @@ export function resolveCacheDirectory({ projectRoot, environment = process.env }
 }
 
 export function createDirectoryStore(directory) {
-  const fileFor = (key) => path.join(directory, `${key}.json`);
+  function fileFor(key) {
+    return path.join(directory, `${key}.json`);
+  }
   return {
     get(key) {
       try {
         return readFileSync(fileFor(key), 'utf8');
-      } catch {
+      } catch (error) {
+        void error;
         return undefined;
       }
     },
@@ -43,7 +46,8 @@ export function createDirectoryStore(directory) {
         writeFileSync(temporary, text);
         renameSync(temporary, target);
         return true;
-      } catch {
+      } catch (error) {
+        void error;
         return false;
       }
     },
@@ -59,7 +63,7 @@ export function createDirectoryStore(directory) {
 export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   const root = baseUrl.replace(/\/+$/u, '');
   let broken = false;
-  const request = (method, key, input) => {
+  function request(method, key, input) {
     if (broken) {
       return { status: 1 };
     }
@@ -78,7 +82,7 @@ export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEO
       broken = true;
     }
     return { status, stdout: result.stdout };
-  };
+  }
   return {
     get(key) {
       const { status, stdout } = request('GET', key);

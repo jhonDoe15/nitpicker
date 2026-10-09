@@ -8,16 +8,20 @@ export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
   const worktreeRoot = path.join(temporaryRoot, 'base');
   let worktreeCreated = false;
   let operationError;
+  let operationFailed = false;
+  let result;
 
   try {
     runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]);
     worktreeCreated = true;
-    return operation(worktreeRoot);
+    result = operation(worktreeRoot);
   } catch (error) {
     operationError = error;
-    throw error;
-  } finally {
-    let cleanupError;
+    operationFailed = true;
+  }
+
+  let cleanupError;
+  try {
     if (worktreeCreated) {
       try {
         runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]);
@@ -25,18 +29,23 @@ export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
         cleanupError = error;
       }
     }
+  } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
-
-    if (cleanupError !== undefined) {
-      if (operationError !== undefined) {
-        throw new AggregateError(
-          [operationError, cleanupError],
-          'Quality comparison and temporary worktree cleanup both failed',
-        );
-      }
-      throw new Error('Failed to remove the temporary quality-comparison worktree', {
-        cause: cleanupError,
-      });
-    }
   }
+
+  if (cleanupError !== undefined) {
+    if (operationError !== undefined) {
+      throw new AggregateError(
+        [operationError, cleanupError],
+        'Quality comparison and temporary worktree cleanup both failed',
+      );
+    }
+    throw new Error('Failed to remove the temporary quality-comparison worktree', {
+      cause: cleanupError,
+    });
+  }
+  if (operationFailed) {
+    throw operationError;
+  }
+  return result;
 }

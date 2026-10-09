@@ -34,7 +34,7 @@ export async function runTaskGraph(
   const tasksByName = indexTasks(tasks);
   validateAcyclicGraph(tasksByName);
 
-  const semaphore = new WeightedSemaphore(maxParallel);
+  const semaphore = createWeightedSemaphore(maxParallel);
   const groupSemaphores = new Map();
   const taskPromises = new Map();
 
@@ -146,7 +146,7 @@ function acquireGroup(groupName, groupSemaphores) {
   }
   let semaphore = groupSemaphores.get(groupName);
   if (semaphore === undefined) {
-    semaphore = new WeightedSemaphore(1);
+    semaphore = createWeightedSemaphore(1);
     groupSemaphores.set(groupName, semaphore);
   }
   return semaphore.acquire(1);
@@ -158,11 +158,9 @@ function acquireGroup(groupName, groupSemaphores) {
 const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
 
 function analyzerEnvironment(environment) {
-  const copy = { ...environment };
-  for (const name of HOST_CI_OUTPUT_VARIABLES) {
-    delete copy[name];
-  }
-  return copy;
+  return Object.fromEntries(
+    Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
+  );
 }
 
 export function executeAnalyzerTask(task) {
@@ -185,20 +183,22 @@ export function executeAnalyzerTask(task) {
     }, task.timeoutMs);
     let forceKillTimeout;
 
-    const collect = (chunks) => (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
-        terminate(new Error(`${task.name} exceeded the analyzer output limit`));
-        return;
-      }
-      chunks.push(chunk);
-    };
+    function collect(chunks) {
+      return (chunk) => {
+        outputBytes += chunk.length;
+        if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
+          terminate(new Error(`${task.name} exceeded the analyzer output limit`));
+          return;
+        }
+        chunks.push(chunk);
+      };
+    }
     child.stdout.on('data', collect(stdout));
     child.stderr.on('data', collect(stderr));
     child.on('error', (error) => {
       childError = error;
     });
-    child.on('close', (status, signal) =>
+    child.on('close', (status, signal) => {
       finish(() => {
         if (terminationError !== undefined) {
           reject(terminationError);
@@ -220,8 +220,8 @@ export function executeAnalyzerTask(task) {
         } catch (error) {
           reject(error);
         }
-      }),
-    );
+      });
+    });
 
     function terminate(error) {
       if (terminationError !== undefined) {
@@ -276,7 +276,9 @@ function signalChildProcess(child, signal) {
   }
   try {
     child.kill(signal);
-  } catch {}
+  } catch (error) {
+    void error;
+  }
 }
 
 function installShutdownHandlers(shutdownController) {
@@ -423,38 +425,36 @@ function validateAcyclicGraph(tasksByName) {
   }
 }
 
-class WeightedSemaphore {
-  #available;
-  #waiting = [];
+function createWeightedSemaphore(capacity) {
+  let available = capacity;
+  const waiting = [];
 
-  constructor(capacity) {
-    this.#available = capacity;
-  }
-
-  acquire(weight) {
-    return new Promise((resolve) => {
-      this.#waiting.push({ weight, resolve });
-      this.#drain();
-    });
-  }
-
-  #drain() {
-    while (this.#waiting[0]?.weight <= this.#available) {
-      const waiter = this.#waiting.shift();
-      this.#available -= waiter.weight;
+  function drain() {
+    for (const waiter of [...waiting]) {
+      if (waiter.weight > available) {
+        return;
+      }
+      waiting.shift();
+      available -= waiter.weight;
       waiter.resolve(() => {
-        this.#available += waiter.weight;
-        this.#drain();
+        available += waiter.weight;
+        drain();
       });
     }
   }
+
+  return {
+    acquire(weight) {
+      return new Promise((resolve) => {
+        waiting.push({ weight, resolve });
+        drain();
+      });
+    },
+  };
 }
 
 const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
+if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
   const shutdownController = new AbortController();
   installShutdownHandlers(shutdownController);
   try {

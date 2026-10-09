@@ -115,20 +115,17 @@ export function readBaseFiles({ repositoryRoot, mergeBaseSha, files }) {
 export function parseNameStatus(output) {
   const fields = output.split('\0');
   const records = [];
-  for (let index = 0; index < fields.length;) {
-    const status = fields[index];
-    index += 1;
+  const remaining = fields.values();
+  for (const status of remaining) {
     if (status.length === 0) {
       continue;
     }
-    const firstPath = fields[index];
-    index += 1;
+    const firstPath = remaining.next().value;
     if (firstPath === undefined || firstPath.length === 0) {
       throw new Error(`Malformed git status output for ${status}: missing path`);
     }
     if (status.startsWith('R') || status.startsWith('C')) {
-      const secondPath = fields[index];
-      index += 1;
+      const secondPath = remaining.next().value;
       if (secondPath === undefined || secondPath.length === 0) {
         throw new Error(`Malformed git status output for ${status}: missing destination`);
       }
@@ -236,7 +233,7 @@ function splitNullTerminated(output) {
 function parseBatchObjects({ output, files, objectNames }) {
   const contents = new Map();
   let offset = 0;
-  for (let index = 0; index < files.length; index += 1) {
+  for (const [index, file] of files.entries()) {
     const lineEnd = output.indexOf(10, offset);
     if (lineEnd === -1) {
       throw new Error('Malformed git cat-file output: missing object header');
@@ -244,7 +241,7 @@ function parseBatchObjects({ output, files, objectNames }) {
     const header = output.subarray(offset, lineEnd).toString('utf8');
     offset = lineEnd + 1;
     if (header === `${objectNames[index]} missing`) {
-      contents.set(files[index].path, undefined);
+      contents.set(file.path, undefined);
       continue;
     }
     const fields = header.split(' ');
@@ -254,9 +251,9 @@ function parseBatchObjects({ output, files, objectNames }) {
     }
     const contentEnd = offset + size;
     if (contentEnd >= output.length || output[contentEnd] !== 10) {
-      throw new Error(`Malformed git cat-file content for ${files[index].baseRepositoryPath}`);
+      throw new Error(`Malformed git cat-file content for ${file.baseRepositoryPath}`);
     }
-    contents.set(files[index].path, output.subarray(offset, contentEnd).toString('utf8'));
+    contents.set(file.path, output.subarray(offset, contentEnd).toString('utf8'));
     offset = contentEnd + 1;
   }
   if (offset !== output.length) {

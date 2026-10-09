@@ -26,6 +26,15 @@ const COMMON_SUMMARY_PROPERTIES = [
   'renamedPaths',
 ];
 
+function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
+  if (policyRoot !== undefined) {
+    return realpathSync(policyRoot);
+  }
+  return optionsPolicyRoot === undefined
+    ? undefined
+    : realpathSync(path.resolve(currentProjectRoot, optionsPolicyRoot));
+}
+
 export function aggregateShardReports({
   inputRoot,
   outputRoot,
@@ -147,12 +156,11 @@ export function runAggregateCli({
       configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
       liveProjectRoot: currentProjectRoot,
-      policyRoot:
-        policyRoot === undefined
-          ? options.policyRoot === undefined
-            ? undefined
-            : realpathSync(path.resolve(currentProjectRoot, options.policyRoot))
-          : realpathSync(policyRoot),
+      policyRoot: resolvePolicyRoot({
+        policyRoot,
+        optionsPolicyRoot: options.policyRoot,
+        currentProjectRoot,
+      }),
     });
     stdout.write(
       renderConsoleSummary(report, {
@@ -241,7 +249,12 @@ function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
 
 function parseArguments(arguments_) {
   const values = {};
-  for (let index = 0; index < arguments_.length; index += 1) {
+  let skipNext = false;
+  for (const index of arguments_.keys()) {
+    if (skipNext) {
+      skipNext = false;
+      continue;
+    }
     const argument = arguments_[index];
     if (argument === '--help') {
       return { kind: 'help' };
@@ -254,7 +267,7 @@ function parseArguments(arguments_) {
       throw new Error(`${argument} requires a value`);
     }
     values[argument] = value;
-    index += 1;
+    skipNext = true;
   }
   if (values['--input-root'] === undefined) {
     throw new Error('--input-root is required');
@@ -363,9 +376,6 @@ function mergeEntries(shardReports, property) {
 }
 
 const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
+if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
   process.exitCode = runAggregateCli();
 }
