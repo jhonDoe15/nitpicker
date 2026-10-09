@@ -1,0 +1,587 @@
+{
+  "versions": {
+    "eslint": "10.9.1",
+    "typescript-eslint": "8.68.0",
+    "@typescript-eslint/parser": "8.68.0",
+    "@typescript-eslint/eslint-plugin": "8.68.0",
+    "typescript": "6.0.3"
+  },
+  "snapshots": [
+    {
+      "policyConfig": "errors.mjs",
+      "policySha": "0012b91258097924c0b37169750d16f1cc77b920b6b4df1b092f9de2cc854ab5",
+      "files": {
+        "src/main/source.ts": "ae9aab57e52b1c0983df47970e227599d855b0017adbdbb3673d18aa3f37ae75"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [
+            {
+              "ruleId": "no-empty-function",
+              "severity": 2,
+              "message": "Unexpected empty function 'empty'.",
+              "line": 2,
+              "column": 25,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 27,
+              "suggestions": [
+                {
+                  "messageId": "suggestComment",
+                  "data": {
+                    "name": "function 'empty'"
+                  },
+                  "fix": {
+                    "range": [35, 35],
+                    "text": " /* empty */ "
+                  },
+                  "desc": "Add comment inside empty function 'empty'."
+                }
+              ]
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "errors.mjs",
+      "policySha": "0012b91258097924c0b37169750d16f1cc77b920b6b4df1b092f9de2cc854ab5",
+      "files": {
+        "src/main/source.ts": "b2089db33a4165602117a64d6f06077eb7eaa7218d6f9e35738dcf84b46fec4a"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/added.ts": "12890950b1ae9996adbd3bdf89a53933097bf8c9c4d022ef541c252fcfd29f0f",
+        "src/main/moved.ts": "784e2ec4179f03c19173d5aa2c04b0890929761296887da6d399430dde96107b",
+        "src/main/new-name.ts": "d0858e5aae87cf3e3849cd93f8a8fe6f59133498d0d11f977a0e862754ea137f",
+        "src/main/resolved.ts": "1f3545d8d46ba9a92d55cc8bd8414e34db915e61339aef9731869d948e6eb414",
+        "src/main/stable.ts": "ae662624eee28ef3be8a735fa31a4966c85430613393b70ece6c9cbffb4f439d"
+      },
+      "results": [
+        {
+          "filePath": "src/main/added.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/moved.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 5,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 5,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/new-name.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/resolved.ts",
+          "messages": [],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/stable.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/moved.ts": "e91261a98c56d9858df43fc48d746c755fa072b5dd2cee8ebd382574f8946f6e",
+        "src/main/old-name.ts": "d0858e5aae87cf3e3849cd93f8a8fe6f59133498d0d11f977a0e862754ea137f",
+        "src/main/resolved.ts": "11985e32ee0ca53c20615b8d9225dd73f3ea15684f377f97ece979f44559f983",
+        "src/main/stable.ts": "ae662624eee28ef3be8a735fa31a4966c85430613393b70ece6c9cbffb4f439d"
+      },
+      "results": [
+        {
+          "filePath": "src/main/moved.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/old-name.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/resolved.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        },
+        {
+          "filePath": "src/main/stable.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/repeated.ts": "7633bc5e3d856490c8280de74decedac1622b98bb528a4e0a5a251c3806c0c80"
+      },
+      "results": [
+        {
+          "filePath": "src/main/repeated.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 2,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 2,
+              "endColumn": 12
+            },
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 3,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 3,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 2,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/repeated.ts": "c960d41a7338121a9ff3384ebf6e67cbdb327afbec416ac8ecacd64a341d89d2"
+      },
+      "results": [
+        {
+          "filePath": "src/main/repeated.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 5,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 5,
+              "endColumn": 12
+            },
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 6,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 6,
+              "endColumn": 12
+            },
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 7,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 7,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 3,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/source.ts": "ae9aab57e52b1c0983df47970e227599d855b0017adbdbb3673d18aa3f37ae75"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 1,
+              "column": 1,
+              "messageId": "unexpected",
+              "endLine": 1,
+              "endColumn": 10
+            },
+            {
+              "ruleId": "no-debugger",
+              "severity": 2,
+              "message": "Unexpected 'debugger' statement.",
+              "line": 6,
+              "column": 3,
+              "messageId": "unexpected",
+              "endLine": 6,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 2,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/source.ts": "b2089db33a4165602117a64d6f06077eb7eaa7218d6f9e35738dcf84b46fec4a"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "eslint.config.mjs",
+      "policySha": "e3e256d80fe2e92a5edbd5e1265bdcecec0b9b3ea1aa14a350877faba4827440",
+      "files": {
+        "src/main/source.ts": "ff15a1ee710f400fb236337c3a93d64f06d0d9816f52728e3d697821d30b1ebf"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [
+            {
+              "ruleId": null,
+              "message": "Unused eslint-disable directive (no problems were reported from 'no-console').",
+              "line": 1,
+              "column": 1,
+              "severity": 1,
+              "fix": {
+                "range": [0, 38],
+                "text": " "
+              }
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 1,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 1,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "logging.mjs",
+      "policySha": "aa996eaa8b17bae3b2b7fbe9ebd79da945f4862b9728458146e4c6bce95487ce",
+      "files": {
+        "src/main/source.ts": "ae9aab57e52b1c0983df47970e227599d855b0017adbdbb3673d18aa3f37ae75"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [
+            {
+              "ruleId": "no-console",
+              "severity": 2,
+              "message": "Unexpected console statement.",
+              "line": 3,
+              "column": 1,
+              "messageId": "unexpected",
+              "endLine": 3,
+              "endColumn": 12,
+              "suggestions": [
+                {
+                  "fix": {
+                    "range": [37, 60],
+                    "text": ""
+                  },
+                  "messageId": "removeConsole",
+                  "data": {
+                    "propertyName": "log"
+                  },
+                  "desc": "Remove the console.log()."
+                }
+              ]
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "logging.mjs",
+      "policySha": "aa996eaa8b17bae3b2b7fbe9ebd79da945f4862b9728458146e4c6bce95487ce",
+      "files": {
+        "src/main/source.ts": "b2089db33a4165602117a64d6f06077eb7eaa7218d6f9e35738dcf84b46fec4a"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "module-effects.mjs",
+      "policySha": "253ef049b4a6bae05ccd96d4e9e0e20b90a7a8332334efcb227fda7ca0fdcc06",
+      "files": {
+        "src/main/source.ts": "ae9aab57e52b1c0983df47970e227599d855b0017adbdbb3673d18aa3f37ae75"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [
+            {
+              "ruleId": "no-unreachable",
+              "severity": 2,
+              "message": "Unreachable code.",
+              "line": 6,
+              "column": 3,
+              "messageId": "unreachableCode",
+              "endLine": 6,
+              "endColumn": 12
+            }
+          ],
+          "suppressedMessages": [],
+          "errorCount": 1,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    },
+    {
+      "policyConfig": "module-effects.mjs",
+      "policySha": "253ef049b4a6bae05ccd96d4e9e0e20b90a7a8332334efcb227fda7ca0fdcc06",
+      "files": {
+        "src/main/source.ts": "b2089db33a4165602117a64d6f06077eb7eaa7218d6f9e35738dcf84b46fec4a"
+      },
+      "results": [
+        {
+          "filePath": "src/main/source.ts",
+          "messages": [],
+          "suppressedMessages": [],
+          "errorCount": 0,
+          "fatalErrorCount": 0,
+          "warningCount": 0,
+          "fixableErrorCount": 0,
+          "fixableWarningCount": 0,
+          "usedDeprecatedRules": []
+        }
+      ]
+    }
+  ]
+}
