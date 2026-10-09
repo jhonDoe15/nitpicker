@@ -1,0 +1,6 @@
+3,1,13,1,3,"Calc::Calc@9-11@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","Calc::Calc","Calc::Calc( int base)",9,11
+13,9,109,3,13,"Calc::classify@13-25@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","Calc::classify","Calc::classify( int a , int b , String s)",13,25
+3,1,12,0,3,"Calc::doubler@27-29@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","Calc::doubler","Calc::doubler()",27,29
+3,2,22,0,3,"(anonymous)::run@34-36@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","(anonymous)::run","Calc::Calc::anon.run()",34,36
+6,1,17,0,8,"Calc::anon@31-38@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","Calc::anon","Calc::anon()",31,38
+1,2,17,1,1,"Inner::get@41-41@src/main/java/demo/Calc.java","src/main/java/demo/Calc.java","Inner::get","Calc::Inner::get( int a)",41,41

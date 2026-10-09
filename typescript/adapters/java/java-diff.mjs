@@ -2,13 +2,20 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
-import { captureWorkingTree, readRenameMap, resolveComparison } from '../../core/diff/git.mjs';
+import {
+  captureWorkingTree,
+  readChangedLines,
+  readRenameMap,
+  resolveComparison,
+} from '../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../core/diff/worktree.mjs';
+import { runJavaDuplicates } from './java-duplicates.mjs';
 import { readJavaFindings } from './java-reports.mjs';
+import { isJavaTouchedRule } from './touched-rules.mjs';
 
 // Runs the Java preset (java/nitpicker.init.gradle) on a project and compares base with head.
 
-export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../../../java/nitpicker.init.gradle');
+export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../../java/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -36,6 +43,7 @@ export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INI
 /** Runs the preset and returns the validated findings of one snapshot. */
 export function collectJavaFindings(projectRoot, options) {
   runJavaPreset(projectRoot, options);
+  runJavaDuplicates(projectRoot);
   return parseAnalyzerReport(readJavaFindings(projectRoot), 'java').findings;
 }
 
@@ -69,7 +77,16 @@ export function runJavaDiff({
 
   const baseFindings = collectAt(comparison.mergeBaseSha);
   const headFindings = collectAt(comparison.headSha);
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames });
+  const touchedCode = {
+    changedLines: readChangedLines({
+      repositoryRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
+      headSha: comparison.headSha,
+      projectRelativePath,
+    }),
+    isStrictRule: isJavaTouchedRule,
+  };
+  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );

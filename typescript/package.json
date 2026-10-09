@@ -1,9 +1,17 @@
 {
   "name": "nitpicker",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
   "description": "Differential quality gate: only new enforceable findings fail.",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhonDoe15/nitpicker.git",
+    "directory": "typescript"
+  },
+  "homepage": "https://github.com/jhonDoe15/nitpicker/tree/main/typescript#readme",
+  "bugs": {
+    "url": "https://github.com/jhonDoe15/nitpicker/issues"
+  },
   "bin": {
     "nitpicker": "core/cli.mjs"
   },
@@ -22,6 +30,7 @@
     "core/**/*.mjs",
     "adapters/**/*.mjs",
     "preset/**",
+    "java/**",
     "!**/*.test.mjs",
     "!**/fixtures/**",
     "!**/README.md"
