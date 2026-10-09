@@ -2,7 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
-const SUPPORTED_PRESETS = ['typescript'];
+const SUPPORTED_PRESETS = ['typescript', 'java'];
+// Keys that tune the TypeScript preset's analyzers; the Java preset has no counterpart (yet), and
+// a key that is silently ignored would look like a weakened or tightened gate that it is not.
+const TYPESCRIPT_ONLY_KEYS = ['thresholds', 'exclude', 'layout', 'exceptions', 'legacyInventory'];
 const KEYS = [
   'base',
   'preset',
@@ -51,6 +54,14 @@ export function validateConfig(config) {
   }
   if (config.preset !== undefined && !SUPPORTED_PRESETS.includes(config.preset)) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
+  }
+  if (config.preset === 'java') {
+    const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
+    if (unsupported.length > 0) {
+      throw configError(
+        `"${unsupported[0]}" is not supported with "preset": "java". Not supported: ${TYPESCRIPT_ONLY_KEYS.join(', ')}`,
+      );
+    }
   }
   if (config.disable !== undefined) {
     validateStringArray(config.disable, 'disable');
