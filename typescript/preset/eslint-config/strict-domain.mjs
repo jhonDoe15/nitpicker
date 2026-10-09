@@ -12,7 +12,8 @@ export const domainGlobs = domainGlobsFor(['src']);
 
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
-const TRANSFORMS = 'map, filter, flatMap, Object.fromEntries or Object.groupBy';
+const TRANSFORMS =
+  'map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy';
 
 // Selectors for the no-restricted-syntax rule. Exported so the strict preset assembler can
 // concatenate them with other no-restricted-syntax selectors scoped to the same files: a flat
@@ -27,8 +28,13 @@ export const domainRestrictedSyntax = [
     message: `domain/ code does not use forEach: transform with ${TRANSFORMS}.`,
   },
   {
-    selector: 'CallExpression[callee.property.name=/^(reduce|reduceRight)$/]',
-    message: `domain/ code does not use reduce: build the result with ${TRANSFORMS}.`,
+    selector: "CallExpression[callee.property.name='reduce'][arguments.length!=2]",
+    message:
+      'domain/ code does not use reduce without an initial value: pass one, e.g. xs.reduce((sum, x) => sum + x, 0).',
+  },
+  {
+    selector: "CallExpression[callee.property.name='reduceRight']",
+    message: `domain/ code does not use reduceRight: fold with xs.reduce((sum, x) => sum + x, 0) (pass an initial value) or transform with ${TRANSFORMS}.`,
   },
   {
     selector: `CallExpression[callee.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
