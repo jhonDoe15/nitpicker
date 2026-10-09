@@ -201,7 +201,8 @@ new and touched code must comply.
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
   composition root; no module-level `let`.
 - **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
-  `forEach` or `reduce` (use `map`, `filter`, `flatMap`, `Object.fromEntries`, `Object.groupBy`), no
+  `forEach`, `reduceRight` or `reduce` without an initial value (use `map`, `filter`, `flatMap`,
+  `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
   classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
   Node I/O, network or database clients, loggers or module state.
 - **`features/<name>/adapters/`** does the I/O: `for...of` is the only loop, `async`/`await` with no
