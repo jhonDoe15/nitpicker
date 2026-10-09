@@ -21,9 +21,9 @@ const CONFIGURATION_FILES = [
   'adapters/java/java-policy.mjs',
   'adapters/java/java-reports.mjs',
   'adapters/java/java-runner.mjs',
-  'adapters/java/java-structure.mjs', // SH5
-  'java/StructureMetrics.java', // SH5
-  'shared/rules/structure.mjs', // SH5
+  'adapters/java/java-structure.mjs',
+  'java/StructureMetrics.java',
+  'shared/rules/structure.mjs',
   'adapters/java/touched-rules.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',

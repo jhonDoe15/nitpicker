@@ -1,4 +1,4 @@
-import { MINIMUM_BRANCH_COVERAGE, RULE_IDS } from '../../shared/policy.mjs';
+import { MINIMUM_BRANCH_COVERAGE } from '../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../shared/rules/branch-coverage.mjs';
 import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
 
@@ -18,8 +18,6 @@ import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './co
 // `options.sourceRoot` is prepended to JaCoCo's package-relative paths; `options.sourceText(path)`
 // returns the project-relative file's text (files it cannot read are skipped).
 
-export const CHANGED_BRANCH_COVERAGE_RULE = RULE_IDS.changedBranchCoverage;
-
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
   if (report.name !== 'report') {
@@ -30,20 +28,28 @@ export function ingestJacocoBranches(xml, options = {}) {
   const findings = [];
   for (const pkg of childrenNamed(report, 'package')) {
     for (const sourcefile of childrenNamed(pkg, 'sourcefile')) {
-      const filePath = normalizeReportPath(
-        [options.sourceRoot, pkg.attrs.name, sourcefile.attrs.name].filter(Boolean).join('/'),
-      );
-      const text = filePath === undefined ? undefined : options.sourceText?.(filePath);
-      if (text === undefined) {
-        continue;
-      }
-      findings.push(...fileFindings(sourcefile, filePath, text.split(/\r?\n/), { tool, minimum }));
+      findings.push(...sourcefileFindings(sourcefile, pkg, { options, tool, minimum }));
     }
   }
   return { findings };
 }
 
-function fileFindings(sourcefile, filePath, sourceLines, { tool, minimum }) {
+function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
+  const filePath = normalizeReportPath(
+    [options.sourceRoot, pkg.attrs.name, sourcefile.attrs.name].filter(Boolean).join('/'),
+  );
+  const text = filePath === undefined ? undefined : options.sourceText?.(filePath);
+  if (text === undefined) {
+    return [];
+  }
+  return fileFindings(
+    sourcefile,
+    { path: filePath, lines: text.split(/\r?\n/) },
+    { tool, minimum },
+  );
+}
+
+function fileFindings(sourcefile, { path: filePath, lines: sourceLines }, { tool, minimum }) {
   const branches = [];
   for (const line of childrenNamed(sourcefile, 'line')) {
     const missed = Number.parseInt(line.attrs.mb, 10);

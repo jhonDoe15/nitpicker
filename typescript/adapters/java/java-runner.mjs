@@ -39,12 +39,12 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]';
 
-/** Parses the runner arguments; `--exclude` may repeat. */
-export function parseRunnerArguments(arguments_) {
+function readOptionValues(arguments_) {
   const values = new Map();
   const exclude = [];
-  for (let index = 0; index < arguments_.length; index += 2) {
-    const [name, value] = [arguments_[index], arguments_[index + 1]];
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const value = remaining.next().value;
     if (!RUNNER_OPTIONS.includes(name) || value === undefined) {
       throw new Error(USAGE);
     }
@@ -57,6 +57,11 @@ export function parseRunnerArguments(arguments_) {
   if (!values.has('--project-root')) {
     throw new Error(USAGE);
   }
+  return { values, exclude };
+}
+
+export function parseRunnerArguments(arguments_) {
+  const { values, exclude } = readOptionValues(arguments_);
   const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');

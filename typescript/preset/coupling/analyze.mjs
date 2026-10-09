@@ -7,8 +7,6 @@ function packageName(modulePath, sourceRoot) {
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
-// Builds the neutral dependency graph (module -> dependencies) from the dependency-cruiser output
-// and lets the shared module compute the metrics.
 export function analyzeCoupling(graph, sourceRoot, { layout = defaultResolvedLayout } = {}) {
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
