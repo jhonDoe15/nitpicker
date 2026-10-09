@@ -1,3 +1,4 @@
+import { ancestorsOf } from './ancestry.mjs';
 export const rule = {
   meta: {
     type: 'problem',
@@ -40,18 +41,18 @@ export const rule = {
             node.arguments[wrapper.classificationIndex]?.value !== wrapper.unclassifiedValue)
         )
           return;
-        let parent = node.parent;
-        while (parent && parent.type !== 'CatchClause') parent = parent.parent;
+        const parent = ancestorsOf(node).find((ancestor) => ancestor.type === 'CatchClause');
         if (!parent) return;
         const caughtVariables = context.sourceCode.getDeclaredVariables(parent);
-        const referencesCatch = (expression) =>
-          caughtVariables.some((variable) =>
+        function referencesCatch(expression) {
+          return caughtVariables.some((variable) =>
             variable.references.some(
               (reference) =>
                 expression.range[0] <= reference.identifier.range[0] &&
                 reference.identifier.range[1] <= expression.range[1],
             ),
           );
+        }
         // A fresh bounded error may deliberately sanitize external data. A generic
         // wrapper derived from the caught value must retain that value's cause.
         if (wrapper.classificationIndex === undefined) {

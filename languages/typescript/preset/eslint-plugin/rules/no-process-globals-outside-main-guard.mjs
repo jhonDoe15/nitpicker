@@ -1,3 +1,4 @@
+import { ancestorsOf } from './ancestry.mjs';
 const PROCESS_MEMBERS = new Set(['argv', 'exit', 'exitCode']);
 
 function mentionsEntryPoint(node) {
@@ -22,8 +23,9 @@ function mentionsEntryPoint(node) {
 }
 
 function insideMainGuard(node) {
-  for (let current = node; current.parent; current = current.parent) {
+  for (const current of [node, ...ancestorsOf(node)]) {
     const parent = current.parent;
+    if (!parent) continue;
     if (
       parent.type === 'IfStatement' &&
       (current === parent.test || current === parent.consequent) &&

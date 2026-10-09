@@ -9,9 +9,9 @@ export const rule = {
     },
   },
   create(context) {
-    const report = (node, value) => {
+    function report(node, value) {
       if (subprocessModules.has(value)) context.report({ node, messageId: 'externalExecutable' });
-    };
+    }
     return {
       ImportDeclaration(node) {
         if (node.importKind !== 'type') report(node, node.source.value);

@@ -1,4 +1,5 @@
 import { readLayout } from '../../head-policy.mjs';
+import { ancestorsOf } from './ancestry.mjs';
 
 const { isTestFixture } = readLayout();
 
@@ -23,12 +24,12 @@ export const rule = {
           callee.property.name !== 'pause'
         )
           return;
-        for (let current = node.parent; current; current = current.parent) {
+        const ancestors = ancestorsOf(node);
+        for (const current of ancestors) {
           if (current.type === 'TryStatement' && current.finalizer) {
-            let insideBlock = false;
-            for (let parent = node.parent; parent && parent !== current; parent = parent.parent) {
-              if (parent === current.block) insideBlock = true;
-            }
+            const insideBlock = ancestors
+              .slice(0, ancestors.indexOf(current))
+              .includes(current.block);
             if (insideBlock) return;
           }
         }

@@ -3,7 +3,21 @@ import { loadConfigFromFile } from 'vite';
 import { configDefaults, defineConfig } from 'vitest/config';
 
 const policyFile = process.env.NITPICKER_POLICY;
-const policy = policyFile ? JSON.parse(readFileSync(policyFile, 'utf8')) : {};
+type NitpickerPolicy = {
+  layout?: { sourceRoots?: string[]; testRoots?: string[] };
+  exclude?: string[];
+};
+function isPolicy(value: unknown): value is NitpickerPolicy {
+  return typeof value === 'object' && value !== null;
+}
+function readPolicy(file: string | undefined): NitpickerPolicy {
+  if (!file) {
+    return {};
+  }
+  const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  return isPolicy(parsed) ? parsed : {};
+}
+const policy = readPolicy(policyFile);
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
 const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests'];
 const exclude: string[] = policy.exclude ?? [];

@@ -1,3 +1,4 @@
+import { chainOf, scopeChain } from './ancestry.mjs';
 // Shared syntax helpers for the rules that look at what a test does per test: which callbacks run
 // once per test, which same-file functions they reach, and which calls start a child process.
 // Everything here works on one file's syntax tree; calls into other modules are not followed.
@@ -38,11 +39,9 @@ function stringValue(node) {
 
 /** The variable `name` refers to at `node`, found through the scope chain. */
 export function findVariable(context, node, name) {
-  let scope = context.sourceCode.getScope(node);
-  while (scope) {
+  for (const scope of scopeChain(context.sourceCode.getScope(node))) {
     const variable = scope.set.get(name);
     if (variable) return variable;
-    scope = scope.upper;
   }
   return undefined;
 }
@@ -279,10 +278,12 @@ export function describeSubprocess(context, call, bindings) {
 
 /** The git subcommand among the tokens, skipping global options such as `-c key=value`. */
 export function gitSubcommand(tokens) {
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (GIT_OPTIONS_WITH_VALUE.has(token)) {
-      index += 1;
+  let skipNext = false;
+  for (const token of tokens) {
+    if (skipNext) {
+      skipNext = false;
+    } else if (GIT_OPTIONS_WITH_VALUE.has(token)) {
+      skipNext = true;
     } else if (!token.startsWith('-')) {
       return token;
     }
@@ -317,8 +318,7 @@ function referencesAny(node, names) {
 
 function forEachNode(context, root, visit) {
   const pending = [root];
-  while (pending.length > 0) {
-    const node = pending.pop();
+  for (const node of pending) {
     visit(node);
     for (const key of context.sourceCode.visitorKeys[node.type] ?? []) {
       const value = node[key];
@@ -368,14 +368,11 @@ export function describeWrapperCall(context, call, bindings) {
 }
 
 function registrationRoot(callee) {
-  let current = callee;
-  while (current) {
-    if (current.type === 'Identifier') return current.name;
-    if (current.type === 'MemberExpression') current = current.object;
-    else if (current.type === 'CallExpression') current = current.callee;
-    else return undefined;
-  }
-  return undefined;
+  const root = chainOf(callee, (link) => {
+    if (link.type === 'MemberExpression') return link.object;
+    return link.type === 'CallExpression' ? link.callee : undefined;
+  }).at(-1);
+  return root?.type === 'Identifier' ? root.name : undefined;
 }
 
 /**
@@ -408,8 +405,8 @@ export function perTestVisitors(context, check, hooks) {
       if (!callback) return;
       const visited = new Set([callback]);
       const pending = [callback.body];
-      while (pending.length > 0) {
-        forEachNode(context, pending.pop(), (node) => {
+      for (const body of pending) {
+        forEachNode(context, body, (node) => {
           if (node.type !== 'CallExpression' && node.type !== 'NewExpression') return;
           if (!reported.has(node)) {
             const report = check(node);

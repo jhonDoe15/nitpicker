@@ -164,7 +164,9 @@ export function analyzeRuntimeBoundaries(
 ) {
   if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
   requireStringList(configuration.exclude, 'exclude');
-  configuration.roles.forEach(validateRole);
+  for (const role of configuration.roles) {
+    validateRole(role);
+  }
   const roleNames = configuration.roles.map((role) => role.name);
   if (new Set(roleNames).size !== roleNames.length)
     throw new TypeError('Module role names must be unique');
@@ -192,7 +194,7 @@ export function analyzeRuntimeBoundaries(
 }
 
 if (
-  process.argv[1] !== undefined &&
+  process.argv.length > 1 &&
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
 ) {
   try {

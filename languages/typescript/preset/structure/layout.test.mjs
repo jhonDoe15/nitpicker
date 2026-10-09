@@ -5,7 +5,11 @@ import { afterEach, expect, it } from 'vitest';
 import { analyzeProductionFiles } from './analyze.mjs';
 
 const roots = [];
-afterEach(() => roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true })));
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 it('scans src without src/main and excludes colocated tests', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-'));
