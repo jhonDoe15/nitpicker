@@ -74,6 +74,25 @@ describe('analyzer scheduler', () => {
     );
   });
 
+  it('hides the CI job summary path from analyzers and keeps the rest of the environment', async () => {
+    const probe = {
+      ...task('probe'),
+      invocation: {
+        command: process.execPath,
+        args: [
+          '-e',
+          "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:`${process.env.GITHUB_STEP_SUMMARY ?? 'unset'} ${process.env.KEPT}`,classification:'enforceable'}]}))",
+        ],
+        cwd: import.meta.dirname,
+        env: { ...process.env, GITHUB_STEP_SUMMARY: '/tmp/summary.md', KEPT: 'kept' },
+      },
+    };
+
+    await expect(executeAnalyzerTask(probe)).resolves.toMatchObject({
+      findings: [{ message: 'unset kept' }],
+    });
+  });
+
   it('caps the default and accepts an explicit slot count', () => {
     expect(resolveMaxParallel({}, 16)).toBe(4);
     expect(resolveMaxParallel({}, 2)).toBe(2);

@@ -152,11 +152,24 @@ function acquireGroup(groupName, groupSemaphores) {
   return semaphore.acquire(1);
 }
 
+// Analyzers run the project's own tools (vitest for tests and coverage, Stryker once per mutant). On
+// GitHub Actions each of those would append its own test report to the user's job summary, where
+// caught mutants read as test failures, so analyzers never see where the job summary lives.
+const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
+
+function analyzerEnvironment(environment) {
+  const copy = { ...environment };
+  for (const name of HOST_CI_OUTPUT_VARIABLES) {
+    delete copy[name];
+  }
+  return copy;
+}
+
 export function executeAnalyzerTask(task) {
   return new Promise((resolve, reject) => {
     const child = spawn(task.invocation.command, task.invocation.args, {
       cwd: task.invocation.cwd,
-      env: task.invocation.env ?? process.env,
+      env: analyzerEnvironment(task.invocation.env ?? process.env),
       detached: process.platform !== 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
