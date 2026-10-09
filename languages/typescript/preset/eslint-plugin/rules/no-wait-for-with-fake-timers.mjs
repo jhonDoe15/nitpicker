@@ -57,7 +57,6 @@ export const rule = {
         const method = callee.property.name;
         if (method === 'waitFor') waits.push(node);
         if (!['useFakeTimers', 'useRealTimers'].includes(method)) return;
-        // Teardown does not change the clock used inside a test.
         for (const current of ancestorsOf(node)) {
           if (['afterEach', 'afterAll'].includes(callName(current))) return;
         }

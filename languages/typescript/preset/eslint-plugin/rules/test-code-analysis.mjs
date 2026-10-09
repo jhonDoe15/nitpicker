@@ -341,9 +341,9 @@ export function describeWrapperCall(context, call, bindings) {
   if (!fn) return undefined;
   const parameters = parameterNames(fn);
   const names = new Set(parameters);
-  let described;
+  const found = [];
   forEachNode(context, fn.body, (node) => {
-    if (described || node.type !== 'CallExpression') return;
+    if (found.length > 0 || node.type !== 'CallExpression') return;
     const inner = describeSubprocess(context, node, bindings);
     if (!inner) return;
     const commandIndex =
@@ -353,7 +353,7 @@ export function describeWrapperCall(context, call, bindings) {
       const tokens = call.arguments
         .filter((_argument, index) => index !== commandIndex)
         .flatMap((argument) => literalTokens(context, argument));
-      described = { inner, node, command, tokens };
+      found.push({ inner, node, command, tokens });
       return;
     }
     if (inner.command !== undefined && referencesAny(inner.argsNode, names)) {
@@ -361,10 +361,10 @@ export function describeWrapperCall(context, call, bindings) {
         ...inner.tokens,
         ...call.arguments.flatMap((argument) => literalTokens(context, argument)),
       ];
-      described = { inner, node, command: inner.command, tokens };
+      found.push({ inner, node, command: inner.command, tokens });
     }
   });
-  return described;
+  return found[0];
 }
 
 function registrationRoot(callee) {
