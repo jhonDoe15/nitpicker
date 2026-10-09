@@ -16,7 +16,7 @@ export default {
   disableTypeChecks: false,
   coverageAnalysis: 'perTest',
   vitest: {
-    configFile: 'stryker.vitest.config.ts',
+    configFile: 'vitest.quality.config.ts',
     related: false,
   },
   reporters: ['clear-text', 'progress', 'json'],
@@ -30,5 +30,8 @@ export default {
     ...sourceRoots.map((root) => `${root}/dist`),
     ...testRoots.map((root) => `${root}/integration`),
     'reports',
+    '.nitpicker-*',
+    '!.nitpicker-diff-stryker.*',
+    '!.nitpicker-diff-tsconfig.stryker.json',
   ],
 };

@@ -235,6 +235,25 @@ with the head's policy, so the existing violations appear on both sides and stay
 policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
 by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
 
+### Your TypeScript and Vitest configs
+
+nitpicker builds on the project's own configs, so type checking and tests see the project as its
+own tools do:
+
+- **Type checking** extends the project's `tsconfig.json` when there is one. The project keeps its
+  `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
+  (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables` and the
+  rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
+  test roots.
+- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
+  first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
+  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
+  coverage thresholds never decide nitpicker's findings.
+
+Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
+
 ## Adopting nitpicker on existing code
 
 Because only new findings fail, most analyzers need no preparation. The `coding-standards` analyzer
