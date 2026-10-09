@@ -197,7 +197,10 @@ new and touched code must comply.
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
-  `@ts-expect-error` or `@ts-nocheck`.
+  `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
+  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
+  bans.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -207,8 +210,7 @@ new and touched code must comply.
   `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
   classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
   Node I/O, network or database clients, loggers or module state.
-- **`features/<name>/adapters/`** does the I/O: `for...of` is the only loop, `async`/`await` with no
-  `.then()` chains and no floating promises, throw only `Error` subclasses that keep `cause`, no
+- **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
   silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
   an expectation of the preset, not a dependency of nitpicker: install it in your project.
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
