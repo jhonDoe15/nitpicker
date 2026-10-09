@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
@@ -34,6 +35,17 @@ export function readJavaFindings(projectRoot) {
       message: 'File is not formatted with google-java-format',
     }).findings,
   );
+
+  // Checkstyle writes absolute paths; the ingester makes them project-relative and skips others
+  // (a path can only sit below one of the equivalent roots, so the passes do not overlap).
+  const checkstyle = readFileSync(path.join(reportRoot, 'checkstyle.xml'), 'utf8');
+  for (const root of roots) {
+    findings.push(
+      ...ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+        existsSync(path.join(projectRoot, finding.path)),
+      ),
+    );
+  }
 
   const jacoco = readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
   for (const sourceRoot of sourceRoots) {
