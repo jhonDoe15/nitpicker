@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -51,8 +51,8 @@ mapping, tests, and this document.
 | --- | ------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------- |
 | 1   | Base                     | PMD, SpotBugs, google-java-format, JaCoCo; init script, e2e test | see below                                                                                                | done    |
 | 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | done    |
-| 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | this PR |
-| 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | later   |
+| 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | done    |
+| 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | this PR |
 | 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | later   |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | later   |
 | 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | later   |
@@ -63,6 +63,41 @@ ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Pyt
 for jscpd, a long-running PIT) and each is expensive enough to deserve its own review. Slices 5 and
 8 depend on slice 1's JaCoCo output; 5 additionally needs lizard installed, which is the first tool
 that is not a JVM artifact, so it needs a decision on how tools are provisioned.
+
+## Slice 4: ArchUnit
+
+- **What runs.** The project's own ArchUnit rules, executed as JUnit tests by the init script's
+  `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
+  JUnit Platform, `ignoreFailures`). The project must have `archunit-junit5` (or any ArchUnit
+  setup running on the JUnit Platform) on its test classpath; Nitpicker adds no dependency and so
+  pins no ArchUnit version (the version map is unchanged). Test classes named `*ArchTest` or
+  `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
+comma-separated>` changes that. Those classes are excluded from the regular `test` task in
+  Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
+  matching classes means no `build/nitpicker/archunit` directory and no findings.
+- **Report.** Gradle's JUnit XML, one file per test class, in `build/nitpicker/archunit/`.
+  `manifest.json` additionally lists `testSourceRoots`.
+- **Ingester.** `adapters/ingest/archunit.mjs` (`ingestArchunit`). Per failed test case it parses
+  the violation lines of the assertion message (`Method <a.B.run()> calls ... in (B.java:12)`) and
+  groups them by the offending class, the class owning the first `<...>` element. One enforceable
+  finding per rule and offending class. Findings are anchored at that class's source file
+  (project-relative, found in the main or test source roots), else at the test class that declares
+  the rule.
+- **Identity.** Rule: the test case name (the `@ArchTest` field or method name). Identity: the
+  fully qualified offending class (nested classes as `a.B$C`). Line numbers (`in (B.java:12)`), the
+  number of violations and the violation text never take part, so edits above a violation keep it
+  baselined. The message carries the count and the first violation, without its line.
+- **Failures that are not violations.** A failed or errored test case without ArchUnit violation
+  lines (the rule could not run, classes could not be imported) becomes one enforceable
+  `test-failure` finding for that rule, identity `<test class>:test-failure`.
+- **Known limit.** Because the finding is per class, a second violation of the same rule in a class
+  that already violated it on the base is not new. This follows the slice definition (one finding
+  per rule and offending class); a per-dependency identity would catch it but would make identities
+  depend on the exact violation text.
+- **Tests.** `ingesters.test.mjs` (sample report `fixtures/archunit-junit.xml`, schema validity,
+  line-shift stability), `java-reports.test.mjs` (glue, path resolution), and a gated e2e case
+  (`adapters/java`: a class and a nested class using `java.util.Date` against the fixture's
+  `ArchitectureTest` rule).
 
 ## Slice 2: CLI and reporter integration
 
@@ -158,7 +193,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 ## Slice 1: what is deliberately not included
 
-- ArchUnit, CRAP via lizard, jscpd, PIT: slices 4 to 7.
+- CRAP via lizard, jscpd, PIT: slices 5 to 7 (ArchUnit is slice 4).
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
