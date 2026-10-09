@@ -469,8 +469,7 @@ describe('complete quality-area analyzer catalog', () => {
         },
       },
       'coverage',
-      '/project',
-      { testCount: 2 },
+      { projectRoot: '/project', testCount: 2 },
     );
 
     expect(findings).toContainEqual(
@@ -495,7 +494,7 @@ describe('complete quality-area analyzer catalog', () => {
         },
       },
       'coverage',
-      '/project',
+      { projectRoot: '/project' },
     );
 
     expect(findings).not.toContainEqual(
@@ -519,7 +518,7 @@ describe('complete quality-area analyzer catalog', () => {
           },
         },
         'coverage',
-        '/project',
+        { projectRoot: '/project' },
       );
     }
     const base = coverageFindingsFor('changed-branch-before');

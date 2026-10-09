@@ -1,10 +1,7 @@
 import { readHeadPolicyFile } from '../shared/head-policy.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 
-// The file format, writer and environment variable are language-neutral and live in
-// shared/head-policy.mjs; this module adds the TypeScript preset's layout defaults.
 export {
-  HEAD_POLICY_ENV,
   headPolicyEnvironment,
   resolveHeadPolicy,
   withHeadPolicyFile,
@@ -13,10 +10,6 @@ export {
 /** Layout used when the config file does not override it. */
 export const defaultLayout = { sourceRoots, testRoots, excludedGlobs };
 
-/**
- * The one reader for runners and package-owned child configs. Without the variable (a runner
- * started by hand) the defaults apply.
- */
 export function readHeadPolicy(environment = process.env) {
   const policy = readHeadPolicyFile(environment);
   return {
