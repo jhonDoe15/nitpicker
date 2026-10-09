@@ -141,7 +141,7 @@ export const RULES = [
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: BOTH,
   },
   {
     id: RULE_IDS.noProductionRuntime,
