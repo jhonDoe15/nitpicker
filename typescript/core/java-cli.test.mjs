@@ -13,7 +13,8 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java/java-runner.mjs';
 import { createJavaAnalyzer } from '../adapters/java/java-analyzer.mjs';
-import { runCli } from './cli.mjs';
+import { runCli as runCliWithSubprocesses } from './cli.mjs';
+import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
 // The Java preset through the CLI with a fake `gradle`, so it runs without Java. The real Gradle
 // run is covered by adapters/java/java-preset.e2e.test.mjs (NITPICKER_JAVA_E2E=1).
@@ -98,7 +99,11 @@ function gradleRepository(files = {}) {
   return root;
 }
 
-function run(root, extra = []) {
+// The Java runner runs in-process (it still spawns the fake gradle); the test that passes
+// `{ subprocess: true }` keeps the real analyzer-scheduler and java-runner.mjs processes.
+const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+
+function run(root, extra = [], { subprocess = false } = {}) {
   const output = { out: '', err: '' };
   const reports = path.join(temporaryRoot('nitpicker-java-out-'), 'reports');
   const exitCode = runCli({
@@ -107,6 +112,7 @@ function run(root, extra = []) {
     currentProjectRoot: root,
     stdout: { write: (value) => (output.out += value) },
     stderr: { write: (value) => (output.err += value) },
+    ...(subprocess ? { runTasks: undefined } : {}),
   });
   const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
   return { exitCode, reports, json, output };
@@ -129,7 +135,7 @@ describe('nitpicker with "preset": "java"', () => {
     write(root, { 'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n' });
     commit(root, 'add violation');
 
-    const result = run(root);
+    const result = run(root, [], { subprocess: true });
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.output.out).toContain('A.java');
