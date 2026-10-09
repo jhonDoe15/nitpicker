@@ -49,9 +49,6 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 
 ## Inside `adapters/`
 
-- `for...of` is the only loop. No `forEach`, `for(;;)`, `for...in`, or `while`.
-- `async`/`await` and `Promise.all`. No `.then()` chains, and no promise left without being
-  awaited.
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary. No silent catches.
 - Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
@@ -59,6 +56,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 
 ## Everywhere
 
+- `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
+  `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
+- `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
+  left without being awaited (`@typescript-eslint/no-floating-promises`).
+- `===` and `!==` only (`eqeqeq`).
+- Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`. No `enum` (use unions of string literals) and no `namespace`.
 - Classes only for `Error` subclasses.
@@ -132,7 +135,9 @@ of the project's CI files, not in these rules.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
-  the `domain` and `adapters` lists contain the `source` list plus their own selectors. Add a
+  the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
+  control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
+  the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
 - The test rules live in `preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
