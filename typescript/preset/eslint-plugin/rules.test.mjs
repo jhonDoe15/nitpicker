@@ -253,6 +253,16 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
       code: "import { execute } from '../format.js'; execute();",
     },
     {
+      // A source root's index, imported as a directory.
+      filename: '/repo/tests/url.test.ts',
+      code: "import { parseURL } from '../src'; parseURL('/');",
+    },
+    {
+      // An extensionless import of a source file.
+      filename: '/repo/tests/url.test.ts',
+      code: "import { parseURL } from '../src/parse'; parseURL('/');",
+    },
+    {
       // A dynamic import counts too — the common vi.mock()-then-reimport shape.
       filename: '/repo/src/main/feature/__tests__/feature.test.ts',
       code: "const { execute } = await import('../feature.js'); execute();",
