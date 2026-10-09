@@ -43,6 +43,7 @@ const QUALITY_AREA_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'adapters/diff/quality-areas.mjs',
   'adapters/diff/quality-areas-runner.mjs',
+  'shared/policy.mjs',
 ];
 
 function buildAnalyzers(checks) {
