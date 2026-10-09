@@ -9,6 +9,10 @@ export function greet(name: string): GreetResult {
   return { kind: 'greeted', text: `Hello, ${trimmed}!` };
 }
 
+export function greetAll(names: readonly string[]): readonly GreetResult[] {
+  return names.map((name) => greet(name));
+}
+
 export function describeResult(result: GreetResult): string {
   switch (result.kind) {
     case 'greeted':
