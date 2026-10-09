@@ -13,7 +13,17 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import { parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import {
+  DEFAULT_CRAP_SCORE_LIMIT,
+  ENFORCED_MUTATION_STATUSES,
+  FUNCTION_STRUCTURE_LIMITS,
+  MESSAGES,
+  MINIMUM_BRANCH_COVERAGE,
+  RULE_IDS,
+  mutantRuleId,
+  renderMessage,
+} from '../../shared/policy.mjs';
 import { sourceRoot, existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import {
@@ -41,16 +51,8 @@ const QUALITY_AREA_RUNNERS = new Map([
 const STRUCTURAL_METADATA_FIELDS = new Set(['source', 'sourceHash', 'start', 'end']);
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
-const MINIMUM_BRANCH_COVERAGE = 95;
 const STRYKER_CONFIG_PATH = 'preset/defaults/stryker.config.mjs';
-const FUNCTION_STRUCTURE_LIMITS = {
-  lines: 50,
-  statements: 15,
-  maxControlNesting: 2,
-  parameters: 3,
-};
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
-const ENFORCED_MUTATION_STATUSES = new Set(['Survived', 'NoCoverage']);
 
 const invokedPath = process.argv[1];
 if (
@@ -476,7 +478,7 @@ export function normalizeBaselineExpansions(baseSites, headSites, analyzerName) 
     return [
       {
         tool: analyzerName,
-        rule: 'baseline-expansion',
+        rule: RULE_IDS.baselineExpansion,
         path: site.file,
         identity: `site:${hash(key)}`,
         message: `Legacy allowance increased from ${String(baseCount)} to ${String(headCount)} for ${site.rule}`,
@@ -535,7 +537,7 @@ export function normalizeCoupling(report, analyzerName) {
   for (const direction of report.stabilityDirection ?? []) {
     findings.push({
       tool: analyzerName,
-      rule: 'stability-direction',
+      rule: RULE_IDS.stabilityDirection,
       path: '.',
       identity: `package-edge:${direction.source}->${direction.target}`,
       message: `${direction.source} depends on less stable package ${direction.target}`,
@@ -631,18 +633,21 @@ function addStructuralEntries(findings, analyzerName, entries = [], kind) {
 function addFunctionStructureViolations(findings, analyzerName, entry, displayName, occurrence) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.source}:${String(entry.start)}:${String(entry.end)}`);
-  for (const [metricName, limit] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
+  for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
     if (typeof entry[metricName] !== 'number' || entry[metricName] <= limit) {
       continue;
     }
-    const ruleMetric =
-      metricName === 'maxControlNesting' ? 'control-nesting' : metricName.toLowerCase();
     findings.push({
       tool: analyzerName,
-      rule: `function-${ruleMetric}-limit`,
+      rule: ruleId,
       path: entry.source,
       identity: `function:${displayName}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: `${displayName} has ${String(entry[metricName])} ${metricName}; limit is ${String(limit)}`,
+      message: renderMessage(MESSAGES.functionStructure, {
+        name: displayName,
+        value: entry[metricName],
+        metric: metricName,
+        limit,
+      }),
       classification: 'enforceable',
       symbol: displayName,
       ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
@@ -672,7 +677,7 @@ export function normalizeDuplicates(report, analyzerName, configuredPaths = [sou
     const occurrence = nextOccurrence(occurrences, pairKey);
     findings.push({
       tool: analyzerName,
-      rule: 'duplicate-clone',
+      rule: RULE_IDS.duplicateClone,
       path: files[0].path,
       identity: `pair:${files.map((file) => file.path).join('|')}:fragment:${hash(duplicate.fragment ?? '')}:occurrence:${String(occurrence)}`,
       message: `Duplicate with ${files[1].path}`,
@@ -784,10 +789,13 @@ export function normalizeCoverage(report, analyzerName, projectRoot, { testCount
       const line = positiveInteger(coverage.branchMap?.[branchId]?.loc?.start?.line);
       findings.push({
         tool: analyzerName,
-        rule: 'changed-branch-coverage',
+        rule: RULE_IDS.changedBranchCoverage,
         path: relativePath,
         identity: `branch-source:${branchSourceHash}:occurrence:${String(occurrence)}`,
-        message: `Branch coverage is ${branchCoverage.toFixed(2)}%; minimum is ${String(MINIMUM_BRANCH_COVERAGE)}%`,
+        message: renderMessage(MESSAGES.changedBranchCoverage, {
+          percent: branchCoverage.toFixed(2),
+          minimum: MINIMUM_BRANCH_COVERAGE,
+        }),
         classification: 'enforceable',
         ...(line === undefined ? {} : { location: { line } }),
       });
@@ -840,10 +848,10 @@ export function normalizeCrap(
     if (typeof entry.crap !== 'number' || !Number.isFinite(entry.crap)) {
       findings.push({
         tool: analyzerName,
-        rule: 'crap-coverage-unknown',
+        rule: RULE_IDS.crapCoverageUnknown,
         path: entry.source,
         identity: violationIdentity,
-        message: `${entry.function} has unknown coverage and no CRAP score`,
+        message: renderMessage(MESSAGES.crapCoverageUnknown, { name: entry.function }),
         classification: 'enforceable',
         symbol: entry.function,
         ...(positiveInteger(entry.lines?.start) === undefined
@@ -853,10 +861,14 @@ export function normalizeCrap(
     } else if (entry.crap >= scoreLimit) {
       findings.push({
         tool: analyzerName,
-        rule: 'crap-score-limit',
+        rule: RULE_IDS.crapScoreLimit,
         path: entry.source,
         identity: violationIdentity,
-        message: `${entry.function} has CRAP ${entry.crap.toFixed(2)}; score must be below ${String(scoreLimit)}`,
+        message: renderMessage(MESSAGES.crapScoreLimit, {
+          name: entry.function,
+          crap: entry.crap.toFixed(2),
+          limit: scoreLimit,
+        }),
         classification: 'enforceable',
         symbol: entry.function,
         ...(positiveInteger(entry.lines?.start) === undefined
@@ -908,11 +920,11 @@ export function normalizeMutation(report, analyzerName) {
       const occurrence = nextOccurrence(occurrences, `${filePath}\0${status}\0${semanticIdentity}`);
       findings.push({
         tool: analyzerName,
-        rule: `mutant-${status.toLowerCase()}`,
+        rule: mutantRuleId(status),
         path: filePath,
         identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
         message: `${status} ${mutant.mutatorName ?? 'mutant'}`,
-        classification: ENFORCED_MUTATION_STATUSES.has(status) ? 'enforceable' : 'descriptive',
+        classification: ENFORCED_MUTATION_STATUSES.includes(status) ? 'enforceable' : 'descriptive',
         ...(positiveInteger(line) === undefined ? {} : { location: { line } }),
       });
     }

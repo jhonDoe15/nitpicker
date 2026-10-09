@@ -1,3 +1,4 @@
+import { ENFORCED_MUTATION_STATUSES, mutantRuleId } from '../../shared/policy.mjs';
 import { decodeEntities } from './common.mjs';
 
 // PIT (pitest) XML mutation report -> findings, following the same mutation profile as the
@@ -13,8 +14,6 @@ import { decodeEntities } from './common.mjs';
 //
 // `options.resolvePath(className, sourceFile)` maps a mutated class to its project-relative source
 // file; mutants whose source cannot be found (generated code) are skipped.
-
-const ENFORCED_STATUSES = new Set(['Survived', 'NoCoverage']);
 
 // PIT status -> the status names used by the Stryker-based mutation area.
 const STATUS_NAMES = {
@@ -66,11 +65,11 @@ export function ingestPit(xml, options = {}) {
     group.forEach(({ mutant, status, key, filePath }, index) => {
       findings.push({
         tool,
-        rule: `mutant-${status.toLowerCase()}`,
+        rule: mutantRuleId(status),
         path: filePath,
         identity: `${key}#${String(index + 1)}`,
         message: `${status} ${mutator(mutant.mutator)}: ${mutant.description}`,
-        classification: ENFORCED_STATUSES.has(status) ? 'enforceable' : 'descriptive',
+        classification: ENFORCED_MUTATION_STATUSES.includes(status) ? 'enforceable' : 'descriptive',
         symbol: `${mutant.className}#${mutant.method}${mutant.methodDescription}`,
         ...(mutant.line >= 1 ? { location: { line: mutant.line } } : {}),
       });

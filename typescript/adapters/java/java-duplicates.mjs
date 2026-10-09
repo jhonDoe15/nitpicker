@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeDuplicates } from '../diff/quality-areas-runner.mjs';
+import { DUPLICATES_MODE } from '../../shared/policy.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 
 // Duplicate code for the Java preset: jscpd (the package's own pinned dependency, the same tool as
@@ -45,7 +46,7 @@ export function runJavaDuplicates(projectRoot) {
         '--format',
         'java',
         '--mode',
-        'mild',
+        DUPLICATES_MODE,
         '--reporters',
         'json',
         '--output',
