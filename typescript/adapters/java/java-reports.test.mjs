@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -81,8 +81,17 @@ function projectWithReports({ shift = 0 } = {}) {
   );
   writeFileSync(path.join(reports, 'format.txt'), `${sourceFile}\n`);
   writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(
+    path.join(reports, 'checkstyle.xml'),
+    readFileSync(path.join(import.meta.dirname, 'fixtures/checkstyle.xml'), 'utf8')
+      .replaceAll('@SOURCE@', sourceFile)
+      .replace(/line="(\d+)"/g, (_, line) => `line="${Number(line) + shift}"`),
+  );
   return root;
 }
+
+const CS_INDENT = 'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck';
+const CS_LENGTH = 'com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck';
 
 const identities = (findings) =>
   findings.map(({ tool, rule, path: file, identity }) => [tool, rule, file, identity]);
@@ -99,6 +108,9 @@ describe('readJavaFindings', () => {
       ['pmd', 'EmptyCatchBlock', bad, 'fp:nitpicker/subject=Avoid empty catch blocks#2'],
       ['spotbugs', 'DM_DEFAULT_ENCODING', bad, 'fp:nitpicker/subject=demo.Bad.decode'],
       ['google-java-format', 'format', bad, 'format'],
+      ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+/)],
+      ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+.*#2$/)],
+      ['checkstyle', CS_LENGTH, bad, expect.stringMatching(/^[0-9a-f]+/)],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
     ]);
@@ -113,6 +125,7 @@ describe('readJavaFindings', () => {
       pmd: 'enforceable',
       spotbugs: 'enforceable',
       'google-java-format': 'enforceable',
+      checkstyle: 'enforceable',
       jacoco: 'descriptive',
     });
   });
