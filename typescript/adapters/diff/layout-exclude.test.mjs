@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../core/cli.mjs';
+import { withDefaultAnalyzerParallelism } from '../../core/diff/fixtures/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../core/diff/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../preset/head-policy.mjs';
@@ -297,16 +298,19 @@ function violations(directory) {
 
 function analyze(names, files, policy = customPolicy, analyzers = customAnalyzers) {
   const projectRoot = createProject(files);
-  return withHeadPolicyFile(policy, (headPolicyFile) =>
-    runAnalyzers({
-      analyzers: analyzers.filter((analyzer) => names.includes(analyzer.name)),
-      projectRoot,
-      policyRoot: projectRoot,
-      toolRoot: packageRoot,
-      liveProjectRoot: packageRoot,
-      snapshot: 'head',
-      headPolicyFile,
-    }),
+  // The tools are independent, so they run side by side as they do for a user.
+  return withDefaultAnalyzerParallelism(() =>
+    withHeadPolicyFile(policy, (headPolicyFile) =>
+      runAnalyzers({
+        analyzers: analyzers.filter((analyzer) => names.includes(analyzer.name)),
+        projectRoot,
+        policyRoot: projectRoot,
+        toolRoot: packageRoot,
+        liveProjectRoot: packageRoot,
+        snapshot: 'head',
+        headPolicyFile,
+      }),
+    ),
   );
 }
 
