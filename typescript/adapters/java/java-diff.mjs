@@ -2,10 +2,16 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
-import { captureWorkingTree, readRenameMap, resolveComparison } from '../../core/diff/git.mjs';
+import {
+  captureWorkingTree,
+  readChangedLines,
+  readRenameMap,
+  resolveComparison,
+} from '../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { readJavaFindings } from './java-reports.mjs';
+import { isJavaTouchedRule } from './touched-rules.mjs';
 
 // Runs the Java preset (java/nitpicker.init.gradle) on a project and compares base with head.
 
@@ -71,7 +77,16 @@ export function runJavaDiff({
 
   const baseFindings = collectAt(comparison.mergeBaseSha);
   const headFindings = collectAt(comparison.headSha);
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames });
+  const touchedCode = {
+    changedLines: readChangedLines({
+      repositoryRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
+      headSha: comparison.headSha,
+      projectRelativePath,
+    }),
+    isStrictRule: isJavaTouchedRule,
+  };
+  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
