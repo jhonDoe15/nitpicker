@@ -7,6 +7,7 @@
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
 //   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
+//   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 
 def pinned = [
@@ -14,11 +15,13 @@ def pinned = [
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     jacoco          : '0.8.12',
+    checkstyle      : '10.21.1',
 ]
 
 allprojects {
     plugins.withId('java') {
         pluginManager.apply('jacoco')
+        pluginManager.apply('checkstyle')
 
         def reportDir = layout.buildDirectory.dir('nitpicker')
 
@@ -35,6 +38,27 @@ allprojects {
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
         }
         jacoco { toolVersion = pinned.jacoco }
+        // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
+        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format).
+        checkstyle {
+            toolVersion = pinned.checkstyle
+            ignoreFailures = true
+            maxWarnings = Integer.MAX_VALUE
+            def consumerConfig = rootProject.file('config/checkstyle/checkstyle.xml')
+            if (consumerConfig.exists()) {
+                configFile = consumerConfig
+            } else {
+                def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+                config = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+            }
+        }
+        tasks.named('checkstyleMain') {
+            reports {
+                xml.required = true
+                xml.outputLocation = reportDir.map { it.file('checkstyle.xml') }
+                html.required = false
+            }
+        }
 
         def mainSources = sourceSets.main.allJava.sourceDirectories
 
@@ -104,8 +128,8 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check and JaCoCo; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo and Checkstyle; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
