@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateBaselineExpansions } from './baseline-expansion.mjs';
 import { branchCoverageFindings } from './branch-coverage.mjs';
-import { evaluateCoupling } from './coupling.mjs';
+import { computeCoupling, evaluateCoupling } from './coupling.mjs';
 import { crapFindings } from './crap.mjs';
 import { evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
@@ -301,5 +301,72 @@ describe('mutantFindings', () => {
       location: { line: 4 },
     });
     expect(findings[1]).not.toHaveProperty('location');
+  });
+});
+
+describe('coupling metrics on a neutral dependency graph', () => {
+  // ui -> core -> util; ui -> util (runtime); core -> ui (type only). Packages are the first path
+  // segment.
+  const modules = ['core/a', 'core/b', 'ui/x', 'util/u'];
+  const edges = [
+    { source: 'ui/x', target: 'core/a', kind: 'runtime' },
+    { source: 'core/a', target: 'core/b', kind: 'runtime' },
+    { source: 'core/b', target: 'util/u', kind: 'runtime' },
+    { source: 'core/a', target: 'ui/x', kind: 'type-only' },
+    { source: 'ui/x', target: 'util/u', kind: 'runtime' },
+  ];
+  const packageOf = (module) => module.split('/')[0];
+
+  it('computes fan-in, fan-out and instability per module and per package', () => {
+    const result = computeCoupling({ modules, edges, packageOf });
+    expect(result.modules.find((entry) => entry.module === 'core/a')).toEqual({
+      module: 'core/a',
+      package: 'core',
+      fanIn: 1,
+      fanOut: 2,
+      totalCoupling: 3,
+      instability: 0.6667,
+    });
+    expect(result.packages.map((entry) => entry.name)).toEqual(['core', 'ui', 'util']);
+    expect(result.packages[0]).toMatchObject({
+      name: 'core',
+      modules: 2,
+      cohesion: { internalEdges: 1, edgeDensity: 0.5, connectedComponents: 1 },
+    });
+  });
+
+  it('adds runtime-only variants only on request', () => {
+    expect(computeCoupling({ modules, edges, packageOf }).modules[0]).not.toHaveProperty(
+      'runtimeFanIn',
+    );
+    const runtime = computeCoupling({ modules, edges, packageOf, runtime: true });
+    expect(runtime.modules.find((entry) => entry.module === 'core/a')).toMatchObject({
+      runtimeFanIn: 1,
+      runtimeFanOut: 1,
+      runtimeInstability: 0.5,
+    });
+  });
+
+  it('lists a package pair whose source is less stable than its target once', () => {
+    const result = computeCoupling({ modules, edges, packageOf });
+    for (const entry of result.stabilityDirection) {
+      const source = result.packages.find((item) => item.name === entry.source);
+      const target = result.packages.find((item) => item.name === entry.target);
+      expect(source.instability).toBeLessThan(target.instability);
+      expect(entry.delta).toBeGreaterThan(0);
+    }
+    const keys = result.stabilityDirection.map((entry) => `${entry.source}>${entry.target}`);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('reports no instability for an isolated module and handles an empty graph', () => {
+    const lone = computeCoupling({ modules: ['a/x'], edges: [], packageOf });
+    expect(lone.modules[0].instability).toBeNull();
+    expect(lone.packages[0].cohesion.edgeDensity).toBeNull();
+    expect(computeCoupling({ modules: [], edges: [], packageOf })).toEqual({
+      modules: [],
+      packages: [],
+      stabilityDirection: [],
+    });
   });
 });
