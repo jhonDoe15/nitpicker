@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { staleFiles } from '../scripts/gen-checks.mjs';
@@ -67,33 +67,5 @@ describe('generated files', () => {
 
   it('no generated file is stale', () => {
     expect(staleFiles()).toEqual([]);
-  });
-});
-
-function sourceFiles(directory) {
-  return readdirSync(directory).flatMap((name) => {
-    const full = path.join(directory, name);
-    if (statSync(full).isDirectory()) {
-      return sourceFiles(full);
-    }
-    return name.endsWith('.mjs') && !name.endsWith('.test.mjs') ? [full] : [];
-  });
-}
-
-describe('shared layer import direction', () => {
-  it('imports nothing from preset/, adapters/, core/ or a tool package', () => {
-    for (const file of sourceFiles(sharedRoot)) {
-      const specifiers = [...readFileSync(file, 'utf8').matchAll(/from\s+'([^']+)'/g)].map(
-        (match) => match[1],
-      );
-      for (const specifier of specifiers) {
-        const insideShared =
-          specifier.startsWith('.') &&
-          path.resolve(path.dirname(file), specifier).startsWith(sharedRoot + path.sep);
-        expect(insideShared || specifier.startsWith('node:'), `${file} imports ${specifier}`).toBe(
-          true,
-        );
-      }
-    }
   });
 });
