@@ -1066,7 +1066,15 @@ function commit(root, message) {
   git(root, ['commit', '-q', '-m', message]);
 }
 
-// Identity is passed per call, so fixture repositories need no `git config` spawns.
+// Identity is passed per call, so fixture repositories need no `git config` spawns. The global and
+// system config is ignored too: a developer's commit signing (`commit.gpgsign`) adds about 120 ms
+// to every fixture commit, and the fixtures must not depend on it.
+const gitFixtureEnvironment = {
+  ...process.env,
+  GIT_CONFIG_GLOBAL: '/dev/null',
+  GIT_CONFIG_NOSYSTEM: '1',
+};
+
 function git(root, arguments_) {
   return execFileSync(
     'git',
@@ -1081,6 +1089,7 @@ function git(root, arguments_) {
       cwd: root,
       encoding: 'utf8',
       maxBuffer: 10 * 1024 * 1024,
+      env: gitFixtureEnvironment,
     },
   );
 }

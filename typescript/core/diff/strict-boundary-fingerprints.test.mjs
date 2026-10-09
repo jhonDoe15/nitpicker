@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../adapters/diff/static-checks-runner.mjs';
 import { cruiseStrict } from '../../preset/architecture/fixtures/strict-cruise.mjs';
 import { compareFindings } from './compare.mjs';
@@ -169,6 +169,10 @@ async function runScenarios() {
 }
 
 describe('strict dependency-cruiser findings keep their fingerprint', () => {
+  // One dependency-cruiser run over every scenario, shared by all tests below. It is file setup, so it
+  // is not charged to the first test that happens to read it.
+  beforeAll(() => scenarioFindings());
+
   it.each(strictBoundaryFixtures)('%s: across inserted lines', async (name, rule) => {
     const { baseline, insertedLines } = await scenarioFindings();
     const base = baseline.get(name);
