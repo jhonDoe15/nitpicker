@@ -66,10 +66,6 @@ export function resolveComparison(repositoryRoot, requestedBaseRef) {
   }
 }
 
-/**
- * Returns a commit whose tree is the checkout, including untracked files that are not ignored. The
- * staging happens in a copy of the index, so the user's index, branches, and files are untouched.
- */
 export function captureWorkingTree(repositoryRoot, headSha) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-index-'));
   try {

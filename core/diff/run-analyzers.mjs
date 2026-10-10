@@ -45,7 +45,6 @@ export function selectAnalyzers(analyzers, analyzerNames) {
   return analyzers.filter((analyzer) => selectedNames.has(analyzer.name));
 }
 
-/** Fills in the version and configuration hash that depend on the live project and head policy. */
 export function resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot }) {
   if (typeof analyzer.resolveVersion === 'function') {
     analyzer.version = analyzer.resolveVersion(liveProjectRoot);
@@ -55,10 +54,6 @@ export function resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot 
   }
 }
 
-/**
- * `runTasks(tasks, headPolicyFile)` runs the analyzer task graph and returns the scheduler's
- * `{ reports, errors, timings }`; it defaults to the analyzer-scheduler subprocess.
- */
 export function runAnalyzers({
   analyzers,
   projectRoot,

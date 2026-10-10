@@ -30,9 +30,6 @@ export function comparisonKey(
   ]);
 }
 
-// Dependency-cycle findings are identified by their member modules (`cycle:a>b>c|...`), listed
-// from the lexicographically smallest rotation and anchored at its first module. Renaming a member
-// can change which rotation is smallest, so the renamed cycle is re-rotated before comparing.
 function parseCycleIdentity(identity) {
   const match = /^cycle:([^|]+)(\|.*)?$/.exec(identity);
   return match === null ? undefined : { members: match[1].split('>'), suffix: match.at(2) ?? '' };
