@@ -53,6 +53,9 @@ export function parseFinding(value, context = 'finding') {
     }
     finding.metric = parseMetric(value.metric, `${context}.metric`);
   }
+  if (value.ratchet !== undefined) {
+    finding.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
+  }
 
   return finding;
 }
@@ -84,6 +87,16 @@ function parseMetric(value, context) {
     name: requiredString(value.name, `${context}.name`),
     value: metricValue,
   };
+}
+
+function parseRatchet(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  if (typeof value.value !== 'number' || !Number.isFinite(value.value)) {
+    throw new TypeError(`${context}.value must be a finite number`);
+  }
+  return { key: requiredString(value.key, `${context}.key`), value: value.value };
 }
 
 function positiveInteger(value, context) {
