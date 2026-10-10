@@ -5,8 +5,7 @@ import { comparisonKey } from './fingerprint.mjs';
  * enforceable finding of a strict rule that sits in code this change touched is new even though the
  * base has it: `touchedCode.isStrictRule(rule, finding)` names the strict rules and
  * `touchedCode.changedLines` comes from `readChangedLines`. Findings in untouched code stay
- * baselined. An enforceable finding with a `ratchet` whose identity changed (an edited function
- * over a size limit) stays baselined while its ratchet value does not exceed the base's.
+ * baselined.
  */
 export function compareFindings({
   baseFindings,
