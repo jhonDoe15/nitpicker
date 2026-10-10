@@ -129,8 +129,6 @@ function branchFindings({ projectRoot, sourceRoots }, jacoco) {
   );
 }
 
-// Project-relative source file of a Java class: `fileName` (from a stack frame or violation
-// description) in the class's package directory, else the outermost class name + `.java`.
 function sourceFileOf(projectRoot, sourceRoots, className, fileName) {
   const parts = className.split('.');
   const simple = parts.pop().split('$')[0];
@@ -147,21 +145,11 @@ function projectRoots(projectRoot) {
   return [...roots];
 }
 
-// SpotBugs names the subject (class, method, field) in the message arguments; that is what the
-// identity needs, since the message text alone is generic.
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
   return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
 }
 
-// Makes a PMD or SpotBugs SARIF log ingestible as-is:
-//  - artifact URIs become project-relative (PMD writes absolute file:// URIs, SpotBugs writes
-//    paths relative to a source root);
-//  - results without partialFingerprints get one from `identityKey` (rule and path are already part
-//    of the finding key), so identity follows what the finding is about, never its line;
-//  - SpotBugs reports lower-confidence results at level `note`. The Java preset decides what is
-//    reported by running the tool at its configured threshold, so every reported result is
-//    enforceable.
 export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
   return {
     ...log,
@@ -217,7 +205,7 @@ function projectRelative(uri, roots) {
 function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
   const relative = projectRelative(uri, roots);
   if (relative === undefined) {
-    return uri; // outside the project: the ingester skips it
+    return uri;
   }
   const owner = sourceRoots.find((sourceRoot) =>
     existsSync(path.join(projectRoot, sourceRoot, relative)),
