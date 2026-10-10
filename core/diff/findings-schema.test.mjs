@@ -192,7 +192,7 @@ function sampleFindings() {
         ],
       },
       'duplicates',
-      ['src/main'],
+      { configuredPaths: ['src/main'] },
     ),
     ...normalizeDeadCode(
       {

@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import {
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_SKIPPED_RULE,
+} from '../../shared/rules/finding-helpers.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
@@ -12,6 +16,7 @@ export const REPORT_FILE_NAMES = [
   'new-findings.json',
   'resolved-findings.json',
   'changed-metrics.json',
+  'held-findings.json',
   'tool-errors.json',
   TEXT_REPORT_FILE_NAME,
   JUNIT_REPORT_FILE_NAME,
@@ -30,6 +35,10 @@ export function writeDiffReports(outputRoot, report) {
   writeJson(path.join(outputRoot, 'new-findings.json'), report.newFindings);
   writeJson(path.join(outputRoot, 'resolved-findings.json'), report.resolvedFindings);
   writeJson(path.join(outputRoot, 'changed-metrics.json'), report.changedMetrics);
+  writeJson(
+    path.join(outputRoot, 'held-findings.json'),
+    report.unchangedFindings.filter((finding) => finding.heldAtBase !== undefined),
+  );
   writeJson(path.join(outputRoot, 'tool-errors.json'), report.toolErrors);
 
   const text = renderTextReport(report);
@@ -69,12 +78,13 @@ export function renderTextReport(report) {
     lines.push('', 'Per-tool counts:');
     for (const tool of report.summary.tools) {
       lines.push(
-        `${tool.name}: base=${String(tool.base)} head=${String(tool.head)} new=${String(tool.new)} resolved=${String(tool.resolved)} unchanged=${String(tool.unchanged)} changed-metrics=${String(tool.changedMetrics)} elapsed=${formatSeconds(tool.elapsedMs ?? 0)}`,
+        `${tool.name}: base=${String(tool.base)} head=${String(tool.head)} new=${String(tool.new)} resolved=${String(tool.resolved)} unchanged=${String(tool.unchanged)} changed-metrics=${String(tool.changedMetrics)} elapsed=${formatSeconds(tool.elapsedMs ?? 0)}${tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`}`,
       );
     }
   }
 
   appendFindingSection(lines, 'New findings', report.newFindings);
+  appendHeldSection(lines, report.unchangedFindings);
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
   appendMetricSection(lines, report.changedMetrics);
   appendToolErrorSection(lines, report.toolErrors);
@@ -99,6 +109,7 @@ export function renderConsoleSummary(
   ];
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
+  appendHeldSummary(lines, report.unchangedFindings, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
@@ -225,6 +236,56 @@ function appendFindingSection(lines, heading, findings) {
   }
 }
 
+function heldFindings(unchangedFindings = []) {
+  const held = unchangedFindings.filter((finding) => finding.heldAtBase !== undefined);
+  return {
+    metrics: held.filter((finding) => finding.ratchet?.worseMessage !== undefined),
+    lint: held.filter((finding) => finding.ratchet?.worseMessage === undefined),
+  };
+}
+
+function heldLine(finding) {
+  const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
+  const where = `${finding.tool}/${finding.rule} ${finding.path}${location} ${singleLine(finding.message)}`;
+  return finding.ratchet?.worseMessage === undefined
+    ? `${where} (the base had ${String(finding.heldAtBase)} of these in this function, now no more)`
+    : `${where} (was ${String(finding.heldAtBase)} at base, not worse)`;
+}
+
+function appendHeldSection(lines, unchangedFindings) {
+  const { metrics, lint } = heldFindings(unchangedFindings);
+  if (metrics.length > 0) {
+    lines.push('', 'Touched, still over limit (not failing):', ...metrics.map(heldLine));
+  }
+  if (lint.length > 0) {
+    lines.push('', 'Existing lint findings in edited code (not failing):', ...lint.map(heldLine));
+  }
+}
+
+function appendHeldSummary(lines, unchangedFindings, color) {
+  const { metrics, lint } = heldFindings(unchangedFindings);
+  if (metrics.length > 0) {
+    lines.push(
+      style(
+        `Note: ${String(metrics.length)} touched ${pluralize('function', metrics.length)} still over a limit (not failing, not worse than before):`,
+        [ANSI.dim],
+        color,
+      ),
+      ...metrics.map((finding) => `  ${heldLine(finding)}`),
+    );
+  }
+  if (lint.length > 0) {
+    lines.push(
+      style(
+        `Note: ${String(lint.length)} existing lint ${pluralize('finding', lint.length)} in edited code (not failing, no more than before):`,
+        [ANSI.dim],
+        color,
+      ),
+      ...lint.map((finding) => `  ${heldLine(finding)}`),
+    );
+  }
+}
+
 function appendViolationSummary(lines, { violations, incomplete }, color) {
   if (violations.length === 0 && incomplete) {
     lines.push('No new enforceable violations, but the run is incomplete:');
@@ -241,30 +302,70 @@ function appendViolationSummary(lines, { violations, incomplete }, color) {
       color,
     ),
   );
-  for (const finding of violations) {
-    const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
+  for (const group of groupRepeatedFindings(violations)) {
+    const [finding] = group;
     lines.push(
-      `  ${style(`${finding.tool}/${finding.rule}`, [ANSI.yellow], color)} ${finding.path}${location}`,
+      `  ${style(`${finding.tool}/${finding.rule}`, [ANSI.yellow], color)} ${finding.path}${describeLocations(group)}`,
       `    ${singleLine(finding.message)}`,
     );
   }
 }
 
+function groupRepeatedFindings(findings) {
+  const groups = new Map();
+  for (const finding of findings) {
+    const key = [finding.tool, finding.rule, finding.path, finding.message].join('\0');
+    groups.set(key, [...(groups.get(key) ?? []), finding]);
+  }
+  return [...groups.values()].map((group) =>
+    group.toSorted((left, right) => (left.location?.line ?? 0) - (right.location?.line ?? 0)),
+  );
+}
+
+function describeLocations(group) {
+  const lineNumbers = group.flatMap(({ location }) =>
+    location === undefined ? [] : [location.line],
+  );
+  if (group.length === 1) {
+    return lineNumbers.length === 0 ? '' : `:${String(lineNumbers[0])}`;
+  }
+  const lineList = lineNumbers.length === group.length ? `, lines ${lineNumbers.join(', ')}` : '';
+  return ` (${String(group.length)} times${lineList})`;
+}
+
 function appendToolErrorSummary(lines, toolErrors, color) {
-  if (toolErrors.length === 0) {
+  const shown = withoutSkipNotices(toolErrors);
+  if (shown.length === 0) {
     return;
   }
   lines.push(
     style(
-      `✖ ${String(toolErrors.length)} ${pluralize('tool error', toolErrors.length)}`,
+      `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}`,
       [ANSI.bold, ANSI.red],
       color,
     ),
   );
-  for (const error of toolErrors) {
+  for (const error of shown) {
     const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
-    lines.push(`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`);
+    if (error.rule === undefined) {
+      lines.push(`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`);
+      continue;
+    }
+    const [first, ...rest] = String(error.message).split('\n');
+    lines.push(
+      `  ${style(label, [ANSI.yellow], color)}: ${first}`,
+      ...rest.map((line) => `  ${line}`),
+    );
   }
+}
+
+function withoutSkipNotices(toolErrors) {
+  const listedSnapshots = new Set(
+    toolErrors.filter(({ rule }) => rule === TESTS_FAILED_RULE).map(({ snapshot }) => snapshot),
+  );
+  return toolErrors.filter(
+    ({ rule, snapshot }) => rule !== TESTS_FAILED_SKIPPED_RULE || !listedSnapshots.has(snapshot),
+  );
 }
 
 const ERROR_HEADLINE_LIMIT = 300;

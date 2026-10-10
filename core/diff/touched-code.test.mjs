@@ -73,9 +73,67 @@ describe('changed line ranges', () => {
         [22, 22],
       ],
     });
-    expect(changed.get('src/main/b.ts')).toMatchObject({ added: true, ranges: [[1, 4]] });
+    expect(changed.get('src/main/a.ts').inserted).toEqual([[4, 5]]);
+    expect(changed.get('src/main/b.ts')).toMatchObject({
+      added: true,
+      ranges: [[1, 4]],
+      inserted: [[1, 4]],
+    });
     expect(changed.has('src/main/gone.ts')).toBe(false);
     expect(changed.get('src/main/with space.ts')).toMatchObject({ ranges: [[1, 1]] });
+  });
+
+  it('counts only the lines beyond the replaced ones as inserted', () => {
+    const changed = parseChangedLines(
+      [
+        'diff --git a/src/a.ts b/src/a.ts',
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -5,2 +5,4 @@',
+        '@@ -20,3 +22,2 @@',
+        '@@ -30 +33 @@',
+      ].join('\n'),
+    );
+
+    expect(changed.get('src/a.ts')).toMatchObject({
+      ranges: [
+        [5, 8],
+        [22, 23],
+        [33, 33],
+      ],
+      inserted: [[7, 8]],
+    });
+  });
+
+  it('treats an added line that resembles a replaced line as edited, wherever it sits', () => {
+    const changed = parseChangedLines(
+      [
+        'diff --git a/src/a.ts b/src/a.ts',
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -43 +43,2 @@',
+        "-  lines.push('Subtotal: ' + formatMoney(subtotal));",
+        '+  const discount = discountFor(order, subtotal);',
+        "+  lines.push('Subtotal: ' + formatMoney(subtotal), ...discount.lines);",
+      ].join('\n'),
+    );
+
+    expect(changed.get('src/a.ts')).toMatchObject({ ranges: [[43, 44]], inserted: [[43, 43]] });
+  });
+
+  it('treats a rewritten line that shares little with the replaced one as added', () => {
+    const changed = parseChangedLines(
+      [
+        'diff --git a/src/a.ts b/src/a.ts',
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -7 +7 @@',
+        '-  const total = sum(items);',
+        "+  throw new Error('unsupported');",
+      ].join('\n'),
+    );
+
+    expect(changed.get('src/a.ts')).toMatchObject({ ranges: [[7, 7]], inserted: [[7, 7]] });
   });
 
   it('makes paths relative to the project inside the repository', () => {

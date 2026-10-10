@@ -1,12 +1,5 @@
 import { comparisonKey } from './fingerprint.mjs';
 
-/**
- * Splits findings into new, resolved, unchanged and changed-metric. When `touchedCode` is given, an
- * enforceable finding of a strict rule that sits in code this change touched is new even though the
- * base has it: `touchedCode.isStrictRule(rule, finding)` names the strict rules and
- * `touchedCode.changedLines` comes from `readChangedLines`. Findings in untouched code stay
- * baselined.
- */
 export function compareFindings({
   baseFindings,
   headFindings,
@@ -30,6 +23,7 @@ export function compareFindings({
     unmatchedBase,
     renames: baseToHeadRenames,
     directories: baseToHeadDirectories,
+    touchedCode,
   });
   present.newFindings = ratcheted.newFindings;
   present.unchangedFindings.push(...ratcheted.heldFindings);
@@ -59,31 +53,56 @@ function classify(headFinding, baseFinding, touchedCode) {
   if (hasChangedMetric(baseFinding, headFinding)) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
-  const bucket = isInTouchedCode(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
-  return { bucket, entry: headFinding };
+  const isNew =
+    isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
+  return { bucket: isNew ? 'newFindings' : 'unchangedFindings', entry: headFinding };
 }
 
-function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories }) {
-  const baseByRatchet = new Map();
-  for (const baseFinding of unmatchedBase) {
-    if (baseFinding.ratchet !== undefined) {
-      baseByRatchet.set(ratchetKey(baseFinding, renames, directories), baseFinding);
-    }
-  }
+function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
+  const baseByRatchet = groupBaseByRatchetKey(unmatchedBase, renames, directories);
   const result = { newFindings: [], heldFindings: [], matchedBase: new Set() };
   for (const headFinding of newFindings) {
-    const baseFinding =
-      headFinding.ratchet === undefined
-        ? undefined
-        : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
-    if (baseFinding === undefined || headFinding.ratchet.value > baseFinding.ratchet.value) {
+    const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
+    const baseFinding = candidates?.[0];
+    if (baseFinding === undefined) {
       result.newFindings.push(headFinding);
       continue;
     }
+    if (headFinding.ratchet.value > baseFinding.ratchet.value) {
+      result.newFindings.push(grewFinding(headFinding, baseFinding.ratchet.value));
+      continue;
+    }
+    candidates.shift();
     result.matchedBase.add(baseFinding);
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }
   return result;
+}
+
+function groupBaseByRatchetKey(unmatchedBase, renames, directories) {
+  const baseByRatchet = new Map();
+  for (const baseFinding of unmatchedBase) {
+    if (baseFinding.ratchet !== undefined) {
+      const key = ratchetKey(baseFinding, renames, directories);
+      baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
+    }
+  }
+  return baseByRatchet;
+}
+
+function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
+  const isNeverHeld =
+    headFinding.ratchet === undefined ||
+    isInTouchedCode(headFinding, touchedCode) ||
+    isOnAddedLine(headFinding, touchedCode);
+  return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
+}
+
+function grewFinding(headFinding, baseValue) {
+  const { worseMessage } = headFinding.ratchet;
+  return worseMessage === undefined
+    ? headFinding
+    : { ...headFinding, message: worseMessage.replaceAll('{base}', String(baseValue)) };
 }
 
 function ratchetKey(finding, renames, directories) {
@@ -119,10 +138,26 @@ function isInTouchedCode(finding, touchedCode) {
   if (changed.added) {
     return true;
   }
+  if (
+    finding.ratchet?.existingCodeOnly === true &&
+    touchedCode.mustMeetOnEditedLines?.(finding.rule) !== true
+  ) {
+    return false;
+  }
   const line = finding.location?.line;
   const endLine = finding.location?.endLine ?? line;
   return (
     line !== undefined && changed.ranges.some(([start, end]) => start <= endLine && line <= end)
+  );
+}
+
+function isOnAddedLine(finding, touchedCode) {
+  const line = finding.location?.line;
+  const inserted = touchedCode?.changedLines.get(finding.path)?.inserted;
+  return (
+    finding.ratchet?.existingCodeOnly === true &&
+    line !== undefined &&
+    (inserted ?? []).some(([start, end]) => start <= line && line <= end)
   );
 }
 

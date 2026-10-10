@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
@@ -73,15 +73,8 @@ export function aggregateShardReports({
   );
   validateCommonSummaries(shardReports);
 
-  const newFindings = mergeEntries(shardReports, 'newFindings');
-  const resolvedFindings = mergeEntries(shardReports, 'resolvedFindings');
-  const changedMetrics = mergeEntries(shardReports, 'changedMetrics');
-  const toolErrors = mergeEntries(shardReports, 'toolErrors');
-  for (const error of analyzerResolutionErrors) {
-    if (!toolErrors.some(({ tool }) => tool === error.tool)) {
-      toolErrors.push(error);
-    }
-  }
+  const { newFindings, resolvedFindings, changedMetrics, heldFindings, toolErrors } =
+    mergeShardEntries(shardReports, analyzerResolutionErrors);
   const toolsByName = new Map(
     shardReports.flatMap(({ summary }) => summary.tools.map((tool) => [tool.name, tool])),
   );
@@ -111,12 +104,28 @@ export function aggregateShardReports({
     summary,
     newFindings: sortByToolAndPath(newFindings),
     resolvedFindings: sortByToolAndPath(resolvedFindings),
-    unchangedFindings: [],
+    unchangedFindings: sortByToolAndPath(heldFindings),
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
   };
   report.text = writeDiffReports(outputRoot, report);
   return report;
+}
+
+function mergeShardEntries(shardReports, analyzerResolutionErrors) {
+  const toolErrors = mergeEntries(shardReports, 'toolErrors');
+  for (const error of analyzerResolutionErrors) {
+    if (!toolErrors.some(({ tool }) => tool === error.tool)) {
+      toolErrors.push(error);
+    }
+  }
+  return {
+    newFindings: mergeEntries(shardReports, 'newFindings'),
+    resolvedFindings: mergeEntries(shardReports, 'resolvedFindings'),
+    changedMetrics: mergeEntries(shardReports, 'changedMetrics'),
+    heldFindings: mergeEntries(shardReports, 'heldFindings'),
+    toolErrors,
+  };
 }
 
 export function runAggregateCli({
@@ -292,6 +301,7 @@ function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
     newFindings: readJson(shardRoot, 'new-findings.json', index),
     resolvedFindings: readJson(shardRoot, 'resolved-findings.json', index),
     changedMetrics: readJson(shardRoot, 'changed-metrics.json', index),
+    heldFindings: readOptionalJson(shardRoot, 'held-findings.json', index) ?? [],
     toolErrors: readJson(shardRoot, 'tool-errors.json', index),
   };
   const expectedNames = expectedAnalyzers.map(({ name }) => name);
@@ -314,6 +324,10 @@ function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
   return report;
 }
 
+function readOptionalJson(root, fileName, shardIndex) {
+  return existsSync(path.join(root, fileName)) ? readJson(root, fileName, shardIndex) : undefined;
+}
+
 function readJson(root, fileName, shardIndex) {
   const filePath = path.join(root, fileName);
   try {
@@ -327,7 +341,7 @@ function readJson(root, fileName, shardIndex) {
 }
 
 function validateShardEntries(report, expectedNames, shardIndex) {
-  for (const property of ['newFindings', 'resolvedFindings', 'changedMetrics']) {
+  for (const property of ['newFindings', 'resolvedFindings', 'changedMetrics', 'heldFindings']) {
     if (!Array.isArray(report[property])) {
       throw new TypeError(`Quality shard ${String(shardIndex)} ${property} must be an array`);
     }

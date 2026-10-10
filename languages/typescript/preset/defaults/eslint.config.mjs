@@ -3,7 +3,7 @@ import vitest from '@vitest/eslint-plugin';
 import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
@@ -58,6 +58,13 @@ const presetConfig = tseslint.config(
   },
   ...strictPresetConfig(layout, parserOptions),
   {
+    // eslint-errors reports this rule for all production code; reporting it here too lists every
+    files: productionFiles,
+    ignores: testFiles,
+    plugins: { nitpicker: nitpickerRules },
+    rules: { 'nitpicker/no-silent-catch': 'off' },
+  },
+  {
     files: productionFiles,
     ignores: [...testFiles, ...layout.sourceTestDirectoryGlobs],
     rules: {
@@ -93,7 +100,9 @@ const presetConfig = tseslint.config(
       'nitpicker/no-mocking-subject-under-test': 'error',
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
+      'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
+      'vitest/no-conditional-in-test': 'error',
       'vitest/require-awaited-expect-poll': 'error',
       'vitest/valid-expect-in-promise': 'error',
     },

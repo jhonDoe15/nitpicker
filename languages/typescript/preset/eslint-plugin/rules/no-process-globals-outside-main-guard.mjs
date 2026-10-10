@@ -1,7 +1,7 @@
 import { ancestorsOf } from './ancestry.mjs';
 const PROCESS_MEMBERS = new Set(['argv', 'exit', 'exitCode']);
 
-function mentionsEntryPoint(node) {
+export function mentionsEntryPoint(node) {
   if (!node || typeof node !== 'object') return false;
   if (node.type === 'MetaProperty') return true;
   if (

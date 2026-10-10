@@ -1,10 +1,12 @@
 import { MESSAGES, MINIMUM_BRANCH_COVERAGE, RULE_IDS, renderMessage } from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 
-// Neutral input: `{ path, key, percent, line? }` per branch (or per line of branches), where
+// Neutral input: `{ path, key, percent, line?, arms? }` per branch (or per line of branches), where
 // `percent` is the share of its outcomes covered and `key` identifies its source text. Anything
 // below `minimum` is an enforceable `changed-branch-coverage` finding; which branches are
 // *changed* is the differential gate's job.
+//
+// `arms` (optional) names the outcomes no test took, e.g. `the false arm of the ?: at 3:28`.
 //
 // Identity is the adapter's format (`identify(key, occurrence)`), but the occurrence number is
 // counted here: the n-th *failing* branch with the same path and key gets n, so a covered twin
@@ -28,13 +30,21 @@ export function branchCoverageFindings(
       rule: RULE_IDS.changedBranchCoverage,
       path: branch.path,
       identity: identify(branch.key, occurrence),
-      message: renderMessage(MESSAGES.changedBranchCoverage, {
-        percent: branch.percent.toFixed(2),
-        minimum,
-      }),
+      message: branchMessage(branch, minimum),
       classification: 'enforceable',
       ...(positiveInteger(branch.line) === undefined ? {} : { location: { line: branch.line } }),
     });
   }
   return findings;
+}
+
+function branchMessage(branch, minimum) {
+  const message = renderMessage(MESSAGES.changedBranchCoverage, {
+    percent: branch.percent.toFixed(2),
+    minimum,
+  });
+  if (!Array.isArray(branch.arms) || branch.arms.length === 0) {
+    return message;
+  }
+  return `${message}. Not taken: ${branch.arms.join('; ')}. Test it, or remove it if it can't happen.`;
 }

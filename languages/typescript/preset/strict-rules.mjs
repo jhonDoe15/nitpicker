@@ -10,12 +10,12 @@ export const strictEslintRuleIds = [
   '@typescript-eslint/only-throw-error',
   '@typescript-eslint/switch-exhaustiveness-check',
   'eqeqeq',
-  'functional/immutable-data',
   'functional/no-classes',
   'functional/no-let',
   'functional/no-this-expressions',
   'functional/prefer-immutable-types',
   'nitpicker/hermetic-git-in-tests',
+  'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
@@ -29,6 +29,8 @@ export const strictEslintRuleIds = [
   'nitpicker/no-silent-catch',
   'nitpicker/no-throw',
   'nitpicker/no-uninjectable-delay',
+  'nitpicker/no-unknown-in-domain',
+  'nitpicker/no-unvalidated-schema-field',
   'nitpicker/preserve-error-cause',
   'nitpicker/test-tsconfig-pins-lib-and-types',
   'no-empty',
@@ -44,4 +46,8 @@ const strictRuleIds = new Set([
 
 export function isStrictRule(rule, finding) {
   return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isJavaTouchedRule(rule, finding);
+}
+
+export function mustMeetOnEditedLines(rule) {
+  return rule === PRETTIER_RULE;
 }

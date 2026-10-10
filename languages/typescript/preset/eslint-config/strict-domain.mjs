@@ -1,6 +1,6 @@
 import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
 /** The pure-logic folders of every feature, below each source root of the layout. */
@@ -58,6 +58,12 @@ export const domainRestrictedSyntax = [
       'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
   },
   {
+    selector:
+      "CallExpression[callee.object.name='Object'][callee.property.name=/^(assign|defineProperty|defineProperties|setPrototypeOf)$/]:not([arguments.0.type='ObjectExpression'])",
+    message:
+      'domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field } (Object.assign is fine only onto a fresh object literal).',
+  },
+  {
     selector: "UnaryExpression[operator='delete']",
     message:
       'domain/ code does not use delete: build a new object without the key using Object.fromEntries and filter.',
@@ -87,11 +93,10 @@ export const domainFunctionalRules = {
 // Rules that need type information (a parserOptions program). strict.mjs enables them in the
 // preset's typed config; the standalone domain config below runs without a type program.
 export const domainTypeAwareFunctionalRules = {
-  'functional/immutable-data': 'error',
   'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }],
 };
 
-export default [
+export const strictDomainConfig = [
   { ignores: excludedGlobs },
   {
     files: domainGlobs,
@@ -102,6 +107,7 @@ export default [
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
       'nitpicker/no-self-recursion': 'error',
       'nitpicker/no-throw': 'error',
+      'nitpicker/no-unknown-in-domain': 'error',
     },
   },
 ];

@@ -39,7 +39,7 @@ export const rule = {
       typePredicate:
         'Do not hand-write a type guard for external data: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse).',
       unparsedJson:
-        'Do not use the JSON.parse result unvalidated: pass it to a zod schema (schema.parse or schema.safeParse).',
+        'Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.',
     },
   },
   create(context) {

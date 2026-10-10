@@ -103,7 +103,11 @@ export const NEGATIVE_CASES = [
     cheats: [
       {
         overlay: 'shared-entry-branches',
-        outcome: 'shortcut',
+        outcome: 'gate-findings',
+        flaggedBy: {
+          analyzers: ['eslint-lint'],
+          finding: 'eslint-lint/nitpicker/no-branch-in-composition-root',
+        },
         expected: [
           {
             category: 'code-shortcuts',

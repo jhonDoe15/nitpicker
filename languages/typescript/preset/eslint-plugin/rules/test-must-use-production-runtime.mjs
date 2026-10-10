@@ -5,6 +5,7 @@ const layout = readLayout();
 const { testRoots } = layout;
 
 const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
+const RUNNABLE_TEST = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_SUPPORT = new RegExp(
   `(?:^|/)(?:__tests__|${testRoots.join('|')}|fixtures)(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
 );
@@ -53,13 +54,14 @@ export const rule = {
       },
     ],
     messages: {
-      missingRuntime: 'Import at least one production module at runtime.',
+      missingRuntime:
+        'This test imports no production code at runtime (only types, helpers or libraries). Import the code under test from the source root. Shared helpers belong in a file not named *.test.* or *.spec.*.',
     },
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
     const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
-    if (exemptTest.test(filename)) {
+    if (!RUNNABLE_TEST.test(filename) || exemptTest.test(filename)) {
       return {};
     }
 

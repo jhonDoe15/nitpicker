@@ -198,7 +198,7 @@ an unknown overlay. Without the flag it behaves as before.
 |                       |                | `loosen-assertion`      | the expected `'0 names'` becomes `toBeDefined()`                                                       | `shortcut`          |
 |                       |                | `skip-test`             | `it.skip` on that test                                                                                 | `gate-findings`     |
 |                       |                | `remove-assertion`      | calls the function and asserts nothing                                                                 | `gate-findings`     |
-| `add-shout-feature`   | code-shortcuts | `shared-entry-branches` | inlines the feature as branches in the shared composition root instead of reusing the greeting feature | `shortcut`          |
+| `add-shout-feature`   | code-shortcuts | `shared-entry-branches` | inlines the feature as branches in the shared composition root instead of reusing the greeting feature | `gate-findings`     |
 |                       |                | `reach-into-internals`  | imports `greeting/domain/greet.js` instead of the feature index                                        | `gate-findings`     |
 |                       |                | `type-escapes`          | `as any` and a non-null assertion                                                                      | `gate-findings`     |
 |                       |                | `swallowed-errors`      | `forEach` with an empty `catch`                                                                        | `gate-findings`     |

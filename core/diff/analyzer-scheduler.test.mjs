@@ -345,13 +345,84 @@ describe('analyzer scheduler', () => {
       },
     );
     expect(failedOrder).toEqual(['coverage']);
-    expect(failed.errors).toEqual([
-      { name: 'coverage', message: 'coverage failed' },
-      { name: 'crap', message: 'Analyzer dependency coverage failed or did not run' },
-    ]);
+    expect(failed.errors).toEqual([{ name: 'coverage', message: 'coverage failed' }]);
+    expect(failed.skipped).toEqual([{ name: 'crap', because: 'coverage' }]);
     expect(failed.timings).toEqual([
       { name: 'coverage', elapsedMs: expect.any(Number) },
       { name: 'crap', elapsedMs: 0 },
+    ]);
+  });
+
+  it('reports each analyzer as it settles: done, failed, then skipped', async () => {
+    const events = [];
+
+    await runTaskGraph(
+      [
+        task('coverage'),
+        task('crap', { dependencies: ['coverage'], executionPriority: 1 }),
+        task('lint'),
+      ],
+      {
+        maxParallel: 2,
+        execute: ({ name }) =>
+          name === 'coverage'
+            ? Promise.reject(new Error('tests failed'))
+            : Promise.resolve({ findings: [] }),
+        onSettled: (event) => events.push(event),
+      },
+    );
+
+    expect(events.map(({ name, status }) => `${name}:${status}`).sort()).toEqual([
+      'coverage:failed',
+      'crap:skipped',
+      'lint:done',
+    ]);
+    expect(events.find(({ name }) => name === 'crap')).toMatchObject({ because: 'coverage' });
+  });
+
+  it('skips every analyzer downstream of a failure without adding errors of their own', async () => {
+    const result = await runTaskGraph(
+      [
+        task('coverage'),
+        task('crap', { dependencies: ['coverage'] }),
+        task('report', { dependencies: ['crap'] }),
+      ],
+      { execute: () => Promise.reject(new Error('coverage failed')) },
+    );
+
+    expect(result.errors).toEqual([{ name: 'coverage', message: 'coverage failed' }]);
+    expect(result.skipped).toEqual([
+      { name: 'crap', because: 'coverage' },
+      { name: 'report', because: 'coverage' },
+    ]);
+  });
+
+  it('skips dependents of an analyzer that reports a tool error finding', async () => {
+    const started = [];
+    const result = await runTaskGraph(
+      [task('coverage'), task('crap', { dependencies: ['coverage'] })],
+      {
+        execute: ({ name }) => {
+          started.push(name);
+          return Promise.resolve({
+            findings: [{ tool: name, rule: 'tests-failed', classification: 'tool-error' }],
+          });
+        },
+      },
+    );
+
+    expect(started).toEqual(['coverage']);
+    expect(result.errors).toEqual([]);
+    expect(result.skipped).toEqual([{ name: 'crap', because: 'coverage' }]);
+  });
+
+  it('still reports a dependency the task graph lacks as an error', async () => {
+    const result = await runTaskGraph([task('crap', { dependencies: ['coverage'] })], {
+      execute: () => Promise.resolve({ findings: [] }),
+    });
+
+    expect(result.errors).toEqual([
+      { name: 'crap', message: 'Analyzer dependency coverage is missing for crap' },
     ]);
   });
 

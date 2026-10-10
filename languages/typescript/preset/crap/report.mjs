@@ -1,16 +1,16 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { analyzeProject } from '@barney-media/crap-typescript-core';
 import { existsSync } from 'node:fs';
 import config from '../defaults/crap.config.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { analyzeWithFunctionMapFallback } from './analyze.mjs';
 
 const projectRoot = path.resolve(
   process.env.NITPICKER_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../../../..'),
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
-const analysis = await analyzeProject({
+const analysis = await analyzeWithFunctionMapFallback({
   projectRoot: projectRoot,
   explicitPaths: explicitPaths(),
   coverageMode: 'existing-only',

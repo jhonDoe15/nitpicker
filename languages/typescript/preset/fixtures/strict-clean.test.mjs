@@ -50,6 +50,7 @@ function runSnapshot(root, extraArguments = []) {
       currentProjectRoot: root,
       stdout: { write: (text) => (stdoutText += text) },
       stderr: { write: (text) => (stderrText += text) },
+      progress: { write: () => undefined },
     }),
   );
   const summary = JSON.parse(readFileSync(path.join(output, 'summary.json'), 'utf8'));

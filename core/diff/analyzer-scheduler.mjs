@@ -3,6 +3,7 @@ import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseAnalyzerReport } from './finding-schema.mjs';
+import { createProgressReporter, writeToDescriptor } from './progress.mjs';
 
 const DEFAULT_MAX_PARALLEL = 4;
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -23,7 +24,12 @@ export function resolveMaxParallel(environment = process.env, available = availa
 
 export async function runTaskGraph(
   tasks,
-  { maxParallel = resolveMaxParallel(), execute = executeAnalyzerTask, signal } = {},
+  {
+    maxParallel = resolveMaxParallel(),
+    execute = executeAnalyzerTask,
+    signal,
+    onSettled = descriptorProgress(tasks),
+  } = {},
 ) {
   if (!Number.isInteger(maxParallel) || maxParallel < 1) {
     throw new TypeError('maxParallel must be a positive integer');
@@ -50,18 +56,14 @@ export async function runTaskGraph(
         return Promise.resolve({
           name: dependencyName,
           error: `Analyzer dependency ${dependencyName} is missing for ${task.name}`,
+          missing: true,
         });
       }
       return scheduleTask(dependency);
     });
-    const taskPromise = runTask(
-      task,
-      dependencyPromises,
-      semaphore,
-      groupSemaphores,
-      maxParallel,
-      execute,
-      signal,
+    const taskPromise = reportWhenSettled(
+      runTask(task, dependencyPromises, semaphore, groupSemaphores, maxParallel, execute, signal),
+      onSettled,
     );
     taskPromises.set(task.name, taskPromise);
     return taskPromise;
@@ -71,15 +73,24 @@ export async function runTaskGraph(
     scheduleTask(task);
   }
   const outcomes = await Promise.all(tasks.map((task) => taskPromises.get(task.name)));
-  return {
-    reports: outcomes
-      .filter((outcome) => outcome.report !== undefined)
-      .map((outcome) => [outcome.name, outcome.report]),
-    errors: outcomes
-      .filter((outcome) => outcome.error !== undefined)
-      .map((outcome) => ({ name: outcome.name, message: outcome.error })),
-    timings: outcomes.map(({ name, elapsedMs }) => ({ name, elapsedMs })),
-  };
+  return summarizeOutcomes(outcomes);
+}
+
+function descriptorProgress(tasks) {
+  const progress = tasks?.[0]?.progress;
+  return progress === undefined
+    ? undefined
+    : createProgressReporter({
+        write: writeToDescriptor,
+        label: progress.label,
+        total: tasks.length,
+      });
+}
+
+async function reportWhenSettled(outcomePromise, onSettled) {
+  const outcome = await outcomePromise;
+  onSettled?.(progressEvent(outcome));
+  return outcome;
 }
 
 async function runTask(
@@ -92,13 +103,9 @@ async function runTask(
   signal,
 ) {
   const dependencyOutcomes = await Promise.all(dependencies);
-  const failedDependency = dependencyOutcomes.find((outcome) => outcome.error !== undefined);
+  const failedDependency = dependencyOutcomes.find(hasFailed);
   if (failedDependency !== undefined) {
-    return {
-      name: task.name,
-      error: `Analyzer dependency ${failedDependency.name} failed or did not run`,
-      elapsedMs: 0,
-    };
+    return skippedOutcome(task.name, failedDependency);
   }
   if (signal?.aborted) {
     return cancelledOutcome(task.name);
@@ -130,6 +137,49 @@ async function runTask(
     releaseCapacity();
     releaseGroup();
   }
+}
+
+function summarizeOutcomes(outcomes) {
+  const skipped = outcomes
+    .filter((outcome) => outcome.skippedBecause !== undefined)
+    .map((outcome) => ({ name: outcome.name, because: outcome.skippedBecause }));
+  return {
+    reports: outcomes
+      .filter((outcome) => outcome.report !== undefined)
+      .map((outcome) => [outcome.name, outcome.report]),
+    errors: outcomes
+      .filter((outcome) => outcome.error !== undefined)
+      .map((outcome) => ({ name: outcome.name, message: outcome.error })),
+    timings: outcomes.map(({ name, elapsedMs }) => ({ name, elapsedMs })),
+    ...(skipped.length === 0 ? {} : { skipped }),
+  };
+}
+
+export function progressEvent(outcome) {
+  const { name, elapsedMs } = outcome;
+  if (outcome.skippedBecause !== undefined) {
+    return { name, status: 'skipped', elapsedMs, because: outcome.skippedBecause };
+  }
+  return { name, status: hasFailed(outcome) ? 'failed' : 'done', elapsedMs };
+}
+
+function hasFailed(outcome) {
+  return (
+    outcome.error !== undefined ||
+    outcome.skippedBecause !== undefined ||
+    (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+  );
+}
+
+function skippedOutcome(taskName, failedDependency) {
+  if (failedDependency.missing === true) {
+    return { name: taskName, error: failedDependency.error, elapsedMs: 0 };
+  }
+  return {
+    name: taskName,
+    skippedBecause: failedDependency.skippedBecause ?? failedDependency.name,
+    elapsedMs: 0,
+  };
 }
 
 function cancelledOutcome(taskName) {
