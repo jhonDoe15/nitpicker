@@ -7,6 +7,7 @@ import {
   removeSnapshotDependencies,
 } from '../languages/typescript/adapters/static-checks-runner.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
+import { createBaseSetupResolver } from './base-setup.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
@@ -34,84 +35,101 @@ import { selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
 import { runAggregateCli } from './diff/aggregate-shards.mjs';
 
-export function runCli({
-  arguments_ = process.argv.slice(2),
-  environment = process.env,
-  currentProjectRoot,
-  analyzers,
-  snapshotAnalyzers = analyzers,
-  stdout = process.stdout,
-  stderr = process.stderr,
-  executeFixCommand,
-  runTasks,
-} = {}) {
-  if (arguments_[0] === 'aggregate') {
+export function runCli(options = {}) {
+  const cli = withCliDefaults(options);
+  if (cli.arguments_[0] === 'aggregate') {
     return runAggregateCli({
-      arguments_: arguments_.slice(1),
-      currentProjectRoot,
-      analyzers,
-      stdout,
-      stderr,
-      environment,
+      arguments_: cli.arguments_.slice(1),
+      currentProjectRoot: cli.currentProjectRoot,
+      analyzers: cli.analyzers,
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
     });
   }
   try {
-    if (arguments_[0] === 'cache') {
-      return runCacheCommand({
-        arguments_: arguments_.slice(1),
-        environment,
-        currentProjectRoot,
-        analyzers,
-        stdout,
-        stderr,
-        runTasks,
-      });
-    }
-    const options = parseArguments(arguments_);
-    if (options.help) {
-      stdout.write(
-        'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
-          ' [--analyzer <name>]... [--rule <substring>]...' +
-          ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n' +
-          '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
-          ' [--output <directory>] [--policy-root <directory>]\n' +
-          '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n',
-      );
-      return 0;
-    }
-
-    const selectedProjectRoot =
-      currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
-    // The config is read from the head checkout and applies to both sides of the comparison.
-    const config = loadConfig(selectedProjectRoot);
-    const headPolicy = resolveHeadPolicy(config);
-    const configure = (list) => configureAnalyzers(list, config, headPolicy);
-    if (options.all) {
-      return runSnapshotCli({
-        options,
-        currentProjectRoot: selectedProjectRoot,
-        analyzers: configure(presetAnalyzers(config, snapshotAnalyzers)),
-        headPolicy,
-        stdout,
-        runTasks,
-      });
-    }
-    return runComparisonCli({
-      options,
-      environment,
-      currentProjectRoot: selectedProjectRoot,
-      analyzers: configure(presetAnalyzers(config, analyzers)),
-      config,
-      headPolicy,
-      stdout,
-      stderr,
-      executeFixCommand,
-      runTasks,
-    });
+    return runCommand(cli);
   } catch (error) {
-    stderr.write(`nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    cli.stderr.write(
+      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     return 2;
   }
+}
+
+function withCliDefaults(options) {
+  return {
+    ...options,
+    arguments_: options.arguments_ ?? process.argv.slice(2),
+    environment: options.environment ?? process.env,
+    snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
+    stdout: options.stdout ?? process.stdout,
+    stderr: options.stderr ?? process.stderr,
+  };
+}
+
+const USAGE_TEXT =
+  'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
+  ' [--analyzer <name>]... [--rule <substring>]...' +
+  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n' +
+  '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
+  ' [--output <directory>] [--policy-root <directory>]\n' +
+  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n';
+
+function runCommand(cli) {
+  if (cli.arguments_[0] === 'cache') {
+    return runCacheCommand({
+      arguments_: cli.arguments_.slice(1),
+      environment: cli.environment,
+      currentProjectRoot: cli.currentProjectRoot,
+      analyzers: cli.analyzers,
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      runTasks: cli.runTasks,
+    });
+  }
+  const options = parseArguments(cli.arguments_);
+  if (options.help) {
+    cli.stdout.write(USAGE_TEXT);
+    return 0;
+  }
+  return runConfigured({ ...cli, options });
+}
+
+function runConfigured(cli) {
+  const { options, stdout, runTasks } = cli;
+  const currentProjectRoot =
+    cli.currentProjectRoot === undefined
+      ? resolveProjectRoot()
+      : realpathSync(cli.currentProjectRoot);
+  const config = loadConfig(currentProjectRoot);
+  const headPolicy = resolveHeadPolicy(config);
+  if (options.all) {
+    return runSnapshotCli({
+      options,
+      currentProjectRoot,
+      analyzers: configureAnalyzers(
+        presetAnalyzers(config, cli.snapshotAnalyzers),
+        config,
+        headPolicy,
+      ),
+      headPolicy,
+      stdout,
+      runTasks,
+    });
+  }
+  return runComparisonCli({
+    ...cli,
+    currentProjectRoot,
+    analyzers: configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+    resolveBaseSetup: createBaseSetupResolver({
+      headConfig: config,
+      injectedAnalyzers: cli.analyzers,
+      warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
+    }),
+    config,
+    headPolicy,
+  });
 }
 
 /** `nitpicker cache publish`: analyze the checked-out commit and upload its findings as a base snapshot. */
@@ -246,56 +264,73 @@ function parseArguments(arguments_) {
   };
 }
 
-function runComparisonCli({
-  options,
-  environment,
-  currentProjectRoot,
-  analyzers,
-  config,
-  headPolicy,
-  stdout,
-  stderr,
-  executeFixCommand,
-  runTasks,
-}) {
+function runComparisonCli(cli) {
+  const { options, currentProjectRoot, config, headPolicy } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
-  const projectRelativePath = path.relative(repositoryRoot, currentProjectRoot) || '.';
   const base = resolveBase({
     repositoryRoot,
     explicitBase: options.baseRef,
     configuredBase: config.base,
-    environment,
+    environment: cli.environment,
   });
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const fixResult = options.fix
-    ? fixWorkingTree({
-        repositoryRoot,
-        projectRoot: currentProjectRoot,
-        baseRef: base.baseRef,
-        executeFixCommand,
-        headPolicy,
-      })
-    : { fixedFiles: [], toolErrors: [] };
-  if (options.fix) {
-    stdout.write(
-      `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
-    );
-  }
+  const fixResult = fixIfRequested(cli, repositoryRoot, base);
   clearDiffReports(outputRoot);
-  const { store: cacheStore, warnings } = resolveCacheStore({
-    projectRoot: currentProjectRoot,
-    environment,
+  const cacheStore = resolveRunCacheStore(cli);
+  const report = runQualityDiff({
+    repositoryRoot,
+    projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
+    headProjectRoot: currentProjectRoot,
+    requestedBaseRef: base.baseRef,
+    outputRoot,
+    analyzers: selectComparisonAnalyzers(cli),
+    cacheStore,
+    includeWorkingTree: true,
+    additionalToolErrors: fixResult.toolErrors,
+    configOverrides: describeConfigOverrides(config),
+    headPolicy,
+    resolveBaseSetup: cli.resolveBaseSetup,
+    runTasks: cli.runTasks,
   });
-  if (options.cache) {
+  return writeComparisonOutcome({ cli, report, base, outputRoot });
+}
+
+function fixIfRequested(cli, repositoryRoot, base) {
+  if (!cli.options.fix) {
+    return { fixedFiles: [], toolErrors: [] };
+  }
+  const fixResult = fixWorkingTree({
+    repositoryRoot,
+    projectRoot: cli.currentProjectRoot,
+    baseRef: base.baseRef,
+    executeFixCommand: cli.executeFixCommand,
+    headPolicy: cli.headPolicy,
+  });
+  cli.stdout.write(
+    `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
+  );
+  return fixResult;
+}
+
+function resolveRunCacheStore(cli) {
+  const { store, warnings } = resolveCacheStore({
+    projectRoot: cli.currentProjectRoot,
+    environment: cli.environment,
+  });
+  if (cli.options.cache) {
     for (const warning of warnings) {
-      stderr.write(`nitpicker: ${warning}\n`);
+      cli.stderr.write(`nitpicker: ${warning}\n`);
     }
   }
+  return cli.options.cache ? store : undefined;
+}
+
+function selectComparisonAnalyzers({ options, analyzers }) {
   const selectedAnalyzers =
     options.shardCount === undefined
       ? selectAnalyzers(analyzers, options.analyzerNames)
@@ -305,21 +340,11 @@ function runComparisonCli({
       'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
     );
   }
+  return selectedAnalyzers;
+}
 
-  const report = runQualityDiff({
-    repositoryRoot,
-    projectRelativePath,
-    headProjectRoot: currentProjectRoot,
-    requestedBaseRef: base.baseRef,
-    outputRoot,
-    analyzers: selectedAnalyzers,
-    cacheStore: options.cache ? cacheStore : undefined,
-    includeWorkingTree: true,
-    additionalToolErrors: fixResult.toolErrors,
-    configOverrides: describeConfigOverrides(config),
-    headPolicy,
-    runTasks,
-  });
+function writeComparisonOutcome({ cli, report, base, outputRoot }) {
+  const { options, environment, currentProjectRoot, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
     renderConsoleSummary(report, {
@@ -331,7 +356,6 @@ function runComparisonCli({
   if (options.deferExit) {
     return 0;
   }
-  // New violations win over tool errors so CI can tell "violations" from "broken".
   if (report.summary.newEnforceableFindings > 0) {
     return 1;
   }

@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { scopeMoves } from './renames.mjs';
 
 export class GitCommandError extends Error {
   constructor({ args, cwd, result }) {
@@ -103,72 +104,203 @@ const CAPTURE_IDENTITY = {
   GIT_COMMITTER_EMAIL: 'nitpicker@localhost',
 };
 
-export function readRenameMap({ repositoryRoot, mergeBaseSha, headSha, projectRelativePath }) {
+export function readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha }) {
   const output = runGit(repositoryRoot, [
+    '-c',
+    RENAME_LIMIT_SETTING,
     'diff',
-    '--find-renames',
+    RENAME_DETECTION,
     '--name-status',
     '-z',
     `${mergeBaseSha}...${headSha}`,
-    '--',
-    projectRelativePath,
   ]);
-  const fields = output.split('\0');
-  const renames = new Map();
-  const normalizedProjectPath = normalizeGitPath(projectRelativePath).replace(/\/$/, '');
-
-  for (let index = 0; index < fields.length;) {
-    const status = fields[index];
-    index += 1;
-    if (status.length === 0) {
-      continue;
-    }
-
-    const oldPath = fields[index];
-    index += 1;
-    if (oldPath === undefined) {
-      throw new Error('Malformed git rename output: missing changed path');
-    }
-
-    if (!status.startsWith('R')) {
-      continue;
-    }
-
-    const newPath = fields[index];
-    index += 1;
-    if (newPath === undefined) {
-      throw new Error('Malformed git rename output: missing rename destination');
-    }
-
-    renames.set(
-      relativeToProject(oldPath, normalizedProjectPath),
-      relativeToProject(newPath, normalizedProjectPath),
-    );
-  }
-
-  return renames;
+  return parseNameStatus(output.split('\0'));
 }
 
-/**
- * The lines each file has on the head side that differ from the merge base, as
- * `Map<path, { path, added, ranges }>` with 1-based inclusive `[start, end]` line ranges. A new
- * file has `added: true`. A pure rename or move without content changes has no hunks and is not
- * listed.
- */
-export function readChangedLines({ repositoryRoot, mergeBaseSha, headSha, projectRelativePath }) {
+const RENAME_LIMIT_SETTING = 'diff.renameLimit=20000';
+const RENAME_DETECTION = '--find-renames=50%';
+const PROJECT_MARKERS = ['nitpicker.config.json', 'package.json'];
+
+function parseNameStatus(fields) {
+  const changes = { renames: [], added: new Set(), deleted: new Set() };
+  const entry = { status: '', paths: [] };
+  for (const field of fields) {
+    if (entry.status === '') {
+      entry.status = field;
+    } else {
+      entry.paths.push(field);
+    }
+    if (entry.paths.length === pathCount(entry.status)) {
+      recordChange(changes, entry);
+      entry.status = '';
+      entry.paths = [];
+    }
+  }
+  if (entry.status !== '') {
+    throw new Error('Malformed git rename output: missing changed path');
+  }
+  return changes;
+}
+
+function pathCount(status) {
+  if (status === '') {
+    return -1;
+  }
+  return status.startsWith('R') || status.startsWith('C') ? 2 : 1;
+}
+
+function recordChange(changes, { status, paths }) {
+  const [first, second] = paths.map(normalizeGitPath);
+  const recorders = new Map([
+    ['R', () => changes.renames.push([first, second])],
+    ['A', () => changes.added.add(first)],
+    ['D', () => changes.deleted.add(first)],
+  ]);
+  recorders.get(status[0])?.();
+}
+
+export function resolveBaseProjectPath({
+  repositoryRoot,
+  mergeBaseSha,
+  headSha,
+  projectRelativePath,
+  changes = readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha }),
+}) {
+  const headProject = repositoryPath(projectRelativePath);
+  const baseLocations = PROJECT_MARKERS.map((marker) => joinRepositoryPath(headProject, marker))
+    .filter((headMarker) => existsInCommit(repositoryRoot, headSha, headMarker))
+    .map((headMarker) =>
+      locateMarkerInBase({
+        repositoryRoot,
+        mergeBaseSha,
+        headMarker,
+        projectRelativePath,
+        changes,
+      }),
+    );
+  return baseLocations.find((location) => location !== undefined) ?? projectRelativePath;
+}
+
+function locateMarkerInBase({
+  repositoryRoot,
+  mergeBaseSha,
+  headMarker,
+  projectRelativePath,
+  changes,
+}) {
+  if (existsInCommit(repositoryRoot, mergeBaseSha, headMarker)) {
+    return projectRelativePath;
+  }
+  const moved = changes.renames.find(([, newPath]) => newPath === headMarker);
+  return moved === undefined ? undefined : path.posix.dirname(moved[0]);
+}
+
+function repositoryPath(projectRelativePath) {
+  const normalized = normalizeGitPath(projectRelativePath).replace(/\/$/, '');
+  return normalized === '.' ? '' : normalized;
+}
+
+function joinRepositoryPath(directory, name) {
+  return directory === '' ? name : `${directory}/${name}`;
+}
+
+function existsInCommit(repositoryRoot, sha, repositoryRelativePath) {
+  try {
+    runGit(repositoryRoot, ['cat-file', '-e', `${sha}:${repositoryRelativePath}`]);
+    return true;
+  } catch (error) {
+    if (error instanceof GitCommandError) {
+      return false;
+    }
+    throw error;
+  }
+}
+
+export function readProjectMoves({
+  repositoryRoot,
+  mergeBaseSha,
+  headSha,
+  projectRelativePath,
+  baseProjectRelativePath = projectRelativePath,
+  changes = readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha }),
+}) {
+  return scopeMoves({
+    changes,
+    baseProjectPath: repositoryPath(baseProjectRelativePath),
+    headProjectPath: repositoryPath(projectRelativePath),
+  });
+}
+
+export function readRenameMap(options) {
+  return readProjectMoves(options).files;
+}
+
+export function readChangedLines({
+  repositoryRoot,
+  mergeBaseSha,
+  headSha,
+  projectRelativePath,
+  baseProjectRelativePath = projectRelativePath,
+  inferredMoves = new Map(),
+}) {
+  const headProject = normalizeGitPath(projectRelativePath).replace(/\/$/, '');
+  const output = runGit(repositoryRoot, [
+    '-c',
+    'core.quotePath=false',
+    '-c',
+    RENAME_LIMIT_SETTING,
+    'diff',
+    '--unified=0',
+    RENAME_DETECTION,
+    '--no-color',
+    '--no-ext-diff',
+    `${mergeBaseSha}...${headSha}`,
+    '--',
+    ...new Set([projectRelativePath, baseProjectRelativePath]),
+  ]);
+  const changed = parseChangedLines(onlyFilesInside(output, headProject), headProject);
+  for (const [basePath, headPath] of inferredMoves) {
+    const movedChanges = readMovedFileChanges({
+      repositoryRoot,
+      baseSide: `${mergeBaseSha}:${joinRepositoryPath(repositoryPath(baseProjectRelativePath), basePath)}`,
+      headSide: `${headSha}:${joinRepositoryPath(repositoryPath(headProject), headPath)}`,
+    });
+    changed.delete(headPath);
+    for (const entry of movedChanges.values()) {
+      changed.set(headPath, { ...entry, path: headPath });
+    }
+  }
+  return changed;
+}
+
+function readMovedFileChanges({ repositoryRoot, baseSide, headSide }) {
   const output = runGit(repositoryRoot, [
     '-c',
     'core.quotePath=false',
     'diff',
     '--unified=0',
-    '--find-renames',
     '--no-color',
     '--no-ext-diff',
-    `${mergeBaseSha}...${headSha}`,
-    '--',
-    projectRelativePath,
+    baseSide,
+    headSide,
   ]);
-  return parseChangedLines(output, normalizeGitPath(projectRelativePath).replace(/\/$/, ''));
+  return parseChangedLines(output, '.');
+}
+
+function onlyFilesInside(diffText, projectRelativePath) {
+  if (projectRelativePath === '.' || projectRelativePath.length === 0) {
+    return diffText;
+  }
+  return diffText
+    .split(/^(?=diff --git )/m)
+    .filter((section) => sectionIsInside(section, projectRelativePath))
+    .join('');
+}
+
+function sectionIsInside(section, projectRelativePath) {
+  const target = /^\+\+\+ (.+)$/m.exec(section);
+  const filePath = target === null ? undefined : diffTargetPath(target[1]);
+  return filePath === undefined || normalizeGitPath(filePath).startsWith(`${projectRelativePath}/`);
 }
 
 const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
