@@ -1,7 +1,3 @@
-// Child process used by the HTTP cache store: the comparison is synchronous, so each request runs
-// in a short-lived `node` that does the (asynchronous) fetch. Usage: <GET|PUT> <url> <timeoutMs>.
-// The optional auth header arrives in NITPICKER_CACHE_AUTH_HEADER_VALUE, never on the command line.
-// Exit codes: 0 success (GET prints the body), 3 not found, 1 any other failure.
 const [method, url, timeoutText] = process.argv.slice(2);
 const headers = { 'user-agent': 'nitpicker-findings-cache' };
 const rawHeader = process.env.NITPICKER_CACHE_AUTH_HEADER_VALUE;
@@ -28,7 +24,6 @@ try {
     signal: AbortSignal.timeout(Number(timeoutText)),
   });
   if (method === 'GET' && (response.status === 404 || response.status === 403)) {
-    // S3 answers 403 for a missing key when the caller may not list the bucket.
     process.exit(3);
   }
   if (!response.ok) {

@@ -5,11 +5,6 @@ const trackedPaths = new Set();
 const handledSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
 const handlerState = { installed: false };
 
-/**
- * Registers a temporary file or link that a runner writes into the analyzed project root, so
- * that it is removed when the process exits or is interrupted, even if the runner's own
- * `finally` blocks never get to run. Call this before creating the file.
- */
 export function trackTemporaryPath(filePath) {
   installHandlers();
   trackedPaths.add(filePath);
@@ -36,7 +31,6 @@ function installHandlers() {
   for (const signal of handledSignals) {
     process.on(signal, () => {
       removeTrackedTemporaryPaths();
-      // Another listener owns graceful shutdown; otherwise honour the default signal action.
       if (process.listenerCount(signal) === 1) {
         process.exit(128 + (osConstants.signals[signal] ?? 0));
       }
