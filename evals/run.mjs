@@ -11,7 +11,7 @@ import { packNitpicker } from './lib/consumer.mjs';
 import { aggregate, renderMarkdown } from './runner/report.mjs';
 import { installedWorkdir, isStale, listCases, runCase } from './runner/run-case.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '..', 'typescript');
+const packageRoot = path.resolve(import.meta.dirname, '..');
 const defaultResults = path.join(import.meta.dirname, 'results');
 
 const { positionals, values } = parseArgs({

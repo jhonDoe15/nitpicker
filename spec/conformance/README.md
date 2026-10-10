@@ -4,7 +4,7 @@ Language-neutral fixtures for the comparison step every Nitpicker core must impl
 findings of a base snapshot and a head snapshot, decide which are new, resolved, unchanged or have a
 changed metric, and find the merge base and renames in git. Findings follow
 [`../findings.schema.json`](../findings.schema.json). The TypeScript core is the reference; its
-test `typescript/core/diff/conformance.test.mjs` runs every fixture here, so the fixtures cannot
+test `core/diff/conformance.test.mjs` runs every fixture here, so the fixtures cannot
 drift from it.
 
 ## Findings cases: `findings/<case>/`
