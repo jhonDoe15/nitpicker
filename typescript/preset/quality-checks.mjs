@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../shared/policy.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const MINUTE_MS = 60 * 1000;
-export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
 export function parsePositiveNumber(value, name) {
   const number = Number(value);
@@ -272,7 +272,11 @@ function graphChecksFor(exclusions) {
       exclusions: exclusions.production,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 7,
-      configurationFiles: [...DEPENDENCY_GRAPH_FILES, 'preset/coupling/analyze.mjs'],
+      configurationFiles: [
+        ...DEPENDENCY_GRAPH_FILES,
+        'preset/coupling/analyze.mjs',
+        'shared/rules/coupling.mjs',
+      ],
     },
     {
       name: 'test-runtime',

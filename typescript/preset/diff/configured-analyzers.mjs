@@ -1,7 +1,4 @@
-import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { DEFAULT_LEGACY_INVENTORY } from '../coding-standards/inventory-path.mjs';
+import { DEFAULT_LEGACY_INVENTORY, withLegacyInventory } from '../../shared/legacy-inventory.mjs';
 import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/diff/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/diff/eslint.mjs';
@@ -43,6 +40,7 @@ const QUALITY_AREA_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'adapters/diff/quality-areas.mjs',
   'adapters/diff/quality-areas-runner.mjs',
+  'shared/policy.mjs',
 ];
 
 function buildAnalyzers(checks) {
@@ -161,23 +159,4 @@ export function applyLegacyInventory(analyzers, legacyInventory = DEFAULT_LEGACY
       ? withLegacyInventory(analyzer, legacyInventory)
       : analyzer,
   );
-}
-
-function withLegacyInventory(analyzer, legacyInventory) {
-  const packageHash = analyzer.packageConfigurationHash ?? analyzer.configurationHash;
-  return {
-    ...analyzer,
-    packageConfigurationHash: packageHash,
-    legacyInventory,
-    createInvocation: (context) => {
-      const invocation = analyzer.createInvocation(context);
-      return { ...invocation, args: [...invocation.args, '--legacy-inventory', legacyInventory] };
-    },
-    resolveConfigurationHash: (projectRoot) => {
-      const inventory = path.join(projectRoot, legacyInventory);
-      return existsSync(inventory)
-        ? createHash('sha256').update(packageHash).update(readFileSync(inventory)).digest('hex')
-        : packageHash;
-    },
-  };
 }

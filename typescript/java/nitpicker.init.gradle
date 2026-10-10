@@ -10,7 +10,10 @@
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
 //   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
+//   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters (java/StructureMetrics.java)
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
+//   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
+//   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
@@ -35,6 +38,11 @@ def pinned = [
 // must equal the pinned one; a missing or different lizard fails the build (the CLI reports that
 // as a tool-error finding). Install it with `pip install lizard==<pinned version>`.
 def lizardExecutable = System.getenv('NITPICKER_LIZARD') ?: 'lizard'
+
+// BEGIN SH5 structure metrics
+// The directory of this script, where java/StructureMetrics.java lives.
+def initScriptDir = buildscript.sourceFile.parentFile
+// END SH5 structure metrics
 
 allprojects {
     plugins.withId('java') {
@@ -276,10 +284,36 @@ allprojects {
             reports { xml.required = true }
         }
 
+        // BEGIN SH5 structure metrics
+        // Per-method lines, statements, control nesting and parameters for the shared structure
+        // rule. java/StructureMetrics.java parses the main sources with the JDK's own compiler tree
+        // API in single-file source mode, run by the JVM that runs Gradle: no extra dependency and
+        // no version to pin beyond the JDK. (Lizard cannot supply statements or nesting.)
+        tasks.register('nitpickerStructure') {
+            group = 'nitpicker'
+            def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
+            doLast {
+                reportDir.get().asFile.mkdirs()
+                def roots = mainSources.files.findAll { it.exists() }.collect {
+                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                def output = reportDir.get().file('structure.json').asFile
+                def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                def process = new ProcessBuilder([java, metricsSource.absolutePath,
+                        output.absolutePath, projectDir.absolutePath] + roots)
+                    .directory(projectDir).redirectErrorStream(true).start()
+                def log = process.inputStream.getText('UTF-8')
+                if (process.waitFor() != 0) {
+                    throw new GradleException("StructureMetrics failed: ${log.trim()}")
+                }
+            }
+        }
+        // END SH5 structure metrics
+
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, lizard and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, lizard, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
@@ -294,5 +328,40 @@ allprojects {
                 ])
             }
         }
+
+        // --- coupling (SH6): package dependency graph from the JDK's jdeps over the main classes ---
+        // The coupling metrics and stability-direction findings are computed on the Nitpicker side
+        // from these two files. jdeps ships with the JDK that runs Gradle; it is not a pinned download.
+        tasks.register('nitpickerJdeps') {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes')
+            doLast {
+                reportDir.get().asFile.mkdirs()
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                def classNames = classDirs.collectMany { dir ->
+                    fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.')
+                    }
+                }.unique().sort()
+                reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
+                def graph = reportDir.get().file('jdeps.txt').asFile
+                if (classNames.isEmpty()) {
+                    graph.text = ''
+                    return
+                }
+                def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                    classDirs.collect { it.absolutePath }).directory(projectDir)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+                def output = process.inputStream.getText('UTF-8')
+                if (process.waitFor() != 0) {
+                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+                }
+                graph.text = output
+            }
+        }
+        tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
+        // --- end coupling ---
     }
 }
