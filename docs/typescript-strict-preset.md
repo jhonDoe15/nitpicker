@@ -103,7 +103,7 @@ not functions imported from other modules.
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
   `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`preset/defaults/vitest.quality.config.ts`,
+  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`,
   `stryker.vitest.config.ts` and the coverage runner's `--testTimeout`; a test keeps them in step).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
@@ -142,8 +142,8 @@ kind, a version entry, a check definition and project-level findings) and is not
 
 ## How it is enforced
 
-- `preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
-  `preset/eslint-config/strict.mjs` to typescript-eslint's strict type-checked config. Rules that
+- `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
+  `languages/typescript/preset/eslint-config/strict.mjs` to typescript-eslint's strict type-checked config. Rules that
   strict replaces are removed: `consistent-type-assertions`, `explicit-member-accessibility` and
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
@@ -156,12 +156,12 @@ kind, a version entry, a check definition and project-level findings) and is not
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
-- The test rules live in `preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
+- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
-- The boundary rules (`preset/architecture/strict-boundary-rules.mjs`) are part of the default
+- The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
   dependency-cruiser config used by the `dependency-architecture` analyzer.
 - `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
@@ -170,8 +170,10 @@ kind, a version entry, a check definition and project-level findings) and is not
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
-- `layout.excludedGlobs` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions.
+- `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
+  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
+  the module-load-effects check does not apply to them, since running at load is what a script does.
 
 ## Enforcement sources
 
@@ -199,7 +201,7 @@ change in review.
 Recommendation: documented expectation, not a peer dependency.
 
 The preset only requires that adapter code parse untrusted input with zod. Nitpicker's own runtime
-never imports zod (it is not in `typescript/package.json`), so a peer dependency would make every
+never imports zod (it is not in `package.json`), so a peer dependency would make every
 consumer install a package nitpicker does not use, and would break installs for projects that
 choose to have no external-input boundary. The `strict` ESLint rule that would check this works on
 syntax (a hand-written type guard on external data), not on which library parses it. Document in the
@@ -212,7 +214,7 @@ needs to import from zod at lint time.
 Recommendation: not now. Follow the preset for new nitpicker code only after the port is complete,
 and do not rewrite the engine.
 
-Measured cost, from `typescript/core` and `typescript/preset` (non-test `.mjs`, about 7,300 lines):
+Measured cost, from `core` and `languages/typescript/preset` (non-test `.mjs`, about 7,300 lines):
 the engine uses `let`, `for` loops and `while (pending.pop())` graph walks in roughly 180 places,
 classes are rare, and the code is plain `.mjs` without TypeScript, so the type-based rules (`as`,
 `any`, discriminated-union exhaustiveness) cannot apply at all. Porting it would be a large rewrite
@@ -220,7 +222,7 @@ with no user-visible benefit, and graph walks written without loops or recursion
 Applied in S13: nitpicker's own sources are not rewritten and no config is added for them. A cheaper and honest path is the one the differential gate already provides: run nitpicker on
 itself, with existing violations baselined, so any new or touched engine code must comply once the
 preset runs on TypeScript sources. The layout (`src/main/features/...`) does not match the current
-`core/` and `preset/` directories, so the repo needs either a layout override (an exception in its
+`core/` and `languages/typescript/preset/` directories, so the repo needs either a layout override (an exception in its
 own config, visible in the report) or a move; choose the override until the engine is TypeScript.
 
 ### How existing consumers upgrade
@@ -241,13 +243,13 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 ### How touched code is detected and held to strict rules
 
 Today the gate classifies a finding as new only when its comparison key is missing from the base.
-The key (`typescript/core/diff/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
+The key (`core/diff/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
 identity, classification and metric name. It contains no line number, so an existing violation in an
 edited file keeps matching the base and stays baselined. That is the behavior to change for strict.
 
 Recommendation: line-hunk promotion, implemented in the diff engine (folded into S13 and
 implemented there: `readChangedLines` in `core/diff/git.mjs`, applied by `compareFindings` in
-`core/diff/compare.mjs`, with the rule set from `preset/strict-rules.mjs`).
+`core/diff/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
 
 - Compute the changed line ranges of each file on the head side from
   `git diff --unified=0 --find-renames <base>...HEAD` (the engine already shells out to git in

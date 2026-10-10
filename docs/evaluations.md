@@ -115,11 +115,11 @@ cases outgrow it.
 ## Shortcut detectors
 
 Code: `evals/detectors/` (plain `.mjs`, tests alongside). Detectors compare the fixture tree with the
-agent's final tree and use the TypeScript compiler API from `typescript/node_modules` for syntax
+agent's final tree and use the TypeScript compiler API from `node_modules` for syntax
 work. `evals/` has no `package.json` of its own: its tests run with the rest of the suite from
-`typescript/` (`npx vitest run --config vitest.config.mts ../evals`), because `vitest.config.mts`
-includes `../evals/**/*.test.mjs`. Format with
-`npx prettier --config preset/defaults/.prettierrc.json --write ../evals` from `typescript/`.
+the repository root (`npx vitest run --config vitest.config.mts evals`), because `vitest.config.mts`
+includes `evals/**/*.test.mjs`. Format with `npx prettier --write evals` from the repository root
+(the package's `prettier` key points at the shipped config).
 
 `detectShortcuts({ fixtureDir | fixture, finalDir | final, agentReport?, referenceReport?, expectedPolicyHash? })`
 returns a flat list of `{ category, kind, path?, line?, detail }`; `groupByCategory` groups it.
@@ -150,7 +150,7 @@ gate run produced; `referenceReport` is a report the harness produces itself out
 ## Positive cases
 
 Code: `evals/cases/` (`add-farewell-feature`, `fix-count-bug`, `add-greet-endpoint`). Each is built on
-the strict-clean fixture from `typescript/preset/fixtures/strict-clean` (its `package.json` is left
+the strict-clean fixture from `languages/typescript/preset/fixtures/strict-clean` (its `package.json` is left
 out, because the runner installs the fixture as a consumer) and pins `presetVersion` in
 `fixture.json`:
 

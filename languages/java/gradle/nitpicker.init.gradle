@@ -1,0 +1,367 @@
+// Nitpicker Java preset (slice 1). Applied with `gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava`
+// so the consumer build needs no edits and the base snapshot can be analyzed the same way.
+// Every tool version is pinned exactly; bump them here only.
+//
+// Output contract (relative to each project directory), read by the Nitpicker side:
+//   build/nitpicker/pmd.sarif        PMD, SARIF 2.1.0
+//   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
+//   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
+//   build/nitpicker/jacoco.xml       JaCoCo XML report
+//   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
+//   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
+//   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
+//   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters (languages/java/gradle/StructureMetrics.java)
+//   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
+//   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
+//   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
+//   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
+//
+// ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
+// its test classpath, JUnit Platform) are run by `nitpickerArchunit`. They are the test classes
+// named like `*ArchTest`/`*ArchitectureTest`; `-Pnitpicker.archunit.includes=<comma-separated
+// Gradle class patterns>` overrides that. These classes are left out of `test`, so a violated
+// rule does not stop the JaCoCo run.
+
+def pinned = [
+    pmd             : '7.7.0',
+    spotbugs        : '4.9.3',
+    googleJavaFormat: '1.25.2',
+    jacoco          : '0.8.12',
+    checkstyle      : '10.21.1',
+    lizard          : '1.24.1',
+    pitest          : '1.17.4',
+    pitestJunit5    : '1.2.1',
+]
+
+// lizard is a Python tool, not a JVM artifact, so Gradle cannot download it. It is provisioned by
+// the environment: `lizard` on the PATH, or the executable named by NITPICKER_LIZARD. Its version
+// must equal the pinned one; a missing or different lizard fails the build (the CLI reports that
+// as a tool-error finding). Install it with `pip install lizard==<pinned version>`.
+def lizardExecutable = System.getenv('NITPICKER_LIZARD') ?: 'lizard'
+
+// BEGIN SH5 structure metrics
+// The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
+def initScriptDir = buildscript.sourceFile.parentFile
+// END SH5 structure metrics
+
+allprojects {
+    plugins.withId('java') {
+        pluginManager.apply('jacoco')
+        pluginManager.apply('checkstyle')
+
+        def reportDir = layout.buildDirectory.dir('nitpicker')
+
+        configurations {
+            nitpickerPmd { canBeConsumed = false }
+            nitpickerSpotbugs { canBeConsumed = false }
+            nitpickerFormat { canBeConsumed = false }
+            nitpickerPit { canBeConsumed = false }
+        }
+        repositories { mavenCentral() }
+        dependencies {
+            nitpickerPmd "net.sourceforge.pmd:pmd-cli:${pinned.pmd}"
+            nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
+            nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
+            nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+        }
+        dependencies {
+            nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
+            nitpickerPit("org.pitest:pitest-junit5-plugin:${pinned.pitestJunit5}") {
+                // The JUnit Platform comes from the project (see nitpickerPit): a copy pinned
+                // here would clash with the project's Jupiter version.
+                exclude group: 'org.junit.platform'
+                exclude group: 'org.junit.jupiter'
+                exclude group: 'org.opentest4j'
+                exclude group: 'org.apiguardian'
+            }
+        }
+        jacoco { toolVersion = pinned.jacoco }
+        // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
+        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format).
+        checkstyle {
+            toolVersion = pinned.checkstyle
+            ignoreFailures = true
+            maxWarnings = Integer.MAX_VALUE
+            def consumerConfig = rootProject.file('config/checkstyle/checkstyle.xml')
+            if (consumerConfig.exists()) {
+                configFile = consumerConfig
+            } else {
+                def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+                config = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+            }
+        }
+        tasks.named('checkstyleMain') {
+            reports {
+                xml.required = true
+                xml.outputLocation = reportDir.map { it.file('checkstyle.xml') }
+                html.required = false
+            }
+        }
+
+        def mainSources = sourceSets.main.allJava.sourceDirectories
+
+        tasks.register('nitpickerPmd', JavaExec) {
+            group = 'nitpicker'
+            classpath = configurations.nitpickerPmd
+            mainClass = 'net.sourceforge.pmd.cli.PmdCli'
+            ignoreExitValue = true // PMD exits 4 when it finds violations
+            def rulesetFile = rootProject.file('config/pmd/ruleset.xml')
+            def ruleset = rulesetFile.exists() ? rulesetFile.absolutePath
+                : 'category/java/errorprone.xml,category/java/bestpractices.xml'
+            doFirst {
+                reportDir.get().asFile.mkdirs()
+                args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
+                    '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
+                    '--rulesets', ruleset,
+                    '--dir', mainSources.files.findAll { it.exists() }.join(',')
+            }
+        }
+
+        tasks.register('nitpickerSpotbugs', JavaExec) {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes')
+            classpath = configurations.nitpickerSpotbugs
+            mainClass = 'edu.umd.cs.findbugs.FindBugs2'
+            ignoreExitValue = true
+            doFirst {
+                reportDir.get().asFile.mkdirs()
+                def sourcePath = mainSources.files.findAll { it.exists() }.join(File.pathSeparator)
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                args(['-effort:default', '-medium', '-sarif',
+                      '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
+                      '-sourcepath', sourcePath] + classDirs.collect { it.absolutePath })
+            }
+        }
+
+        tasks.register('nitpickerFormat', JavaExec) {
+            group = 'nitpicker'
+            classpath = configurations.nitpickerFormat
+            mainClass = 'com.google.googlejavaformat.java.Main'
+            ignoreExitValue = true
+            jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
+                "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
+            })
+            doFirst {
+                reportDir.get().asFile.mkdirs()
+                standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
+                def files = mainSources.asFileTree.matching { include '**/*.java' }.files.sort()
+                args(['--dry-run'] + files*.absolutePath)
+            }
+        }
+
+        def archunitIncludes = (findProperty('nitpicker.archunit.includes') ?: '**/*ArchTest.class,**/*ArchitectureTest.class')
+            .toString().split(',')*.trim().findAll { it }
+
+        tasks.named('test') { exclude archunitIncludes }
+
+        tasks.register('nitpickerArchunit', Test) {
+            group = 'nitpicker'
+            dependsOn tasks.named('testClasses')
+            testClassesDirs = sourceSets.test.output.classesDirs
+            classpath = sourceSets.test.runtimeClasspath
+            include archunitIncludes
+            useJUnitPlatform()
+            ignoreFailures = true // violations are findings; the Nitpicker side reads the XML
+            reports {
+                junitXml.outputLocation = reportDir.map { it.dir('archunit') }
+                html.required = false
+            }
+        }
+
+        tasks.register('nitpickerLizard') {
+            group = 'nitpicker'
+            doLast {
+                def run = { List<String> command ->
+                    def process = new ProcessBuilder(command).directory(projectDir)
+                        .redirectErrorStream(true).start()
+                    def output = process.inputStream.getText('UTF-8')
+                    [process.waitFor(), output]
+                }
+                def version
+                try {
+                    version = run([lizardExecutable, '--version'])
+                } catch (IOException e) {
+                    throw new GradleException("lizard ${pinned.lizard} is required for the CRAP check but " +
+                        "'${lizardExecutable}' could not be started (${e.message}). " +
+                        "Install it with 'pip install lizard==${pinned.lizard}' or set NITPICKER_LIZARD.")
+                }
+                if (version[0] != 0 || version[1].trim() != pinned.lizard) {
+                    throw new GradleException("lizard ${pinned.lizard} is required but " +
+                        "'${lizardExecutable} --version' reported: ${version[1].trim()}")
+                }
+                reportDir.get().asFile.mkdirs()
+                def roots = mainSources.files.findAll { it.exists() }.collect {
+                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                def csv = reportDir.get().file('lizard.csv').asFile
+                if (roots.isEmpty()) {
+                    csv.text = ''
+                    return
+                }
+                def result = run([lizardExecutable, '--csv', '-l', 'java'] + roots)
+                if (result[0] != 0) {
+                    throw new GradleException("lizard failed: ${result[1].trim()}")
+                }
+                csv.text = result[1]
+            }
+        }
+
+        // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
+        // JUnit 4) against each mutant. It needs a green test run to start, so a failing test suite
+        // fails the task like it fails `test`. Everything under the main classes is a target.
+        tasks.register('nitpickerPit', JavaExec) {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes'), tasks.named('testClasses')
+            classpath = configurations.nitpickerPit
+            mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+            def pitDir = reportDir.map { it.dir('pit') }
+            doFirst {
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                def targets = classDirs.collectMany { dir ->
+                    (dir.listFiles() ?: []).collect { entry ->
+                        entry.isDirectory() ? "${entry.name}.*".toString()
+                            : entry.name.endsWith('.class') ? entry.name.replaceAll(/\.class$/, '') : null
+                    }
+                }.findAll { it }.unique()
+                // Tests are named class by class: a package glob would also hand the main classes
+                // that share a package with the tests to the test engine.
+                def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
+                def tests = testClassDirs.collectMany { dir ->
+                    // ArchUnit rule classes are run by nitpickerArchunit, not by `test`, so they are no
+                    // part of PIT's green-suite baseline.
+                    fileTree(dir) { include '**/*.class'; exclude archunitIncludes }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.').replaceAll(/\$.*/, '')
+                    }
+                }.unique()
+                // PIT's JUnit 5 plugin needs the launcher next to the project's engine; Gradle itself
+                // supplies one to `test`, so a project may not declare it. Take the engine's version.
+                def runtimeJars = sourceSets.test.runtimeClasspath.files*.name
+                def engineJar = runtimeJars.find { it ==~ /junit-platform-engine-.+\.jar/ }
+                def engine = engineJar?.replaceAll(/^junit-platform-engine-|\.jar$/, '')
+                if (engine != null && !runtimeJars.any { it.startsWith('junit-platform-launcher-') }) {
+                    classpath += project.configurations.detachedConfiguration(
+                        project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
+                }
+                project.delete(pitDir)
+                pitDir.get().asFile.mkdirs()
+                def pitClasspath = (sourceSets.test.runtimeClasspath.files + classDirs)
+                    .findAll { it.exists() }.collect { it.absolutePath }.unique()
+                args(['--reportDir', pitDir.get().asFile.absolutePath,
+                      '--targetClasses', targets.join(','),
+                      '--targetTests', tests.join(','),
+                      '--sourceDirs', mainSources.files.findAll { it.exists() }.join(','),
+                      '--classPath', pitClasspath.join(','),
+                      '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
+                      '--outputFormats', 'XML',
+                      '--timestampedReports', 'false',
+                      '--threads', '2',
+                      '--failWhenNoMutations', 'false',
+                      '--verbose', 'false'])
+            }
+            onlyIf { sourceSets.main.output.classesDirs.files.any { it.exists() && it.list()?.length } }
+            doLast {
+                // PIT writes no report when it found nothing to mutate.
+                def report = pitDir.get().file('mutations.xml').asFile
+                if (!report.exists()) {
+                    report.text = '<mutations/>'
+                }
+            }
+        }
+
+        tasks.register('nitpickerJacoco') {
+            group = 'nitpicker'
+            dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
+            doLast {
+                copy {
+                    from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
+                    into reportDir
+                    rename { 'jacoco.xml' }
+                }
+            }
+        }
+        tasks.named('jacocoTestReport') {
+            reports { xml.required = true }
+        }
+
+        // BEGIN SH5 structure metrics
+        // Per-method lines, statements, control nesting and parameters for the shared structure
+        // rule. languages/java/gradle/StructureMetrics.java parses the main sources with the JDK's own compiler tree
+        // API in single-file source mode, run by the JVM that runs Gradle: no extra dependency and
+        // no version to pin beyond the JDK. (Lizard cannot supply statements or nesting.)
+        tasks.register('nitpickerStructure') {
+            group = 'nitpicker'
+            def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
+            doLast {
+                reportDir.get().asFile.mkdirs()
+                def roots = mainSources.files.findAll { it.exists() }.collect {
+                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                def output = reportDir.get().file('structure.json').asFile
+                def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                def process = new ProcessBuilder([java, metricsSource.absolutePath,
+                        output.absolutePath, projectDir.absolutePath] + roots)
+                    .directory(projectDir).redirectErrorStream(true).start()
+                def log = process.inputStream.getText('UTF-8')
+                if (process.waitFor() != 0) {
+                    throw new GradleException("StructureMetrics failed: ${log.trim()}")
+                }
+            }
+        }
+        // END SH5 structure metrics
+
+        tasks.register('nitpickerJava') {
+            group = 'nitpicker'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, lizard, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerStructure', 'nitpickerPit'
+            doLast {
+                def roots = mainSources.files.collect {
+                    project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                def testRoots = sourceSets.test.allJava.sourceDirectories.files.collect {
+                    project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
+                reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
+                    versions       : pinned,
+                    sourceRoots    : roots,
+                    testSourceRoots: testRoots,
+                ])
+            }
+        }
+
+        // --- coupling (SH6): package dependency graph from the JDK's jdeps over the main classes ---
+        // The coupling metrics and stability-direction findings are computed on the Nitpicker side
+        // from these two files. jdeps ships with the JDK that runs Gradle; it is not a pinned download.
+        tasks.register('nitpickerJdeps') {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes')
+            doLast {
+                reportDir.get().asFile.mkdirs()
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
+                def classNames = classDirs.collectMany { dir ->
+                    fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                        dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                            .replaceAll(/\.class$/, '').replace('/', '.')
+                    }
+                }.unique().sort()
+                reportDir.get().file('jdeps-classes.txt').asFile.text = classNames.collect { it + '\n' }.join('')
+                def graph = reportDir.get().file('jdeps.txt').asFile
+                if (classNames.isEmpty()) {
+                    graph.text = ''
+                    return
+                }
+                def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
+                def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
+                    classDirs.collect { it.absolutePath }).directory(projectDir)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+                def output = process.inputStream.getText('UTF-8')
+                if (process.waitFor() != 0) {
+                    throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+                }
+                graph.text = output
+            }
+        }
+        tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
+        // --- end coupling ---
+    }
+}

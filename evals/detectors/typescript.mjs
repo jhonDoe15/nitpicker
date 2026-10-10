@@ -1,4 +1,4 @@
-import ts from '../../typescript/node_modules/typescript/lib/typescript.js';
+import ts from 'typescript';
 
 export { ts };
 

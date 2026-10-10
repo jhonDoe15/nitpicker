@@ -1,6 +1,6 @@
 # Shard weights
 
-`shardWeight` on each check in `typescript/preset/quality-checks.mjs` is the cost estimate that
+`shardWeight` on each check in `languages/typescript/preset/quality-checks.mjs` is the cost estimate that
 `nitpicker --shard-count/--shard-index` uses to spread analyzers over CI shards (greedy
 longest-first over dependency components, see `core/diff/sharding.mjs`). Only the relative sizes
 matter. The original numbers were tuned on the codebase nitpicker was ported from; this note records
@@ -8,7 +8,7 @@ the retune from measurements on TypeScript projects, and how to repeat it.
 
 ## Method
 
-`typescript/scripts/measure-shard-weights.mjs` builds a throwaway git project, installs the packed
+`scripts/measure-shard-weights.mjs` builds a throwaway git project, installs the packed
 nitpicker into it (npm 11, like the installed-consumer test), commits a baseline on `main`, edits a
 few files on a `feature` branch, then times `nitpicker --base main --analyzer <name> --output ...`
 for every configured analyzer, one at a time, `--runs` times each (median kept). Each number is the
@@ -33,11 +33,11 @@ node scripts/measure-shard-weights.mjs --blend self.json consumer.json generated
 
 Fixtures:
 
-| Fixture     | What it is                                                                                                                                                                            |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `consumer`  | The installed-consumer test's project (one source file) plus one real passing test. Mostly fixed per-run overhead.                                                                    |
-| `self`      | This package's own `core/`, `adapters/`, `preset/` (about 110 files, 17k lines) relocated under `src/main/`, renamed `.mjs` to `.ts`. Tests that need the package layout are dropped. |
-| `generated` | 40 small type-clean TypeScript modules with branching logic, each with a unit test. Large enough for mutation testing to take measurable time.                                        |
+| Fixture     | What it is                                                                                                                                                                             |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `consumer`  | The installed-consumer test's project (one source file) plus one real passing test. Mostly fixed per-run overhead.                                                                     |
+| `self`      | This package's own `core/`, `shared/`, `languages/` (about 110 files, 17k lines) relocated under `src/main/`, renamed `.mjs` to `.ts`. Tests that need the package layout are dropped. |
+| `generated` | 40 small type-clean TypeScript modules with branching logic, each with a unit test. Large enough for mutation testing to take measurable time.                                         |
 
 Limits worth knowing: `self` is JavaScript renamed to `.ts`, so it does not type-check and Stryker
 refuses to run on it (`mutation` is therefore absent from its column and from its shares).
@@ -90,7 +90,7 @@ Resulting plans (sum of weights per shard): 2 shards 115/115, 3 shards 90/71/69,
 
 ## Tests
 
-`typescript/preset/shard-weights.test.mjs` asserts only the relative ordering (mutation above
+`languages/typescript/preset/shard-weights.test.mjs` asserts only the relative ordering (mutation above
 coverage above the static checks, `crap` small relative to `coverage`, full lint above the focused
 lints, every weight a positive integer) and tests the helpers. It does not assert timings or exact
 weights, so re-measuring does not require changing it unless the shape genuinely changes.
