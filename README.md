@@ -72,6 +72,16 @@ tool errors are still listed in the console and reports and recorded in `summary
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
 
+A full run can take several minutes. While it runs, nitpicker writes a line to stderr when each
+snapshot starts and when an analyzer that took 10 seconds or more finishes, fails or is skipped,
+labelled `base` or `head` for the two snapshots (for example
+`nitpicker: head eslint-lint done (41s), 3 of 9`, or `skipped (tests failed)` for an analyzer whose
+dependency failed); stdout still carries only the final summary. Only one run can work in a project
+at a time. A second `nitpicker` started meanwhile prints `nitpicker: another run is in progress in
+this project (pid 1234); wait for it to finish.` and exits 2. The lock is a pid file in the
+repository's `.git` directory (`nitpicker-run-*.lock`); a lock whose process is gone is taken over
+automatically.
+
 ## Command line
 
 ```text
@@ -211,15 +221,21 @@ new and touched code must comply.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
-  composition root; no module-level `let`.
+  composition root, which only wires features and has no `if`, `?:`, `switch`, `??` or `?.`; no
+  module-level `let`.
 - **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
   `forEach`, `reduceRight` or `reduce` without an initial value (use `map`, `filter`, `flatMap`,
   `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
-  classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
+  classes, no `throw` (return a discriminated union), no `unknown` in parameter or property types
+  (it receives parsed, typed values), and no imports of `adapters/`,
   Node I/O, network or database clients, loggers or module state.
 - **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
-  silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
+  silent catch (rethrow with `{ cause }` or return the caught value in the failure result), and
+  parse untrusted input once at the boundary with [zod](https://zod.dev), validating every field
+  (no `z.unknown()` or `z.any()` fields in `z.object`). zod is
   an expectation of the preset, not a dependency of nitpicker: install it in your project.
+- **All production code** has no recursion: a function that calls itself is flagged (use `map`,
+  `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
   edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
   the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
@@ -249,7 +265,8 @@ own tools do:
 
 - **Type checking** extends the project's `tsconfig.json` when there is one. The project keeps its
   `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
-  (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables` and the
+  (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`,
+  `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots.
 - **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.

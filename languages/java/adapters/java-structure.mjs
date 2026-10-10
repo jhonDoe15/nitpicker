@@ -21,7 +21,7 @@ export function readJavaStructureFindings(reportRoot, projectRoot) {
   );
 }
 
-function methodText(sources, projectRoot, { file, start, end }) {
+export function methodText(sources, projectRoot, { file, start, end }) {
   if (!sources.has(file)) {
     sources.set(file, readFileSync(path.join(projectRoot, file), 'utf8').split(/\r?\n/));
   }

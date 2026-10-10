@@ -20,7 +20,7 @@
 // A function metric above its limit in FUNCTION_STRUCTURE_LIMITS is an enforceable finding keyed by
 // name, occurrence and source hash; every other numeric metric is descriptive.
 
-import { FUNCTION_STRUCTURE_LIMITS, MESSAGES, renderMessage } from '../policy.mjs';
+import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES, MESSAGES, renderMessage } from '../policy.mjs';
 import {
   addMetric,
   hash,
@@ -77,6 +77,12 @@ function addEntries(findings, analyzerName, entries = [], kind) {
   }
 }
 
+function structureMessage(metricName) {
+  return metricName === 'maxControlNesting'
+    ? MESSAGES.functionControlNesting
+    : MESSAGES.functionStructure;
+}
+
 function addLimitViolations(findings, analyzerName, entry, occurrence) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
@@ -89,7 +95,7 @@ function addLimitViolations(findings, analyzerName, entry, occurrence) {
       rule: ruleId,
       path: entry.file,
       identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: renderMessage(MESSAGES.functionStructure, {
+      message: renderMessage(structureMessage(metricName), {
         name: entry.name,
         value: entry[metricName],
         metric: metricName,
@@ -100,6 +106,12 @@ function addLimitViolations(findings, analyzerName, entry, occurrence) {
       ratchet: {
         key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
         value: entry[metricName],
+        worseMessage: renderMessage(GREW_MESSAGES[metricName], {
+          name: entry.name,
+          value: entry[metricName],
+          limit,
+          base: '{base}',
+        }),
       },
       ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
     });

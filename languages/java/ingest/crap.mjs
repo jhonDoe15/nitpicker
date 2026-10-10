@@ -34,10 +34,16 @@ export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
       continue;
     }
     const coverage = coverageFor(fn, filePath, methods, sourceRoots);
+    const key = unique(`function:${fn.longName}`);
+    const sourceHash =
+      coverage === undefined
+        ? undefined
+        : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
     functions.push({
       path: filePath,
       name: fn.longName,
-      identity: unique(`function:${fn.longName}`),
+      identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
+      ratchetKey: `${key}:crap`,
       line: fn.start,
       crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
     });

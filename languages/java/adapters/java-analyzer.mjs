@@ -24,6 +24,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-structure.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
+  'shared/rules/crap.mjs',
   'languages/java/adapters/touched-rules.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',

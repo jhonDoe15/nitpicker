@@ -2,10 +2,10 @@ import path from 'node:path';
 import loggingConfig from '../eslint-config/logging.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
-import strictDomainConfig from '../eslint-config/strict-domain.mjs';
+import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
-import compositionRootConfig from '../eslint-config/strict-composition-root.mjs';
+import { strictCompositionRootConfig } from '../eslint-config/strict-composition-root.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
 function strictCase([name, banned, allowed, filename = 'src/fixture.ts']) {
@@ -230,18 +230,46 @@ export const failureMessageCases = [
     allowed: 'preserves cause',
   },
   {
-    name: 'adapter silent catch names logging',
+    name: 'adapter silent catch names rethrowing with cause',
     config: strictAdaptersConfig,
     filename: 'src/main/features/billing/adapters/store.ts',
     banned: 'try { run(); } catch (error) { cleanup(); }',
-    allowed: 'log',
+    allowed: '{ cause: error }',
+  },
+  {
+    name: 'adapter silent catch names the failure result',
+    config: strictAdaptersConfig,
+    filename: 'src/main/features/billing/adapters/store.ts',
+    banned: 'try { run(); } catch { return []; }',
+    allowed: 'Return a failure result',
+  },
+  {
+    name: 'adapter self-recursion names a for...of loop for retries',
+    config: strictSyntaxConfig,
+    filename: 'src/main/features/billing/adapters/http.ts',
+    banned: 'async function fetchWithRetry(n) { return n > 0 ? fetchWithRetry(n - 1) : 0; }',
+    allowed: 'for...of',
+  },
+  {
+    name: 'adapter tree-walk recursion names a worklist',
+    config: strictSyntaxConfig,
+    filename: 'src/main/features/billing/adapters/walk.ts',
+    banned: 'function walk(node) { return node.children.flatMap((child) => walk(child)); }',
+    allowed: 'worklist',
+  },
+  {
+    name: 'composition-root self-recursion names a for...of loop for retries',
+    config: strictSyntaxConfig,
+    filename: 'src/main/composition-root.ts',
+    banned: 'function poll(n) { return n > 0 ? poll(n - 1) : 0; }',
+    allowed: 'for...of',
   },
   {
     name: 'adapter empty catch is rejected',
     config: strictAdaptersConfig,
     filename: 'src/main/features/billing/adapters/store.ts',
     banned: 'try { run(); } catch (error) {}',
-    allowed: 'caught value',
+    allowed: 'Return a failure result',
   },
   {
     name: 'adapter lost cause names cause',
@@ -252,22 +280,37 @@ export const failureMessageCases = [
   },
   ...adapterFailureMessageCases,
   {
+    name: 'composition-root branch names the feature adapters',
+    config: strictCompositionRootConfig,
+    filename: 'src/main/composition-root.ts',
+    banned:
+      'export function titleOf(book) { if (book === undefined) { return undefined; } return book.title; }',
+    allowed: "feature's adapters/",
+  },
+  {
+    name: 'composition-root branch names the exception in the config file',
+    config: strictCompositionRootConfig,
+    filename: 'src/main/composition-root.ts',
+    banned: 'export function titleOf(book) { return book?.title ?? "none"; }',
+    allowed: 'exception for this rule in nitpicker.config.json',
+  },
+  {
     name: 'construction in a factory-named file names the composition root',
-    config: compositionRootConfig,
+    config: strictCompositionRootConfig,
     filename: 'src/main/widget-factory.ts',
     banned: 'const client = new WidgetClient();',
     allowed: 'only in the composition root',
   },
   {
     name: 'construction in a feature names passing it in as a parameter',
-    config: compositionRootConfig,
+    config: strictCompositionRootConfig,
     filename: 'src/main/features/auth/handler.ts',
     banned: 'const client = new WidgetClient();',
     allowed: 'pass it in as a parameter',
   },
   {
     name: 'module-level let names const',
-    config: compositionRootConfig,
+    config: strictCompositionRootConfig,
     filename: 'src/main/state.ts',
     banned: 'let counter = 0;',
     allowed: "use 'const'",

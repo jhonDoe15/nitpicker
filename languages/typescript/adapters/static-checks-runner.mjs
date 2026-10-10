@@ -19,6 +19,7 @@ import { createRequire } from 'node:module';
 import {
   PACKAGE_ROOT,
   resolveTool,
+  SNAPSHOT_DIRECTORY_NAMES,
   toolNameForPath,
 } from '../../../core/tooling/tool-resolution.mjs';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
@@ -699,7 +700,7 @@ function validatedSnapshotRoot(value, name) {
     path.isAbsolute(relativeToTemporaryRoot) ||
     segments.length < 2 ||
     !segments[0].startsWith('nitpicker-diff-') ||
-    segments[1] !== 'base'
+    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
   ) {
     throw new Error(`${name} must be inside a generated quality-diff worktree`);
   }

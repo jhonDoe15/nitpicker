@@ -5,12 +5,17 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import {
+  PACKAGE_ROOT,
+  resolveTool,
+  SNAPSHOT_DIRECTORY_NAMES,
+} from '../../../core/tooling/tool-resolution.mjs';
 import {
   linkPolicyFile,
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
+import { eslintMessageWithHint } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
@@ -155,7 +160,7 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
     throw new TypeError('ESLint JSON output must be an array');
   }
 
-  const findings = [];
+  const normalized = [];
   for (const [resultIndex, result] of value.entries()) {
     if (!isRecord(result) || typeof result.filePath !== 'string') {
       throw new TypeError(`ESLint result ${String(resultIndex)} must contain filePath`);
@@ -180,7 +185,7 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
 
     for (const [messageIndex, message] of result.messages.entries()) {
       const context = `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`;
-      findings.push(
+      normalized.push(
         normalizeMessage({
           message,
           context,
@@ -191,7 +196,72 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
       );
     }
   }
-  return assignSemanticOccurrences(findings);
+  return withRatchets(
+    assignSemanticOccurrences(normalized.map(({ finding }) => finding)),
+    normalized.map(({ plan }) => plan),
+  );
+}
+
+function metricRules() {
+  return {
+    'sonarjs/cognitive-complexity': {
+      pattern: /Cognitive Complexity from (\d+) to/u,
+      label: 'cognitive complexity',
+    },
+    complexity: { pattern: /complexity of (\d+)\./u, label: 'complexity' },
+    'max-lines-per-function': { pattern: /too many lines \((\d+)\)/u, label: 'line count' },
+    'max-statements': { pattern: /too many statements \((\d+)\)/u, label: 'statement count' },
+    'max-params': { pattern: /too many parameters \((\d+)\)/u, label: 'parameter count' },
+    'max-depth': { pattern: /nested too deeply \((\d+)\)/u, label: 'block nesting' },
+  };
+}
+
+function metricOf(ruleId, messageText) {
+  const rule = metricRules()[ruleId];
+  const amount = rule === undefined ? undefined : rule.pattern.exec(messageText)?.[1];
+  return amount === undefined ? undefined : { value: Number(amount), label: rule.label };
+}
+
+function countGroupOf(finding, plan) {
+  return JSON.stringify([finding.rule, finding.path, finding.symbol, plan.kind, plan.key]);
+}
+
+function withRatchets(findings, plans) {
+  const counts = new Map();
+  const occurrences = new Map();
+  for (const [index, finding] of findings.entries()) {
+    const plan = plans[index];
+    if (plan?.kind === 'count') {
+      counts.set(countGroupOf(finding, plan), (counts.get(countGroupOf(finding, plan)) ?? 0) + 1);
+    }
+  }
+  return findings.map((finding, index) => {
+    const plan = plans[index];
+    if (plan === undefined) {
+      return finding;
+    }
+    if (plan.kind === 'count') {
+      return {
+        ...finding,
+        ratchet: {
+          key: `count:${plan.key}`,
+          value: counts.get(countGroupOf(finding, plan)),
+          existingCodeOnly: true,
+        },
+      };
+    }
+    const group = JSON.stringify([finding.rule, finding.path, finding.symbol]);
+    const occurrence = (occurrences.get(group) ?? 0) + 1;
+    occurrences.set(group, occurrence);
+    return {
+      ...finding,
+      ratchet: {
+        key: `metric:occurrence:${String(occurrence)}`,
+        value: plan.value,
+        worseMessage: `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+      },
+    };
+  });
 }
 
 function normalizeMessage({ message, context, analyzerName, relativePath, sourceFile }) {
@@ -209,6 +279,42 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     typeof message.ruleId === 'string' && message.ruleId.length > 0
       ? message.ruleId
       : nonRuleDiagnosticId(messageText, context);
+  const { line, column, sourcePosition, endPosition } = reportedPositions(
+    message,
+    context,
+    sourceFile,
+  );
+  const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
+  const locatedNode =
+    comment === undefined
+      ? findReportedNode(sourceFile, sourcePosition, endPosition)
+      : findStartedNode(sourceFile, sourcePosition);
+  const reportedNode = stableSyntaxAnchor(locatedNode);
+  const nodeType = comment === undefined ? eslintNodeType(reportedNode) : 'Comment';
+  const symbol = enclosingSymbol(reportedNode);
+  const messageIdentity = messageIdentityOf(message, messageText);
+  const metric = metricOf(ruleId, messageText);
+  const finding = {
+    tool: analyzerName,
+    rule: ruleId,
+    path: relativePath,
+    identity: [
+      `message:${messageIdentity}`,
+      `node:${nodeType}`,
+      `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
+      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+    ].join('|'),
+    message: eslintMessageWithHint({ ruleId, text: messageText, relativePath }),
+    location: { line, column },
+    classification: 'enforceable',
+  };
+  if (symbol !== undefined) {
+    finding.symbol = symbol;
+  }
+  return { finding, plan: ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) };
+}
+
+function reportedPositions(message, context, sourceFile) {
   const line = positiveInteger(message.line, `${context}.line`);
   const column = positiveInteger(message.column, `${context}.column`);
   const sourcePosition = sourceFile.getPositionOfLineAndCharacter(line - 1, column - 1);
@@ -219,36 +325,28 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
           positiveInteger(message.endLine, `${context}.endLine`) - 1,
           positiveInteger(message.endColumn, `${context}.endColumn`) - 1,
         );
-  const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
-  const locatedNode =
-    comment === undefined
-      ? findReportedNode(sourceFile, sourcePosition, endPosition)
-      : findStartedNode(sourceFile, sourcePosition);
-  const reportedNode = stableSyntaxAnchor(locatedNode);
-  const nodeType = comment === undefined ? eslintNodeType(reportedNode) : 'Comment';
-  const symbol = enclosingSymbol(reportedNode);
-  const messageIdentity =
-    typeof message.messageId === 'string' && message.messageId.length > 0
-      ? message.messageId
-      : normalizeMessageText(messageText);
+  return { line, column, sourcePosition, endPosition };
+}
 
-  const finding = {
-    tool: analyzerName,
-    rule: ruleId,
-    path: relativePath,
-    identity: [
-      `message:${messageIdentity}`,
-      `node:${nodeType}`,
-      `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
-    ].join('|'),
-    message: messageText,
-    location: { line, column },
-    classification: 'enforceable',
-  };
-  if (symbol !== undefined) {
-    finding.symbol = symbol;
+function messageIdentityOf(message, messageText) {
+  return typeof message.messageId === 'string' && message.messageId.length > 0
+    ? message.messageId
+    : normalizeMessageText(messageText);
+}
+
+function ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) {
+  if (metric !== undefined) {
+    return { kind: 'metric', ...metric };
   }
-  return finding;
+  return symbol !== undefined && isInsideFunction(reportedNode)
+    ? { kind: 'count', key: messageIdentity }
+    : undefined;
+}
+
+function isInsideFunction(node) {
+  return nodeChain(node).some(
+    (current) => ts.isFunctionLike(current) && current.body !== undefined,
+  );
 }
 
 // A finding reported on a comment (no-comments, ts-ignore directives, disabled inline config) is
@@ -369,6 +467,13 @@ function declarationName(node) {
   return undefined;
 }
 
+function fingerprintText(node) {
+  if (ts.isFunctionLike(node) && node.body !== undefined) {
+    return node.getSourceFile().text.slice(node.getStart(), node.body.getStart());
+  }
+  return node.getText();
+}
+
 function syntaxFingerprint(node, nodeType) {
   if (nodeType === 'Program') {
     return 'program';
@@ -378,7 +483,7 @@ function syntaxFingerprint(node, nodeType) {
     ts.ScriptTarget.Latest,
     true,
     ts.LanguageVariant.Standard,
-    node.getText(),
+    fingerprintText(node),
   );
   const tokens = [];
   for (let token = scanner.scan(); token !== ts.SyntaxKind.EndOfFileToken; token = scanner.scan()) {
@@ -667,7 +772,7 @@ function validatedSnapshotRoot(value, context) {
     path.isAbsolute(relativeToTemporaryRoot) ||
     segments.length < 2 ||
     !segments[0].startsWith('nitpicker-diff-') ||
-    segments[1] !== 'base'
+    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
   ) {
     throw new Error(`${context} must be inside a generated quality-diff worktree`);
   }

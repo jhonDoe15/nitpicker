@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
 
 // Strict rules for test code: each one bans a form that makes a suite slow or non-hermetic and

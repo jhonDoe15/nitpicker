@@ -6,6 +6,7 @@ import {
   renderConsoleSummary,
   renderJunitReport,
   renderSarifReport,
+  renderTextReport,
   writeDiffReports,
 } from './reporters.mjs';
 
@@ -30,7 +31,7 @@ function finding(overrides = {}) {
   };
 }
 
-function report({ newFindings = [], toolErrors = [] } = {}) {
+function report({ newFindings = [], toolErrors = [], unchangedFindings = [] } = {}) {
   return {
     summary: {
       requestedBaseRef: 'main',
@@ -45,7 +46,7 @@ function report({ newFindings = [], toolErrors = [] } = {}) {
     },
     newFindings,
     resolvedFindings: [],
-    unchangedFindings: [],
+    unchangedFindings,
     changedMetrics: [],
     toolErrors,
   };
@@ -281,5 +282,254 @@ describe('renderConsoleSummary', () => {
     const summary = renderConsoleSummary({ newFindings: [], toolErrors: [] }, { color: false });
 
     expect(summary).toContain('✓ No new enforceable violations');
+  });
+
+  it('lists the failing tests once and drops the skipped analyzers that repeat the cause', () => {
+    const testsFailed = (tool, rule, message) => ({ tool, snapshot: 'head', rule, message });
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [],
+        toolErrors: [
+          testsFailed(
+            'coverage',
+            'tests-failed',
+            '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > adds: expected 1 to be 2',
+          ),
+          testsFailed(
+            'mutation',
+            'tests-failed-skipped',
+            'Mutation testing did not run because the project tests fail.',
+          ),
+        ],
+      },
+      { color: false },
+    );
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        '  coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '    test/a.test.ts > adds: expected 1 to be 2',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+    expect(summary).not.toContain('mutation (head)');
+  });
+
+  it('shows a skipped analyzer when nothing else names the failing tests', () => {
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [],
+        toolErrors: [
+          {
+            tool: 'mutation',
+            snapshot: 'head',
+            rule: 'tests-failed-skipped',
+            message: 'Mutation testing did not run because the project tests fail.',
+          },
+        ],
+      },
+      { color: false },
+    );
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        '  mutation (head): Mutation testing did not run because the project tests fail.',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('collapses repeated findings of one rule and message in one file into a single entry', () => {
+    const finding = (line, message = 'Variable is mutable.') => ({
+      tool: 'eslint-lint',
+      rule: 'functional/prefer-immutable-types',
+      path: 'src/main/a.ts',
+      message,
+      classification: 'enforceable',
+      location: { line },
+    });
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [finding(26), finding(9), finding(11), finding(12, 'Parameter is mutable.')],
+        toolErrors: [],
+      },
+      { color: false },
+    );
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✖ 4 new enforceable violations',
+        '  eslint-lint/functional/prefer-immutable-types src/main/a.ts (3 times, lines 9, 11, 26)',
+        '    Variable is mutable.',
+        '  eslint-lint/functional/prefer-immutable-types src/main/a.ts:12',
+        '    Parameter is mutable.',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+    expect(summary.match(/Variable is mutable\./g)).toHaveLength(1);
+  });
+});
+
+describe('touched, still over limit', () => {
+  const held = finding({
+    tool: 'structure',
+    rule: 'function-lines-limit',
+    message: 'computeInvoice has 68 lines; limit is 50',
+    location: { line: 3 },
+    heldAtBase: 68,
+    ratchet: { key: 'k', value: 68, worseMessage: 'grew from {base}' },
+  });
+  const untouched = finding({ rule: 'no-console', identity: 'unchanged:1' });
+  const heldLint = finding({
+    rule: '@typescript-eslint/no-explicit-any',
+    message: 'Unexpected any.',
+    heldAtBase: 2,
+    ratchet: { key: 'count:any', value: 2, existingCodeOnly: true },
+  });
+
+  it('lists a held finding as a note in the text report', () => {
+    const text = renderTextReport(report({ unchangedFindings: [held, untouched] }));
+
+    expect(text).toBe(
+      [
+        'Nitpicker quality diff',
+        'Base ref: main',
+        'Merge base: abc',
+        'Head: def',
+        'Status: completed',
+        'New enforceable findings: 0',
+        'New findings: 0',
+        'Resolved findings: 0',
+        'Unchanged findings: 0',
+        'Changed metrics: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'eslint: base=0 head=1 new=1 resolved=0 unchanged=0 changed-metrics=undefined elapsed=0.040s',
+        '',
+        'Touched, still over limit (not failing):',
+        'structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('lists a held finding as a note in the console summary without failing', () => {
+    const summary = renderConsoleSummary(report({ unchangedFindings: [held] }), { color: false });
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('words a held lint finding by what it is, not as a function over a limit', () => {
+    const text = renderTextReport(report({ unchangedFindings: [held, heldLint] }));
+    const summary = renderConsoleSummary(report({ unchangedFindings: [held, heldLint] }), {
+      color: false,
+    });
+
+    expect(text).toBe(
+      [
+        'Nitpicker quality diff',
+        'Base ref: main',
+        'Merge base: abc',
+        'Head: def',
+        'Status: completed',
+        'New enforceable findings: 0',
+        'New findings: 0',
+        'Resolved findings: 0',
+        'Unchanged findings: 0',
+        'Changed metrics: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'eslint: base=0 head=1 new=1 resolved=0 unchanged=0 changed-metrics=undefined elapsed=0.040s',
+        '',
+        'Touched, still over limit (not failing):',
+        'structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        '',
+        'Existing lint findings in edited code (not failing):',
+        'eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (the base had 2 of these in this function, now no more)',
+        '',
+      ].join('\n'),
+    );
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        'Note: 1 existing lint finding in edited code (not failing, no more than before):',
+        '  eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (the base had 2 of these in this function, now no more)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('adds nothing when no finding was held', () => {
+    const text = renderTextReport(report({ unchangedFindings: [untouched] }));
+    const summary = renderConsoleSummary(report({ unchangedFindings: [untouched] }), {
+      color: false,
+    });
+
+    expect(text).not.toContain('still over limit');
+    expect(summary).not.toContain('Note:');
+  });
+});
+
+describe('renderTextReport', () => {
+  it('marks an analyzer that was skipped instead of showing it as clean', () => {
+    const tool = (name, extra = {}) => ({
+      name,
+      base: 0,
+      head: 0,
+      new: 0,
+      resolved: 0,
+      unchanged: 0,
+      changedMetrics: 0,
+      elapsedMs: 0,
+      ...extra,
+    });
+    const text = renderTextReport({
+      summary: {
+        requestedBaseRef: 'main',
+        mergeBaseSha: 'a',
+        headSha: 'b',
+        overallStatus: 'tool-error',
+        newEnforceableFindings: 0,
+        tools: [tool('coverage'), tool('crap', { skippedBecause: 'coverage' })],
+      },
+      newFindings: [],
+      resolvedFindings: [],
+      changedMetrics: [],
+      unchangedFindings: [],
+      toolErrors: [],
+    });
+
+    expect(text).toMatch(/^crap: .* skipped \(coverage failed\)$/mu);
+    expect(text).not.toMatch(/^coverage: .*skipped/mu);
   });
 });

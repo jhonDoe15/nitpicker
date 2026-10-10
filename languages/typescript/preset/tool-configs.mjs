@@ -102,6 +102,7 @@ const POLICY_COMPILER_OPTIONS = {
   alwaysStrict: true,
   noImplicitReturns: true,
   noFallthroughCasesInSwitch: true,
+  noUncheckedIndexedAccess: true,
   forceConsistentCasingInFileNames: true,
 };
 

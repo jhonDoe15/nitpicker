@@ -89,18 +89,10 @@ export function createFindingsCache({
  * Runs the base side through the cache. Cached analyzers are skipped unless an uncached analyzer
  * depends on them; only clean reports (no tool error, no tool-error finding) are stored.
  */
-export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
-  const cached = new Map();
-  for (const analyzer of analyzers) {
-    try {
-      resolveAnalyzerMetadata(analyzer, resolveContext);
-    } catch {
-      continue;
-    }
-    const report = cache.read(analyzer);
-    if (report !== undefined) {
-      cached.set(analyzer.name, report);
-    }
+export function runBaseWithCache({ cache, analyzers, run, resolveContext, onCached }) {
+  const cached = readCachedReports(cache, analyzers, resolveContext);
+  if (cached.size > 0) {
+    onCached?.(cached.size);
   }
 
   const byName = new Map(analyzers.map((analyzer) => [analyzer.name, analyzer]));
@@ -126,16 +118,46 @@ export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
       if (hit !== undefined) {
         result.reports.set(analyzer.name, hit);
       }
-    } else if (isCacheable(analyzer, report, result.toolErrors)) {
+    } else if (isCacheable(analyzer, report, result)) {
       cache.write(analyzer, report);
     }
   }
   return result;
 }
 
-export function isCacheable(analyzer, report, toolErrors) {
+function readCachedReports(cache, analyzers, resolveContext) {
+  const cached = new Map();
+  for (const analyzer of analyzers) {
+    const lookup = lookUpCachedReport(cache, analyzer, resolveContext);
+    if (lookup.kind === 'hit') {
+      cached.set(analyzer.name, lookup.report);
+    }
+  }
+  return cached;
+}
+
+function lookUpCachedReport(cache, analyzer, resolveContext) {
+  try {
+    resolveAnalyzerMetadata(analyzer, resolveContext);
+  } catch (error) {
+    return { kind: 'unresolved', error };
+  }
+  const report = cache.read(analyzer);
+  return report === undefined ? { kind: 'miss' } : { kind: 'hit', report };
+}
+
+export function isCacheable(analyzer, report, { toolErrors, reports = new Map() }) {
   return (
     !toolErrors.some((error) => error.tool === analyzer.name) &&
-    report.findings.every((finding) => finding.classification !== 'tool-error')
+    !hasToolErrorFinding(report) &&
+    (analyzer.dependencies ?? []).every(
+      (dependency) =>
+        !toolErrors.some((error) => error.tool === dependency) &&
+        !hasToolErrorFinding(reports.get(dependency)),
+    )
   );
+}
+
+function hasToolErrorFinding(report) {
+  return (report?.findings ?? []).some((finding) => finding.classification === 'tool-error');
 }

@@ -60,14 +60,35 @@ export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
-  crapScoreLimit: '{name} has CRAP {crap}; score must be below {limit}',
-  crapCoverageUnknown: '{name} has unknown coverage and no CRAP score',
+  functionControlNesting:
+    '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
+  crapScoreLimit:
+    '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
+  crapCoverageUnknown:
+    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
 };
 
 export function renderMessage(template, values) {
   return template.replaceAll(/\{(\w+)\}/g, (_, key) => String(values[key]));
 }
+
+/**
+ * Messages for a function that was already over a limit on the base and got worse. `{base}` is left
+ * in the text for the comparison to fill in (it knows the base value); `GREW_MESSAGES[metric]`
+ * covers the structure limits and `crap` the CRAP score limit.
+ */
+export const GREW_MESSAGES = {
+  lines:
+    '{name} grew from {base} to {value} lines (limit {limit}). Put new code in a new function.',
+  statements:
+    '{name} grew from {base} to {value} statements (limit {limit}). Put new code in a new function.',
+  maxControlNesting:
+    '{name} control nesting grew from {base} to {value} levels (limit {limit}). Put the new nested code in a new function.',
+  parameters:
+    '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
+  crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
+};
 
 const BOTH = { typescript: true, java: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false };
