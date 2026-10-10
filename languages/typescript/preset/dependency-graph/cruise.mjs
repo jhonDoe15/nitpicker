@@ -16,11 +16,6 @@ export const POLICY_TYPESCRIPT_CONFIG =
   'languages/typescript/preset/defaults/tsconfig.quality.json';
 export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'NITPICKER_DEPENDENCY_GRAPH_TSCONFIG';
 
-/**
- * Links the policy TypeScript config into the analyzed project root, so its include globs
- * resolve against the analyzed sources, and runs `operation` with the environment that
- * `config.mjs` reads the linked path from.
- */
 export function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, operation) {
   const linkedConfig = linkPolicyFile(
     path.join(policyRoot, POLICY_TYPESCRIPT_CONFIG),
@@ -34,10 +29,6 @@ export function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, nam
   }
 }
 
-/**
- * `typeScriptRoot` is the directory whose source and test roots the policy TypeScript config
- * should cover; it defaults to this package root and is overridden for self-contained fixtures.
- */
 export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
   if (paths.length === 0) return { modules: [] };
   const result = withProjectTypeScriptConfig(

@@ -4,7 +4,6 @@ import path from 'node:path';
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
 
-/** Replaces `src/...` entries with one entry per source root and `test(s)/...` per test root. */
 export function expandLayoutRoots(entries, layout) {
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
@@ -29,7 +28,6 @@ export function isCustomLayout(layout) {
   );
 }
 
-/** `tsconfig.quality.json` and `tsconfig.stryker.json`: include the layout roots, skip `exclude`. */
 export function layoutTsconfig(base, layout) {
   return {
     ...base,
@@ -55,10 +53,6 @@ export function layoutJscpdConfig(base, layout) {
   };
 }
 
-/**
- * Returns a function that rewrites a JSON policy file's text for the layout, or undefined when
- * the layout is the default and the file can be linked unchanged.
- */
 export function jsonTransform(rewrite, layout) {
   if (!isCustomLayout(layout)) {
     return undefined;

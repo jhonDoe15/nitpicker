@@ -1,7 +1,4 @@
 import { chainOf, scopeChain } from './ancestry.mjs';
-// Shared syntax helpers for the rules that look at what a test does per test: which callbacks run
-// once per test, which same-file functions they reach, and which calls start a child process.
-// Everything here works on one file's syntax tree; calls into other modules are not followed.
 
 const SUBPROCESS_MODULES = new Set(['child_process', 'node:child_process', 'execa', 'cross-spawn']);
 const FILE_FORM_FUNCTIONS = new Set([
@@ -17,7 +14,6 @@ const SHELL_FORM_FUNCTIONS = new Set(['execSync', 'exec', 'execaCommand', 'execa
 const NODE_FORM_FUNCTIONS = new Set(['fork', 'execaNode']);
 const GIT_OPTIONS_WITH_VALUE = new Set(['-c', '-C', '--git-dir', '--work-tree', '--namespace']);
 const PER_TEST_TESTS = new Set(['it', 'test']);
-// Members that return a registration function instead of registering a test themselves.
 const REGISTRATION_FACTORIES = new Set(['each', 'for', 'extend', 'runIf', 'skipIf', 'todo']);
 const MAX_RESOLVE_DEPTH = 8;
 
@@ -37,7 +33,6 @@ function stringValue(node) {
   return undefined;
 }
 
-/** The variable `name` refers to at `node`, found through the scope chain. */
 export function findVariable(context, node, name) {
   for (const scope of scopeChain(context.sourceCode.getScope(node))) {
     const variable = scope.set.get(name);
@@ -46,7 +41,6 @@ export function findVariable(context, node, name) {
   return undefined;
 }
 
-/** The initializer of the `const` an identifier refers to, followed through const aliases. */
 export function resolveConstant(context, node, depth = 0) {
   if (node?.type !== 'Identifier' || depth > MAX_RESOLVE_DEPTH) return node;
   const variable = findVariable(context, node, node.name);
@@ -62,7 +56,6 @@ export function resolveConstant(context, node, depth = 0) {
   return resolveConstant(context, definition.node.init, depth + 1);
 }
 
-/** The same-file function an identifier names: a function declaration or a const function. */
 export function resolveFunction(context, node) {
   if (node?.type !== 'Identifier') return undefined;
   const variable = findVariable(context, node, node.name);
@@ -75,7 +68,6 @@ export function resolveFunction(context, node) {
   return undefined;
 }
 
-/** Number value of a literal, a const, or arithmetic over those; undefined when not constant. */
 export function constantNumber(context, node, depth = 0) {
   if (depth > MAX_RESOLVE_DEPTH) return undefined;
   const resolved = resolveConstant(context, node);
@@ -97,10 +89,6 @@ export function constantNumber(context, node, depth = 0) {
   return undefined;
 }
 
-/**
- * Local names bound by imports or `require` destructuring of the given modules: `named` maps a
- * local name to the imported name, `namespaces` holds namespace, default and whole-module names.
- */
 export function moduleBindings(program, modules) {
   const named = new Map();
   const namespaces = new Set();
@@ -148,7 +136,6 @@ export function moduleBindings(program, modules) {
   return { named, namespaces };
 }
 
-/** The imported name a callee refers to (`spawnSync`, `cp.spawnSync`), or undefined. */
 export function importedCalleeName(callee, bindings) {
   if (callee.type === 'Identifier') return bindings.named.get(callee.name);
   if (
@@ -196,7 +183,6 @@ function containsBinPath(node) {
   return false;
 }
 
-/** `node` for process.execPath, a package bin path, or a literal command name. */
 function commandName(context, node) {
   const resolved = resolveConstant(context, node);
   if (
@@ -213,7 +199,6 @@ function commandName(context, node) {
   return stringValue(resolved);
 }
 
-// Literal argument tokens; a non-literal array element becomes '' so positions stay aligned.
 function literalTokens(context, node) {
   const resolved = resolveConstant(context, node);
   const value = stringValue(resolved);
@@ -232,11 +217,6 @@ function isArgumentList(context, node) {
   return resolveConstant(context, node)?.type !== 'ObjectExpression';
 }
 
-/**
- * Describes a direct child-process call: its command (`node` for process.execPath and fork,
- * `package-bin` for a node_modules/.bin path, else the literal name), the literal argument tokens,
- * and the nodes holding the command, the argument list and the options.
- */
 export function describeSubprocess(context, call, bindings) {
   if (call.type !== 'CallExpression') return undefined;
   const name = importedCalleeName(call.callee, bindings);
@@ -276,7 +256,6 @@ export function describeSubprocess(context, call, bindings) {
   return undefined;
 }
 
-/** The git subcommand among the tokens, skipping global options such as `-c key=value`. */
 export function gitSubcommand(tokens) {
   const remaining = tokens.values();
   for (const token of remaining) {
@@ -329,10 +308,6 @@ function forEachNode(context, root, visit) {
   }
 }
 
-/**
- * For a call to a same-file wrapper around a child-process call (`git(root, ['init'])`,
- * `run('git', args)`), the wrapped call and the command and tokens the call site supplies.
- */
 export function describeWrapperCall(context, call, bindings) {
   if (call.type !== 'CallExpression') return undefined;
   const fn = resolveFunction(context, call.callee);
@@ -373,10 +348,6 @@ function registrationRoot(callee) {
   return root?.type === 'Identifier' ? root.name : undefined;
 }
 
-/**
- * The callback a per-test registration runs: `it`/`test` (with `.each`, `.only`, `.concurrent`
- * and the like) and, when `hooks` names them, hooks such as `beforeEach`.
- */
 export function perTestCallback(call, hooks = ['beforeEach']) {
   const root = registrationRoot(call.callee);
   if (root === undefined || !(PER_TEST_TESTS.has(root) || hooks.includes(root))) return undefined;
@@ -390,11 +361,6 @@ export function perTestCallback(call, hooks = ['beforeEach']) {
   return [...call.arguments].reverse().find(isFunctionNode);
 }
 
-/**
- * Builds visitors that call `check(node)` for every call and `new` expression reached from a
- * per-test callback, following calls to same-file functions. `check` returns a report descriptor
- * or undefined; each node is reported once however many tests reach it.
- */
 export function perTestVisitors(context, check, hooks) {
   const reported = new Set();
   return {
