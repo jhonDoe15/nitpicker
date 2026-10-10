@@ -10,6 +10,7 @@ import {
 } from '../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
+import { applyJavaPolicy } from './java-policy.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
@@ -40,11 +41,14 @@ export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INI
   }
 }
 
-/** Runs the preset and returns the validated findings of one snapshot. */
-export function collectJavaFindings(projectRoot, options) {
+export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   runJavaDuplicates(projectRoot);
-  return parseAnalyzerReport(readJavaFindings(projectRoot), 'java').findings;
+  const { findings } = parseAnalyzerReport(
+    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit }),
+    'java',
+  );
+  return applyJavaPolicy(findings, options.policy);
 }
 
 /**
@@ -58,6 +62,7 @@ export function runJavaDiff({
   includeWorkingTree = false,
   gradle,
   initScript,
+  policy,
 }) {
   const committed = resolveComparison(repositoryRoot, requestedBaseRef);
   const comparison = includeWorkingTree
@@ -69,7 +74,7 @@ export function runJavaDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
-  const options = { gradle, initScript };
+  const options = { gradle, initScript, policy };
   const collectAt = (sha) =>
     withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
       collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),

@@ -172,6 +172,18 @@ describe('readJavaFindings', () => {
     ]);
   });
 
+  it('applies the configured CRAP limit instead of the default', () => {
+    const root = projectWithReports();
+    const rules = (options) =>
+      readJavaFindings(root, options)
+        .findings.filter(({ tool }) => tool === 'crap')
+        .map(({ rule }) => rule);
+
+    expect(rules({})).toEqual(['crap-score-limit']);
+    expect(rules({ crapLimit: 156.5 })).toEqual([]);
+    expect(rules({ crapLimit: 156 })).toEqual(['crap-score-limit']);
+  });
+
   it('keeps identities when every reported line moves', () => {
     const before = readJavaFindings(projectWithReports()).findings;
     const after = readJavaFindings(projectWithReports({ shift: 17 })).findings;

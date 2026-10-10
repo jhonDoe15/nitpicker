@@ -5,7 +5,7 @@ import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
 import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseChangedLines } from '../../core/diff/git.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
-import { ingestJacocoBranches, MINIMUM_BRANCH_COVERAGE } from './jacoco-branches.mjs';
+import { ingestJacocoBranches } from './jacoco-branches.mjs';
 
 const xml = readFileSync(path.resolve(import.meta.dirname, 'fixtures/jacoco-branches.xml'), 'utf8');
 const FILE = 'src/main/java/com/acme/Pick.java';
@@ -40,7 +40,6 @@ describe('ingestJacocoBranches', () => {
   it('reports every line with branch coverage below 95%, and only those', () => {
     const findings = ingest();
 
-    expect(MINIMUM_BRANCH_COVERAGE).toBe(95);
     expect(findings.map((f) => [f.location.line, f.message])).toEqual([
       [4, 'Branch coverage is 50.00%; minimum is 95%'],
       [8, 'Branch coverage is 0.00%; minimum is 95%'],

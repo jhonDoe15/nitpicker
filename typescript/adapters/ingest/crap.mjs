@@ -1,3 +1,5 @@
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../shared/policy.mjs';
+import { crapFindings } from '../../shared/rules/crap.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
 
 // lizard CSV (cyclomatic complexity per function) joined with JaCoCo XML (per-method coverage) ->
@@ -13,9 +15,6 @@ import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } f
 // `options.sourceRoots` (e.g. ["src/main/java"]) maps lizard's project-relative paths back to
 // JaCoCo's package-relative ones; `options.limit` overrides the score limit.
 
-/** Same value as DEFAULT_CRAP_SCORE_LIMIT in preset/quality-checks.mjs (a test keeps them equal). */
-export const CRAP_SCORE_LIMIT = 9;
-
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
   return complexity * complexity * uncovered ** 3 + complexity;
@@ -23,11 +22,11 @@ export function calculateCrap(complexity, coveragePercent) {
 
 export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
   const tool = options.tool ?? 'crap';
-  const limit = options.limit ?? CRAP_SCORE_LIMIT;
+  const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const sourceRoots = options.sourceRoots ?? [''];
   const methods = jacocoMethods(jacocoXml);
   const unique = createIdentityCounter();
-  const findings = [];
+  const functions = [];
 
   for (const fn of parseLizardCsv(lizardCsv)) {
     const filePath = normalizeReportPath(fn.file, options.root);
@@ -35,33 +34,15 @@ export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
       continue;
     }
     const coverage = coverageFor(fn, filePath, methods, sourceRoots);
-    const where = {
-      tool,
+    functions.push({
       path: filePath,
+      name: fn.longName,
       identity: unique(`function:${fn.longName}`),
-      symbol: fn.longName,
-      location: { line: fn.start },
-    };
-    if (coverage === undefined) {
-      findings.push({
-        ...where,
-        rule: 'crap-coverage-unknown',
-        message: `${fn.longName} has unknown coverage and no CRAP score`,
-        classification: 'enforceable',
-      });
-      continue;
-    }
-    const crap = calculateCrap(fn.ccn, coverage);
-    if (crap >= limit) {
-      findings.push({
-        ...where,
-        rule: 'crap-score-limit',
-        message: `${fn.longName} has CRAP ${crap.toFixed(2)}; score must be below ${String(limit)}`,
-        classification: 'enforceable',
-      });
-    }
+      line: fn.start,
+      crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
+    });
   }
-  return { findings };
+  return { findings: crapFindings(functions, { tool, limit }) };
 }
 
 // lizard --csv rows: nloc, ccn, tokens, params, length, "name@start-end@file", file, name,

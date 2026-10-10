@@ -21,6 +21,7 @@
   },
   "scripts": {
     "test": "vitest run --config vitest.config.mts",
+    "gen:checks": "node scripts/gen-checks.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node core/diff/fixtures/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/conformance.test.mjs",
@@ -29,6 +30,7 @@
   "prettier": "./preset/defaults/.prettierrc.json",
   "files": [
     "core/**/*.mjs",
+    "shared/**/*.mjs",
     "adapters/**/*.mjs",
     "preset/**",
     "java/**",

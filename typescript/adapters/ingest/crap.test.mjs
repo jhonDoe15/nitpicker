@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../preset/quality-checks.mjs';
-import { calculateCrap, CRAP_SCORE_LIMIT, ingestCrap, parseLizardCsv } from './crap.mjs';
+import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 const SOURCE_ROOTS = ['src/main/java'];
@@ -11,10 +10,6 @@ const ingest = (csv = fixture('lizard.csv'), xml = fixture('jacoco-crap.xml'), o
   ingestCrap(csv, xml, { sourceRoots: SOURCE_ROOTS, ...options }).findings;
 
 describe('ingestCrap', () => {
-  it('uses the same limit as the TypeScript crap check', () => {
-    expect(CRAP_SCORE_LIMIT).toBe(DEFAULT_CRAP_SCORE_LIMIT);
-  });
-
   it('computes CRAP as ccn^2 * (1 - coverage)^3 + ccn', () => {
     expect(calculateCrap(9, 100)).toBe(9);
     expect(calculateCrap(9, 0)).toBe(90);

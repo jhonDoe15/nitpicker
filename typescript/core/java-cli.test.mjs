@@ -137,7 +137,12 @@ describe('nitpicker with "preset": "java"', () => {
 
     const result = run(root, [], { subprocess: true });
 
-    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect({
+      exitCode: result.exitCode,
+      output: result.output.out + result.output.err,
+    }).toMatchObject({
+      exitCode: 1,
+    });
     expect(result.output.out).toContain('A.java');
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({
@@ -155,6 +160,102 @@ describe('nitpicker with "preset": "java"', () => {
     );
   });
 
+  it('honours exclude from nitpicker.config.json', () => {
+    const root = gradleRepository();
+    write(root, {
+      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
+    commit(root, 'add violation in an excluded path');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    expect(result.json('new-findings.json')).toEqual([]);
+  });
+
+  describe('legacy inventory', () => {
+    const site = (name, count) => ({
+      file: 'src/main/java/demo/A.java',
+      rule: 'UnusedPrivateField',
+      source: `fp:nitpicker/subject=Avoid unused field: ${name}`,
+      count,
+    });
+    const inventory = (...sites) => `${JSON.stringify({ sites })}\n`;
+
+    it('baselines a site the inventory allows and still fails an unlisted one', () => {
+      const root = gradleRepository({ 'nitpicker.legacy.json': inventory(site('added', 1)) });
+      write(root, { 'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n' });
+      commit(root, 'add a baselined violation');
+      expect(run(root).exitCode).toBe(0);
+
+      write(root, {
+        'violations.txt':
+          'Avoid unused field: legacy\nAvoid unused field: added\nAvoid unused field: other\n',
+      });
+      commit(root, 'add an unlisted violation');
+      const result = run(root);
+      expect({
+        exitCode: result.exitCode,
+        output: result.output.out + result.output.err,
+      }).toMatchObject({
+        exitCode: 1,
+      });
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({ rule: 'UnusedPrivateField', classification: 'enforceable' }),
+      ]);
+    });
+
+    it('fails with baseline-expansion when head raises an allowance over base', () => {
+      const root = gradleRepository({ 'nitpicker.legacy.json': inventory(site('legacy', 1)) });
+      write(root, { 'nitpicker.legacy.json': inventory(site('legacy', 2)) });
+      commit(root, 'raise the allowance');
+
+      const result = run(root);
+
+      expect({
+        exitCode: result.exitCode,
+        output: result.output.out + result.output.err,
+      }).toMatchObject({
+        exitCode: 1,
+      });
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({
+          tool: 'java',
+          rule: 'baseline-expansion',
+          message: 'Legacy allowance increased from 1 to 2 for UnusedPrivateField',
+        }),
+      ]);
+    });
+
+    it('honours a custom inventory path from "legacyInventory"', () => {
+      const root = gradleRepository({
+        'nitpicker.config.json': '{ "preset": "java", "legacyInventory": "config/legacy.json" }\n',
+        'config/legacy.json': inventory(site('added', 1)),
+      });
+      write(root, { 'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n' });
+      commit(root, 'add a baselined violation');
+
+      expect(run(root).exitCode).toBe(0);
+    });
+
+    it('treats a new inventory entry on head as an expansion', () => {
+      const root = gradleRepository();
+      write(root, {
+        'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+        'nitpicker.legacy.json': inventory(site('added', 1)),
+      });
+      commit(root, 'baseline a new violation by editing the inventory');
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({ rule: 'baseline-expansion' }),
+      ]);
+    });
+  });
+
   it('fails a newly added clone', () => {
     const body = Array.from(
       { length: 12 },
@@ -169,7 +270,12 @@ describe('nitpicker with "preset": "java"', () => {
 
     const result = run(root);
 
-    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect({
+      exitCode: result.exitCode,
+      output: result.output.out + result.output.err,
+    }).toMatchObject({
+      exitCode: 1,
+    });
     const clones = result
       .json('new-findings.json')
       .filter((finding) => finding.rule === 'duplicate-clone');

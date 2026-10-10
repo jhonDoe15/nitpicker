@@ -1,3 +1,4 @@
+import { mutantFindings } from '../../shared/rules/mutation.mjs';
 import { decodeEntities } from './common.mjs';
 
 // PIT (pitest) XML mutation report -> findings, following the same mutation profile as the
@@ -13,8 +14,6 @@ import { decodeEntities } from './common.mjs';
 //
 // `options.resolvePath(className, sourceFile)` maps a mutated class to its project-relative source
 // file; mutants whose source cannot be found (generated code) are skipped.
-
-const ENFORCED_STATUSES = new Set(['Survived', 'NoCoverage']);
 
 // PIT status -> the status names used by the Stryker-based mutation area.
 const STATUS_NAMES = {
@@ -38,16 +37,20 @@ export function ingestPit(xml, options = {}) {
     .map(([, attributes, body = '']) => parseMutant(attributes, body))
     .filter((mutant) => mutant !== undefined);
 
+  const { groups, statusCounts } = groupMutants(mutants, resolvePath);
+  const findings = mutantFindings(neutralMutants(groups), { tool });
+  findings.push(...statusSummaries(statusCounts, tool));
+  return { findings };
+}
+
+function groupMutants(mutants, resolvePath) {
   const statusCounts = new Map();
   const groups = new Map();
-  const findings = [];
   for (const mutant of mutants) {
     const status = STATUS_NAMES[mutant.status] ?? 'Unknown';
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
-    if (status === 'Killed') {
-      continue;
-    }
-    const filePath = resolvePath(mutant.className, mutant.sourceFile);
+    const filePath =
+      status === 'Killed' ? undefined : resolvePath(mutant.className, mutant.sourceFile);
     if (filePath === undefined) {
       continue;
     }
@@ -61,33 +64,37 @@ export function ingestPit(xml, options = {}) {
     group.push({ mutant, status, key, filePath });
     groups.set(`${status}\0${key}`, group);
   }
+  return { groups, statusCounts };
+}
+
+function neutralMutants(groups) {
+  const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
-    group.forEach(({ mutant, status, key, filePath }, index) => {
-      findings.push({
-        tool,
-        rule: `mutant-${status.toLowerCase()}`,
+    for (const [index, { mutant, status, key, filePath }] of group.entries()) {
+      neutral.push({
         path: filePath,
         identity: `${key}#${String(index + 1)}`,
-        message: `${status} ${mutator(mutant.mutator)}: ${mutant.description}`,
-        classification: ENFORCED_STATUSES.has(status) ? 'enforceable' : 'descriptive',
+        status,
+        label: `${mutator(mutant.mutator)}: ${mutant.description}`,
         symbol: `${mutant.className}#${mutant.method}${mutant.methodDescription}`,
-        ...(mutant.line >= 1 ? { location: { line: mutant.line } } : {}),
+        line: mutant.line,
       });
-    });
+    }
   }
-  for (const [status, value] of statusCounts) {
-    findings.push({
-      tool,
-      rule: 'mutation-summary',
-      path: '.',
-      identity: `status:${status}`,
-      message: `${status} mutants`,
-      classification: 'descriptive',
-      metric: { name: status, value },
-    });
-  }
-  return { findings };
+  return neutral;
+}
+
+function statusSummaries(statusCounts, tool) {
+  return [...statusCounts].map(([status, value]) => ({
+    tool,
+    rule: 'mutation-summary',
+    path: '.',
+    identity: `status:${status}`,
+    message: `${status} mutants`,
+    classification: 'descriptive',
+    metric: { name: status, value },
+  }));
 }
 
 function mutator(qualifiedName) {

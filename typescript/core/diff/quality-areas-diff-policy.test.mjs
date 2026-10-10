@@ -3,7 +3,8 @@ import vitestQualityConfig from '../../preset/defaults/vitest.quality.config.ts'
 import { applyThresholds, configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../adapters/tool-resolution.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT, hashFiles } from '../../preset/quality-checks.mjs';
+import { hashFiles } from '../../preset/quality-checks.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../shared/policy.mjs';
 import { compareFindings } from './compare.mjs';
 import { runAnalyzers, selectAnalyzers } from './run-analyzers.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
@@ -468,8 +469,7 @@ describe('complete quality-area analyzer catalog', () => {
         },
       },
       'coverage',
-      '/project',
-      { testCount: 2 },
+      { projectRoot: '/project', testCount: 2 },
     );
 
     expect(findings).toContainEqual(
@@ -494,7 +494,7 @@ describe('complete quality-area analyzer catalog', () => {
         },
       },
       'coverage',
-      '/project',
+      { projectRoot: '/project' },
     );
 
     expect(findings).not.toContainEqual(
@@ -518,7 +518,7 @@ describe('complete quality-area analyzer catalog', () => {
           },
         },
         'coverage',
-        '/project',
+        { projectRoot: '/project' },
       );
     }
     const base = coverageFindingsFor('changed-branch-before');
