@@ -1,46 +1,47 @@
+const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
+
+export function takeOptionValue(remaining, argument) {
+  const { value } = remaining.next();
+  if (value === undefined || value.startsWith('--')) {
+    throw new Error(`${argument} requires a value`);
+  }
+  return value;
+}
+
+function tokenize(arguments_) {
+  const entries = [];
+  const remaining = arguments_.values();
+  for (const argument of remaining) {
+    const value = VALUE_OPTIONS.has(argument) ? takeOptionValue(remaining, argument) : undefined;
+    entries.push([argument, value]);
+  }
+  return entries;
+}
+
+function valuesOf(entries, name) {
+  return entries.filter(([argument]) => argument === name).map(([, value]) => value);
+}
+
 // Shared drill-down argument parsing for the single command and its shard workers.
 export function parseDrillDownOptions(arguments_) {
-  const analyzerNames = [];
-  const ruleFilters = [];
-  const remainingArguments = [];
-  let deferExit = false;
-  let shardCount;
-  let shardIndex;
-  let skipNext = false;
-  for (const index of arguments_.keys()) {
-    if (skipNext) {
-      skipNext = false;
-      continue;
-    }
-    const argument = arguments_[index];
-    if (
-      argument === '--analyzer' ||
-      argument === '--rule' ||
-      argument === '--shard-count' ||
-      argument === '--shard-index'
-    ) {
-      const value = arguments_[index + 1];
-      if (value === undefined || value.startsWith('--')) {
-        throw new Error(`${argument} requires a value`);
-      }
-      if (argument === '--analyzer') analyzerNames.push(value);
-      else if (argument === '--rule') ruleFilters.push(value);
-      else if (argument === '--shard-count') shardCount = Number(value);
-      else shardIndex = Number(value);
-      skipNext = true;
-      continue;
-    }
-    if (argument === '--defer-exit') {
-      deferExit = true;
-      continue;
-    }
-    remainingArguments.push(argument);
-  }
+  const entries = tokenize(arguments_);
+  const analyzerNames = valuesOf(entries, '--analyzer');
+  const shardCount = valuesOf(entries, '--shard-count').map(Number).at(-1);
+  const shardIndex = valuesOf(entries, '--shard-index').map(Number).at(-1);
   if ((shardCount === undefined) !== (shardIndex === undefined)) {
     throw new Error('--shard-count and --shard-index must be provided together');
   }
   if (shardCount !== undefined && analyzerNames.length > 0) {
     throw new Error('--analyzer cannot be combined with --shard-count');
   }
-  return { analyzerNames, ruleFilters, shardCount, shardIndex, deferExit, remainingArguments };
+  return {
+    analyzerNames,
+    ruleFilters: valuesOf(entries, '--rule'),
+    shardCount,
+    shardIndex,
+    deferExit: entries.some(([argument]) => argument === '--defer-exit'),
+    remainingArguments: entries
+      .map(([argument]) => argument)
+      .filter((argument) => !VALUE_OPTIONS.has(argument) && argument !== '--defer-exit'),
+  };
 }

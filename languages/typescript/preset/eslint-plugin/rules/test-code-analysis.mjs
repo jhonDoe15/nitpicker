@@ -278,12 +278,10 @@ export function describeSubprocess(context, call, bindings) {
 
 /** The git subcommand among the tokens, skipping global options such as `-c key=value`. */
 export function gitSubcommand(tokens) {
-  let skipNext = false;
-  for (const token of tokens) {
-    if (skipNext) {
-      skipNext = false;
-    } else if (GIT_OPTIONS_WITH_VALUE.has(token)) {
-      skipNext = true;
+  const remaining = tokens.values();
+  for (const token of remaining) {
+    if (GIT_OPTIONS_WITH_VALUE.has(token)) {
+      remaining.next();
     } else if (!token.startsWith('-')) {
       return token;
     }
