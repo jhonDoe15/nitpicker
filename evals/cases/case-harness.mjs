@@ -5,8 +5,15 @@ import { loadTree } from '../detectors/tree.mjs';
 import { copiedWorkdir, loadCase, runCase } from '../runner/run-case.mjs';
 
 export const casesDirectory = import.meta.dirname;
-export const packageRoot = path.resolve(casesDirectory, '..', '..', 'typescript');
-export const strictCleanRoot = path.join(packageRoot, 'preset', 'fixtures', 'strict-clean');
+export const packageRoot = path.resolve(casesDirectory, '..', '..');
+export const strictCleanRoot = path.join(
+  packageRoot,
+  'languages',
+  'typescript',
+  'preset',
+  'fixtures',
+  'strict-clean',
+);
 export const referenceAgent = path.join(casesDirectory, '..', 'runner', 'reference-agent.mjs');
 // The full gate includes mutation testing and takes minutes per case, so the default run uses the
 // static analyzers only. NITPICKER_EVAL_FULL_GATE=1 runs every analyzer, as the strict-clean
@@ -38,7 +45,7 @@ export const analyzerArgumentsWithout = (skipped = [], only = undefined) =>
 export const CASE_TIMEOUT_MS = 600_000;
 
 // The fixture installed as a consumer would have it, except that the dependencies are the ones
-// already in typescript/node_modules (no install, no network). The real gate then runs against it.
+// already in node_modules (no install, no network). The real gate then runs against it.
 const GITIGNORE = 'node_modules/\nreports/\n';
 const consumerPackageJson = () => readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8');
 
