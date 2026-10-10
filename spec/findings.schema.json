@@ -42,7 +42,8 @@
         },
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
         "location": { "$ref": "#/$defs/location" },
-        "metric": { "$ref": "#/$defs/metric" }
+        "metric": { "$ref": "#/$defs/metric" },
+        "ratchet": { "$ref": "#/$defs/ratchet" }
       },
       "if": { "required": ["metric"] },
       "then": {
@@ -56,6 +57,16 @@
       "properties": {
         "line": { "type": "integer", "minimum": 1 },
         "column": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "ratchet": {
+      "description": "Lets an enforceable finding whose identity changed stay baselined: a new finding matching a base finding's ratchet key (with renames applied) is held while its value does not exceed the base value.",
+      "type": "object",
+      "required": ["key", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "key": { "$ref": "#/$defs/nonEmptyString" },
+        "value": { "type": "number" }
       }
     },
     "metric": {

@@ -22,9 +22,18 @@ export function compareFindings({
   });
   const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
-  const resolvedFindings = [...baseByKey]
+  const unmatchedBase = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
+  const ratcheted = holdRatchetedFindings({
+    newFindings: present.newFindings,
+    unmatchedBase,
+    renames: baseToHeadRenames,
+    directories: baseToHeadDirectories,
+  });
+  present.newFindings = ratcheted.newFindings;
+  present.unchangedFindings.push(...ratcheted.heldFindings);
+  const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
   return {
     newFindings: sortFindings(present.newFindings),
@@ -52,6 +61,33 @@ function classify(headFinding, baseFinding, touchedCode) {
   }
   const bucket = isInTouchedCode(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
   return { bucket, entry: headFinding };
+}
+
+function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories }) {
+  const baseByRatchet = new Map();
+  for (const baseFinding of unmatchedBase) {
+    if (baseFinding.ratchet !== undefined) {
+      baseByRatchet.set(ratchetKey(baseFinding, renames, directories), baseFinding);
+    }
+  }
+  const result = { newFindings: [], heldFindings: [], matchedBase: new Set() };
+  for (const headFinding of newFindings) {
+    const baseFinding =
+      headFinding.ratchet === undefined
+        ? undefined
+        : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
+    if (baseFinding === undefined || headFinding.ratchet.value > baseFinding.ratchet.value) {
+      result.newFindings.push(headFinding);
+      continue;
+    }
+    result.matchedBase.add(baseFinding);
+    result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
+  }
+  return result;
+}
+
+function ratchetKey(finding, renames, directories) {
+  return comparisonKey({ ...finding, identity: finding.ratchet.key }, renames, directories);
 }
 
 function changedMetricOf(baseFinding, headFinding) {
