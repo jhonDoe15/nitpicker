@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseStrict } from './fixtures/strict-cruise.mjs';
+import { strictBoundaryRules } from './strict-boundary-rules.mjs';
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
 
@@ -45,12 +46,20 @@ describe('strict boundary rules', () => {
     expect(result.exitCode, result.output).toBe(0);
   });
 
+  it('defines every strict rule the fixtures exercise', () => {
+    const strictRules = violations.filter(([, , allowedForm]) => allowedForm !== null);
+
+    expect(strictBoundaryRules.map(({ name }) => name)).toEqual(
+      expect.arrayContaining(strictRules.map(([, rule]) => rule)),
+    );
+  });
+
   it.each(violations)('rejects %s', async (fixture, rule, allowedForm) => {
     const result = await cruiseFixture(fixture);
     const output = result.output.replaceAll(/\s+/g, ' ');
 
     expect(result.exitCode).not.toBe(0);
     expect(output).toContain(rule);
-    if (allowedForm !== null) expect(output).toContain(allowedForm);
+    expect(output).toContain(allowedForm ?? '');
   });
 });

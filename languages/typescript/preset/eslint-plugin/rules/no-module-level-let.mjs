@@ -6,7 +6,7 @@ function isModuleLevel(declaration) {
   return parent.type === 'ExportNamedDeclaration' && parent.parent.type === 'Program';
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

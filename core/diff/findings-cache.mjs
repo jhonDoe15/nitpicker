@@ -29,7 +29,7 @@ export function cacheKey({
         analyzer.configurationHash,
         configOverrides,
         headPolicy,
-        analyzer.legacyInventory ?? null,
+        analyzer.legacyInventory,
       ]),
     )
     .digest('hex');
@@ -42,7 +42,7 @@ export { resolveCacheDirectory };
  * directory store. Entries carry their own key, so an entry stored under the wrong name is a miss.
  */
 export function createFindingsCache({
-  store = undefined,
+  store,
   directory,
   mergeBaseSha,
   projectRelativePath,
@@ -50,8 +50,9 @@ export function createFindingsCache({
   headPolicy = {},
 }) {
   const backend = store ?? createDirectoryStore(directory);
-  const keyFor = (analyzer) =>
-    cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides, headPolicy });
+  function keyFor(analyzer) {
+    return cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides, headPolicy });
+  }
   return {
     /** Returns the cached report, or undefined on a miss, an unreadable or a mismatched entry. */
     read(analyzer) {
@@ -105,8 +106,8 @@ export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
   const byName = new Map(analyzers.map((analyzer) => [analyzer.name, analyzer]));
   const toRun = new Set(analyzers.filter(({ name }) => !cached.has(name)).map(({ name }) => name));
   const pending = [...toRun];
-  while (pending.length > 0) {
-    for (const dependency of byName.get(pending.pop())?.dependencies ?? []) {
+  for (const name of pending) {
+    for (const dependency of byName.get(name)?.dependencies ?? []) {
       if (!toRun.has(dependency) && byName.has(dependency)) {
         toRun.add(dependency);
         pending.push(dependency);

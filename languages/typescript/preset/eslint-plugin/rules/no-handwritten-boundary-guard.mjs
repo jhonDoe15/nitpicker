@@ -27,7 +27,7 @@ function isSchemaParseArgument(expression) {
   return isSchemaParseCall(parent) && parent.arguments.includes(expression);
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

@@ -110,7 +110,9 @@ describe('analyzer scheduler', () => {
       execute: ({ name }) =>
         new Promise((resolve) => {
           started.push(name);
-          releases.set(name, () => resolve({ findings: [] }));
+          releases.set(name, () => {
+            resolve({ findings: [] });
+          });
         }),
     });
 
@@ -147,7 +149,9 @@ describe('analyzer scheduler', () => {
       execute: ({ name }) =>
         new Promise((resolve) => {
           started.push(name);
-          releases.set(name, () => resolve({ findings: [{ name }] }));
+          releases.set(name, () => {
+            resolve({ findings: [{ name }] });
+          });
         }),
     });
 
@@ -188,9 +192,9 @@ describe('analyzer scheduler', () => {
       ],
       {
         maxParallel: 1,
-        execute: async ({ name }) => {
+        execute: ({ name }) => {
           started.push(name);
-          return { findings: [] };
+          return Promise.resolve({ findings: [] });
         },
       },
     );
@@ -205,9 +209,9 @@ describe('analyzer scheduler', () => {
 
       await expect(
         runTaskGraph([task('valid'), task('invalid', { executionPriority })], {
-          execute: async ({ name }) => {
+          execute: ({ name }) => {
             started.push(name);
-            return { findings: [] };
+            return Promise.resolve({ findings: [] });
           },
         }),
       ).rejects.toThrow(/executionPriority must be a non-negative safe integer/);
@@ -221,9 +225,9 @@ describe('analyzer scheduler', () => {
 
     await expect(
       runTaskGraph([task('valid'), invalidTask], {
-        execute: async ({ name }) => {
+        execute: ({ name }) => {
           started.push(name);
-          return { findings: [] };
+          return Promise.resolve({ findings: [] });
         },
       }),
     ).rejects.toThrow(/concurrencyWeight must be a positive integer/);
@@ -240,9 +244,9 @@ describe('analyzer scheduler', () => {
           task('crap', { dependencies: ['coverage'] }),
         ],
         {
-          execute: async ({ name }) => {
+          execute: ({ name }) => {
             started.push(name);
-            return { findings: [] };
+            return Promise.resolve({ findings: [] });
           },
         },
       ),
@@ -259,7 +263,9 @@ describe('analyzer scheduler', () => {
         started.push(name);
         if (name === 'coverage') {
           return new Promise((resolve) => {
-            releaseCoverage = () => resolve({ findings: [] });
+            releaseCoverage = () => {
+              resolve({ findings: [] });
+            };
           });
         }
         return Promise.resolve({ findings: [] });
@@ -296,7 +302,9 @@ describe('analyzer scheduler', () => {
         execute: ({ name }) =>
           new Promise((resolve) => {
             started.push(name);
-            releases.set(name, () => resolve({ findings: [] }));
+            releases.set(name, () => {
+              resolve({ findings: [] });
+            });
           }),
       },
     );
@@ -316,9 +324,9 @@ describe('analyzer scheduler', () => {
       [task('coverage'), task('crap', { dependencies: ['coverage'], executionPriority: 1 })],
       {
         maxParallel: 2,
-        execute: async ({ name }) => {
+        execute: ({ name }) => {
           successfulOrder.push(name);
-          return { findings: [] };
+          return Promise.resolve({ findings: [] });
         },
       },
     );
@@ -330,9 +338,9 @@ describe('analyzer scheduler', () => {
       [task('coverage'), task('crap', { dependencies: ['coverage'], executionPriority: 1 })],
       {
         maxParallel: 2,
-        execute: async ({ name }) => {
+        execute: ({ name }) => {
           failedOrder.push(name);
-          throw new Error('coverage failed');
+          return Promise.reject(new Error('coverage failed'));
         },
       },
     );
@@ -363,13 +371,11 @@ describe('analyzer scheduler', () => {
 
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
-      const outcome = expect(executeAnalyzerTask(analyzerTask)).rejects.toThrow(
-        'stuck timed out after 500 ms',
-      );
+      const outcome = executeAnalyzerTask(analyzerTask);
       await waitForFile(readyMarker);
       vi.advanceTimersByTime(500);
       vi.advanceTimersByTime(1_000);
-      await outcome;
+      await expect(outcome).rejects.toThrow('stuck timed out after 500 ms');
     } finally {
       vi.useRealTimers();
       rmSync(fixtureRoot, { recursive: true, force: true });

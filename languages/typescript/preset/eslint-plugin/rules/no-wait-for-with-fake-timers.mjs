@@ -1,25 +1,19 @@
+import { ancestorsOf, chainOf } from './ancestry.mjs';
 function callName(node) {
   if (node?.type !== 'CallExpression') return undefined;
   const callee = node.callee;
-  let root = callee;
-  while (root.type === 'CallExpression' || root.type === 'MemberExpression') {
-    root = root.type === 'CallExpression' ? root.callee : root.object;
-  }
+  const root = chainOf(callee, (current) => {
+    if (current.type === 'CallExpression') return current.callee;
+    return current.type === 'MemberExpression' ? current.object : undefined;
+  }).at(-1);
   if (root.type === 'Identifier' && ['it', 'test', 'describe'].includes(root.name))
     return root.name;
-  return callee.type === 'Identifier'
-    ? callee.name
-    : callee.type === 'MemberExpression' && !callee.computed
-      ? callee.property.name
-      : undefined;
+  if (callee.type === 'Identifier') return callee.name;
+  return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : undefined;
 }
 
 function owner(node) {
-  for (
-    let current = node.parent;
-    current !== null && current !== undefined;
-    current = current.parent
-  ) {
+  for (const current of ancestorsOf(node)) {
     if (current.type === 'Program') return current;
     if (current.type !== 'CallExpression') continue;
     if (['it', 'test', 'describe'].includes(callName(current))) return current;
@@ -27,7 +21,7 @@ function owner(node) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],
@@ -63,16 +57,14 @@ export default {
         const method = callee.property.name;
         if (method === 'waitFor') waits.push(node);
         if (!['useFakeTimers', 'useRealTimers'].includes(method)) return;
-        // Teardown does not change the clock used inside a test.
-        for (let current = node.parent; current; current = current.parent) {
+        for (const current of ancestorsOf(node)) {
           if (['afterEach', 'afterAll'].includes(callName(current))) return;
         }
         changes.push({ node, owner: owner(node), fake: method === 'useFakeTimers' });
       },
       'Program:exit'() {
         for (const wait of waits) {
-          let scope = owner(wait);
-          while (scope) {
+          for (const scope of chainOf(owner(wait), owner)) {
             const candidates = changes.filter(
               (change) =>
                 change.owner === scope &&
@@ -84,7 +76,6 @@ export default {
               if (candidates.at(-1).fake) context.report({ node: wait, messageId: 'fakeWait' });
               break;
             }
-            scope = owner(scope);
           }
         }
       },

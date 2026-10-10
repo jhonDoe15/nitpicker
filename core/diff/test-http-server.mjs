@@ -56,8 +56,9 @@ export async function startTestHttpServer({ token } = {}) {
     worker.once('error', reject);
   });
   const url = `http://127.0.0.1:${String(port)}`;
-  const control = async (body = {}) =>
-    (await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify(body) })).json();
+  async function control(body = {}) {
+    return (await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify(body) })).json();
+  }
   return {
     url,
     port,

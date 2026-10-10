@@ -16,6 +16,24 @@ function isExported(declaration) {
   return declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 }
 
+function accessedSymbol(checker, node) {
+  let symbol;
+  if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
+  if (ts.isElementAccessExpression(node))
+    symbol = checker.getSymbolAtLocation(node.argumentExpression);
+  if (
+    ts.isBindingElement(node) &&
+    ts.isObjectBindingPattern(node.parent) &&
+    ts.isVariableDeclaration(node.parent.parent) &&
+    node.parent.parent.initializer
+  ) {
+    const name = node.propertyName ?? node.name;
+    if (ts.isIdentifier(name))
+      symbol = checker.getTypeAtLocation(node.parent.parent.initializer).getProperty(name.text);
+  }
+  return symbol;
+}
+
 /**
  * Find unused callable members of exported interfaces implemented by production classes.
  * Declaration identity prevents unrelated same-name methods and test-only calls from
@@ -81,29 +99,18 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
     }
   }
   for (const source of sources) {
-    const visit = (node, containingClass) => {
+    function visit(node, containingClass) {
       const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
-      let symbol;
-      if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
-      if (ts.isElementAccessExpression(node))
-        symbol = checker.getSymbolAtLocation(node.argumentExpression);
-      if (
-        ts.isBindingElement(node) &&
-        ts.isObjectBindingPattern(node.parent) &&
-        ts.isVariableDeclaration(node.parent.parent) &&
-        node.parent.parent.initializer
-      ) {
-        const name = node.propertyName ?? node.name;
-        if (ts.isIdentifier(name))
-          symbol = checker.getTypeAtLocation(node.parent.parent.initializer).getProperty(name.text);
-      }
+      const symbol = accessedSymbol(checker, node);
       for (const declaration of symbol?.declarations ?? []) {
         for (const method of methodsByDeclaration.get(declaration) ?? []) {
           if (!method.implementations.has(currentClass)) method.used = true;
         }
       }
-      ts.forEachChild(node, (child) => visit(child, currentClass));
-    };
+      ts.forEachChild(node, (child) => {
+        visit(child, currentClass);
+      });
+    }
     visit(source, undefined);
   }
   const findings = [];
@@ -122,7 +129,7 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
 
 export function analyzePublicContractUsage(configPath) {
   const absoluteConfig = path.resolve(configPath);
-  const config = ts.readConfigFile(absoluteConfig, ts.sys.readFile);
+  const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
   if (config.error)
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));

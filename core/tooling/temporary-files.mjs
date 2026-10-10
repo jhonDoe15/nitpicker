@@ -3,7 +3,7 @@ import { constants as osConstants } from 'node:os';
 
 const trackedPaths = new Set();
 const handledSignals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
-let handlersInstalled = false;
+const handlerState = { installed: false };
 
 /**
  * Registers a temporary file or link that a runner writes into the analyzed project root, so
@@ -28,10 +28,10 @@ export function removeTrackedTemporaryPaths() {
 }
 
 function installHandlers() {
-  if (handlersInstalled) {
+  if (handlerState.installed) {
     return;
   }
-  handlersInstalled = true;
+  handlerState.installed = true;
   process.on('exit', removeTrackedTemporaryPaths);
   for (const signal of handledSignals) {
     process.on(signal, () => {

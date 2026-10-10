@@ -81,7 +81,9 @@ async function silentServer() {
 
 function temporaryDirectory() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cache-stores-'));
-  cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+  cleanups.push(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   return root;
 }
 

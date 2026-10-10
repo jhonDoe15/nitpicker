@@ -34,7 +34,7 @@ export async function runTaskGraph(
   const tasksByName = indexTasks(tasks);
   validateAcyclicGraph(tasksByName);
 
-  const semaphore = new WeightedSemaphore(maxParallel);
+  const semaphore = createWeightedSemaphore(maxParallel);
   const groupSemaphores = new Map();
   const taskPromises = new Map();
 
@@ -146,7 +146,7 @@ function acquireGroup(groupName, groupSemaphores) {
   }
   let semaphore = groupSemaphores.get(groupName);
   if (semaphore === undefined) {
-    semaphore = new WeightedSemaphore(1);
+    semaphore = createWeightedSemaphore(1);
     groupSemaphores.set(groupName, semaphore);
   }
   return semaphore.acquire(1);
@@ -158,25 +158,72 @@ function acquireGroup(groupName, groupSemaphores) {
 const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
 
 function analyzerEnvironment(environment) {
-  const copy = { ...environment };
-  for (const name of HOST_CI_OUTPUT_VARIABLES) {
-    delete copy[name];
+  return Object.fromEntries(
+    Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
+  );
+}
+
+function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {
+  if (failure !== undefined) {
+    reject(failure);
+    return;
   }
-  return copy;
+  try {
+    resolve(
+      reportFromAnalyzerOutput(task, {
+        status,
+        signal,
+        stdoutText: Buffer.concat(stdout).toString('utf8'),
+        stderrText: Buffer.concat(stderr).toString('utf8'),
+      }),
+    );
+  } catch (error) {
+    reject(error);
+  }
+}
+
+function spawnAnalyzer(task) {
+  const child = spawn(task.invocation.command, task.invocation.args, {
+    cwd: task.invocation.cwd,
+    env: analyzerEnvironment(task.invocation.env ?? process.env),
+    detached: process.platform !== 'win32',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  activeChildren.add(child);
+  return child;
+}
+
+function createOutputCollector(onOverflow) {
+  const stdout = [];
+  const stderr = [];
+  let outputBytes = 0;
+  function collect(chunks) {
+    return (chunk) => {
+      outputBytes += chunk.length;
+      if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
+        onOverflow();
+        return;
+      }
+      chunks.push(chunk);
+    };
+  }
+  return { stdout, stderr, collectStdout: collect(stdout), collectStderr: collect(stderr) };
+}
+
+function scheduleForceKill(child) {
+  const timer = setTimeout(() => {
+    signalChildProcess(child, 'SIGKILL');
+  }, FORCE_KILL_DELAY_MS);
+  timer.unref();
+  return timer;
 }
 
 export function executeAnalyzerTask(task) {
   return new Promise((resolve, reject) => {
-    const child = spawn(task.invocation.command, task.invocation.args, {
-      cwd: task.invocation.cwd,
-      env: analyzerEnvironment(task.invocation.env ?? process.env),
-      detached: process.platform !== 'win32',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const child = spawnAnalyzer(task);
+    const output = createOutputCollector(() => {
+      terminate(new Error(`${task.name} exceeded the analyzer output limit`));
     });
-    activeChildren.add(child);
-    const stdout = [];
-    const stderr = [];
-    let outputBytes = 0;
     let terminationError;
     let childError;
     let settled = false;
@@ -185,43 +232,20 @@ export function executeAnalyzerTask(task) {
     }, task.timeoutMs);
     let forceKillTimeout;
 
-    const collect = (chunks) => (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
-        terminate(new Error(`${task.name} exceeded the analyzer output limit`));
-        return;
-      }
-      chunks.push(chunk);
-    };
-    child.stdout.on('data', collect(stdout));
-    child.stderr.on('data', collect(stderr));
+    child.stdout.on('data', output.collectStdout);
+    child.stderr.on('data', output.collectStderr);
     child.on('error', (error) => {
       childError = error;
     });
-    child.on('close', (status, signal) =>
+    child.on('close', (status, signal) => {
       finish(() => {
-        if (terminationError !== undefined) {
-          reject(terminationError);
-          return;
-        }
-        if (childError !== undefined) {
-          reject(childError);
-          return;
-        }
-        try {
-          resolve(
-            reportFromAnalyzerOutput(task, {
-              status,
-              signal,
-              stdoutText: Buffer.concat(stdout).toString('utf8'),
-              stderrText: Buffer.concat(stderr).toString('utf8'),
-            }),
-          );
-        } catch (error) {
-          reject(error);
-        }
-      }),
-    );
+        settleClose(
+          task,
+          { failure: terminationError ?? childError, status, signal, ...output },
+          { resolve, reject },
+        );
+      });
+    });
 
     function terminate(error) {
       if (terminationError !== undefined) {
@@ -230,10 +254,7 @@ export function executeAnalyzerTask(task) {
       terminationError = error;
       clearTimeout(timeout);
       signalChildProcess(child, 'SIGTERM');
-      forceKillTimeout = setTimeout(() => {
-        signalChildProcess(child, 'SIGKILL');
-      }, FORCE_KILL_DELAY_MS);
-      forceKillTimeout.unref();
+      forceKillTimeout = scheduleForceKill(child);
     }
 
     function finish(operation) {
@@ -423,31 +444,32 @@ function validateAcyclicGraph(tasksByName) {
   }
 }
 
-class WeightedSemaphore {
-  #available;
-  #waiting = [];
+function createWeightedSemaphore(capacity) {
+  let available = capacity;
+  const waiting = [];
 
-  constructor(capacity) {
-    this.#available = capacity;
-  }
-
-  acquire(weight) {
-    return new Promise((resolve) => {
-      this.#waiting.push({ weight, resolve });
-      this.#drain();
-    });
-  }
-
-  #drain() {
-    while (this.#waiting[0]?.weight <= this.#available) {
-      const waiter = this.#waiting.shift();
-      this.#available -= waiter.weight;
+  function drain() {
+    for (const waiter of [...waiting]) {
+      if (waiter.weight > available) {
+        return;
+      }
+      waiting.shift();
+      available -= waiter.weight;
       waiter.resolve(() => {
-        this.#available += waiter.weight;
-        this.#drain();
+        available += waiter.weight;
+        drain();
       });
     }
   }
+
+  return {
+    acquire(weight) {
+      return new Promise((resolve) => {
+        waiting.push({ weight, resolve });
+        drain();
+      });
+    },
+  };
 }
 
 const invokedPath = process.argv[1];

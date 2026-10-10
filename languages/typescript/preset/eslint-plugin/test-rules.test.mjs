@@ -1,15 +1,15 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import hermeticGitInTests from './rules/hermetic-git-in-tests.mjs';
-import noFirstTestChargedSetup from './rules/no-first-test-charged-setup.mjs';
-import noUninjectableDelay from './rules/no-uninjectable-delay.mjs';
-import noGitRepositoryPerTest from './rules/no-git-repository-per-test.mjs';
-import noNodeProcessPerTest from './rules/no-node-process-per-test.mjs';
-import noProcessGlobalsOutsideMainGuard from './rules/no-process-globals-outside-main-guard.mjs';
-import noRaisedTestTimeout from './rules/no-raised-test-timeout.mjs';
-import noServerOrWorkerPerTest from './rules/no-server-or-worker-per-test.mjs';
-import testTsconfigPinsLibAndTypes from './rules/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as hermeticGitInTests } from './rules/hermetic-git-in-tests.mjs';
+import { rule as noFirstTestChargedSetup } from './rules/no-first-test-charged-setup.mjs';
+import { rule as noUninjectableDelay } from './rules/no-uninjectable-delay.mjs';
+import { rule as noGitRepositoryPerTest } from './rules/no-git-repository-per-test.mjs';
+import { rule as noNodeProcessPerTest } from './rules/no-node-process-per-test.mjs';
+import { rule as noProcessGlobalsOutsideMainGuard } from './rules/no-process-globals-outside-main-guard.mjs';
+import { rule as noRaisedTestTimeout } from './rules/no-raised-test-timeout.mjs';
+import { rule as noServerOrWorkerPerTest } from './rules/no-server-or-worker-per-test.mjs';
+import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-lib-and-types.mjs';
 
 RuleTester.afterAll = afterAll;
 RuleTester.afterEach = afterEach;

@@ -31,7 +31,9 @@ function assertRuntimeFiles(files) {
 describe('npm package contents', () => {
   it('fails when a runtime file is omitted from files', () => {
     const files = new Set(['package.json']);
-    expect(() => assertRuntimeFiles(files)).toThrow('missing runtime file');
+    expect(() => {
+      assertRuntimeFiles(files);
+    }).toThrow('missing runtime file');
   });
   it('ships the complete runtime tree without tests, fixtures, or the lockfile', () => {
     let listing;

@@ -65,11 +65,16 @@ export function resolveProjectRoot(cwd = process.cwd()) {
       encoding: 'utf8',
     }).trim(),
   );
-  for (let directory = current; ; directory = path.dirname(directory)) {
-    if (existsSync(path.join(directory, 'package.json'))) return directory;
-    if (directory === repositoryRoot) break;
-    if (directory === path.dirname(directory)) break;
+  function directoriesUpTo(directory) {
+    const parent = path.dirname(directory);
+    return directory === repositoryRoot || directory === parent
+      ? [directory]
+      : [directory, ...directoriesUpTo(parent)];
   }
+  const projectRoot = directoriesUpTo(current).find((directory) =>
+    existsSync(path.join(directory, 'package.json')),
+  );
+  if (projectRoot !== undefined) return projectRoot;
   throw new Error(`No package.json found between ${current} and repository root ${repositoryRoot}`);
 }
 

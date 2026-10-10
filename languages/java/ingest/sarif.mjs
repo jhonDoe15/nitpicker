@@ -153,11 +153,18 @@ function locationOf(result) {
   return location;
 }
 
+function compareKeys(left, right) {
+  if (left < right) {
+    return -1;
+  }
+  return left > right ? 1 : 0;
+}
+
 function identityOf(result, rule, filePath, symbol) {
   const fingerprints = isRecord(result.partialFingerprints) ? result.partialFingerprints : {};
   const entries = Object.entries(fingerprints)
     .filter(([, value]) => typeof value === 'string' && value !== '')
-    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0));
+    .sort(([left], [right]) => compareKeys(left, right));
   if (entries.length > 0) {
     return `fp:${entries.map(([key, value]) => `${key}=${value}`).join(';')}`;
   }
