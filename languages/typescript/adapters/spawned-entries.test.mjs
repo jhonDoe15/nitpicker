@@ -1,0 +1,31 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { spawnedEntryFiles } from './spawned-entries.mjs';
+
+const root = mkdtempSync(path.join(tmpdir(), 'spawned-entries-'));
+
+afterAll(() => {
+  rmSync(root, { recursive: true, force: true });
+});
+
+describe('spawnedEntryFiles', () => {
+  it('resolves literal worker paths from path.join and new URL', () => {
+    mkdirSync(path.join(root, 'src/sub'), { recursive: true });
+    mkdirSync(path.join(root, 'node_modules/dep'), { recursive: true });
+    writeFileSync(path.join(root, 'src/worker.mjs'), '');
+    writeFileSync(path.join(root, 'src/sub/other.mjs'), '');
+    writeFileSync(
+      path.join(root, 'src/main.mjs'),
+      [
+        "const a = path.join(import.meta.dirname, 'worker.mjs');",
+        "const b = new URL('./sub/other.mjs', import.meta.url);",
+        "const c = path.join(import.meta.dirname, 'missing.mjs');",
+        "const d = path.join(import.meta.dirname, 'data.json');",
+      ].join('\n'),
+    );
+    writeFileSync(path.join(root, 'node_modules/dep/x.mjs'), "new URL('./w.mjs', import.meta.url)");
+    expect(spawnedEntryFiles(root)).toEqual(['src/sub/other.mjs', 'src/worker.mjs']);
+  });
+});

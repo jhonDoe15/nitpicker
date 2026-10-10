@@ -94,6 +94,7 @@ const presetConfig = tseslint.config(
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
+      'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',
       'vitest/valid-expect-in-promise': 'error',
     },
