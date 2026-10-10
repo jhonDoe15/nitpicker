@@ -296,7 +296,7 @@ describe('mutantFindings', () => {
       ['mutant-timeout', 'descriptive'],
     ]);
     expect(findings[0]).toMatchObject({
-      message: 'Survived Op',
+      message: 'Survived Op: no test fails when this code changes. Add an assertion that would.',
       symbol: 'C#m',
       location: { line: 4 },
     });
