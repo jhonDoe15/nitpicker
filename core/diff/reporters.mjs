@@ -98,7 +98,7 @@ export function renderConsoleSummary(
     ),
   ];
 
-  appendViolationSummary(lines, violations, color);
+  appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
@@ -224,7 +224,11 @@ function appendFindingSection(lines, heading, findings) {
   }
 }
 
-function appendViolationSummary(lines, violations, color) {
+function appendViolationSummary(lines, { violations, incomplete }, color) {
+  if (violations.length === 0 && incomplete) {
+    lines.push('No new enforceable violations, but the run is incomplete:');
+    return;
+  }
   if (violations.length === 0) {
     lines.push(style('✓ No new enforceable violations', [ANSI.green], color));
     return;
@@ -257,8 +261,21 @@ function appendToolErrorSummary(lines, toolErrors, color) {
     ),
   );
   for (const error of toolErrors) {
-    lines.push(`  ${style(error.tool, [ANSI.yellow], color)}: ${singleLine(error.message)}`);
+    const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
+    lines.push(`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`);
   }
+}
+
+const ERROR_HEADLINE_LIMIT = 300;
+const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
+
+function errorHeadline(message) {
+  const text = singleLine(message);
+  const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);
+  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT);
+  return headline.length < text.length - start
+    ? `${headline}… (full text in the diagnostics file)`
+    : headline;
 }
 
 function appendMetricSection(lines, metrics) {
