@@ -1,11 +1,18 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const CONFIG_FILE_NAME = 'nitpicker.config.json';
+import {
+  CONFIG_FILE_NAME,
+  configError,
+  isNonEmptyString,
+  isPlainObject,
+  validateProjectRelativePath,
+  validateStringArray,
+  validateThresholds,
+} from '../shared/config.mjs';
+
 const SUPPORTED_PRESETS = ['typescript', 'java'];
-// Keys that tune the TypeScript preset's analyzers; the Java preset has no counterpart (yet), and
-// a key that is silently ignored would look like a weakened or tightened gate that it is not.
-const TYPESCRIPT_ONLY_KEYS = ['thresholds', 'exclude', 'layout', 'exceptions', 'legacyInventory'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions'];
 const KEYS = [
   'base',
   'preset',
@@ -17,7 +24,6 @@ const KEYS = [
   'analyzers',
   'legacyInventory',
 ];
-const THRESHOLD_KEYS = ['crapLimit'];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs'];
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
@@ -44,11 +50,22 @@ export function validateConfig(config) {
   if (!isPlainObject(config)) {
     throw configError('must be a JSON object');
   }
+  validateKeys(config);
+  validateScalars(config);
+  validateDisable(config.disable);
+  validateOptional(config);
+  return config;
+}
+
+function validateKeys(config) {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) {
       throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
     }
   }
+}
+
+function validateScalars(config) {
   if (config.base !== undefined && !isNonEmptyString(config.base)) {
     throw configError('"base" must be a non-empty string');
   }
@@ -56,19 +73,30 @@ export function validateConfig(config) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
   if (config.preset === 'java') {
-    const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
-    if (unsupported.length > 0) {
-      throw configError(
-        `"${unsupported[0]}" is not supported with "preset": "java". Not supported: ${TYPESCRIPT_ONLY_KEYS.join(', ')}`,
-      );
-    }
+    validateJavaKeys(config);
   }
-  if (config.disable !== undefined) {
-    validateStringArray(config.disable, 'disable');
-    if (new Set(config.disable).size !== config.disable.length) {
-      throw configError('"disable" must not contain duplicates');
-    }
+}
+
+function validateJavaKeys(config) {
+  const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
+  if (unsupported.length > 0) {
+    throw configError(
+      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
+    );
   }
+}
+
+function validateDisable(disable) {
+  if (disable === undefined) {
+    return;
+  }
+  validateStringArray(disable, 'disable');
+  if (new Set(disable).size !== disable.length) {
+    throw configError('"disable" must not contain duplicates');
+  }
+}
+
+function validateOptional(config) {
   if (config.thresholds !== undefined) {
     validateThresholds(config.thresholds);
   }
@@ -87,7 +115,6 @@ export function validateConfig(config) {
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);
   }
-  return config;
 }
 
 /** One line per override, so the report and the policy hash show every weakened check. */
@@ -156,22 +183,6 @@ function validateExceptions(exceptions) {
   }
 }
 
-function validateThresholds(thresholds) {
-  if (!isPlainObject(thresholds)) {
-    throw configError('"thresholds" must be an object');
-  }
-  for (const [key, value] of Object.entries(thresholds)) {
-    if (!THRESHOLD_KEYS.includes(key)) {
-      throw configError(
-        `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
-      );
-    }
-    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-      throw configError(`"thresholds.${key}" must be a positive number`);
-    }
-  }
-}
-
 function validateLayout(layout) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
@@ -231,32 +242,4 @@ function validateCustomAnalyzers(analyzers) {
       validateStringArray(entry.args, `${label}.args`);
     }
   }
-}
-
-function validateProjectRelativePath(value, name) {
-  if (!isNonEmptyString(value)) {
-    throw configError(`"${name}" must be a non-empty string`);
-  }
-  const normalized = value.replaceAll('\\', '/');
-  if (path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || normalized.split('/').includes('..')) {
-    throw configError(`"${name}" must be a path inside the project`);
-  }
-}
-
-function validateStringArray(value, name) {
-  if (!Array.isArray(value) || !value.every(isNonEmptyString)) {
-    throw configError(`"${name}" must be an array of non-empty strings`);
-  }
-}
-
-function configError(message) {
-  return new Error(`${CONFIG_FILE_NAME}: ${message}`);
-}
-
-function isNonEmptyString(value) {
-  return typeof value === 'string' && value.length > 0;
-}
-
-function isPlainObject(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

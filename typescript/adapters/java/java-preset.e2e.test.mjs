@@ -26,6 +26,36 @@ public final class Legacy {
 }
 `;
 
+// SH5: a legacy method over the parameter limit (baselined), and the same method with new methods
+// over the parameter and control nesting limits (the new ones fail).
+const WIDE = `package demo;
+
+public final class Wide {
+  public int sum(int a, int b, int c, int d) {
+    return a + b + c + d;
+  }
+}
+`;
+
+const WIDE_EXTENDED = WIDE.replace(
+  '  public int sum',
+  `  public int deep(int a) {
+    int total = 0;
+    if (a > 0) {
+      for (int i = 0; i < a; i++) {
+        if (i % 2 == 0) {
+          total += i;
+        }
+      }
+    }
+    return total;
+  }
+
+  public int sum`,
+);
+
+const WIDE_REFORMATTED = WIDE.replace('  public int sum', '  // Still too wide.\n  public int sum');
+
 const LEGACY_MOVED = LEGACY.replace(
   '  private int leftover;',
   '  // Kept for compatibility.\n  // See ticket 12.\n  private int leftover;',
@@ -211,6 +241,43 @@ ${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i})
   }
 }
 `;
+// --- coupling (SH6) fixtures: client -> stable -> churn -> leaf. `stable` (instability 1/3, used by
+// both clients) depends on `churn` (instability 1/2), a less stable package.
+const stabilityClass = (packageName, name, body) => `package ${packageName};
+
+public final class ${name} {
+${body}
+}
+`;
+const STABILITY_FILES = {
+  'src/main/java/client/ClientOne.java': stabilityClass(
+    'client',
+    'ClientOne',
+    '  public int run() {\n    return new stable.Core().value();\n  }',
+  ),
+  'src/main/java/client/ClientTwo.java': stabilityClass(
+    'client',
+    'ClientTwo',
+    '  public int run() {\n    return new stable.Core().value() + 1;\n  }',
+  ),
+  'src/main/java/stable/Core.java': stabilityClass(
+    'stable',
+    'Core',
+    '  public int value() {\n    return new churn.Volatile().value();\n  }',
+  ),
+  'src/main/java/churn/Volatile.java': stabilityClass(
+    'churn',
+    'Volatile',
+    '  public int value() {\n    return new leaf.Leaf().value();\n  }',
+  ),
+  'src/main/java/leaf/Leaf.java': stabilityClass(
+    'leaf',
+    'Leaf',
+    '  public int value() {\n    return 1;\n  }',
+  ),
+};
+// --- end coupling fixtures ---
+
 const BRANCHY_MOVED = BRANCHY.replace(
   '  public int larger',
   '  // Picks the larger value.\n  public int larger',
@@ -284,6 +351,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');
     writeFileSync(path.join(repository, sourceDirectory, 'Legacy.java'), LEGACY);
     writeFileSync(path.join(repository, sourceDirectory, 'Branchy.java'), BRANCHY);
+    writeFileSync(path.join(repository, sourceDirectory, 'Wide.java'), WIDE);
     git('init', '-q', '-b', 'main');
     git('add', '-A');
     git('commit', '-q', '-m', 'base with one legacy violation');
@@ -300,6 +368,22 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
     branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
+    branchWith('structure-new', { 'Wide.java': WIDE_EXTENDED });
+    branchWith('structure-moved', { 'Wide.java': WIDE_REFORMATTED });
+    // --- coupling (SH6) branches ---
+    branchWith('stability', STABILITY_FILES);
+    git('checkout', '-q', '-b', 'stability-edited', 'stability');
+    writeFileSync(
+      path.join(repository, 'src/main/java/stable/Core.java'),
+      stabilityClass(
+        'stable',
+        'Core',
+        '  // Delegates to the volatile package.\n  public int value() {\n    return new churn.Volatile().value();\n  }',
+      ),
+    );
+    git('add', '-A');
+    git('commit', '-q', '-m', 'stability-edited');
+    // --- end coupling branches ---
   });
 
   afterAll(() => {
@@ -307,9 +391,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     rmSync(repository, { recursive: true, force: true });
   });
 
-  const diffOf = (branch) => {
+  const diffOf = (branch, policy) => {
     git('checkout', '-q', branch);
-    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle });
+    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
   };
 
   it(
@@ -398,7 +482,29 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'crap crap-score-limit Complex.java',
         ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
         ...repeated(28, 'pit mutant-nocoverage Complex.java'),
+        'structure function-statements-limit Complex.java', // the method has more than 15 statements
       ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'honours thresholds.crapLimit: a high limit lets the complex method pass the CRAP rule',
+    () => {
+      const result = diffOf('complex', { crapLimit: 1_000_000 });
+
+      expect(summarize(result.newEnforceable)).not.toContain('crap crap-score-limit Complex.java');
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'honours exclude: findings under an excluded path are dropped',
+    () => {
+      const result = diffOf('violation', { exclude: [`${sourceDirectory}/Bad.java`] });
+
+      expect(result.failed).toBe(false);
+      expect(result.newFindings.some((finding) => finding.path.endsWith('Bad.java'))).toBe(false);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -481,4 +587,93 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
+
+  // SH5: the shared structure rule on Java methods.
+  const structureOf = (findings) =>
+    findings
+      .filter((finding) => finding.tool === 'structure')
+      .map(({ rule, symbol }) => `${rule} ${symbol}`);
+
+  it(
+    'fails a new method over the nesting limit and keeps the legacy wide method baselined',
+    () => {
+      const result = diffOf('structure-new');
+
+      expect(result.failed).toBe(true);
+      expect(structureOf(result.newEnforceable)).toEqual([
+        'function-control-nesting-limit Wide.deep',
+      ]);
+      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+        'Wide.deep has 3 maxControlNesting; limit is 2',
+      );
+      expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  // --- coupling (SH6) cases ---
+  it(
+    'fails a package depending on a less stable package and reports coupling metrics as descriptive',
+    () => {
+      const result = diffOf('stability');
+
+      expect(result.failed).toBe(true);
+      const coupling = (findings) => findings.filter((finding) => finding.tool === 'coupling');
+      expect(
+        coupling(result.newEnforceable).map(({ rule, identity, message }) => ({
+          rule,
+          identity,
+          message,
+        })),
+      ).toEqual([
+        {
+          rule: 'stability-direction',
+          identity: 'package-edge:stable->churn',
+          message: 'stable depends on less stable package churn',
+        },
+      ]);
+      const metrics = coupling(result.newFindings).filter(
+        (finding) => finding.classification === 'descriptive',
+      );
+      expect(
+        metrics.find((finding) => finding.identity === 'package:stable:instability').metric,
+      ).toEqual({ name: 'instability', value: 0.3333 });
+      expect(
+        metrics.find((finding) => finding.identity === 'package:churn:instability').metric,
+      ).toEqual({ name: 'instability', value: 0.5 });
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps a method over the parameter limit baselined when its line moves',
+    () => {
+      const result = diffOf('structure-moved');
+
+      expect(structureOf(result.newFindings)).toEqual([]);
+      expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'keeps an existing stability-direction violation baselined when the package is edited',
+    () => {
+      git('checkout', '-q', 'stability-edited');
+      const result = runJavaDiff({
+        repositoryRoot: repository,
+        requestedBaseRef: 'stability',
+        gradle,
+      });
+
+      expect(result.newFindings.filter((finding) => finding.tool === 'coupling')).toEqual([]);
+      expect(
+        result.unchangedFindings
+          .filter((finding) => finding.rule === 'stability-direction')
+          .map((finding) => finding.identity),
+      ).toEqual(['package-edge:stable->churn']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+  // --- end coupling cases ---
 });

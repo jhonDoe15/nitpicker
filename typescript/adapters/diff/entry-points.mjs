@@ -1,8 +1,9 @@
 import path from 'node:path';
+import { RULE_IDS } from '../../shared/policy.mjs';
 import { sourceRoots as defaultSourceRoots } from '../../preset/layout.mjs';
 
 const ANALYZER_NAME = 'entry-points';
-const PUBLIC_ALTERNATIVE_BYPASS = 'public-alternative-bypass';
+const PUBLIC_ALTERNATIVE_BYPASS = RULE_IDS.publicAlternativeBypass;
 const runnerPath = path.join(import.meta.dirname, 'entry-points-runner.mjs');
 
 export function createEntryPointAnalyzer({

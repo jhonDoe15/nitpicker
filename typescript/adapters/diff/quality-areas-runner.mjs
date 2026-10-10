@@ -1,5 +1,4 @@
 import { spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import {
   existsSync,
   lstatSync,
@@ -13,7 +12,24 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT, parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import { parsePositiveNumber } from '../../preset/quality-checks.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../shared/policy.mjs';
+import { evaluateBaselineExpansions } from '../../shared/rules/baseline-expansion.mjs';
+import { evaluateCoupling } from '../../shared/rules/coupling.mjs';
+import { evaluateDuplicates } from '../../shared/rules/duplicates.mjs';
+import {
+  addMetric,
+  hash,
+  nextOccurrence,
+  positiveInteger,
+  summaryMetrics,
+} from '../../shared/rules/finding-helpers.mjs';
+import { evaluateStructure } from '../../shared/rules/structure.mjs';
+import { evaluateTestRuntime } from '../../shared/rules/test-runtime.mjs';
+import { jscpdClones } from '../jscpd-clones.mjs';
+import { branchCoverageFindings } from '../../shared/rules/branch-coverage.mjs';
+import { crapFindings } from '../../shared/rules/crap.mjs';
+import { mutantFindings } from '../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../../preset/layout.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import {
@@ -38,19 +54,10 @@ const QUALITY_AREA_RUNNERS = new Map([
   ['crap', runCrap],
   ['mutation', runMutation],
 ]);
-const STRUCTURAL_METADATA_FIELDS = new Set(['source', 'sourceHash', 'start', 'end']);
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
-const MINIMUM_BRANCH_COVERAGE = 95;
 const STRYKER_CONFIG_PATH = 'preset/defaults/stryker.config.mjs';
-const FUNCTION_STRUCTURE_LIMITS = {
-  lines: 50,
-  statements: 15,
-  maxControlNesting: 2,
-  parameters: 3,
-};
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
-const ENFORCED_MUTATION_STATUSES = new Set(['Survived', 'NoCoverage']);
 
 const invokedPath = process.argv[1];
 if (
@@ -308,23 +315,26 @@ function runCoverage(options) {
         `coverage tests failed: ${formatVitestFailures(report)}${formatProcessOutput(result)}`,
       );
     }
-    const report = JSON.parse(
-      readFileSync(
-        path.join(options.projectRoot, 'reports/quality/coverage/coverage-final.json'),
-        'utf8',
-      ),
-    );
-    const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
-    return normalizeCoverage(
-      withBranchSourceHashes(report, options.projectRoot),
-      options.analyzerName,
-      options.projectRoot,
-      { testCount: testReport.numTotalTests },
-    );
+    return readCoverageFindings(options, testReportPath);
   } finally {
     rmSync(testReportPath, { force: true });
     rmSync(configPath, { force: true });
   }
+}
+
+function readCoverageFindings(options, testReportPath) {
+  const report = JSON.parse(
+    readFileSync(
+      path.join(options.projectRoot, 'reports/quality/coverage/coverage-final.json'),
+      'utf8',
+    ),
+  );
+  const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
+  return normalizeCoverage(
+    withBranchSourceHashes(report, options.projectRoot),
+    options.analyzerName,
+    { projectRoot: options.projectRoot, testCount: testReport.numTotalTests },
+  );
 }
 
 function readVitestReport(reportPath) {
@@ -461,238 +471,44 @@ async function runMutation(options) {
 }
 
 export function normalizeBaselineExpansions(baseSites, headSites, analyzerName) {
-  const baseCounts = new Map(
-    baseSites.map((site) => [baselineSiteKey(site), numericAllowance(site.count)]),
-  );
-  return headSites.flatMap((site) => {
-    const key = baselineSiteKey(site);
-    const baseCount = baseCounts.get(key) ?? 0;
-    const headCount = numericAllowance(site.count);
-    if (headCount <= baseCount) {
-      return [];
-    }
-    return [
-      {
-        tool: analyzerName,
-        rule: 'baseline-expansion',
-        path: site.file,
-        identity: `site:${hash(key)}`,
-        message: `Legacy allowance increased from ${String(baseCount)} to ${String(headCount)} for ${site.rule}`,
-        classification: 'enforceable',
-      },
-    ];
-  });
+  return evaluateBaselineExpansions(baseSites, headSites, analyzerName);
 }
 
 export function normalizeCoupling(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'coupling');
-  for (const module of report.modules ?? []) {
-    for (const metricName of [
-      'fanIn',
-      'fanOut',
-      'totalCoupling',
-      'instability',
-      'runtimeFanIn',
-      'runtimeFanOut',
-      'runtimeInstability',
-    ]) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'module-coupling',
-        path: module.source,
-        identity: `module:${metricName}`,
-        message: `${metricName} for ${module.source}`,
-        metricName,
-        value: module[metricName],
-      });
-    }
-  }
-  for (const packageMetric of report.packages ?? []) {
-    const values = {
-      modules: packageMetric.modules,
-      fanIn: packageMetric.fanIn,
-      fanOut: packageMetric.fanOut,
-      instability: packageMetric.instability,
-      internalEdges: packageMetric.cohesion?.internalEdges,
-      edgeDensity: packageMetric.cohesion?.edgeDensity,
-      connectedComponents: packageMetric.cohesion?.connectedComponents,
-      largestComponentShare: packageMetric.cohesion?.largestComponentShare,
-    };
-    for (const [metricName, value] of Object.entries(values)) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'package-coupling',
-        path: '.',
-        identity: `package:${packageMetric.name}:${metricName}`,
-        message: `${metricName} for package ${packageMetric.name}`,
-        metricName,
-        value,
-      });
-    }
-  }
-  for (const direction of report.stabilityDirection ?? []) {
-    findings.push({
-      tool: analyzerName,
-      rule: 'stability-direction',
-      path: '.',
-      identity: `package-edge:${direction.source}->${direction.target}`,
-      message: `${direction.source} depends on less stable package ${direction.target}`,
-      classification: 'enforceable',
-    });
-    addMetric(findings, {
-      analyzerName,
-      rule: 'stability-direction-metric',
-      path: '.',
-      identity: `package-edge:${direction.source}->${direction.target}`,
-      message: `${direction.source} depends on less stable package ${direction.target}`,
-      metricName: 'instabilityDelta',
-      value: direction.delta,
-    });
-  }
-  return findings;
+  return evaluateCoupling(
+    {
+      ...report,
+      modules: report.modules?.map(({ source, ...metrics }) => ({ file: source, ...metrics })),
+    },
+    analyzerName,
+  );
 }
 
 export function normalizeTestRuntime(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'test-runtime', ['categories']);
-  for (const [category, value] of Object.entries(report.summary?.categories ?? {})) {
-    addMetric(findings, {
-      analyzerName,
-      rule: 'category-count',
-      path: '.',
-      identity: `category:${category}`,
-      message: `Tests classified as ${category}`,
-      metricName: category,
-      value,
-    });
-  }
-  for (const finding of report.findings ?? []) {
-    findings.push({
-      tool: analyzerName,
-      rule: finding.category,
-      path: finding.test,
-      identity: `test:${finding.test}:source:${finding.sourceHash ?? hash(finding.test)}`,
-      message: `Test has ${finding.category.replaceAll('-', ' ')}`,
-      classification: 'enforceable',
-    });
-  }
-  return findings;
+  return evaluateTestRuntime(report, analyzerName);
 }
 
 export function normalizeStructure(report, analyzerName) {
-  const findings = summaryMetrics(analyzerName, report.summary, 'structure');
-  for (const [kind, values] of Object.entries(report.distributions ?? {})) {
-    for (const [percentile, value] of Object.entries(values ?? {})) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'distribution',
-        path: '.',
-        identity: `${kind}:${percentile}`,
-        message: `${percentile} ${kind}`,
-        metricName: `${kind}.${percentile}`,
-        value,
-      });
-    }
-  }
-  addStructuralEntries(findings, analyzerName, report.functions, 'function');
-  addStructuralEntries(findings, analyzerName, report.classes, 'class');
-  return findings;
-}
-
-function addStructuralEntries(findings, analyzerName, entries = [], kind) {
-  const occurrences = new Map();
-  for (const entry of entries) {
-    const displayName = entry[kind];
-    const occurrenceKey = `${entry.source}\0${displayName}`;
-    const occurrence = nextOccurrence(occurrences, occurrenceKey);
-    if (kind === 'function') {
-      addFunctionStructureViolations(findings, analyzerName, entry, displayName, occurrence);
-    }
-    for (const [metricName, value] of Object.entries(entry)) {
-      if (metricName === kind || STRUCTURAL_METADATA_FIELDS.has(metricName)) {
-        continue;
-      }
-      addMetric(findings, {
-        analyzerName,
-        rule: `${kind}-structure`,
-        path: entry.source,
-        identity: `${kind}:${displayName}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `${metricName} for ${displayName}`,
-        metricName,
-        value,
-        symbol: displayName,
-        line: entry.start,
-      });
-    }
-  }
-}
-
-function addFunctionStructureViolations(findings, analyzerName, entry, displayName, occurrence) {
-  const sourceHash =
-    entry.sourceHash ?? hash(`${entry.source}:${String(entry.start)}:${String(entry.end)}`);
-  for (const [metricName, limit] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
-    if (typeof entry[metricName] !== 'number' || entry[metricName] <= limit) {
-      continue;
-    }
-    const ruleMetric =
-      metricName === 'maxControlNesting' ? 'control-nesting' : metricName.toLowerCase();
-    findings.push({
-      tool: analyzerName,
-      rule: `function-${ruleMetric}-limit`,
-      path: entry.source,
-      identity: `function:${displayName}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: `${displayName} has ${String(entry[metricName])} ${metricName}; limit is ${String(limit)}`,
-      classification: 'enforceable',
-      symbol: displayName,
-      ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
-    });
-  }
+  return evaluateStructure(
+    {
+      ...report,
+      functions: report.functions?.map(({ source, function: name, ...metrics }) => ({
+        file: source,
+        name,
+        ...metrics,
+      })),
+      classes: report.classes?.map(({ source, class: name, ...metrics }) => ({
+        file: source,
+        name,
+        ...metrics,
+      })),
+    },
+    analyzerName,
+  );
 }
 
 export function normalizeDuplicates(report, analyzerName, configuredPaths = [sourceRoot]) {
-  const findings = [];
-  const prefix =
-    Array.isArray(configuredPaths) && configuredPaths.length === 1
-      ? configuredPaths[0].replace(/\/$/, '')
-      : '';
-  const occurrences = new Map();
-  for (const duplicate of report.duplicates ?? []) {
-    const files = [
-      {
-        path: prefixedPath(prefix, duplicate.firstFile?.name),
-        line: duplicate.firstFile?.start,
-      },
-      {
-        path: prefixedPath(prefix, duplicate.secondFile?.name),
-        line: duplicate.secondFile?.start,
-      },
-    ].sort((left, right) => left.path.localeCompare(right.path));
-    const pairKey = files.map((file) => file.path).join('\0');
-    const occurrence = nextOccurrence(occurrences, pairKey);
-    findings.push({
-      tool: analyzerName,
-      rule: 'duplicate-clone',
-      path: files[0].path,
-      identity: `pair:${files.map((file) => file.path).join('|')}:fragment:${hash(duplicate.fragment ?? '')}:occurrence:${String(occurrence)}`,
-      message: `Duplicate with ${files[1].path}`,
-      classification: 'enforceable',
-      ...(positiveInteger(files[0].line) === undefined
-        ? {}
-        : { location: { line: files[0].line } }),
-    });
-    for (const metricName of ['lines', 'tokens']) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'duplicate-clone-size',
-        path: files[0].path,
-        identity: `pair:${files.map((file) => file.path).join('|')}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `Duplicate with ${files[1].path}`,
-        metricName,
-        value: duplicate[metricName],
-        line: files[0].line,
-      });
-    }
-  }
-  return findings;
+  return evaluateDuplicates(jscpdClones(report, configuredPaths), analyzerName);
 }
 
 export function normalizeDeadCode(report, analyzerName) {
@@ -752,66 +568,67 @@ export function normalizeDeadCode(report, analyzerName) {
   return findings;
 }
 
-export function normalizeCoverage(report, analyzerName, projectRoot, { testCount } = {}) {
+export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {
   const findings = [];
   let coveredBranchOutcomes = 0;
   for (const [absolutePath, coverage] of Object.entries(report)) {
     const relativePath = path.relative(projectRoot, absolutePath).replaceAll('\\', '/');
-    const branchEntries = Object.entries(coverage.b ?? {});
-    const branchOutcomes = branchEntries.flatMap(([, outcomes]) => outcomes);
-    coveredBranchOutcomes += branchOutcomes.filter((value) => value > 0).length;
-    addMetric(findings, {
-      analyzerName,
-      rule: 'coverage',
-      path: relativePath,
-      identity: 'branches',
-      message: `Branch coverage for ${relativePath}`,
-      metricName: 'branches',
-      value: coveragePercent(branchOutcomes),
-    });
-    const occurrences = new Map();
-    for (const [branchId, outcomes] of branchEntries) {
-      const branchCoverage = coveragePercent(outcomes);
-      if (branchCoverage >= MINIMUM_BRANCH_COVERAGE) {
-        continue;
-      }
-      const branchSourceHash =
-        coverage.branchSourceHashes?.[branchId] ??
-        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId }));
-      const occurrence = nextOccurrence(occurrences, branchSourceHash);
-      const line = positiveInteger(coverage.branchMap?.[branchId]?.loc?.start?.line);
-      findings.push({
-        tool: analyzerName,
-        rule: 'changed-branch-coverage',
-        path: relativePath,
-        identity: `branch-source:${branchSourceHash}:occurrence:${String(occurrence)}`,
-        message: `Branch coverage is ${branchCoverage.toFixed(2)}%; minimum is ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-        classification: 'enforceable',
-        ...(line === undefined ? {} : { location: { line } }),
-      });
-    }
+    coveredBranchOutcomes += addFileCoverage(findings, coverage, { analyzerName, relativePath });
   }
   if (Number.isInteger(testCount) && testCount > 0) {
-    addMetric(findings, {
-      analyzerName,
-      rule: 'test-efficiency',
-      path: '.',
-      identity: 'covered-branches-per-test',
-      message: 'Covered branch outcomes per test',
-      metricName: 'coveredBranchesPerTest',
-      value: coveredBranchOutcomes / testCount,
-    });
-    addMetric(findings, {
-      analyzerName,
-      rule: 'test-efficiency',
-      path: '.',
-      identity: 'test-count',
-      message: 'Executed test count',
-      metricName: 'testCount',
-      value: testCount,
-    });
+    addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount });
   }
   return findings;
+}
+
+function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
+  const branchEntries = Object.entries(coverage.b ?? {});
+  const branchOutcomes = branchEntries.flatMap(([, outcomes]) => outcomes);
+  addMetric(findings, {
+    analyzerName,
+    rule: 'coverage',
+    path: relativePath,
+    identity: 'branches',
+    message: `Branch coverage for ${relativePath}`,
+    metricName: 'branches',
+    value: coveragePercent(branchOutcomes),
+  });
+  const branches = branchEntries.map(([branchId, outcomes]) => ({
+    path: relativePath,
+    key:
+      coverage.branchSourceHashes?.[branchId] ??
+      hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
+    percent: coveragePercent(outcomes),
+    line: coverage.branchMap?.[branchId]?.loc?.start?.line,
+  }));
+  findings.push(
+    ...branchCoverageFindings(branches, {
+      tool: analyzerName,
+      identify: (key, occurrence) => `branch-source:${key}:occurrence:${String(occurrence)}`,
+    }),
+  );
+  return branchOutcomes.filter((value) => value > 0).length;
+}
+
+function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount }) {
+  addMetric(findings, {
+    analyzerName,
+    rule: 'test-efficiency',
+    path: '.',
+    identity: 'covered-branches-per-test',
+    message: 'Covered branch outcomes per test',
+    metricName: 'coveredBranchesPerTest',
+    value: coveredBranchOutcomes / testCount,
+  });
+  addMetric(findings, {
+    analyzerName,
+    rule: 'test-efficiency',
+    path: '.',
+    identity: 'test-count',
+    message: 'Executed test count',
+    metricName: 'testCount',
+    value: testCount,
+  });
 }
 
 export function normalizeCrap(
@@ -821,100 +638,72 @@ export function normalizeCrap(
 ) {
   const findings = summaryMetrics(analyzerName, report.summary, 'crap');
   const occurrences = new Map();
-  const functions = [...(report.functions ?? [])].sort(
-    (left, right) =>
-      left.source.localeCompare(right.source) ||
-      (left.lines?.start ?? 0) - (right.lines?.start ?? 0) ||
-      (left.lines?.end ?? 0) - (right.lines?.end ?? 0) ||
-      left.function.localeCompare(right.function),
-  );
+  const functions = [...(report.functions ?? [])].sort(compareCrapSites);
   for (const entry of functions) {
-    const key = `${entry.source}\0${entry.function}`;
-    const occurrence = nextOccurrence(occurrences, key);
-    const sourceHash =
-      entry.sourceHash ??
-      hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`);
-    const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
-    if (typeof entry.crap !== 'number' || !Number.isFinite(entry.crap)) {
-      findings.push({
-        tool: analyzerName,
-        rule: 'crap-coverage-unknown',
-        path: entry.source,
-        identity: violationIdentity,
-        message: `${entry.function} has unknown coverage and no CRAP score`,
-        classification: 'enforceable',
-        symbol: entry.function,
-        ...(positiveInteger(entry.lines?.start) === undefined
-          ? {}
-          : { location: { line: entry.lines.start } }),
-      });
-    } else if (entry.crap >= scoreLimit) {
-      findings.push({
-        tool: analyzerName,
-        rule: 'crap-score-limit',
-        path: entry.source,
-        identity: violationIdentity,
-        message: `${entry.function} has CRAP ${entry.crap.toFixed(2)}; score must be below ${String(scoreLimit)}`,
-        classification: 'enforceable',
-        symbol: entry.function,
-        ...(positiveInteger(entry.lines?.start) === undefined
-          ? {}
-          : { location: { line: entry.lines.start } }),
-      });
-    }
-    const values = {
-      complexity: entry.complexity,
-      statementCoverage: entry.statementCoverage?.percent,
-      branchCoverage: entry.branchCoverage?.percent,
-      effectiveCoverage: entry.effectiveCoverage?.percent,
-      crap: entry.crap,
-    };
-    for (const [metricName, value] of Object.entries(values)) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'function-crap',
-        path: entry.source,
-        identity: `function:${entry.function}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `${metricName} for ${entry.function}`,
-        metricName,
-        value,
-        symbol: entry.function,
-        line: entry.lines?.start,
-      });
-    }
+    const occurrence = nextOccurrence(occurrences, `${entry.source}\0${entry.function}`);
+    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence });
   }
   return findings;
 }
 
+function compareCrapSites(left, right) {
+  return (
+    left.source.localeCompare(right.source) ||
+    (left.lines?.start ?? 0) - (right.lines?.start ?? 0) ||
+    (left.lines?.end ?? 0) - (right.lines?.end ?? 0) ||
+    left.function.localeCompare(right.function)
+  );
+}
+
+function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence }) {
+  const sourceHash =
+    entry.sourceHash ??
+    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`);
+  const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
+  findings.push(
+    ...crapFindings(
+      [
+        {
+          path: entry.source,
+          name: entry.function,
+          identity: violationIdentity,
+          line: entry.lines?.start,
+          crap: entry.crap,
+        },
+      ],
+      { tool: analyzerName, limit: scoreLimit },
+    ),
+  );
+  const values = {
+    complexity: entry.complexity,
+    statementCoverage: entry.statementCoverage?.percent,
+    branchCoverage: entry.branchCoverage?.percent,
+    effectiveCoverage: entry.effectiveCoverage?.percent,
+    crap: entry.crap,
+  };
+  for (const [metricName, value] of Object.entries(values)) {
+    addMetric(findings, {
+      analyzerName,
+      rule: 'function-crap',
+      path: entry.source,
+      identity: `function:${entry.function}:occurrence:${String(occurrence)}:${metricName}`,
+      message: `${metricName} for ${entry.function}`,
+      metricName,
+      value,
+      symbol: entry.function,
+      line: entry.lines?.start,
+    });
+  }
+}
+
 export function normalizeMutation(report, analyzerName) {
-  const findings = [];
+  const mutants = [];
   const statusCounts = new Map();
   const occurrences = new Map();
   for (const [filePath, file] of Object.entries(report.files ?? {})) {
-    for (const mutant of file.mutants ?? []) {
-      const status = mutant.status ?? 'Unknown';
-      statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
-      if (status === 'Killed') {
-        continue;
-      }
-      const line = mutant.location?.start?.line;
-      const semanticIdentity = [
-        mutant.mutatorName ?? 'unknown',
-        hash(mutant.replacement ?? ''),
-        mutant.sourceHash ?? hash(filePath),
-      ].join('|');
-      const occurrence = nextOccurrence(occurrences, `${filePath}\0${status}\0${semanticIdentity}`);
-      findings.push({
-        tool: analyzerName,
-        rule: `mutant-${status.toLowerCase()}`,
-        path: filePath,
-        identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-        message: `${status} ${mutant.mutatorName ?? 'mutant'}`,
-        classification: ENFORCED_MUTATION_STATUSES.has(status) ? 'enforceable' : 'descriptive',
-        ...(positiveInteger(line) === undefined ? {} : { location: { line } }),
-      });
-    }
+    collectFileMutants(file, { filePath, mutants, statusCounts, occurrences });
   }
+  const findings = mutantFindings(mutants, { tool: analyzerName });
   for (const [status, value] of statusCounts) {
     addMetric(findings, {
       analyzerName,
@@ -929,43 +718,30 @@ export function normalizeMutation(report, analyzerName) {
   return findings;
 }
 
-function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
-  const findings = [];
-  for (const [metricName, value] of Object.entries(summary)) {
-    if (ignored.includes(metricName)) {
-      continue;
+function collectFileMutants(file, { filePath, mutants, statusCounts, occurrences }) {
+  for (const mutant of file.mutants ?? []) {
+    const status = mutant.status ?? 'Unknown';
+    statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+    if (status !== 'Killed') {
+      mutants.push(neutralMutant(mutant, { filePath, status, occurrences }));
     }
-    addMetric(findings, {
-      analyzerName,
-      rule,
-      path: '.',
-      identity: `summary:${metricName}`,
-      message: `${metricName} summary`,
-      metricName,
-      value,
-    });
   }
-  return findings;
 }
 
-function addMetric(
-  findings,
-  { analyzerName, rule, path: findingPath, identity, message, metricName, value, symbol, line },
-) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return;
-  }
-  findings.push({
-    tool: analyzerName,
-    rule,
-    path: findingPath,
-    identity,
-    message,
-    classification: 'descriptive',
-    metric: { name: metricName, value },
-    ...(typeof symbol === 'string' && symbol.length > 0 ? { symbol } : {}),
-    ...(positiveInteger(line) === undefined ? {} : { location: { line } }),
-  });
+function neutralMutant(mutant, { filePath, status, occurrences }) {
+  const semanticIdentity = [
+    mutant.mutatorName ?? 'unknown',
+    hash(mutant.replacement ?? ''),
+    mutant.sourceHash ?? hash(filePath),
+  ].join('|');
+  const occurrence = nextOccurrence(occurrences, `${filePath}\0${status}\0${semanticIdentity}`);
+  return {
+    path: filePath,
+    identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
+    status,
+    label: mutant.mutatorName ?? 'mutant',
+    line: mutant.location?.start?.line,
+  };
 }
 
 function coveragePercent(values) {
@@ -1344,18 +1120,6 @@ function validatedSnapshotRoot(value, name) {
   return root;
 }
 
-function prefixedPath(prefix, value) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError('Duplicate report contains an invalid file name');
-  }
-  const normalizedValue = value.replaceAll('\\', '/').replace(/^\.\//, '');
-  return prefix.length === 0 ||
-    normalizedValue === prefix ||
-    normalizedValue.startsWith(`${prefix}/`)
-    ? normalizedValue
-    : `${prefix}/${normalizedValue}`;
-}
-
 function parseReportJson(text) {
   try {
     return JSON.parse(text);
@@ -1364,42 +1128,10 @@ function parseReportJson(text) {
   }
 }
 
-function positiveInteger(value) {
-  return Number.isInteger(value) && value > 0 ? value : undefined;
-}
-
-function nextOccurrence(occurrences, key) {
-  const occurrence = (occurrences.get(key) ?? 0) + 1;
-  occurrences.set(key, occurrence);
-  return occurrence;
-}
-
-function baselineSiteKey(site) {
-  if (
-    typeof site?.file !== 'string' ||
-    typeof site.rule !== 'string' ||
-    typeof site.source !== 'string'
-  ) {
-    throw new TypeError('Coding-standard baseline contains an invalid site');
-  }
-  return JSON.stringify([site.file, site.rule, site.source]);
-}
-
-function numericAllowance(value) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('Coding-standard baseline counts must be positive integers');
-  }
-  return value;
-}
-
 function requiredValue(values, name) {
   const value = values.get(name);
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
-}
-
-function hash(value) {
-  return createHash('sha256').update(String(value)).digest('hex').slice(0, 24);
 }

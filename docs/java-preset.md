@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I typescript/java/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, duplicates.json, pit/mutations.xml, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> typescript/adapters/java/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (typescript/adapters/java/java-diff.mjs)
 ```
@@ -160,9 +160,21 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Gradle binary.** `gradle` from the PATH, or the command in `NITPICKER_GRADLE` (as the e2e test
   already allowed). The Gradle wrapper is not used; a consumer who needs it sets
   `NITPICKER_GRADLE=./gradlew`.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude`,
-  `layout`, `exceptions` and `legacyInventory` tune the TypeScript analyzers and have no Java
-  counterpart yet; with `"preset": "java"` they are a config error instead of being ignored.
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
+  `legacyInventory` are shared with the TypeScript preset (`typescript/shared/config.mjs`,
+  `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
+  part of the analyzer's configuration hash:
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
+    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
+    the tools still run on those files.
+  - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
+    `{ "file", "rule", "source", "count" }`, where `source` is the finding's `identity`. Up to
+    `count` enforceable findings per site are baselined on both snapshots, read from the head's
+    inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
+    (a new site counts as 0 before).
+  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
+    meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `typescript/java/` and `java/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `java/nitpicker.init.gradle`
   ships.
@@ -312,6 +324,79 @@ resolved plus a new finding, as in the TypeScript check.
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
+
+## Structure limits (SH5)
+
+- **Rules.** The shared structure rule (`shared/rules/structure.mjs`) runs on Java too, so a method
+  over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
+  (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+  `function-parameters-limit`) and the same message (`{name} has {value} {metric}; limit is
+  {limit}`) as TypeScript. `shared/policy.mjs` marks the four rules as enforced for Java; the
+  catalog in `spec/checks.md` is generated from it.
+- **Metric source (decision to review).** `java/StructureMetrics.java` parses the main sources
+  (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
+  source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
+  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. All four
+  metrics come from this one source so they are consistent; lizard is not used, because it has no
+  statement count or control nesting and mixing two counters for one rule would make lines disagree
+  between tools. PMD's metrics were rejected too (not in the SARIF output, and its rules do not
+  expose per-method statements). A small JavaParser step was the alternative; it would add a
+  pinned artifact for nothing the JDK does not already provide.
+- **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
+  method and constructor with a body. `lines`: last line - first line + 1, annotations and
+  modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
+  initializers and updates, `catch` parameters and `try` resources are not statements).
+  `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
+  (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
+  declared parameters. Anonymous, local and member class bodies are separate units and do not count
+  towards the method that contains them; lambda bodies count towards the enclosing method.
+- **Findings.** `adapters/java/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+  the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
+  TypeScript check are not emitted, since they would add four findings per method to every report.
+  Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
+  identity: name, occurrence among equal names in the file and a hash of the method text with
+  indentation removed, no line number. A moved or re-indented method stays baselined; editing a
+  method that already violates produces a new finding, as in TypeScript.
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+  rule files are in the Java analyzer's configuration hash.
+- **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
+  the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
+  oversize method baselined.
+## Coupling and stability (ticket SH6)
+
+- **What runs.** The init script's `nitpickerJdeps` task (a dependency of `nitpickerJava`) runs the
+  JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
+  `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
+  jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
+  block is delimited by `// --- coupling (SH6)` comments in the init script.
+- **Conversion.** `adapters/java/java-coupling.mjs` parses the class graph, folds nested classes
+  into their top-level class, keeps only edges between two main classes, computes the metrics and
+  hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
+  the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
+  `stability-direction-metric` metrics, and the enforceable `stability-direction` finding
+  (`<package> depends on less stable package <package>`), under the tool name `coupling`. The
+  policy (`shared/policy.mjs`) marks `stability-direction` as enforced for Java.
+- **Same semantics as TypeScript, at Java granularity.** The TypeScript preset's module is a source
+  file and its package the top-level directory under the source root; here a module is a source
+  file (a top-level class with its nested classes) and a package a Java package. Fan-in and fan-out
+  count distinct files, a package's fan-in and fan-out count distinct files outside the package,
+  instability is `fanOut / (fanIn + fanOut)`, and a package pair whose source is more stable than
+  its target is reported once.
+- **Differences.** (1) Java packages are flat: `a.b` and `a.b.c` are different packages, so a
+  `stability-direction` finding can appear between a package and its sub-package; TypeScript groups
+  by the top-level directory. The default package is `(root)`. (2) jdeps cannot tell type-only from
+  runtime references, so the `runtime*` module metrics and the `runtimeDependencies` and
+  `typeOnlyDependencies` summaries are not reported. (3) A second top-level class in a file named
+  after another class is attributed to `<package>/<Class>.java`, which may not exist; only the
+  metric path is affected. (4) Reflection and other references that are not in the bytecode are
+  invisible to jdeps. (5) Test classes and library classes are not part of the graph.
+- **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
+  `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
+  only a new package edge, or a new instability inversion, fails.
+- **Tests.** `adapters/java/java-coupling.test.mjs` (parsing, metrics, stability edges, the
+  neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
+  (a package depending on a less stable package fails; the same violation on the base stays
+  baselined).
 
 ## Slice 1: what is deliberately not included
 

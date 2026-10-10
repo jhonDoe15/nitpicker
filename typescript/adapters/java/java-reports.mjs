@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readCouplingFindings } from './java-coupling.mjs';
 import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readJavaStructureFindings } from './java-structure.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
@@ -16,54 +18,74 @@ import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
-export function readJavaFindings(projectRoot) {
+export function readJavaFindings(projectRoot, { crapLimit } = {}) {
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  const sourceRoots = manifest.sourceRoots ?? [];
-  const roots = projectRoots(projectRoot);
-  const findings = [];
+  const context = {
+    projectRoot,
+    reportRoot,
+    manifest,
+    sourceRoots: manifest.sourceRoots ?? [],
+    roots: projectRoots(projectRoot),
+    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
+  };
+  return {
+    findings: [
+      ...sarifFindings(context),
+      ...formatFindings(context),
+      ...checkstyleFindings(context),
+      ...readDuplicateFindings(reportRoot),
+      ...jacocoFindings(context, context.jacoco),
+      ...archunitFindings(context),
+      ...crapFindings(context, context.jacoco, crapLimit),
+      ...pitFindings(context),
+      ...readJavaStructureFindings(reportRoot, projectRoot),
+      ...branchFindings(context, context.jacoco),
+      ...readCouplingFindings(reportRoot, { projectRoot, sourceRoots: context.sourceRoots }),
+    ],
+  };
+}
 
-  const sarif = (file, tool, identityKey) => {
+function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
+  const findings = [];
+  function sarif(file, tool, identityKey) {
     const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
     findings.push(...ingestSarif(normalized, { tool }).findings);
-  };
+  }
   sarif('pmd.sarif', 'pmd', (result) => result.message?.text);
   sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
+  return findings;
+}
 
+function formatFindings({ reportRoot, roots }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
-  findings.push(
-    ...ingestFormatCheck(formatLines.join('\n'), {
-      tool: 'google-java-format',
-      message: 'File is not formatted with google-java-format',
-    }).findings,
-  );
+  return ingestFormatCheck(formatLines.join('\n'), {
+    tool: 'google-java-format',
+    message: 'File is not formatted with google-java-format',
+  }).findings;
+}
 
-  // Checkstyle writes absolute paths; the ingester makes them project-relative and skips others
-  // (a path can only sit below one of the equivalent roots, so the passes do not overlap).
+function checkstyleFindings({ reportRoot, roots, projectRoot }) {
   const checkstyle = readFileSync(path.join(reportRoot, 'checkstyle.xml'), 'utf8');
-  for (const root of roots) {
-    findings.push(
-      ...ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-        existsSync(path.join(projectRoot, finding.path)),
-      ),
-    );
-  }
-  findings.push(...readDuplicateFindings(reportRoot));
+  return roots.flatMap((root) =>
+    ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+      existsSync(path.join(projectRoot, finding.path)),
+    ),
+  );
+}
 
-  const jacoco = readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8');
-  for (const sourceRoot of sourceRoots) {
-    findings.push(
-      ...ingestJacoco(jacoco, { sourceRoot }).findings.filter((finding) =>
-        existsSync(path.join(projectRoot, finding.path)),
-      ),
-    );
-  }
+function jacocoFindings({ sourceRoots, projectRoot }, jacoco) {
+  return sourceRoots.flatMap((sourceRoot) =>
+    ingestJacoco(jacoco, { sourceRoot }).findings.filter((finding) =>
+      existsSync(path.join(projectRoot, finding.path)),
+    ),
+  );
+}
 
-  // ArchUnit: JUnit XML of the rule tests, one file per test class. The directory is absent when
-  // the project has no ArchUnit tests.
+function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   const archunitRoot = path.join(reportRoot, 'archunit');
   const archunitReports = existsSync(archunitRoot)
     ? readdirSync(archunitRoot)
@@ -71,44 +93,44 @@ export function readJavaFindings(projectRoot) {
         .sort()
     : [];
   const classRoots = [...sourceRoots, ...(manifest.testSourceRoots ?? [])];
-  for (const name of archunitReports) {
-    findings.push(
-      ...ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
+  return archunitReports.flatMap(
+    (name) =>
+      ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
         resolvePath: (className, fileName) =>
           sourceFileOf(projectRoot, classRoots, className, fileName),
       }).findings,
-    );
-  }
-  // CRAP: lizard's complexity per function joined with the same JaCoCo report.
-  findings.push(
-    ...ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
-      sourceRoots,
-    }).findings,
   );
-  // PIT: absent only when the project has no main classes.
-  const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  if (existsSync(pitReport)) {
-    findings.push(
-      ...ingestPit(readFileSync(pitReport, 'utf8'), {
-        resolvePath: (className, sourceFile) =>
-          sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
-      }).findings,
-    );
-  }
+}
 
-  // Branches below the coverage minimum: gated on changed lines by the differential comparison.
-  for (const sourceRoot of sourceRoots) {
-    findings.push(
-      ...ingestJacocoBranches(jacoco, {
+function crapFindings({ reportRoot, sourceRoots }, jacoco, crapLimit) {
+  return ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
+    sourceRoots,
+    limit: crapLimit,
+  }).findings;
+}
+
+function pitFindings({ reportRoot, projectRoot, sourceRoots }) {
+  const pitReport = path.join(reportRoot, 'pit/mutations.xml');
+  if (!existsSync(pitReport)) {
+    return [];
+  }
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
+    resolvePath: (className, sourceFile) =>
+      sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
+  }).findings;
+}
+
+function branchFindings({ projectRoot, sourceRoots }, jacoco) {
+  return sourceRoots.flatMap(
+    (sourceRoot) =>
+      ingestJacocoBranches(jacoco, {
         sourceRoot,
         sourceText: (file) => {
           const absolute = path.join(projectRoot, file);
           return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
         },
       }).findings,
-    );
-  }
-  return { findings };
+  );
 }
 
 // Project-relative source file of a Java class: `fileName` (from a stack frame or violation

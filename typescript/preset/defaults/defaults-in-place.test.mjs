@@ -39,6 +39,7 @@ const POLICY_PATHS = [
   'preset/eslint-config',
   'preset/eslint-plugin/index.mjs',
   'preset/eslint-plugin/rules',
+  'shared',
 ];
 const temporaryRoots = [];
 

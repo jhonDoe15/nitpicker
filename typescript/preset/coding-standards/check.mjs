@@ -6,26 +6,16 @@ import { analyzePublicContractUsage } from '../architecture/public-contract-usag
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mjs';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mjs';
 import { readLayout } from '../head-policy.mjs';
-import { DEFAULT_LEGACY_INVENTORY } from './inventory-path.mjs';
+import {
+  DEFAULT_LEGACY_INVENTORY,
+  compareSignals,
+  readOptionalInventory,
+} from '../../shared/legacy-inventory.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../..');
 const defaultLegacyInventoryPath = path.join(projectRoot, DEFAULT_LEGACY_INVENTORY);
 
-/** Keep exact legacy sites visible without allowing new sites or duplicate occurrences. */
-export function compareSignals(actual, allowed) {
-  const counts = new Map();
-  for (const item of actual) {
-    const key = JSON.stringify([item.file, item.rule, item.source]);
-    const previous = counts.get(key);
-    counts.set(key, { ...item, count: (previous?.count ?? 0) + 1 });
-  }
-  const allowances = new Map(
-    allowed.map((item) => [JSON.stringify([item.file, item.rule, item.source]), item.count]),
-  );
-  return [...counts.entries()]
-    .filter(([key, item]) => item.count > (allowances.get(key) ?? 0))
-    .map(([, item]) => item);
-}
+export { compareSignals };
 
 export async function collectSignals(root = projectRoot, policyRoot = root, layout = readLayout()) {
   const eslint = new ESLint({
@@ -61,18 +51,7 @@ export async function collectSignals(root = projectRoot, policyRoot = root, layo
 
 /** A missing inventory file means no legacy sites are allowed. */
 export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath) {
-  let contents;
-  try {
-    contents = readFileSync(inventoryPath, 'utf8');
-  } catch (error) {
-    if (error?.code === 'ENOENT') return { sites: [] };
-    throw error;
-  }
-  try {
-    return JSON.parse(contents);
-  } catch (error) {
-    throw new SyntaxError(`Invalid legacy inventory: ${inventoryPath}`, { cause: error });
-  }
+  return readOptionalInventory(path.dirname(inventoryPath), path.basename(inventoryPath));
 }
 
 export async function check() {

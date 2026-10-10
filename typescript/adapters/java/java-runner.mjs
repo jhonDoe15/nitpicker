@@ -9,9 +9,12 @@ export const GRADLE_FAILURE_RULE = 'gradle-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 
 /** Findings of one snapshot, or a single `tool-error` finding when the preset cannot run. */
-export function analyzeJavaSnapshot(projectRoot, { gradle = process.env.NITPICKER_GRADLE } = {}) {
+export function analyzeJavaSnapshot(
+  projectRoot,
+  { gradle = process.env.NITPICKER_GRADLE, policy } = {},
+) {
   try {
-    return { findings: collectJavaFindings(projectRoot, { gradle: gradle || undefined }) };
+    return { findings: collectJavaFindings(projectRoot, { gradle: gradle || undefined, policy }) };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -32,11 +35,69 @@ export function analyzeJavaSnapshot(projectRoot, { gradle = process.env.NITPICKE
   }
 }
 
-function main(arguments_) {
-  if (arguments_[0] !== '--project-root' || arguments_[1] === undefined) {
-    throw new Error('Usage: java-runner.mjs --project-root <directory>');
+const USAGE =
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]';
+
+function readOptionValues(arguments_) {
+  const values = new Map();
+  const exclude = [];
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const value = remaining.next().value;
+    if (!RUNNER_OPTIONS.includes(name) || value === undefined) {
+      throw new Error(USAGE);
+    }
+    if (name === '--exclude') {
+      exclude.push(value);
+    } else {
+      values.set(name, value);
+    }
   }
-  process.stdout.write(`${JSON.stringify(analyzeJavaSnapshot(realpathSync(arguments_[1])))}\n`);
+  if (!values.has('--project-root')) {
+    throw new Error(USAGE);
+  }
+  return { values, exclude };
+}
+
+export function parseRunnerArguments(arguments_) {
+  const { values, exclude } = readOptionValues(arguments_);
+  const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
+  if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
+    throw new Error('--crap-limit must be a positive number');
+  }
+  return {
+    projectRoot: values.get('--project-root'),
+    policy: {
+      crapLimit,
+      exclude,
+      legacyInventory: values.get('--legacy-inventory'),
+      policyRoot: realpathOptional(values.get('--policy-root')),
+      baselineRoot: realpathOptional(values.get('--baseline-root')),
+      snapshot: values.get('--snapshot') ?? 'head',
+    },
+  };
+}
+
+const RUNNER_OPTIONS = [
+  '--project-root',
+  '--snapshot',
+  '--policy-root',
+  '--baseline-root',
+  '--crap-limit',
+  '--exclude',
+  '--legacy-inventory',
+];
+
+function realpathOptional(directory) {
+  return directory === undefined ? undefined : realpathSync(directory);
+}
+
+function main(arguments_) {
+  const { projectRoot, policy } = parseRunnerArguments(arguments_);
+  process.stdout.write(
+    `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
+  );
 }
 
 if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.meta.filename) {

@@ -1,10 +1,6 @@
-import {
-  childrenNamed,
-  createIdentityCounter,
-  hashIdentity,
-  normalizeReportPath,
-  parseXml,
-} from './common.mjs';
+import { MINIMUM_BRANCH_COVERAGE } from '../../shared/policy.mjs';
+import { branchCoverageFindings } from '../../shared/rules/branch-coverage.mjs';
+import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
 
 // JaCoCo XML -> `changed-branch-coverage` findings, the Java counterpart of the TypeScript
 // coverage check: one enforceable finding per source line whose branch outcomes are covered below
@@ -22,9 +18,6 @@ import {
 // `options.sourceRoot` is prepended to JaCoCo's package-relative paths; `options.sourceText(path)`
 // returns the project-relative file's text (files it cannot read are skipped).
 
-export const CHANGED_BRANCH_COVERAGE_RULE = 'changed-branch-coverage';
-export const MINIMUM_BRANCH_COVERAGE = 95;
-
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
   if (report.name !== 'report') {
@@ -35,44 +28,48 @@ export function ingestJacocoBranches(xml, options = {}) {
   const findings = [];
   for (const pkg of childrenNamed(report, 'package')) {
     for (const sourcefile of childrenNamed(pkg, 'sourcefile')) {
-      const filePath = normalizeReportPath(
-        [options.sourceRoot, pkg.attrs.name, sourcefile.attrs.name].filter(Boolean).join('/'),
-      );
-      const text = filePath === undefined ? undefined : options.sourceText?.(filePath);
-      if (text === undefined) {
-        continue;
-      }
-      findings.push(...fileFindings(sourcefile, filePath, text.split(/\r?\n/), { tool, minimum }));
+      findings.push(...sourcefileFindings(sourcefile, pkg, { options, tool, minimum }));
     }
   }
   return { findings };
 }
 
-function fileFindings(sourcefile, filePath, sourceLines, { tool, minimum }) {
-  const unique = createIdentityCounter();
-  const findings = [];
+function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
+  const filePath = normalizeReportPath(
+    [options.sourceRoot, pkg.attrs.name, sourcefile.attrs.name].filter(Boolean).join('/'),
+  );
+  const text = filePath === undefined ? undefined : options.sourceText?.(filePath);
+  if (text === undefined) {
+    return [];
+  }
+  return fileFindings(
+    sourcefile,
+    { path: filePath, lines: text.split(/\r?\n/) },
+    { tool, minimum },
+  );
+}
+
+function fileFindings(sourcefile, { path: filePath, lines: sourceLines }, { tool, minimum }) {
+  const branches = [];
   for (const line of childrenNamed(sourcefile, 'line')) {
     const missed = Number.parseInt(line.attrs.mb, 10);
     const covered = Number.parseInt(line.attrs.cb, 10);
     const lineNumber = Number.parseInt(line.attrs.nr, 10);
     const total = missed + covered;
-    if (!(total > 0) || !Number.isInteger(lineNumber)) {
-      continue;
-    }
-    const percent = (covered / total) * 100;
     const source = sourceLines[lineNumber - 1]?.trim().replaceAll(/\s+/g, ' ');
-    if (percent >= minimum || source === undefined || source === '') {
+    if (!(total > 0) || !Number.isInteger(lineNumber) || source === undefined || source === '') {
       continue;
     }
-    findings.push({
-      tool,
-      rule: CHANGED_BRANCH_COVERAGE_RULE,
+    branches.push({
       path: filePath,
-      identity: unique(hashIdentity('branch-source', [source])),
-      message: `Branch coverage is ${percent.toFixed(2)}%; minimum is ${String(minimum)}%`,
-      classification: 'enforceable',
-      location: { line: lineNumber },
+      key: hashIdentity('branch-source', [source]),
+      percent: (covered / total) * 100,
+      line: lineNumber,
     });
   }
-  return findings;
+  return branchCoverageFindings(branches, {
+    tool,
+    minimum,
+    identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
+  });
 }
