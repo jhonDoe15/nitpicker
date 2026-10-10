@@ -25,11 +25,6 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-/**
- * Derives every layout-dependent value from the source roots, test roots and excluded globs.
- * `layout` holds the preset's own settings, `exclude` the project's extra globs from the config
- * file. The result is plain data plus predicates, so each runner resolves it once.
- */
 export function resolveLayout(layout = {}, exclude = []) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
@@ -67,7 +62,6 @@ export function resolveLayout(layout = {}, exclude = []) {
     ],
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
-    /** Regular expression source for the config file's `exclude` globs, or undefined when empty. */
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
     isExcluded(file) {
@@ -92,7 +86,6 @@ export function resolveLayout(layout = {}, exclude = []) {
         !resolved.isExcluded(normalized)
       );
     },
-    /** True for production sources below `root`, a directory inside one of the source roots. */
     isSourceUnderRoot(file, root) {
       const normalized = file.replaceAll('\\', '/');
       const prefix = `${root.replaceAll('\\', '/').replace(/\/$/, '')}/`;
@@ -102,7 +95,6 @@ export function resolveLayout(layout = {}, exclude = []) {
         !resolved.isExcluded(normalized)
       );
     },
-    /** The source root that contains `file`, matched as a path segment, or undefined. */
     sourceRootOf(file) {
       return sourceRoots.find((root) => file.includes(`/${root}/`));
     },

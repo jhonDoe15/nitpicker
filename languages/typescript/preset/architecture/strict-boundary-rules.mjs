@@ -1,6 +1,3 @@
-// Strict-preset boundary rules for dependency-cruiser. The default config spreads
-// `strictBoundaryRules` into `forbidden`. Each rule's `comment` is printed with the violation and
-// names the allowed form.
 import { readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 

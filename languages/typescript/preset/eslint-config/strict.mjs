@@ -34,20 +34,13 @@ import {
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
 
-// ESLint flat config replaces, not merges, a rule's options when several config objects match the
-// same file. So every scope carries the full list for the files it covers: the selectors that apply
-// everywhere plus the ones for that scope. Add a selector to the list of its scope here, never as a
-// separate `no-restricted-syntax` entry for a narrower glob.
 const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectors];
-// Control flow applies to all production code except config files. `domain/` has its own, stricter
-// loop and forEach selectors, so it takes only the promise-chain ones to avoid a duplicate message.
 const productionSelectors = [
   ...everywhereSelectors,
   ...defaultExportSelectors,
   ...controlFlowSelectors,
 ];
 
-/** The complete `no-restricted-syntax` selector list for each scope of the strict preset. */
 export const restrictedSyntaxByScope = {
   configFile: everywhereSelectors,
   source: productionSelectors,
@@ -68,10 +61,6 @@ function productionScope(layout) {
   return { ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs] };
 }
 
-/**
- * Rules that need only the syntax tree, for one layout: they run without a TypeScript program.
- * Entries later in the array win, so `domain/` and `adapters/` follow the general entries.
- */
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
   return [
     { ignores: layout.excludedGlobs },
@@ -122,10 +111,6 @@ const strictSyntaxConfig = strictSyntaxConfigFor();
 
 export default strictSyntaxConfig;
 
-/**
- * Rules that need type information, for one layout. `parserOptions` is how typescript-eslint finds
- * the program, for example `{ project: './tsconfig.quality.json', tsconfigRootDir }`.
- */
 export function strictTypedConfigFor(layout, parserOptions) {
   return [
     {
@@ -158,13 +143,11 @@ export function strictConfig(parserOptions) {
   return [...strictSyntaxConfig, ...strictTypedConfig(parserOptions)];
 }
 
-/** Rules for every production file that need no scope of their own. */
 export const strictProductionRules = {
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
 };
 
-/** Everything the strict preset adds to the project's own ESLint config, for one layout. */
 export function strictPresetConfig(layout, parserOptions) {
   return [
     ...strictSyntaxConfigFor(layout),
