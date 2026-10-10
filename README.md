@@ -357,4 +357,7 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
+Source files carry no comments; formats and protocols that names cannot express are in
+[docs/internals.md](docs/internals.md).
+
 Released under the [MIT license](LICENSE). To cut a release, see [docs/releasing.md](docs/releasing.md).
