@@ -33,12 +33,14 @@
     "languages/**",
     "!**/*.test.mjs",
     "!**/fixtures/**",
-    "!**/README.md"
+    "!**/README.md",
+    "skills/**"
   ],
   "exports": {
     "./package.json": "./package.json"
   },
   "peerDependencies": {
+    "@types/node": ">=20",
     "@vitest/coverage-v8": "^4.1.11",
     "typescript": ">=5",
     "vitest": "^4.1.11"
