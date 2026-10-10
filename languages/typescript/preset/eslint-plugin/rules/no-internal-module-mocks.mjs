@@ -3,7 +3,7 @@ import { readLayout } from '../../head-policy.mjs';
 
 const layout = readLayout();
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

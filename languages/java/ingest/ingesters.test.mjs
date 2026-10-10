@@ -68,6 +68,8 @@ const formats = [
     file: 'archunit-junit.xml',
     ingest: (text) => ingestArchunit(text, { resolvePath: resolveJavaPath }),
     count: 3,
+  },
+  {
     name: 'pit',
     file: 'pit-mutations.xml',
     ingest: (text) => ingestPit(text, { resolvePath: resolveMainPath }),

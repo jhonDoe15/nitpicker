@@ -1,3 +1,4 @@
+import { ancestorsOf, scopeChain } from './ancestry.mjs';
 const functionTypes = new Set([
   'FunctionDeclaration',
   'FunctionExpression',
@@ -17,7 +18,7 @@ function declaredBindingNode(fn) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {
@@ -33,7 +34,7 @@ export default {
     const sourceCode = context.sourceCode;
 
     function resolve(identifier) {
-      for (let scope = sourceCode.getScope(identifier); scope; scope = scope.upper) {
+      for (const scope of scopeChain(sourceCode.getScope(identifier))) {
         const variable = scope.set.get(identifier.name);
         if (variable) return variable;
       }
@@ -41,11 +42,7 @@ export default {
     }
 
     function enclosingFunctions(node) {
-      const found = [];
-      for (let current = node.parent; current; current = current.parent) {
-        if (functionTypes.has(current.type)) found.push(current);
-      }
-      return found;
+      return ancestorsOf(node).filter((current) => functionTypes.has(current.type));
     }
 
     return {

@@ -42,7 +42,7 @@ function mockedSource(node) {
     : undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

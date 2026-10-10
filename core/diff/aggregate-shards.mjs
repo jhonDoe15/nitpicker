@@ -15,6 +15,7 @@ import {
 } from './reporters.mjs';
 import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
+import { takeOptionValue } from './cli.mjs';
 import { runGit } from './git.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -25,6 +26,15 @@ const COMMON_SUMMARY_PROPERTIES = [
   'headSha',
   'renamedPaths',
 ];
+
+function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
+  if (policyRoot !== undefined) {
+    return realpathSync(policyRoot);
+  }
+  return optionsPolicyRoot === undefined
+    ? undefined
+    : realpathSync(path.resolve(currentProjectRoot, optionsPolicyRoot));
+}
 
 export function aggregateShardReports({
   inputRoot,
@@ -147,12 +157,11 @@ export function runAggregateCli({
       configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
       liveProjectRoot: currentProjectRoot,
-      policyRoot:
-        policyRoot === undefined
-          ? options.policyRoot === undefined
-            ? undefined
-            : realpathSync(path.resolve(currentProjectRoot, options.policyRoot))
-          : realpathSync(policyRoot),
+      policyRoot: resolvePolicyRoot({
+        policyRoot,
+        optionsPolicyRoot: options.policyRoot,
+        currentProjectRoot,
+      }),
     });
     stdout.write(
       renderConsoleSummary(report, {
@@ -239,22 +248,27 @@ function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
   );
 }
 
-function parseArguments(arguments_) {
+const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
+
+function collectOptionValues(arguments_) {
   const values = {};
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const argument = arguments_[index];
+  const remaining = arguments_.values();
+  for (const argument of remaining) {
     if (argument === '--help') {
-      return { kind: 'help' };
+      return undefined;
     }
-    if (!['--input-root', '--output', '--shard-count', '--policy-root'].includes(argument)) {
+    if (!OPTION_NAMES.includes(argument)) {
       throw new Error(`Unknown argument: ${argument}`);
     }
-    const value = arguments_[index + 1];
-    if (value === undefined || value.startsWith('--')) {
-      throw new Error(`${argument} requires a value`);
-    }
-    values[argument] = value;
-    index += 1;
+    values[argument] = takeOptionValue(remaining, argument);
+  }
+  return values;
+}
+
+function parseArguments(arguments_) {
+  const values = collectOptionValues(arguments_);
+  if (values === undefined) {
+    return { kind: 'help' };
   }
   if (values['--input-root'] === undefined) {
     throw new Error('--input-root is required');

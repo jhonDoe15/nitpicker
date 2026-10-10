@@ -156,18 +156,24 @@ function sourceFiles(root, exclude, { layout, displayRoot }, directory = '') {
   return found.sort();
 }
 
+function validateConfiguration(configuration) {
+  if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
+  requireStringList(configuration.exclude, 'exclude');
+  for (const role of configuration.roles) {
+    validateRole(role);
+  }
+  const roleNames = configuration.roles.map((role) => role.name);
+  if (new Set(roleNames).size !== roleNames.length)
+    throw new TypeError('Module role names must be unique');
+}
+
 /** Discover production modules by configured role patterns; return findings and coverage together. */
 export function analyzeRuntimeBoundaries(
   root,
   configuration = moduleRoleBoundaries,
   { layout = defaultResolvedLayout, displayRoot = '' } = {},
 ) {
-  if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
-  requireStringList(configuration.exclude, 'exclude');
-  configuration.roles.forEach(validateRole);
-  const roleNames = configuration.roles.map((role) => role.name);
-  if (new Set(roleNames).size !== roleNames.length)
-    throw new TypeError('Module role names must be unique');
+  validateConfiguration(configuration);
   const sources = existsSync(root)
     ? sourceFiles(root, configuration.exclude, { layout, displayRoot })
     : [];

@@ -60,8 +60,9 @@ export function renderRuleFilterSection(report, ruleFilters) {
   if (ruleFilters.length === 0) {
     return '';
   }
-  const matches = (finding) =>
-    ruleFilters.some((filter) => `${finding.tool}/${finding.rule}`.includes(filter));
+  function matches(finding) {
+    return ruleFilters.some((filter) => `${finding.tool}/${finding.rule}`.includes(filter));
+  }
   const lines = ['', `Findings matching --rule ${ruleFilters.join(', ')}:`];
   appendFindingSection(lines, '  Matching', report.findings.filter(matches));
   return `${lines.join('\n')}\n`;

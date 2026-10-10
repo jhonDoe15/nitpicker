@@ -19,10 +19,12 @@ function analyzeFixture(consumer, testConsumer = '') {
       : undefined;
   host.fileExists = (fileName) => sources.has(fileName);
   host.readFile = (fileName) => sources.get(fileName);
-  host.resolveModuleNames = (names, containingFile) =>
-    names.map((name) => ({
-      resolvedFileName: path.resolve(path.dirname(containingFile), `${name}.ts`),
-      extension: ts.Extension.Ts,
+  host.resolveModuleNameLiterals = (literals, containingFile) =>
+    literals.map((literal) => ({
+      resolvedModule: {
+        resolvedFileName: path.resolve(path.dirname(containingFile), `${literal.text}.ts`),
+        extension: ts.Extension.Ts,
+      },
     }));
   const program = ts.createProgram(
     [...sources.keys()],

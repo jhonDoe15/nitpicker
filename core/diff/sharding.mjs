@@ -105,8 +105,7 @@ function dependencyComponents(analyzers) {
 function collectComponent(startName, neighbors, visited) {
   const component = new Set();
   const pending = [startName];
-  while (pending.length > 0) {
-    const name = pending.pop();
+  for (const name of pending) {
     if (visited.has(name)) {
       continue;
     }

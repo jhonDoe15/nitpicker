@@ -78,7 +78,9 @@ function functionBodyMetrics(functionNode) {
     }
     const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
-    ts.forEachChild(node, (child) => visit(child, nextDepth));
+    ts.forEachChild(node, (child) => {
+      visit(child, nextDepth);
+    });
   }
 
   if (functionNode.body !== undefined) {
