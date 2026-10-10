@@ -1,14 +1,22 @@
 import { createHash } from 'node:crypto';
 import { normalizeGitPath } from './git.mjs';
+import { remapRootPrefix } from './renames.mjs';
 
-export function comparisonKey(finding, baseToHeadRenames = new Map()) {
+export function comparisonKey(
+  finding,
+  baseToHeadRenames = new Map(),
+  baseToHeadDirectories = new Map(),
+) {
   const normalizedPath = normalizeGitPath(finding.path);
   const cycle = parseCycleIdentity(finding.identity);
   const canonical =
     cycle === undefined
       ? {
           path: baseToHeadRenames.get(normalizedPath) ?? normalizedPath,
-          identity: remapIdentityPaths(finding.identity, baseToHeadRenames),
+          identity: remapRootPrefix(
+            remapIdentityPaths(finding.identity, baseToHeadRenames),
+            baseToHeadDirectories,
+          ),
         }
       : remapCycle(cycle, baseToHeadRenames);
   return JSON.stringify([

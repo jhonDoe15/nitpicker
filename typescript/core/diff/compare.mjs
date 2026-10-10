@@ -11,53 +11,61 @@ export function compareFindings({
   baseFindings,
   headFindings,
   baseToHeadRenames = new Map(),
+  baseToHeadDirectories = new Map(),
   touchedCode,
 }) {
-  const baseByKey = indexFindings(baseFindings, baseToHeadRenames, 'base');
-  const headByKey = indexFindings(headFindings, new Map(), 'head');
-  const newFindings = [];
-  const resolvedFindings = [];
-  const unchangedFindings = [];
-  const changedMetrics = [];
-
-  for (const [key, headFinding] of headByKey) {
-    const baseFinding = baseByKey.get(key);
-    if (baseFinding === undefined) {
-      newFindings.push(headFinding);
-      continue;
-    }
-
-    if (hasChangedMetric(baseFinding, headFinding)) {
-      changedMetrics.push({
-        tool: headFinding.tool,
-        rule: headFinding.rule,
-        path: headFinding.path,
-        symbol: headFinding.symbol,
-        identity: headFinding.identity,
-        message: headFinding.message,
-        metric: headFinding.metric.name,
-        baseValue: baseFinding.metric.value,
-        headValue: headFinding.metric.value,
-        delta: headFinding.metric.value - baseFinding.metric.value,
-      });
-    } else if (isInTouchedCode(headFinding, touchedCode)) {
-      newFindings.push(headFinding);
-    } else {
-      unchangedFindings.push(headFinding);
-    }
-  }
-
-  for (const [key, baseFinding] of baseByKey) {
-    if (!headByKey.has(key)) {
-      resolvedFindings.push(baseFinding);
-    }
-  }
+  const baseByKey = indexFindings({
+    findings: baseFindings,
+    renames: baseToHeadRenames,
+    directories: baseToHeadDirectories,
+    snapshot: 'base',
+  });
+  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
+  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
+  const resolvedFindings = [...baseByKey]
+    .filter(([key]) => !headByKey.has(key))
+    .map(([, baseFinding]) => baseFinding);
 
   return {
-    newFindings: sortFindings(newFindings),
+    newFindings: sortFindings(present.newFindings),
     resolvedFindings: sortFindings(resolvedFindings),
-    unchangedFindings: sortFindings(unchangedFindings),
-    changedMetrics: changedMetrics.sort(compareDisplayOrder),
+    unchangedFindings: sortFindings(present.unchangedFindings),
+    changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
+  };
+}
+
+function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
+  const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
+  for (const [key, headFinding] of headByKey) {
+    const { bucket, entry } = classify(headFinding, baseByKey.get(key), touchedCode);
+    buckets[bucket].push(entry);
+  }
+  return buckets;
+}
+
+function classify(headFinding, baseFinding, touchedCode) {
+  if (baseFinding === undefined) {
+    return { bucket: 'newFindings', entry: headFinding };
+  }
+  if (hasChangedMetric(baseFinding, headFinding)) {
+    return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
+  }
+  const bucket = isInTouchedCode(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
+  return { bucket, entry: headFinding };
+}
+
+function changedMetricOf(baseFinding, headFinding) {
+  return {
+    tool: headFinding.tool,
+    rule: headFinding.rule,
+    path: headFinding.path,
+    symbol: headFinding.symbol,
+    identity: headFinding.identity,
+    message: headFinding.message,
+    metric: headFinding.metric.name,
+    baseValue: baseFinding.metric.value,
+    headValue: headFinding.metric.value,
+    delta: headFinding.metric.value - baseFinding.metric.value,
   };
 }
 
@@ -82,10 +90,10 @@ function isInTouchedCode(finding, touchedCode) {
   );
 }
 
-function indexFindings(findings, renames, snapshot) {
+function indexFindings({ findings, renames = new Map(), directories = new Map(), snapshot }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, renames);
+    const key = comparisonKey(finding, renames, directories);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,

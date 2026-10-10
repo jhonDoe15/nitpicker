@@ -146,21 +146,20 @@ function readOptionalBaseline(root, relativePath) {
   return parseReportJson(readFileSync(baselinePath, 'utf8'));
 }
 
-/**
- * Runs an analyzer that works on one source root once per configured root. With several roots the
- * findings of each get a root prefix in their identity, so aggregate metrics do not collide.
- */
-function perSourceRoot(options, layout, analyze) {
+async function perSourceRoot(options, layout, analyze) {
   const roots = existingRoots(options.projectRoot, layout.sourceRoots);
-  const results = roots.map((root) => ({ root, findings: analyze(root) }));
-  return Promise.all(
-    results.map(async ({ root, findings }) => {
-      const resolved = await findings;
-      return roots.length === 1
-        ? resolved
-        : resolved.map((finding) => ({ ...finding, identity: `${root}|${finding.identity}` }));
-    }),
-  ).then((groups) => groups.flat());
+  const groups = await Promise.all(
+    roots.map(async (root) => prefixAggregates(root, roots.length, await analyze(root))),
+  );
+  return groups.flat();
+}
+
+function prefixAggregates(root, rootCount, findings) {
+  return rootCount === 1
+    ? findings
+    : findings.map((finding) =>
+        finding.path === '.' ? { ...finding, identity: `${root}|${finding.identity}` } : finding,
+      );
 }
 
 async function runCoupling(options) {
