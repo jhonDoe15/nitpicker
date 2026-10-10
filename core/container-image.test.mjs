@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
-const repoRoot = path.resolve(import.meta.dirname, '..');
+const repoRoot = PACKAGE_ROOT;
 const dockerfile = readFileSync(path.join(repoRoot, 'Dockerfile'), 'utf8');
 const dockerignore = readFileSync(path.join(repoRoot, '.dockerignore'), 'utf8');
 const instructions = dockerfile

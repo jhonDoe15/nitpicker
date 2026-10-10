@@ -129,6 +129,12 @@ describe('strict exceptions', () => {
 });
 
 describe('layout keys', () => {
+  it('accepts entry point globs for files that are loaded by path', () => {
+    const layout = { entryPoints: ['tools/*-runner.mjs'] };
+
+    expect(validateConfig({ layout })).toEqual({ layout });
+  });
+
   it('accepts the directory roots and the excluded globs together', () => {
     const layout = {
       sourceRoots: ['lib'],

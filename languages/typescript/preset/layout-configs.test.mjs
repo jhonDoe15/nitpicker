@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { globToRegExp, resolveLayout } from './layout.mjs';
 import {
+  isCustomLayout,
   layoutJscpdConfig,
   layoutKnipConfig,
   layoutTransformFor,
@@ -205,6 +206,20 @@ describe('layout-aware tool configurations', () => {
     expect(jscpd.path).toEqual(['lib']);
     expect(jscpd.ignore).toContain('lib/legacy/**');
   });
+
+  it('add the configured entry points to the knip entries', () => {
+    const layout = { ...customLayout, entryPoints: ['lib/tools/*-runner.mjs'] };
+
+    const knip = layoutKnipConfig(readDefault('knip.json'), layout);
+
+    expect(knip.entry).toContain('lib/main.ts');
+    expect(knip.entry).toContain('lib/tools/*-runner.mjs');
+  });
+
+  it('count entry points as a custom layout', () => {
+    expect(isCustomLayout({ ...resolveLayout(), entryPoints: ['tools/run.mjs'] })).toBe(true);
+    expect(isCustomLayout(resolveLayout())).toBe(false);
+  });
 });
 
 describe('package-owned child configs', () => {
@@ -239,6 +254,22 @@ describe('package-owned child configs', () => {
     );
     expect(production.flatMap((entry) => entry.ignores ?? [])).toContain('lib/legacy/**');
     expect(production.flatMap((entry) => entry.ignores ?? [])).toContain('lib/**/__tests__/**');
+  });
+
+  it('production policy configs skip the module-load rule for configured entry points', async () => {
+    const entryPolicy = {
+      ...policy,
+      layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
+    };
+    const build = (module) => module.productionPolicyConfig({});
+    const plain = await loadConfig('eslint-config/base.mjs', policy, build);
+    const withEntries = await loadConfig('eslint-config/base.mjs', entryPolicy, build);
+
+    expect(plain.some((entry) => entry.files?.includes('lib/tools/run.mjs'))).toBe(false);
+    expect(withEntries.at(-1)).toEqual({
+      files: ['lib/tools/run.mjs'],
+      rules: { 'nitpicker/report-module-load-effects': 'off' },
+    });
   });
 
   it('crap.config.mjs measures the custom source roots and skips excluded paths', async () => {

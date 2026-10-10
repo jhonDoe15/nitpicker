@@ -24,8 +24,8 @@ const KEYS = [
   'analyzers',
   'legacyInventory',
 ];
-const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs'];
-const GLOB_LAYOUT_KEYS = ['excludedGlobs'];
+const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
+const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
