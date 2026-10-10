@@ -20,10 +20,11 @@ export function ingestJacoco(xml, options = {}) {
   const findings = [];
   for (const pkg of childrenNamed(report, 'package')) {
     const packageName = pkg.attrs.name ?? '';
-    const pathFor = (fileName) =>
-      normalizeReportPath(
+    function pathFor(fileName) {
+      return normalizeReportPath(
         [options.sourceRoot, packageName, fileName].filter((part) => part).join('/'),
       );
+    }
 
     for (const sourcefile of childrenNamed(pkg, 'sourcefile')) {
       const filePath = pathFor(sourcefile.attrs.name ?? '');

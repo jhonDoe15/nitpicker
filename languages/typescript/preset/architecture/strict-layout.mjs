@@ -9,5 +9,5 @@ export const layoutFeatures = {
   featureRoot: `${main}/features`,
   feature: `${main}/features/[^/]+`,
   shared: `${main}/shared/`,
-  compositionRoot: `${main}/composition-root(?:${'\\.[cm]?[jt]sx?$'}|/)`,
+  compositionRoot: `${main}/composition-root(?:\\.[cm]?[jt]sx?$|/)`,
 };

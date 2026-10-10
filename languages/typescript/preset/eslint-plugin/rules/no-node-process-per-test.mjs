@@ -12,7 +12,7 @@ const NODE_COMMANDS = new Set([
   'ts-node',
 ]);
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

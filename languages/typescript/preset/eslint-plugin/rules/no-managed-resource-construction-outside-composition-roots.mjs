@@ -18,7 +18,7 @@ function constructedName(callee) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {
@@ -40,7 +40,6 @@ export default {
   },
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
-    // `compositionRootPattern` adds roots to the defaults; it never replaces them.
     const userPattern = context.options[0]?.compositionRootPattern;
     const compositionRoot = new RegExp(
       userPattern === undefined

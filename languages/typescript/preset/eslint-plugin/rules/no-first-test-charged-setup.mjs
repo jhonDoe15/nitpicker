@@ -1,4 +1,5 @@
 import { findVariable, perTestVisitors } from './test-code-analysis.mjs';
+import { chainOf } from './ancestry.mjs';
 
 // Roots whose calls are cheap and deterministic: memoizing them saves nothing worth a hook.
 const CHEAP_CALL_ROOTS = new Set([
@@ -18,10 +19,10 @@ const CHEAP_CALL_ROOTS = new Set([
 const MEMO_LOGICAL_OPERATORS = new Set(['??=', '||=']);
 
 function calleeRoot(callee) {
-  let current = callee;
-  while (current?.type === 'MemberExpression' || current?.type === 'CallExpression') {
-    current = current.type === 'MemberExpression' ? current.object : current.callee;
-  }
+  const current = chainOf(callee, (link) => {
+    if (link.type === 'MemberExpression') return link.object;
+    return link.type === 'CallExpression' ? link.callee : undefined;
+  }).at(-1);
   return current?.type === 'Identifier' ? current.name : undefined;
 }
 
@@ -118,7 +119,7 @@ function memoTarget(value) {
   return undefined;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

@@ -37,7 +37,7 @@ function isProductionModule(filename, source) {
   return layout.sourceRootOf(`${resolved}/`) !== undefined && !TEST_SUPPORT.test(resolved);
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {
@@ -79,9 +79,6 @@ export default {
           hasProductionRuntime = true;
         }
       },
-      // A dynamic `await import('../foo.js')` — common when a test needs a
-      // fresh module instance after vi.mock() — is just as much a production
-      // runtime dependency as a static import.
       ImportExpression(node) {
         if (
           node.source.type === 'Literal' &&

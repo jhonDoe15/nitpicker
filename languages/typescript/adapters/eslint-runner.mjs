@@ -24,6 +24,18 @@ const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
 // Guarded so other adapters (for example the snapshot ESLint runner) can import
 // normalizeEslintResults without triggering this file's own CLI behavior.
+const VALUE_ARGUMENTS = new Set([
+  '--analyzer-name',
+  '--project-root',
+  '--policy-root',
+  '--tool-root',
+  '--live-project-root',
+  '--config',
+  '--timeout-ms',
+  '--eslint-cli',
+  '--environment',
+]);
+
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&
@@ -324,9 +336,13 @@ function stableSyntaxAnchor(node) {
   return node;
 }
 
+function nodeChain(node) {
+  return node === undefined ? [] : [node, ...nodeChain(node.parent)];
+}
+
 function enclosingSymbol(node) {
   const names = [];
-  for (let current = node; current !== undefined; current = current.parent) {
+  for (const current of nodeChain(node)) {
     const name = declarationName(current);
     if (name !== undefined && names.at(-1) !== name) {
       names.push(name);
@@ -553,68 +569,64 @@ function scriptKind(filePath) {
   return ts.ScriptKind.TS;
 }
 
-function parseArguments(arguments_) {
-  const values = new Map();
-  const patterns = [];
-  for (let index = 0; index < arguments_.length; index += 1) {
-    const name = arguments_[index];
-    const value = arguments_[index + 1];
-    if (name === '--pattern') {
-      if (value === undefined) {
-        throw new Error('--pattern requires a value');
-      }
-      patterns.push(value);
-      index += 1;
-      continue;
-    }
-    if (name === '--policy-file') {
-      if (value === undefined) {
-        throw new Error('--policy-file requires a value');
-      }
-      values.set(`policy-file:${String(values.size)}`, value);
-      index += 1;
-      continue;
-    }
-    if (
-      name !== '--analyzer-name' &&
-      name !== '--project-root' &&
-      name !== '--policy-root' &&
-      name !== '--tool-root' &&
-      name !== '--live-project-root' &&
-      name !== '--config' &&
-      name !== '--timeout-ms' &&
-      name !== '--eslint-cli' &&
-      name !== '--environment'
-    ) {
-      throw new Error(`Unknown ESLint adapter argument: ${name ?? '<missing>'}`);
-    }
-    if (value === undefined) {
-      throw new Error(`${name} requires a value`);
-    }
-    if (name === '--environment') {
-      const separator = value.indexOf('=');
-      if (separator < 1) {
-        throw new Error('--environment requires NAME=value');
-      }
-      values.set(`environment:${value.slice(0, separator)}`, value.slice(separator + 1));
-    } else {
-      values.set(name, value);
-    }
-    index += 1;
+function requiredValue(name, value) {
+  if (value === undefined) {
+    throw new Error(`${name} requires a value`);
   }
+  return value;
+}
 
+function environmentEntry(value) {
+  const separator = value.indexOf('=');
+  if (separator < 1) {
+    throw new Error('--environment requires NAME=value');
+  }
+  return [value.slice(0, separator), value.slice(separator + 1)];
+}
+
+function recordArgument({ values, patterns }, name, value) {
+  if (name === '--pattern') {
+    patterns.push(requiredValue(name, value));
+    return;
+  }
+  if (name === '--policy-file') {
+    values.set(`policy-file:${String(values.size)}`, requiredValue(name, value));
+    return;
+  }
+  if (!VALUE_ARGUMENTS.has(name)) {
+    throw new Error(`Unknown ESLint adapter argument: ${name}`);
+  }
+  requiredValue(name, value);
+  if (name !== '--environment') {
+    values.set(name, value);
+    return;
+  }
+  const [variable, variableValue] = environmentEntry(value);
+  values.set(`environment:${variable}`, variableValue);
+}
+
+function collectArguments(arguments_) {
+  const collected = { values: new Map(), patterns: [] };
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    recordArgument(collected, name, remaining.next().value);
+  }
+  return collected;
+}
+
+function prefixedValues(values, prefix) {
+  return [...values]
+    .filter(([name]) => name.startsWith(prefix))
+    .map(([name, value]) => [name.slice(prefix.length), value]);
+}
+
+function parseArguments(arguments_) {
+  const { values, patterns } = collectArguments(arguments_);
   if (patterns.length === 0) {
     throw new Error('ESLint adapter requires at least one --pattern');
   }
-  const environment = {};
-  const policyFiles = [];
-  for (const [name, value] of values) {
-    if (name.startsWith('environment:')) {
-      environment[name.slice('environment:'.length)] = value;
-    } else if (name.startsWith('policy-file:')) {
-      policyFiles.push(value);
-    }
-  }
+  const environment = Object.fromEntries(prefixedValues(values, 'environment:'));
+  const policyFiles = prefixedValues(values, 'policy-file:').map(([, value]) => value);
   return {
     analyzerName: requiredArgument(values, '--analyzer-name'),
     projectRoot: validatedSnapshotRoot(

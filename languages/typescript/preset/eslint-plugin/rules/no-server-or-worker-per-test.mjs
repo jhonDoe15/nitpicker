@@ -6,7 +6,7 @@ const SERVER_MODULES = new Set(
 const WORKER_MODULES = new Set(['worker_threads', 'node:worker_threads']);
 const SERVER_FACTORIES = new Set(['createServer', 'createSecureServer']);
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],

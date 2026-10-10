@@ -1,6 +1,6 @@
 const subprocessModules = new Set(['child_process', 'node:child_process', 'execa', 'cross-spawn']);
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     schema: [],
@@ -9,9 +9,9 @@ export default {
     },
   },
   create(context) {
-    const report = (node, value) => {
+    function report(node, value) {
       if (subprocessModules.has(value)) context.report({ node, messageId: 'externalExecutable' });
-    };
+    }
     return {
       ImportDeclaration(node) {
         if (node.importKind !== 'type') report(node, node.source.value);

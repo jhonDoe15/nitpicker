@@ -1,3 +1,4 @@
+import { ancestorsOf } from './ancestry.mjs';
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',
   'DoWhileStatement',
@@ -16,7 +17,7 @@ function isDirective(node) {
 }
 
 function executesAtModuleLoad(node) {
-  for (let current = node.parent; current !== undefined; current = current.parent) {
+  for (const current of ancestorsOf(node)) {
     if (
       current.type === 'ArrowFunctionExpression' ||
       current.type === 'FunctionDeclaration' ||
@@ -31,7 +32,7 @@ function executesAtModuleLoad(node) {
   return false;
 }
 
-export default {
+export const rule = {
   meta: {
     type: 'problem',
     docs: {

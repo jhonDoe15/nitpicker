@@ -42,6 +42,19 @@ function loadTypeScript(projectRoot = PACKAGE_ROOT) {
   return ts;
 }
 
+const VALUE_ARGUMENTS = new Set([
+  '--analyzer-name',
+  '--kind',
+  '--project-root',
+  '--policy-root',
+  '--tool-root',
+  '--live-project-root',
+  '--config',
+  '--ignore-path',
+  '--include-only',
+  '--exclude',
+]);
+
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&
@@ -548,6 +561,10 @@ export function removeSnapshotDependencies(dependencies) {
   unlinkSync(dependencies.dependencyPath);
 }
 
+function nodeChain(node) {
+  return node === undefined ? [] : [node, ...nodeChain(node.parent)];
+}
+
 function enclosingSymbol(sourceFile, position) {
   let node = sourceFile;
   function visit(candidate) {
@@ -558,7 +575,7 @@ function enclosingSymbol(sourceFile, position) {
   }
   visit(sourceFile);
   const names = [];
-  for (let current = node; current !== undefined; current = current.parent) {
+  for (const current of nodeChain(node)) {
     if (
       (ts.isFunctionDeclaration(current) ||
         ts.isClassDeclaration(current) ||
@@ -606,37 +623,33 @@ function policyFile(options, relativePath) {
   return filePath;
 }
 
-function parseArguments(arguments_) {
+function recordValue(values, name, value) {
+  if (!VALUE_ARGUMENTS.has(name)) {
+    throw new Error(`Unknown static-check adapter argument: ${name}`);
+  }
+  values.set(name, value);
+}
+
+function collectArguments(arguments_) {
   const values = new Map();
   const patterns = [];
-  for (let index = 0; index < arguments_.length; index += 2) {
-    const name = arguments_[index];
-    const value = arguments_[index + 1];
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const { value } = remaining.next();
     if (value === undefined) {
-      throw new Error(`${name ?? '<missing>'} requires a value`);
+      throw new Error(`${name} requires a value`);
     }
     if (name === '--pattern') {
       patterns.push(value);
-      continue;
+    } else {
+      recordValue(values, name, value);
     }
-    if (
-      ![
-        '--analyzer-name',
-        '--kind',
-        '--project-root',
-        '--policy-root',
-        '--tool-root',
-        '--live-project-root',
-        '--config',
-        '--ignore-path',
-        '--include-only',
-        '--exclude',
-      ].includes(name)
-    ) {
-      throw new Error(`Unknown static-check adapter argument: ${name}`);
-    }
-    values.set(name, value);
   }
+  return { values, patterns };
+}
+
+function parseArguments(arguments_) {
+  const { values, patterns } = collectArguments(arguments_);
   const kind = requiredValue(values, '--kind');
   if (!SUPPORTED_KINDS.has(kind)) {
     throw new Error(`Unsupported static check: ${kind}`);

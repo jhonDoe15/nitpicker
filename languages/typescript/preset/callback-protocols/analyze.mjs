@@ -4,16 +4,32 @@ import path from 'node:path';
 import { callbackProtocolContracts } from './contracts.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
+function chainOf(start, next) {
+  return start ? [start, ...chainOf(next(start), next)] : [];
+}
+
 function unwrap(node) {
-  while (
-    node &&
-    (ts.isParenthesizedExpression(node) ||
-      ts.isAsExpression(node) ||
-      ts.isSatisfiesExpression(node) ||
-      ts.isNonNullExpression(node))
-  )
-    node = node.expression;
-  return node;
+  return chainOf(node, (current) =>
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+      ? current.expression
+      : undefined,
+  ).at(-1);
+}
+
+function ancestorsOf(node) {
+  return chainOf(node.parent, (current) => current.parent);
+}
+
+function callbackBindings(fn, call, bindings) {
+  const next = new Map(bindings);
+  for (const [index, parameter] of fn.parameters.entries()) {
+    const argument = call.arguments.at(index);
+    if (argument) next.set(parameter, argument);
+  }
+  return next;
 }
 
 function memberName(node) {
@@ -33,15 +49,21 @@ function functionLike(node) {
   );
 }
 
+function invokedReadName(invoked) {
+  if (ts.isPropertyAccessExpression(invoked)) return invoked.name.text;
+  return ts.isElementAccessExpression(invoked) && ts.isStringLiteral(invoked.argumentExpression)
+    ? invoked.argumentExpression.text
+    : undefined;
+}
+
 function containingClass(node) {
-  for (let parent = node.parent; parent; parent = parent.parent) {
-    if (ts.isClassDeclaration(parent) || ts.isClassExpression(parent)) return parent;
-  }
-  return undefined;
+  return ancestorsOf(node).find(
+    (parent) => ts.isClassDeclaration(parent) || ts.isClassExpression(parent),
+  );
 }
 
 function declarationFor(identifier) {
-  for (let scope = identifier.parent; scope; scope = scope.parent) {
+  for (const scope of ancestorsOf(identifier)) {
     if (functionLike(scope)) {
       const parameter = scope.parameters.find((item) => memberName(item.name) === identifier.text);
       if (parameter) return parameter;
@@ -136,9 +158,9 @@ function accessPath(expression, bindings, seen = new Set()) {
 }
 
 function constructedTarget(node) {
-  let parent = node.parent;
-  while (parent && (ts.isParenthesizedExpression(parent) || ts.isAsExpression(parent)))
-    parent = parent.parent;
+  const parent = ancestorsOf(node).find(
+    (candidate) => !ts.isParenthesizedExpression(candidate) && !ts.isAsExpression(candidate),
+  );
   if (
     parent &&
     ts.isBinaryExpression(parent) &&
@@ -201,12 +223,7 @@ export function analyzeCallbackProtocols(
       function walk(node) {
         if (ts.isCallExpression(node)) {
           const invoked = unwrap(node.expression);
-          const readName = ts.isPropertyAccessExpression(invoked)
-            ? invoked.name.text
-            : ts.isElementAccessExpression(invoked) &&
-                ts.isStringLiteral(invoked.argumentExpression)
-              ? invoked.argumentExpression.text
-              : undefined;
+          const readName = invokedReadName(invoked);
           if (
             readName &&
             contract.snapshotReadMethods.includes(readName) &&
@@ -216,11 +233,7 @@ export function analyzeCallbackProtocols(
           }
           const fn = resolveCallback(invoked, bindings);
           if (fn) {
-            const nextBindings = new Map(bindings);
-            fn.parameters.forEach((parameter, index) => {
-              if (node.arguments[index]) nextBindings.set(parameter, node.arguments[index]);
-            });
-            inspectFunction(fn, nextBindings);
+            inspectFunction(fn, callbackBindings(fn, node, bindings));
           }
         }
         // Uninvoked function literals are not part of the source callback's execution.
