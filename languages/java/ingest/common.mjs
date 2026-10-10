@@ -1,14 +1,10 @@
 import { createHash } from 'node:crypto';
 
-// Shared helpers for the report ingesters (Checkstyle, lcov, JaCoCo, Go coverprofile).
-// Identity never contains line numbers.
-
 export function hashIdentity(prefix, parts) {
   const digest = createHash('sha256').update(parts.join('\0')).digest('hex').slice(0, 16);
   return `${prefix}:${digest}`;
 }
 
-// Git-style project-relative path, or undefined when the path escapes the project.
 export function normalizeReportPath(value, root) {
   let candidate = String(value).replaceAll('\\', '/');
   if (root !== undefined) {
@@ -28,8 +24,6 @@ export function normalizeReportPath(value, root) {
   return candidate;
 }
 
-// Makes identities unique within one report: the n-th repeat of an identity (in report order)
-// gets a `#n` suffix. Positions never take part.
 export function createIdentityCounter() {
   const seen = new Map();
   return (identity) => {
@@ -85,8 +79,6 @@ function safeCodePoint(codePoint, fallback) {
   return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : fallback;
 }
 
-// Minimal XML element-tree parser: elements and attributes only (text is ignored). Skips the
-// prolog, DOCTYPE, comments, processing instructions and CDATA. Throws TypeError when malformed.
 export function parseXml(text) {
   const tokens =
     /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
