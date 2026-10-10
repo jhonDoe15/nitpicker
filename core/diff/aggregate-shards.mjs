@@ -169,7 +169,6 @@ export function runAggregateCli({
         diagnosticsPath: relativeTextReportPath(currentProjectRoot, outputRoot),
       }),
     );
-    // New violations win over tool errors so CI can tell "violations" from "broken".
     if (report.summary.newEnforceableFindings > 0) {
       return 1;
     }
@@ -203,9 +202,7 @@ function resolveAnalyzerVersions(analyzers, liveProjectRoot, errors) {
 function resolveAnalyzerConfigurationHashes(analyzers, configurationRoot, errors) {
   for (const [index, analyzer] of analyzers.entries()) {
     try {
-      const resolveConfigurationHash =
-        /** @type {{ resolveConfigurationHash?: (root: string) => string }} */ (analyzer)
-          ?.resolveConfigurationHash;
+      const resolveConfigurationHash = analyzer?.resolveConfigurationHash;
       if (typeof resolveConfigurationHash === 'function') {
         analyzer.configurationHash = resolveConfigurationHash(configurationRoot);
       }

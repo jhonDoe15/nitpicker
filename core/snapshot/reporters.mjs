@@ -55,7 +55,6 @@ export function renderTextReport(report) {
   return `${lines.join('\n')}\n`;
 }
 
-/** Drill-down view: findings whose `tool/rule` contains any of the given substrings. */
 export function renderRuleFilterSection(report, ruleFilters) {
   if (ruleFilters.length === 0) {
     return '';

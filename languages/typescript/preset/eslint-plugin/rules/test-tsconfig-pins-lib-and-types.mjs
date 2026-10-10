@@ -18,7 +18,6 @@ function isJsonStringify(callee) {
   );
 }
 
-/** Keys of an object literal, following same-file const spreads; undefined if a spread is opaque. */
 function knownKeys(context, node, seen = new Set()) {
   const resolved = resolveConstant(context, node);
   if (resolved?.type !== 'ObjectExpression' || seen.has(resolved)) return undefined;

@@ -200,7 +200,6 @@ function optionProperties(object, bindings, seen = new Set()) {
   });
 }
 
-/** Analyze callback roles and their reachable local function bodies, regardless of naming. */
 export function analyzeCallbackProtocols(
   source,
   { file = 'input.ts', contracts = callbackProtocolContracts } = {},
@@ -236,7 +235,6 @@ export function analyzeCallbackProtocols(
             inspectFunction(fn, callbackBindings(fn, node, bindings));
           }
         }
-        // Uninvoked function literals are not part of the source callback's execution.
         if (!functionLike(node)) ts.forEachChild(node, walk);
       }
       walk(fn.body);
@@ -278,7 +276,6 @@ export function analyzeCallbackProtocols(
   return findings;
 }
 
-/** Discover all production sources. Tests/build outputs are excluded by file role, never feature. */
 export function analyzeProductionCallbacks({
   layout = defaultResolvedLayout,
   sourceRoot = layout.sourceRoot,

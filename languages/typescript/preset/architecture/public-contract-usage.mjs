@@ -34,11 +34,6 @@ function accessedSymbol(checker, node) {
   return symbol;
 }
 
-/**
- * Find unused callable members of exported interfaces implemented by production classes.
- * Declaration identity prevents unrelated same-name methods and test-only calls from
- * appearing as consumers. Results are stable identities for a differential debt gate.
- */
 export function findUnusedPublicContractMethods(program, { sourceRoot }) {
   const checker = program.getTypeChecker();
   const sources = program

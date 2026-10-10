@@ -6,28 +6,16 @@ import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
 import { resolveTool } from '../../../core/tooling/tool-resolution.mjs';
 
-// Duplicate code for the Java preset: jscpd (the package's own pinned dependency, the same tool as
-// the TypeScript `duplicates` check) over each main source root with the `java` format. The
-// findings are the TypeScript ones: enforceable `duplicate-clone`, descriptive
-// `duplicate-clone-size` (lines, tokens). Identity is the file pair, a hash of the cloned text and
-// the n-th occurrence of that pair, never a line number.
-
 export const DUPLICATES_TOOL = 'duplicates';
 export const DUPLICATES_REPORT = 'duplicates.json';
 const JSCPD_IGNORE = ['**/build/**', '**/generated/**', '**/target/**', '**/out/**'];
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
 
-/** The version of the jscpd that runs. */
 export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-/**
- * Runs jscpd over the project's existing main source roots (from build/nitpicker/manifest.json) and
- * writes `build/nitpicker/duplicates.json`: `{ runs: [{ root, report }] }`, one jscpd JSON report
- * per root. Throws when jscpd fails, so the caller can report a tool error.
- */
 export function runJavaDuplicates(projectRoot) {
   const reportRoot = path.join(projectRoot, 'build/nitpicker');
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
@@ -76,7 +64,6 @@ export function runJavaDuplicates(projectRoot) {
   writeFileSync(path.join(reportRoot, DUPLICATES_REPORT), `${JSON.stringify({ runs })}\n`);
 }
 
-/** Findings from `build/nitpicker/duplicates.json`; jscpd names files relative to their root. */
 export function readDuplicateFindings(reportRoot) {
   const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
   return runs.flatMap(({ root, report }) =>

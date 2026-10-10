@@ -6,13 +6,10 @@ import {
 } from './test-code-analysis.mjs';
 import { ancestorsOf } from './ancestry.mjs';
 
-/** Delays below this are short enough that a test waiting them out is not worth a rule. */
 export const MIN_UNINJECTABLE_DELAY_MS = 500;
 
 const TIMER_MODULES = new Set(['timers', 'node:timers', 'timers/promises', 'node:timers/promises']);
 const TIMER_FUNCTIONS = new Set(['setTimeout', 'setInterval']);
-// A parameter with one of these names can carry the delay, as can any destructured, defaulted or
-// rest parameter: the rule only reports functions whose parameters clearly cannot.
 const OPTION_PARAMETER_NAME =
   /option|opts|config|setting|delay|timeout|interval|wait|duration|ms$|param|override|dependenc|deps|context|ctx|env/i;
 const FUNCTION_TYPES = new Set([
@@ -45,7 +42,6 @@ function exportedLocalNames(program) {
   return names;
 }
 
-/** The outermost function containing `node`, when it is a top-level declaration or const. */
 function topLevelFunction(node) {
   let outermost;
   for (const current of ancestorsOf(node).filter((ancestor) => ancestor.type !== 'Program')) {
@@ -94,7 +90,6 @@ function isModuleConstant(context, identifier) {
   );
 }
 
-/** The module-level constant identifier a delay expression is built from, or undefined. */
 function delayConstant(context, node) {
   if (node?.type === 'Identifier') return isModuleConstant(context, node) ? node : undefined;
   if (node?.type === 'BinaryExpression' && ['*', '+'].includes(node.operator)) {

@@ -1,7 +1,6 @@
 import { findVariable, perTestVisitors } from './test-code-analysis.mjs';
 import { chainOf } from './ancestry.mjs';
 
-// Roots whose calls are cheap and deterministic: memoizing them saves nothing worth a hook.
 const CHEAP_CALL_ROOTS = new Set([
   'path',
   'Math',
@@ -26,7 +25,6 @@ function calleeRoot(callee) {
   return current?.type === 'Identifier' ? current.name : undefined;
 }
 
-/** The call, widened to `await call` when awaited, whose value an assignment would store. */
 function storedValue(call) {
   return call.parent.type === 'AwaitExpression' ? call.parent : call;
 }
@@ -52,7 +50,6 @@ function isNullish(node) {
   );
 }
 
-/** `!x`, `x === undefined`, `x == null`, `x === null` (either side), for the memo `name`. */
 function isEmptyCheck(test, name) {
   if (test.type === 'UnaryExpression' && test.operator === '!') return isNamed(test.argument, name);
   if (test.type !== 'BinaryExpression' || !['==', '==='].includes(test.operator)) return false;
@@ -62,7 +59,6 @@ function isEmptyCheck(test, name) {
   );
 }
 
-/** `x`, `x !== undefined`, `x != null`, for the early-return form of the memo. */
 function isPresentCheck(test, name) {
   if (isNamed(test, name)) return true;
   if (test.type !== 'BinaryExpression' || !['!=', '!=='].includes(test.operator)) return false;
@@ -77,7 +73,6 @@ function returns(statement) {
   return statement.type === 'BlockStatement' && statement.body.at(-1)?.type === 'ReturnStatement';
 }
 
-/** True when the assignment statement only runs while `name` is still empty. */
 function isGuardedByEmptyCheck(statement, name) {
   const container = statement.parent;
   const branch = container.type === 'BlockStatement' ? container : statement;
@@ -96,7 +91,6 @@ function isGuardedByEmptyCheck(statement, name) {
   );
 }
 
-/** The memo variable a call's value is lazily stored in, or undefined when it is not a memo. */
 function memoTarget(value) {
   const parent = value.parent;
   if (parent.type === 'LogicalExpression' && parent.right === value) {

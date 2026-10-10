@@ -36,7 +36,6 @@ const prettierExtensions = new Set([
 ]);
 const prettierExclusions = [/^(?:coverage|reports|\.stryker-tmp)\//, /^src\/main\/dist\//];
 
-/** Fixes the changed files that the head policy does not exclude, with the policy's layout. */
 export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options }) {
   return withHeadPolicyFile(headPolicy, (policyFile) =>
     fixWithPolicy({
