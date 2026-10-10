@@ -15,6 +15,7 @@ import { runQualityDiff } from '../../../core/diff/run-diff.mjs';
 import {
   defaultLayout,
   readHeadPolicy,
+  readLayout,
   resolveHeadPolicy,
   withHeadPolicyFile,
 } from './head-policy.mjs';
@@ -55,6 +56,16 @@ describe('head policy reader', () => {
         thresholds: { crapLimit: 12 },
       });
     });
+  });
+
+  it('exposes the configured entry points on the resolved layout', () => {
+    const policy = resolveHeadPolicy({ layout: { entryPoints: ['tools/*-runner.mjs'] } });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(readLayout({ NITPICKER_POLICY: policyFile }).entryPoints).toEqual([
+        'tools/*-runner.mjs',
+      ]);
+    });
+    expect(readLayout({}).entryPoints).toEqual([]);
   });
 
   it('fails instead of weakening the policy when the file is unreadable or malformed', () => {

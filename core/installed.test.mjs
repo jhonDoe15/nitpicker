@@ -13,9 +13,10 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
-const packageRoot = path.resolve(import.meta.dirname, '..');
+const packageRoot = PACKAGE_ROOT;
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
 const layouts = [undefined, 'nested', 'linked'];
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so

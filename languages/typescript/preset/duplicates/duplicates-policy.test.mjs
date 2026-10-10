@@ -4,10 +4,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { resolveLayout } from '../layout.mjs';
+import { layoutJscpdConfig } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const jscpd = path.join(projectRoot, 'node_modules/.bin/jscpd');
 const fixtureRoot = path.join(projectRoot, 'languages/typescript/preset/duplicates/fixtures');
+const productionIgnore = layoutJscpdConfig(
+  JSON.parse(readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8')),
+  resolveLayout(),
+).ignore;
 const temporaryDirectories = [];
 
 afterEach(() => {
@@ -56,10 +62,7 @@ describe('duplicate-code report', () => {
   });
 
   it('excludes dist, build, and generated paths', () => {
-    const { result, report } = analyzeFixture('excluded', [
-      '--ignore',
-      '**/dist/**,**/build/**,**/generated/**',
-    ]);
+    const { result, report } = analyzeFixture('excluded', ['--ignore', productionIgnore.join(',')]);
 
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(report.duplicates).toEqual([]);

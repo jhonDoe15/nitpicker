@@ -29,27 +29,30 @@ export async function collectSignals(root = projectRoot, policyRoot = root, layo
   const files = layout.projectCodeFiles(root);
   if (files.length === 0) return [];
   const results = await eslint.lintFiles(files);
-  const signals = [];
-  for (const result of results) {
-    if (result.fatalErrorCount > 0)
-      throw new Error(result.messages.map((item) => item.message).join('\n'));
-    const lines = readFileSync(result.filePath, 'utf8').split('\n');
-    for (const message of result.messages) {
-      if (!message.ruleId) throw new Error(message.message);
-      const line = message.line ?? 1;
-      const last = message.endLine ?? line;
-      const sourceLines = lines.slice(line - 1, last);
-      if (message.endColumn)
-        sourceLines[sourceLines.length - 1] = sourceLines.at(-1).slice(0, message.endColumn - 1);
-      sourceLines[0] = sourceLines[0].slice((message.column ?? 1) - 1);
-      signals.push({
-        file: path.relative(root, result.filePath).replaceAll('\\', '/'),
-        rule: message.ruleId,
-        source: sourceLines.join('\n').replace(/\s+/g, ' ').trim(),
-      });
-    }
-  }
-  return signals;
+  return results.flatMap((result) => resultSignals(root, result));
+}
+
+function resultSignals(root, result) {
+  if (result.fatalErrorCount > 0)
+    throw new Error(result.messages.map((item) => item.message).join('\n'));
+  const lines = readFileSync(result.filePath, 'utf8').split('\n');
+  const file = path.relative(root, result.filePath).replaceAll('\\', '/');
+  return result.messages.map((message) => messageSignal(file, lines, message));
+}
+
+function messageSignal(file, lines, message) {
+  if (!message.ruleId) throw new Error(message.message);
+  return { file, rule: message.ruleId, source: messageSource(lines, message) };
+}
+
+function messageSource(lines, message) {
+  const line = message.line ?? 1;
+  const last = message.endLine ?? line;
+  const sourceLines = lines.slice(line - 1, last);
+  if (message.endColumn)
+    sourceLines[sourceLines.length - 1] = sourceLines.at(-1).slice(0, message.endColumn - 1);
+  sourceLines[0] = sourceLines[0].slice((message.column ?? 1) - 1);
+  return sourceLines.join('\n').replace(/\s+/g, ' ').trim();
 }
 
 /** A missing inventory file means no legacy sites are allowed. */

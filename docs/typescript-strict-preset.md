@@ -170,8 +170,10 @@ kind, a version entry, a check definition and project-level findings) and is not
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
-- `layout.excludedGlobs` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions.
+- `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
+  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
+  the module-load-effects check does not apply to them, since running at load is what a script does.
 
 ## Enforcement sources
 

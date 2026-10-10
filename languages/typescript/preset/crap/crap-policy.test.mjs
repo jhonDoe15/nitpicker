@@ -2,6 +2,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { analyzeProject } from '@barney-media/crap-typescript-core';
 import { beforeAll, describe, expect, it } from 'vitest';
+import crapConfig from '../defaults/crap.config.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const fixtureSource = path.join(
@@ -21,6 +22,7 @@ beforeAll(async () => {
     coverageMode: 'existing-only',
     coverageReportPath: fixtureCoverage,
     useDefaultExclusions: false,
+    excludes: crapConfig.excludes,
   });
   metricsByName = new Map(analysis.metrics.map((metric) => [metric.displayName, metric]));
 });
