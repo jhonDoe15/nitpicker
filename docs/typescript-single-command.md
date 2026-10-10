@@ -71,11 +71,11 @@ JSON file and one environment variable.
   the run ends.
 - The path travels in `NITPICKER_POLICY`, set on the environment of the analyzer scheduler.
   The scheduler, every runner, and every grandchild (ESLint, depcruise, vitest, Stryker, the
-  package-owned configs in `preset/defaults/`) already spawn with `{ ...process.env }`, so the
+  package-owned configs in `languages/typescript/preset/defaults/`) already spawn with `{ ...process.env }`, so the
   variable reaches all of them without per-runner plumbing.
-- One reader, `readHeadPolicy()` in `preset/head-policy.mjs`, is the only code that parses the
+- One reader, `readHeadPolicy()` in `languages/typescript/preset/head-policy.mjs`, is the only code that parses the
   file. It returns `{ exclude, layout, thresholds }`, with `layout` merged over the defaults
-  exported by `preset/layout.mjs`. With no variable (a runner started by hand, or no config) the
+  exported by `languages/typescript/preset/layout.mjs`. With no variable (a runner started by hand, or no config) the
   defaults apply. A variable that points at an unreadable or malformed file throws; it never
   falls back to a weaker policy.
 - Delivering the policy and applying it are separate: the next section covers how runners and
@@ -106,9 +106,9 @@ Decision (proposed, pending owner review):
   `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
   `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,
   `coverage`, `reports`, `target`, `*.d.ts`).
-- `preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
+- `languages/typescript/preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
   expression and predicate (`isSourceFile`, `isTestFile`, `isExcluded`, `projectCodeFiles`, ...)
-  from the roots and exclusions. `readLayout()` in `preset/head-policy.mjs` resolves the delivered
+  from the roots and exclusions. `readLayout()` in `languages/typescript/preset/head-policy.mjs` resolves the delivered
   head policy. Runners, package-owned child configs, and ESLint rules call it; the exported
   constants in `layout.mjs` are the default layout.
 - The CLI rebuilds the preset's analyzers for the policy (`applyLayout`), so `--pattern`s,
@@ -116,7 +116,7 @@ Decision (proposed, pending owner review):
   left alone.
 - Tools that read a project-root JSON config (`tsconfig.quality.json`, `tsconfig.stryker.json`,
   `knip.json`, `jscpd.json`) get a generated copy with the roots moved and the exclusions added
-  (`preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
+  (`languages/typescript/preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
 - When the project has a `tsconfig.json`, the tsconfig copies extend it instead
   (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `skipLibCheck`
@@ -161,7 +161,7 @@ To adopt nitpicker without fixing everything first:
    code to the inventory.
 
 The file is read from the head commit and applied to both sides, and its content is part of the
-policy hash. The old nitpicker-internal path `preset/coding-standards/legacy-sites.json` is no
+policy hash. The old nitpicker-internal path `languages/typescript/preset/coding-standards/legacy-sites.json` is no
 longer read.
 
 ## Packaging
@@ -197,7 +197,7 @@ edit; the base is a committed tree and cannot change under its key.
 - Key, one entry per analyzer: merge-base SHA, project path relative to the repository, analyzer
   name, analyzer (tool) version, the analyzer's configuration hash taken from the head policy, and
   the config-file overrides. The configuration hash covers the check's `configurationFiles` in
-  `preset/quality-checks.mjs`, which list only the logical policy (the tool config plus the rules
+  `languages/typescript/preset/quality-checks.mjs`, which list only the logical policy (the tool config plus the rules
   and shared policy it loads), and each dial adds its own adapter files on top, so a change to how
   one dial invokes a tool invalidates only that dial's baseline. The value is the analyzer's
   findings JSON, parsed with the finding schema on read. A corrupt or unreadable entry is a miss, and a cache that cannot be written never
