@@ -765,6 +765,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     status,
     label: mutant.mutatorName ?? 'mutant',
     line: mutant.location?.start?.line,
+    ...(mutant.replacement === undefined ? {} : { replacement: mutant.replacement }),
   };
 }
 
