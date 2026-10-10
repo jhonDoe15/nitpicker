@@ -100,12 +100,18 @@ function resultPath(result, root) {
   return uri === undefined ? undefined : normalizeUri(uri, root);
 }
 
-export function normalizeUri(uri, root) {
-  let decoded = uri;
+function decodeOrKeepRawUri(uri) {
   try {
-    decoded = decodeURIComponent(uri);
-  } catch {}
-  let candidate = decoded.replace(/^file:\/\//, '').replaceAll('\\', '/');
+    return decodeURIComponent(uri);
+  } catch (error) {
+    return error instanceof URIError ? uri : decodeURIComponent(uri);
+  }
+}
+
+export function normalizeUri(uri, root) {
+  let candidate = decodeOrKeepRawUri(uri)
+    .replace(/^file:\/\//, '')
+    .replaceAll('\\', '/');
   if (/^\/[A-Za-z]:\//.test(candidate)) {
     candidate = candidate.slice(1);
   }
