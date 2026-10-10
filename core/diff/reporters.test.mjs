@@ -2,7 +2,12 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { renderJunitReport, renderSarifReport, writeDiffReports } from './reporters.mjs';
+import {
+  renderConsoleSummary,
+  renderJunitReport,
+  renderSarifReport,
+  writeDiffReports,
+} from './reporters.mjs';
 
 const temporaryRoots = [];
 
@@ -246,5 +251,35 @@ describe('writeDiffReports', () => {
       JSON.parse(readFileSync(path.join(outputRoot, 'new-findings.json'), 'utf8')),
     ).toHaveLength(1);
     expect(readFileSync(path.join(outputRoot, 'report.txt'), 'utf8')).toContain('New findings: 1');
+  });
+});
+
+describe('renderConsoleSummary', () => {
+  const stackTrace = '  at run (stryker.js:1)\n'.repeat(50);
+  const crash = (snapshot) => ({
+    tool: 'mutation',
+    snapshot,
+    message: `Stryker crashed\n${stackTrace}error TS2688: Cannot find type definition file for 'node'.\n${stackTrace}`,
+  });
+
+  it('labels each tool error with its snapshot and shows the error line, not the stack', () => {
+    const summary = renderConsoleSummary(
+      { newFindings: [], toolErrors: [crash('head'), crash('base')] },
+      { color: false },
+    );
+
+    expect(summary).toContain(
+      "mutation (head): error TS2688: Cannot find type definition file for 'node'.",
+    );
+    expect(summary).toContain('mutation (base): error TS2688');
+    expect(summary).toContain('(full text in the diagnostics file)');
+    expect(summary).not.toContain('✓');
+    expect(summary).toContain('No new enforceable violations, but the run is incomplete:');
+  });
+
+  it('keeps the green line when there are no violations and no tool errors', () => {
+    const summary = renderConsoleSummary({ newFindings: [], toolErrors: [] }, { color: false });
+
+    expect(summary).toContain('✓ No new enforceable violations');
   });
 });
