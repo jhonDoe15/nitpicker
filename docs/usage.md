@@ -1,0 +1,344 @@
+# Using nitpicker
+
+The full reference: install, how the comparison works, reports, exit codes, every command-line
+option, configuration, the presets, adopting nitpicker on existing code, and running it in CI.
+For a short introduction, see the [README](../README.md).
+
+## Install
+
+Add nitpicker as a dev dependency, together with the peers it needs from your project:
+
+```sh
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+```
+
+Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
+tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
+Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
+choose them. `vitest`, `@vitest/coverage-v8` and `typescript` come from your project; if one is
+missing or incompatible, the tool that needs it fails and the report shows a tool error.
+
+## First run
+
+```sh
+npx nitpicker
+```
+
+Run it from anywhere inside your project. It needs no configuration.
+
+Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into your
+`AGENTS.md`.
+
+### What it compares
+
+- **Base**: the merge base of the base ref and `HEAD`.
+- **Head**: your checkout, including committed, staged, unstaged and untracked changes (ignored
+  files are excluded). Your index, branches and files are not touched. In CI the checkout is clean,
+  so the same command checks the committed `HEAD`.
+- **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
+  side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
+  Descriptive findings and metric changes are reported only.
+
+The base ref is the first match of:
+
+1. `--base <ref>`
+2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
+   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
+3. `base` in `nitpicker.config.json`
+4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
+   `origin` otherwise)
+5. `origin/main`, then `origin/master`
+
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+
+### Reports
+
+Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
+`report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
+`changed-metrics.json` and `tool-errors.json`. The summary records every config override and a
+policy hash. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
+console output.
+
+## Exit codes
+
+| Code | Meaning                                                                                                          |
+| ---- | ---------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings.                                                                      |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+
+A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+tool errors are still listed in the console and reports and recorded in `summary.json`
+(`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
+written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
+
+## Command line
+
+```text
+nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
+          [--analyzer <name>]... [--rule <substring>]...
+          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]
+nitpicker aggregate --input-root <dir> --shard-count <n>
+          [--output <dir>] [--policy-root <dir>]
+nitpicker cache publish [--analyzer <name>]...
+          [--shard-count <n> --shard-index <i>]
+```
+
+- `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
+  Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
+- `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
+  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
+  fixer and the comparison still run. Cannot be combined with `--all`.
+- `--base <ref>`: the ref to compare against.
+- `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--output <dir>`: where reports go.
+
+- `--no-cache`: do not read or write the findings cache for this run (local and remote).
+- `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
+  cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
+  everything was uploaded and 2 otherwise.
+
+### Findings cache
+
+The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
+merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
+config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`) with the
+legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
+
+- `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
+  `node_modules/.cache/nitpicker`.
+- `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
+  Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
+  read the remote; give write credentials only to the job that runs `cache publish` on `main`.
+
+See [typescript-single-command.md](typescript-single-command.md) for the full model.
+
+## Configuration
+
+Optional. Put `nitpicker.config.json` at the project root. It is read from the head checkout and
+applied to **both** sides of the comparison, so base and head are measured with the same policy. A
+branch cannot weaken the check by editing the base. Unknown keys and invalid values are an error
+(exit 2). Every override is listed in the report and changes the policy hash, so a weakened check
+is visible in review.
+
+```json
+{
+  "base": "origin/develop",
+  "preset": "typescript",
+  "disable": ["mutation"],
+  "thresholds": { "crapLimit": 12 },
+  "exclude": ["src/vendor/**"],
+  "layout": { "sourceRoots": ["lib"], "testRoots": ["spec"], "excludedGlobs": ["**/vendor/**"] },
+  "exceptions": [
+    {
+      "rule": "nitpicker/preserve-error-cause",
+      "paths": ["lib/legacy/**"],
+      "reason": "Legacy module until the migration"
+    }
+  ],
+  "analyzers": [{ "name": "house-rules", "command": "./scripts/house-rules", "args": ["--ci"] }],
+  "legacyInventory": "config/nitpicker.legacy.json"
+}
+```
+
+| Key               | Type                       | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `base`            | string                     | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `preset`          | `"typescript"` or `"java"` | The preset; default `typescript`. `java` gates a Gradle project and is never auto-detected; see [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `disable`         | string[]                   | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `thresholds`      | object                     | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). Both presets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `exclude`         | string[]                   | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java preset the built-in list does not apply and findings whose path matches a glob are dropped.                                                                                                                                                                                                                                     |
+| `layout`          | object                     | TypeScript only. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
+| `exceptions`      | object[]                   | TypeScript only. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
+| `analyzers`       | object[]                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `legacyInventory` | string                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
+
+These are the analyzer names you can pass to `disable` and `--analyzer`.
+The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
+`entry-points`, `prettier-format`, `typescript-typecheck`, `dependency-architecture`,
+`coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
+`crap` and `mutation`.
+
+### Custom analyzers
+
+Each `analyzers` entry is `{ "name", "command", "args"? }`. The command runs on the base and the
+head checkout, with that checkout as its working directory (so `"command": "./scripts/house-rules"`
+resolves inside each side). The environment carries `NITPICKER_ANALYZER`, `NITPICKER_PROJECT_ROOT`
+and `NITPICKER_SNAPSHOT`. It prints `{"findings": [...]}` on stdout and exits 0. Each finding uses
+the built-in finding schema and carries `tool` equal to the entry's `name`. Findings are
+fingerprinted and classified exactly like built-in ones. A non-zero exit, invalid JSON or a schema
+violation is a tool error. A name must not clash with a built-in analyzer. The command and its
+arguments are part of the policy hash.
+
+## Java preset
+
+Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle project the same way: PMD,
+SpotBugs, google-java-format and JaCoCo run on the merge base and on head (through
+`languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
+new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
+and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
+failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
+
+Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
+Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared by both
+languages, `thresholds` (`crapLimit`, the one threshold the Java preset enforces), `exclude`
+(findings under the globs are dropped) and `legacyInventory`. The inventory has the same format as
+the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
+finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
+baselined, and raising a `count` (or adding a site) on head over the base fails as
+`baseline-expansion`. `layout` and `exceptions` describe TypeScript source roots and ESLint rules,
+have no Java meaning, and stay a config error with this preset. Details:
+[java-preset.md](java-preset.md).
+
+## The strict preset
+
+The `typescript` preset is strict, and it is the only TypeScript preset: there is no lax mode and no
+`preset: "strict"` value. It allows one way to write each construct and fails every other with a
+message that names the allowed form. Existing violations are baselined by the differential gate;
+new and touched code must comply.
+
+- **Everywhere in production code**: `type`, never `interface`; no `enum` or `namespace`; classes
+  only as `Error` subclasses; named functions use the `function` keyword (arrow functions only as
+  callbacks); named exports only (config files may default-export); early returns, no `else` after
+  `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
+  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
+  `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
+  `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
+  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
+  bans.
+- **Layout**: features live in `src/main/features/<name>/` and are imported only through their
+  `index.ts`; shared code does not import features; features do not import the composition root
+  (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
+  composition root; no module-level `let`.
+- **`features/<name>/domain/`** is pure: `const` only, no mutation, readonly types, no loops,
+  `forEach`, `reduceRight` or `reduce` without an initial value (use `map`, `filter`, `flatMap`,
+  `reduce` with an initial value, `Object.fromEntries`, `Object.groupBy`), no
+  classes, no recursion, no `throw` (return a discriminated union), and no imports of `adapters/`,
+  Node I/O, network or database clients, loggers or module state.
+- **`features/<name>/adapters/`** does the I/O: throw only `Error` subclasses that keep `cause`, no
+  silent catch, and parse untrusted input once at the boundary with [zod](https://zod.dev). zod is
+  an expectation of the preset, not a dependency of nitpicker: install it in your project.
+- **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
+  edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
+  the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
+  Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
+  Prettier works the same way: it reports one finding per unformatted region, located at the
+  region's first line, so a legacy unformatted file stays baselined until a change edits a line
+  inside such a region. An unformatted new file or newly unformatted lines fail the run.
+- **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
+  `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
+  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
+- **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
+
+A small project that follows all of this is kept in `languages/typescript/preset/fixtures/strict-clean` of the nitpicker
+repository, and its tests assert that `nitpicker --all` reports no enforceable findings for it.
+
+### Upgrading from the earlier rules
+
+Strict replaced the earlier ESLint rules in a single release. nitpicker analyzes the base checkout
+with the head's policy, so the existing violations appear on both sides and stay baselined; the
+policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
+by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
+
+### Your TypeScript and Vitest configs
+
+nitpicker builds on the project's own configs, so type checking and tests see the project as its
+own tools do:
+
+- **Type checking** extends the project's `tsconfig.json` when there is one. The project keeps its
+  `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
+  (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `useUnknownInCatchVariables` and the
+  rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
+  test roots.
+- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
+  first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
+  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
+  coverage thresholds never decide nitpicker's findings.
+
+Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
+
+## Adopting nitpicker on existing code
+
+Because only new findings fail, most analyzers need no preparation. The `coding-standards` analyzer
+is stricter: it fails on every violation of its rules unless an inventory lists the site. To adopt
+nitpicker without fixing everything first:
+
+1. Run `npx nitpicker --all` at the project root to list the violations present now.
+2. Record the `coding-standards` sites in `nitpicker.legacy.json` at the project root, as
+   `{ "sites": [{ "file", "rule", "source", "count" }] }`, and commit it. To keep it elsewhere, set
+   `"legacyInventory"` in `nitpicker.config.json` to a path inside the project.
+3. Only the listed sites, up to their `count`, are allowed. A new or extra occurrence is a new
+   finding.
+4. When a site is fixed, remove it from the inventory so it cannot come back. Do not add new code
+   to the inventory.
+
+The inventory is read from the head commit and applied to both sides, and its content is part of
+the policy hash.
+
+You can also relax the gate while you adopt it: `disable` analyzers you are not ready for,
+`exclude` generated or vendored code, and set `layout` if your sources are not under `src/`. Each
+of these is visible in the report. Remove them as the codebase improves.
+
+## Container image
+
+The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
+on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
+entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
+published yet.
+
+```sh
+docker build -t nitpicker .
+docker run --rm -v "$PWD":/work nitpicker            # same as: npx nitpicker
+docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/quality/diff
+```
+
+Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
+owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
+codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
+(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
+its history must contain the merge base. Reports are written under the mount, owned by the
+container user; add `--user "$(id -u):$(id -g)"` to own them yourself.
+
+GitHub Actions:
+
+```yaml
+jobs:
+  nitpicker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: npm ci
+      - run: docker build -t nitpicker path/to/nitpicker
+      - run: docker run --rm -v "$PWD":/work -e GITHUB_BASE_REF nitpicker
+```
+
+## Sharding in CI
+
+Split the analyzers over parallel jobs, then combine the results. Every shard must see the same
+commits and the same config.
+
+```sh
+# in each of N parallel jobs (index 0 to N-1)
+npx nitpicker --shard-count 3 --shard-index "$INDEX" --defer-exit --output "shards/$INDEX"
+
+# after collecting every shard's output directory under one root (shards/0, shards/1, ...)
+npx nitpicker aggregate --input-root shards --shard-count 3
+```
+
+- `--shard-count` and `--shard-index` go together. Analyzers that depend on each other are kept in
+  the same shard, so the count cannot exceed the number of independent analyzer groups.
+- `--defer-exit` lets each shard exit 0 after writing its reports, so a failing shard does not hide
+  the others. The gate is the `aggregate` step.
+- `nitpicker aggregate` validates that every shard ran the expected analyzers on the same
+  commits, merges the reports and applies the same exit codes as a normal run: 0, 1 or 2. A
+  missing or inconsistent shard is a tool error (exit 2). It reads the same
+  `nitpicker.config.json`, writes to `reports/quality/diff/combined` unless `--output` is given,
+  and takes the policy from the head commit recorded in the shards (or from `--policy-root`).
+- Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
+  one job.
