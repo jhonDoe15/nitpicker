@@ -10,8 +10,6 @@ export function failureMessagesFor({ config, filename, code }) {
   return lintFixture({ config, filename, code }).map((message) => message.message);
 }
 
-// One case per banned form: `banned` is the fixture snippet that must fail, `allowed` is the
-// wording (a substring, case-insensitive) the failure message must contain to name the allowed form.
 export function checkFailureMessageCase({ config, filename = 'src/fixture.ts', banned, allowed }) {
   const messages = failureMessagesFor({ config, filename, code: banned });
   if (messages.length === 0) {

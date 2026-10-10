@@ -22,8 +22,6 @@ const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
-// Guarded so other adapters (for example the snapshot ESLint runner) can import
-// normalizeEslintResults without triggering this file's own CLI behavior.
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
   '--project-root',
@@ -251,9 +249,6 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
   return finding;
 }
 
-// A finding reported on a comment (no-comments, ts-ignore directives, disabled inline config) is
-// anchored to the comment text. Comments are trivia, so the nearest syntax node is the code that
-// follows them and editing that code would otherwise change the fingerprint.
 function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
   if (!isLine && !text.startsWith('/*', position)) {
@@ -274,7 +269,6 @@ function commentFingerprint(comment) {
   return createHash('sha256').update(normalizeMessageText(comment)).digest('hex').slice(0, 24);
 }
 
-// The deepest node whose own text (excluding leading trivia) contains the position.
 function findStartedNode(sourceFile, position) {
   let deepest = sourceFile;
   function visit(node) {

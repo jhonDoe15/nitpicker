@@ -67,7 +67,6 @@ function staticCallName(expression) {
   return undefined;
 }
 
-/** Inspect declared runtime dependency edges and explicitly forbidden calls for one module role. */
 export function inspectModuleBoundary(source, filename, role) {
   validateRole(role);
   const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
@@ -93,7 +92,6 @@ export function inspectModuleBoundary(source, filename, role) {
     if (specifier === undefined || !ts.isStringLiteralLike(specifier)) {
       report(node, 'unresolved-runtime-dependency', form);
     } else {
-      // Resolve relative spelling before matching; globstars do not traverse ".." segments.
       const normalized = specifier.text.startsWith('.')
         ? path.posix
             .normalize(path.posix.join(path.posix.dirname(filename), specifier.text))
@@ -167,7 +165,6 @@ function validateConfiguration(configuration) {
     throw new TypeError('Module role names must be unique');
 }
 
-/** Discover production modules by configured role patterns; return findings and coverage together. */
 export function analyzeRuntimeBoundaries(
   root,
   configuration = moduleRoleBoundaries,

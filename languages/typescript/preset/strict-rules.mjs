@@ -1,9 +1,7 @@
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 
-// Written out, not derived from `strictPresetConfig`: building that config loads typescript-eslint and
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
-// strict-rules.test.mjs asserts this list equals the rule ids of the real config.
 export const strictEslintRuleIds = [
   '@typescript-eslint/consistent-type-definitions',
   '@typescript-eslint/no-floating-promises',

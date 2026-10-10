@@ -2,8 +2,6 @@ const loopMessage = 'for...of is the only loop; iterate the items with for...of.
 const promiseChainMessage =
   'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
 
-// Control-flow selectors for all production code. `domain/` has stricter loop and forEach rules of
-// its own, so strict.mjs leaves `loopSelectors` and `forEachSelectors` out of the domain list.
 export const loopSelectors = [
   { selector: 'ForStatement', message: loopMessage },
   { selector: 'ForInStatement', message: loopMessage },
@@ -31,7 +29,6 @@ export const controlFlowSelectors = [
   ...promiseChainSelectors,
 ];
 
-// `eqeqeq` reports `==` and `!=` with a message that names `===` and `!==`.
 export const controlFlowRules = { eqeqeq: ['error', 'always'] };
 
 export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };
