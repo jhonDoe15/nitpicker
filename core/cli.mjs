@@ -132,7 +132,6 @@ function runConfigured(cli) {
   });
 }
 
-/** `nitpicker cache publish`: analyze the checked-out commit and upload its findings as a base snapshot. */
 function runCacheCommand({
   arguments_,
   environment,
@@ -176,7 +175,6 @@ function runCacheCommand({
     projectRelativePath: path.relative(repositoryRoot, projectRoot) || '.',
     liveProjectRoot: projectRoot,
     analyzers: selected,
-    // Publishing succeeds only when the remote accepted the entry, so it skips the local store.
     store: createLayeredStore({ remote, writeRemote: true }),
     configOverrides: describeConfigOverrides(config),
     headPolicy,
@@ -406,7 +404,6 @@ function runSnapshotCli({ options, currentProjectRoot, analyzers, headPolicy, st
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
-  // `overallStatus` reports tool health first; the exit code puts violations first.
   if (report.summary.enforceableFindings > 0) {
     return 1;
   }

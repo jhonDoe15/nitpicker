@@ -152,9 +152,6 @@ function acquireGroup(groupName, groupSemaphores) {
   return semaphore.acquire(1);
 }
 
-// Analyzers run the project's own tools (vitest for tests and coverage, Stryker once per mutant). On
-// GitHub Actions each of those would append its own test report to the user's job summary, where
-// caught mutants read as test failures, so analyzers never see where the job summary lives.
 const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
 
 function analyzerEnvironment(environment) {
@@ -271,7 +268,6 @@ export function executeAnalyzerTask(task) {
   });
 }
 
-/** Turns a finished analyzer process (exit status, signal and output) into its parsed report. */
 export function reportFromAnalyzerOutput(task, { status, signal, stdoutText, stderrText }) {
   if (!task.acceptedExitCodes.includes(status)) {
     const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
@@ -331,7 +327,6 @@ function parseReport(stdout, analyzerName, reportedTools = []) {
     throw new Error(`${analyzerName} did not produce valid JSON`, { cause: error });
   }
   const report = parseAnalyzerReport(rawReport, analyzerName);
-  // An analyzer may report findings of the tools it wraps (the Java preset: pmd, spotbugs, ...).
   const mismatchedFinding = report.findings.find(
     (finding) => finding.tool !== analyzerName && !reportedTools.includes(finding.tool),
   );

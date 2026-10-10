@@ -1,7 +1,6 @@
 const MANAGED_RESOURCE = /(?:Service|Client|Pool|Cache|Store|Scheduler|Transport|Adapter)$/;
 const VALUE_OBJECT =
   /^(?:Error|URL|Map|Set|WeakMap|WeakSet|Date|RegExp|Request|Response)$|(?:Request|Response|Command)$/;
-// A file named like a factory is not a composition root: construction belongs in these files only.
 const DEFAULT_COMPOSITION_ROOT_PATTERN = '(?:^|/)(?:main|server|composition-root)\\.ts$';
 
 function constructedName(callee) {

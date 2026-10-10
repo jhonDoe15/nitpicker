@@ -5,12 +5,6 @@ import { resolveAnalyzerMetadata } from './run-analyzers.mjs';
 
 const CACHE_SCHEMA = 1;
 
-/**
- * One cache key per analyzer: base commit, project, analyzer, tool version, configuration hash,
- * the head policy (exclude, layout, exceptions, thresholds) and the legacy inventory path. The
- * head policy is keyed explicitly because layout and threshold changes rebuild an analyzer
- * without changing its file-based configuration hash.
- */
 export function cacheKey({
   mergeBaseSha,
   projectRelativePath,
@@ -37,10 +31,6 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
-/**
- * The findings cache over a store (see `cache-stores.mjs`); `directory` is shorthand for a local
- * directory store. Entries carry their own key, so an entry stored under the wrong name is a miss.
- */
 export function createFindingsCache({
   store,
   directory,
@@ -54,7 +44,6 @@ export function createFindingsCache({
     return cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides, headPolicy });
   }
   return {
-    /** Returns the cached report, or undefined on a miss, an unreadable or a mismatched entry. */
     read(analyzer) {
       try {
         const key = keyFor(analyzer);
@@ -73,7 +62,6 @@ export function createFindingsCache({
         return undefined;
       }
     },
-    /** Best effort: a cache that cannot be written never fails the comparison. */
     write(analyzer, report) {
       try {
         const key = keyFor(analyzer);
@@ -85,10 +73,6 @@ export function createFindingsCache({
   };
 }
 
-/**
- * Runs the base side through the cache. Cached analyzers are skipped unless an uncached analyzer
- * depends on them; only clean reports (no tool error, no tool-error finding) are stored.
- */
 export function runBaseWithCache({ cache, analyzers, run, resolveContext }) {
   const cached = new Map();
   for (const analyzer of analyzers) {
