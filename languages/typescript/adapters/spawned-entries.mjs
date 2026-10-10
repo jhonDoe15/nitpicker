@@ -7,14 +7,21 @@ const DIRNAME_JOIN =
   /path\.(?:join|resolve)\(\s*(?:import\.meta\.dirname|__dirname)\s*,\s*(['"])([^'"\n]+)\1\s*\)/gu;
 const URL_PATTERN = /new URL\(\s*(['"])(\.{1,2}\/[^'"\n]+)\1\s*,\s*import\.meta\.url\s*\)/gu;
 
+function isTraversable(entry) {
+  return (
+    entry.isDirectory() &&
+    !SKIPPED_DIRECTORIES.has(entry.name) &&
+    !entry.name.startsWith('.nitpicker')
+  );
+}
+
 function* sourceFiles(directory) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      if (!SKIPPED_DIRECTORIES.has(entry.name) && !entry.name.startsWith('.nitpicker')) {
-        yield* sourceFiles(path.join(directory, entry.name));
-      }
-    } else if (SOURCE_FILE.test(entry.name)) {
-      yield path.join(directory, entry.name);
+    const full = path.join(directory, entry.name);
+    if (isTraversable(entry)) {
+      yield* sourceFiles(full);
+    } else if (entry.isFile() && SOURCE_FILE.test(entry.name)) {
+      yield full;
     }
   }
 }
@@ -23,15 +30,17 @@ function literalTargets(text) {
   return [...text.matchAll(DIRNAME_JOIN), ...text.matchAll(URL_PATTERN)].map((match) => match[2]);
 }
 
+function existingTargets(file) {
+  return literalTargets(readFileSync(file, 'utf8'))
+    .map((target) => path.resolve(path.dirname(file), target))
+    .filter((resolved) => SOURCE_FILE.test(resolved) && existsSync(resolved));
+}
+
 export function spawnedEntryFiles(projectRoot) {
   const entries = new Set();
   for (const file of sourceFiles(projectRoot)) {
-    const text = readFileSync(file, 'utf8');
-    for (const target of literalTargets(text)) {
-      const resolved = path.resolve(path.dirname(file), target);
-      if (SOURCE_FILE.test(resolved) && existsSync(resolved)) {
-        entries.add(path.relative(projectRoot, resolved).split(path.sep).join('/'));
-      }
+    for (const resolved of existingTargets(file)) {
+      entries.add(path.relative(projectRoot, resolved).split(path.sep).join('/'));
     }
   }
   return [...entries].sort();
