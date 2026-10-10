@@ -41,20 +41,28 @@ export function parseFinding(value, context = 'finding') {
     classification,
   };
 
+  return { ...finding, ...parseOptionalFields(value, classification, context) };
+}
+
+function parseOptionalFields(value, classification, context) {
+  const fields = {};
   if (value.symbol !== undefined) {
-    finding.symbol = requiredString(value.symbol, `${context}.symbol`);
+    fields.symbol = requiredString(value.symbol, `${context}.symbol`);
   }
   if (value.location !== undefined) {
-    finding.location = parseLocation(value.location, `${context}.location`);
+    fields.location = parseLocation(value.location, `${context}.location`);
   }
   if (value.metric !== undefined) {
     if (classification !== 'descriptive') {
       throw new TypeError(`${context}.metric requires descriptive classification`);
     }
-    finding.metric = parseMetric(value.metric, `${context}.metric`);
+    fields.metric = parseMetric(value.metric, `${context}.metric`);
+  }
+  if (value.ratchet !== undefined) {
+    fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
 
-  return finding;
+  return fields;
 }
 
 function parseLocation(value, context) {
@@ -84,6 +92,16 @@ function parseMetric(value, context) {
     name: requiredString(value.name, `${context}.name`),
     value: metricValue,
   };
+}
+
+function parseRatchet(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  if (typeof value.value !== 'number' || !Number.isFinite(value.value)) {
+    throw new TypeError(`${context}.value must be a finite number`);
+  }
+  return { key: requiredString(value.key, `${context}.key`), value: value.value };
 }
 
 function positiveInteger(value, context) {

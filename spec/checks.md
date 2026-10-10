@@ -73,6 +73,10 @@ Each runs ESLint with a different config. Every ESLint message becomes an **enfo
 Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the
 rule and it fails the gate; "not enforced" means the check does not exist for that language yet.
 
+The function limits ratchet: editing a function that was already over a limit on the base fails
+only when the change raises that metric. A function the change pushes over a limit, and a new
+function over a limit, fail as usual.
+
 <!-- generated:custom-rules begin (npm run gen:checks) -->
 
 | Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         |
