@@ -1,10 +1,5 @@
 import { coverageMetricFinding, normalizeReportPath } from './common.mjs';
 
-// Go coverprofile -> one descriptive `statement-coverage` metric finding per file. Blocks carry
-// only positions (no function names), so per-block findings would need line-based identity and
-// are deliberately not emitted. `options.modulePath` (e.g. "github.com/acme/app") is stripped
-// from the import-path prefix to get a project-relative path.
-
 const BLOCK = /^(.+):\d+\.\d+,\d+\.\d+ (\d+) (\d+)$/;
 
 export function ingestGoCoverprofile(text, options = {}) {

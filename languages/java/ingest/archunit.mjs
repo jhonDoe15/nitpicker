@@ -1,16 +1,5 @@
 import { childrenNamed, createIdentityCounter, parseXml } from './common.mjs';
 
-// ArchUnit rules run as JUnit tests -> findings, from the JUnit XML report. One enforceable
-// finding per violated rule and offending class:
-//  - rule: the test case name (the `@ArchTest` field or method name);
-//  - identity: the offending class, fully qualified. Line numbers in ArchUnit's violation
-//    descriptions ("in (Foo.java:12)") and the number of violations never take part, so edits
-//    above a violation do not change it;
-//  - path: the offending class's source file, resolved by `options.resolvePath(className,
-//    fileName)`; when that fails, the test class that declares the rule.
-// A failed test case without ArchUnit violation lines (the rule could not run, an import error)
-// yields one `test-failure` finding for that rule, anchored at the test class.
-
 const VIOLATION = /^([A-Z][A-Za-z ]*?) <((?:[^<>]|<\w+>)+)>/;
 const SOURCE_REFERENCE = /\s+in \(([^():]+\.java):\d+\)\s*$/;
 const MEMBER_KINDS = new Set(['Method', 'Field', 'Lambda']);
@@ -71,7 +60,6 @@ export function ingestArchunit(xml, options = {}) {
   return { findings };
 }
 
-// Violation lines of one failure message, grouped by offending class in first-seen order.
 function parseViolations(message) {
   const violations = new Map();
   for (const rawLine of message.split(/\r?\n/)) {
@@ -97,7 +85,6 @@ function parseViolations(message) {
   return violations;
 }
 
-// `Method <a.B.run(int)>` -> a.B; `Constructor <a.B.<init>(int)>` -> a.B; `Class <a.B>` -> a.B.
 function ownerClass(kind, subject) {
   const name = subject.split('(')[0].replace(/\.<(?:cl)?init>$/, '');
   const owner = MEMBER_KINDS.has(kind) ? name.slice(0, Math.max(0, name.lastIndexOf('.'))) : name;

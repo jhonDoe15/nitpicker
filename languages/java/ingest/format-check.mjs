@@ -1,10 +1,5 @@
 import { normalizeReportPath } from './common.mjs';
 
-// Formatter check output -> findings: one enforceable `format` finding per file the formatter
-// would change. Input is a plain list, one file per line (google-java-format --dry-run, or any
-// formatter's "files needing a reformat" listing). Identity is the constant `format`: the file path
-// already is part of the comparison key, so a rename follows the file and edits never matter.
-
 export function ingestFormatCheck(text, options = {}) {
   const tool = options.tool ?? 'formatter';
   const message = options.message ?? 'File is not formatted';

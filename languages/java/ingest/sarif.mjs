@@ -1,12 +1,5 @@
 import { createHash } from 'node:crypto';
 
-// Generic SARIF 2.1.0 ingester: converts a parsed SARIF log into Nitpicker findings
-// (spec/findings.schema.json). Identity never contains line numbers:
-//   1. partialFingerprints, when the result carries them (sorted, so key order is irrelevant);
-//   2. otherwise a hash of rule, path and symbol (logical location / fully qualified name).
-// Results that share an identity inside one file are numbered in report order (`#2`, `#3`, ...)
-// so they stay distinguishable without using positions.
-
 const ENFORCEABLE_LEVELS = new Set(['error', 'warning']);
 const SKIPPED_KINDS = new Set(['pass', 'notApplicable']);
 const DEFAULT_LEVEL = 'warning';
@@ -111,9 +104,7 @@ export function normalizeUri(uri, root) {
   let decoded = uri;
   try {
     decoded = decodeURIComponent(uri);
-  } catch {
-    // keep the raw uri when it is not valid percent-encoding
-  }
+  } catch {}
   let candidate = decoded.replace(/^file:\/\//, '').replaceAll('\\', '/');
   if (/^\/[A-Za-z]:\//.test(candidate)) {
     candidate = candidate.slice(1);
