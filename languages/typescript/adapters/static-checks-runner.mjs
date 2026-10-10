@@ -42,8 +42,24 @@ function loadTypeScript(projectRoot = PACKAGE_ROOT) {
   return ts;
 }
 
+const VALUE_ARGUMENTS = new Set([
+  '--analyzer-name',
+  '--kind',
+  '--project-root',
+  '--policy-root',
+  '--tool-root',
+  '--live-project-root',
+  '--config',
+  '--ignore-path',
+  '--include-only',
+  '--exclude',
+]);
+
 const invokedPath = process.argv[1];
-if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
   try {
     const options = parseArguments(process.argv.slice(2));
     const findings = await runStaticCheck(options);
@@ -607,40 +623,33 @@ function policyFile(options, relativePath) {
   return filePath;
 }
 
-function parseArguments(arguments_) {
+function recordValue(values, name, value) {
+  if (!VALUE_ARGUMENTS.has(name)) {
+    throw new Error(`Unknown static-check adapter argument: ${name}`);
+  }
+  values.set(name, value);
+}
+
+function collectArguments(arguments_) {
   const values = new Map();
   const patterns = [];
-  for (const index of arguments_.keys()) {
-    if (index % 2 !== 0) {
-      continue;
-    }
-    const name = arguments_[index];
-    const value = arguments_[index + 1];
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const { value } = remaining.next();
     if (value === undefined) {
-      throw new Error(`${name ?? '<missing>'} requires a value`);
+      throw new Error(`${name} requires a value`);
     }
     if (name === '--pattern') {
       patterns.push(value);
-      continue;
+    } else {
+      recordValue(values, name, value);
     }
-    if (
-      ![
-        '--analyzer-name',
-        '--kind',
-        '--project-root',
-        '--policy-root',
-        '--tool-root',
-        '--live-project-root',
-        '--config',
-        '--ignore-path',
-        '--include-only',
-        '--exclude',
-      ].includes(name)
-    ) {
-      throw new Error(`Unknown static-check adapter argument: ${name}`);
-    }
-    values.set(name, value);
   }
+  return { values, patterns };
+}
+
+function parseArguments(arguments_) {
+  const { values, patterns } = collectArguments(arguments_);
   const kind = requiredValue(values, '--kind');
   if (!SUPPORTED_KINDS.has(kind)) {
     throw new Error(`Unsupported static check: ${kind}`);

@@ -156,12 +156,7 @@ function sourceFiles(root, exclude, { layout, displayRoot }, directory = '') {
   return found.sort();
 }
 
-/** Discover production modules by configured role patterns; return findings and coverage together. */
-export function analyzeRuntimeBoundaries(
-  root,
-  configuration = moduleRoleBoundaries,
-  { layout = defaultResolvedLayout, displayRoot = '' } = {},
-) {
+function validateConfiguration(configuration) {
   if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
   requireStringList(configuration.exclude, 'exclude');
   for (const role of configuration.roles) {
@@ -170,6 +165,15 @@ export function analyzeRuntimeBoundaries(
   const roleNames = configuration.roles.map((role) => role.name);
   if (new Set(roleNames).size !== roleNames.length)
     throw new TypeError('Module role names must be unique');
+}
+
+/** Discover production modules by configured role patterns; return findings and coverage together. */
+export function analyzeRuntimeBoundaries(
+  root,
+  configuration = moduleRoleBoundaries,
+  { layout = defaultResolvedLayout, displayRoot = '' } = {},
+) {
+  validateConfiguration(configuration);
   const sources = existsSync(root)
     ? sourceFiles(root, configuration.exclude, { layout, displayRoot })
     : [];
@@ -194,7 +198,7 @@ export function analyzeRuntimeBoundaries(
 }
 
 if (
-  process.argv.length > 1 &&
+  process.argv[1] !== undefined &&
   pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url
 ) {
   try {

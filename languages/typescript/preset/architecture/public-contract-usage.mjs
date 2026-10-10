@@ -16,6 +16,24 @@ function isExported(declaration) {
   return declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
 }
 
+function accessedSymbol(checker, node) {
+  let symbol;
+  if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
+  if (ts.isElementAccessExpression(node))
+    symbol = checker.getSymbolAtLocation(node.argumentExpression);
+  if (
+    ts.isBindingElement(node) &&
+    ts.isObjectBindingPattern(node.parent) &&
+    ts.isVariableDeclaration(node.parent.parent) &&
+    node.parent.parent.initializer
+  ) {
+    const name = node.propertyName ?? node.name;
+    if (ts.isIdentifier(name))
+      symbol = checker.getTypeAtLocation(node.parent.parent.initializer).getProperty(name.text);
+  }
+  return symbol;
+}
+
 /**
  * Find unused callable members of exported interfaces implemented by production classes.
  * Declaration identity prevents unrelated same-name methods and test-only calls from
@@ -83,20 +101,7 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
   for (const source of sources) {
     function visit(node, containingClass) {
       const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
-      let symbol;
-      if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
-      if (ts.isElementAccessExpression(node))
-        symbol = checker.getSymbolAtLocation(node.argumentExpression);
-      if (
-        ts.isBindingElement(node) &&
-        ts.isObjectBindingPattern(node.parent) &&
-        ts.isVariableDeclaration(node.parent.parent) &&
-        node.parent.parent.initializer
-      ) {
-        const name = node.propertyName ?? node.name;
-        if (ts.isIdentifier(name))
-          symbol = checker.getTypeAtLocation(node.parent.parent.initializer).getProperty(name.text);
-      }
+      const symbol = accessedSymbol(checker, node);
       for (const declaration of symbol?.declarations ?? []) {
         for (const method of methodsByDeclaration.get(declaration) ?? []) {
           if (!method.implementations.has(currentClass)) method.used = true;

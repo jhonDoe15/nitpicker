@@ -15,6 +15,7 @@ import {
 } from './reporters.mjs';
 import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
+import { takeOptionValue } from './cli.mjs';
 import { runGit } from './git.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
@@ -247,27 +248,27 @@ function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
   );
 }
 
-function parseArguments(arguments_) {
+const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
+
+function collectOptionValues(arguments_) {
   const values = {};
-  let skipNext = false;
-  for (const index of arguments_.keys()) {
-    if (skipNext) {
-      skipNext = false;
-      continue;
-    }
-    const argument = arguments_[index];
+  const remaining = arguments_.values();
+  for (const argument of remaining) {
     if (argument === '--help') {
-      return { kind: 'help' };
+      return undefined;
     }
-    if (!['--input-root', '--output', '--shard-count', '--policy-root'].includes(argument)) {
+    if (!OPTION_NAMES.includes(argument)) {
       throw new Error(`Unknown argument: ${argument}`);
     }
-    const value = arguments_[index + 1];
-    if (value === undefined || value.startsWith('--')) {
-      throw new Error(`${argument} requires a value`);
-    }
-    values[argument] = value;
-    skipNext = true;
+    values[argument] = takeOptionValue(remaining, argument);
+  }
+  return values;
+}
+
+function parseArguments(arguments_) {
+  const values = collectOptionValues(arguments_);
+  if (values === undefined) {
+    return { kind: 'help' };
   }
   if (values['--input-root'] === undefined) {
     throw new Error('--input-root is required');
@@ -376,6 +377,9 @@ function mergeEntries(shardReports, property) {
 }
 
 const invokedPath = process.argv[1];
-if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
   process.exitCode = runAggregateCli();
 }

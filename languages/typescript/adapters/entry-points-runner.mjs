@@ -9,6 +9,7 @@ import { readLayout } from '../preset/head-policy.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
+const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
 
 try {
   const options = parseArguments(process.argv.slice(2));
@@ -129,20 +130,14 @@ function parseGraph(stdout) {
   return graph;
 }
 
-function parseArguments(arguments_) {
+function collectArguments(arguments_) {
   const values = new Map();
   const sourceRoots = [];
-  for (const index of arguments_.keys()) {
-    if (index % 2 !== 0) {
-      continue;
-    }
-    const name = arguments_[index];
-    const value = arguments_[index + 1];
-    if (
-      !['--project-root', '--policy-root', '--tool-root', '--source-root'].includes(name) ||
-      value === undefined
-    ) {
-      throw new Error(`Invalid entry-point adapter argument: ${name ?? '<missing>'}`);
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const { value } = remaining.next();
+    if (!ARGUMENT_NAMES.includes(name) || value === undefined) {
+      throw new Error(`Invalid entry-point adapter argument: ${name}`);
     }
     if (name === '--source-root') {
       sourceRoots.push(relativePath(value, name));
@@ -150,6 +145,11 @@ function parseArguments(arguments_) {
       values.set(name, value);
     }
   }
+  return { values, sourceRoots };
+}
+
+function parseArguments(arguments_) {
+  const { values, sourceRoots } = collectArguments(arguments_);
   if (sourceRoots.length === 0) {
     throw new Error('--source-root is required');
   }

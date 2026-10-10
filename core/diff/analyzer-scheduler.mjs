@@ -163,18 +163,67 @@ function analyzerEnvironment(environment) {
   );
 }
 
+function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {
+  if (failure !== undefined) {
+    reject(failure);
+    return;
+  }
+  try {
+    resolve(
+      reportFromAnalyzerOutput(task, {
+        status,
+        signal,
+        stdoutText: Buffer.concat(stdout).toString('utf8'),
+        stderrText: Buffer.concat(stderr).toString('utf8'),
+      }),
+    );
+  } catch (error) {
+    reject(error);
+  }
+}
+
+function spawnAnalyzer(task) {
+  const child = spawn(task.invocation.command, task.invocation.args, {
+    cwd: task.invocation.cwd,
+    env: analyzerEnvironment(task.invocation.env ?? process.env),
+    detached: process.platform !== 'win32',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  activeChildren.add(child);
+  return child;
+}
+
+function createOutputCollector(onOverflow) {
+  const stdout = [];
+  const stderr = [];
+  let outputBytes = 0;
+  function collect(chunks) {
+    return (chunk) => {
+      outputBytes += chunk.length;
+      if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
+        onOverflow();
+        return;
+      }
+      chunks.push(chunk);
+    };
+  }
+  return { stdout, stderr, collectStdout: collect(stdout), collectStderr: collect(stderr) };
+}
+
+function scheduleForceKill(child) {
+  const timer = setTimeout(() => {
+    signalChildProcess(child, 'SIGKILL');
+  }, FORCE_KILL_DELAY_MS);
+  timer.unref();
+  return timer;
+}
+
 export function executeAnalyzerTask(task) {
   return new Promise((resolve, reject) => {
-    const child = spawn(task.invocation.command, task.invocation.args, {
-      cwd: task.invocation.cwd,
-      env: analyzerEnvironment(task.invocation.env ?? process.env),
-      detached: process.platform !== 'win32',
-      stdio: ['ignore', 'pipe', 'pipe'],
+    const child = spawnAnalyzer(task);
+    const output = createOutputCollector(() => {
+      terminate(new Error(`${task.name} exceeded the analyzer output limit`));
     });
-    activeChildren.add(child);
-    const stdout = [];
-    const stderr = [];
-    let outputBytes = 0;
     let terminationError;
     let childError;
     let settled = false;
@@ -183,43 +232,18 @@ export function executeAnalyzerTask(task) {
     }, task.timeoutMs);
     let forceKillTimeout;
 
-    function collect(chunks) {
-      return (chunk) => {
-        outputBytes += chunk.length;
-        if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
-          terminate(new Error(`${task.name} exceeded the analyzer output limit`));
-          return;
-        }
-        chunks.push(chunk);
-      };
-    }
-    child.stdout.on('data', collect(stdout));
-    child.stderr.on('data', collect(stderr));
+    child.stdout.on('data', output.collectStdout);
+    child.stderr.on('data', output.collectStderr);
     child.on('error', (error) => {
       childError = error;
     });
     child.on('close', (status, signal) => {
       finish(() => {
-        if (terminationError !== undefined) {
-          reject(terminationError);
-          return;
-        }
-        if (childError !== undefined) {
-          reject(childError);
-          return;
-        }
-        try {
-          resolve(
-            reportFromAnalyzerOutput(task, {
-              status,
-              signal,
-              stdoutText: Buffer.concat(stdout).toString('utf8'),
-              stderrText: Buffer.concat(stderr).toString('utf8'),
-            }),
-          );
-        } catch (error) {
-          reject(error);
-        }
+        settleClose(
+          task,
+          { failure: terminationError ?? childError, status, signal, ...output },
+          { resolve, reject },
+        );
       });
     });
 
@@ -230,10 +254,7 @@ export function executeAnalyzerTask(task) {
       terminationError = error;
       clearTimeout(timeout);
       signalChildProcess(child, 'SIGTERM');
-      forceKillTimeout = setTimeout(() => {
-        signalChildProcess(child, 'SIGKILL');
-      }, FORCE_KILL_DELAY_MS);
-      forceKillTimeout.unref();
+      forceKillTimeout = scheduleForceKill(child);
     }
 
     function finish(operation) {
@@ -452,7 +473,10 @@ function createWeightedSemaphore(capacity) {
 }
 
 const invokedPath = process.argv[1];
-if (process.argv.length > 1 && import.meta.url === pathToFileURL(path.resolve(invokedPath)).href) {
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
   const shutdownController = new AbortController();
   installShutdownHandlers(shutdownController);
   try {

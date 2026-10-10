@@ -23,6 +23,15 @@ function ancestorsOf(node) {
   return chainOf(node.parent, (current) => current.parent);
 }
 
+function callbackBindings(fn, call, bindings) {
+  const next = new Map(bindings);
+  for (const [index, parameter] of fn.parameters.entries()) {
+    const argument = call.arguments.at(index);
+    if (argument) next.set(parameter, argument);
+  }
+  return next;
+}
+
 function memberName(node) {
   if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text;
   if (ts.isComputedPropertyName(node) && ts.isStringLiteral(node.expression))
@@ -224,12 +233,7 @@ export function analyzeCallbackProtocols(
           }
           const fn = resolveCallback(invoked, bindings);
           if (fn) {
-            const nextBindings = new Map(bindings);
-            for (const [index, parameter] of fn.parameters.entries()) {
-              const argument = node.arguments.at(index);
-              if (argument) nextBindings.set(parameter, argument);
-            }
-            inspectFunction(fn, nextBindings);
+            inspectFunction(fn, callbackBindings(fn, node, bindings));
           }
         }
         // Uninvoked function literals are not part of the source callback's execution.

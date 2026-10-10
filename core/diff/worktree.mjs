@@ -3,49 +3,56 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runGit } from './git.mjs';
 
-export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
-  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
-  const worktreeRoot = path.join(temporaryRoot, 'base');
-  let worktreeCreated = false;
-  let operationError;
-  let operationFailed = false;
-  let result;
-
+function attempt(operation) {
   try {
-    runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]);
-    worktreeCreated = true;
-    result = operation(worktreeRoot);
+    return { ok: true, value: operation() };
   } catch (error) {
-    operationError = error;
-    operationFailed = true;
+    return { ok: false, error };
   }
+}
 
-  let cleanupError;
+function removeWorktree(repositoryRoot, { worktreeRoot, temporaryRoot, created }) {
   try {
-    if (worktreeCreated) {
-      try {
-        runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]);
-      } catch (error) {
-        cleanupError = error;
-      }
+    if (created) {
+      runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]);
     }
+    return undefined;
+  } catch (error) {
+    return error;
   } finally {
     rmSync(temporaryRoot, { recursive: true, force: true });
   }
+}
 
+function cleanupFailure(outcome, cleanupError) {
+  if (!outcome.ok) {
+    return new AggregateError(
+      [outcome.error, cleanupError],
+      'Quality comparison and temporary worktree cleanup both failed',
+    );
+  }
+  return new Error('Failed to remove the temporary quality-comparison worktree', {
+    cause: cleanupError,
+  });
+}
+
+export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
+  const worktreeRoot = path.join(temporaryRoot, 'base');
+  const added = attempt(() =>
+    runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]),
+  );
+  const outcome = added.ok ? attempt(() => operation(worktreeRoot)) : added;
+  const cleanupError = removeWorktree(repositoryRoot, {
+    worktreeRoot,
+    temporaryRoot,
+    created: added.ok,
+  });
   if (cleanupError !== undefined) {
-    if (operationError !== undefined) {
-      throw new AggregateError(
-        [operationError, cleanupError],
-        'Quality comparison and temporary worktree cleanup both failed',
-      );
-    }
-    throw new Error('Failed to remove the temporary quality-comparison worktree', {
-      cause: cleanupError,
-    });
+    throw cleanupFailure(outcome, cleanupError);
   }
-  if (operationFailed) {
-    throw operationError;
+  if (!outcome.ok) {
+    throw outcome.error;
   }
-  return result;
+  return outcome.value;
 }
