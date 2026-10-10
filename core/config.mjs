@@ -29,7 +29,6 @@ const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
-/** Reads the optional config file from a project root; zero config yields an empty config. */
 export function loadConfig(projectRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
   if (!existsSync(configPath)) {
@@ -117,7 +116,6 @@ function validateOptional(config) {
   }
 }
 
-/** One line per override, so the report and the policy hash show every weakened check. */
 export function describeConfigOverrides(config) {
   return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
     key === 'exceptions'
@@ -126,7 +124,6 @@ export function describeConfigOverrides(config) {
   );
 }
 
-/** Drops disabled analyzers and fails for unknown names or analyzers others still depend on. */
 export function applyDisable(analyzers, config) {
   const disabled = config.disable ?? [];
   if (disabled.length === 0) {
@@ -151,7 +148,6 @@ export function applyDisable(analyzers, config) {
   return remaining;
 }
 
-/** Each exception names one rule, the files it is lifted for and why. The reason is mandatory. */
 function validateExceptions(exceptions) {
   if (!Array.isArray(exceptions)) {
     throw configError('"exceptions" must be an array');

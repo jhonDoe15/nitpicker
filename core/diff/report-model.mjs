@@ -19,7 +19,6 @@ export function policyHash(analyzers, configOverrides = []) {
         ? analyzer.exclusions
         : [],
   }));
-  // Zero config keeps the original hash input; any override changes it.
   const hashed = configOverrides.length === 0 ? policy : { policy, configOverrides };
   return createHash('sha256').update(JSON.stringify(hashed)).digest('hex');
 }

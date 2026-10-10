@@ -8,12 +8,6 @@ import {
 } from 'node:fs';
 import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
 
-/**
- * Makes a package-owned policy file visible inside the analyzed tree. Without `transform` the
- * target is a link to the file. With one (the config file changed the layout), the target is a
- * copy of the file's text rewritten by `transform`; the copy is still package-owned content
- * derived from the head policy, never from the analyzed tree.
- */
 export function linkPolicyFile(sourcePath, targetPath, transform) {
   const canonicalSource = realpathSync(sourcePath);
   if (lstatIfExists(targetPath) !== undefined) {
@@ -33,7 +27,7 @@ export function linkPolicyFile(sourcePath, targetPath, transform) {
       },
     };
   }
-  symlinkSync(canonicalSource, targetPath, 'file'); // nosemgrep: javascript.express.file.fs-express.fs-express
+  symlinkSync(canonicalSource, targetPath, 'file');
   return {
     sourcePath: canonicalSource,
     targetPath,
@@ -49,7 +43,7 @@ export function removeOwnedLink(linkPath, expectedTarget, kind) {
   if (entry === undefined || !entry.isSymbolicLink() || realpathSync(linkPath) !== expectedTarget) {
     throw new Error(`Refusing to remove replaced ${kind} link: ${linkPath}`);
   }
-  unlinkSync(linkPath); // nosemgrep: javascript.express.file.fs-express.fs-express
+  unlinkSync(linkPath);
 }
 
 export function lstatIfExists(filePath) {
