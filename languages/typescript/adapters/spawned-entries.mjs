@@ -16,14 +16,17 @@ function isTraversable(entry) {
 }
 
 function* sourceFiles(directory) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const full = path.join(directory, entry.name);
-    if (isTraversable(entry)) {
-      yield* sourceFiles(full);
-    } else if (entry.isFile() && SOURCE_FILE.test(entry.name)) {
-      yield full;
-    }
+  const entries = readdirSync(directory, { withFileTypes: true });
+  for (const entry of entries.filter(isTraversable)) {
+    yield* sourceFiles(path.join(directory, entry.name));
   }
+  for (const entry of entries.filter((candidate) => isSourceFile(candidate))) {
+    yield path.join(directory, entry.name);
+  }
+}
+
+function isSourceFile(entry) {
+  return entry.isFile() && SOURCE_FILE.test(entry.name);
 }
 
 function literalTargets(text) {
