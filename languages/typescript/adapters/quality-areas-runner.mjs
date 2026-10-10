@@ -33,6 +33,7 @@ import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
+import { spawnedEntryFiles } from './spawned-entries.mjs';
 import {
   MUTATION_INCREMENTAL_PATH,
   MUTATION_REPORT_PATH,
@@ -268,20 +269,27 @@ function runDuplicates(options) {
   }
 }
 
+function withSpawnedEntries(config, projectRoot) {
+  return { ...config, entry: [...config.entry, ...spawnedEntryFiles(projectRoot)] };
+}
+
 function runDeadCode(options) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-knip.json');
   trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
     `${JSON.stringify(
-      layoutKnipConfig(
-        parseReportJson(
-          readFileSync(
-            path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-            'utf8',
+      withSpawnedEntries(
+        layoutKnipConfig(
+          parseReportJson(
+            readFileSync(
+              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+              'utf8',
+            ),
           ),
+          readLayout(),
         ),
-        readLayout(),
+        options.projectRoot,
       ),
       null,
       2,
