@@ -4,12 +4,28 @@ on:
   push:
     branches: [main]
     paths:
-      - 'typescript/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'nitpicker.config.json'
+      - '.npmrc'
       - 'spec/**'
       - '.github/workflows/typescript.yml'
   pull_request:
     paths:
-      - 'typescript/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'nitpicker.config.json'
+      - '.npmrc'
       - 'spec/**'
       - '.github/workflows/typescript.yml'
 
@@ -23,9 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     # A healthy run takes 5 to 20 minutes; this stops a hung one well before the 6-hour default.
     timeout-minutes: 40
-    defaults:
-      run:
-        working-directory: typescript
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +47,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: typescript/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
       # Vitest defaults to one worker on a 2-vCPU runner, and most tests wait on child processes, so a
       # second worker keeps both cores busy.
@@ -51,9 +64,6 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    defaults:
-      run:
-        working-directory: typescript
     steps:
       - uses: actions/checkout@v4
         with:
@@ -63,13 +73,13 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: typescript/package-lock.json
+          cache-dependency-path: package-lock.json
       - run: npm ci
-      # The CLI takes the base from GITHUB_BASE_REF (origin/<target branch>); policy is typescript/nitpicker.config.json.
+      # The CLI takes the base from GITHUB_BASE_REF (origin/<target branch>); policy is nitpicker.config.json.
       - name: nitpicker on itself
         run: node core/cli.mjs --output reports/nitpicker
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: nitpicker-report
-          path: typescript/reports/nitpicker
+          path: reports/nitpicker

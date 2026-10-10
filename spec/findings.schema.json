@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/jhonDoe15/nitpicker/spec/findings.schema.json",
   "title": "Nitpicker analyzer report",
-  "description": "Language-neutral output contract of a Nitpicker analyzer: an object with a findings array. Extracted from typescript/core/diff/finding-schema.mjs (parseAnalyzerReport / parseFinding). The reference implementation additionally normalizes path separators before applying the path rules below.",
+  "description": "Language-neutral output contract of a Nitpicker analyzer: an object with a findings array. Extracted from core/diff/finding-schema.mjs (parseAnalyzerReport / parseFinding). The reference implementation additionally normalizes path separators before applying the path rules below.",
   "type": "object",
   "required": ["findings"],
   "properties": {
@@ -19,14 +19,7 @@
     },
     "finding": {
       "type": "object",
-      "required": [
-        "tool",
-        "rule",
-        "path",
-        "identity",
-        "message",
-        "classification"
-      ],
+      "required": ["tool", "rule", "path", "identity", "message", "classification"],
       "additionalProperties": false,
       "properties": {
         "tool": { "$ref": "#/$defs/nonEmptyString" },

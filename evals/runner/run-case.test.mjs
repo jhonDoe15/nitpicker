@@ -296,7 +296,7 @@ describe('report', () => {
 const installed = process.env.NITPICKER_EVAL_INSTALLED === '1' ? describe : describe.skip;
 installed('end to end with the installed package', () => {
   it('runs the trivial case with a fake agent against `npx nitpicker`', () => {
-    const packageRoot = path.resolve(import.meta.dirname, '..', '..', 'typescript');
+    const packageRoot = path.resolve(import.meta.dirname, '..', '..');
     const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
     const { tarball, cleanup } = packNitpicker(packageRoot);
     try {

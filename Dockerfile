@@ -9,7 +9,10 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the package from the repo source with its locked dependencies.
-COPY typescript/ /opt/nitpicker/
+COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/
+COPY core/ /opt/nitpicker/core/
+COPY shared/ /opt/nitpicker/shared/
+COPY languages/ /opt/nitpicker/languages/
 RUN cd /opt/nitpicker \
     && npm ci --omit=dev --no-audit --no-fund \
     && ln -s /opt/nitpicker/core/cli.mjs /usr/local/bin/nitpicker
