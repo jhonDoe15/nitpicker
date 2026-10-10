@@ -21,5 +21,8 @@ export function readHeadPolicy(environment = process.env) {
 
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
-  return resolveLayout(policy.layout, policy.exclude);
+  return {
+    ...resolveLayout(policy.layout, policy.exclude),
+    entryPoints: policy.layout.entryPoints ?? [],
+  };
 }

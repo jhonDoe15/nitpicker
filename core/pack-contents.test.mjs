@@ -2,8 +2,9 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
-const root = path.resolve(import.meta.dirname, '..');
+const root = PACKAGE_ROOT;
 
 function sourceFiles(directory) {
   return readdirSync(path.join(root, directory), {

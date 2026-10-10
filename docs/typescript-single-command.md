@@ -101,7 +101,7 @@ Alternatives considered:
 Decision (proposed, pending owner review):
 
 - `layout` accepts `sourceRoots` and `testRoots`: non-empty arrays of project-relative directories
-  (no absolute paths, `..` or globs), and `excludedGlobs`: an array of globs that replaces the
+  (no absolute paths, `..` or globs), `entryPoints`: an array of globs of files started or loaded by path rather than imported (the dead-code check adds them to knip's entries), and `excludedGlobs`: an array of globs that replaces the
   built-in exclusions. Other keys are an error. The defaults stay `["src"]` and
   `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
   `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,

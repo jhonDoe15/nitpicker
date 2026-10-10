@@ -17,7 +17,7 @@ try {
   const findings = options.sourceRoots.flatMap((sourceRoot) =>
     toEntryPointDiffFindings(
       policyModules.analyzeEntryPoints(
-        loadGraph(options, sourceRoot, layout, policyModules),
+        loadGraph(options, sourceRoot, { ...policyModules, layout }),
         sourceRoot,
         {
           layout,
@@ -58,13 +58,24 @@ async function loadPolicyModules(policyRoot) {
   };
 }
 
-function loadGraph(
-  options,
-  sourceRoot,
-  layout,
-  { excludedPathPattern, withProjectTypeScriptConfig },
-) {
+function loadGraph(options, sourceRoot, tools) {
   if (!existsSync(path.join(options.projectRoot, sourceRoot))) return { modules: [] };
+  const result = runDependencyCruiser(options, sourceRoot, tools);
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(
+      `dependency-cruiser exited with ${String(result.status)}: ${
+        result.stderr.trim() || result.stdout.trim() || 'no diagnostic output'
+      }`,
+    );
+  }
+  return parseGraph(result.stdout);
+}
+
+function runDependencyCruiser(options, sourceRoot, tools) {
+  const { layout, excludedPathPattern, withProjectTypeScriptConfig } = tools;
   const dependencyCruiser = resolveTool('dependency-cruiser', {
     bin: 'bin/dependency-cruise.mjs',
   }).binPath;
@@ -72,7 +83,7 @@ function loadGraph(
     options.policyRoot,
     'languages/typescript/preset/dependency-graph/config.mjs',
   );
-  const result = withProjectTypeScriptConfig(
+  return withProjectTypeScriptConfig(
     {
       policyRoot: options.policyRoot,
       projectRoot: options.projectRoot,
@@ -101,21 +112,12 @@ function loadGraph(
         },
       ),
   );
+}
 
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(
-      `dependency-cruiser exited with ${String(result.status)}: ${
-        result.stderr.trim() || result.stdout.trim() || 'no diagnostic output'
-      }`,
-    );
-  }
-
+function parseGraph(stdout) {
   let graph;
   try {
-    graph = JSON.parse(result.stdout);
+    graph = JSON.parse(stdout);
   } catch (error) {
     throw new Error('dependency-cruiser returned invalid JSON', {
       cause: error,

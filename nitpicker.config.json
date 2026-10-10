@@ -1,7 +1,19 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages"]
+    "sourceRoots": ["core", "languages"],
+    "entryPoints": [
+      "core/diff/http-cache-worker.mjs",
+      "core/fix/prettier-base-runner.mjs",
+      "languages/typescript/adapters/entry-points-runner.mjs",
+      "languages/typescript/adapters/eslint-config-wrapper.mjs",
+      "languages/typescript/preset/*/report.mjs",
+      "languages/typescript/preset/defaults/crap.config.mjs",
+      "languages/typescript/preset/defaults/stryker.config.mjs",
+      "languages/typescript/preset/eslint-config/coding-standards.mjs",
+      "languages/typescript/preset/eslint-config/errors.mjs",
+      "languages/typescript/preset/eslint-config/module-effects.mjs"
+    ]
   },
   "exclude": [
     "languages/java/ingest/fixtures/**",
@@ -19,6 +31,11 @@
   ],
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
+    {
+      "rule": "nitpicker/no-node-process-per-test",
+      "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
+      "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
+    },
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": ["languages/java/adapters/java-preset.e2e.test.mjs"],

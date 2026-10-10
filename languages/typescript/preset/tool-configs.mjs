@@ -23,7 +23,9 @@ export function expandLayoutRoots(entries, layout) {
 export function isCustomLayout(layout) {
   return (
     JSON.stringify([layout.sourceRoots, layout.testRoots]) !==
-      JSON.stringify([[DEFAULT_SOURCE_ROOT], [...DEFAULT_TEST_ROOTS]]) || layout.exclude.length > 0
+      JSON.stringify([[DEFAULT_SOURCE_ROOT], [...DEFAULT_TEST_ROOTS]]) ||
+    layout.exclude.length > 0 ||
+    (layout.entryPoints ?? []).length > 0
   );
 }
 
@@ -39,7 +41,7 @@ export function layoutTsconfig(base, layout) {
 export function layoutKnipConfig(base, layout) {
   return {
     ...base,
-    entry: expandLayoutRoots(base.entry, layout),
+    entry: [...expandLayoutRoots(base.entry, layout), ...(layout.entryPoints ?? [])],
     project: expandLayoutRoots(base.project, layout),
     ignore: [...expandLayoutRoots(base.ignore, layout), ...layout.exclude],
   };
