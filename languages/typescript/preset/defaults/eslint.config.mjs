@@ -9,7 +9,6 @@ import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
-// The head policy comes from nitpicker.config.json; without it the preset defaults apply.
 const policy = readHeadPolicy();
 
 const layout = readLayout();

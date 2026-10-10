@@ -5,21 +5,6 @@ import path from 'node:path';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEPENDENCY_INSTALL_TIMEOUT_MS = 4 * 60 * 1000;
 
-/**
- * Per-language dependency preparation hook for base-snapshot worktrees.
- *
- * @typedef {object} DependencyHook
- * @property {string} language Language the hook serves.
- * @property {string[]} manifests Project-relative manifest/lock files; the first marks a project
- *   of this language, and when any differs from the live policy root the snapshot needs its own
- *   install instead of a link.
- * @property {string} directory Project-relative directory holding installed dependencies.
- * @property {(projectRoot: string) => {kind: 'installed', dependencyPath: string}} install
- *   Installs dependencies into `<projectRoot>/<directory>` as a regular directory, cleaning up
- *   and throwing on failure.
- */
-
-/** @type {DependencyHook} */
 export const npmDependencyHook = {
   language: 'typescript',
   manifests: ['package.json', 'package-lock.json'],

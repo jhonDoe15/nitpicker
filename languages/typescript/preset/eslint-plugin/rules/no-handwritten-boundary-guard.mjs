@@ -11,7 +11,6 @@ function isJsonParse(node) {
   );
 }
 
-// `schema.parse(value)` and friends: a call on a member whose method is a schema parse method.
 function isSchemaParseCall(node) {
   return (
     node.type === 'CallExpression' &&

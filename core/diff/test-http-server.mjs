@@ -44,11 +44,6 @@ server.listen(0, '127.0.0.1', () => parentPort.postMessage({ port: server.addres
 parentPort.on('message', () => server.close());
 `;
 
-/**
- * An HTTP object store on 127.0.0.1 that lives in a worker thread of this process. The cache
- * stores block the calling thread while a request runs, so the server cannot share that thread.
- * Optional `token` requires `Authorization: Bearer <token>`.
- */
 export async function startTestHttpServer({ token } = {}) {
   const worker = new Worker(SERVER_SOURCE, { eval: true, workerData: { token } });
   const { port } = await new Promise((resolve, reject) => {
@@ -69,7 +64,6 @@ export async function startTestHttpServer({ token } = {}) {
   };
 }
 
-/** Forgets the objects, requests and failure mode of a server from `startTestHttpServer`. */
 export async function resetTestHttpServer(url) {
   await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify({ reset: true }) });
 }

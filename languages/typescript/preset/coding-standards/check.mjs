@@ -55,7 +55,6 @@ function messageSource(lines, message) {
   return sourceLines.join('\n').replace(/\s+/g, ' ').trim();
 }
 
-/** A missing inventory file means no legacy sites are allowed. */
 export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath) {
   return readOptionalInventory(path.dirname(inventoryPath), path.basename(inventoryPath));
 }

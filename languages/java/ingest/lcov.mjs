@@ -1,9 +1,5 @@
 import { coverageMetricFinding, normalizeReportPath, uncoveredFinding } from './common.mjs';
 
-// lcov tracefile -> descriptive findings per source file: a `line-coverage` metric and one
-// `uncovered-function` finding per function with zero hits (identity from the function name,
-// never its line).
-
 export function ingestLcov(text, options = {}) {
   const tool = options.tool ?? 'lcov';
   const findings = [];

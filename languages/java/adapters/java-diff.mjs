@@ -18,7 +18,6 @@ export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicke
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-/** Runs the preset's Gradle task in `projectRoot`; reports land in `<projectRoot>/build/nitpicker`. */
 export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INIT_SCRIPT } = {}) {
   const result = spawnSync(
     gradle,
@@ -49,10 +48,6 @@ export function collectJavaFindings(projectRoot, options = {}) {
   return applyJavaPolicy(findings, options.policy);
 }
 
-/**
- * Compares the merge base of `requestedBaseRef` with HEAD (or the working tree). `failed` is true
- * when the head has new enforceable findings.
- */
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',

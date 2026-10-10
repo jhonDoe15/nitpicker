@@ -112,11 +112,6 @@ function buildPackageAnalyzers(layout) {
 
 export const configuredAnalyzers = buildPackageAnalyzers(resolveLayout());
 
-/**
- * Rebuilds the preset's analyzers for the project's layout and `exclude` globs, so their
- * patterns, source roots and exclusions follow the config file. Analyzers that are not the
- * preset's own (custom or injected ones) pass through untouched.
- */
 export function applyLayout(analyzers, headPolicy) {
   const customized =
     (headPolicy?.exclude ?? []).length > 0 ||
@@ -135,7 +130,6 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-/** Applies config thresholds by rebuilding the affected analyzers; others pass through. */
 export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {
   const crapCheck = createQualityChecks(
     resolveLayout(headPolicy.layout, headPolicy.exclude),
@@ -155,7 +149,6 @@ export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {
   );
 }
 
-/** Points the coding-standards analyzer at the project's legacy inventory file. */
 export function applyLegacyInventory(analyzers, legacyInventory = DEFAULT_LEGACY_INVENTORY) {
   return analyzers.map((analyzer) =>
     analyzer.name === 'coding-standards'
