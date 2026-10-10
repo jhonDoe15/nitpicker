@@ -97,6 +97,10 @@ function addLimitViolations(findings, analyzerName, entry, occurrence) {
       }),
       classification: 'enforceable',
       symbol: entry.name,
+      ratchet: {
+        key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
+        value: entry[metricName],
+      },
       ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
     });
   }
