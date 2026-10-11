@@ -7,7 +7,9 @@ import { eslintChecks, staticChecks } from '../../languages/typescript/preset/qu
 import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
 import {
   headPolicyEnvironment,
+  prettierPrecedence,
   resolveHeadPolicy,
+  usesProjectConfig,
   withHeadPolicyFile,
 } from '../../languages/typescript/preset/head-policy.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
@@ -162,15 +164,20 @@ function baseCleanPaths(settings, prettierFiles, baseSources) {
   return new Set(report.results.filter(({ clean }) => clean).map(({ path: name }) => name));
 }
 
-function runBaseCheck({ projectRoot, executeFixCommand }, existing, baseSources) {
+function runBaseCheck(
+  { projectRoot, policyEnvironment, executeFixCommand },
+  existing,
+  baseSources,
+) {
   return run(
     'prettier-base-check',
     path.join(import.meta.dirname, 'prettier-base-runner.mjs'),
     [path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath)],
     projectRoot,
     [0],
-    {},
+    policyEnvironment,
     JSON.stringify({
+      liveProjectRoot: projectRoot,
       files: existing.map((file) => ({
         path: file.path,
         source: baseSources.get(file.path),
@@ -198,30 +205,54 @@ function parseBaseCheck(result, expectedCount) {
   return report;
 }
 
-function writePrettier({ projectRoot, policyEnvironment, executeFixCommand }, safeFiles) {
+function writePrettier(settings, safeFiles) {
   try {
-    run(
-      'prettier-fix',
-      resolveTool('prettier', { bin: 'bin/prettier.cjs' }).binPath,
-      [
-        '--config',
-        path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
-        '--ignore-path',
-        path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
-        '--write',
-        '--',
-        ...safeFiles.map(({ path: name }) => `./${name}`),
-      ],
-      projectRoot,
-      [0],
-      policyEnvironment,
-      undefined,
-      executeFixCommand,
-    );
+    if (usesProjectConfig(prettierPrecedence(settings.policyEnvironment))) {
+      writeLayeredPrettier(settings, safeFiles);
+      return [];
+    }
+    writePolicyPrettier(settings, safeFiles);
     return [];
   } catch (error) {
     return [fixerError('prettier-fix', error)];
   }
+}
+
+function writeLayeredPrettier({ projectRoot, policyEnvironment, executeFixCommand }, safeFiles) {
+  run(
+    'prettier-fix',
+    path.join(import.meta.dirname, 'prettier-write-runner.mjs'),
+    [
+      path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
+      path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
+    ],
+    projectRoot,
+    [0],
+    policyEnvironment,
+    JSON.stringify({ projectRoot, files: safeFiles.map(({ path: name }) => name) }),
+    executeFixCommand,
+  );
+}
+
+function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand }, safeFiles) {
+  run(
+    'prettier-fix',
+    resolveTool('prettier', { bin: 'bin/prettier.cjs' }).binPath,
+    [
+      '--config',
+      path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
+      '--ignore-path',
+      path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
+      '--write',
+      '--',
+      ...safeFiles.map(({ path: name }) => `./${name}`),
+    ],
+    projectRoot,
+    [0],
+    policyEnvironment,
+    undefined,
+    executeFixCommand,
+  );
 }
 
 function run(
