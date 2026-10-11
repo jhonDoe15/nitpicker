@@ -1,4 +1,5 @@
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 
 export {
@@ -16,13 +17,14 @@ export function readHeadPolicy(environment = process.env) {
     layout: { ...defaultLayout, ...policy.layout },
     exceptions: policy.exceptions ?? [],
     thresholds: policy.thresholds ?? {},
+    preset: policy.preset,
   };
 }
 
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude),
+    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
     entryPoints: policy.layout.entryPoints ?? [],
   };
 }

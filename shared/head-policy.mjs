@@ -11,13 +11,16 @@ import path from 'node:path';
 
 export const HEAD_POLICY_ENV = 'NITPICKER_POLICY';
 
-/** The validated config reduced to the four keys that change what runners analyze. */
+const POLICY_PRESETS = ['javascript'];
+
+/** The validated config reduced to the keys that change what runners analyze. */
 export function resolveHeadPolicy(config = {}) {
   return {
     exclude: config.exclude ?? [],
     layout: config.layout ?? {},
     exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
+    ...(POLICY_PRESETS.includes(config.preset) ? { preset: config.preset } : {}),
   };
 }
 
