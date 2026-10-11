@@ -9,8 +9,6 @@ import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 
-const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
-
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
 export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT } = {}) {
