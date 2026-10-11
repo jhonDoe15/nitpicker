@@ -12,6 +12,13 @@ export const JSDOC_RULE_OPTIONS = {
   'nitpicker/report-module-load-effects': { commonJsExports: true },
 };
 
+export const JAVASCRIPT_ONLY_RULES = {
+  'no-var': 'error',
+  'prefer-const': 'error',
+  'prefer-rest-params': 'error',
+  'prefer-spread': 'error',
+};
+
 const TYPESCRIPT_SYNTAX_SELECTOR = /\bTS[A-Z]\w*/;
 const ACTIVE_SEVERITIES = ['error', 'warn', 1, 2];
 
@@ -55,4 +62,8 @@ function dialectEntry(entry) {
 
 export function applyJavascriptDialect(entries, policy) {
   return isJavascriptPolicy(policy) ? entries.map(dialectEntry) : entries;
+}
+
+export function javascriptRuleEntries(policy, files) {
+  return isJavascriptPolicy(policy) ? [{ files, rules: JAVASCRIPT_ONLY_RULES }] : [];
 }

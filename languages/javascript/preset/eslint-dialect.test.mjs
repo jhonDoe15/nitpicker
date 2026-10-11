@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { strictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
 import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
-import { DROPPED_RULES, JSDOC_RULE_OPTIONS, applyJavascriptDialect } from './eslint-dialect.mjs';
+import {
+  DROPPED_RULES,
+  JAVASCRIPT_ONLY_RULES,
+  JSDOC_RULE_OPTIONS,
+  applyJavascriptDialect,
+  javascriptRuleEntries,
+} from './eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
 
@@ -137,5 +143,24 @@ describe('applyJavascriptDialect', () => {
   it('does not filter a no-restricted-syntax rule that is not an array', () => {
     const entries = [{ rules: { 'no-restricted-syntax': 'off' } }];
     expect(applyJavascriptDialect(entries, javascript)).toEqual(entries);
+  });
+});
+
+describe('javascriptRuleEntries', () => {
+  it('turns on the rules typescript-eslint enables for TypeScript files only', () => {
+    expect(JAVASCRIPT_ONLY_RULES).toEqual({
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-rest-params': 'error',
+      'prefer-spread': 'error',
+    });
+    expect(javascriptRuleEntries(javascript, ['src/**/*.js'])).toEqual([
+      { files: ['src/**/*.js'], rules: JAVASCRIPT_ONLY_RULES },
+    ]);
+  });
+
+  it('adds nothing for other presets', () => {
+    expect(javascriptRuleEntries({}, ['src/**/*.js'])).toEqual([]);
+    expect(javascriptRuleEntries(undefined, ['src/**/*.js'])).toEqual([]);
   });
 });
