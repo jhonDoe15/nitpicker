@@ -13,6 +13,9 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
   rules, ESLint dialect, preset constants) and its `js-clean` fixture.
 - `languages/java/`: the Gradle init script and `StructureMetrics.java` (`gradle/`), the Java
   analyzer (`adapters/`) and the report ingesters (`ingest/`).
+- `languages/python/`: the nitpicker-owned ruff config (`ruff/`), the Python analyzer (`adapters/`)
+  and the coverage.py report ingester (`ingest/`); it reuses the generic ingesters in
+  `languages/java/ingest/`.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
