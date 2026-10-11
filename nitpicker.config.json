@@ -6,6 +6,7 @@
       "core/diff/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
+      "core/fix/prettier-write-runner.mjs",
       "languages/typescript/adapters/entry-points-runner.mjs",
       "languages/typescript/adapters/eslint-config-wrapper.mjs",
       "languages/typescript/preset/*/report.mjs",

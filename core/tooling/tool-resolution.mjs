@@ -62,6 +62,8 @@ export function toolNameForPath(relativeToolPath) {
   return parts[0].startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
 }
 
+const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
+
 export function resolveProjectRoot(cwd = process.cwd()) {
   const current = realpathSync(cwd);
   const repositoryRoot = realpathSync(
