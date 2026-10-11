@@ -7,11 +7,17 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import {
+  analyzedProjectRoot,
+  isReactProject,
+  reactScopeConfigFor,
+} from '../eslint-config/react-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
 const policy = readHeadPolicy();
 
 const layout = readLayout();
+const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -55,7 +61,8 @@ const presetConfig = tseslint.config(
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
     },
   },
-  ...strictPresetConfig(layout, parserOptions),
+  ...strictPresetConfig(layout, parserOptions, { react }),
+  ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,

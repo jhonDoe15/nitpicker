@@ -1,4 +1,24 @@
-export const declarationSelectors = [
+const nonErrorSuperclass =
+  ':not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])';
+const nonComponentSuperclass =
+  ':not([superClass.name=/^(Pure)?Component$/]):not([superClass.property.name=/^(Pure)?Component$/])';
+
+function classSelectorExcluding(superclasses) {
+  return `ClassDeclaration${superclasses}, ClassExpression${superclasses}`;
+}
+
+const classSelector = {
+  selector: classSelectorExcluding(nonErrorSuperclass),
+  message:
+    'Classes are only for `Error` subclasses (`class NameError extends Error`). Use a `type` for data and `function` declarations for behavior; construct dependencies in the composition root.',
+};
+
+const reactClassSelector = {
+  ...classSelector,
+  selector: classSelectorExcluding(`${nonErrorSuperclass}${nonComponentSuperclass}`),
+};
+
+const declarationSelectors = [
   {
     selector: 'TSEnumDeclaration',
     message:
@@ -9,12 +29,7 @@ export const declarationSelectors = [
     message:
       'Do not declare a `namespace`. Put the declarations in their own module and use named exports.',
   },
-  {
-    selector:
-      'ClassDeclaration:not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/]), ClassExpression:not([superClass.name=/Error$/]):not([superClass.property.name=/Error$/])',
-    message:
-      'Classes are only for `Error` subclasses (`class NameError extends Error`). Use a `type` for data and `function` declarations for behavior; construct dependencies in the composition root.',
-  },
+  classSelector,
   {
     selector: "VariableDeclarator[id.type='Identifier'] > ArrowFunctionExpression.init",
     message:
@@ -41,6 +56,12 @@ export const declarationSelectors = [
       'Do not nest ternaries. Use early returns, a lookup object keyed by the value, or one `const` per branch.',
   },
 ];
+
+export function declarationSelectorsFor({ react = false } = {}) {
+  return declarationSelectors.map((entry) =>
+    react && entry === classSelector ? reactClassSelector : entry,
+  );
+}
 
 export const defaultExportSelectors = [
   {

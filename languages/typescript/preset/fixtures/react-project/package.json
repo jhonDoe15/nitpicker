@@ -1,0 +1,11 @@
+{
+  "name": "react-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "19.2.0"
+  },
+  "devDependencies": {
+    "vitest": "4.1.11"
+  }
+}

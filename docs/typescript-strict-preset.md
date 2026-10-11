@@ -203,6 +203,50 @@ Vitest's worker count in CI is a CI setting, not code. It belongs in the CI work
 of the project's CI files, not in these rules. That check would need its own analyzer (a runner
 kind, a version entry, a check definition and project-level findings) and is not built yet.
 
+## React
+
+The React scope turns on when `react` is in the analyzed project's `dependencies` or
+`devDependencies` (a peer dependency alone does not count), or when `nitpicker.config.json` sets
+`"react": { "enabled": true }`; `"enabled": false` turns it off whatever `package.json` says. A
+project without React gets none of the rules below and no change to the rules above. The scope covers
+production source (`.ts` and `.tsx`), not tests. Each rule names the allowed form in its message and,
+where it can flag legitimate code, says to add an exception for the rule in `nitpicker.config.json`.
+
+- **Function components only** (`react-x/no-class-component`). Class components are flagged; error
+  boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
+  subclasses" ban leaves classes that extend `Component` or `PureComponent` to this rule in a React
+  project, so each class gets one message.
+- **Rules of hooks and exhaustive dependencies** (`react-hooks/rules-of-hooks`,
+  `react-hooks/exhaustive-deps`), both as errors. A dependency that is left out on purpose needs an
+  exception for `react-hooks/exhaustive-deps`.
+- **No derived state in effects** (`nitpicker/react-no-effect-derived-state`). A state setter called
+  in the body of a `useEffect` or `useLayoutEffect` callback, whose dependency array is not `[]`, is
+  flagged: compute the value during render (`useMemo` when it is costly) or reset state with a `key`.
+  Setters called from a nested callback (a subscription, an event handler, after an `await`) are not
+  flagged, and neither is `[]` (the mounted-flag pattern). Measuring the DOM in `useLayoutEffect` is
+  the usual legitimate exception.
+- **No data fetching in effects** (`nitpicker/react-no-effect-data-fetching`). `fetch`, `axios`,
+  `ky` and `XMLHttpRequest` calls anywhere inside an effect callback are flagged: use a data-fetching
+  library (TanStack Query `useQuery`, SWR) or the framework (a route loader, a Server Component).
+  A function declared outside the effect and only called inside it is not followed.
+- **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item.
+- **One styling approach** (`nitpicker/react-single-styling-approach`), chosen with
+  `react.styling`: `class-names` (default: `className` with CSS Modules, plain stylesheets or
+  utility classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js`
+  (styled-components, Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style`
+  objects are flagged) or `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries
+  are flagged). A `style` object whose keys are all CSS custom properties (`'--progress': percent`)
+  is allowed, as is a `style` value that is not an object literal (`style={style}`), so a runtime
+  value reaches class-based CSS; type the custom properties once with a `csstype` module
+  augmentation. This is the default because inline `style` objects are the usual agent slop.
+- **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+- `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
+  (`onClick={async () => ...}`), which is the normal React form.
+
+The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react) and
+`eslint-plugin-jsx-a11y-x`. `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
+support, so their maintained, ESLint 10 compatible counterparts are used.
+
 ## How it is enforced
 
 - `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
@@ -219,6 +263,8 @@ kind, a version entry, a check definition and project-level findings) and is not
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
+- The React scope lives in `languages/typescript/preset/eslint-config/react-scope.mjs`; see "React"
+  above and `docs/internals.md`. Its rules are strict rules too (`react-rules.mjs` lists them).
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them.

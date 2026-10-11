@@ -108,3 +108,17 @@ If your change edits a function that existed before it, read
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+
+## React
+
+Applies when `react` is in `package.json`.
+
+- Function components only. Hooks follow the rules of hooks, and every effect lists its
+  dependencies. No array index as `key`: use the item's id.
+- Compute derived values while rendering (`useMemo` if costly); never copy props or state into
+  state in an effect. Reset state with a `key`.
+- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
+- Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
+  goes in a custom property: `style={{ '--progress': percent }}`. If the project's `react.styling`
+  is `css-in-js` or `inline-style`, follow that instead.
+- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
