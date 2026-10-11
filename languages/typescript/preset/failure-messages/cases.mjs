@@ -17,8 +17,6 @@ const typedStrictConfig = strictConfig({
   tsconfigRootDir: process.cwd(),
 });
 
-// Add one entry per banned form. `config` is any ESLint flat config array; `banned` is a fixture
-// that must fail; `allowed` is the wording the message must use to name the allowed form.
 export const failureMessageCases = [
   {
     name: 'console call names the application logger',

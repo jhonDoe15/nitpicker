@@ -6,10 +6,6 @@ import {
   parseXml,
 } from './common.mjs';
 
-// Checkstyle XML -> findings. Identity hashes rule (the check's `source`), path and message;
-// the message names the offending token, the line number is only kept as location.
-// Repeats of the same message in a file are numbered in report order.
-
 const ENFORCEABLE_SEVERITIES = new Set(['error', 'warning']);
 
 export function ingestCheckstyle(xml, options = {}) {

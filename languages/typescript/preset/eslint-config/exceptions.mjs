@@ -1,7 +1,3 @@
-/**
- * Lifts configured rules for configured paths. Exceptions come only from nitpicker.config.json
- * through the head policy; the strict preset bans inline disables, so this is the one way out.
- */
 export function applyRuleExceptions(configEntries, exceptions = []) {
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {

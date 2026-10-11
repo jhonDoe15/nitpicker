@@ -3,7 +3,6 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
-/** The pure-logic folders of every feature, below each source root of the layout. */
 export function domainGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/domain/**/*.${codeExtensions}`);
 }
@@ -15,9 +14,6 @@ const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
 const TRANSFORMS =
   'map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy';
 
-// Selectors for the no-restricted-syntax rule. Exported so the strict preset assembler can
-// concatenate them with other no-restricted-syntax selectors scoped to the same files: a flat
-// config entry for a rule replaces, rather than extends, an earlier entry for that rule.
 export const domainRestrictedSyntax = [
   {
     selector: 'ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement',
@@ -90,8 +86,6 @@ export const domainFunctionalRules = {
   'functional/no-this-expressions': 'error',
 };
 
-// Rules that need type information (a parserOptions program). strict.mjs enables them in the
-// preset's typed config; the standalone domain config below runs without a type program.
 export const domainTypeAwareFunctionalRules = {
   'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }],
 };

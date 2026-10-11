@@ -4,9 +4,6 @@ import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 
-// The Java preset as one analyzer of the differential framework. It makes the Gradle project run
-// through the same base/head machinery, reporters and exit codes as the TypeScript preset.
-
 export const JAVA_ANALYZER_NAME = 'java';
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
@@ -43,7 +40,6 @@ const CONFIGURATION_FILES = [
   'languages/java/ingest/sarif.mjs',
 ];
 
-/** The tool versions pinned in the init script, as `pmd@7.7.0;spotbugs@4.9.3;...`. */
 export function readPinnedVersions(initScript = INIT_SCRIPT) {
   const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
   const versions = [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/g)].map(
@@ -71,7 +67,6 @@ export function createJavaAnalyzer() {
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
-    // One Gradle run yields the findings of all the tools.
     reportedTools: [
       'pmd',
       'spotbugs',

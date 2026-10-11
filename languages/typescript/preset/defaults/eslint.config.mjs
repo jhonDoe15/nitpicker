@@ -9,7 +9,6 @@ import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
-// The head policy comes from nitpicker.config.json; without it the preset defaults apply.
 const policy = readHeadPolicy();
 
 const layout = readLayout();
@@ -103,6 +102,7 @@ const presetConfig = tseslint.config(
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
       'vitest/no-conditional-in-test': 'error',
+      'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',
       'vitest/valid-expect-in-promise': 'error',
     },

@@ -2,19 +2,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-/**
- * A cache store keeps opaque text under a hex key. It is synchronous and never throws:
- * `get` returns undefined on any miss or failure, `put` returns whether the value was stored.
- */
-
 const WORKER = path.join(import.meta.dirname, 'http-cache-worker.mjs');
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
 
-/**
- * Where findings are cached locally: `NITPICKER_CACHE_DIR` when set, else
- * `node_modules/.cache/nitpicker` of the project when it has a `node_modules` folder.
- */
 export function resolveCacheDirectory({ projectRoot, environment = process.env }) {
   const configured = environment.NITPICKER_CACHE_DIR;
   if (typeof configured === 'string' && configured.length > 0) {
@@ -52,12 +43,6 @@ export function createDirectoryStore(directory) {
   };
 }
 
-/**
- * Plain HTTP store: `GET`/`PUT` of `<baseUrl>/<key>.json`, with an optional auth header
- * (`Name: value`). It works with any object store or CDN that accepts that, including S3 buckets
- * behind a public prefix or a signing proxy. After the first failure (other than a clean miss) the
- * store stays off for the rest of the run, so an unreachable server costs one timeout.
- */
 export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   const root = baseUrl.replace(/\/+$/u, '');
   let broken = false;
@@ -92,10 +77,6 @@ export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEO
   };
 }
 
-/**
- * Reads the local store first, then the remote one (copying a remote hit into the local store).
- * Writes go to the local store, and to the remote store only when `writeRemote` is set.
- */
 export function createLayeredStore({ local, remote, writeRemote = false }) {
   return {
     get(key) {
@@ -105,7 +86,6 @@ export function createLayeredStore({ local, remote, writeRemote = false }) {
       }
       return remote?.get(key);
     },
-    /** Called by the cache once an entry from `get` passed validation. */
     keep(key, text) {
       if (local?.get(key) === undefined) {
         local?.put(key, text);
@@ -119,12 +99,6 @@ export function createLayeredStore({ local, remote, writeRemote = false }) {
   };
 }
 
-/**
- * Builds the store the environment asks for. `NITPICKER_CACHE_URL` adds a remote store behind the
- * local directory (read-only unless `writeRemote`); `NITPICKER_CACHE_AUTH_HEADER` is sent as a
- * header (`Name: value`) and `NITPICKER_CACHE_TIMEOUT_MS` bounds each request. `store` is undefined
- * when neither a directory nor a URL is configured.
- */
 export function resolveCacheStore({ projectRoot, environment = process.env, writeRemote = false }) {
   const warnings = [];
   const directory = resolveCacheDirectory({ projectRoot, environment });

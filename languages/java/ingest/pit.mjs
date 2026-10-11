@@ -1,21 +1,6 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from './common.mjs';
 
-// PIT (pitest) XML mutation report -> findings, following the same mutation profile as the
-// TypeScript preset (docs/mutation-testing.md): no score gate; each new surviving or uncovered
-// mutant fails, every other non-killed status is report-only, and per-status counts are a
-// descriptive `mutation-summary`.
-//
-// Identity never contains a line number. A mutant is identified by what it is: the mutated class,
-// method (name and descriptor), mutator and mutation description, plus its position among the
-// mutants with that same key in source order (`#n`, by line and then block index). Inserting code
-// above a mutant keeps it; adding a second identical mutation in the same method adds a new
-// occurrence.
-//
-// `options.resolvePath(className, sourceFile)` maps a mutated class to its project-relative source
-// file; mutants whose source cannot be found (generated code) are skipped.
-
-// PIT status -> the status names used by the Stryker-based mutation area.
 const STATUS_NAMES = {
   KILLED: 'Killed',
   SURVIVED: 'Survived',

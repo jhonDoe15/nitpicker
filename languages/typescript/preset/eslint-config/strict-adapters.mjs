@@ -8,7 +8,6 @@ import {
 } from './strict-control-flow.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
-/** The I/O folders of every feature, below each source root of the layout. */
 export function adapterGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/adapters/**/*.${codeExtensions}`);
 }
@@ -30,14 +29,6 @@ export const restrictedAdapterSyntax = [
   },
 ];
 
-// Adapters-only selectors (throw rules); the control-flow selectors that apply to all production
-// code live in strict-control-flow.mjs and are added here for the standalone config.
-// Syntactic strict rules for `features/<name>/adapters/`. These work without type information.
-// The preset enables them through strict.mjs, which merges `restrictedAdapterSyntax` with the
-// selectors that apply everywhere (including the control-flow ones): a config that sets `no-restricted-syntax` for the same files
-// replaces this list, so this standalone config is for tests of the adapters rules on their own.
-// Zod is a documented expectation of the preset, not a dependency of nitpicker: the rule works on
-// syntax and its messages name the zod schema as the allowed form.
 export default [
   { ignores: excludedGlobs },
   {
@@ -55,8 +46,6 @@ export default [
   },
 ];
 
-// Type-aware strict rules for the same files. The consuming config must give the parser type
-// information (as the default preset does with parserOptions.project).
 export const strictAdaptersTypedConfig = [
   {
     files: adapterGlobs,

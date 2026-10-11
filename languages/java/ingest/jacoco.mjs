@@ -6,11 +6,6 @@ import {
   uncoveredFinding,
 } from './common.mjs';
 
-// JaCoCo XML -> descriptive findings per source file: a `line-coverage` metric (from the
-// sourcefile LINE counter) and one `uncovered-method` finding per method whose lines are all
-// missed (identity from class and method name+descriptor, never the line).
-// `options.sourceRoot` (e.g. "src/main/java") is prepended to the package-relative path.
-
 export function ingestJacoco(xml, options = {}) {
   const report = parseXml(xml);
   if (report.name !== 'report') {

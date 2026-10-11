@@ -27,7 +27,6 @@ const TYPESCRIPT_CONSUMERS = new Set([
   'eslint-module-effects',
 ]);
 
-// Plugins whose rule behavior changes the findings of every ESLint-based analyzer.
 export const ESLINT_PLUGIN_PACKAGES = [
   '@eslint/js',
   '@vitest/eslint-plugin',

@@ -67,10 +67,6 @@ for (const entry of functions.slice(0, 20)) {
   );
 }
 
-/**
- * The CRAP analyzer expands a directory only when it is named `src` (or finds `src` folders
- * below it), so roots with any other name are handed over as the files inside them.
- */
 function explicitPaths() {
   const layout = readLayout();
   return config.sourcePaths

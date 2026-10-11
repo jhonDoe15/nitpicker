@@ -1,11 +1,5 @@
 import { createHash } from 'node:crypto';
 
-/**
- * Wraps a `{name, command, args?}` config entry as an analyzer. The executable runs with the
- * analyzed checkout as its working directory (so a relative command resolves inside each side),
- * prints findings JSON on stdout, and exits 0. Its stdout goes through the same finding parser
- * as the built-in analyzers; a non-zero exit or invalid JSON becomes a tool error.
- */
 export function createCustomAnalyzer({ name, command, args = [] }) {
   return {
     name,
@@ -30,7 +24,6 @@ export function createCustomAnalyzer({ name, command, args = [] }) {
   };
 }
 
-/** Appends the configured custom analyzers; a name clash with another analyzer is a config error. */
 export function addCustomAnalyzers(analyzers, entries = []) {
   const taken = new Set(analyzers.map(({ name }) => name));
   const custom = entries.map((entry) => {

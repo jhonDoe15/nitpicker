@@ -22,7 +22,6 @@ function valuesOf(entries, name) {
   return entries.filter(([argument]) => argument === name).map(([, value]) => value);
 }
 
-// Shared drill-down argument parsing for the single command and its shard workers.
 export function parseDrillDownOptions(arguments_) {
   const entries = tokenize(arguments_);
   const analyzerNames = valuesOf(entries, '--analyzer');

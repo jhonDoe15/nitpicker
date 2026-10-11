@@ -11,11 +11,6 @@ import { analyzerName } from './report-model.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
-/**
- * Analyzes the committed tree at HEAD (typically the new tip of `main`) as a base snapshot and
- * stores each clean report under the key later comparisons use when HEAD is their merge base.
- * The policy is HEAD's own, so a branch whose policy differs simply misses.
- */
 export function publishBaseSnapshot({
   repositoryRoot,
   projectRelativePath,

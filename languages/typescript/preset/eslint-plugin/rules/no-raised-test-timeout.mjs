@@ -42,7 +42,6 @@ function isSetConfig(callee) {
   );
 }
 
-/** The nodes holding a timeout in a test, suite or hook registration, or in vi.setConfig. */
 function timeoutNodes(context, node) {
   if (isSetConfig(node.callee)) {
     return timeoutProperties(context, node.arguments[0]).map((property) => property.value);
