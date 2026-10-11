@@ -16,10 +16,14 @@ import {
   removeSnapshotDependencies,
 } from '../../languages/typescript/adapters/static-checks-runner.mjs';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
-import { isStrictRule } from '../../languages/typescript/preset/strict-rules.mjs';
+import {
+  isStrictRule,
+  mustMeetOnEditedLines,
+} from '../../languages/typescript/preset/strict-rules.mjs';
 import { createFindingsCache, runBaseWithCache } from './findings-cache.mjs';
+import { cachedLine } from './progress.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
-import { withTemporaryWorktree } from './worktree.mjs';
+import { withNamedTemporaryWorktree, withTemporaryWorktree } from './worktree.mjs';
 
 export function runQualityDiff(options) {
   const settings = withDefaults(options);
@@ -81,17 +85,24 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     inferredMoves: moves.inferred,
   });
-  return { baseProjectRelativePath, moves, touchedCode: { changedLines, isStrictRule } };
+  return {
+    baseProjectRelativePath,
+    moves,
+    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+  };
 }
 
 function withSnapshotRoots({ settings, comparison, layout }, operation) {
   const { repositoryRoot, projectRelativePath } = settings;
   return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktreeRoot) =>
-    withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktreeRoot) =>
-      operation({
-        baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
-        headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
-      }),
+    withNamedTemporaryWorktree(
+      repositoryRoot,
+      { commitSha: comparison.headSha, directoryName: 'head' },
+      (headWorktreeRoot) =>
+        operation({
+          baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
+          headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
+        }),
     ),
   );
 }
@@ -194,6 +205,7 @@ function runBaseSide(context) {
     }),
     analyzers: baseSetup.analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
+    onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,
@@ -292,8 +304,10 @@ function compareOrReportError(context) {
 function toolSummary({ analyzer, name, baseRun, headRun, baseFindings, headFindings, result }) {
   const baseElapsedMs = baseRun.timings.get(name);
   const headElapsedMs = headRun.timings.get(name);
+  const skippedBecause = headRun.skipped?.get(name) ?? baseRun.skipped?.get(name);
   return {
     name,
+    ...(skippedBecause === undefined ? {} : { skippedBecause }),
     version: analyzerMetadata(analyzer, 'version'),
     configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
     base: baseFindings.length,

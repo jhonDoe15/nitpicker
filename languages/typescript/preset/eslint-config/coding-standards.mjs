@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
 import { readLayout } from '../head-policy.mjs';
 

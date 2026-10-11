@@ -23,6 +23,8 @@ import {
   nextOccurrence,
   positiveInteger,
   summaryMetrics,
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_SKIPPED_RULE,
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
@@ -43,6 +45,7 @@ import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import {
   PACKAGE_ROOT,
   resolveTool,
+  SNAPSHOT_DIRECTORY_NAMES,
   toolNameForPath,
 } from '../../../core/tooling/tool-resolution.mjs';
 
@@ -63,6 +66,12 @@ const QUALITY_AREA_RUNNERS = new Map([
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
+const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
+const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
+const DEAD_CODE_DECLARATIONS = new Map([
+  ['exports', 'Export'],
+  ['types', 'Exported type'],
+]);
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
 
 const invokedPath = process.argv[1];
@@ -82,7 +91,7 @@ if (
   }
 }
 
-async function runQualityArea(options) {
+export async function runQualityArea(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
     throw new Error(`Unsupported quality area: ${options.kind}`);
@@ -246,7 +255,7 @@ function runDuplicates(options) {
   trackTemporaryPath(configPath);
   writeFileSync(
     configPath,
-    `${JSON.stringify({ ...config, reporters: ['json'], output: outputDirectory })}\n`,
+    `${JSON.stringify({ ...config, absolute: true, reporters: ['json'], output: outputDirectory })}\n`,
   );
   try {
     runNodeTool({
@@ -258,10 +267,31 @@ function runDuplicates(options) {
     const report = JSON.parse(
       readFileSync(path.join(outputDirectory, 'jscpd-report.json'), 'utf8'),
     );
-    return normalizeDuplicates(report, options.analyzerName, config.path);
+    return normalizeDuplicates(
+      withProjectRelativeNames(report, realpathSync(options.projectRoot)),
+      options.analyzerName,
+      { configuredPaths: [] },
+    );
   } finally {
     unlinkSync(configPath);
   }
+}
+
+function projectRelativeSide(side, projectRoot) {
+  return typeof side?.name === 'string' && path.isAbsolute(side.name)
+    ? { ...side, name: path.relative(projectRoot, side.name) }
+    : side;
+}
+
+function withProjectRelativeNames(report, projectRoot) {
+  return {
+    ...report,
+    duplicates: (report.duplicates ?? []).map((duplicate) => ({
+      ...duplicate,
+      firstFile: projectRelativeSide(duplicate.firstFile, projectRoot),
+      secondFile: projectRelativeSide(duplicate.secondFile, projectRoot),
+    })),
+  };
 }
 
 function withSpawnedEntries(config, projectRoot) {
@@ -343,10 +373,7 @@ function runCoverage(options) {
       acceptedStatuses: [0, 1],
     });
     if (result.status !== 0) {
-      const report = readVitestReport(testReportPath);
-      throw new Error(
-        `coverage tests failed: ${formatVitestFailures(report)}${formatProcessOutput(result)}`,
-      );
+      return coverageFailureFindings(options, readVitestReport(testReportPath, result), result);
     }
     return readCoverageFindings(options, testReportPath);
   } finally {
@@ -355,12 +382,25 @@ function runCoverage(options) {
   }
 }
 
+export function coverageFailureFindings(options, report, result) {
+  const [firstFailure] = vitestFailures(report, options.projectRoot);
+  if (firstFailure === undefined) {
+    throw new Error(
+      `Vitest exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+    );
+  }
+  return [
+    testsFailedFinding(options, {
+      rule: TESTS_FAILED_RULE,
+      path: findingPath(firstFailure.file),
+      message: formatVitestFailures(report, options.projectRoot),
+    }),
+  ];
+}
+
 function readCoverageFindings(options, testReportPath) {
   const report = JSON.parse(
-    readFileSync(
-      path.join(options.projectRoot, 'reports/quality/coverage/coverage-final.json'),
-      'utf8',
-    ),
+    readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
   const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
   return normalizeCoverage(
@@ -370,49 +410,107 @@ function readCoverageFindings(options, testReportPath) {
   );
 }
 
-function readVitestReport(reportPath) {
+function readVitestReport(reportPath, result) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     throw new Error(
-      `could not read Vitest failure report: ${error instanceof Error ? error.message : String(error)}`,
+      `Vitest exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
       { cause: error },
     );
   }
 }
 
-export function formatVitestFailures(report) {
-  const failedAssertions = [];
+function testsFailedFinding(options, { rule, path: findingPath = '.', message }) {
+  return {
+    tool: options.analyzerName,
+    rule,
+    path: findingPath,
+    identity: rule,
+    message,
+    classification: 'tool-error',
+  };
+}
+
+const MAX_LISTED_FAILURES = 5;
+const MAX_ASSERTION_LINE_LENGTH = 200;
+const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
+const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
+
+function vitestFailures(report, projectRoot) {
+  const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
   for (const testResult of testResults) {
-    if (!Array.isArray(testResult?.assertionResults)) {
-      continue;
-    }
-    const file = typeof testResult.name === 'string' ? testResult.name : '<unknown test file>';
-    for (const assertion of testResult.assertionResults) {
-      if (assertion?.status !== 'failed') {
-        continue;
-      }
-      failedAssertions.push({
+    const file = projectFile(projectRoot, testResult?.name);
+    const failedAssertions = Array.isArray(testResult?.assertionResults)
+      ? testResult.assertionResults.filter((assertion) => assertion?.status === 'failed')
+      : [];
+    for (const assertion of failedAssertions) {
+      failures.push({
         file,
         name: vitestAssertionName(assertion),
-        messages: Array.isArray(assertion.failureMessages)
-          ? assertion.failureMessages.filter((message) => typeof message === 'string')
-          : [],
+        assertion: firstLine(
+          assertion.failureMessages?.find((message) => typeof message === 'string'),
+        ),
       });
     }
+    if (failedAssertions.length === 0 && testResult?.status === 'failed') {
+      failures.push({ file, name: 'could not run', assertion: firstLine(testResult.message) });
+    }
   }
+  return failures;
+}
+
+function projectFile(projectRoot, name) {
+  if (typeof name !== 'string') {
+    return '<unknown test file>';
+  }
+  const relativePath = path.relative(projectRoot, name).replaceAll('\\', '/');
+  return relativePath.startsWith('..') || path.isAbsolute(relativePath) ? name : relativePath;
+}
+
+function findingPath(file) {
+  return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
+}
+
+function firstLine(message) {
+  const line =
+    typeof message === 'string'
+      ? message
+          .replaceAll(ANSI_PATTERN, '')
+          .split('\n')
+          .map((candidate) => candidate.trim())
+          .find((candidate) => candidate.length > 0)
+      : undefined;
+  if (line === undefined) {
+    return '';
+  }
+  return line.length > MAX_ASSERTION_LINE_LENGTH
+    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
+    : line;
+}
+
+export function formatVitestFailures(report, projectRoot) {
+  const failures = vitestFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
-    ? report.numFailedTests
-    : failedAssertions.length;
-  if (failedAssertions.length === 0) {
-    return `${String(failedCount)} tests failed; the report contained no failed assertion details`;
+    ? Math.max(report.numFailedTests, failures.length)
+    : failures.length;
+  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
+  if (failures.length === 0) {
+    return `${headline}; the report named no test.`;
   }
-  const details = failedAssertions.flatMap(({ file, name, messages }) => [
-    `${file} > ${name}`,
-    ...(messages.length > 0 ? messages : ['No assertion failure message was reported']),
-  ]);
-  return `${String(failedCount)} ${failedCount === 1 ? 'test' : 'tests'} failed:\n${details.join('\n')}`;
+  const listed = failures
+    .slice(0, MAX_LISTED_FAILURES)
+    .map(
+      ({ file, name, assertion }) =>
+        `  ${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`,
+    );
+  const omitted = failures.length - listed.length;
+  return [
+    `${headline}:`,
+    ...listed,
+    ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+  ].join('\n');
 }
 
 function vitestAssertionName(assertion) {
@@ -433,7 +531,23 @@ function formatProcessOutput(result) {
   return output.length > 0 ? `\nProcess output:\n${output}` : '';
 }
 
+function hasRunnableTests(options) {
+  const layout = readLayout();
+  return layout.projectCodeFiles(options.projectRoot).some(layout.isRunnableTestFile);
+}
+
 function runCrap(options) {
+  if (
+    !existsSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH)) &&
+    hasRunnableTests(options)
+  ) {
+    return [
+      testsFailedFinding(options, {
+        rule: TESTS_FAILED_SKIPPED_RULE,
+        message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+      }),
+    ];
+  }
   runNodeTool({
     options,
     absoluteToolPath: path.join(options.policyRoot, 'languages/typescript/preset/crap/report.mjs'),
@@ -460,15 +574,14 @@ async function runMutation(options) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    const configPath = writeMutationConfig(options, { sourceConfig, targets }, createdFiles);
-    runNodeTool({
-      options,
-      relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
-      arguments_: ['run', configPath],
-      acceptedStatuses: [0],
-    });
+    writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
+    const skippedFindings = runStrykerOrExplainSkip(options, configPath);
+    if (skippedFindings !== undefined) {
+      return skippedFindings;
+    }
     const report = readMutationReport(options.projectRoot);
     return normalizeMutation(
       withMutationSourceHashes(report, options.projectRoot),
@@ -481,8 +594,7 @@ async function runMutation(options) {
   }
 }
 
-function writeMutationConfig(options, { sourceConfig, targets }, createdFiles) {
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
+function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
   const tsconfigPath = installMutationCompanion(
     options,
     [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
@@ -507,7 +619,28 @@ function writeMutationConfig(options, { sourceConfig, targets }, createdFiles) {
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
-  return configPath;
+}
+
+function runStrykerOrExplainSkip(options, configPath) {
+  try {
+    runNodeTool({
+      options,
+      relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
+      arguments_: ['run', configPath],
+      acceptedStatuses: [0],
+    });
+    return undefined;
+  } catch (error) {
+    if (error instanceof Error && INITIAL_TEST_RUN_FAILED_PATTERN.test(error.message)) {
+      return [
+        testsFailedFinding(options, {
+          rule: TESTS_FAILED_SKIPPED_RULE,
+          message: 'Mutation testing did not run because the project tests fail.',
+        }),
+      ];
+    }
+    throw error;
+  }
 }
 
 function readMutationReport(projectRoot) {
@@ -551,8 +684,30 @@ export function normalizeStructure(report, analyzerName) {
   );
 }
 
-export function normalizeDuplicates(report, analyzerName, configuredPaths = [sourceRoot]) {
-  return evaluateDuplicates(jscpdClones(report, configuredPaths), analyzerName);
+function definesNamedFunction(fragment) {
+  return /\bfunction\s*\*?\s*[\p{L}_$][\p{L}\p{N}_$]*\s*[<(]|\b(?:const|let)\s+[\p{L}_$][\p{L}\p{N}_$]*\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)[^=;]*=>|[\p{L}_$][\p{L}\p{N}_$]*\s*=>)/u.test(
+    fragment,
+  );
+}
+
+function isRepeatedTestData(clone, isTestFile) {
+  return (
+    clone.fragment !== undefined &&
+    isTestFile(clone.first.file) &&
+    isTestFile(clone.second.file) &&
+    !definesNamedFunction(clone.fragment)
+  );
+}
+
+export function normalizeDuplicates(
+  report,
+  analyzerName,
+  { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
+) {
+  const clones = jscpdClones(report, configuredPaths).filter(
+    (clone) => !isRepeatedTestData(clone, isTestFile),
+  );
+  return evaluateDuplicates(clones, analyzerName);
 }
 
 export function normalizeDeadCode(report, analyzerName) {
@@ -568,7 +723,7 @@ export function normalizeDeadCode(report, analyzerName) {
       rule: 'files',
       path: filePath,
       identity: `file:${filePath}|source:${file?.sourceHash ?? hash(filePath)}`,
-      message: `Unused file: ${filePath}`,
+      message: `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`,
       classification: 'enforceable',
     });
   }
@@ -593,7 +748,7 @@ export function normalizeDeadCode(report, analyzerName) {
               ? `|source:${entry?.sourceHash ?? hash(issue.file)}`
               : ''
           }`,
-          message: `${category}: ${name}`,
+          message: deadCodeMessage(category, name, entry),
           classification: ENFORCED_DEAD_CODE_CATEGORIES.has(category)
             ? 'enforceable'
             : 'descriptive',
@@ -610,6 +765,16 @@ export function normalizeDeadCode(report, analyzerName) {
     }
   }
   return findings;
+}
+
+function deadCodeMessage(category, name, entry) {
+  const kind = DEAD_CODE_DECLARATIONS.get(category);
+  if (kind === undefined) {
+    return `${category}: ${name}`;
+  }
+  return entry?.usedInFile === true
+    ? `${kind} ${name} is only used in its own file. Remove \`export\`.`
+    : `${kind} ${name} is never imported. Remove \`export\`, or the ${category === 'types' ? 'type' : 'declaration'} if nothing uses it.`;
 }
 
 export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {
@@ -644,6 +809,7 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
       hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
     percent: coveragePercent(outcomes),
     line: coverage.branchMap?.[branchId]?.loc?.start?.line,
+    arms: coverage.uncoveredArms?.[branchId],
   }));
   findings.push(
     ...branchCoverageFindings(branches, {
@@ -711,6 +877,7 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           path: entry.source,
           name: entry.function,
           identity: violationIdentity,
+          ratchetKey: `function:${entry.function}:occurrence:${String(occurrence)}:crap`,
           line: entry.lines?.start,
           crap: entry.crap,
         },
@@ -785,6 +952,12 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     status,
     label: mutant.mutatorName ?? 'mutant',
     line: mutant.location?.start?.line,
+    ...(positiveInteger(mutant.location?.start?.column) === undefined
+      ? {}
+      : { column: mutant.location.start.column }),
+    ...(typeof mutant.original === 'string' && mutant.original.length > 0
+      ? { original: mutant.original }
+      : {}),
     ...(mutant.replacement === undefined ? {} : { replacement: mutant.replacement }),
   };
 }
@@ -834,9 +1007,60 @@ function withBranchSourceHashes(report, projectRoot) {
           ),
         ]),
       );
-      return [absolutePath, { ...coverage, branchSourceHashes }];
+      const uncoveredArms = Object.fromEntries(
+        Object.entries(coverage.branchMap ?? {}).map(([branchId, branch]) => [
+          branchId,
+          describeUncoveredArms(branch, coverage.b?.[branchId], source),
+        ]),
+      );
+      return [absolutePath, { ...coverage, branchSourceHashes, uncoveredArms }];
     }),
   );
+}
+
+export function describeUncoveredArms(branch, hits, source) {
+  const locations = branch.locations ?? [];
+  return (hits ?? []).flatMap((count, index) =>
+    count > 0
+      ? []
+      : [`${armName(branch, index, source)} at ${armPosition(locations[index], branch)}`],
+  );
+}
+
+function armPosition(location, branch) {
+  const start = Number.isInteger(location?.start?.line) ? location.start : branch.loc?.start;
+  return `${String(start?.line ?? '?')}:${String((start?.column ?? 0) + 1)}`;
+}
+
+function armName(branch, index, source) {
+  switch (branch.type) {
+    case 'if':
+      return index === 0 ? 'the true arm of the if' : 'the false arm of the if (or its else)';
+    case 'cond-expr':
+      return index === 0 ? 'the true arm of the ?:' : 'the false arm of the ?:';
+    case 'binary-expr':
+      return `the ${index === 0 ? 'left' : 'right'} side of ${logicalOperator(branch, source)}`;
+    case 'switch':
+      return 'a switch case';
+    case 'default-arg':
+      return 'the default value';
+    default:
+      return 'a branch arm';
+  }
+}
+
+function logicalOperator(branch, source) {
+  const [first, second] = branch.locations ?? [];
+  if (first?.start === undefined || second?.start === undefined) {
+    return 'the logical expression';
+  }
+  const between = source.slice(offsetOf(source, first.start), offsetOf(source, second.start));
+  return /\?\?|&&|\|\|/u.exec(between)?.[0] ?? 'the logical expression';
+}
+
+function offsetOf(source, { line, column }) {
+  const precedingLines = source.split('\n').slice(0, line - 1);
+  return precedingLines.reduce((total, text) => total + text.length + 1, 0) + (column ?? 0);
 }
 
 function withDeadCodeSourceHashes(report, projectRoot) {
@@ -865,7 +1089,19 @@ function withDeclarationSourceHash(entry, lines) {
   if (typeof entry !== 'object' || line === undefined || line > lines.length) {
     return entry;
   }
-  return { ...entry, sourceHash: hash(lines[line - 1].trim()) };
+  return {
+    ...entry,
+    sourceHash: hash(lines[line - 1].trim()),
+    usedInFile: isUsedBesidesDeclaration(entry.name, lines, line),
+  };
+}
+
+function isUsedBesidesDeclaration(name, lines, declarationLine) {
+  if (typeof name !== 'string' || name.length === 0) {
+    return false;
+  }
+  const word = new RegExp(`(?<![\\w$])${name.replaceAll('$', String.raw`\$`)}(?![\\w$])`, 'u');
+  return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
 }
 
 function withMutationSourceHashes(report, projectRoot) {
@@ -881,6 +1117,7 @@ function withMutationSourceHashes(report, projectRoot) {
             mutants: (file.mutants ?? []).map((mutant) => ({
               ...mutant,
               sourceHash: hash(sourceLocation(source, mutant.location)),
+              original: sourceSnippet(source, mutant.location),
             })),
           },
         ];
@@ -913,6 +1150,27 @@ function relativeProjectFile(projectRoot, filePath) {
 
 function sourceLocation(source, location) {
   return sourceLineRange(source, location?.start?.line, location?.end?.line);
+}
+
+export function sourceSnippet(source, location) {
+  const start = location?.start;
+  const end = location?.end;
+  if (!Number.isInteger(start?.line) || !Number.isInteger(end?.line)) {
+    return undefined;
+  }
+  const lines = source.split(/\r?\n/);
+  const first = lines[start.line - 1];
+  const last = lines[end.line - 1];
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+  return start.line === end.line
+    ? first.slice(start.column - 1, end.column - 1)
+    : [
+        first.slice(start.column - 1),
+        ...lines.slice(start.line, end.line - 1),
+        last.slice(0, end.column - 1),
+      ].join('\n');
 }
 
 function sourceLineRange(source, startLine, endLine) {
@@ -1070,7 +1328,7 @@ function relativeProjectPath(projectRoot, filePath) {
   return path.relative(projectRoot, filePath).replaceAll('\\', '/');
 }
 
-function parseArguments(arguments_) {
+export function parseArguments(arguments_) {
   const values = new Map();
   for (let index = 0; index < arguments_.length; index += 2) {
     const name = arguments_[index];
@@ -1158,7 +1416,7 @@ function validatedSnapshotRoot(value, name) {
     path.isAbsolute(relativeToTemporaryRoot) ||
     segments.length < 2 ||
     !segments[0].startsWith('nitpicker-diff-') ||
-    segments[1] !== 'base'
+    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
   ) {
     throw new Error(`${name} must be inside a generated quality-diff worktree`);
   }

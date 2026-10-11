@@ -65,6 +65,7 @@ const configWithoutProjectConfig = {
           root: '.',
           include: sourceRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
+          restoreMocks: true,
         },
       },
       {
@@ -73,6 +74,7 @@ const configWithoutProjectConfig = {
           root: '.',
           include: testRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
+          restoreMocks: true,
           testTimeout: 10_000,
         },
       },
@@ -95,6 +97,7 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
       exclude: [...(project.test?.exclude ?? []), ...nitpickerExclude],
       dir: undefined,
       maxWorkers: 4,
+      restoreMocks: true,
       coverage,
     },
   };

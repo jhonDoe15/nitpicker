@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { analyzeProject } from '@barney-media/crap-typescript-core';
 import { beforeAll, describe, expect, it } from 'vitest';
 import crapConfig from '../defaults/crap.config.mjs';
+import { analyzeWithFunctionMapFallback } from './analyze.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const fixtureSource = path.join(
@@ -67,5 +68,42 @@ describe('function-level CRAP policy', () => {
     expect(result.coverage.status).toBe('unknown');
     expect(result.coverage.percent).toBeNull();
     expect(result.crapScore).toBeNull();
+  });
+});
+
+describe('coverage of an arrow whose callback shares its lines', () => {
+  const nestedSource = path.join(
+    projectRoot,
+    'languages/typescript/preset/crap/fixtures/nested-callback.ts',
+  );
+  const nestedCoverage = path.join(
+    projectRoot,
+    'languages/typescript/preset/crap/fixtures/coverage-nested-callback.json',
+  );
+  const analysisOptions = {
+    projectRoot,
+    explicitPaths: [nestedSource],
+    coverageMode: 'existing-only',
+    coverageReportPath: nestedCoverage,
+    useDefaultExclusions: false,
+    excludes: crapConfig.excludes,
+  };
+
+  it('is unknown for the plain analyzer, which cannot pick between the two map entries', async () => {
+    const analysis = await analyzeProject(analysisOptions);
+    const sleep = analysis.metrics.find((metric) => metric.displayName === 'sleep');
+
+    expect(sleep.coverage.unknownReason).toBe('fnmap_conflict');
+    expect(sleep.crapScore).toBeNull();
+  });
+
+  it('is measured once the conflicting function map is set aside', async () => {
+    const analysis = await analyzeWithFunctionMapFallback(analysisOptions);
+    const byName = new Map(analysis.metrics.map((metric) => [metric.displayName, metric]));
+
+    expect(byName.get('sleep').statementCoverage.percent).toBe(0);
+    expect(byName.get('sleep').crapScore).toBe(2);
+    expect(byName.get('find').crapScore).toBe(1);
+    expect(analysis.metrics.filter((metric) => metric.crapScore === null)).toEqual([]);
   });
 });

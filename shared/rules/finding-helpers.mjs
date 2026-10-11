@@ -3,6 +3,10 @@
 
 import { createHash } from 'node:crypto';
 
+/** Tool-error rules for a project whose own tests fail; the skipped one is a notice, not a cause. */
+export const TESTS_FAILED_RULE = 'tests-failed';
+export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
+
 /** A stable 24-character digest used inside finding identities. */
 export function hash(value) {
   return createHash('sha256').update(String(value)).digest('hex').slice(0, 24);

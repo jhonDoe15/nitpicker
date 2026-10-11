@@ -70,7 +70,7 @@ describe('Java structure findings', () => {
       ],
       [
         RULE_IDS.functionControlNesting,
-        'Big.big has 3 maxControlNesting; limit is 2',
+        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting.',
         'enforceable',
         'structure',
       ],

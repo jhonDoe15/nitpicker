@@ -1,0 +1,9 @@
+{
+  "exceptions": [
+    {
+      "rule": "nitpicker/no-unknown-in-domain",
+      "paths": ["src/main/features/invoicing/domain/**"],
+      "reason": "Legacy computeInvoice takes an untyped order; it is read here until callers pass a parsed one"
+    }
+  ]
+}

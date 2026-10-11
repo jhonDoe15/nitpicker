@@ -14,6 +14,13 @@
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
 
+function duplicateMessage(other, lines) {
+  const place =
+    positiveInteger(other.line) === undefined ? other.file : `${other.file}:${String(other.line)}`;
+  const size = positiveInteger(lines) === undefined ? '' : ` (${String(lines)} lines)`;
+  return `This code repeats ${place}${size}. Keep one copy and call it from both places.`;
+}
+
 export function evaluateDuplicates(clones, analyzerName) {
   const findings = [];
   const occurrences = new Map();
@@ -28,7 +35,7 @@ export function evaluateDuplicates(clones, analyzerName) {
       rule: RULE_IDS.duplicateClone,
       path: sides[0].file,
       identity: `pair:${pair}:fragment:${hash(clone.fragment ?? '')}:occurrence:${String(occurrence)}`,
-      message: `Duplicate with ${sides[1].file}`,
+      message: duplicateMessage(sides[1], clone.lines),
       classification: 'enforceable',
       ...(positiveInteger(sides[0].line) === undefined
         ? {}

@@ -53,6 +53,22 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
     ]);
   });
 
+  it('bans self-recursion in every production file, not in tests', () => {
+    const recursive = 'export function retry(n) { return n > 0 ? retry(n - 1) : 0; }';
+
+    for (const file of [
+      'src/main/features/x/domain/run.ts',
+      'src/main/features/x/adapters/run.ts',
+      'src/main/composition-root.ts',
+      'src/main/shared/run.ts',
+    ]) {
+      expect(messages(recursive, file)).toEqual([expect.stringContaining("'retry' calls itself")]);
+    }
+    expect(messages(recursive, 'src/run.test.ts')).toEqual([
+      expect.stringContaining('No matching configuration'),
+    ]);
+  });
+
   it('reports a domain loop or forEach once, with the domain message', () => {
     const file = 'src/main/features/x/domain/run.ts';
 

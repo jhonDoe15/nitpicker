@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import {
+  PACKAGE_ROOT,
+  resolveTool,
+  SNAPSHOT_DIRECTORY_NAMES,
+} from '../../../core/tooling/tool-resolution.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -173,7 +177,11 @@ function validatedRoot(value, name) {
     return root;
   }
   const segments = path.relative(realpathSync(tmpdir()), root).split(path.sep);
-  if (segments.length >= 2 && segments[0].startsWith('nitpicker-diff-') && segments[1] === 'base') {
+  if (
+    segments.length >= 2 &&
+    segments[0].startsWith('nitpicker-diff-') &&
+    SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
+  ) {
     return root;
   }
   throw new Error(

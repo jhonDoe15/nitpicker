@@ -159,6 +159,7 @@ describe('layout-aware tool configurations', () => {
       strict: true,
       noImplicitReturns: true,
       noFallthroughCasesInSwitch: true,
+      noUncheckedIndexedAccess: true,
     });
     expect(layered.compilerOptions).not.toHaveProperty('module');
     expect(layered.compilerOptions).not.toHaveProperty('jsx');
@@ -203,7 +204,7 @@ describe('layout-aware tool configurations', () => {
     expect(knip.ignore).toContain('lib/legacy/**');
 
     const jscpd = layoutJscpdConfig(readDefault('jscpd.json'), customLayout);
-    expect(jscpd.path).toEqual(['lib']);
+    expect(jscpd.path).toEqual(['lib', 'spec']);
     expect(jscpd.ignore).toContain('lib/legacy/**');
   });
 
@@ -328,6 +329,7 @@ describe('package-owned child configs', () => {
   it('the copied vitest configs keep the default roots without a policy', async () => {
     const coverage = await resolveVitestConfig('defaults/vitest.quality.config.ts', undefined);
     expect(coverage.test.maxWorkers).toBe(4);
+    expect(coverage.test.projects.map(({ test }) => test.restoreMocks)).toEqual([true, true]);
     expect(coverage.test.projects[0].test.include).toEqual([
       'src/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'src/**/*.spec.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -362,6 +364,7 @@ describe('package-owned child configs', () => {
     expect(coverage.test.setupFiles).toEqual(['./setup.ts']);
     expect(coverage.test.dir).toBeUndefined();
     expect(coverage.test.maxWorkers).toBe(4);
+    expect(coverage.test.restoreMocks).toBe(true);
     expect(coverage.test.include).toEqual([
       'tests/**/*.test.tsx',
       'lib/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
