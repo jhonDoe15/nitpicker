@@ -1,7 +1,17 @@
 {
   "name": "nitpicker",
   "version": "0.1.0",
-  "description": "Differential quality gate: only new enforceable findings fail.",
+  "description": "A quality gate for code written by coding agents. It fails a change only for the problems that change introduces.",
+  "keywords": [
+    "quality-gate",
+    "code-quality",
+    "lint",
+    "coding-agents",
+    "typescript",
+    "java",
+    "mutation-testing",
+    "eslint"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -44,6 +54,20 @@
     "@vitest/coverage-v8": "^4.1.11",
     "typescript": ">=5",
     "vitest": "^4.1.11"
+  },
+  "peerDependenciesMeta": {
+    "@types/node": {
+      "optional": true
+    },
+    "@vitest/coverage-v8": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
   },
   "dependencies": {
     "@barney-media/crap-typescript-core": "0.5.0",
