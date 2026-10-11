@@ -111,6 +111,42 @@ describe('config file', () => {
   });
 });
 
+describe('tool precedence', () => {
+  it('accepts every ordering of the project and nitpicker configs', () => {
+    for (const precedence of [
+      ['nitpicker'],
+      ['project'],
+      ['project', 'nitpicker'],
+      ['nitpicker', 'project'],
+    ]) {
+      expect(validateConfig({ tools: { prettier: { precedence } } })).toBeDefined();
+    }
+  });
+
+  it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
+    expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
+      '"tools" names unknown tool "eslint". Supported tools: prettier',
+    );
+    expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
+      '"tools.prettier" has unknown key "config"',
+    );
+    for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
+      expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
+        '"tools.prettier.precedence" must list',
+      );
+    }
+    expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
+  });
+
+  it('is a TypeScript-only key and shows up as a config override', () => {
+    const tools = { prettier: { precedence: ['project', 'nitpicker'] } };
+    expect(() => validateConfig({ preset: 'java', tools })).toThrow(
+      '"tools" is not supported with "preset": "java"',
+    );
+    expect(describeConfigOverrides({ tools })).toEqual([`tools: ${JSON.stringify(tools)}`]);
+  });
+});
+
 describe('strict exceptions', () => {
   const exception = {
     rule: 'nitpicker/preserve-error-cause',
