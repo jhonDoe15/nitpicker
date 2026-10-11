@@ -180,6 +180,7 @@ function prettierCheckFor(layout, exclusions) {
     ignoreRelativePath: 'languages/typescript/preset/defaults/.prettierignore',
     shardWeight: 8,
     configurationFiles: [
+      'languages/typescript/adapters/prettier-layers.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       'languages/typescript/preset/defaults/.prettierrc.json',

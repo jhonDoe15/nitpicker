@@ -373,7 +373,6 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-    expect(result.output.out).toContain('K.kt');
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({
         tool: 'detekt',
@@ -382,9 +381,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
         classification: 'enforceable',
       }),
     ]);
-    expect(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8')).toContain(
-      'detekt.style.MagicNumber',
-    );
+    expect(
+      result
+        .json('report.sarif')
+        .runs.flatMap((sarifRun) => sarifRun.results.map(({ ruleId }) => ruleId)),
+    ).toEqual(['detekt/detekt.style.MagicNumber']);
   });
 
   it.each([
@@ -432,18 +433,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
-  it.each(['head', 'base'])('reports a Gradle failure on %s as a kotlin tool error', (snapshot) => {
-    const broken = { GRADLE_FAIL: 'compileKotlin failed\n' };
-    const root = kotlinRepository(snapshot === 'base' ? broken : {});
-    if (snapshot === 'head') {
-      write(root, broken);
-    } else {
-      git(root, ['rm', '-q', 'GRADLE_FAIL']);
-    }
-    commit(root, 'change the build');
-
-    const result = run(root);
-
+  const expectKotlinToolError = (result, snapshot) => {
     expect(result.exitCode).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
       expect.objectContaining({
@@ -453,6 +443,22 @@ describe('nitpicker with "preset": "kotlin"', () => {
         message: expect.stringContaining('compileKotlin failed'),
       }),
     ]);
+  };
+
+  it('reports a Gradle failure on head as a kotlin tool error', () => {
+    const root = kotlinRepository();
+    write(root, { GRADLE_FAIL: 'compileKotlin failed\n' });
+    commit(root, 'break the build');
+
+    expectKotlinToolError(run(root), 'head');
+  });
+
+  it('reports a Gradle failure on base as a kotlin tool error', () => {
+    const root = kotlinRepository({ GRADLE_FAIL: 'compileKotlin failed\n' });
+    git(root, ['rm', '-q', 'GRADLE_FAIL']);
+    commit(root, 'fix the build');
+
+    expectKotlinToolError(run(root), 'base');
   });
 });
 

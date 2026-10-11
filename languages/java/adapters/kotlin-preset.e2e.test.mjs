@@ -10,11 +10,10 @@ import { analyzeJavaSnapshot } from './java-runner.mjs';
 // Java 21, Gradle, lizard (see java-preset.e2e.test.mjs) and network access to Maven Central and
 // the Gradle plugin portal (the Kotlin Gradle plugin, detekt, ktlint and ktfmt are downloaded on
 // the first run), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`).
-// NITPICKER_GRADLE overrides `gradle`.
+// NITPICKER_GRADLE overrides `gradle`. The script raises the test timeout to 15 minutes per step.
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const GRADLE_STEP_TIMEOUT_MS = 15 * 60 * 1000;
 const kotlinPolicy = { preset: 'kotlin' };
 const kotlinSources = 'src/main/kotlin/demo';
 
@@ -105,6 +104,8 @@ function git(...args) {
     encoding: 'utf8',
     env: {
       ...process.env,
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
       GIT_AUTHOR_NAME: 'fixture',
       GIT_AUTHOR_EMAIL: 'fixture@example.com',
       GIT_COMMITTER_NAME: 'fixture',
@@ -130,6 +131,8 @@ function commitBranch(name, files) {
 
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
+
+const fromTool = (findings, tool) => summarize(findings.filter((finding) => finding.tool === tool));
 
 const diffOf = (branch, policy = kotlinPolicy) => {
   git('checkout', '-q', branch);
@@ -168,110 +171,85 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     rmSync(repository, { recursive: true, force: true });
   });
 
-  it(
-    'passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves',
-    () => {
-      const result = diffOf('clean');
+  it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
+    const result = diffOf('clean');
 
-      expect(result.failed).toBe(false);
-      expect(summarize(result.newEnforceable)).toEqual([]);
-      expect(summarize(result.newFindings)).toContain('jacoco line-coverage Farewell.kt');
-      expect(summarize(result.unchangedFindings)).toContain(
-        'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.failed).toBe(false);
+    expect(summarize(result.newEnforceable)).toEqual([]);
+    expect(fromTool(result.newFindings, 'jacoco')).toEqual(['jacoco line-coverage Farewell.kt']);
+    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual([
+      'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+    ]);
+  });
 
-  it(
-    'fails new detekt findings and an unformatted file (ktlint is the default) in Kotlin code',
-    () => {
-      const result = diffOf('violation');
+  it('fails new detekt findings and an unformatted file (ktlint is the default) in Kotlin code', () => {
+    const result = diffOf('violation');
 
-      expect(result.failed).toBe(true);
-      expect(summarize(result.newEnforceable)).toEqual(
-        [...BAD_FINDINGS, 'ktlint format Bad.kt'].sort(),
-      );
-      expect(summarize(result.unchangedFindings)).toContain(
-        'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-      );
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.failed).toBe(true);
+    expect(summarize(result.newEnforceable)).toEqual(
+      [...BAD_FINDINGS, 'ktlint format Bad.kt'].sort(),
+    );
+    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual([
+      'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+    ]);
+  });
 
-  it(
-    'still gates Java sources of a Kotlin module with the Java tools',
-    () => {
-      const result = diffOf('java-in-kotlin-module');
+  it('still gates Java sources of a Kotlin module with the Java tools', () => {
+    const result = diffOf('java-in-kotlin-module');
 
-      expect(result.failed).toBe(true);
-      expect(summarize(result.newEnforceable)).toContain('pmd EmptyCatchBlock Danger.java');
-      expect(
-        result.newEnforceable.filter((finding) =>
-          ['detekt', 'ktlint', 'ktfmt'].includes(finding.tool),
-        ),
-      ).toEqual([]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(result.failed).toBe(true);
+    expect(fromTool(result.newEnforceable, 'pmd')).toEqual(['pmd EmptyCatchBlock Danger.java']);
+    expect(
+      result.newEnforceable.filter((finding) =>
+        ['detekt', 'ktlint', 'ktfmt'].includes(finding.tool),
+      ),
+    ).toEqual([]);
+  });
 
-  it(
-    "runs detekt with the project's config laid over the defaults",
-    () => {
-      const result = diffOf('detekt-config');
+  it("runs detekt with the project's config laid over the defaults", () => {
+    const result = diffOf('detekt-config');
 
-      expect(summarize(result.newEnforceable)).toEqual([
-        'detekt detekt.style.UnusedPrivateProperty Bad.kt',
-        'ktlint format Bad.kt',
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(summarize(result.newEnforceable)).toEqual([
+      'detekt detekt.style.UnusedPrivateProperty Bad.kt',
+      'ktlint format Bad.kt',
+    ]);
+  });
 
-  it(
-    'checks formatting with ktfmt when configured, accepting code in its style',
-    () => {
-      const result = diffOf('ktfmt', { preset: 'kotlin', kotlinFormatter: 'ktfmt' });
+  it('checks formatting with ktfmt when configured, accepting code in its style', () => {
+    const result = diffOf('ktfmt', { preset: 'kotlin', kotlinFormatter: 'ktfmt' });
 
-      expect(summarize(result.newEnforceable)).toEqual(
-        [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
-      );
-      expect(summarize(result.unchangedFindings)).toContain('ktfmt format Greeter.kt');
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(summarize(result.newEnforceable)).toEqual(
+      [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
+    );
+    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual([
+      'ktfmt format Greeter.kt',
+      'ktfmt format Legacy.kt',
+    ]);
+  });
 
-  it(
-    'detects ktfmt from the build files when the project names it',
-    () => {
-      git('checkout', '-q', 'ktfmt-named');
-      const findings = collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
-      const formatters = new Set(
-        findings.filter(({ rule }) => rule === 'format').map(({ tool }) => tool),
-      );
+  it('detects ktfmt from the build files when the project names it', () => {
+    git('checkout', '-q', 'ktfmt-named');
+    const findings = collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
+    const formatters = new Set(
+      findings.filter(({ rule }) => rule === 'format').map(({ tool }) => tool),
+    );
 
-      expect(formatters.has('ktfmt')).toBe(true);
-      expect(formatters.has('ktlint')).toBe(false);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(formatters.has('ktfmt')).toBe(true);
+    expect(formatters.has('ktlint')).toBe(false);
+  });
 
-  it(
-    'reports a Gradle failure as a tool error instead of throwing',
-    () => {
-      git('checkout', '-q', 'broken');
+  it('reports a Gradle failure as a tool error instead of throwing', () => {
+    git('checkout', '-q', 'broken');
 
-      const { findings } = analyzeJavaSnapshot(repository, { gradle, policy: kotlinPolicy });
+    const { findings } = analyzeJavaSnapshot(repository, { gradle, policy: kotlinPolicy });
 
-      expect(findings).toEqual([
-        expect.objectContaining({
-          tool: 'kotlin',
-          rule: 'gradle-failure',
-          classification: 'tool-error',
-          message: expect.stringContaining('Broken.kt'),
-        }),
-      ]);
-    },
-    GRADLE_STEP_TIMEOUT_MS,
-  );
+    expect(findings).toEqual([
+      expect.objectContaining({
+        tool: 'kotlin',
+        rule: 'gradle-failure',
+        classification: 'tool-error',
+        message: expect.stringContaining('Broken.kt'),
+      }),
+    ]);
+  });
 });

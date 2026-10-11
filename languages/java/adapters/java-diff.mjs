@@ -28,7 +28,7 @@ function kotlinProperties({ preset, kotlinFormatter }) {
   ];
 }
 
-export function runJavaPreset(
+function runJavaPreset(
   projectRoot,
   { gradle = 'gradle', initScript = INIT_SCRIPT, policy = {} } = {},
 ) {

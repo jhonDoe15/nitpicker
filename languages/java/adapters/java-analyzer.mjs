@@ -4,8 +4,8 @@ import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 
-export const JAVA_ANALYZER_NAME = 'java';
-export const KOTLIN_ANALYZER_NAME = 'kotlin';
+const JAVA_ANALYZER_NAME = 'java';
+const KOTLIN_ANALYZER_NAME = 'kotlin';
 export const GRADLE_ANALYZER_NAMES = [JAVA_ANALYZER_NAME, KOTLIN_ANALYZER_NAME];
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;

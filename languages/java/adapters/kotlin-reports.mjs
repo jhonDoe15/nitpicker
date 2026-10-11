@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
 
-export const DETEKT_TOOL = 'detekt';
+const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
 const FORMAT_REPORT = 'kotlin-format.txt';
 

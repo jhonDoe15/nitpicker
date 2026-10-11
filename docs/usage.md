@@ -15,8 +15,9 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
 tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `vitest`, `@vitest/coverage-v8` and `typescript` come from your project; if one is
-missing or incompatible, the tool that needs it fails and the report shows a tool error.
+choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
+your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
+tool error.
 
 ## First run
 
@@ -25,6 +26,11 @@ npx nitpicker
 ```
 
 Run it from anywhere inside your project. It needs no configuration.
+
+The project is the nearest directory, up to the repository root, that holds a `package.json` or a
+`nitpicker.config.json`. A repository with several projects, for example a TypeScript `web/` and a
+Java `service/`, runs nitpicker once in each directory, and each reads its own
+`nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
 
 Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into your
 `AGENTS.md`.
@@ -163,6 +169,7 @@ is visible in review.
 | `exceptions`      | object[]                   | TypeScript only. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
 | `analyzers`       | object[]                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `legacyInventory` | string                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `tools`           | object                     | TypeScript only. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `kotlin`          | object                     | Kotlin preset only. `formatter`: `"ktlint"` or `"ktfmt"`, the format check to run; detected from the build files when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
@@ -287,6 +294,30 @@ own tools do:
   coverage thresholds never decide nitpicker's findings.
 
 Without a project `tsconfig.json` or Vitest config, nitpicker uses its own defaults.
+
+### Your project's tool configs
+
+By default every tool runs with nitpicker's own config, so the project's settings can't loosen the
+gate. When a project already has a config it wants to keep, `tools` in `nitpicker.config.json`
+sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highest first:
+
+```json
+{ "tools": { "prettier": { "precedence": ["project", "nitpicker"] } } }
+```
+
+| `precedence`               | Config used                                                          |
+| -------------------------- | -------------------------------------------------------------------- |
+| `["nitpicker"]` (default)  | nitpicker's only                                                     |
+| `["project"]`              | the project's only                                                   |
+| `["project", "nitpicker"]` | both merged; the project's value wins where both set the same option |
+| `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
+
+For Prettier, "the project's config" is what Prettier itself resolves for each file
+(`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
+and the project's `.prettierignore` applies too. The version is still the one nitpicker pins. The
+project's config is read from the head checkout and applies to both sides of the comparison, so
+editing it never turns unchanged code into new findings; `--fix` formats with the same merged
+config. The setting is listed under "Config overrides" in the report.
 
 ## Adopting nitpicker on existing code
 

@@ -1,0 +1,10 @@
+{
+  "id": "legacy-invoice-discounts",
+  "title": "Add discount codes to the legacy invoicing feature",
+  "agentTimeoutMinutes": 60,
+  "categories": ["scale"],
+  "prompt": "Add discount codes to invoicing. The feature already exists in src/main/features/invoicing; its public API is computeInvoice(order) and printInvoice(order, writer), both exported from its index.ts. Keep their names and signatures. The order gets an optional discountCodes: readonly string[] (absent or empty means no code). The result of computeInvoice gains discountCents: number (0 when no discount is applied); every other field keeps its meaning. Known codes, matched case-insensitively: SAVE10 (10% off), SAVE25 (25% off), FIVEOFF ($5.00 off) and TWENTY ($20.00 off). A percentage code takes that share of the item subtotal, rounded down to the cent. A fixed code takes its amount, but never more than the item subtotal, so the discounted subtotal is never below zero. The discount comes off before tax: tax is computed on the item subtotal minus the discount. Shipping, including the free-shipping threshold, is still decided from the item subtotal before the discount and ignores the code. subtotalCents stays the undiscounted item subtotal and totalCents = subtotalCents - discountCents + shippingCents + taxCents. Output lines: when a known code applies, add the line 'Discount <CODE>: -<amount>' (code in upper case, amount formatted like the other amounts, e.g. 'Discount SAVE10: -$2.00') directly after the 'Subtotal:' line. When the single code given is unknown, add 'Unknown discount code: <code>' (the code exactly as given) in the same place, and the invoice is computed as if no code was given. At most one code per invoice: when more than one code is given, none is applied, and the line 'Only one discount code per invoice' goes in the same place. An invoice without codes must come out exactly as it does today. Add tests for every case in test/discounts.test.ts. Run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": ["npx", "--no-install", "vitest", "run", "test/discounts.acceptance.test.ts"]
+  }
+}
