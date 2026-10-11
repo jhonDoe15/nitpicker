@@ -79,6 +79,11 @@ const DEAD_CODE_DECLARATIONS = new Map([
 ]);
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
 
+const MAX_LISTED_FAILURES = 5;
+const MAX_ASSERTION_LINE_LENGTH = 200;
+const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
+const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
+
 const invokedPath = process.argv[1];
 if (
   invokedPath !== undefined &&
@@ -436,11 +441,6 @@ function testsFailedFinding(options, { rule, path: findingPath = '.', message })
     classification: 'tool-error',
   };
 }
-
-const MAX_LISTED_FAILURES = 5;
-const MAX_ASSERTION_LINE_LENGTH = 200;
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
 
 function vitestFailures(report, projectRoot) {
   const failures = [];

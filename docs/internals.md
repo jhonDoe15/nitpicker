@@ -42,6 +42,16 @@ Findings follow `spec/findings.schema.json`. Identity (the part of the compariso
 - **Dependency hooks.** A hook has `language`, `manifests` (the first marks a project; if any differs from the live policy root the snapshot needs its own install instead of a link), `directory`, and `install(projectRoot)`, which installs a regular directory and cleans up and throws on failure.
 - **Public contract usage.** Declaration identity keeps unrelated same-name methods and test-only calls from counting as consumers, so results are stable for a differential gate.
 
+## JavaScript preset (`languages/javascript/`)
+
+The JavaScript preset reuses the TypeScript pipeline; `languages/javascript/preset/` holds only what differs.
+
+- **Preset channel.** `resolveHeadPolicy` copies `preset` into the head policy file only for `javascript`, so the TypeScript policy and its cache key do not change. `readLayout` turns it into `layout.javascript` and `layout.entryExtensions` (`js`, `mjs`, `cjs` instead of `ts`); every runner reads the layout through it. `presetAnalyzers` returns `javascriptAnalyzers` (same checks, built from the JavaScript layout) and `applyLayout` rebuilds from `resolveLayoutFor(headPolicy)`.
+- **Generated configs.** The `tsconfig.quality.json` and `tsconfig.stryker.json` rewrites add `allowJs` and `checkJs` (the first also `noEmit`); with a project `tsconfig.json`, or a `jsconfig.json` when there is none, they extend it. `knip.json` gains `.js/.mjs/.cjs` entries and config files, and `jscpd.json` the `javascript` and `jsx` formats, because jscpd's `typescript` format reads only `.ts` and `.mts`. Stryker's TypeScript checker reports a mutant that fails `checkJs` as a compile error, so JavaScript mutants are killed by types as TypeScript ones are.
+- **ESLint dialect.** `eslint-dialect.mjs` rewrites the strict config for JavaScript files: it drops the type-syntax rules and the `no-restricted-syntax` selectors that name a `TS*` node, passes `jsdocTypes`, `jsdoc` or `commonJsExports` to the four rules that map to JSDoc or CommonJS, and adds `no-var`, `prefer-const`, `prefer-rest-params` and `prefer-spread` (typescript-eslint enables them for TypeScript files only). The mapped rules keep their severity and still accept an exception. The dialect is applied before exceptions, so an exception for a dropped rule is an error.
+- **JSDoc parser.** `jsdoc.mjs` accepts one grammar per allowed tag (type in balanced braces, then a name where the tag has one) and reports any other text as prose. A `@type` is a cast only when the comment is directly followed by `(`. `any` and `null` are looked for outside string literals and object keys.
+- **Constants in `quality-areas-runner.mjs`.** The module-level `invokedPath` block runs the runner on import, so the constants it uses are declared above it. Declared below, they were still in their temporal dead zone when a failing test reached the failure formatter, which crashed the coverage check instead of reporting `tests-failed`.
+
 ## Java preset (`languages/java/`)
 
 Gradle runs once and yields findings for all tools; reports land in `<projectRoot>/build/nitpicker`. Ingesters turn tool reports into findings:

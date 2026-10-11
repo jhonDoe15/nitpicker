@@ -21,8 +21,18 @@ describe('config file', () => {
   it('accepts the java preset and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
     expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java',
+      '"preset" must be one of: typescript, javascript, java',
     );
+  });
+
+  it('accepts the javascript preset with the TypeScript-pipeline keys', () => {
+    const config = {
+      preset: 'javascript',
+      layout: { sourceRoots: ['lib'] },
+      exceptions: [{ rule: 'nitpicker/no-throw', paths: ['lib/**'], reason: 'A reviewed reason.' }],
+      tools: { prettier: { precedence: ['project'] } },
+    };
+    expect(validateConfig(config)).toEqual(config);
   });
 
   it('shares thresholds, exclude and legacyInventory between presets', () => {

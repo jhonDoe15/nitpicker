@@ -12,6 +12,10 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react-scope.mjs';
+import {
+  applyJavascriptDialect,
+  javascriptRuleEntries,
+} from '../../../javascript/preset/eslint-dialect.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
 const policy = readHeadPolicy();
@@ -120,4 +124,10 @@ const presetConfig = tseslint.config(
   },
 );
 
-export default applyRuleExceptions(presetConfig, policy.exceptions);
+export default applyRuleExceptions(
+  applyJavascriptDialect(
+    [...presetConfig, ...javascriptRuleEntries(policy, selectedFiles)],
+    policy,
+  ),
+  policy.exceptions,
+);

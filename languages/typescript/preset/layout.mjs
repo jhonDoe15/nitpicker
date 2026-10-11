@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
+import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 
 export { globToRegExp };
 
@@ -25,12 +26,7 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-export function resolveLayout(layout = {}, exclude = []) {
-  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
-  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
-  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
-  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
-  const excludeMatchers = exclude.map(globToRegExp);
+function filePatterns(sourceRoots, testRoots) {
   const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
   const testAlternatives = testRoots.map(escapeRegExp).join('|');
   const testPattern = new RegExp(
@@ -43,8 +39,27 @@ export function resolveLayout(layout = {}, exclude = []) {
       .join('|'),
   );
   const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.[cm]?[jt]sx?$`);
+  return { testPattern, sourcePattern };
+}
 
+function unitTestGlobsFor({ sourceRoots, testRoots, javascript }) {
+  const extension = javascript ? codeExtensions : 'ts';
+  return [
+    ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${extension}`),
+    ...testRoots.map((root) => `${root}/unit/**/*.${extension}`),
+  ];
+}
+
+export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
+  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
+  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
+  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
+  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
+  const excludeMatchers = exclude.map(globToRegExp);
+  const { testPattern, sourcePattern } = filePatterns(sourceRoots, testRoots);
   const resolved = {
+    javascript,
+    entryExtensions: javascript ? ['js', 'mjs', 'cjs'] : ['ts'],
     sourceRoots,
     sourceRoot,
     testRoots,
@@ -56,10 +71,7 @@ export function resolveLayout(layout = {}, exclude = []) {
       ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`),
     ],
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: [
-      ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.ts`),
-      ...testRoots.map((root) => `${root}/unit/**/*.ts`),
-    ],
+    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript }),
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
     excludePattern:
@@ -125,6 +137,10 @@ export function resolveLayout(layout = {}, exclude = []) {
 
 export function existingRoots(projectRoot, roots) {
   return roots.filter((root) => existsSync(path.join(projectRoot, root)));
+}
+
+export function resolveLayoutFor(policy = {}) {
+  return resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) });
 }
 
 const defaults = resolveLayout();

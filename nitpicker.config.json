@@ -19,6 +19,7 @@
   "exclude": [
     "languages/java/ingest/fixtures/**",
     "languages/java/adapters/fixtures/**",
+    "languages/javascript/preset/fixtures/**",
     "core/diff/fixtures/**",
     "languages/typescript/preset/fixtures/**",
     "languages/typescript/preset/architecture/fixtures/**",

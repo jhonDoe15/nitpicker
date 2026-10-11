@@ -11,6 +11,8 @@ import path from 'node:path';
 
 export const HEAD_POLICY_ENV = 'NITPICKER_POLICY';
 
+const POLICY_PRESETS = ['javascript'];
+
 /** The validated config reduced to the keys that change what runners analyze. */
 export function resolveHeadPolicy(config = {}) {
   return {
@@ -19,6 +21,7 @@ export function resolveHeadPolicy(config = {}) {
     exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
     ...(config.react === undefined ? {} : { react: config.react }),
+    ...(POLICY_PRESETS.includes(config.preset) ? { preset: config.preset } : {}),
     ...(config.tools === undefined ? {} : { tools: config.tools }),
   };
 }
