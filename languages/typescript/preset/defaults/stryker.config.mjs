@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { readLayout } from '../head-policy.mjs';
 
 const { sourceGlobs, testGlobs, excludedGlobs, testRoots, sourceRoots, sourceTestDirectoryGlobs } =
@@ -10,6 +11,9 @@ export default {
     ...sourceTestDirectoryGlobs.map((glob) => `!${glob}`),
     ...testGlobs.map((glob) => `!${glob}`),
   ],
+  plugins: ['@stryker-mutator/vitest-runner', '@stryker-mutator/typescript-checker'].map((name) =>
+    fileURLToPath(import.meta.resolve(name)),
+  ),
   testRunner: 'vitest',
   checkers: ['typescript'],
   tsconfigFile: 'tsconfig.stryker.json',
