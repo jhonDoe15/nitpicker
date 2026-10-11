@@ -8,6 +8,8 @@ import { pathToFileURL } from 'node:url';
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 
+export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
+
 export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT } = {}) {
   const trustedPackageRoot = realpathSync(packageRoot);
   const owningManifest =

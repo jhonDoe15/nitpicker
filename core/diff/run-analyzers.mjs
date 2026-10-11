@@ -69,8 +69,6 @@ export function runAnalyzers({
     throw new TypeError('liveProjectRoot is required');
   }
 
-  const reports = new Map();
-  const timings = new Map();
   const toolErrors = [];
   const tasks = [];
 
@@ -112,33 +110,56 @@ export function runAnalyzers({
     }
   }
 
-  if (tasks.length > 0) {
-    try {
-      const scheduled = runTasks(tasks, headPolicyFile);
-      for (const [name, report] of scheduled.reports) {
-        reports.set(name, report);
-      }
-      for (const error of scheduled.errors) {
-        toolErrors.push({ tool: error.name, snapshot, message: error.message });
-      }
-      for (const timing of scheduled.timings) {
-        timings.set(timing.name, timing.elapsedMs);
-      }
-    } catch (error) {
-      toolErrors.push({
-        tool: 'analyzer-scheduler',
-        snapshot,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  return { reports, timings, toolErrors };
+  const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  return {
+    reports: scheduled.reports,
+    timings: scheduled.timings,
+    toolErrors: [...toolErrors, ...scheduled.toolErrors],
+    skipped: scheduled.skipped,
+  };
 }
 
-function runScheduler(tasks, headPolicyFile) {
+function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
+  const outcome = {
+    reports: new Map(),
+    timings: new Map(),
+    toolErrors: [],
+    skipped: new Map(),
+  };
+  if (tasks.length === 0) {
+    return outcome;
+  }
+  try {
+    const scheduled = runTasks(tasks, headPolicyFile, { snapshot });
+    for (const [name, report] of scheduled.reports) {
+      outcome.reports.set(name, report);
+    }
+    for (const error of scheduled.errors) {
+      outcome.toolErrors.push({ tool: error.name, snapshot, message: error.message });
+    }
+    for (const { name, because } of scheduled.skipped ?? []) {
+      outcome.skipped.set(name, because);
+    }
+    for (const timing of scheduled.timings) {
+      outcome.timings.set(timing.name, timing.elapsedMs);
+    }
+  } catch (error) {
+    outcome.toolErrors.push({
+      tool: 'analyzer-scheduler',
+      snapshot,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+  return outcome;
+}
+
+export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
+  const liveProgress = Number.isInteger(progress?.stream.fd);
   const result = spawnSync(process.execPath, [schedulerPath], {
-    input: JSON.stringify({ tasks }),
+    input: JSON.stringify({
+      tasks: liveProgress ? withProgressLabel(tasks, progress.label) : tasks,
+    }),
+    stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress.stream.fd] : [])],
     env:
       headPolicyFile === undefined
         ? process.env
@@ -160,6 +181,10 @@ function runScheduler(tasks, headPolicyFile) {
       cause: error,
     });
   }
+}
+
+function withProgressLabel(tasks, label) {
+  return tasks.map((task) => ({ ...task, progress: { label } }));
 }
 
 function validateInvocation(analyzerName, invocation) {

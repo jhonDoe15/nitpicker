@@ -299,43 +299,129 @@ function sectionIsInside(section, projectRelativePath) {
   return filePath === undefined || normalizeGitPath(filePath).startsWith(`${projectRelativePath}/`);
 }
 
-const HUNK_HEADER = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 export function parseChangedLines(diffText, projectRelativePath = '.') {
   const changed = new Map();
-  let current;
-  let isNewFile = false;
-  for (const line of diffText.split('\n')) {
-    if (line.startsWith('diff --git ')) {
-      current = undefined;
-      isNewFile = false;
-    } else if (line.startsWith('new file mode')) {
-      isNewFile = true;
-    } else if (line.startsWith('+++ ')) {
-      const filePath = diffTargetPath(line.slice(4));
-      current =
-        filePath === undefined
-          ? undefined
-          : {
-              path: relativeToProject(filePath, projectRelativePath),
-              added: isNewFile,
-              ranges: [],
-            };
-      if (current !== undefined) {
-        changed.set(current.path, current);
-      }
-    } else if (current !== undefined) {
-      const hunk = HUNK_HEADER.exec(line);
-      if (hunk !== null) {
-        const start = Number(hunk[1]);
-        const count = hunk[2] === undefined ? 1 : Number(hunk[2]);
-        if (count > 0) {
-          current.ranges.push([start, start + count - 1]);
-        }
-      }
+  for (const section of diffText.split(/^(?=diff --git )/m)) {
+    const file = parseFileSection(section, projectRelativePath);
+    if (file !== undefined) {
+      changed.set(file.path, file);
     }
   }
   return changed;
+}
+
+function parseFileSection(section, projectRelativePath) {
+  const [header = '', ...hunks] = section.split(/^(?=@@ )/m);
+  const target = /^\+\+\+ (.+)$/m.exec(header);
+  const filePath = target === null ? undefined : diffTargetPath(target[1]);
+  if (filePath === undefined) {
+    return undefined;
+  }
+  const file = {
+    path: relativeToProject(filePath, projectRelativePath),
+    added: /^new file mode/m.test(header),
+    ranges: [],
+    inserted: [],
+  };
+  for (const hunk of hunks) {
+    recordHunk(file, hunk);
+  }
+  return file;
+}
+
+function recordHunk(file, hunkText) {
+  const [headerLine = '', ...body] = hunkText.split('\n');
+  const hunk = HUNK_HEADER.exec(headerLine);
+  if (hunk === null) {
+    return;
+  }
+  const removedCount = hunk[1] === undefined ? 1 : Number(hunk[1]);
+  const start = Number(hunk[2]);
+  const count = hunk[3] === undefined ? 1 : Number(hunk[3]);
+  if (count > 0) {
+    file.ranges.push([start, start + count - 1]);
+  }
+  const removed = body.filter((line) => line.startsWith('-')).map((line) => line.slice(1));
+  const added = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1));
+  const insertedOffsets =
+    added.length === count && removed.length === removedCount
+      ? unpairedOffsets(removed, added)
+      : beyondReplacedOffsets(removedCount, count);
+  file.inserted.push(...offsetRanges(start, insertedOffsets));
+}
+
+function beyondReplacedOffsets(removedCount, count) {
+  return Array.from(
+    { length: Math.max(count - removedCount, 0) },
+    (_, index) => removedCount + index,
+  );
+}
+
+const EDITED_LINE_SIMILARITY = 0.5;
+
+function unpairedOffsets(removed, added) {
+  const removedWords = removed.map(wordsOf);
+  const addedWords = added.map(wordsOf);
+  const candidates = addedWords
+    .flatMap((words, addedIndex) =>
+      removedWords.map((before, removedIndex) => ({
+        addedIndex,
+        removedIndex,
+        score: similarity(before, words),
+      })),
+    )
+    .filter(({ score }) => score >= EDITED_LINE_SIMILARITY)
+    .toSorted((left, right) => right.score - left.score);
+  const pairedAdded = new Set();
+  const pairedRemoved = new Set();
+  for (const { addedIndex, removedIndex } of candidates) {
+    if (!pairedAdded.has(addedIndex) && !pairedRemoved.has(removedIndex)) {
+      pairedAdded.add(addedIndex);
+      pairedRemoved.add(removedIndex);
+    }
+  }
+  return added.flatMap((_, index) => (pairedAdded.has(index) ? [] : [index]));
+}
+
+function wordsOf(line) {
+  return line.match(/[\p{L}\p{N}_$]+/gu) ?? [];
+}
+
+function wordCounts(words) {
+  const counts = new Map();
+  for (const word of words) {
+    counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function similarity(before, after) {
+  const total = before.length + after.length;
+  if (total === 0) {
+    return 1;
+  }
+  const beforeCounts = wordCounts(before);
+  const shared = [...wordCounts(after)].reduce(
+    (sum, [word, count]) => sum + Math.min(count, beforeCounts.get(word) ?? 0),
+    0,
+  );
+  return (2 * shared) / total;
+}
+
+function offsetRanges(start, offsets) {
+  const ranges = [];
+  for (const offset of offsets) {
+    const line = start + offset;
+    const last = ranges.at(-1);
+    if (last !== undefined && last[1] === line - 1) {
+      last[1] = line;
+    } else {
+      ranges.push([line, line]);
+    }
+  }
+  return ranges;
 }
 
 function diffTargetPath(target) {

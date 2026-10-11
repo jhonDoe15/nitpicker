@@ -1,9 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { analyzeJavaSnapshot, parseRunnerArguments } from '../../../languages/java/adapters/java-runner.mjs';
+import {
+  analyzeJavaSnapshot,
+  parseRunnerArguments,
+} from '../../../languages/java/adapters/java-runner.mjs';
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
-import { reportFromAnalyzerOutput } from '../analyzer-scheduler.mjs';
+import { progressEvent, reportFromAnalyzerOutput } from '../analyzer-scheduler.mjs';
+import { createProgressReporter } from '../progress.mjs';
 import { runFakeAnalyzer } from './fake-analyzer.mjs';
 
 // A test seam for `runAnalyzers({ runTasks })`: runs the analyzer task graph in the test process
@@ -14,7 +18,10 @@ import { runFakeAnalyzer } from './fake-analyzer.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
-const javaRunnerPath = path.resolve(import.meta.dirname, '../../../languages/java/adapters/java-runner.mjs');
+const javaRunnerPath = path.resolve(
+  import.meta.dirname,
+  '../../../languages/java/adapters/java-runner.mjs',
+);
 
 const inProcessScripts = new Map([
   [fakeAnalyzerPath, (argv) => runFakeAnalyzer(argv)],
@@ -22,7 +29,15 @@ const inProcessScripts = new Map([
 ]);
 
 /** Same contract as the scheduler subprocess: `{ reports, errors, timings }` in task order. */
-export function runTasksInProcess(tasks, headPolicyFile) {
+export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
+  const reportSettled =
+    progress === undefined
+      ? undefined
+      : createProgressReporter({
+          write: (line) => progress.stream.write(line),
+          label: progress.label,
+          total: tasks.length,
+        });
   const environment = headPolicyFile === undefined ? {} : headPolicyEnvironment(headPolicyFile);
   const tasksByName = new Map(tasks.map((task) => [task.name, task]));
   const outcomes = new Map();
@@ -37,19 +52,20 @@ export function runTasksInProcess(tasks, headPolicyFile) {
       const dependency = tasksByName.get(dependencyName);
       const outcome =
         dependency === undefined
-          ? { name: dependencyName, error: `missing for ${task.name}` }
+          ? {
+              name: dependencyName,
+              error: `Analyzer dependency ${dependencyName} is missing for ${task.name}`,
+              missing: true,
+            }
           : runTask(dependency);
-      failedDependency ??= outcome.error === undefined ? undefined : outcome;
+      failedDependency ??= hasFailed(outcome) ? outcome : undefined;
     }
     const outcome =
       failedDependency === undefined
         ? executeTask(task, environment)
-        : {
-            name: task.name,
-            error: `Analyzer dependency ${failedDependency.name} failed or did not run`,
-            elapsedMs: 0,
-          };
+        : dependentOutcome(task, failedDependency);
     outcomes.set(task.name, outcome);
+    reportSettled?.(progressEvent(outcome));
     return outcome;
   };
 
@@ -72,6 +88,25 @@ export function runTasksInProcess(tasks, headPolicyFile) {
       .filter((outcome) => outcome.error !== undefined)
       .map((outcome) => ({ name: outcome.name, message: outcome.error })),
     timings: results.map(({ name, elapsedMs }) => ({ name, elapsedMs })),
+  };
+}
+
+function hasFailed(outcome) {
+  return (
+    outcome.error !== undefined ||
+    outcome.skippedBecause !== undefined ||
+    (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+  );
+}
+
+function dependentOutcome(task, failedDependency) {
+  if (failedDependency.missing === true) {
+    return { name: task.name, error: failedDependency.error, elapsedMs: 0 };
+  }
+  return {
+    name: task.name,
+    skippedBecause: failedDependency.skippedBecause ?? failedDependency.name,
+    elapsedMs: 0,
   };
 }
 

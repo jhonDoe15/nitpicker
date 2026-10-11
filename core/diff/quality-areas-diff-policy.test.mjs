@@ -12,6 +12,8 @@ import { compareFindings } from './compare.mjs';
 import { runAnalyzers, selectAnalyzers } from './run-analyzers.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
 import {
+  coverageFailureFindings,
+  describeUncoveredArms,
   formatVitestFailures,
   normalizeBaselineExpansions,
   normalizeCoupling,
@@ -23,6 +25,7 @@ import {
   normalizeStructure,
   normalizeTestRuntime,
   rebaseMutationConfig,
+  sourceSnippet,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
 
 const EXPECTED_ANALYZER_NAMES = [
@@ -91,6 +94,44 @@ describe('complete quality-area analyzer catalog', () => {
     },
   );
 
+  it('skips CRAP, without a tool error of its own, when coverage reports failing tests', () => {
+    const analyzer = (name, dependencies, report) => ({
+      name,
+      dependencies,
+      version: '1.0.0',
+      configurationHash: 'test',
+      exclusions: [],
+      createInvocation: () => ({
+        command: process.execPath,
+        args: ['-e', `process.stdout.write(${JSON.stringify(JSON.stringify(report))})`],
+        cwd: import.meta.dirname,
+      }),
+    });
+    const testsFailed = {
+      tool: 'coverage',
+      rule: 'tests-failed',
+      path: 'test/a.test.ts',
+      identity: 'tests-failed',
+      message: '1 test fails',
+      classification: 'tool-error',
+    };
+    const result = runAnalyzers({
+      analyzers: [
+        analyzer('coverage', [], { findings: [testsFailed] }),
+        analyzer('crap', ['coverage'], { findings: [] }),
+      ],
+      projectRoot: import.meta.dirname,
+      policyRoot: import.meta.dirname,
+      toolRoot: import.meta.dirname,
+      liveProjectRoot: PACKAGE_ROOT,
+      snapshot: 'head',
+    });
+
+    expect([...result.reports.keys()]).toEqual(['coverage']);
+    expect(result.toolErrors).toEqual([]);
+    expect(result.skipped.get('crap')).toBe('coverage');
+  });
+
   it.each([['differential', configuredAnalyzers]])(
     'configures expensive analyzer scheduling metadata in the %s dial',
     (dial, analyzers) => {
@@ -133,27 +174,106 @@ describe('complete quality-area analyzer catalog', () => {
     expect(config.test.maxWorkers).toBe(4);
   });
 
-  it('reports failed Vitest assertions from the JSON report', () => {
-    expect(
-      formatVitestFailures({
-        numFailedTests: 1,
+  it('names each failing test with its file and first assertion line', () => {
+    const message = formatVitestFailures(
+      {
+        numFailedTests: 2,
         testResults: [
           {
-            name: '/workspace/src/main/example.test.ts',
+            name: '/workspace/test/example.test.ts',
             assertionResults: [
               {
                 fullName: 'example rejects invalid input',
                 status: 'failed',
-                failureMessages: ['expected 500 to be 400'],
+                failureMessages: ['AssertionError: expected 500 to be 400\n    at run (x.js:1:1)'],
+              },
+              { fullName: 'example passes', status: 'passed', failureMessages: [] },
+              {
+                fullName: 'example other',
+                status: 'failed',
+                failureMessages: ['\u001B[31mexpected [] to have a length of 1\u001B[39m'],
               },
             ],
           },
         ],
-      }),
-    ).toBe(
-      '1 test failed:\n' +
-        '/workspace/src/main/example.test.ts > example rejects invalid input\n' +
-        'expected 500 to be 400',
+      },
+      '/workspace',
+    );
+
+    expect(message).toBe(
+      '2 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+        '  test/example.test.ts > example rejects invalid input: AssertionError: expected 500 to be 400\n' +
+        '  test/example.test.ts > example other: expected [] to have a length of 1',
+    );
+  });
+
+  it('keeps the process output when Vitest fails without naming a test', () => {
+    expect(() =>
+      coverageFailureFindings(
+        { analyzerName: 'coverage', projectRoot: '/p' },
+        { numFailedTests: 0, testResults: [] },
+        { status: 1, stdout: '', stderr: 'Unhandled Rejection: boom' },
+      ),
+    ).toThrow(
+      /exited 1 without naming a failing test\nProcess output:\nUnhandled Rejection: boom/u,
+    );
+  });
+
+  it('anchors the tool error inside the project even for a test file Vitest reports elsewhere', () => {
+    const [finding] = coverageFailureFindings(
+      { analyzerName: 'coverage', projectRoot: '/p' },
+      {
+        numFailedTests: 1,
+        testResults: [
+          {
+            name: '/elsewhere/test/a.test.ts',
+            assertionResults: [{ fullName: 'adds', status: 'failed', failureMessages: ['no'] }],
+          },
+        ],
+      },
+      { status: 1, stdout: '', stderr: '' },
+    );
+
+    expect(finding).toEqual(
+      expect.objectContaining({ tool: 'coverage', path: '.', classification: 'tool-error' }),
+    );
+    expect(finding.message).toBe(
+      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+    );
+  });
+
+  it('lists at most five failing tests and a test file that could not run', () => {
+    const failing = (index) => ({
+      fullName: `case ${String(index)}`,
+      status: 'failed',
+      failureMessages: ['boom'],
+    });
+    const message = formatVitestFailures(
+      {
+        numFailedTests: 7,
+        testResults: [
+          { name: '/p/test/a.test.ts', assertionResults: [1, 2, 3, 4, 5, 6].map(failing) },
+          {
+            name: '/p/test/broken.test.ts',
+            status: 'failed',
+            message: 'Failed to resolve import "./missing"',
+            assertionResults: [],
+          },
+        ],
+      },
+      '/p',
+    );
+
+    expect(message).toBe(
+      [
+        '7 tests fail, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '  test/a.test.ts > case 1: boom',
+        '  test/a.test.ts > case 2: boom',
+        '  test/a.test.ts > case 3: boom',
+        '  test/a.test.ts > case 4: boom',
+        '  test/a.test.ts > case 5: boom',
+        '  … and 2 more',
+      ].join('\n'),
     );
   });
 
@@ -256,13 +376,7 @@ describe('complete quality-area analyzer catalog', () => {
     });
 
     expect(result.reports.size).toBe(0);
-    expect(result.toolErrors).toEqual([
-      expect.objectContaining({ tool: 'coverage' }),
-      expect.objectContaining({
-        tool: 'crap',
-        message: expect.stringContaining('dependency coverage failed'),
-      }),
-    ]);
+    expect(result.toolErrors).toEqual([expect.objectContaining({ tool: 'coverage' })]);
   });
 
   it.each([['differential', configuredAnalyzers]])(
@@ -387,6 +501,34 @@ describe('complete quality-area analyzer catalog', () => {
     ]);
   });
 
+  it('tells which export to drop and why', () => {
+    const messages = normalizeDeadCode(
+      {
+        files: ['src/main/orphan.ts'],
+        issues: [
+          {
+            file: 'src/main/a.ts',
+            types: [
+              { name: 'Rejection', line: 1, col: 13 },
+              { name: 'Local', line: 2, col: 13, usedInFile: true },
+            ],
+            exports: [{ name: 'helper', line: 5, col: 17 }],
+            dependencies: [{ name: 'left-pad' }],
+          },
+        ],
+      },
+      'dead-code',
+    ).map(({ message }) => message);
+
+    expect(messages).toEqual([
+      'Unused file: src/main/orphan.ts. Nothing imports it: delete it, or import it where it is needed.',
+      'Exported type Rejection is never imported. Remove `export`, or the type if nothing uses it.',
+      'Exported type Local is only used in its own file. Remove `export`.',
+      'Export helper is never imported. Remove `export`, or the declaration if nothing uses it.',
+      'dependencies: left-pad',
+    ]);
+  });
+
   it('keys unused exports by their declaration, not by the whole file', () => {
     const report = (sourceHash) => ({
       issues: [{ file: 'src/a.ts', exports: [{ name: 'unused', line: 3, col: 1, sourceHash }] }],
@@ -397,6 +539,34 @@ describe('complete quality-area analyzer catalog', () => {
 
     expect(after.identity).toBe(before.identity);
     expect(edited.identity).not.toBe(before.identity);
+  });
+
+  it('reports a helper copied between test files but not repeated expected data', () => {
+    const clone = (fragment) => ({
+      firstFile: { name: 'test/a.test.ts', start: 2 },
+      secondFile: { name: 'test/b.test.ts', start: 7 },
+      fragment,
+      lines: 12,
+      tokens: 80,
+    });
+    const isTestFile = (file) => file.startsWith('test/');
+    const failures = (fragments) =>
+      normalizeDuplicates(
+        { duplicates: fragments.map((fragment) => clone(fragment)) },
+        'duplicates',
+        { configuredPaths: [], isTestFile },
+      ).filter(({ rule }) => rule === 'duplicate-clone');
+    const helpers = [
+      'function capture() {\n  const writes = [];\n  return writes;\n}',
+      'const lines = (text: string) => text.split("\\n");',
+    ];
+    const data = [
+      "expect(total).toEqual({\n  lines: ['Subtotal: $20.00'],\n  totalCents: 2759,\n});",
+      "it('totals the order', () => {\n  expect(total()).toBe(3);\n});",
+    ];
+
+    expect(failures([...helpers, ...data])).toEqual(failures(helpers));
+    expect(failures(helpers)).toHaveLength(2);
   });
 
   it('normalizes duplicate clone size as descriptive metrics', () => {
@@ -412,7 +582,7 @@ describe('complete quality-area analyzer catalog', () => {
         ],
       },
       'duplicates',
-      ['src/main'],
+      { configuredPaths: ['src/main'] },
     );
 
     expect(findings).toEqual([
@@ -444,7 +614,7 @@ describe('complete quality-area analyzer catalog', () => {
         ],
       },
       'duplicates',
-      ['src/main'],
+      { configuredPaths: ['src/main'] },
     );
 
     expect(findings).toEqual([
@@ -486,6 +656,54 @@ describe('complete quality-area analyzer catalog', () => {
       { name: 'coveredBranchesPerTest', value: 0.5 },
       { name: 'testCount', value: 2 },
     ]);
+  });
+
+  it('names the branch arms no test took', () => {
+    const findings = normalizeCoverage(
+      {
+        '/project/src/main/value.ts': {
+          branchSourceHashes: { 0: 'branch-source' },
+          uncoveredArms: { 0: ['the false arm of the ?: at 3:29'] },
+          b: { 0: [1, 0] },
+        },
+      },
+      'coverage',
+      { projectRoot: '/project' },
+    );
+
+    expect(findings).toContainEqual(
+      expect.objectContaining({
+        message:
+          "Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the ?: at 3:29. Test it, or remove it if it can't happen.",
+      }),
+    );
+  });
+
+  it('describes uncovered arms of Vitest branch maps by kind and position', () => {
+    const source =
+      'export function pick(a, b) {\n  const x = a ?? 5;\n  return x > 3 ? 1 : 2;\n}\n';
+    const at = (line, column) => ({ start: { line, column } });
+    expect(
+      describeUncoveredArms(
+        { type: 'binary-expr', locations: [at(2, 12), at(2, 17)] },
+        [1, 0],
+        source,
+      ),
+    ).toEqual(['the right side of ?? at 2:18']);
+    expect(
+      describeUncoveredArms(
+        { type: 'cond-expr', locations: [at(3, 20), at(3, 24)] },
+        [0, 1],
+        source,
+      ),
+    ).toEqual(['the true arm of the ?: at 3:21']);
+    expect(
+      describeUncoveredArms(
+        { type: 'if', loc: at(4, 2), locations: [at(4, 2), { start: {} }] },
+        [1, 0],
+        source,
+      ),
+    ).toEqual(['the false arm of the if (or its else) at 4:3']);
   });
 
   it('accepts exactly 95% branch coverage', () => {
@@ -596,6 +814,41 @@ describe('complete quality-area analyzer catalog', () => {
     );
     const survivingMutants = findings.filter(({ rule }) => rule === 'mutant-survived');
     expect(new Set(survivingMutants.map(({ identity }) => identity)).size).toBe(2);
+  });
+
+  it('carries the mutant column and original code into the message and location', () => {
+    const [finding] = normalizeMutation(
+      {
+        files: {
+          'src/main/value.ts': {
+            mutants: [
+              {
+                status: 'Survived',
+                mutatorName: 'ConditionalExpression',
+                replacement: 'true',
+                original: 'a > b',
+                location: { start: { line: 4, column: 15 } },
+              },
+            ],
+          },
+        },
+      },
+      'mutation',
+    ).filter(({ rule }) => rule === 'mutant-survived');
+
+    expect(finding.location).toEqual({ line: 4, column: 15 });
+    expect(finding.message).toBe(
+      'Survived ConditionalExpression at column 15: replacing `a > b` with `true` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+    );
+  });
+
+  it('cuts the mutated code out of the source by 1-based Stryker positions', () => {
+    const source = 'const a = 1;\nreturn a > 2 && a < 9;\n';
+    const at = (line, column) => ({ line, column });
+
+    expect(sourceSnippet(source, { start: at(2, 8), end: at(2, 13) })).toBe('a > 2');
+    expect(sourceSnippet(source, { start: at(1, 11), end: at(2, 7) })).toBe('1;\nreturn');
+    expect(sourceSnippet(source, { start: at(9, 1), end: at(9, 2) })).toBeUndefined();
   });
 
   it('keeps mutant identities stable when source positions move', () => {
@@ -763,8 +1016,8 @@ describe('complete quality-area analyzer catalog', () => {
     );
   });
 
-  it('reactivates excessive CRAP only when the function source changes', () => {
-    function crapFindingsFor(sourceHash) {
+  it('reactivates excessive CRAP only when the function source changes and the score rises', () => {
+    function crapFindingsFor(sourceHash, crap = 9) {
       return normalizeCrap(
         {
           functions: [
@@ -777,7 +1030,7 @@ describe('complete quality-area analyzer catalog', () => {
               statementCoverage: { percent: 100 },
               branchCoverage: { percent: 100 },
               effectiveCoverage: { percent: 100 },
-              crap: 9,
+              crap,
             },
           ],
         },
@@ -785,24 +1038,31 @@ describe('complete quality-area analyzer catalog', () => {
       );
     }
     const base = crapFindingsFor('base');
+    const newFindingsFor = (headFindings) =>
+      compareFindings({ baseFindings: base, headFindings }).newFindings;
 
-    expect(
-      compareFindings({
-        baseFindings: base,
-        headFindings: crapFindingsFor('base'),
-      }).newFindings,
-    ).toEqual([]);
-    expect(
-      compareFindings({
-        baseFindings: base,
-        headFindings: crapFindingsFor('changed'),
-      }).newFindings,
-    ).toContainEqual(
-      expect.objectContaining({
+    expect(newFindingsFor(crapFindingsFor('base'))).toEqual([]);
+    expect(newFindingsFor(crapFindingsFor('changed'))).toEqual([]);
+    expect(newFindingsFor(crapFindingsFor('changed', 8))).toEqual([]);
+    expect(newFindingsFor(crapFindingsFor('changed', 9.5))).toEqual([
+      {
+        tool: 'crap',
         rule: 'crap-score-limit',
+        path: 'src/main/value.ts',
+        symbol: 'value',
+        identity: 'function:value:occurrence:1:source:changed',
+        location: { line: 1 },
         classification: 'enforceable',
-      }),
-    );
+        message:
+          'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests.',
+        ratchet: {
+          key: 'function:value:occurrence:1:crap',
+          value: 9.5,
+          worseMessage:
+            'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests.',
+        },
+      },
+    ]);
   });
 
   it('enforces oversized or deeply nested changed functions', () => {

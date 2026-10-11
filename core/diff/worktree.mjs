@@ -37,8 +37,20 @@ function cleanupFailure(outcome, cleanupError) {
 }
 
 export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
+  return withNamedTemporaryWorktree(
+    repositoryRoot,
+    { commitSha, directoryName: 'base' },
+    operation,
+  );
+}
+
+export function withNamedTemporaryWorktree(
+  repositoryRoot,
+  { commitSha, directoryName },
+  operation,
+) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
-  const worktreeRoot = path.join(temporaryRoot, 'base');
+  const worktreeRoot = path.join(temporaryRoot, directoryName);
   const added = attempt(() =>
     runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]),
   );

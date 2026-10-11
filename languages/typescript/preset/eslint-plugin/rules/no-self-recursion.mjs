@@ -27,7 +27,7 @@ export const rule = {
     schema: [],
     messages: {
       recursion:
-        "'{{name}}' calls itself. Replace recursion with map, filter, flatMap, or Object.fromEntries over the data.",
+        "'{{name}}' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. domain/ has no loops, so there use map or flatMap, or do the walk in adapters/.",
     },
   },
   create(context) {
