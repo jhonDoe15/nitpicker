@@ -22,13 +22,14 @@ const GATE_WRAPPER = path.join(import.meta.dirname, '..', 'lib', 'gate-wrapper.m
 const OUTPUT_LIMIT = 4000;
 const DEFAULT_GATE = ['npx', '--no-install', 'nitpicker', '--base', 'main'];
 const DEFAULT_AGENT_TIMEOUT_MS = 30 * 60_000;
+const GATE_TIMEOUT_MS = 30 * 60_000;
 
 const readJson = (file) => JSON.parse(readFileSync(file, 'utf8'));
 const tail = (text) => (text.length > OUTPUT_LIMIT ? text.slice(-OUTPUT_LIMIT) : text);
 
 /**
- * A case is a directory: `case.json` (id, title, prompt, optional acceptance.command and
- * categories), `fixture.json` (presetVersion, optional policyHash), `fixture/` (a project that
+ * A case is a directory: `case.json` (id, title, prompt, optional acceptance.command,
+ * agentTimeoutMinutes and categories), `fixture.json` (presetVersion, optional policyHash), `fixture/` (a project that
  * passes the gate) and `acceptance/` (hidden test files, copied in only after the agent finishes).
  */
 export function loadCase(caseDirectory) {
@@ -199,7 +200,7 @@ export function runCase({
       agentCommand,
       workdir,
       prompt: caseDefinition.prompt,
-      timeoutMs: agentTimeoutMs,
+      timeoutMs: (caseDefinition.agentTimeoutMinutes ?? 0) * 60_000 || agentTimeoutMs,
       environment: {
         PATH: `${path.dirname(shim)}${path.delimiter}${process.env.PATH}`,
         NITPICKER_EVAL_WORKDIR: workdir,
@@ -209,6 +210,7 @@ export function runCase({
         NITPICKER_EVAL_GATE_LOG: gateLog,
         NITPICKER_EVAL_GATE_ARGV: JSON.stringify(gateCommand),
         NITPICKER_EVAL_CASE: caseDefinition.id,
+        NITPICKER_EVAL_CASE_DIR: caseDefinition.directory,
         NITPICKER_EVAL_TIER: tier,
         NITPICKER_EVAL_MODEL: model,
         NITPICKER_EVAL_RUN: String(run),
@@ -223,11 +225,12 @@ export function runCase({
     const finalReports = path.join(controlDirectory, 'final-report');
     const gateStarted = Date.now();
     const [gateExecutable, ...gateArguments] = gateCommand;
-    const gateResult = command(workdir, gateExecutable, [
-      ...gateArguments,
-      '--output',
-      finalReports,
-    ]);
+    const gateResult = command(
+      workdir,
+      gateExecutable,
+      [...gateArguments, '--output', finalReports],
+      { timeout: GATE_TIMEOUT_MS },
+    );
     const finalGate = {
       exit: gateResult.status,
       status: GATE_STATUS[gateResult.status] ?? 'error',
@@ -295,6 +298,6 @@ export function runCase({
       workdir: keepWorkdir ? workdir : undefined,
     };
   } finally {
-    if (!keepWorkdir) rmSync(root, { recursive: true, force: true });
+    if (!keepWorkdir) rmSync(root, { recursive: true, force: true, maxRetries: 5 });
   }
 }

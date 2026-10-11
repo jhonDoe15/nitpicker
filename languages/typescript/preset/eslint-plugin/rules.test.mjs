@@ -6,11 +6,14 @@ import { rule as containerPauseRequiresFinallyUnpause } from './rules/container-
 import { rule as boundedContainerTeardown } from './rules/bounded-container-teardown.mjs';
 import { rule as noFixedSleepSynchronization } from './rules/no-fixed-sleep-synchronization.mjs';
 import { rule as noIntervalPollingInTests } from './rules/no-interval-polling-in-tests.mjs';
+import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composition-root.mjs';
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
 import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
+import { rule as noPartialOutputAssertion } from './rules/no-partial-output-assertion.mjs';
+import { rule as noUnvalidatedSchemaField } from './rules/no-unvalidated-schema-field.mjs';
 import { rule as reportModuleLoadEffects } from './rules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/structured-catch-logging.mjs';
 import { rule as testMustUseProductionRuntime } from './rules/test-must-use-production-runtime.mjs';
@@ -33,6 +36,14 @@ const ruleTester = new RuleTester({
 
 ruleTester.run('container-pause-requires-finally-unpause', containerPauseRequiresFinallyUnpause, {
   valid: [
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: "try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, reason: 'network' }; }",
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: "try { return { ok: true, value: execute() }; } catch { return { ok: false, reason: 'network' }; }",
+    },
     {
       filename: '/repo/tests/integration/paused.test.ts',
       code: 'try { await container.pause(); } finally { await container.unpause(); }',
@@ -242,6 +253,94 @@ ruleTester.run(
   },
 );
 
+ruleTester.run('no-branch-in-composition-root', noBranchInCompositionRoot, {
+  valid: [
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function main(names) { runGreeting(names, { write: (text) => process.stdout.write(text) }); }',
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'const ready = left && right; const label = left || right; export function pick() { return left && right; }',
+    },
+    {
+      filename: '/repo/src/main/features/books/adapters/lookup.ts',
+      code: 'export function find(book) { if (book === undefined) { return undefined; } return book?.title ?? "none"; }',
+    },
+    {
+      filename: '/repo/src/main/compose.ts',
+      code: 'export function pick(book) { return book === undefined ? 1 : 2; }',
+    },
+    {
+      filename: '/repo/src/main/wiring/registry.ts',
+      code: 'export function pick(book) { if (book) { return 1; } return 2; }',
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: "if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) { main(); }",
+    },
+  ],
+  invalid: [
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function titleOf(book) { if (book === undefined) { return undefined; } return book.title; }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function titleOf(book) { return book === undefined ? "none" : book.title; }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function label(kind) { switch (kind) { case "a": return 1; default: return 2; } }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function titleOf(book, fallback) { return book ?? fallback; }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function titleOf(catalog, id) { return catalog.find(id)?.title; }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'export function titleOf(book) { if (book === undefined) { return 1; } else if (book.id === "a") { return 2; } return 3; }',
+      errors: [{ messageId: 'branch' }, { messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/composition-root.ts',
+      code: 'if (import.meta.main) { if (ready) { main(); } }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/main.ts',
+      code: 'export const pick = (book) => (book ? 1 : 2);',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/server.ts',
+      code: 'export function pick(book) { if (book) { return 1; } return 2; }',
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/wiring/registry.ts',
+      code: 'export function pick(book) { if (book) { return 1; } return 2; }',
+      options: [{ compositionRootPattern: '/wiring/' }],
+      errors: [{ messageId: 'branch' }],
+    },
+    {
+      filename: '/repo/src/main/server.ts',
+      code: 'export function pick(book) { if (book) { return 1; } return 2; }',
+      options: [{ compositionRootPattern: '/wiring/' }],
+      errors: [{ messageId: 'branch' }],
+    },
+  ],
+});
+
 ruleTester.run('no-module-level-let', noModuleLevelLet, {
   valid: [
     { code: 'const limit = 1;' },
@@ -293,11 +392,20 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
       code: "import { describe } from 'vitest'; describe('fixture', () => {});",
       options: [{ exemptPattern: String.raw`/tests/contract/|/preset/.*/fixtures/` }],
     },
+    {
+      filename: '/repo/test/support/stdout.ts',
+      code: "import { vi } from 'vitest'; export function captureStdout() { return vi.spyOn(process.stdout, 'write'); }",
+    },
   ],
   invalid: [
     {
       filename: '/repo/src/main/feature/__tests__/feature.test.ts',
       code: "import type { Feature } from '../feature.js'; const value: Feature | undefined = undefined;",
+      errors: [{ messageId: 'missingRuntime' }],
+    },
+    {
+      filename: '/repo/test/support/stdout.spec.ts',
+      code: "import { captureStdout } from './stdout.js'; captureStdout();",
       errors: [{ messageId: 'missingRuntime' }],
     },
     {
@@ -342,12 +450,29 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
       filename: '/repo/src/main/feature.ts',
       code: 'try { execute(); } catch (error) { throw error; }',
     },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, error }; }',
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: "try { execute(); } catch (error) { throw new FeatureError('failed', { cause: error }); }",
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: "function parse(text) { try { return JSON.parse(text); } catch { return { kind: 'malformed-json' }; } }",
+    },
   ],
   invalid: [
     {
       filename: '/repo/src/main/feature.ts',
       code: 'try { execute(); } catch { useFallback(); }',
-      errors: [{ messageId: 'missingBinding' }],
+      errors: [{ messageId: 'silent' }],
+    },
+    {
+      filename: '/repo/src/main/feature.ts',
+      code: 'function read() { try { return load(); } catch { return undefined; } }',
+      errors: [{ messageId: 'silent' }],
     },
     {
       filename: '/repo/src/main/feature.ts',
@@ -358,6 +483,55 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
       filename: '/repo/src/main/feature.ts',
       code: "try { execute(); } catch (error) { logger.warn('using fallback'); }",
       errors: [{ messageId: 'silent' }],
+    },
+  ],
+});
+
+ruleTester.run('no-unvalidated-schema-field', noUnvalidatedSchemaField, {
+  valid: [
+    "import { z } from 'zod'; const s = z.object({ name: z.string().trim().min(1), email: z.email() });",
+    "import { z } from 'zod'; const s = z.array(z.unknown());",
+    "import { z } from 'zod'; const s = z.unknown();",
+    "import { z } from 'zod'; const s = z.object({ items: z.array(z.string()) });",
+    "import { z } from 'zod'; const s = z.object({ value: z.unknown().refine(isPrice) });",
+    "import { z } from 'zod'; const s = z.object({ value: z.unknown().pipe(z.string()) });",
+    "import { z } from 'zod'; const s = z.object({ ...base, id: z.string() });",
+    "import { z } from 'zod'; const s = z.object(shape);",
+    'const s = schemas.object({ value: schemas.unknown() });',
+    'const s = z.object({ value: unknown() });',
+  ],
+  invalid: [
+    {
+      code: "import { z } from 'zod'; const s = z.object({ name: z.unknown() });",
+      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
+    },
+    {
+      code: "import { z } from 'zod'; const s = z.object({ name: z.any() });",
+      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.any' } }],
+    },
+    {
+      code: "import { z } from 'zod'; const s = z.object({ name: z.unknown().optional() });",
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: "import { z } from 'zod'; const s = z.strictObject({ a: z.string(), b: z.any().nullable().describe('x') });",
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: "import { z } from 'zod'; const s = z.object({ a: z.unknown(), b: z.unknown() });",
+      errors: [{ messageId: 'unvalidatedField' }, { messageId: 'unvalidatedField' }],
+    },
+    {
+      code: "import { z } from 'zod'; const s = z.array(z.object({ inner: z.object({ id: z.unknown() }) }));",
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: "import * as validators from 'zod'; const s = validators.object({ id: validators.unknown() });",
+      errors: [{ messageId: 'unvalidatedField' }],
+    },
+    {
+      code: "import { z as schema } from 'zod/v4'; const s = schema.object({ id: schema.any() });",
+      errors: [{ messageId: 'unvalidatedField' }],
     },
   ],
 });
@@ -484,6 +658,45 @@ ruleTester.run('integration-test-uses-approved-harness', integrationTestUsesAppr
       code: "import { startApp } from '../fixtures/app.js'; startApp();",
       options: [{ approvedFunctions: ['createServer'] }],
       errors: [{ messageId: 'missingHarness' }],
+    },
+  ],
+});
+
+ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
+  valid: [
+    { filename: '/repo/test/report.test.ts', code: "expect(output).toEqual('a\\nb');" },
+    { filename: '/repo/test/report.test.ts', code: "expect(output).toBe('a');" },
+    { filename: '/repo/test/report.test.ts', code: "expect(output).not.toContain('secret');" },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).not.toContain(`${a}`);' },
+    { filename: '/repo/test/report.test.ts', code: 'expect(list).not.toContainEqual({ id: 1 });' },
+    { filename: '/repo/test/report.test.ts', code: 'expect(list).toContain(item);' },
+    { filename: '/repo/test/report.test.ts', code: "text.toContain('a');" },
+  ],
+  invalid: [
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toContain('fragment');",
+      errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toContain(`line ${n}`);',
+      errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(list).toContainEqual({ id: 1 });',
+      errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "await expect(promise).resolves.toContain('done');",
+      errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect.soft(output).toContain('fragment');",
+      errors: [{ messageId: 'partialOutput' }],
     },
   ],
 });

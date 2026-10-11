@@ -53,6 +53,18 @@ describe('duplicate-code report', () => {
     expect(report.statistics.total.clones).toBeGreaterThan(0);
   });
 
+  it('reports a helper copied between two test files', () => {
+    const { result, report } = analyzeFixture('test-clones', [
+      '--ignore',
+      productionIgnore.join(','),
+    ]);
+
+    expect(result.status).toBe(0);
+    expect(report.duplicates.map(({ firstFile }) => path.basename(firstFile.name))).toEqual([
+      'first.test.ts',
+    ]);
+  });
+
   it('does not invent a clone for distinct small modules', () => {
     const { result, report } = analyzeFixture('low-signal');
 

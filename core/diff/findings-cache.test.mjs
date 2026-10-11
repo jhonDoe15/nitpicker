@@ -113,4 +113,35 @@ describe('findings cache', () => {
     runBaseWithCache({ cache, analyzers, run, resolveContext });
     expect(ran[1]).toEqual(['broken']);
   });
+
+  it('does not store a report built on a dependency that reported a tool error', () => {
+    const directory = path.join(temporaryRoot(), 'cache');
+    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const coverage = { name: 'coverage', version: '1', configurationHash: 'h' };
+    const crap = {
+      name: 'crap',
+      version: '1',
+      configurationHash: 'h',
+      dependencies: ['coverage'],
+    };
+    const testsFailed = { ...finding, tool: 'coverage', classification: 'tool-error' };
+    const run = () => ({
+      reports: new Map([
+        ['coverage', { findings: [testsFailed] }],
+        ['crap', { findings: [{ ...finding, tool: 'crap', rule: 'crap-coverage-unknown' }] }],
+      ]),
+      timings: new Map(),
+      toolErrors: [],
+    });
+
+    runBaseWithCache({
+      cache,
+      analyzers: [coverage, crap],
+      run,
+      resolveContext: { liveProjectRoot: '.', policyRoot: '.' },
+    });
+
+    expect(cache.read(coverage)).toBeUndefined();
+    expect(cache.read(crap)).toBeUndefined();
+  });
 });

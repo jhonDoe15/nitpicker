@@ -1,7 +1,9 @@
+import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { applyMatchingRuleExceptions } from './exceptions.mjs';
 
 const { sourceGlobs, testGlobs, excludedGlobs, sourceTestDirectoryGlobs, entryPoints } =
   readLayout();
@@ -12,7 +14,7 @@ const entryPointScripts =
     : [];
 
 export function productionPolicyConfig(rules) {
-  return tseslint.config(
+  const config = defineConfig(
     { ignores },
     {
       files: sourceGlobs,
@@ -27,4 +29,5 @@ export function productionPolicyConfig(rules) {
     },
     ...entryPointScripts,
   );
+  return applyMatchingRuleExceptions(config, readHeadPolicy().exceptions);
 }

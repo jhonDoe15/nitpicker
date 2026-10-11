@@ -74,10 +74,11 @@ const memoize = (compute) => {
 
 const goodRun = memoize(() => run('good'));
 
-function run(mode, options = {}) {
+function run(mode, options = {}, caseOverrides = {}) {
   const caseDefinition = {
     ...loadCase(path.join(casesDirectory, 'trivial')),
     acceptanceCommand: acceptanceCheck,
+    ...caseOverrides,
   };
   const previous = process.env.FAKE_AGENT_MODE;
   process.env.FAKE_AGENT_MODE = mode;
@@ -255,6 +256,16 @@ describe('running a case with a fake agent', () => {
       agentTimeoutMs: 200,
       gateCommand: ['true'],
     });
+    expect(record.agent.timedOut).toBe(true);
+    expect(record.outcome).toBe('agent-timeout');
+  });
+
+  it("uses the case's own agent time budget when it sets one", () => {
+    const record = run(
+      'good',
+      { agentCommand: ['sleep', '5'], agentTimeoutMs: 60_000, gateCommand: ['true'] },
+      { agentTimeoutMinutes: 0.005 },
+    );
     expect(record.agent.timedOut).toBe(true);
     expect(record.outcome).toBe('agent-timeout');
   });
