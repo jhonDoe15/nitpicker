@@ -96,6 +96,11 @@ const BAD_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Bad.kt',
 ];
 
+const LEGACY_FINDINGS = [
+  'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
+  'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+];
+
 let repository;
 
 function git(...args) {
@@ -177,9 +182,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(result.failed).toBe(false);
     expect(summarize(result.newEnforceable)).toEqual([]);
     expect(fromTool(result.newFindings, 'jacoco')).toEqual(['jacoco line-coverage Farewell.kt']);
-    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual([
-      'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-    ]);
+    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
   });
 
   it('fails new detekt findings and an unformatted file (ktlint is the default) in Kotlin code', () => {
@@ -189,9 +192,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(summarize(result.newEnforceable)).toEqual(
       [...BAD_FINDINGS, 'ktlint format Bad.kt'].sort(),
     );
-    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual([
-      'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-    ]);
+    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
   });
 
   it('still gates Java sources of a Kotlin module with the Java tools', () => {
