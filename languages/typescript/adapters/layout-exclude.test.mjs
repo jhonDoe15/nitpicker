@@ -108,21 +108,17 @@ describe('custom layout and exclude across runners and tools', () => {
 });
 
 describe('with many exclude globs', () => {
-  it(
-    'keeps the dependency-cruiser exclude pattern short enough for its safety check',
-    () => {
-      const exclude = Array.from({ length: 14 }, (_, index) => `lib/generated-${String(index)}/**`);
-      const policy = resolveHeadPolicy({ ...customConfig, exclude });
-      const run = analyze(
-        ['dependency-architecture'],
-        fixtureFiles(),
-        policy,
-        applyLayout(configuredAnalyzers, policy),
-      );
-      expect(run.toolErrors).toEqual([]);
-    },
-    TOOL_TIMEOUT_MS,
-  );
+  it('keeps the dependency-cruiser exclude pattern short enough for its safety check', () => {
+    const exclude = Array.from({ length: 14 }, (_, index) => `lib/generated-${String(index)}/**`);
+    const policy = resolveHeadPolicy({ ...customConfig, exclude });
+    const run = analyze(
+      ['dependency-architecture'],
+      fixtureFiles(),
+      policy,
+      applyLayout(configuredAnalyzers, policy),
+    );
+    expect(run.toolErrors).toEqual([]);
+  });
 });
 
 describe('without exclude', () => {
