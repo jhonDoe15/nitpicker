@@ -433,24 +433,24 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
-  const expectKotlinToolError = (result, snapshot) => {
-    expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
-        tool: 'kotlin',
-        snapshot,
-        rule: 'gradle-failure',
-        message: expect.stringContaining('compileKotlin failed'),
-      }),
-    ]);
-  };
+  const kotlinToolError = (snapshot) => [
+    expect.objectContaining({
+      tool: 'kotlin',
+      snapshot,
+      rule: 'gradle-failure',
+      message: expect.stringContaining('compileKotlin failed'),
+    }),
+  ];
 
   it('reports a Gradle failure on head as a kotlin tool error', () => {
     const root = kotlinRepository();
     write(root, { GRADLE_FAIL: 'compileKotlin failed\n' });
     commit(root, 'break the build');
 
-    expectKotlinToolError(run(root), 'head');
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual(kotlinToolError('head'));
   });
 
   it('reports a Gradle failure on base as a kotlin tool error', () => {
@@ -458,7 +458,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
     git(root, ['rm', '-q', 'GRADLE_FAIL']);
     commit(root, 'fix the build');
 
-    expectKotlinToolError(run(root), 'base');
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual(kotlinToolError('base'));
   });
 });
 
