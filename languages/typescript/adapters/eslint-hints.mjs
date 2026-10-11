@@ -29,6 +29,9 @@ const UNSAFE_ANY_RULES = new Set([
 const UNSAFE_ANY_HINT =
   ' Read fields of a legacy `any` value through one reader function whose parameter is `unknown` and that returns a typed object.';
 
+const UNSAFE_ANY_JAVASCRIPT_HINT =
+  ' Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.';
+
 export function eslintMessageWithHint({ ruleId, text, relativePath }) {
   if (ruleId === 'functional/prefer-immutable-types') {
     const kind = IMMUTABLE_TYPES_PREFIX.exec(text)?.[1];
@@ -41,7 +44,7 @@ export function eslintMessageWithHint({ ruleId, text, relativePath }) {
     return `${text}${REJECT_ERRORS_TEST_HINT}`;
   }
   if (UNSAFE_ANY_RULES.has(ruleId)) {
-    return `${text}${UNSAFE_ANY_HINT}`;
+    return `${text}${readLayout().javascript ? UNSAFE_ANY_JAVASCRIPT_HINT : UNSAFE_ANY_HINT}`;
   }
   return text;
 }

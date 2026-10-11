@@ -29,6 +29,9 @@ export const strykerVersion = 'unresolved';
 const POLICY_FILES = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/javascript/preset/javascript-preset.mjs',
+  'languages/javascript/preset/jsdoc.mjs',
+  'languages/javascript/preset/eslint-dialect.mjs',
   'languages/typescript/preset/eslint-config/exceptions.mjs',
   'languages/typescript/preset/eslint-config/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
@@ -173,16 +176,21 @@ function entryPointsCheckFor(layout, exclusions) {
   };
 }
 
+function prettierPatterns(layout) {
+  const code = layout.javascript ? 'js,jsx,mjs,cjs' : 'ts,tsx,mts,mjs';
+  return [
+    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
+    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    `*.{${code},json}`,
+  ];
+}
+
 function prettierCheckFor(layout, exclusions) {
   return {
     name: 'prettier-format',
     kind: 'prettier',
     version: prettierVersion,
-    patterns: [
-      ...layout.sourceRoots.map((root) => `${root}/**/*.{ts,tsx,mts,mjs,json,yaml,yml}`),
-      ...layout.testRoots.map((root) => `${root}/**/*.{ts,tsx,mts,mjs,json}`),
-      '*.{ts,tsx,mts,mjs,json}',
-    ],
+    patterns: prettierPatterns(layout),
     exclusions: exclusions.general,
     configRelativePath: 'languages/typescript/preset/defaults/.prettierrc.json',
     ignoreRelativePath: 'languages/typescript/preset/defaults/.prettierignore',
@@ -210,6 +218,8 @@ function typeAndArchitectureChecksFor(layout) {
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
+        'languages/typescript/preset/tool-configs.mjs',
+        'languages/javascript/preset/javascript-preset.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
     },
@@ -379,6 +389,8 @@ function testExecutionChecksFor(exclusions) {
       shardWeight: 90,
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
+        'languages/typescript/preset/tool-configs.mjs',
+        'languages/javascript/preset/javascript-preset.mjs',
         'languages/typescript/preset/defaults/stryker.config.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
         'languages/typescript/preset/defaults/tsconfig.stryker.json',

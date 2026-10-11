@@ -156,6 +156,12 @@ export async function loadModuleSources(graph, rootDirectory) {
   return new Map(entries);
 }
 
+function defaultBridges(layout) {
+  return layout.testRoots.flatMap((root) =>
+    layout.entryExtensions.map((extension) => `${root}/fixtures/app-process.${extension}`),
+  );
+}
+
 export function analyzeTestRuntime(
   graph,
   {
@@ -163,7 +169,7 @@ export function analyzeTestRuntime(
     productionRoot = layout.sourceRoot,
     productionRoots = [productionRoot],
     sourceTexts = new Map(),
-    subprocessBridges = layout.testRoots.map((root) => `${root}/fixtures/app-process.ts`),
+    subprocessBridges = defaultBridges(layout),
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
