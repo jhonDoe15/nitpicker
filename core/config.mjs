@@ -58,6 +58,7 @@ export function validateConfig(config) {
   validateKeys(config);
   validateScalars(config);
   validateDisable(config.disable);
+  validateReact(config.react);
   validateOptional(config);
   return config;
 }
@@ -113,9 +114,6 @@ function validateOptional(config) {
   }
   if (config.exceptions !== undefined) {
     validateExceptions(config.exceptions);
-  }
-  if (config.react !== undefined) {
-    validateReact(config.react);
   }
   if (config.legacyInventory !== undefined) {
     validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
@@ -233,6 +231,9 @@ function validateExceptions(exceptions) {
 }
 
 function validateReact(react) {
+  if (react === undefined) {
+    return;
+  }
   if (!isPlainObject(react)) {
     throw configError('"react" must be an object');
   }
