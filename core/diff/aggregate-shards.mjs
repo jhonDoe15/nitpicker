@@ -161,7 +161,7 @@ export function runAggregateCli({
       analyzers: configureAnalyzers(
         presetAnalyzers(config, analyzers),
         config,
-        resolveHeadPolicy(config),
+        resolveHeadPolicy(config, currentProjectRoot),
       ),
       configOverrides: describeConfigOverrides(config),
       shardCount: options.shardCount,
