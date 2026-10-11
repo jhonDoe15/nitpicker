@@ -51,6 +51,7 @@ Using a coding agent? Add the [agent snippet](docs/agents-snippet.md) to your `A
   they assume, and why.
 - [Java preset](docs/java-preset.md)
 - [Python preset](docs/python-preset.md)
+- [Kotlin preset](docs/kotlin-preset.md)
 - [Checks](spec/checks.md): every check and rule, and what fails.
 
 ## Background

@@ -1,0 +1,226 @@
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { readJavaFindings } from './java-reports.mjs';
+
+const temporaryRoots = [];
+
+afterEach(() => {
+  for (const root of temporaryRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
+<report name="demo"><package name="demo">
+  <class name="demo/Bad" sourcefilename="Bad.kt">
+    <method name="compute" desc="(II)I" line="8"><counter type="LINE" missed="3" covered="0"/></method>
+  </class>
+  <class name="demo/Legacy" sourcefilename="Legacy.java">
+    <method name="pick" desc="(Z)I" line="4"><counter type="LINE" missed="0" covered="3"/></method>
+  </class>
+  <sourcefile name="Mixed.kt">
+    <line nr="3" mi="1" ci="0" mb="2" cb="0"/>
+    <counter type="LINE" missed="1" covered="0"/>
+  </sourcefile>
+  <sourcefile name="Bad.kt">
+    <line nr="9" mi="1" ci="0" mb="2" cb="0"/>
+    <counter type="LINE" missed="3" covered="0"/>
+  </sourcefile>
+  <sourcefile name="Legacy.java">
+    <line nr="4" mi="0" ci="3" mb="1" cb="1"/>
+    <counter type="LINE" missed="0" covered="3"/>
+  </sourcefile>
+</package></report>`;
+
+const KOTLIN_SOURCE = `package demo
+
+class Bad {
+    private val unused = 42
+
+    fun compute(a: Int, b: Int): Int {
+        val x = a * 1000 + b * 2000
+        if (x > 5000) return x
+        return 7777
+    }
+}
+`;
+
+const MIXED_SOURCE = 'package demo\n\nfun pick(flag: Boolean) = if (flag) 1 else 2\n';
+
+const JAVA_SOURCE =
+  'package demo;\n\nclass Legacy {\n  int pick(boolean flag) { return flag ? 1 : 2; }\n}\n';
+
+const EMPTY_SARIF = JSON.stringify({ version: '2.1.0', runs: [] });
+
+function projectWithKotlinReports({
+  manifest = {},
+  formatList = 'src/main/kotlin/demo/Bad.kt\n',
+} = {}) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-reports-')));
+  temporaryRoots.push(root);
+  const reports = path.join(root, 'build/nitpicker');
+  mkdirSync(reports, { recursive: true });
+  mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
+  mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
+  writeFileSync(path.join(root, 'src/main/kotlin/demo/Bad.kt'), KOTLIN_SOURCE);
+  writeFileSync(path.join(root, 'src/main/java/demo/Legacy.java'), JAVA_SOURCE);
+  writeFileSync(path.join(root, 'src/main/java/demo/Mixed.kt'), MIXED_SOURCE);
+  writeFileSync(
+    path.join(reports, 'manifest.json'),
+    JSON.stringify({
+      versions: {},
+      sourceRoots: ['src/main/java'],
+      kotlin: true,
+      kotlinSourceRoots: ['src/main/java', 'src/main/kotlin'],
+      kotlinFormatter: 'ktlint',
+      ...manifest,
+    }),
+  );
+  writeFileSync(path.join(reports, 'pmd.sarif'), EMPTY_SARIF);
+  writeFileSync(path.join(reports, 'spotbugs.sarif'), EMPTY_SARIF);
+  writeFileSync(path.join(reports, 'format.txt'), '');
+  writeFileSync(
+    path.join(reports, 'checkstyle.xml'),
+    '<checkstyle version="10.21.1"></checkstyle>',
+  );
+  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  writeFileSync(path.join(reports, 'lizard.csv'), '');
+  writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
+  writeFileSync(
+    path.join(reports, 'detekt.sarif'),
+    readFileSync(path.join(import.meta.dirname, '../ingest/fixtures/detekt.sarif'), 'utf8'),
+  );
+  writeFileSync(path.join(reports, 'kotlin-format.txt'), formatList);
+  return root;
+}
+
+const kotlinFindings = (root, tool) =>
+  readJavaFindings(root, { preset: 'kotlin' }).findings.filter((finding) => finding.tool === tool);
+
+describe('readJavaFindings with the kotlin preset', () => {
+  const bad = 'src/main/kotlin/demo/Bad.kt';
+
+  it('turns the detekt report into schema-valid findings without line numbers in identity', () => {
+    const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
+    const detekt = findings.filter((finding) => finding.tool === 'detekt');
+
+    expect(parseAnalyzerReport({ findings }, 'kotlin').findings).toEqual(findings);
+    expect(
+      detekt.map(({ rule, path: file, identity, classification }) => [
+        rule,
+        file,
+        identity,
+        classification,
+      ]),
+    ).toEqual([
+      ...Array.from({ length: 6 }, (_, index) => [
+        'detekt.style.MagicNumber',
+        bad,
+        `fp:nitpicker/subject=This expression contains a magic number. Consider defining it to a well named constant.${index === 0 ? '' : `#${String(index + 1)}`}`,
+        'enforceable',
+      ]),
+      [
+        'detekt.style.UnusedPrivateProperty',
+        bad,
+        'fp:nitpicker/subject=Private property `unused` is unused.',
+        'enforceable',
+      ],
+    ]);
+    expect(detekt[0].location).toEqual({ line: 6, column: 26 });
+  });
+
+  it('keeps fingerprints a detekt result already has and treats note-level results as descriptive', () => {
+    const root = projectWithKotlinReports();
+    const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
+    writeFileSync(
+      path.join(root, 'build/nitpicker/detekt.sarif'),
+      JSON.stringify({
+        runs: [
+          {
+            tool: { driver: { name: 'detekt' } },
+            results: [
+              {
+                ruleId: 'detekt.style.MagicNumber',
+                level: 'warning',
+                message: { text: 'Magic' },
+                partialFingerprints: { signature: 'abc' },
+                locations: [at],
+              },
+              {
+                ruleId: 'detekt.style.ForbiddenComment',
+                level: 'note',
+                message: { text: 'Todo' },
+                locations: [at],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    expect(
+      kotlinFindings(root, 'detekt').map(({ identity, classification }) => [
+        identity,
+        classification,
+      ]),
+    ).toEqual([
+      ['fp:signature=abc', 'enforceable'],
+      ['fp:nitpicker/subject=Todo', 'descriptive'],
+    ]);
+  });
+
+  it('reports a file the formatter wants changed, named after the formatter in use', () => {
+    const ktlint = kotlinFindings(projectWithKotlinReports(), 'ktlint');
+    const ktfmt = kotlinFindings(
+      projectWithKotlinReports({ manifest: { kotlinFormatter: 'ktfmt' } }),
+      'ktfmt',
+    );
+
+    expect(ktlint).toEqual([
+      {
+        tool: 'ktlint',
+        rule: 'format',
+        path: bad,
+        identity: 'format',
+        message: 'File is not formatted with ktlint',
+        classification: 'enforceable',
+      },
+    ]);
+    expect(ktfmt).toEqual([expect.objectContaining({ tool: 'ktfmt', path: bad })]);
+  });
+
+  it('reports no format finding for a list without files', () => {
+    expect(kotlinFindings(projectWithKotlinReports({ formatList: '' }), 'ktlint')).toEqual([]);
+  });
+
+  it('reads JaCoCo coverage of Kotlin and Java files but gates branches of Java files only', () => {
+    const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
+    const jacoco = findings.filter((finding) => finding.tool === 'jacoco');
+
+    expect(jacoco.map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['line-coverage', 'src/main/java/demo/Mixed.kt'],
+      ['line-coverage', 'src/main/java/demo/Legacy.java'],
+      ['line-coverage', bad],
+      ['uncovered-method', bad],
+      ['changed-branch-coverage', 'src/main/java/demo/Legacy.java'],
+    ]);
+  });
+
+  it('leaves Kotlin reports and Kotlin files alone with the java preset', () => {
+    const { findings } = readJavaFindings(projectWithKotlinReports());
+
+    expect(findings.filter((finding) => ['detekt', 'ktlint'].includes(finding.tool))).toEqual([]);
+    expect(findings.some((finding) => finding.path.startsWith('src/main/kotlin/'))).toBe(false);
+  });
+
+  it('fails when the project does not apply the Kotlin plugin', () => {
+    const root = projectWithKotlinReports({ manifest: { kotlin: undefined } });
+
+    expect(() => readJavaFindings(root, { preset: 'kotlin' })).toThrow(
+      'applies org.jetbrains.kotlin.jvm',
+    );
+  });
+});

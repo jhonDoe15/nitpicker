@@ -16,8 +16,9 @@ import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
-// The Java preset through the CLI with a fake `gradle`, so it runs without Java. The real Gradle
-// run is covered by languages/java/adapters/java-preset.e2e.test.mjs (NITPICKER_JAVA_E2E=1).
+// The Java and Kotlin presets through the CLI with a fake `gradle`, so they run without Java. The
+// real Gradle runs are covered by languages/java/adapters/java-preset.e2e.test.mjs
+// (NITPICKER_JAVA_E2E=1) and kotlin-preset.e2e.test.mjs (NITPICKER_KOTLIN_E2E=1).
 
 const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -343,12 +344,162 @@ describe('nitpicker with "preset": "java"', () => {
   });
 });
 
+describe('nitpicker with "preset": "kotlin"', () => {
+  const kotlinConfig = (formatter) =>
+    `${JSON.stringify({ preset: 'kotlin', ...(formatter && { kotlin: { formatter } }) })}\n`;
+  const kotlinRepository = (files = {}) =>
+    gradleRepository({
+      'nitpicker.config.json': kotlinConfig(),
+      'detekt.txt': 'Legacy magic number\n',
+      ...files,
+    });
+
+  it('passes when the change adds no finding and keeps the legacy detekt finding baselined', () => {
+    const root = kotlinRepository();
+    write(root, { 'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n' });
+    commit(root, 'move only');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['kotlin']);
+  });
+
+  it('fails on a new detekt finding and reports it in text and SARIF', () => {
+    const root = kotlinRepository();
+    write(root, { 'detekt.txt': 'Legacy magic number\nAdded magic number\n' });
+    commit(root, 'add a detekt finding');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      expect.objectContaining({
+        tool: 'detekt',
+        rule: 'detekt.style.MagicNumber',
+        path: 'src/main/kotlin/demo/K.kt',
+        classification: 'enforceable',
+      }),
+    ]);
+    expect(
+      result
+        .json('report.sarif')
+        .runs.flatMap((sarifRun) => sarifRun.results.map(({ ruleId }) => ruleId)),
+    ).toEqual(['detekt/detekt.style.MagicNumber']);
+  });
+
+  it.each([
+    [undefined, 'ktlint'],
+    ['ktfmt', 'ktfmt'],
+  ])('fails on a newly unformatted file with the formatter %s', (formatter, tool) => {
+    const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
+    write(root, { 'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n' });
+    commit(root, 'misformat a file');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      expect.objectContaining({
+        tool,
+        rule: 'format',
+        path: 'src/main/kotlin/demo/K.kt',
+        message: `File is not formatted with ${tool}`,
+      }),
+    ]);
+  });
+
+  it('reports a raised legacy allowance under the kotlin analyzer', () => {
+    const inventory = (count) =>
+      `${JSON.stringify({
+        sites: [
+          {
+            file: 'src/main/kotlin/demo/K.kt',
+            rule: 'detekt.style.MagicNumber',
+            source: 'fp:nitpicker/subject=Legacy magic number',
+            count,
+          },
+        ],
+      })}\n`;
+    const root = kotlinRepository({ 'nitpicker.legacy.json': inventory(1) });
+    write(root, { 'nitpicker.legacy.json': inventory(2) });
+    commit(root, 'raise the allowance');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
+    ]);
+  });
+
+  const kotlinToolError = (snapshot) => [
+    expect.objectContaining({
+      tool: 'kotlin',
+      snapshot,
+      rule: 'gradle-failure',
+      message: expect.stringContaining('compileKotlin failed'),
+    }),
+  ];
+
+  it('reports a Gradle failure on head as a kotlin tool error', () => {
+    const root = kotlinRepository();
+    write(root, { GRADLE_FAIL: 'compileKotlin failed\n' });
+    commit(root, 'break the build');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual(kotlinToolError('head'));
+  });
+
+  it('reports a Gradle failure on base as a kotlin tool error', () => {
+    const root = kotlinRepository({ GRADLE_FAIL: 'compileKotlin failed\n' });
+    git(root, ['rm', '-q', 'GRADLE_FAIL']);
+    commit(root, 'fix the build');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual(kotlinToolError('base'));
+  });
+});
+
+describe('Kotlin analyzer', () => {
+  it('is named kotlin, declares the Kotlin tools and starts the runner with the kotlin preset', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
+
+    expect(analyzer.name).toBe('kotlin');
+    expect(analyzer.reportedTools).toEqual(
+      expect.arrayContaining(['detekt', 'ktlint', 'ktfmt', 'jacoco', 'pmd']),
+    );
+    expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
+    expect(createJavaAnalyzer().name).toBe('java');
+    expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');
+  });
+
+  it('maps a failing Gradle run to one tool-error finding of the kotlin analyzer', () => {
+    const root = temporaryRoot('nitpicker-kotlin-unit-');
+    write(root, { GRADLE_FAIL: 'detekt crashed\n' });
+
+    const { findings } = analyzeJavaSnapshot(root, {
+      gradle: fakeGradle,
+      policy: { preset: 'kotlin' },
+    });
+
+    expect(findings).toEqual([
+      expect.objectContaining({ tool: 'kotlin', classification: 'tool-error' }),
+    ]);
+  });
+});
+
 describe('Java analyzer', () => {
   it('records the pinned tool versions and a stable configuration hash', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;jscpd@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
