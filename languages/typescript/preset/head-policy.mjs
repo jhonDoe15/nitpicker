@@ -16,6 +16,7 @@ export function readHeadPolicy(environment = process.env) {
     layout: { ...defaultLayout, ...policy.layout },
     exceptions: policy.exceptions ?? [],
     thresholds: policy.thresholds ?? {},
+    react: policy.react ?? {},
   };
 }
 

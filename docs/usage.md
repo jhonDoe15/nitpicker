@@ -113,7 +113,7 @@ nitpicker cache publish [--analyzer <name>]...
 
 The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
 merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
-config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`) with the
+config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`) with the
 legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
@@ -147,6 +147,7 @@ is visible in review.
       "reason": "Legacy module until the migration"
     }
   ],
+  "react": { "styling": "css-in-js" },
   "analyzers": [{ "name": "house-rules", "command": "./scripts/house-rules", "args": ["--ci"] }],
   "legacyInventory": "config/nitpicker.legacy.json"
 }
@@ -161,6 +162,7 @@ is visible in review.
 | `exclude`         | string[]                   | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java preset the built-in list does not apply and findings whose path matches a glob are dropped.                                                                                                                                                                                                                                     |
 | `layout`          | object                     | TypeScript only. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
 | `exceptions`      | object[]                   | TypeScript only. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
+| `react`           | object                     | TypeScript only. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"` by default, `"css-in-js"` or `"inline-style"`) is the one styling approach the project uses. Other keys are an error. |
 | `analyzers`       | object[]                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `legacyInventory` | string                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
@@ -169,6 +171,21 @@ The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-modu
 `entry-points`, `prettier-format`, `typescript-typecheck`, `dependency-architecture`,
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
 `crap` and `mutation`.
+
+### React
+
+A TypeScript project with `react` in `dependencies` or `devDependencies` gets a React rule scope on
+top of the strict preset: function components only, the rules of hooks and exhaustive dependencies,
+no state derived from props or state in an effect, no data fetching in an effect, no array index as a
+`key`, one styling approach and the `jsx-a11y` accessibility rules. Detection reads the package.json
+of each tree being analyzed (base and head), so adopting React is judged by the code that adds it.
+Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
+`false` to turn it off. `react.styling` picks the approach: `class-names` (the default) flags inline
+`style` objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style`
+objects, `inline-style` flags stylesheet imports and CSS-in-JS imports. A rule that flags legitimate
+code is lifted for some paths with an entry in `exceptions` (for example
+`react-hooks/exhaustive-deps`); a React rule named there while the scope is off is an error. The
+rules and their allowed forms are in [The strict preset](typescript-strict-preset.md#react).
 
 ### Custom analyzers
 

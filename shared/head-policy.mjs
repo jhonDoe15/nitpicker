@@ -1,5 +1,5 @@
 // The head policy: the config values that change what analyzers report (`exclude`, `layout`,
-// `exceptions`, `thresholds`), written once to a file outside both snapshots so base and head runs
+// `exceptions`, `thresholds` and, when set, `react`), written once to a file outside both snapshots so base and head runs
 // see the same policy. The file format and its reader are language-neutral; the TypeScript preset
 // adds its layout defaults in `languages/typescript/preset/head-policy.mjs`.
 //
@@ -11,13 +11,14 @@ import path from 'node:path';
 
 export const HEAD_POLICY_ENV = 'NITPICKER_POLICY';
 
-/** The validated config reduced to the four keys that change what runners analyze. */
+/** The validated config reduced to the keys that change what runners analyze. */
 export function resolveHeadPolicy(config = {}) {
   return {
     exclude: config.exclude ?? [],
     layout: config.layout ?? {},
     exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
+    ...(config.react === undefined ? {} : { react: config.react }),
   };
 }
 
