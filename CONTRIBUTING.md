@@ -9,6 +9,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 - `shared/`: language-neutral policy and custom rules. It imports neither `core/` nor `languages/`.
 - `languages/typescript/`: the ESLint/strict preset (`preset/`) and the TypeScript analyzers
   (`adapters/`).
+- `languages/javascript/`: what the JavaScript preset changes in the TypeScript pipeline (JSDoc
+  rules, ESLint dialect, preset constants) and its `js-clean` fixture.
 - `languages/java/`: the Gradle init script and `StructureMetrics.java` (`gradle/`), the Java
   analyzer (`adapters/`) and the report ingesters (`ingest/`).
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
