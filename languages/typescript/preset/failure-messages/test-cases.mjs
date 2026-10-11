@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { strictProductionRules } from '../eslint-config/strict.mjs';
 import strictTestsConfig from '../eslint-config/strict-tests.mjs';
 
@@ -9,6 +9,15 @@ const productionRulesConfig = [
     languageOptions: { parser: tseslint.parser },
     plugins: { nitpicker: nitpickerRules },
     rules: strictProductionRules,
+  },
+];
+
+const partialAssertionConfig = [
+  {
+    files: ['test/**/*.test.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { nitpicker: nitpickerRules },
+    rules: { 'nitpicker/no-partial-output-assertion': 'error' },
   },
 ];
 
@@ -74,6 +83,34 @@ export const testFailureMessageCases = [
     filename: 'src/service.ts',
     banned:
       'const KILL_DELAY_MS = 1_000;\nexport function stop() { setTimeout(kill, KILL_DELAY_MS); }',
+    allowed: 'exception for this rule in nitpicker.config.json',
+  },
+  {
+    name: 'z.unknown() object field names validating the field in the schema',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned: "import { z } from 'zod';\nexport const schema = z.object({ name: z.unknown() });",
+    allowed: 'z.string().trim().min(1)',
+  },
+  {
+    name: 'z.any() object field names z.email()',
+    config: productionRulesConfig,
+    filename: 'src/service.ts',
+    banned: "import { z } from 'zod';\nexport const schema = z.object({ email: z.any() });",
+    allowed: 'z.email()',
+  },
+  {
+    name: 'partial output assertion names toEqual',
+    config: partialAssertionConfig,
+    filename: testFile,
+    banned: "it('x', () => { expect(render()).toContain('total: 3'); });",
+    allowed: 'toEqual',
+  },
+  {
+    name: 'partial output assertion names nitpicker.config.json',
+    config: partialAssertionConfig,
+    filename: testFile,
+    banned: "it('x', () => { expect(render()).toContain('total: 3'); });",
     allowed: 'exception for this rule in nitpicker.config.json',
   },
   testCase(

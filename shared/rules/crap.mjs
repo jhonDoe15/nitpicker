@@ -1,11 +1,21 @@
-import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES, RULE_IDS, renderMessage } from '../policy.mjs';
+import {
+  DEFAULT_CRAP_SCORE_LIMIT,
+  GREW_MESSAGES,
+  MESSAGES,
+  RULE_IDS,
+  renderMessage,
+} from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 
-// Neutral input: one entry per function, `{ path, name, identity, line?, crap? }`. `crap` is the
-// function's CRAP score, or anything that is not a finite number when its coverage is unknown.
-// The adapter computes the score and the identity (both are language-specific); this rule decides:
+// Neutral input: one entry per function, `{ path, name, identity, ratchetKey?, line?, crap? }`.
+// `crap` is the function's CRAP score, or anything that is not a finite number when its coverage is
+// unknown. The adapter computes the score and the identity (both are language-specific; the
+// identity includes the function's source hash); this rule decides:
 //   `crap-coverage-unknown` (enforceable) when `crap` is not a finite number;
 //   `crap-score-limit` (enforceable) when `crap` >= `limit`.
+// `ratchetKey` names the function without its source hash. With it, a function that was already
+// over the limit on the base and was edited fails only when its score rose (see the ratchet in
+// core/diff/compare.mjs); without it, every edit of an over-limit function is a new finding.
 
 export function crapFindings(functions, { tool, limit = DEFAULT_CRAP_SCORE_LIMIT }) {
   const findings = [];
@@ -14,7 +24,7 @@ export function crapFindings(functions, { tool, limit = DEFAULT_CRAP_SCORE_LIMIT
     if (!unknown && fn.crap < limit) {
       continue;
     }
-    findings.push({
+    const finding = {
       tool,
       rule: unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit,
       path: fn.path,
@@ -29,7 +39,28 @@ export function crapFindings(functions, { tool, limit = DEFAULT_CRAP_SCORE_LIMIT
       classification: 'enforceable',
       symbol: fn.name,
       ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
-    });
+    };
+    findings.push(
+      unknown || fn.ratchetKey === undefined ? finding : withRatchet(finding, fn, limit),
+    );
   }
   return findings;
+}
+
+// The score is rounded to what the message shows, so noise below that never counts as a rise.
+function withRatchet(finding, fn, limit) {
+  const crap = Number(fn.crap.toFixed(2));
+  return {
+    ...finding,
+    ratchet: {
+      key: fn.ratchetKey,
+      value: crap,
+      worseMessage: renderMessage(GREW_MESSAGES.crap, {
+        name: fn.name,
+        crap,
+        limit,
+        base: '{base}',
+      }),
+    },
+  };
 }

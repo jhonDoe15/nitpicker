@@ -28,10 +28,12 @@ import {
   renderConsoleSummary,
   renderRuleFilterSection,
 } from './diff/reporters.mjs';
+import { withRunLock } from './run-lock.mjs';
 import { createLayeredStore, resolveCacheStore } from './diff/cache-stores.mjs';
 import { publishBaseSnapshot } from './diff/publish-cache.mjs';
 import { runQualityDiff } from './diff/run-diff.mjs';
-import { selectAnalyzers } from './diff/run-analyzers.mjs';
+import { reportingProgress } from './diff/progress.mjs';
+import { runScheduler, selectAnalyzers } from './diff/run-analyzers.mjs';
 import { selectAnalyzerShard } from './diff/sharding.mjs';
 import { runAggregateCli } from './diff/aggregate-shards.mjs';
 
@@ -58,13 +60,17 @@ export function runCli(options = {}) {
 }
 
 function withCliDefaults(options) {
+  const stderr = options.stderr ?? process.stderr;
+  const progress = options.progress ?? stderr;
   return {
     ...options,
     arguments_: options.arguments_ ?? process.argv.slice(2),
     environment: options.environment ?? process.env,
     snapshotAnalyzers: options.snapshotAnalyzers ?? options.analyzers,
     stdout: options.stdout ?? process.stdout,
-    stderr: options.stderr ?? process.stderr,
+    stderr,
+    progress,
+    runTasks: reportingProgress(options.runTasks ?? runScheduler, progress),
   };
 }
 
@@ -104,31 +110,34 @@ function runConfigured(cli) {
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveHeadPolicy(config);
-  if (options.all) {
-    return runSnapshotCli({
-      options,
-      currentProjectRoot,
-      analyzers: configureAnalyzers(
-        presetAnalyzers(config, cli.snapshotAnalyzers),
-        config,
-        headPolicy,
-      ),
-      headPolicy,
-      stdout,
-      runTasks,
-    });
-  }
-  return runComparisonCli({
-    ...cli,
-    currentProjectRoot,
-    analyzers: configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy),
-    resolveBaseSetup: createBaseSetupResolver({
-      headConfig: config,
-      injectedAnalyzers: cli.analyzers,
-      warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
-    }),
+  const analyzers = configureAnalyzers(
+    presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
     config,
     headPolicy,
+  );
+  return withRunLock({ projectRoot: currentProjectRoot, stderr: cli.stderr }, () => {
+    if (options.all) {
+      return runSnapshotCli({
+        options,
+        currentProjectRoot,
+        analyzers,
+        headPolicy,
+        stdout,
+        runTasks,
+      });
+    }
+    return runComparisonCli({
+      ...cli,
+      currentProjectRoot,
+      analyzers,
+      resolveBaseSetup: createBaseSetupResolver({
+        headConfig: config,
+        injectedAnalyzers: cli.analyzers,
+        warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
+      }),
+      config,
+      headPolicy,
+    });
   });
 }
 
@@ -293,6 +302,7 @@ function runComparisonCli(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: cli.resolveBaseSetup,
+    progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });

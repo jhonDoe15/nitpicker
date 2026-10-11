@@ -100,3 +100,44 @@ describe('strict comment findings anchor on the comment, not on its neighbours',
     expect(comparison.unchangedFindings).toHaveLength(1);
   });
 });
+
+describe('ESLint messages carry the allowed form without changing the finding identity', () => {
+  function normalizeOne(message, relativePath) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-hint-'));
+    temporaryRoots.push(root);
+    const absolutePath = path.join(root, relativePath);
+    mkdirSync(path.dirname(absolutePath), { recursive: true });
+    writeFileSync(absolutePath, 'export const value = [1].map((x) => x);\n');
+    const [finding] = normalizeEslintResults({
+      value: [{ filePath: absolutePath, messages: [message] }],
+      projectRoot: root,
+      analyzerName: 'eslint-lint',
+    });
+    return finding;
+  }
+
+  it('rewrites the immutability message but keeps the identity of the rule message', () => {
+    const upstream = {
+      ruleId: 'functional/prefer-immutable-types',
+      messageId: 'variable',
+      message:
+        'Variable should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").',
+      line: 1,
+      column: 14,
+    };
+    const finding = normalizeOne(upstream, 'src/main/features/a/domain/x.ts');
+    const other = normalizeOne(
+      { ...upstream, message: 'Variable should be different.' },
+      'src/main/features/a/domain/x.ts',
+    );
+
+    expect(finding.message).toBe(
+      'Variable is mutable, but domain/ values must be deeply readonly. Annotate arrays from map, filter or toSorted as `readonly T[]`. Type a Set as `ReadonlySet<T>`, or build it inline: `[...new Set(xs)]`. Give a callback that returns an object or array literal an explicit readonly return type. Zod schemas and RegExp objects are always mutable: keep schemas in adapters/ and write the regex literal inline where it is used.',
+    );
+    expect(finding.identity.split('|').slice(0, 2)).toEqual([
+      'message:variable',
+      'node:Identifier',
+    ]);
+    expect(other.identity).toBe(finding.identity);
+  });
+});

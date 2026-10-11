@@ -44,6 +44,9 @@ describe('shared policy', () => {
         limit: 50,
       }),
     ).toBe('f has 60 lines; limit is 50');
+    expect(
+      renderMessage(MESSAGES.functionControlNesting, { name: 'shippingFor', value: 3, limit: 2 }),
+    ).toBe('shippingFor nests control flow 3 deep (limit 2). Return early instead of nesting.');
     expect(renderMessage(MESSAGES.changedBranchCoverage, { percent: '50.00', minimum: 95 })).toBe(
       'Branch coverage is 50.00%; minimum is 95%',
     );

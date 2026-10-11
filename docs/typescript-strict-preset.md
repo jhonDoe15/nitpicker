@@ -32,6 +32,16 @@ config file is an exception like any other.
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`.
+- `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
+  `server.ts`, plus the `compositionRootPattern` option shared with
+  `no-managed-resource-construction-outside-composition-roots`) only wires features with named
+  functions that pass things in. It reports `if`, `?:`, `switch`, `??` and optional chaining (`?.`),
+  inside functions and at module level, except the main guard (an `if` whose condition uses
+  `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and branches in its
+  condition. `&&` and `||` are not reported. A lookup or missing-value
+  check moves into the feature's `adapters/` (or `domain/`). Existing branches are baselined, and a
+  function that gains one fails; a branch that belongs in the root needs an exception for this
+  rule in `nitpicker.config.json`.
 
 ## Inside `domain/`
 
@@ -40,22 +50,57 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`. No recursion: a custom rule flags a function that calls itself.
+- No classes and no `this`.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
   failure case, which is the gate steering the author. It also keeps `domain/` pure. The cost is
   unwrapping at call sites and converting library exceptions at the adapter boundary.
 - Illegal states are made unrepresentable with discriminated unions.
+- `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
+  `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
+  already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
+  `domain/` types the value as `z.infer<typeof schema>` or a hand-written type. `unknown` as a
+  generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
+  `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
+  that carries a caught error through a failure result. An opaque value needs an exception in the
+  config file.
+  A hand-written guard such as `function isRecord(value: unknown): value is Record<...>` is
+  reported once, by this rule, for its `unknown` parameter; `no-handwritten-boundary-guard` stays
+  in `adapters/`.
+- Mutation is reported once per site by the `no-restricted-syntax` domain selectors (`push` and the
+  other mutating array methods, property assignment and update, `delete`, and `Object.assign`,
+  `defineProperty`, `defineProperties` or `setPrototypeOf` on anything but a fresh object literal).
+  `functional/immutable-data` is not enabled because it reported the same sites a second time with
+  a less helpful message.
 
 ## Inside `adapters/`
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
-  library exceptions into domain results at the boundary. No silent catches.
+  library exceptions into domain results at the boundary.
+- `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
+  caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
+  result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
+  Carry the caught value only where something reads it; a field added just so the binding is read
+  is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
+  reported. A deliberately dropped error needs an exception in the config file.
+- `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
+  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
+  `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
+  field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
+  (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
+  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported.
 - Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
   data are not allowed.
 
 ## Everywhere
 
+- `nitpicker/no-self-recursion`: no function that calls itself, in all production code (`domain/`,
+  `adapters/`, the composition root and shared code), not in tests. Allowed forms: a retry or poll
+  is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
+  JSON) is a `for...of` over a worklist that each step pushes the node's children onto
+  (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
+  `flatMap` or `Object.fromEntries`. `domain/` has no loops, so a walk there uses `map`/`flatMap` or
+  moves to `adapters/`.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
@@ -81,6 +126,11 @@ next to sources, and `__tests__/`). They ban forms that make a suite slow or non
 came from nitpicker's own suite, where it cost CI minutes. "Per test" means code that runs in an
 `it`/`test` callback or in `beforeEach`. That includes same-file functions those callbacks call, but
 not functions imported from other modules.
+
+The `duplicates` check scans test files too, but between two test files it reports only a clone
+that defines a named function (a copied helper: keep one in a non-test file such as
+`test/support/` and import it). Repeated expected values and assertions between tests are left
+alone.
 
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
@@ -132,6 +182,19 @@ not functions imported from other modules.
   `process.exitCode` only inside a main guard: an `if` whose condition uses `import.meta` (such as
   `import.meta.main`) or `require.main`. Export a function that takes the arguments and returns the
   exit code, so tests can import it instead of spawning it.
+- `nitpicker/no-partial-output-assertion` (not strict: a finding counts only when new in the diff, not
+  on every touched line): no positive `expect(x).toContain('text')`, ``toContain(`template`)`` or
+  `toContainEqual(...)`, also through `.resolves`/`.rejects` and `expect.soft`. A fragment passes
+  even when the rest of the output is wrong. Assert the whole output with `toEqual` or `toBe`. A
+  negated assertion (`.not.toContain`) is allowed, and so is `toContain` with a non-text argument.
+  Output too large or unordered to pin needs an exception in the config file.
+- `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
+  inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
+- The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
+  coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
+  even when an assertion fails, and cannot leak into the next test. It also overrides a
+  `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
+  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
@@ -263,6 +326,14 @@ implemented there: `readChangedLines` in `core/diff/git.mjs`, applied by `compar
   acceptable, since reformatting is a touch, and it matches how the line-based tools below behave.
 - Scope is rule-level, not tool-wide: only rules marked `strict` in the preset promote, so
   descriptive metrics (CRAP, duplication) keep their delta logic.
+
+Edited legacy lines are judged "only if worse". A strict finding inside a named function carries a
+count ratchet (how many times its rule and message fire in that function). When such a finding sits
+on a line the change edited but did not add (the first lines of a hunk, up to the number of lines it
+replaced), it is not promoted: it stays baselined while the function has no more of that violation
+than on the base, and fails once the count rises. Lines the change added, and every line of a new
+file, stay fully strict. Formatting is the exception: `prettier/prettier` is strict on every edited
+line (`mustMeetOnEditedLines` in `strict-rules.mjs`).
 
 Prettier findings use the same promotion: the formatter reports one finding per differing region
 (identity from the region's own text, `location.line` to `location.endLine` in the head file), and

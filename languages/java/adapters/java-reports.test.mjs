@@ -149,7 +149,12 @@ describe('readJavaFindings', () => {
       ['duplicates', 'duplicate-clone-size', bad, expect.stringContaining(':tokens')],
       ['jacoco', 'line-coverage', bad, 'line-coverage'],
       ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
-      ['crap', 'crap-score-limit', bad, 'function:Bad::decode( byte[] bytes)'],
+      [
+        'crap',
+        'crap-score-limit',
+        bad,
+        expect.stringMatching(/^function:Bad::decode\( byte\[\] bytes\):source:[0-9a-f]{24}$/),
+      ],
       ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
     ]);
   });
@@ -182,6 +187,21 @@ describe('readJavaFindings', () => {
     expect(rules({})).toEqual(['crap-score-limit']);
     expect(rules({ crapLimit: 156.5 })).toEqual([]);
     expect(rules({ crapLimit: 156 })).toEqual(['crap-score-limit']);
+  });
+
+  it('re-keys the CRAP finding when the method text changes but keeps its ratchet key', () => {
+    const crapOf = (root) =>
+      readJavaFindings(root).findings.find(({ rule }) => rule === 'crap-score-limit');
+    const root = projectWithReports();
+    const before = crapOf(root);
+    const sourceFile = path.join(root, 'src/main/java/demo/Bad.java');
+    writeFileSync(sourceFile, readFileSync(sourceFile, 'utf8').replace('bytes)', 'bytes, UTF_8)'));
+
+    const after = crapOf(root);
+
+    expect(after.identity).not.toBe(before.identity);
+    expect(after.ratchet.key).toBe(before.ratchet.key);
+    expect(after.ratchet.value).toBe(before.ratchet.value);
   });
 
   it('keeps identities when every reported line moves', () => {

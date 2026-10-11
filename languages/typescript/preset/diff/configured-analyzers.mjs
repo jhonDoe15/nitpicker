@@ -20,6 +20,7 @@ const ESLINT_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
+  'languages/typescript/adapters/eslint-hints.mjs',
   'languages/typescript/adapters/eslint-config-wrapper.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',

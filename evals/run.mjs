@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Eval runner CLI.
 //   node evals/run.mjs run --agent "<command>" --tier <name> [--model <id>] [--runs 5] [--case <id>]
-//        [--only-stale] [--results <dir>]
+//        [--only-stale] [--results <dir>] [--cases <dir>]
 //   node evals/run.mjs report [--results <dir>] [--format markdown|json]
 // Runs are never part of the normal test job: they cost money and take minutes.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -22,6 +22,7 @@ const { positionals, values } = parseArgs({
     model: { type: 'string' },
     runs: { type: 'string', default: '5' },
     case: { type: 'string', multiple: true },
+    cases: { type: 'string', default: path.join(import.meta.dirname, 'cases') },
     'only-stale': { type: 'boolean', default: false },
     results: { type: 'string', default: defaultResults },
     format: { type: 'string', default: 'markdown' },
@@ -51,7 +52,7 @@ function run() {
     throw new Error('run needs --agent <command> and --tier <name>');
   }
   const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
-  const selected = listCases(path.join(import.meta.dirname, 'cases'))
+  const selected = listCases(path.resolve(values.cases))
     .filter((entry) => !values.case || values.case.includes(entry.id))
     .filter((entry) => !values['only-stale'] || isStale(entry, manifest.version));
   mkdirSync(values.results, { recursive: true });

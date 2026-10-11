@@ -5,7 +5,8 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import { readJavaStructureFindings } from './java-structure.mjs';
+import { methodText, readJavaStructureFindings } from './java-structure.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
@@ -98,10 +99,15 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
   );
 }
 
-function crapFindings({ reportRoot, sourceRoots }, jacoco, crapLimit) {
+function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimit) {
+  const sources = new Map();
   return ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
     sourceRoots,
     limit: crapLimit,
+    sourceHash: (entry) =>
+      existsSync(path.join(projectRoot, entry.file))
+        ? hash(methodText(sources, projectRoot, entry))
+        : undefined,
   }).findings;
 }
 

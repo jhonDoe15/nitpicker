@@ -41,6 +41,7 @@ function writeShard(
     tools,
     headSha = 'head',
     findings = [],
+    held,
     toolErrors = [],
     toolVersions = {},
     configurationHashes = {},
@@ -79,6 +80,9 @@ function writeShard(
   writeJson(path.join(shardRoot, 'new-findings.json'), findings);
   writeJson(path.join(shardRoot, 'resolved-findings.json'), []);
   writeJson(path.join(shardRoot, 'changed-metrics.json'), []);
+  if (held !== undefined) {
+    writeJson(path.join(shardRoot, 'held-findings.json'), held);
+  }
   writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
 }
 
@@ -124,6 +128,34 @@ describe('quality shard aggregation', () => {
     expect(readJson(fixture.outputRoot, 'summary.json')).toEqual(report.summary);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
       'New enforceable findings: 1',
+    );
+  });
+
+  it('carries the held findings of every shard into the report and its note', () => {
+    const fixture = createFixture();
+    const held = {
+      tool: 'structure',
+      rule: 'function-lines-limit',
+      path: 'src/main/invoice.ts',
+      identity: 'function:computeInvoice',
+      message: 'computeInvoice has 68 lines; limit is 50',
+      classification: 'enforceable',
+      heldAtBase: 68,
+      ratchet: { key: 'k', value: 68, worseMessage: 'grew from {base}' },
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['structure'], held: [held] });
+    writeShard(fixture.inputRoot, 1, { tools: ['other'] });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('structure'), analyzer('other')],
+      shardCount: 2,
+    });
+
+    expect(report.unchangedFindings).toEqual([held]);
+    expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([held]);
+    expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
+      'Touched, still over limit (not failing):',
     );
   });
 
@@ -371,7 +403,9 @@ describe('quality shard aggregation', () => {
     );
 
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('Usage: node core/diff/aggregate-shards.mjs');
+    expect(result.stdout).toBe(
+      'Usage: node core/diff/aggregate-shards.mjs --input-root <directory> --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
+    );
   });
 });
 

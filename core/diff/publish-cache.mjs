@@ -52,7 +52,7 @@ export function publishBaseSnapshot({
       for (const [index, analyzer] of analyzers.entries()) {
         const name = analyzerName(analyzer, index);
         const report = run.reports.get(name);
-        if (report === undefined || !isCacheable(analyzer, report, run.toolErrors)) {
+        if (report === undefined || !isCacheable(analyzer, report, run)) {
           skipped.push(`${name} (analysis failed)`);
         } else if (cache.write(analyzer, report)) {
           published.push(name);
