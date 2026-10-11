@@ -26,6 +26,11 @@ npx nitpicker
 
 Run it from anywhere inside your project. It needs no configuration.
 
+The project is the nearest directory, up to the repository root, that holds a `package.json` or a
+`nitpicker.config.json`. A repository with several projects, for example a TypeScript `web/` and a
+Java `service/`, runs nitpicker once in each directory, and each reads its own
+`nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
+
 Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into your
 `AGENTS.md`.
 
