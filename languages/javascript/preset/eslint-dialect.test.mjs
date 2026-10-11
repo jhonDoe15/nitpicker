@@ -111,11 +111,10 @@ describe('applyJavascriptDialect', () => {
     const after = ruleSettings(applyJavascriptDialect(strict, javascript), 'no-restricted-syntax');
     expect(after).toHaveLength(before.length);
     for (const [index, setting] of after.entries()) {
-      const kept = selectors(setting).join('\n');
-      expect(kept).not.toMatch(/\bTS[A-Z]/);
-      expect(kept).toContain("Literal[raw='null']");
-      expect(kept).toContain('ConditionalExpression > ConditionalExpression');
-      expect(selectors(before[index]).join('\n')).toMatch(/TSAsExpression/);
+      const original = selectors(before[index]);
+      expect(original.some((text) => /TSAsExpression/.test(text))).toBe(true);
+      expect(selectors(setting)).toEqual(original.filter((text) => !/\bTS[A-Z]/.test(text)));
+      expect(selectors(setting).length).toBeGreaterThan(5);
     }
   });
 

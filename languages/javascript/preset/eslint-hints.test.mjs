@@ -30,18 +30,17 @@ function withPreset(config, check) {
 describe('unsafe any hint', () => {
   it('points a JavaScript project at JSDoc types', () => {
     withPreset({ preset: 'javascript' }, () => {
-      const message = unsafeAnyMessage();
-      expect(message).toContain('Give the value a JSDoc type at its source');
-      expect(message).toContain('`@param {string} name`');
-      expect(message).toContain('parameter is `{unknown}`');
+      expect(unsafeAnyMessage()).toBe(
+        'Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
+      );
     });
   });
 
   it('keeps the TypeScript wording for a TypeScript project', () => {
     withPreset({}, () => {
-      const message = unsafeAnyMessage();
-      expect(message).toContain('parameter is `unknown`');
-      expect(message).not.toContain('JSDoc');
+      expect(unsafeAnyMessage()).toBe(
+        'Unsafe return of a value of type `any`. Read fields of a legacy `any` value through one reader function whose parameter is `unknown` and that returns a typed object.',
+      );
     });
   });
 });
