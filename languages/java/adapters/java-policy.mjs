@@ -56,7 +56,14 @@ function hashWithArguments(configurationHash, adapterArguments) {
 
 export function applyJavaPolicy(
   findings,
-  { exclude = [], legacyInventory, policyRoot, baselineRoot, snapshot = 'head' } = {},
+  {
+    exclude = [],
+    legacyInventory,
+    policyRoot,
+    baselineRoot,
+    snapshot = 'head',
+    inventoryTool = INVENTORY_TOOL,
+  } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const kept = findings.filter(
@@ -73,6 +80,6 @@ export function applyJavaPolicy(
   const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
   return [
     ...baselined,
-    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, INVENTORY_TOOL),
+    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, inventoryTool),
   ];
 }
