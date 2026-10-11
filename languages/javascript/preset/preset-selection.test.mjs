@@ -171,12 +171,13 @@ describe('javascript analyzers with a customized policy', () => {
     const rebuilt = applyLayout(javascriptAnalyzers, customized);
     expect(rebuilt).not.toBe(javascriptAnalyzers);
     expect(analyzerNames(rebuilt)).toEqual(analyzerNames(javascriptAnalyzers));
-    expect(invocation(rebuilt, 'eslint-lint').args).toContain(
+    const underLib = (name) =>
+      invocation(rebuilt, name).args.filter((argument) => argument.startsWith('lib/'));
+    expect(underLib('eslint-lint')).toEqual([
       'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-    );
-    expect(invocation(rebuilt, 'prettier-format').args).toContain(
-      'lib/**/*.{js,mjs,cjs,json,yaml,yml}',
-    );
+      'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
+    expect(underLib('prettier-format')).toEqual(['lib/**/*.{js,mjs,cjs,json,yaml,yml}']);
   });
 
   it('keep the shared analyzer set when only the preset is chosen', () => {

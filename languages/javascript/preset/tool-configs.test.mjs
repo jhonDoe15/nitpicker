@@ -77,7 +77,7 @@ describe('generated tsconfig.quality.json', () => {
     });
     const config = layoutTsconfig(JSON.parse(defaultText('tsconfig.quality.json')), layout);
     expect(config.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
-    expect(config.exclude).toContain('lib/old/**');
+    expect(config.exclude.at(-1)).toBe('lib/old/**');
     expect(config.compilerOptions.checkJs).toBe(true);
   });
 
@@ -187,15 +187,22 @@ describe('generated knip.json', () => {
       entryPoints: ['tools/run.js'],
     };
     const config = layoutKnipConfig(base, layout);
-    expect(config.entry).toContain('lib/main.{js,mjs,cjs}');
-    expect(config.entry).not.toContain('src/main.{js,mjs,cjs}');
+    expect(config.entry.filter((entry) => entry.includes('main.{js'))).toEqual([
+      'lib/main.{js,mjs,cjs}',
+      'lib/main/main.{js,mjs,cjs}',
+    ]);
     expect(config.entry.at(-1)).toBe('tools/run.js');
-    expect(config.project).toContain('*.config.{js,mjs,cjs}');
+    expect(config.project.filter((entry) => entry.endsWith('{js,mjs,cjs}'))).toEqual([
+      '*.config.{js,mjs,cjs}',
+    ]);
   });
 
   it('is rewritten for the default JavaScript layout', () => {
     const config = transformed('knip.json', javascriptLayout, projectWith());
-    expect(config.entry).toContain('vitest.config.{js,mjs,cjs}');
+    expect(config.entry.filter((entry) => entry.startsWith('vitest.config'))).toEqual([
+      'vitest.config.ts',
+      'vitest.config.{js,mjs,cjs}',
+    ]);
   });
 });
 
@@ -236,6 +243,6 @@ describe('jsonTransform', () => {
       javascriptLayout,
     )(defaultText('tsconfig.quality.json'));
     expect(text.endsWith('}\n')).toBe(true);
-    expect(text).toContain('\n  "compilerOptions": {');
+    expect(text.split('\n')[1]).toBe('  "compilerOptions": {');
   });
 });

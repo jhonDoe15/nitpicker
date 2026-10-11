@@ -257,7 +257,7 @@ describe('withJsdoc', () => {
     const { context, reports } = recordingContext([{ jsdoc: true }], '* @param {unknown} value');
     const visitors = { Identifier() {} };
     const combined = withJsdoc(context, visitors, selection);
-    expect(combined.Identifier).toBe(visitors.Identifier);
+    expect(Object.keys(combined)).toEqual(['Identifier', 'Program']);
     combined.Program();
     expect(reports).toEqual([{ loc: { line: 3 }, messageId: 'unknownType' }]);
   });
