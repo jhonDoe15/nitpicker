@@ -112,6 +112,37 @@ cases outgrow it.
   one. The case format above is directory-based and does not depend on the repo, so the move is a
   copy.
 
+## Larger scenarios
+
+`evals/scenarios/` holds five bigger tasks that use the same case format as `evals/cases/`, each with
+a fixture, a reference solution and hidden acceptance tests. They check that the skill, the gate's
+messages and the rules are enough for a developer agent to build a real feature well, not just to
+pass. Each case gives the agent 60 minutes (`agentTimeoutMinutes` in `case.json`).
+
+| Scenario                     | What the agent builds                                                                   |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `library-overdue-fines`      | A feature in an app with three existing features, reused only through their `index.ts`. |
+| `import-contacts`            | An import of untrusted JSON, parsed once with zod, with union results.                  |
+| `retrying-price-client`      | An HTTP client with retries, backoff and fake timers.                                   |
+| `greenfield-expense-tracker` | CSV import, budgets, a monthly report and JSON persistence from an empty project.       |
+| `legacy-invoice-discounts`   | A change inside a 68-line legacy function that is over every size limit.                |
+
+Run them with a Claude Code subagent as the developer through the park agent:
+
+```sh
+NITPICKER_EVAL_PARK_DIR=/tmp/park node evals/run.mjs run --cases evals/scenarios \
+  --case legacy-invoice-discounts --agent "node $PWD/evals/runner/park-agent.mjs" \
+  --tier sonnet-skill --runs 1 --results /tmp/results
+```
+
+The park agent writes `/tmp/park/<case>-1.json` (the workdir, the ticket and an env file that puts
+`nitpicker-gate` on PATH) and waits. A developer subagent works in that workdir. When it is done,
+`touch /tmp/park/<case>-1.done` lets the runner run the final gate, the acceptance tests and the
+shortcut detectors. A strict reviewer agent then reads the diff and the gate log the developer saw.
+It looks for slop the gate let through, for findings that pushed the agent toward worse code, and
+for messages or skill lines that left it guessing. Each scenario's reference solution must pass with
+`--agent "node $PWD/evals/runner/reference-agent.mjs" --tier reference`.
+
 ## Shortcut detectors
 
 Code: `evals/detectors/` (plain `.mjs`, tests alongside). Detectors compare the fixture tree with the
