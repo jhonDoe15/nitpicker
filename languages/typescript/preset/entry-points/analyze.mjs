@@ -18,10 +18,14 @@ function concreteFilePattern(layout) {
   return new RegExp(`${CONCRETE_NAME}\\.[cm]?${layout.javascript ? 'js' : 'ts'}$`, 'i');
 }
 
-function entryPointOf({ productionModules, root, layout }, component) {
-  return layout.entryExtensions
-    .map((extension) => `${root}/${component}/index.${extension}`)
-    .find((candidate) => productionModules.includes(candidate));
+function declaredEntryPoints({ components, productionModules, root, layout }) {
+  const candidates = [...components].map((component) => [
+    component,
+    layout.entryExtensions
+      .map((extension) => `${root}/${component}/index.${extension}`)
+      .find((candidate) => productionModules.includes(candidate)),
+  ]);
+  return new Map(candidates.filter(([, entryPoint]) => entryPoint !== undefined));
 }
 
 function relativeToRoot(modulePath, sourceRoot) {
@@ -106,26 +110,21 @@ export function analyzeEntryPoints(
     )
       ? legacyRoot
       : requestedRoot;
-  const productionModules = graph.modules
-    .map((module) => normalizePath(module.source))
-    .filter(
-      (source) =>
-        source.startsWith(`${normalizedRoot}/`) &&
-        isProductionModule(source, normalizedRoot, layout),
-    );
+  const productionModules = sources.filter(
+    (source) =>
+      source.startsWith(`${normalizedRoot}/`) && isProductionModule(source, normalizedRoot, layout),
+  );
   const components = new Set(
     productionModules
       .map((source) => componentName(source, normalizedRoot))
       .filter((name) => name !== '(root)' && !foundationDirectories.has(name)),
   );
-  const entryPoints = new Map(
-    [...components]
-      .map((component) => [
-        component,
-        entryPointOf({ productionModules, root: normalizedRoot, layout }, component),
-      ])
-      .filter(([, entryPoint]) => entryPoint !== undefined),
-  );
+  const entryPoints = declaredEntryPoints({
+    components,
+    productionModules,
+    root: normalizedRoot,
+    layout,
+  });
   const isExportReachable = exportReachability(graph, normalizedRoot);
 
   const throughEntryPoint = [];
