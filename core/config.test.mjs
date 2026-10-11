@@ -18,10 +18,44 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
-  it('accepts the java preset and rejects other presets', () => {
+  it('accepts the java and python presets and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
+    expect(validateConfig({ preset: 'python' })).toEqual({ preset: 'python' });
     expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java',
+      '"preset" must be one of: typescript, java, python',
+    );
+  });
+
+  it('accepts python settings only with the python preset', () => {
+    const python = { environment: 'uv', formatter: 'black', sourceRoots: ['src'] };
+    expect(validateConfig({ preset: 'python', python })).toEqual({ preset: 'python', python });
+    expect(() => validateConfig({ preset: 'python', python: { formatter: 'x' } })).toThrow(
+      '"python.formatter" must be one of',
+    );
+    expect(() => validateConfig({ preset: 'java', python })).toThrow(
+      '"python" is only supported with "preset": "python"',
+    );
+    expect(describeConfigOverrides({ preset: 'python', python })).toEqual([
+      'preset: "python"',
+      `python: ${JSON.stringify(python)}`,
+    ]);
+  });
+
+  it('shares thresholds, exclude and legacyInventory with the python preset', () => {
+    const shared = {
+      thresholds: { crapLimit: 12 },
+      exclude: ['generated/**'],
+      legacyInventory: 'config/legacy.json',
+    };
+    expect(validateConfig({ preset: 'python', ...shared })).toEqual({
+      preset: 'python',
+      ...shared,
+    });
+    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
+      '"layout" is not supported with "preset": "python"',
+    );
+    expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
+      '"exceptions" is not supported with "preset": "python"',
     );
   });
 

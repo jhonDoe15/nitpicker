@@ -24,7 +24,8 @@
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node core/diff/fixtures/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/conformance.test.mjs",
-    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/java-preset.e2e.test.mjs"
+    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/java-preset.e2e.test.mjs",
+    "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/python/adapters/python-preset.e2e.test.mjs"
   },
   "prettier": "./languages/typescript/preset/defaults/.prettierrc.json",
   "files": [

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
@@ -11,7 +12,7 @@ import {
   validateThresholds,
 } from '../shared/config.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java'];
+const SUPPORTED_PRESETS = ['typescript', 'java', 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions'];
 const KEYS = [
   'base',
@@ -23,6 +24,7 @@ const KEYS = [
   'exceptions',
   'analyzers',
   'legacyInventory',
+  'python',
 ];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
@@ -74,6 +76,7 @@ function validateScalars(config) {
   if (config.preset === 'java') {
     validateJavaKeys(config);
   }
+  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
 }
 
 function validateJavaKeys(config) {

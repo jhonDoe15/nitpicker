@@ -118,4 +118,17 @@ describe('applyJavaPolicy', () => {
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
   });
+
+  it('names the tool of a baseline-expansion after the language that asks', () => {
+    const options = {
+      legacyInventory: 'nitpicker.legacy.json',
+      policyRoot: inventoryRoot([allow('a.py', 3)]),
+      baselineRoot: inventoryRoot([allow('a.py', 1)]),
+      snapshot: 'head',
+    };
+
+    expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
+      expect.objectContaining({ tool: 'python', rule: 'baseline-expansion' }),
+    ]);
+  });
 });
