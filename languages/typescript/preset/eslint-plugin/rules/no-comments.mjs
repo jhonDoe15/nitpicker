@@ -56,7 +56,7 @@ export const rule = {
       jsdocProse:
         'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
       jsdocUnsupportedTag:
-        'The JSDoc tag @{{tag}} is not allowed. JSDoc holds types only: @param, @returns, @type, @typedef, @property, @template, @callback, @satisfies, @import, @overload and @this.',
+        'The JSDoc tag @{{tag}} is not allowed. JSDoc holds types only: {{allowed}}.',
       jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
       jsdocAnyType:
         'Do not use `any` or `*` in a JSDoc type. Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',

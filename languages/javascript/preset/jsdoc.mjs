@@ -1,19 +1,3 @@
-export const SUPPORTED_TAGS = [
-  'param',
-  'returns',
-  'return',
-  'type',
-  'typedef',
-  'property',
-  'prop',
-  'template',
-  'callback',
-  'satisfies',
-  'import',
-  'overload',
-  'this',
-];
-
 const NAME = /^(?:\[[^\]]*\]|[\w$.]+)/;
 const NAME_LIST = /^[\w$]+(?:\s*,\s*[\w$]+)*/;
 const IMPORT_FORM = /^(?:\{[^}]*\}|\*\s+as\s+[\w$]+)\s+from\s+(?:'[^']+'|"[^"]+")$/;
@@ -36,6 +20,10 @@ const GRAMMARS = {
   import: { whole: IMPORT_FORM, usage: "@import {Name} from 'module'" },
   overload: { usage: '@overload' },
 };
+
+const ALLOWED_TAGS = Object.keys(GRAMMARS)
+  .map((tag) => `@${tag}`)
+  .join(', ');
 
 export function isJsdocBlock(comment) {
   return comment.type === 'Block' && comment.value.startsWith('*');
@@ -99,7 +87,8 @@ function parseBody(grammar, body) {
 function parseTag(segment) {
   const grammar = GRAMMARS[segment.tag];
   if (grammar === undefined) {
-    return { problems: [{ messageId: 'jsdocUnsupportedTag', data: { tag: segment.tag } }] };
+    const data = { tag: segment.tag, allowed: ALLOWED_TAGS };
+    return { problems: [{ messageId: 'jsdocUnsupportedTag', data }] };
   }
   const parsed = parseBody(grammar, segment.text);
   if (parsed === undefined) {

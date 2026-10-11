@@ -1,4 +1,4 @@
-export const JAVASCRIPT_PRESET = 'javascript';
+const JAVASCRIPT_PRESET = 'javascript';
 
 export const JAVASCRIPT_COMPILER_OPTIONS = { allowJs: true, checkJs: true };
 

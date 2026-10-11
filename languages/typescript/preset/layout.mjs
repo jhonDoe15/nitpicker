@@ -26,12 +26,7 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
-  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
-  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
-  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
-  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
-  const excludeMatchers = exclude.map(globToRegExp);
+function filePatterns(sourceRoots, testRoots) {
   const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
   const testAlternatives = testRoots.map(escapeRegExp).join('|');
   const testPattern = new RegExp(
@@ -44,8 +39,24 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       .join('|'),
   );
   const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.[cm]?[jt]sx?$`);
+  return { testPattern, sourcePattern };
+}
 
-  const unitTestExtension = javascript ? codeExtensions : 'ts';
+function unitTestGlobsFor({ sourceRoots, testRoots, javascript }) {
+  const extension = javascript ? codeExtensions : 'ts';
+  return [
+    ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${extension}`),
+    ...testRoots.map((root) => `${root}/unit/**/*.${extension}`),
+  ];
+}
+
+export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
+  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
+  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
+  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
+  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
+  const excludeMatchers = exclude.map(globToRegExp);
+  const { testPattern, sourcePattern } = filePatterns(sourceRoots, testRoots);
   const resolved = {
     javascript,
     entryExtensions: javascript ? ['js', 'mjs', 'cjs'] : ['ts'],
@@ -60,10 +71,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`),
     ],
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: [
-      ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${unitTestExtension}`),
-      ...testRoots.map((root) => `${root}/unit/**/*.${unitTestExtension}`),
-    ],
+    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript }),
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
     excludePattern:
