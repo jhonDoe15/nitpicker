@@ -177,7 +177,7 @@ function entryPointsCheckFor(layout, exclusions) {
 }
 
 function prettierPatterns(layout) {
-  const code = layout.javascript ? 'js,jsx,mjs,cjs' : 'ts,tsx,mts,mjs';
+  const code = layout.javascript ? 'js,mjs,cjs' : 'ts,tsx,mts,mjs';
   return [
     ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
     ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
