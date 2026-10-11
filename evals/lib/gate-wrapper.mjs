@@ -14,6 +14,15 @@ if (!logFile || !controlDirectory || gateArguments.length === 0) {
   process.exit(2);
 }
 
+const agentArguments = process.argv.slice(2);
+if (agentArguments.includes('--help')) {
+  // Asking for usage is not a gate run: relay it without counting an iteration.
+  const help = spawnSync(gateArguments[0], [...gateArguments.slice(1), ...agentArguments], {
+    stdio: 'inherit',
+  });
+  process.exit(help.status ?? 2);
+}
+
 const iteration = existsSync(logFile)
   ? readFileSync(logFile, 'utf8').split('\n').filter(Boolean).length + 1
   : 1;
@@ -22,7 +31,7 @@ const [executable, ...baseArguments] = gateArguments;
 const startedAt = Date.now();
 const result = spawnSync(
   executable,
-  [...baseArguments, '--output', reportDirectory, ...process.argv.slice(2)],
+  [...baseArguments, '--output', reportDirectory, ...agentArguments],
   { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } },
 );
 const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
@@ -30,6 +39,6 @@ const exit = result.status ?? 2;
 process.stdout.write(output);
 appendFileSync(
   logFile,
-  `${JSON.stringify({ iteration, exit, durationMs: Date.now() - startedAt, reportDirectory, output })}\n`,
+  `${JSON.stringify({ iteration, args: agentArguments, exit, durationMs: Date.now() - startedAt, reportDirectory, output })}\n`,
 );
 process.exit(exit);

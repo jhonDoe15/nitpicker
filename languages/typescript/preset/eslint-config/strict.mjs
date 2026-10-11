@@ -1,6 +1,6 @@
 import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
-import nitpickerRules from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
 import {
@@ -75,6 +75,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
         ...declarationRules,
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.source],
+        'nitpicker/no-self-recursion': 'error',
       },
     },
     {
@@ -88,8 +89,8 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
       rules: {
         ...domainFunctionalRules,
         'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.domain],
-        'nitpicker/no-self-recursion': 'error',
         'nitpicker/no-throw': 'error',
+        'nitpicker/no-unknown-in-domain': 'error',
       },
     },
     {
@@ -144,8 +145,10 @@ export function strictConfig(parserOptions) {
 }
 
 export const strictProductionRules = {
+  'nitpicker/no-branch-in-composition-root': 'error',
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
+  'nitpicker/no-unvalidated-schema-field': 'error',
 };
 
 export function strictPresetConfig(layout, parserOptions) {

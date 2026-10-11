@@ -1,5 +1,5 @@
 {
-  "path": ["src"],
+  "path": ["src", "test", "tests"],
   "format": ["typescript"],
   "mode": "mild",
   "reporters": ["console", "json"],
@@ -10,9 +10,6 @@
     "**/build/**",
     "**/generated/**",
     "**/*.d.ts",
-    "**/__tests__/**",
-    "**/*.test.ts",
-    "**/*.spec.ts",
     "**/coverage/**",
     "**/reports/**",
     "**/target/**",

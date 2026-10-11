@@ -101,7 +101,17 @@ function parseRatchet(value, context) {
   if (typeof value.value !== 'number' || !Number.isFinite(value.value)) {
     throw new TypeError(`${context}.value must be a finite number`);
   }
-  return { key: requiredString(value.key, `${context}.key`), value: value.value };
+  const ratchet = { key: requiredString(value.key, `${context}.key`), value: value.value };
+  if (value.worseMessage !== undefined) {
+    ratchet.worseMessage = requiredString(value.worseMessage, `${context}.worseMessage`);
+  }
+  if (value.existingCodeOnly !== undefined) {
+    if (typeof value.existingCodeOnly !== 'boolean') {
+      throw new TypeError(`${context}.existingCodeOnly must be a boolean`);
+    }
+    ratchet.existingCodeOnly = value.existingCodeOnly;
+  }
+  return ratchet;
 }
 
 function positiveInteger(value, context) {

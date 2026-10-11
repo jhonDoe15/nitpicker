@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
 
@@ -72,6 +73,59 @@ describe('ingestCrap', () => {
 
     const twice = `${csv}${csv.split('\n')[1]}\n`;
     expect(new Set(ingest(twice).map((f) => f.identity)).size).toBe(ingest(twice).length);
+  });
+
+  describe('an edited method over the limit', () => {
+    const scoreFinding = (findings) => findings.find((f) => f.rule === 'crap-score-limit');
+    const withHash = (sourceHash, csv = fixture('lizard.csv')) =>
+      ingest(csv, undefined, { sourceHash: () => sourceHash });
+    const edit = (headCsv) =>
+      compareFindings({
+        baseFindings: withHash('before'),
+        headFindings: withHash('after', headCsv),
+      });
+
+    it('keys the score finding by the method source and ratchets on the method alone', () => {
+      const finding = scoreFinding(withHash('abc'));
+
+      expect(finding.identity).toBe(
+        'function:Calc::classify( int a , int b , String s):source:abc',
+      );
+      expect(finding.ratchet).toMatchObject({
+        key: 'function:Calc::classify( int a , int b , String s):crap',
+        value: expect.any(Number),
+      });
+    });
+
+    it('stays baselined when the score is unchanged', () => {
+      const result = edit(fixture('lizard.csv'));
+
+      expect(result.newFindings).toEqual([]);
+      expect(result.unchangedFindings.map((f) => f.rule)).toEqual([
+        'crap-coverage-unknown',
+        'crap-score-limit',
+      ]);
+    });
+
+    it('stays baselined when the score fell', () => {
+      const result = edit(fixture('lizard.csv').replace('13,9,109', '13,8,109'));
+
+      expect(result.newFindings).toEqual([]);
+    });
+
+    it('fails when the score rose, and says from what', () => {
+      const result = edit(fixture('lizard.csv').replace('13,9,109', '13,10,109'));
+
+      expect(scoreFinding(result.newFindings).message).toBe(
+        'Calc::classify( int a , int b , String s) CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests.',
+      );
+    });
+
+    it('does not key a method with unknown coverage by its source', () => {
+      const unknown = withHash('abc').find((f) => f.rule === 'crap-coverage-unknown');
+
+      expect(unknown.identity).toBe('function:Calc::Inner::get( int a)');
+    });
   });
 
   it('rejects malformed input', () => {

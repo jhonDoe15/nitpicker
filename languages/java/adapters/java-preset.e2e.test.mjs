@@ -604,7 +604,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'function-control-nesting-limit Wide.deep',
       ]);
       expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
-        'Wide.deep has 3 maxControlNesting; limit is 2',
+        'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
       );
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },

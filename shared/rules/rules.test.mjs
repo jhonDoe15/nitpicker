@@ -167,8 +167,14 @@ describe('duplicates rule on neutral clones', () => {
     );
     const failures = byRule(findings, 'duplicate-clone');
     expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
-      ['a.java', 'Duplicate with b.java'],
-      ['a.java', 'Duplicate with b.java'],
+      [
+        'a.java',
+        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places.',
+      ],
+      [
+        'a.java',
+        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places.',
+      ],
     ]);
     expect(failures[0].identity).toMatch(
       /^pair:a\.java\|b\.java:fragment:[0-9a-f]{24}:occurrence:1$/,
@@ -229,7 +235,8 @@ describe('crapFindings', () => {
         rule: 'crap-score-limit',
         path: 'a.ts',
         identity: 'function:f',
-        message: 'f has CRAP 9.00; score must be below 9',
+        message:
+          'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
@@ -242,7 +249,9 @@ describe('crapFindings', () => {
     expect(findings).toEqual([
       expect.objectContaining({
         rule: 'crap-coverage-unknown',
-        message: 'f has unknown coverage and no CRAP score',
+        message: expect.stringContaining(
+          'f has unknown coverage and no CRAP score: no test runs it',
+        ),
         symbol: 'f',
       }),
     ]);
@@ -296,7 +305,8 @@ describe('mutantFindings', () => {
       ['mutant-timeout', 'descriptive'],
     ]);
     expect(findings[0]).toMatchObject({
-      message: 'Survived Op: no test fails when this code changes. Add an assertion that would.',
+      message:
+        'Survived Op: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       symbol: 'C#m',
       location: { line: 4 },
     });
