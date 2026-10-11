@@ -226,6 +226,58 @@ describe('static differential adapters', () => {
     });
   });
 
+  describe('prettier precedence between the project and nitpicker configs', () => {
+    function precedenceDiff(precedence) {
+      const repository = createRepository({
+        ...policyFiles(),
+        '.prettierrc': '{ "semi": false, "singleQuote": false }\n',
+        'tests/placeholder.ts': 'export const placeholder = true;\n',
+      });
+      writeFiles(repository.root, { 'src/main/fresh.ts': 'export const fresh = "a"\n' });
+      commit(repository.root, 'change');
+      return runQualityDiff({
+        repositoryRoot: repository.root,
+        projectRelativePath: '.',
+        headProjectRoot: repository.root,
+        requestedBaseRef: repository.baseRef,
+        outputRoot: path.join(repository.root, 'reports/quality/diff'),
+        headPolicy: precedence === undefined ? {} : { tools: { prettier: { precedence } } },
+        analyzers: [
+          analyzer({
+            name: 'prettier-format',
+            kind: 'prettier',
+            configRelativePath: '.prettierrc.json',
+            ignoreRelativePath: '.prettierignore',
+            patterns: ['src/main/**/*.ts', 'tests/**/*.ts'],
+          }),
+        ],
+      });
+    }
+
+    it('formats with the nitpicker config by default', () => {
+      const report = precedenceDiff(undefined);
+
+      expect(report.toolErrors).toEqual([]);
+      expect(report.newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/fresh.ts', rule: 'prettier/prettier' }),
+      ]);
+    });
+
+    it('formats with the project config when it alone is listed', () => {
+      const report = precedenceDiff(['project']);
+
+      expect(report.toolErrors).toEqual([]);
+      expect(report.newFindings).toEqual([]);
+    });
+
+    it('merges both configs and lets the first listed win', () => {
+      expect(precedenceDiff(['project', 'nitpicker']).newFindings).toEqual([]);
+      expect(precedenceDiff(['nitpicker', 'project']).newFindings).toEqual([
+        expect.objectContaining({ path: 'src/main/fresh.ts', rule: 'prettier/prettier' }),
+      ]);
+    });
+  });
+
   it('ignores generated quality-diff files during formatting checks', () => {
     const projectRoot = generatedSnapshot();
     writeFiles(projectRoot, {
