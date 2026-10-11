@@ -25,6 +25,7 @@ describe('common layout', () => {
       expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
     }
     expect(duplicates.path).toContain(sourceRoot);
+    expect(duplicates.path).toContain(testRoots[0]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
     expect(sourceGlobs).toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');

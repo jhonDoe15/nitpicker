@@ -17,11 +17,15 @@ import { describeConfigOverrides } from './config.mjs';
 import { policyHash } from './diff/report-model.mjs';
 import { startTestHttpServer } from './diff/test-http-server.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
+import { resolveRunLockPath } from './run-lock.mjs';
 
 // Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
 // analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
-// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
-const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts). Progress lines are
+// discarded unless a test passes `progress`.
+const discardedProgress = { write() {} };
+const runCli = (options) =>
+  runCliWithSubprocesses({ runTasks: runTasksInProcess, progress: discardedProgress, ...options });
 
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'diff/fixtures/fake-analyzer.mjs');
 const temporaryRoots = [];
@@ -1042,6 +1046,99 @@ describe('remote findings cache', () => {
     } finally {
       await remote.close();
     }
+  });
+});
+
+describe('nitpicker progress and run lock', () => {
+  function setup() {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
+    const run = (extra = {}) => {
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
+        environment: { NITPICKER_CACHE_DIR: cacheDirectory },
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+        progress: output.stderr,
+        ...extra,
+      });
+      return { exitCode, output };
+    };
+    return { repository, run, lockPath: resolveRunLockPath(repository.root) };
+  }
+
+  it('prints a start line per phase to stderr and leaves out quick successful analyzers', () => {
+    const { run } = setup();
+
+    const { exitCode, output } = run();
+
+    expect(exitCode).toBe(0);
+    expect(output.stderrText.split('\n').filter(Boolean)).toEqual([
+      'nitpicker: base: running 1 analyzer',
+      'nitpicker: head: running 1 analyzer',
+    ]);
+    expect(output.stdoutText).not.toContain('nitpicker: head');
+  });
+
+  it('says the base was cached instead of running it again', () => {
+    const { run } = setup();
+    run();
+
+    const { output } = run();
+
+    expect(output.stderrText.split('\n').filter(Boolean)).toEqual([
+      'nitpicker: base 1 analyzer cached',
+      'nitpicker: head: running 1 analyzer',
+    ]);
+  });
+
+  it('labels the single snapshot of --all as head', () => {
+    const { run } = setup();
+
+    const { output } = run({ arguments_: ['--all', '--output', makeOutputRoot()] });
+
+    expect(output.stderrText.split('\n').filter(Boolean)).toEqual([
+      'nitpicker: head: running 1 analyzer',
+    ]);
+  });
+
+  it('refuses to start while a live process holds the run lock', () => {
+    const { run, lockPath } = setup();
+    writeFileSync(lockPath, `${String(process.ppid)}\n`);
+
+    const { exitCode, output } = run();
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toBe(
+      `nitpicker: another run is in progress in this project (pid ${String(process.ppid)}); wait for it to finish.\n`,
+    );
+    expect(output.stdoutText).toBe('');
+    expect(readFileSync(lockPath, 'utf8')).toBe(`${String(process.ppid)}\n`);
+  });
+
+  it('takes over a lock whose process is gone and removes it after the run', () => {
+    const { run, lockPath } = setup();
+    writeFileSync(lockPath, '2147483646\n');
+
+    const { exitCode } = run();
+
+    expect(exitCode).toBe(0);
+    expect(existsSync(lockPath)).toBe(false);
+  });
+
+  it('removes the lock after a run that fails', () => {
+    const { run, lockPath } = setup();
+
+    const { exitCode } = run({ arguments_: ['--analyzer', 'unknown'] });
+
+    expect(exitCode).toBe(2);
+    expect(existsSync(lockPath)).toBe(false);
   });
 });
 

@@ -1,4 +1,4 @@
-import strictDomainConfig from '../eslint-config/strict-domain.mjs';
+import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
 
 const filename = 'src/main/features/billing/domain/invoice.ts';
 
@@ -65,6 +65,11 @@ export const domainFailureMessageCases = [
     'const run = (o: { readonly a: number }) => { delete o.a; };',
     'Object.fromEntries',
   ),
+  domainCase(
+    'Object.assign onto a parameter names spread',
+    'const run = (o: { readonly a: number }) => Object.assign(o, { a: 1 });',
+    '{ ...value, field }',
+  ),
   domainCase('class names functions', 'class Invoice {}', 'functions'),
   domainCase('this names functions', 'function run() { return this; }', 'functions'),
   domainCase(
@@ -76,6 +81,16 @@ export const domainFailureMessageCases = [
     'Array generic names ReadonlyArray',
     'function run(xs: Array<number>) { return xs; }',
     'ReadonlyArray',
+  ),
+  domainCase(
+    'unknown parameter names the zod schema in adapters/',
+    'export function run(input: unknown) { return input; }',
+    'zod schema in adapters/',
+  ),
+  domainCase(
+    'unknown property names the parsed type',
+    'export type Row = { readonly payload: unknown };',
+    'z.infer<typeof schema>',
   ),
   domainCase('mutable property names readonly', 'type Invoice = { total: number };', 'readonly'),
 ];

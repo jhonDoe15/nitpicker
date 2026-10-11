@@ -65,6 +65,7 @@ describe('custom layout and exclude across runners and tools', () => {
     ['coding-standards', 'lib/live/assertion.ts'],
     ['structure', 'lib/live/dup-a.ts'],
     ['duplicates', 'lib/live/dup-a.ts'],
+    ['duplicates', 'spec/live/copy-a.test.ts'],
     ['test-runtime', 'spec/live.test.ts'],
   ])('%s analyzes the custom lib/ and spec/ roots', (name, expectedPath) => {
     expect(findingPaths(run, name)).toContain(expectedPath);
@@ -263,6 +264,10 @@ function fixtureFiles() {
     'spec/helper.ts': 'export const helper = 1;\n',
     'spec/live.test.ts': passingTest(),
     'spec/legacy/old.test.ts': passingTest(),
+    'spec/live/copy-a.test.ts': cloneSource(5),
+    'spec/live/copy-b.test.ts': cloneSource(5),
+    'spec/legacy/copy-a.test.ts': cloneSource(7),
+    'spec/legacy/copy-b.test.ts': cloneSource(7),
   };
 }
 
@@ -273,13 +278,17 @@ function passingTest() {
 // One file per tool, planted in `lib/<directory>/`: formatting, a type error, a lint error, a
 // production-to-test import, a clone pair, an unused file, a type assertion and a bypass of a
 // component's public entry point.
-function violations(directory) {
+function cloneSource(factor) {
   const statements = Array.from(
     { length: 12 },
     (_, index) =>
-      `  const value${String(index)} = input * ${String(index + 3)} + offset(${String(index)});\n  total += value${String(index)} % 7;`,
+      `  const value${String(index)} = input * ${String(index + factor)} + offset(${String(index)});\n  total += value${String(index)} % 7;`,
   ).join('\n');
-  const clone = `export function compute(input: number, offset: (n: number) => number): number {\n  let total = 0;\n${statements}\n  return total;\n}\n`;
+  return `export function compute(input: number, offset: (n: number) => number): number {\n  let total = 0;\n${statements}\n  return total;\n}\n`;
+}
+
+function violations(directory) {
+  const clone = cloneSource(3);
   return {
     [`lib/${directory}/format.ts`]: 'export const   ugly  =  1;\n',
     [`lib/${directory}/types.ts`]: "export const wrong: number = 'text';\n",

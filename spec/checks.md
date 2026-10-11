@@ -23,6 +23,14 @@ The limits of the custom rules and the languages that enforce them come from
 Each runs ESLint with a different config. Every ESLint message becomes an **enforceable** finding
 (`rule` is the ESLint rule id). No numeric threshold: any new message fails.
 
+A message is identified by its rule, message and the syntax it points at. A message on a whole
+function is identified by the function's signature, not its body. A message inside a named
+function whose code was edited keeps matching the base while the function has no more messages of
+that rule and kind than on the base (a count ratchet); a message on a line the change touched, of a
+strict rule, is still new, and so is a message on a line the change added. Rules that report a
+number about a function (`sonarjs/cognitive-complexity`, `complexity`, `max-lines-per-function`,
+`max-statements`, `max-params`, `max-depth`) fail an edited function only when that number rises.
+
 | Check                   | Scope                              | Config                                                         | Status      |
 | ----------------------- | ---------------------------------- | -------------------------------------------------------------- | ----------- |
 | `eslint-lint`           | source and test globs              | `languages/typescript/preset/defaults/eslint.config.mjs`       | enforceable |
@@ -73,9 +81,12 @@ Each runs ESLint with a different config. Every ESLint message becomes an **enfo
 Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the
 rule and it fails the gate; "not enforced" means the check does not exist for that language yet.
 
-The function limits ratchet: editing a function that was already over a limit on the base fails
-only when the change raises that metric. A function the change pushes over a limit, and a new
-function over a limit, fail as usual.
+The function limits and the CRAP score limit ratchet: editing a function that was already over a
+limit on the base fails only when the change raises that metric (lines, statements, nesting,
+parameters, or the CRAP score). A function the change pushes over a limit, and a new function over
+a limit, fail as usual. The failure of a function that got worse names the base value ("grew from 68
+to 72 lines"); a touched function that did not get worse is listed in the report as "Touched, still
+over limit" and does not fail.
 
 <!-- generated:custom-rules begin (npm run gen:checks) -->
 

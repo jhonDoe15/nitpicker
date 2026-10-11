@@ -3,19 +3,20 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import presetConfig from '../defaults/eslint.config.mjs';
-import { applyRuleExceptions } from './exceptions.mjs';
+import errorsConfig from './errors.mjs';
+import { applyMatchingRuleExceptions, applyRuleExceptions } from './exceptions.mjs';
 
 const rule = 'nitpicker/preserve-error-cause';
 const exception = { rule, paths: ['src/legacy/**'], reason: 'Legacy rewrite' };
 
-async function ruleSeverity(config, file) {
+async function ruleSeverity(config, file, name = rule) {
   const eslint = new ESLint({
     cwd: path.resolve(import.meta.dirname, '../defaults'),
     overrideConfigFile: true,
     overrideConfig: config,
   });
   const result = await eslint.calculateConfigForFile(file);
-  return result.rules[rule]?.[0];
+  return result.rules[name]?.[0];
 }
 
 describe('strict rule exceptions', () => {
@@ -33,6 +34,16 @@ describe('strict rule exceptions', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
     ).toThrow(/unknown rules: nitpicker\/nope/);
+  });
+
+  it('lifts a rule in a narrower production analyzer and ignores rules it does not run', async () => {
+    const silentCatch = 'nitpicker/no-silent-catch';
+    const config = applyMatchingRuleExceptions(errorsConfig, [
+      { rule: silentCatch, paths: ['src/legacy/**'], reason: 'Legacy rewrite' },
+      { rule: 'sonarjs/cognitive-complexity', paths: ['src/legacy/**'], reason: 'Lint only' },
+    ]);
+    await expect(ruleSeverity(config, 'src/legacy/old.ts', silentCatch)).resolves.toBe(0);
+    await expect(ruleSeverity(config, 'src/fresh/new.ts', silentCatch)).resolves.toBe(2);
   });
 
   it('travels through the head policy', () => {

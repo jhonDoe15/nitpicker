@@ -11,6 +11,13 @@ export function applyRuleExceptions(configEntries, exceptions = []) {
   ];
 }
 
+export function applyMatchingRuleExceptions(configEntries, exceptions = []) {
+  return applyRuleExceptions(
+    configEntries,
+    exceptions.filter(({ rule }) => isKnownRule(configEntries, rule)),
+  );
+}
+
 function isKnownRule(configEntries, rule) {
   const separator = rule.lastIndexOf('/');
   const pluginName = separator === -1 ? undefined : rule.slice(0, separator);

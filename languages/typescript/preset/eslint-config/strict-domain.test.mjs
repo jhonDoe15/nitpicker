@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
-import strictDomainConfig from './strict-domain.mjs';
+import { strictDomainConfig } from './strict-domain.mjs';
 
 function messagesFor(filename, code) {
   return lintFixture({ config: strictDomainConfig, filename, code })
@@ -21,6 +21,27 @@ export function total(lines: readonly Line[]) {
 }
 `;
     expect(messagesFor(domainFile, code)).toEqual([]);
+  });
+
+  it('reports a mutation once, with the domain message', () => {
+    expect(messagesFor(domainFile, 'export const run = (xs: number[]) => xs.push(1);')).toEqual(
+      expect.arrayContaining([expect.stringContaining('domain/ code does not mutate arrays')]),
+    );
+    const assign = (target) =>
+      `export const run = (o: { readonly a: number }) => Object.assign(${target}, o);`;
+    expect(messagesFor(domainFile, assign('o'))).toEqual([
+      expect.stringContaining('domain/ code does not mutate objects'),
+    ]);
+    expect(messagesFor(domainFile, assign('{}'))).toEqual([]);
+  });
+
+  it('reports a type predicate over unknown once, as an unknown parameter', () => {
+    const code =
+      "export function isRecord(value: unknown): value is Record<string, string> { return typeof value === 'object'; }";
+    const ruleIds = lintFixture({ config: strictDomainConfig, filename: domainFile, code }).map(
+      (m) => m.ruleId,
+    );
+    expect(ruleIds).toEqual(['nitpicker/no-unknown-in-domain']);
   });
 
   it('does not apply outside domain/', () => {

@@ -115,6 +115,7 @@ function run(root, extra = [], { subprocess = false } = {}) {
     currentProjectRoot: root,
     stdout: { write: (value) => (output.out += value) },
     stderr: { write: (value) => (output.err += value) },
+    progress: { write: () => undefined },
     ...(subprocess ? { runTasks: undefined } : {}),
   });
   const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
