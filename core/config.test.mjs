@@ -18,11 +18,33 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
-  it('accepts the java preset and rejects other presets', () => {
+  it('accepts the java and kotlin presets and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
-    expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java',
+    expect(validateConfig({ preset: 'kotlin' })).toEqual({ preset: 'kotlin' });
+    expect(() => validateConfig({ preset: 'cobol' })).toThrow(
+      '"preset" must be one of: typescript, java, kotlin',
     );
+  });
+
+  describe('kotlin options', () => {
+    it('accepts a formatter with the kotlin preset', () => {
+      const config = { preset: 'kotlin', kotlin: { formatter: 'ktfmt' } };
+      expect(validateConfig(config)).toEqual(config);
+      expect(validateConfig({ preset: 'kotlin', kotlin: {} })).toBeDefined();
+    });
+
+    it.each([
+      [{ preset: 'kotlin', kotlin: { formatter: 'prettier' } }, /must be one of: ktlint, ktfmt/],
+      [{ preset: 'kotlin', kotlin: { style: 'google' } }, /unknown key "kotlin.style"/],
+      [{ preset: 'kotlin', kotlin: 'ktlint' }, /"kotlin" must be an object/],
+      [
+        { preset: 'java', kotlin: { formatter: 'ktlint' } },
+        /only supported with "preset": "kotlin"/,
+      ],
+      [{ kotlin: { formatter: 'ktlint' } }, /only supported with "preset": "kotlin"/],
+    ])('rejects %j', (config, message) => {
+      expect(() => validateConfig(config)).toThrow(message);
+    });
   });
 
   it('shares thresholds, exclude and legacyInventory between presets', () => {
@@ -41,14 +63,13 @@ describe('config file', () => {
     );
   });
 
-  it.each(['layout', 'exceptions'])(
-    'rejects %s with the java preset instead of ignoring it',
-    (key) => {
-      expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
-        `"${key}" is not supported with "preset": "java"`,
-      );
-    },
-  );
+  it.each(
+    ['java', 'kotlin'].flatMap((preset) => ['layout', 'exceptions'].map((key) => [preset, key])),
+  )('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
+    expect(() => validateConfig({ preset, [key]: {} })).toThrow(
+      `"${key}" is not supported with "preset": "${preset}"`,
+    );
+  });
 
   it.each([
     [[], /must be a JSON object/],

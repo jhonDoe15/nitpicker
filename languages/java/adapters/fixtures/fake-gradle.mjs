@@ -1,23 +1,59 @@
 #!/usr/bin/env node
 // Stand-in for `gradle -I nitpicker.init.gradle nitpickerJava` in tests that run without Java.
 // In the project directory (cwd): a file `GRADLE_FAIL` makes the run fail with its text, and each
-// line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java.
+// line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
+// `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
+// src/main/kotlin/demo/K.kt and each line of `kotlin-format.txt` a file the formatter would change.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
   process.stderr.write(`${readFileSync('GRADLE_FAIL', 'utf8')}\n`);
   process.exit(1);
 }
-const violations = existsSync('violations.txt')
-  ? readFileSync('violations.txt', 'utf8').split('\n').filter(Boolean)
-  : [];
+const lines = (file) =>
+  existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean) : [];
+const violations = lines('violations.txt');
 mkdirSync('build/nitpicker', { recursive: true });
 const sarif = (name, results) =>
   JSON.stringify({ runs: [{ tool: { driver: { name } }, results }] });
+const kotlin = process.argv.includes('-Pnitpicker.kotlin=true');
+const formatterArgument = process.argv.find((argument) =>
+  argument.startsWith('-Pnitpicker.kotlin.formatter='),
+);
 writeFileSync(
   'build/nitpicker/manifest.json',
-  JSON.stringify({ versions: {}, sourceRoots: ['src/main/java'] }),
+  JSON.stringify({
+    versions: {},
+    sourceRoots: ['src/main/java'],
+    ...(kotlin && {
+      kotlin: true,
+      kotlinSourceRoots: ['src/main/kotlin'],
+      kotlinFormatter: formatterArgument?.split('=')[1] ?? 'ktlint',
+    }),
+  }),
 );
+if (kotlin) {
+  writeFileSync(
+    'build/nitpicker/detekt.sarif',
+    sarif(
+      'detekt',
+      lines('detekt.txt').map((text, index) => ({
+        ruleId: 'detekt.style.MagicNumber',
+        level: 'warning',
+        message: { text },
+        locations: [
+          {
+            physicalLocation: {
+              artifactLocation: { uri: 'src/main/kotlin/demo/K.kt' },
+              region: { startLine: index + 3 },
+            },
+          },
+        ],
+      })),
+    ),
+  );
+  writeFileSync('build/nitpicker/kotlin-format.txt', lines('kotlin-format.txt').join('\n'));
+}
 writeFileSync(
   'build/nitpicker/pmd.sarif',
   sarif(

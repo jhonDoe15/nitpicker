@@ -50,6 +50,7 @@ Using a coding agent? Add the [agent snippet](docs/agents-snippet.md) to your `A
 - [TypeScript strict preset](docs/typescript-strict-preset.md): the rules, the project layout
   they assume, and why.
 - [Java preset](docs/java-preset.md)
+- [Kotlin preset](docs/kotlin-preset.md)
 - [Checks](spec/checks.md): every check and rule, and what fails.
 
 ## Background

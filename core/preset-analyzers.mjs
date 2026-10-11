@@ -5,5 +5,8 @@ export function presetAnalyzers(config, injected) {
   if (injected !== undefined) {
     return injected;
   }
-  return config.preset === 'java' ? [createJavaAnalyzer()] : configuredAnalyzers;
+  if (config.preset === 'java' || config.preset === 'kotlin') {
+    return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
+  }
+  return configuredAnalyzers;
 }
