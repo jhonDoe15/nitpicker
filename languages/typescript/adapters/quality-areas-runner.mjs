@@ -460,33 +460,9 @@ async function runMutation(options) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    const tsconfigPath = installMutationCompanion(
-      options,
-      [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
-      createdFiles,
-    );
-    const vitestConfigPath = installMutationCompanion(
-      options,
-      [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
-      createdFiles,
-    );
-    const config = {
-      ...rebaseMutationConfig(sourceConfig, {
-        tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
-        vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
-      }),
-      ...(targets === undefined ? {} : { mutate: targets }),
-      reporters: ['json'],
-      jsonReporter: { fileName: MUTATION_REPORT_PATH },
-    };
-    writeTemporaryFile(
-      configPath,
-      `export default ${JSON.stringify(config, null, 2)};\n`,
-      createdFiles,
-    );
+    const configPath = writeMutationConfig(options, { sourceConfig, targets }, createdFiles);
     runNodeTool({
       options,
       relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
@@ -503,6 +479,35 @@ async function runMutation(options) {
       rmSync(filePath, { force: true });
     }
   }
+}
+
+function writeMutationConfig(options, { sourceConfig, targets }, createdFiles) {
+  const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
+  const tsconfigPath = installMutationCompanion(
+    options,
+    [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
+    createdFiles,
+  );
+  const vitestConfigPath = installMutationCompanion(
+    options,
+    [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
+    createdFiles,
+  );
+  const config = {
+    ...rebaseMutationConfig(sourceConfig, {
+      tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
+      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+    }),
+    ...(targets === undefined ? {} : { mutate: targets }),
+    reporters: ['json'],
+    jsonReporter: { fileName: MUTATION_REPORT_PATH },
+  };
+  writeTemporaryFile(
+    configPath,
+    `export default ${JSON.stringify(config, null, 2)};\n`,
+    createdFiles,
+  );
+  return configPath;
 }
 
 function readMutationReport(projectRoot) {
