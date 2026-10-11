@@ -10,7 +10,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 - `languages/typescript/`: the ESLint/strict preset (`preset/`) and the TypeScript analyzers
   (`adapters/`).
 - `languages/java/`: the Gradle init script and `StructureMetrics.java` (`gradle/`), the Java
-  analyzer (`adapters/`) and the report ingesters (`ingest/`).
+  analyzer (`adapters/`) and the report ingesters (`ingest/`). The Kotlin preset is the same code
+  with Kotlin tools added (`kotlin-*.mjs`).
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 

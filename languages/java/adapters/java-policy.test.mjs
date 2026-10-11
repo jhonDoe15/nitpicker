@@ -65,6 +65,16 @@ describe('configureJavaAnalyzer', () => {
     ).not.toBe(configured.configurationHash);
     expect(configured.legacyInventory).toBe('legacy.json');
   });
+
+  it('hands the Kotlin formatter to the runner and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const configured = configureJavaAnalyzer(analyzer, { kotlin: { formatter: 'ktfmt' } });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktfmt' });
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+  });
 });
 
 describe('parseRunnerArguments', () => {
@@ -75,6 +85,32 @@ describe('parseRunnerArguments', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--crap-limit', '0'])).toThrow(
       /positive number/,
     );
+  });
+
+  it('defaults to the java preset and accepts the kotlin preset with a formatter', () => {
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toMatchObject({
+      preset: 'java',
+      kotlinFormatter: undefined,
+    });
+    expect(
+      parseRunnerArguments([
+        '--project-root',
+        '/p',
+        '--preset',
+        'kotlin',
+        '--kotlin-formatter',
+        'ktlint',
+      ]).policy,
+    ).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktlint' });
+  });
+
+  it('rejects an unknown preset or Kotlin formatter', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+      '--preset must be java or kotlin',
+    );
+    expect(() =>
+      parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt');
   });
 });
 
@@ -117,5 +153,8 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
+    expect(applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' })).toEqual([
+      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
+    ]);
   });
 });
