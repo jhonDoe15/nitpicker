@@ -68,7 +68,7 @@ If your change edits a function that existed before it, read
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
 - At most 3 parameters: group related values into one object, or close over `deps` in a factory.
 - `async`/`await`, never `.then()`. No floating promises.
-- Named exports only. No comments.
+- Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## domain/ is deeply readonly
 

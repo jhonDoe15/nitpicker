@@ -10,6 +10,7 @@ import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composit
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
 import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
+import { rule as noComments } from './rules/no-comments.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
 import { rule as noPartialOutputAssertion } from './rules/no-partial-output-assertion.mjs';
@@ -697,6 +698,44 @@ ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
       filename: '/repo/test/report.test.ts',
       code: "expect.soft(output).toContain('fragment');",
       errors: [{ messageId: 'partialOutput' }],
+    },
+  ],
+});
+
+ruleTester.run('no-comments', noComments, {
+  valid: [
+    { code: '/** Parses a date. */\nexport function parse(text: string) { return text; }' },
+    { code: '/** The default port. */\nexport const port = 80;' },
+    { code: '/** Reads the config. */\nexport default function read() { return 1; }' },
+    { code: '/** A user. */\nexport type User = {\n  /** Display name. */\n  name: string;\n};' },
+    { code: '/** @jsxImportSource preact */\nexport const a = 1;' },
+    { code: '/* eslint no-console: off */\nexport const a = 1;' },
+  ],
+  invalid: [
+    {
+      code: '/** Parses a date. */\nfunction parse(text: string) { return text; }',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    {
+      code: 'export function parse(text: string) {\n  /** Trim first. */\n  return text.trim();\n}',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    {
+      code: 'type User = {\n  /** Display name. */\n  name: string;\n};',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    { code: '/** Trailing doc. */', errors: [{ messageId: 'internalDocComment' }] },
+    {
+      code: '// Parses a date.\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'comment' }],
+    },
+    {
+      code: '/* Parses a date. */\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'comment' }],
+    },
+    {
+      code: '/** @ts-ignore */\nexport const a = 1;',
+      errors: [{ messageId: 'typescriptSuppression' }],
     },
   ],
 });
