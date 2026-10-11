@@ -21,6 +21,7 @@ export function resolveHeadPolicy(config = {}) {
     exceptions: config.exceptions ?? [],
     thresholds: config.thresholds ?? {},
     ...(POLICY_PRESETS.includes(config.preset) ? { preset: config.preset } : {}),
+    ...(config.tools === undefined ? {} : { tools: config.tools }),
   };
 }
 
