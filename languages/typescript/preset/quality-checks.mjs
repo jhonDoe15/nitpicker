@@ -16,7 +16,6 @@ export function parsePositiveNumber(value, name) {
   return number;
 }
 
-// Versions are resolved only for selected analyzers, against the binaries that will run.
 export const eslintVersion = 'unresolved';
 export const dependencyCruiserVersion = 'unresolved';
 export const prettierVersion = 'unresolved';
@@ -79,10 +78,6 @@ const POLICY_FILES = [
 const ARCHITECTURE_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 
-/**
- * Builds every check definition for one layout. The exported constants below are the default
- * layout; the CLI rebuilds the layout-dependent analyzers when the config file changes it.
- */
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
   return {

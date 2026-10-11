@@ -1,0 +1,55 @@
+# Internals
+
+Contributor notes on formats and protocols that code and names cannot carry. Source files stay comment-free (`nitpicker/no-comments`).
+
+## Diff engine (`core/`)
+
+- **Custom analyzers.** A `{name, command, args?}` config entry runs with the analyzed checkout as working directory, so a relative command resolves inside each side. It prints findings JSON on stdout and exits 0; stdout goes through the same parser as built-in analyzers, and a non-zero exit or invalid JSON becomes a tool error.
+- **Exit codes.** New violations win over tool errors so CI can tell "violations" from "broken"; `overallStatus` reports tool health first.
+- **Analyzer environment.** Analyzers never see where the GitHub Actions job summary lives (`HOST_CI_OUTPUT_VARIABLES`): vitest and Stryker would append their own reports to it, and caught mutants read as test failures.
+- **Cache stores.** A store keeps opaque text under a hex key, is synchronous and never throws: `get` returns undefined on any miss or failure, `put` returns whether the value was stored. The local directory is `NITPICKER_CACHE_DIR`, else `node_modules/.cache/nitpicker`. The HTTP store does `GET`/`PUT` of `<baseUrl>/<key>.json` with an optional `Name: value` auth header, and stays off after its first non-miss failure so an unreachable server costs one timeout. Reads try local, then remote (copying a hit locally); writes go to the remote store only with `writeRemote`.
+- **HTTP cache worker.** Exit codes: 0 success (GET prints the body), 3 not found, 1 any other failure. The comparison is synchronous, so each request runs in a short-lived `node` child that does the asynchronous fetch: `<GET|PUT> <url> <timeoutMs>`, auth header in `NITPICKER_CACHE_AUTH_HEADER_VALUE` (never argv). S3 answers 403 for a missing key when the caller cannot list the bucket, so 403 counts as not found. The test HTTP server lives in a worker thread for the same reason: the stores block the calling thread.
+- **Findings cache key.** Base commit, project, analyzer, tool version, configuration hash, head policy (exclude, layout, exceptions, thresholds) and legacy inventory path. The policy is keyed explicitly because layout and threshold changes rebuild an analyzer without changing its file-based hash. Entries carry their own key, so a misnamed entry is a miss. Only clean reports are stored, and cached analyzers still run when an uncached one depends on them.
+- **Publishing a base snapshot.** `cache publish` analyzes HEAD (typically the new tip of `main`) and stores clean reports under the keys later comparisons use when HEAD is their merge base, using HEAD's own policy.
+- **Comparison.** Findings split into new, resolved, unchanged and changed-metric. With `touchedCode`, an enforceable finding of a strict rule inside touched lines is new even though the base has it.
+- **Cycle identity.** Dependency cycles are `cycle:a>b>c|...`, starting at the lexicographically smallest rotation. A rename can change that rotation, so renamed cycles are re-rotated before comparing.
+- **Report hash.** Zero config keeps the original policy hash input; any override changes it.
+- **SARIF output.** One result per new finding; the hashed comparison key is `partialFingerprints["nitpickerIdentity/v1"]`, so consumers match findings across runs when lines move. Tool errors become unsuccessful tool-execution notifications.
+- **Base commit of a checkout.** `git.mjs` stages the checkout (untracked, non-ignored files included) in a copy of the index, leaving the user's index, branches and files untouched.
+- **Policy links.** Without `transform` the package-owned policy file is linked into the analyzed tree; with one (the layout changed) it is a rewritten copy, still derived from the head policy and never from the analyzed tree.
+- **Temporary files.** Register before creating the file so it is removed on exit or interruption even if the runner's `finally` blocks never run.
+- **Presets.** `preset` is explicit; there is no Gradle auto-detection. Injected analyzers win over the preset.
+
+## Shared rules (`shared/`, `spec/`)
+
+Findings follow `spec/findings.schema.json`. Identity (the part of the comparison key beyond rule and path) never contains line numbers, so edits above a finding do not change it.
+
+## TypeScript preset (`languages/typescript/`)
+
+- **Strict preset assembly.** Flat config replaces rather than merges a rule's options when several entries match a file, so each scope in `strict.mjs` carries its full `no-restricted-syntax` list: the everywhere selectors plus the scope's own. Add a selector to its scope's list, never as a separate entry for a narrower glob. `domain/` has its own loop and forEach selectors, so it takes only the promise-chain selectors from the production set. The standalone `strict-*.mjs` configs exist so the failure-message harness can lint one rule family alone; the typed ones need `parserOptions` (e.g. `{ project: './tsconfig.quality.json', tsconfigRootDir }`) and later entries win.
+- **Failure messages.** Each case in `failure-messages/cases.mjs` has a `config`, a `banned` fixture that must fail, and an `allowed` wording (case-insensitive substring) the message must use to name the allowed form. Zod is a documented expectation of the preset, not a dependency.
+- **Error wrapping.** Classified wrappers that sanitize external failures list `classificationIndex` and `unclassifiedValue`; only unclassified wrappers must carry the original cause.
+- **Exceptions.** Lifted rules and paths come only from `nitpicker.config.json`; inline disables are banned, so this is the one way out.
+- **`strict-rules.mjs`.** The rule id list is written out because building `strictPresetConfig` loads typescript-eslint; `strict-rules.test.mjs` asserts it matches the real config.
+- **Eslint runner.** Findings on comments (no-comments, ts-ignore, inline config) are anchored to the comment text, since the nearest syntax node would be the following code and editing it would change the fingerprint.
+- **Test-code analysis.** `test-code-analysis.mjs` works on one file's syntax tree; calls into other modules are not followed. Per-test visitors report each node once however many tests reach it.
+- **Runtime boundaries.** Roles select production modules by `modules` globs (relative to `src/main`) and list `forbiddenDependencies` and `forbiddenCalls` globs; the default declares none. Globstars do not traverse `..`, so relative spellings are resolved before matching.
+- **Callback contracts.** Each entry names a `callee`, its `optionsArgument` index, `sourceCallbacks`, `correlatedCallbacks` (`{ name, inputIndex }`), `externalPublicationCallbacks` and `snapshotReadMethods`. Rules contain no consumer or file identities.
+- **CRAP roots.** The analyzer expands a directory only when named `src` (or containing `src` folders); other roots are passed as the files inside them.
+- **Dependency cruiser.** The policy TypeScript config is linked into the analyzed root so its include globs resolve against analyzed sources; `typeScriptRoot` defaults to this package and is overridden for fixtures.
+- **Dependency hooks.** A hook has `language`, `manifests` (the first marks a project; if any differs from the live policy root the snapshot needs its own install instead of a link), `directory`, and `install(projectRoot)`, which installs a regular directory and cleans up and throws on failure.
+- **Public contract usage.** Declaration identity keeps unrelated same-name methods and test-only calls from counting as consumers, so results are stable for a differential gate.
+
+## Java preset (`languages/java/`)
+
+Gradle runs once and yields findings for all tools; reports land in `<projectRoot>/build/nitpicker`. Ingesters turn tool reports into findings:
+
+- **Common.** Repeats of one identity within a report get `#n` in report order. The XML parser reads elements and attributes only and throws `TypeError` when malformed.
+- **SARIF** (PMD, SpotBugs). Identity is `partialFingerprints` (sorted) when present, else a hash of rule, path and symbol. Absolute `file://` URIs (PMD) and source-root-relative paths (SpotBugs) are made project-relative; results outside the project are skipped. SpotBugs `note`-level results are promoted because the tool already runs at the configured threshold, and its subject comes from message arguments since the text is generic.
+- **Checkstyle.** Identity hashes the check `source`, path and message; the line is location only.
+- **ArchUnit.** One finding per violated rule and offending class, identified by the fully qualified class; line numbers and violation counts never take part. The path is resolved by `options.resolvePath(className, fileName)`, falling back to the declaring test class. A failed case without violation lines yields one `test-failure`.
+- **CRAP.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, with coverage the lower of line ("statement") and branch coverage. `crap-score-limit` when over `options.limit`; `crap-coverage-unknown` when no JaCoCo method matches. Identity is lizard's long name plus `#n`. A JaCoCo method matches a lizard function when file and name agree (`<init>` is the class name) and its first line lies in the function's range. `options.sourceRoots` maps lizard's project-relative paths to JaCoCo's package-relative ones. Lizard CSV has no header row.
+- **Format check.** One `format` finding per file in the list; identity is the constant `format`.
+- **Coverage.** Go coverprofile gives a `statement-coverage` metric per file only (blocks lack function names, and line-based identity is not allowed); `options.modulePath` is stripped from import paths. JaCoCo gives `line-coverage` plus `uncovered-method` (class and method name+descriptor); `options.sourceRoot` is prepended. lcov gives `line-coverage` plus `uncovered-function`.
+- **PIT.** Follows `docs/mutation-testing.md`: no score gate, new surviving or uncovered mutants fail, other non-killed statuses are report-only, counts go to `mutation-summary`. A mutant is identified by class, method, mutator and description plus its occurrence `#n` among identical keys (by line, then block index). Mutants with unresolvable sources (generated code) are skipped.
+- **Duplicates.** jscpd runs per existing main source root (from `build/nitpicker/manifest.json`), writing `duplicates.json` as `{ runs: [{ root, report }] }`. Findings match the TypeScript ones: `duplicate-clone` and `duplicate-clone-size`, identified by file pair, cloned-text hash and occurrence.

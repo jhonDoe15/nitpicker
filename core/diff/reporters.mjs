@@ -115,7 +115,6 @@ export function renderConsoleSummary(
   return `${lines.join('\n')}\n`;
 }
 
-/** Drill-down view: findings whose `tool/rule` contains any of the given substrings. */
 export function renderRuleFilterSection(report, ruleFilters) {
   if (ruleFilters.length === 0) {
     return '';
@@ -167,12 +166,6 @@ export function renderJunitReport(report) {
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
 
-/**
- * SARIF 2.1.0 log with one result per new finding (the findings the gate is about). The finding's
- * comparison key, hashed, is `partialFingerprints["nitpickerIdentity/v1"]`, so consumers can match
- * the same finding across runs even when its line moves. Tool errors become unsuccessful
- * tool-execution notifications.
- */
 export function renderSarifReport(report) {
   const rules = new Map();
   const results = report.newFindings.map((finding) => {
