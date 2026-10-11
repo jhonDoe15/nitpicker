@@ -4,9 +4,12 @@ import { findPackageJSON } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
+
+const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
@@ -74,10 +77,12 @@ export function resolveProjectRoot(cwd = process.cwd()) {
       : [directory, ...directoriesUpTo(parent)];
   }
   const projectRoot = directoriesUpTo(current).find((directory) =>
-    existsSync(path.join(directory, 'package.json')),
+    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
   );
   if (projectRoot !== undefined) return projectRoot;
-  throw new Error(`No package.json found between ${current} and repository root ${repositoryRoot}`);
+  throw new Error(
+    `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}`,
+  );
 }
 
 function isAnalyzedSnapshotPath(candidate) {

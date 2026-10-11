@@ -224,7 +224,10 @@ function runArchitecture(options) {
     if (options.includeOnly !== undefined) {
       arguments_.push('--include-only', options.includeOnly);
     }
-    const exclusion = [options.exclude, layout.excludePattern]
+    const layoutExclusion = options.exclude?.includes(layout.excludePattern ?? '\0')
+      ? undefined
+      : layout.excludePattern;
+    const exclusion = [options.exclude, layoutExclusion]
       .filter((pattern) => pattern !== undefined)
       .join('|');
     if (exclusion.length > 0) {
