@@ -79,3 +79,14 @@ One runner process per snapshot (`python-runner.mjs`) runs the tools and reads t
 - **Ruff identity.** The SARIF goes through Java's `prepareSarif` with the message text as the subject, so identity is `fp:nitpicker/subject=<message>`; ruff messages name the symbol, and repeats in one file get `#n`.
 - **Shared policy.** `exclude` and the legacy inventory are `configureJavaAnalyzer` / `applyJavaPolicy`, both language-neutral; `applyJavaPolicy` takes `inventoryTool` for the tool of a `baseline-expansion` finding.
 - **Project root.** `resolveProjectRoot` accepts a `nitpicker.config.json` as a project marker beside `package.json`, because a Python project has no `package.json`.
+
+## Kotlin preset (`languages/java/`)
+
+The Kotlin preset is the Java preset with `kotlin: true`: same init script, runner and ingesters. User-facing behavior is in `docs/kotlin-preset.md`; the protocol details:
+
+- **Switch.** `gradle -Pnitpicker.kotlin=true` (and `-Pnitpicker.kotlin.formatter=<ktlint|ktfmt>` from `kotlin.formatter`) turns the Kotlin tasks on in modules applying `org.jetbrains.kotlin.jvm`; without it the init script is the Java one. The runner takes `--preset kotlin` and `--kotlin-formatter`. The analyzer is named `kotlin`, and its tool-error and `baseline-expansion` findings use that name.
+- **Reports.** `detekt.sarif` and `kotlin-format.txt` (project-relative Kotlin files, one per line). Skipped Java tools in a Kotlin-only module write empty reports so the Nitpicker side reads one layout. `manifest.json` in this mode: `sourceRoots` are the Java roots only, `kotlinSourceRoots` the Kotlin plugin's source directories (which include `src/main/java`), `kotlin: true`, `kotlinFormatter`. `readKotlinFindings` throws when `kotlin` is absent, so a project without the Kotlin plugin is a tool error and not an empty pass.
+- **Java-only class tools.** `analyzedClassDirs` is the output of `compileJava` in this mode (all main class directories otherwise); SpotBugs, PIT and jdeps read it. SpotBugs gets the rest of the runtime classpath as `-auxclasspath`.
+- **detekt SARIF.** No fingerprints, so the glue sets `nitpicker/subject` from the message text and keeps the SARIF levels (`note` stays descriptive, unlike SpotBugs). Rule ids are kept in detekt's form `detekt.<ruleset>.<Rule>`.
+- **Formatter detection** is a text search of the build files at task execution time (not Gradle API introspection), so it works for plugin ids, version catalogs and Spotless alike; the cost is false matches on a comment that names the other tool.
+- **Branch coverage** (`changed-branch-coverage`) only reads source text of `.java` files in this mode, so Kotlin lines inside a Java source root never produce it.

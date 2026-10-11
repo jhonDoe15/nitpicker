@@ -12,8 +12,8 @@ export function presetAnalyzers(config, injected) {
   if (config.preset === 'python') {
     return [createPythonAnalyzer(config.python)];
   }
-  if (config.preset === 'java') {
-    return [createJavaAnalyzer()];
+  if (config.preset === 'java' || config.preset === 'kotlin') {
+    return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
   }
   return config.preset === 'javascript' ? javascriptAnalyzers : configuredAnalyzers;
 }

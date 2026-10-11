@@ -7,18 +7,22 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
-const INVENTORY_TOOL = 'java';
-
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], legacyInventory },
+  { thresholds = {}, exclude = [], legacyInventory, kotlin = {} },
 ) {
-  if (thresholds.crapLimit === undefined && exclude.length === 0 && legacyInventory === undefined) {
+  if (
+    thresholds.crapLimit === undefined &&
+    exclude.length === 0 &&
+    legacyInventory === undefined &&
+    kotlin.formatter === undefined
+  ) {
     return analyzer;
   }
   const adapterArguments = [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
+    ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
   ];
   const configured = {
     ...analyzer,
@@ -62,7 +66,8 @@ export function applyJavaPolicy(
     policyRoot,
     baselineRoot,
     snapshot = 'head',
-    inventoryTool = INVENTORY_TOOL,
+    preset = 'java',
+    inventoryTool = preset,
   } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));

@@ -4,7 +4,9 @@ import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 
-export const JAVA_ANALYZER_NAME = 'java';
+const JAVA_ANALYZER_NAME = 'java';
+const KOTLIN_ANALYZER_NAME = 'kotlin';
+export const GRADLE_ANALYZER_NAMES = [JAVA_ANALYZER_NAME, KOTLIN_ANALYZER_NAME];
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
@@ -19,6 +21,8 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
   'languages/java/adapters/java-structure.mjs',
+  'languages/java/adapters/kotlin-options.mjs',
+  'languages/java/adapters/kotlin-reports.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/crap.mjs',
@@ -61,29 +65,37 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-export function createJavaAnalyzer() {
+const JAVA_TOOLS = [
+  'pmd',
+  'spotbugs',
+  'google-java-format',
+  'jacoco',
+  'checkstyle',
+  'crap',
+  'duplicates',
+  'pit',
+  'structure',
+  'coupling',
+];
+const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+
+export function createJavaAnalyzer({ kotlin = false } = {}) {
   return {
-    name: JAVA_ANALYZER_NAME,
+    name: kotlin ? KOTLIN_ANALYZER_NAME : JAVA_ANALYZER_NAME,
     version: readPinnedVersions(),
     configurationHash: hashConfiguration(),
     exclusions: [],
-    reportedTools: [
-      'pmd',
-      'spotbugs',
-      'google-java-format',
-      'jacoco',
-      'checkstyle',
-      'crap',
-      'duplicates',
-      'pit',
-      'structure',
-      'coupling',
-    ],
+    reportedTools: kotlin ? [...JAVA_TOOLS, ...KOTLIN_TOOLS] : JAVA_TOOLS,
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot }) {
       return {
         command: process.execPath,
-        args: [runnerPath, '--project-root', projectRoot],
+        args: [
+          runnerPath,
+          '--project-root',
+          projectRoot,
+          ...(kotlin ? ['--preset', 'kotlin'] : []),
+        ],
         cwd: toolRoot,
       };
     },
