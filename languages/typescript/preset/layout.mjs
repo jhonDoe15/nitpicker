@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
+import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 
 export { globToRegExp };
 
@@ -25,7 +26,7 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-export function resolveLayout(layout = {}, exclude = []) {
+export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
   const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
@@ -44,7 +45,10 @@ export function resolveLayout(layout = {}, exclude = []) {
   );
   const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.[cm]?[jt]sx?$`);
 
+  const unitTestExtension = javascript ? codeExtensions : 'ts';
   const resolved = {
+    javascript,
+    entryExtensions: javascript ? ['js', 'mjs', 'cjs'] : ['ts'],
     sourceRoots,
     sourceRoot,
     testRoots,
@@ -57,8 +61,8 @@ export function resolveLayout(layout = {}, exclude = []) {
     ],
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
     unitTestGlobs: [
-      ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.ts`),
-      ...testRoots.map((root) => `${root}/unit/**/*.ts`),
+      ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${unitTestExtension}`),
+      ...testRoots.map((root) => `${root}/unit/**/*.${unitTestExtension}`),
     ],
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
@@ -125,6 +129,10 @@ export function resolveLayout(layout = {}, exclude = []) {
 
 export function existingRoots(projectRoot, roots) {
   return roots.filter((root) => existsSync(path.join(projectRoot, root)));
+}
+
+export function resolveLayoutFor(policy = {}) {
+  return resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) });
 }
 
 const defaults = resolveLayout();

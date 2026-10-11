@@ -4,7 +4,7 @@ import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { eslintChecks, staticChecks } from '../../languages/typescript/preset/quality-checks.mjs';
-import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
+import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import {
   headPolicyEnvironment,
   resolveHeadPolicy,
@@ -16,6 +16,7 @@ import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
 const typescriptExtensions = new Set(['.ts', '.mts', '.cts', '.tsx']);
+const javascriptExtensions = new Set(['.js', '.mjs', '.cjs', '.jsx']);
 const prettierExtensions = new Set([
   ...typescriptExtensions,
   '.js',
@@ -40,7 +41,7 @@ export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options })
   return withHeadPolicyFile(headPolicy, (policyFile) =>
     fixWithPolicy({
       ...options,
-      layout: resolveLayout(headPolicy.layout, headPolicy.exclude),
+      layout: resolveLayoutFor(headPolicy),
       policyEnvironment: headPolicyEnvironment(policyFile),
     }),
   );
@@ -58,7 +59,7 @@ function fixWithPolicy(settings) {
     files.map(({ path: name }) => [name, readFileSync(path.join(projectRoot, name))]),
   );
   const eslintFiles = files.filter(({ path: name }) =>
-    typescriptExtensions.has(path.posix.extname(name).toLowerCase()),
+    eslintExtensionsFor(layout).has(path.posix.extname(name).toLowerCase()),
   );
   const prettierFiles = files.filter(
     ({ path: name }) =>
@@ -70,6 +71,12 @@ function fixWithPolicy(settings) {
     ...prettierFixErrors(settings, prettierFiles, comparison.mergeBaseSha),
   ];
   return { fixedFiles: changedPaths(files, before, projectRoot), toolErrors };
+}
+
+function eslintExtensionsFor(layout) {
+  return layout.javascript
+    ? new Set([...typescriptExtensions, ...javascriptExtensions])
+    : typescriptExtensions;
 }
 
 function changedPaths(files, before, projectRoot) {

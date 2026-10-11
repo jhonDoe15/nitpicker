@@ -11,7 +11,7 @@ import {
   validateThresholds,
 } from '../shared/config.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', 'java'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions'];
 const KEYS = [
   'base',

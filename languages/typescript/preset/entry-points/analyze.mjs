@@ -3,8 +3,26 @@ import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
-const DEFAULT_COMPOSITION_ROOTS = new Set(['composition-root.ts', 'main.ts', 'server.ts']);
-const CONCRETE_FILE = /(?:client|pool|cache|store|scheduler|transport|adapter|service)\.[cm]?ts$/i;
+const COMPOSITION_ROOT_NAMES = ['composition-root', 'main', 'server'];
+const CONCRETE_NAME = '(?:client|pool|cache|store|scheduler|transport|adapter|service)';
+
+function defaultCompositionRoots(layout) {
+  return new Set(
+    COMPOSITION_ROOT_NAMES.flatMap((name) =>
+      layout.entryExtensions.map((extension) => `${name}.${extension}`),
+    ),
+  );
+}
+
+function concreteFilePattern(layout) {
+  return new RegExp(`${CONCRETE_NAME}\\.[cm]?${layout.javascript ? 'js' : 'ts'}$`, 'i');
+}
+
+function entryPointOf({ productionModules, root, layout }, component) {
+  return layout.entryExtensions
+    .map((extension) => `${root}/${component}/index.${extension}`)
+    .find((candidate) => productionModules.includes(candidate));
+}
 
 function relativeToRoot(modulePath, sourceRoot) {
   return modulePath.slice(sourceRoot.length).replace(/^\//, '');
@@ -67,9 +85,9 @@ export function analyzeEntryPoints(
   graph,
   sourceRoot,
   {
-    foundationDirectories = DEFAULT_FOUNDATION_DIRECTORIES,
-    compositionRoots = DEFAULT_COMPOSITION_ROOTS,
     layout = defaultResolvedLayout,
+    foundationDirectories = DEFAULT_FOUNDATION_DIRECTORIES,
+    compositionRoots = defaultCompositionRoots(layout),
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
@@ -102,8 +120,11 @@ export function analyzeEntryPoints(
   );
   const entryPoints = new Map(
     [...components]
-      .map((component) => [component, `${normalizedRoot}/${component}/index.ts`])
-      .filter(([, entryPoint]) => productionModules.includes(entryPoint)),
+      .map((component) => [
+        component,
+        entryPointOf({ productionModules, root: normalizedRoot, layout }, component),
+      ])
+      .filter(([, entryPoint]) => entryPoint !== undefined),
   );
   const isExportReachable = exportReachability(graph, normalizedRoot);
 
@@ -148,7 +169,7 @@ export function analyzeEntryPoints(
       unexportedTargets.push({ ...finding, publicEntryPoint: entryPoint });
     }
 
-    if (CONCRETE_FILE.test(path.basename(edge.target))) {
+    if (concreteFilePattern(layout).test(path.basename(edge.target))) {
       concreteCrossBoundaryImports.push(finding);
     }
   }
