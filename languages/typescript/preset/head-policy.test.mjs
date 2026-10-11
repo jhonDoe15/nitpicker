@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runQualityDiff } from '../../../core/diff/run-diff.mjs';
 import {
   defaultLayout,
+  prettierPrecedence,
   readHeadPolicy,
   readLayout,
   resolveHeadPolicy,
@@ -63,6 +64,7 @@ describe('head policy reader', () => {
       exceptions: [],
       thresholds: {},
       react: {},
+      tools: {},
     });
   });
 
@@ -79,8 +81,38 @@ describe('head policy reader', () => {
         exceptions: [],
         thresholds: { crapLimit: 12 },
         react: {},
+        tools: {},
       });
     });
+  });
+
+  it('reads the Prettier precedence, defaulting to the nitpicker config alone', () => {
+    expect(prettierPrecedence({})).toEqual(['nitpicker']);
+    const policy = resolveHeadPolicy({
+      tools: { prettier: { precedence: ['project', 'nitpicker'] } },
+    });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(prettierPrecedence({ NITPICKER_POLICY: policyFile })).toEqual([
+        'project',
+        'nitpicker',
+      ]);
+    });
+  });
+
+  it('fingerprints the project Prettier config only when the project layer is used', () => {
+    const root = temporaryDirectory();
+    writeFileSync(path.join(root, '.prettierrc'), '{ "semi": false }\n');
+    const projectConfig = { tools: { prettier: { precedence: ['project'] } } };
+    const nitpickerOnly = { tools: { prettier: { precedence: ['nitpicker'] } } };
+    const before = resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest;
+    expect(resolveHeadPolicy(nitpickerOnly, root).tools.prettier).toEqual({
+      precedence: ['nitpicker'],
+    });
+    writeFileSync(path.join(root, '.prettierrc'), '{ "semi": true }\n');
+    expect(resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest).not.toBe(
+      before,
+    );
+    expect(resolveHeadPolicy({}, root)).not.toHaveProperty('tools');
   });
 
   it('exposes the configured entry points on the resolved layout', () => {
@@ -167,6 +199,7 @@ describe('head policy delivery', () => {
         exceptions: [],
         thresholds: { crapLimit: 12 },
         react: {},
+        tools: {},
       });
     }
   });
