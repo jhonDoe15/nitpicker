@@ -15,8 +15,9 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
 tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `vitest`, `@vitest/coverage-v8` and `typescript` come from your project; if one is
-missing or incompatible, the tool that needs it fails and the report shows a tool error.
+choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
+your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
+tool error.
 
 ## First run
 
