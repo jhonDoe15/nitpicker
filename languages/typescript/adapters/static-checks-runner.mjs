@@ -25,7 +25,8 @@ import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../preset/layout.mjs';
-import { readLayout } from '../preset/head-policy.mjs';
+import { prettierPrecedence, readLayout, usesProjectConfig } from '../preset/head-policy.mjs';
+import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
 
@@ -98,6 +99,10 @@ async function runPrettier(options) {
     return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
+    const precedence = prettierPrecedence();
+    if (usesProjectConfig(precedence)) {
+      return await layeredFormattingFindings(options, installedPolicy, precedence);
+    }
     const unformattedFiles = listUnformattedFiles(options, installedPolicy);
     return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
   } finally {
@@ -131,16 +136,54 @@ function listUnformattedFiles(options, installedPolicy) {
   return unformattedFiles;
 }
 
-async function formattingFindingsOf(options, unformattedFiles, configPath) {
-  const prettier = await import(
-    pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href
+async function layeredFormattingFindings(options, installedPolicy, precedence) {
+  const prettier = await importPrettier();
+  const policyOptions = readPrettierPolicy(installedPolicy.configPath);
+  const layout = readLayout();
+  const candidates = [
+    ...new Set(
+      options.patterns.flatMap((pattern) => globSync(pattern, { cwd: options.projectRoot })),
+    ),
+  ].filter((relativePath) => !layout.isExcluded(relativePath));
+  const layers = {
+    precedence,
+    policyIgnorePath: installedPolicy.ignorePath,
+    projectRoot: options.projectRoot,
+    liveProjectRoot: options.liveProjectRoot,
+  };
+  const perFile = await Promise.all(
+    candidates.map(async (relativePath) => {
+      if (await isIgnoredByLayers(prettier, { ...layers, relativePath })) {
+        return [];
+      }
+      const source = readFileSync(path.join(options.projectRoot, relativePath), 'utf8');
+      const formatted = await prettier.format(source, {
+        ...(await layeredPrettierOptions(prettier, { ...layers, policyOptions, relativePath })),
+        filepath: path.join(options.projectRoot, relativePath),
+      });
+      return formatted === source
+        ? []
+        : formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
+    }),
   );
-  let prettierOptions;
+  return perFile.flat();
+}
+
+async function importPrettier() {
+  return import(pathToFileURL(path.join(resolveTool('prettier').root, 'index.mjs')).href);
+}
+
+function readPrettierPolicy(configPath) {
   try {
-    prettierOptions = JSON.parse(readFileSync(configPath, 'utf8'));
+    return JSON.parse(readFileSync(configPath, 'utf8'));
   } catch (error) {
     throw new Error('Prettier policy is not valid JSON', { cause: error });
   }
+}
+
+async function formattingFindingsOf(options, unformattedFiles, configPath) {
+  const prettier = await importPrettier();
+  const prettierOptions = readPrettierPolicy(configPath);
   const perFile = await Promise.all(
     unformattedFiles.map(async (filePath) => {
       const relativePath = projectFile(options.projectRoot, filePath);

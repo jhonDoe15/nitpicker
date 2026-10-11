@@ -103,7 +103,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveHeadPolicy(config);
+  const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
   if (options.all) {
     return runSnapshotCli({
       options,
@@ -153,7 +153,7 @@ function runCacheCommand({
   const projectRoot =
     currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
   const config = loadConfig(projectRoot);
-  const headPolicy = resolveHeadPolicy(config);
+  const headPolicy = resolveHeadPolicy(config, projectRoot);
   const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   const selected =
     shardCount === undefined
