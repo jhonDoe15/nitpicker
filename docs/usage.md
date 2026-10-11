@@ -38,6 +38,8 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
+- **Mutation testing** in a comparison mutates only the source lines the change adds or edits, on
+  the head side, so every surviving mutant it reports is new. `--all` mutates every source file.
 
 The base ref is the first match of:
 

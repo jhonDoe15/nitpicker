@@ -10,8 +10,8 @@ a backstop, not a guide. It fails only on findings your change adds.
 
 ## Run it
 
-- `npx nitpicker` checks your change against the merge base. It runs mutation testing and takes
-  minutes (often over 10), printing nothing until it ends. Run it once the change is complete,
+- `npx nitpicker` checks your change against the merge base. It runs mutation testing on the lines
+  you changed and can take minutes, printing nothing until it ends. Run it once the change is complete,
   as a background command you wait on. Don't pipe it: you need its exit code.
 - `npx nitpicker --fix` applies ESLint and Prettier fixes, then runs the full check. Make it
   your one run. Format with it, not plain `prettier`: the gate has its own Prettier config.
