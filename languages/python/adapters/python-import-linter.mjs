@@ -3,8 +3,8 @@ import path from 'node:path';
 import { importLinterCompleted, ingestImportLinter } from '../ingest/import-linter.mjs';
 import { readImportsReport } from './python-coupling.mjs';
 
-export const IMPORT_LINTER_REPORT = 'import-linter.txt';
-export const IMPORT_LINTER_FAILED_RULE = 'import-linter-failed';
+const IMPORT_LINTER_REPORT = 'import-linter.txt';
+const IMPORT_LINTER_FAILED_RULE = 'import-linter-failed';
 const CONFIG_FILES = [
   { file: '.importlinter', marker: /^\s*\[importlinter\]/m },
   { file: 'setup.cfg', marker: /^\s*\[importlinter\]/m },
@@ -51,6 +51,5 @@ export function readImportLinterFindings(reportRoot) {
     return [];
   }
   const files = new Map(readImportsReport(reportRoot).modules.map((m) => [m.module, m.file]));
-  return ingestImportLinter(readFileSync(report, 'utf8'), { fileOf: (name) => files.get(name) })
-    .findings;
+  return ingestImportLinter(readFileSync(report, 'utf8'), { files }).findings;
 }

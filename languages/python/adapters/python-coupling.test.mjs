@@ -184,13 +184,17 @@ describe('analyzing the import graph', () => {
 
     expect(new Set(findings.map(({ tool }) => tool))).toEqual(new Set(['coupling']));
     expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
-    expect(findings).toContainEqual(
-      expect.objectContaining({
+    expect(findings.filter(({ identity }) => identity === 'package:app.domain:fanOut')).toEqual([
+      {
+        tool: 'coupling',
         rule: 'package-coupling',
+        path: '.',
         identity: 'package:app.domain:fanOut',
+        message: 'fanOut for package app.domain',
+        classification: 'descriptive',
         metric: { name: 'fanOut', value: 1 },
-      }),
-    );
+      },
+    ]);
   });
 });
 
