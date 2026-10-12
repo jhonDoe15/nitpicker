@@ -66,14 +66,30 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
-  it('hands the Kotlin formatter to the runner and changes the hash', () => {
+  it('hands the Kotlin formatter and detekt config to the runner and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
-    const configured = configureJavaAnalyzer(analyzer, { kotlin: { formatter: 'ktfmt' } });
+    const configured = configureJavaAnalyzer(analyzer, {
+      kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
+    });
 
     const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
 
-    expect(parsed.policy).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktfmt' });
+    expect(parsed.policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'ktfmt',
+      kotlinDetektConfig: 'tools/rules.yml',
+    });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
+        .configurationHash,
+    ).not.toBe(analyzer.configurationHash);
   });
 });
 
@@ -87,10 +103,17 @@ describe('parseRunnerArguments', () => {
     );
   });
 
-  it('defaults to the java preset and accepts the kotlin preset with a formatter', () => {
-    expect(parseRunnerArguments(['--project-root', '/p']).policy).toMatchObject({
-      preset: 'java',
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: undefined,
       kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
     });
     expect(
       parseRunnerArguments([
@@ -99,18 +122,30 @@ describe('parseRunnerArguments', () => {
         '--preset',
         'kotlin',
         '--kotlin-formatter',
-        'ktlint',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
       ]).policy,
-    ).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktlint' });
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
   });
 
   it('rejects an unknown preset or Kotlin formatter', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
-      '--preset must be java or kotlin',
+      '--preset must be one of: java, kotlin',
     );
     expect(() =>
       parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
-    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt');
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
   });
 });
 
@@ -153,9 +188,11 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
-    expect(applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' })).toEqual([
-      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
-    ]);
+    expect(
+      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+        ({ tool, rule }) => [tool, rule],
+      ),
+    ).toEqual([['kotlin', 'baseline-expansion']]);
   });
 
   it('names the tool of a baseline-expansion after the language that asks', () => {
@@ -167,7 +204,14 @@ describe('applyJavaPolicy', () => {
     };
 
     expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
-      expect.objectContaining({ tool: 'python', rule: 'baseline-expansion' }),
+      {
+        tool: 'python',
+        rule: 'baseline-expansion',
+        path: 'a.py',
+        identity: expect.any(String),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
+        classification: 'enforceable',
+      },
     ]);
   });
 });
