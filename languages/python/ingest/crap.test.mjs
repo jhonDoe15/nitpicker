@@ -75,7 +75,17 @@ describe('ingestPythonCrap', () => {
     const lizard = '2,1,7,1,2,"f@1-2@other.py","other.py","f","f( )",1,2\n';
 
     expect(ingest({}, lizard)).toEqual([
-      expect.objectContaining({ rule: 'crap-coverage-unknown', symbol: 'f', path: 'other.py' }),
+      {
+        tool: 'crap',
+        rule: 'crap-coverage-unknown',
+        path: 'other.py',
+        symbol: 'f',
+        identity: 'function:f',
+        message:
+          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+        classification: 'enforceable',
+        location: { line: 1 },
+      },
     ]);
   });
 
@@ -84,7 +94,27 @@ describe('ingestPythonCrap', () => {
     const lizard = '2,1,7,1,2,"never.py@8-9","never.py","coro","coro( )",8,9\n';
     const findings = ingestPythonCrap(lizard, coverage, { roots: ['/work'], limit: 2 }).findings;
 
-    expect(findings).toEqual([expect.objectContaining({ symbol: 'coro', path: 'never.py' })]);
+    expect(findings).toEqual([
+      {
+        tool: 'crap',
+        rule: 'crap-score-limit',
+        path: 'never.py',
+        symbol: 'coro',
+        identity: 'function:coro',
+        message:
+          'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function.',
+        classification: 'enforceable',
+        location: { line: 8 },
+        ratchet: {
+          key: 'function:coro:crap',
+          value: 2,
+          worseMessage:
+            'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests.',
+          heldMessage:
+            'coro: CRAP 2.00 (limit 2), allowed because base was {base}; any increase fails.',
+        },
+      },
+    ]);
   });
 
   it('puts no line number in the identity', () => {

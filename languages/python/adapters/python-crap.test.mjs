@@ -157,7 +157,25 @@ describe('reading the CRAP inputs', () => {
       });
 
     expect(read(undefined)).toEqual([
-      expect.objectContaining({ rule: 'crap-score-limit', symbol: 'f', path: 'src/demo/a.py' }),
+      {
+        tool: 'crap',
+        rule: 'crap-score-limit',
+        path: 'src/demo/a.py',
+        symbol: 'f',
+        identity: expect.any(String),
+        message:
+          'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+        classification: 'enforceable',
+        location: { line: 1 },
+        ratchet: {
+          key: 'function:f:crap',
+          value: 12,
+          worseMessage:
+            'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests.',
+          heldMessage:
+            'f: CRAP 12.00 (limit 9), allowed because base was {base}; any increase fails.',
+        },
+      },
     ]);
     expect(read(13)).toEqual([]);
     expect(read(undefined, 1)).toEqual([]);

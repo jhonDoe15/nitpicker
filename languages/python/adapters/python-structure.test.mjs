@@ -108,9 +108,13 @@ describe('reading the structure report', () => {
     expect(moved.identity).toBe(before.identity);
     expect(edited.identity).not.toBe(before.identity);
     expect(edited.ratchet.key).toBe(before.ratchet.key);
-    expect(before.ratchet).toMatchObject({
+    expect(before.ratchet).toEqual({
       key: 'function:Service.handle:occurrence:1:parameters',
       value: 4,
+      worseMessage:
+        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+      heldMessage:
+        'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
   });
 
