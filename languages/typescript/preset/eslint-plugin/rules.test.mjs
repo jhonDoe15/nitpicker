@@ -824,11 +824,25 @@ ruleTester.run('cognitive-complexity', cognitiveComplexity, {
     { code: 'function one(a: boolean) { if (a) { return 1; } return 2; }', options: [1] },
     { code: 'const top = flag ? 1 : 2;', options: [0] },
     {
+      code: 'function fallback(a?: string, b?: string) { return a ?? b ?? "none"; }',
+      options: [0],
+    },
+    {
       code: 'function outer(items: readonly number[]) { return items.map((item) => item + 1); }',
       options: [0],
     },
   ],
   invalid: [
+    {
+      code: 'function chained(a: boolean, b: boolean) { if (a) { return 1; } else if (b ? a : b) { return 2; } return 0; }',
+      options: [0],
+      errors: complexityOf('3'),
+    },
+    {
+      code: 'function within(a: boolean, b: boolean) { if (a) { return 1; } else if (b) { return a ? 2 : 3; } return 0; }',
+      options: [0],
+      errors: complexityOf('4'),
+    },
     {
       code: [
         'function sumOfPrimes(max: number) {',

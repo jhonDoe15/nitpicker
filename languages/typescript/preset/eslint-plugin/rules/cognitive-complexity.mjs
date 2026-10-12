@@ -1,5 +1,3 @@
-import { ancestorsOf } from './ancestry.mjs';
-
 const functionTypes = new Set([
   'FunctionDeclaration',
   'FunctionExpression',
@@ -18,6 +16,8 @@ const nestedStructureTypes = new Set([
   'SwitchStatement',
   'CatchClause',
 ]);
+const sequenceOperators = new Set(['&&', '||']);
+const outsideFunctions = { root: undefined, nesting: 0 };
 const DEFAULT_MAX = 15;
 
 function isElseIf(node) {
@@ -28,39 +28,28 @@ function isElseIf(node) {
   );
 }
 
-function nestsChild(ancestor, child) {
-  switch (ancestor.type) {
+function nestsChild(parent, child) {
+  switch (parent.type) {
     case 'IfStatement':
-      return !isElseIf(ancestor) && ancestor.test !== child;
+      return (
+        parent.consequent === child || (parent.alternate === child && child.type !== 'IfStatement')
+      );
     case 'ConditionalExpression':
-      return ancestor.test !== child;
+      return parent.test !== child;
     case 'SwitchStatement':
-      return ancestor.discriminant !== child;
+      return parent.discriminant !== child;
     case 'CatchClause':
-      return ancestor.body === child;
+      return parent.body === child;
     default:
-      return loopTypes.has(ancestor.type) && ancestor.body === child;
+      return loopTypes.has(parent.type) && parent.body === child;
   }
 }
 
-function functionPath(node) {
-  const ancestors = ancestorsOf(node);
-  const nearest = ancestors.findIndex((ancestor) => functionTypes.has(ancestor.type));
-  return nearest === -1
-    ? undefined
-    : { root: ancestors[nearest], ancestors: ancestors.slice(0, nearest + 1) };
-}
-
-function nestingOf(node, ancestors) {
-  const children = [node, ...ancestors];
-  return ancestors.filter((ancestor, index) => {
-    const isRoot = index === ancestors.length - 1;
-    return !isRoot && nestsChild(ancestor, children[index]);
-  }).length;
-}
-
 function startsLogicalSequence(node) {
-  return node.parent.type !== 'LogicalExpression' || node.parent.operator !== node.operator;
+  return (
+    sequenceOperators.has(node.operator) &&
+    (node.parent.type !== 'LogicalExpression' || node.parent.operator !== node.operator)
+  );
 }
 
 function headLocation(sourceCode, fn) {
@@ -75,6 +64,16 @@ function headLocation(sourceCode, fn) {
   return sourceCode.getFirstToken(fn).loc;
 }
 
+function reportFunction({ context, max, scores }, fn) {
+  const value = scores.get(fn) ?? 0;
+  if (value <= max) return;
+  context.report({
+    loc: headLocation(context.sourceCode, fn),
+    messageId: 'tooComplex',
+    data: { value: String(value), max: String(max) },
+  });
+}
+
 export const rule = {
   meta: {
     type: 'suggestion',
@@ -85,35 +84,37 @@ export const rule = {
     schema: [{ type: 'integer', minimum: 0 }],
     messages: {
       tooComplex:
-        'This function has a cognitive complexity of {{value}}; the limit is {{max}}. Move nested branches and conditions into smaller named functions.',
+        'This function has a cognitive complexity of {{value}}; the limit is {{max}}. Move nested branches and conditions into smaller named functions. If it must stay this way, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     const max = context.options[0] ?? DEFAULT_MAX;
+    const positions = new Map();
     const scores = new Map();
 
-    function add(node, { nested }) {
-      const path = functionPath(node);
-      if (path === undefined) return;
-      const increment = nested ? 1 + nestingOf(node, path.ancestors) : 1;
-      scores.set(path.root, (scores.get(path.root) ?? 0) + increment);
+    function positionOf(node) {
+      if (functionTypes.has(node.type)) return { root: node, nesting: 0 };
+      const parent = node.parent ? positions.get(node.parent) : undefined;
+      if (parent === undefined) return outsideFunctions;
+      const nests = nestsChild(node.parent, node) ? 1 : 0;
+      return { root: parent.root, nesting: parent.nesting + nests };
     }
 
-    function reportRoot(fn) {
-      const value = scores.get(fn) ?? 0;
-      if (value <= max) return;
-      context.report({
-        loc: headLocation(context.sourceCode, fn),
-        messageId: 'tooComplex',
-        data: { value: String(value), max: String(max) },
-      });
+    function add(node, { nested }) {
+      const { root, nesting } = positionOf(node);
+      if (root === undefined) return;
+      scores.set(root, (scores.get(root) ?? 0) + (nested ? 1 + nesting : 1));
     }
 
     return {
+      '*'(node) {
+        positions.set(node, positionOf(node));
+      },
       IfStatement(node) {
         add(node, { nested: !isElseIf(node) });
-        if (node.alternate && node.alternate.type !== 'IfStatement')
+        if (node.alternate && node.alternate.type !== 'IfStatement') {
           add(node.alternate, { nested: false });
+        }
       },
       [[...nestedStructureTypes].join(',')](node) {
         add(node, { nested: true });
@@ -124,7 +125,9 @@ export const rule = {
       LogicalExpression(node) {
         if (startsLogicalSequence(node)) add(node, { nested: false });
       },
-      ':function:exit': reportRoot,
+      ':function:exit'(fn) {
+        reportFunction({ context, max, scores }, fn);
+      },
     };
   },
 };

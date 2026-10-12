@@ -1,3 +1,5 @@
+import tseslint from 'typescript-eslint';
+import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import path from 'node:path';
 import loggingConfig from '../eslint-config/logging.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
@@ -7,6 +9,15 @@ import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
 import { strictCompositionRootConfig } from '../eslint-config/strict-composition-root.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
+
+const cognitiveComplexityConfig = [
+  {
+    files: ['**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { nitpicker: nitpickerRules },
+    rules: { 'nitpicker/cognitive-complexity': ['error', 0] },
+  },
+];
 
 function strictCase([name, banned, allowed, filename = 'src/fixture.ts']) {
   return { name, config: strictSyntaxConfig, filename, banned, allowed };
@@ -314,4 +325,18 @@ export const failureMessageCases = [
     allowed: "use 'const'",
   },
   ...testFailureMessageCases,
+  {
+    name: 'cognitive complexity names smaller functions',
+    config: cognitiveComplexityConfig,
+    filename: 'src/fixture.ts',
+    banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
+    allowed: 'smaller named functions',
+  },
+  {
+    name: 'cognitive complexity names the exception in the config file',
+    config: cognitiveComplexityConfig,
+    filename: 'src/fixture.ts',
+    banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
+    allowed: 'exception for this rule in nitpicker.config.json',
+  },
 ];
