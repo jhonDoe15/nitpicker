@@ -143,7 +143,8 @@ function selectNamedMethods(fn, candidates) {
 
 function coverageLookup({ methods, sourceRoots, selectMethods, parsed }) {
   const siblings = Map.groupBy(parsed, (fn) => fn.file);
-  return (fn, filePath) => {
+
+  function coverageOf(fn, filePath) {
     const matches = sourceRoots.flatMap((root) => {
       const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
       if (!filePath.startsWith(prefix)) {
@@ -156,7 +157,9 @@ function coverageLookup({ methods, sourceRoots, selectMethods, parsed }) {
       );
     });
     return lowestCoverage(matches);
-  };
+  }
+
+  return coverageOf;
 }
 
 function lowestCoverage(matches) {
