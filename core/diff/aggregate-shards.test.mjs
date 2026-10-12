@@ -370,7 +370,9 @@ describe('quality shard aggregation', () => {
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toContain('Quality gate summary');
     expect(output.stdoutText).toContain('✓ No new enforceable violations');
-    expect(output.stdoutText).toContain('Full diagnostics: combined/report.txt');
+    expect(output.stdoutText).toContain(
+      `Full diagnostics: ${path.join(path.dirname(fixture.inputRoot), 'combined/report.txt')}`,
+    );
     expect(output.stdoutText).not.toContain('\u001B[');
     expect(output.stderrText).toBe('');
   });

@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
@@ -44,6 +44,8 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
+- **Mutation testing** in a comparison mutates only the source lines the change adds or edits, on
+  the head side, so every surviving mutant it reports is new. `--all` mutates every source file.
 
 The base ref is the first match of:
 
@@ -249,11 +251,16 @@ new and touched code must comply.
   callbacks); named exports only (config files may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
+  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
+- **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
+  per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
+  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
+  `toEqual`/`toStrictEqual`: assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -305,7 +312,10 @@ own tools do:
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots.
-- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
+  `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
+  flags are only added when the project already type-checks with them; otherwise mutants are checked
+  with the project's `tsconfig.json` as it is.
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
   aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
