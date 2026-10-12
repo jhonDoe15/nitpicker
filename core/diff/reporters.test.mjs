@@ -165,34 +165,25 @@ function expectWellFormedXml(xml) {
   const body = xml.replace(/^<\?xml[^>]*\?>\s*/u, '');
   const stack = [];
   let roots = 0;
-  let cursor = 0;
-  const tag =
-    /<(\/?)([A-Za-z_][\w.-]*)((?:\s+[\w:.-]+="[^"<&]*(?:&(?:amp|lt|gt|quot|apos);[^"<&]*)*")*)\s*(\/?)>/uy;
-  while (cursor < body.length) {
-    if (body[cursor] === '<') {
-      tag.lastIndex = cursor;
-      const match = tag.exec(body);
-      expect(match, `malformed tag at offset ${String(cursor)}`).not.toBeNull();
-      const [whole, closing, name, , selfClosing] = match;
-      if (closing === '/') {
-        expect(stack.pop()).toBe(name);
-      } else {
-        if (stack.length === 0) {
-          roots += 1;
-        }
-        if (selfClosing === '') {
-          stack.push(name);
-        }
-      }
-      cursor += whole.length;
-    } else {
-      const next = body.indexOf('<', cursor);
-      const text = body.slice(cursor, next === -1 ? body.length : next);
+  const token =
+    /<(\/?)([A-Za-z_][\w.-]*)((?:\s+[\w:.-]+="[^"<&]*(?:&(?:amp|lt|gt|quot|apos);[^"<&]*)*")*)\s*(\/?)>|([^<]+)|(<)/gu;
+  for (const match of body.matchAll(token)) {
+    const [, closing, name, , selfClosing, text, malformed] = match;
+    expect(malformed, `malformed tag at offset ${String(match.index)}`).toBeUndefined();
+    if (name === undefined) {
       expect(text.replaceAll(/&(?:amp|lt|gt|quot|apos);/gu, '')).not.toMatch(/[&>]/u);
       if (stack.length === 0) {
         expect(text.trim()).toBe('');
       }
-      cursor += text.length;
+    } else if (closing === '/') {
+      expect(stack.pop()).toBe(name);
+    } else {
+      if (stack.length === 0) {
+        roots += 1;
+      }
+      if (selfClosing === '') {
+        stack.push(name);
+      }
     }
   }
   expect(stack).toEqual([]);

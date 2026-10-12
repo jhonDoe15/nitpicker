@@ -187,7 +187,18 @@ alone.
   `toContainEqual(...)`, also through `.resolves`/`.rejects` and `expect.soft`. A fragment passes
   even when the rest of the output is wrong. Assert the whole output with `toEqual` or `toBe`. A
   negated assertion (`.not.toContain`) is allowed, and so is `toContain` with a non-text argument.
-  Output too large or unordered to pin needs an exception in the config file.
+  The same holds for `toMatchObject` and for `toEqual`/`toStrictEqual` given `expect.objectContaining`,
+  `expect.stringContaining` or `expect.arrayContaining`, even nested inside an object or array
+  literal: pass the whole expected value, using `expect.any(Type)` for a field that varies. Asymmetric
+  matchers inside `toHaveBeenCalledWith` are not reported. Output too large or unordered to pin
+  needs an exception in the config file.
+- `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
+  `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
+  case), `forEach`, `.then()`/`.catch()`/`.finally()` chains, `as` (except `as const`) and
+  `<Type>value`. `any` and non-null `!` are already reported in test files by
+  typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
+  strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
+  `no-restricted-syntax` lifts all the syntax bans for those paths.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
@@ -221,7 +232,11 @@ kind, a version entry, a check definition and project-level findings) and is not
   the global and the domain bans.
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
-  so the differential gate holds touched test code to them.
+  so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
+  (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
+  control-flow selectors of `strict-control-flow.mjs`, whose loop message also names `it.each`.
+  `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
+  detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
