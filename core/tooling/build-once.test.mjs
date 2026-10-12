@@ -1,12 +1,22 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildOnce,
   SHARED_BUILD_DIRECTORY_ENVIRONMENT,
+  TransientBuildError,
   withSharedBuildDirectory,
 } from './build-once.mjs';
+import { removeTrackedTemporaryPaths } from './temporary-files.mjs';
 
 const ABSENT_PROCESS_ID = 2_147_483_646;
 const temporaryRoots = [];
@@ -121,6 +131,64 @@ describe('buildOnce', () => {
     expect(build).toHaveBeenCalledTimes(1);
   });
 
+  it('leaves no claimed lock behind after taking over', () => {
+    const directory = sharedDirectory();
+    writeFileSync(path.join(directory, 'key.lock'), String(ABSENT_PROCESS_ID));
+    let during;
+
+    buildOnce(
+      'key',
+      () => {
+        during = readdirSync(directory).sort();
+        return 'own';
+      },
+      { directory },
+    );
+
+    expect(during).toEqual(['key.lock']);
+    expect(readdirSync(directory)).toEqual(['key.result']);
+  });
+
+  it('takes over an empty lock once it is old enough to be a crash leftover', () => {
+    const directory = sharedDirectory();
+    const lock = path.join(directory, 'key.lock');
+    writeFileSync(lock, '');
+    const old = new Date(Date.now() - 60_000);
+    utimesSync(lock, old, old);
+    const build = countingBuild('own');
+
+    expect(buildOnce('key', build, { directory, pause: vi.fn() })).toBe('own');
+
+    expect(build).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for a fresh empty lock, which may still be about to receive its owner', () => {
+    const directory = sharedDirectory();
+    writeFileSync(path.join(directory, 'key.lock'), '');
+    const build = countingBuild('own');
+
+    expect(() => buildOnce('key', build, { directory, pause: vi.fn() })).toThrow(
+      'Timed out waiting for the shared build',
+    );
+
+    expect(build).not.toHaveBeenCalled();
+    expect(readFileSync(path.join(directory, 'key.lock'), 'utf8')).toBe('');
+  });
+
+  it('does not record an interrupted build, so the next caller builds', () => {
+    const directory = sharedDirectory();
+    const interrupted = vi.fn(() => {
+      throw new TransientBuildError('terminated by SIGTERM');
+    });
+    const next = countingBuild('own');
+
+    expect(() => buildOnce('key', interrupted, { directory })).toThrow('terminated by SIGTERM');
+    expect(readdirSync(directory)).toEqual([]);
+
+    expect(buildOnce('key', next, { directory })).toBe('own');
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
   it('shares a failed build instead of building again', () => {
     const directory = sharedDirectory();
     const failing = vi.fn(() => {
@@ -149,6 +217,16 @@ describe('withSharedBuildDirectory', () => {
 
     expect(result).toBe('done');
     expect(existsSync(directory)).toBe(false);
+  });
+
+  it('removes the directory through the temporary path registry if the process is interrupted', () => {
+    let directory;
+
+    withSharedBuildDirectory((environment) => {
+      directory = environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT];
+      removeTrackedTemporaryPaths();
+      expect(existsSync(directory)).toBe(false);
+    });
   });
 
   it('removes the directory when the operation throws', () => {

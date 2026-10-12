@@ -4,7 +4,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../core/tooling/build-once.mjs';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { analyzeCoupling } from '../preset/coupling/analyze.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
+import { analyzeEntryPoints } from '../preset/entry-points/analyze.mjs';
+import { defaultResolvedLayout } from '../preset/layout.mjs';
 import { loadDependencyGraph } from './project-dependency-graph.mjs';
 
 const ALL_SOURCES = ['src/a.ts', 'src/b.ts', 'src/leaky.ts', 'test/a.test.ts', 'test/fixture.ts'];
@@ -23,21 +26,37 @@ function temporaryDirectory(prefix) {
   return directory;
 }
 
-function project() {
+function projectWith(files) {
   const root = temporaryDirectory('nitpicker-project-graph-');
-  const files = {
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
+  return root;
+}
+
+function project() {
+  return projectWith({
     'package.json': '{"name":"p","type":"module"}\n',
     'src/a.ts': "import { b } from './b';\nexport const a = b;\n",
     'src/b.ts': 'export const b = 1;\n',
     'src/leaky.ts': "import { fixture } from '../test/fixture';\nexport const leaky = fixture;\n",
     'test/fixture.ts': 'export const fixture = 1;\n',
     'test/a.test.ts': "import { a } from '../src/a';\nexport const t = a;\n",
-  };
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
+  });
+}
+
+function componentProject() {
+  return projectWith({
+    'package.json': '{"name":"p","type":"module"}\n',
+    'src/alpha/index.ts': "export { inner } from './inner';\n",
+    'src/alpha/inner.ts': 'export const inner = 1;\n',
+    'src/beta/index.ts': "export { beta } from './beta';\n",
+    'src/beta/beta.ts':
+      "import { inner } from '../alpha/inner';\nimport { fixture } from '../../test/fixture';\nexport const beta = inner + fixture;\n",
+    'test/fixture.ts': 'export const fixture = 1;\n',
+    'test/beta.test.ts': "import { beta } from '../src/beta';\nexport const t = beta;\n",
+  });
 }
 
 function requestFor(root, overrides = {}) {
@@ -123,5 +142,44 @@ describe('loadDependencyGraph', () => {
     expect(() =>
       loadDependencyGraph(requestFor(project(), { configRelativePath: '../outside.mjs' })),
     ).toThrow('Policy path must stay within the policy root');
+  });
+
+  it('exits with the cruiser diagnostic when its output is not a graph', () => {
+    expect(() => loadDependencyGraph(requestFor(project(), { includeOnly: '(' }))).toThrow(
+      /^dependency-cruiser exited with 1: .*run very slowly/,
+    );
+  });
+
+  it('gives coupling and entry points the same result on a source-only and a source-and-test graph', () => {
+    const root = componentProject();
+    const layout = { ...defaultResolvedLayout };
+    const sourceOnly = loadDependencyGraph(requestFor(root, { patterns: ['src'] }));
+    const withTests = loadDependencyGraph(requestFor(root, { patterns: ['src', 'test'] }));
+
+    expect(sources(sourceOnly)).toEqual([
+      'src/alpha/index.ts',
+      'src/alpha/inner.ts',
+      'src/beta/beta.ts',
+      'src/beta/index.ts',
+      'test/fixture.ts',
+    ]);
+    expect(sources(withTests)).toEqual([
+      'src/alpha/index.ts',
+      'src/alpha/inner.ts',
+      'src/beta/beta.ts',
+      'src/beta/index.ts',
+      'test/beta.test.ts',
+      'test/fixture.ts',
+    ]);
+    expect(analyzeCoupling(withTests, 'src', { layout })).toEqual(
+      analyzeCoupling(sourceOnly, 'src', { layout }),
+    );
+    expect(analyzeEntryPoints(withTests, 'src', { layout })).toEqual(
+      analyzeEntryPoints(sourceOnly, 'src', { layout }),
+    );
+    expect(analyzeCoupling(withTests, 'src', { layout }).summary.dependencies).toBeGreaterThan(0);
+    expect(
+      analyzeEntryPoints(withTests, 'src', { layout }).summary.publicAlternativeBypasses,
+    ).toBeGreaterThan(0);
   });
 });
