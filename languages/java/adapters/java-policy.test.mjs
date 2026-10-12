@@ -27,6 +27,14 @@ const finding = (file, identity = 'id') => ({
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
+const context = () => ({
+  projectRoot: '/p',
+  toolRoot: '/t',
+  snapshot: 'head',
+  projectPolicyRoot: tmpdir(),
+  baselineRoot: tmpdir(),
+});
+
 describe('configureJavaAnalyzer', () => {
   const context = {
     projectRoot: '/p',
@@ -64,6 +72,41 @@ describe('configureJavaAnalyzer', () => {
       configureJavaAnalyzer(analyzer, { thresholds: { crapLimit: 13 } }).configurationHash,
     ).not.toBe(configured.configurationHash);
     expect(configured.legacyInventory).toBe('legacy.json');
+  });
+});
+
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner, leaving ESLint rules out', () => {
+    const exception = {
+      rule: 'folder-files-limit',
+      paths: ['src/main/java/icons/**'],
+      reason: 'x',
+    };
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [exception, { rule: 'nitpicker/no-throw', paths: ['**'], reason: 'y' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({
+      thresholds: { fileLines: 400, folderFiles: 12 },
+      exceptions: [exception],
+    });
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
   });
 });
 

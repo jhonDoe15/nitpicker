@@ -30,6 +30,15 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for the shared file limits to the structure check', () => {
+    const fileLimit = {
+      rule: 'file-lines-limit',
+      paths: ['src/big/**'],
+      reason: 'Generated tables',
+    };
+    expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),

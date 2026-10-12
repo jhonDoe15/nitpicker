@@ -5,20 +5,29 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 const INVENTORY_TOOL = 'java';
+const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'folderFiles'];
 
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], legacyInventory },
+  { thresholds = {}, exclude = [], legacyInventory, exceptions = [] },
 ) {
-  if (thresholds.crapLimit === undefined && exclude.length === 0 && legacyInventory === undefined) {
+  const fileLimits = javaFileLimits(thresholds, exceptions);
+  if (
+    thresholds.crapLimit === undefined &&
+    exclude.length === 0 &&
+    legacyInventory === undefined &&
+    fileLimits === undefined
+  ) {
     return analyzer;
   }
   const adapterArguments = [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
+    ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
   ];
   const configured = {
     ...analyzer,
@@ -43,6 +52,19 @@ export function configureJavaAnalyzer(
   return legacyInventory === undefined
     ? configured
     : withLegacyInventory(configured, legacyInventory);
+}
+
+function javaFileLimits(thresholds, exceptions) {
+  const limits = Object.fromEntries(
+    FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined).map((key) => [
+      key,
+      thresholds[key],
+    ]),
+  );
+  const lifted = exceptions.filter(({ rule }) => SHARED_EXCEPTION_RULES.includes(rule));
+  return Object.keys(limits).length === 0 && lifted.length === 0
+    ? undefined
+    : { thresholds: limits, exceptions: lifted };
 }
 
 function hashWithArguments(configurationHash, adapterArguments) {

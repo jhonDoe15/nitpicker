@@ -50,8 +50,28 @@ describe('config file', () => {
     },
   );
 
+  it('lets the java preset lift the shared file limits, and only those', () => {
+    const exceptions = [
+      {
+        rule: 'folder-files-limit',
+        paths: ['src/main/java/icons/**'],
+        reason: 'One class per icon',
+      },
+    ];
+    const config = { preset: 'java', thresholds: { fileLines: 400, folderFiles: 12 }, exceptions };
+    expect(validateConfig(config)).toEqual(config);
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+  });
+
   it.each([
     [[], /must be a JSON object/],
+    [{ thresholds: { folderFiles: 2.5 } }, /"thresholds.folderFiles" must be a whole number/],
+    [{ thresholds: { lineLength: 0 } }, /"thresholds.lineLength" must be a positive number/],
     [{ disable: 'knip' }, /"disable" must be an array/],
     [{ disable: ['a', 'a'] }, /duplicates/],
     [{ thresholds: { crapLimit: 0 } }, /positive number/],

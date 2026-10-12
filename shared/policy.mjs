@@ -23,6 +23,9 @@ export const RULE_IDS = {
   publicAlternativeBypass: 'public-alternative-bypass',
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
+  fileLines: 'file-lines-limit',
+  lineLength: 'line-length-limit',
+  folderFiles: 'folder-files-limit',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -32,6 +35,28 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   maxControlNesting: { limit: 2, ruleId: RULE_IDS.functionControlNesting },
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
 };
+
+/**
+ * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
+ * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
+ * one folder separately.
+ */
+export const FILE_LIMIT_DEFAULTS = {
+  fileLines: 300,
+  testFileLines: 500,
+  lineLength: 120,
+  folderFiles: 6,
+};
+
+/** Rules any preset lets `exceptions` lift for some paths (the TypeScript preset also takes ESLint rules). */
+export const SHARED_EXCEPTION_RULES = [
+  RULE_IDS.fileLines,
+  RULE_IDS.lineLength,
+  RULE_IDS.folderFiles,
+];
+
+const EXCEPTION_HINT =
+  'If this is intended, add an exception for this rule in nitpicker.config.json.';
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -69,6 +94,9 @@ export const MESSAGES = {
   crapCoverageUnknown:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
+  fileLines: `{path} has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
+  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
+  folderFiles: `{path} has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -90,6 +118,10 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
+  fileLines:
+    '{path} grew from {base} to {value} lines (limit {limit}). Put new code in a new file.',
+  folderFiles:
+    '{path} grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder.',
 };
 
 export const HELD_MESSAGES = {
@@ -102,6 +134,10 @@ export const HELD_MESSAGES = {
   parameters:
     '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
+  fileLines:
+    '{path}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+  folderFiles:
+    '{path}: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
 const BOTH = { typescript: true, java: true };
@@ -201,5 +237,23 @@ export const RULES = [
     check: 'entry-points',
     limit: 'none: importing around a public entry point fails',
     enforcedBy: TYPESCRIPT_ONLY,
+  },
+  {
+    id: RULE_IDS.fileLines,
+    check: 'structure',
+    limit: `more than ${String(FILE_LIMIT_DEFAULTS.fileLines)} lines in a source file or ${String(FILE_LIMIT_DEFAULTS.testFileLines)} in a test file; override with \`thresholds.fileLines\` and \`thresholds.testFileLines\``,
+    enforcedBy: BOTH,
+  },
+  {
+    id: RULE_IDS.lineLength,
+    check: 'structure',
+    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length)`,
+    enforcedBy: TYPESCRIPT_ONLY,
+  },
+  {
+    id: RULE_IDS.folderFiles,
+    check: 'structure',
+    limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
+    enforcedBy: BOTH,
   },
 ];

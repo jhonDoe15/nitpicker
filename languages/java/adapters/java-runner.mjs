@@ -32,7 +32,8 @@ export function analyzeJavaSnapshot(
 
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]';
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]' +
+  ' [--file-limits <json>]';
 
 function readOptionValues(arguments_) {
   const values = new Map();
@@ -65,6 +66,7 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
+      fileLimits: parseFileLimits(values.get('--file-limits')),
       exclude,
       legacyInventory: values.get('--legacy-inventory'),
       policyRoot: realpathOptional(values.get('--policy-root')),
@@ -82,7 +84,19 @@ const RUNNER_OPTIONS = [
   '--crap-limit',
   '--exclude',
   '--legacy-inventory',
+  '--file-limits',
 ];
+
+function parseFileLimits(text) {
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = JSON.parse(text);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('--file-limits must be a JSON object');
+  }
+  return parsed;
+}
 
 function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);

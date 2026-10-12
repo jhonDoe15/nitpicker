@@ -5,7 +5,11 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import { methodText, readJavaStructureFindings } from './java-structure.mjs';
+import {
+  methodText,
+  readJavaFileLimitFindings,
+  readJavaStructureFindings,
+} from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
@@ -15,7 +19,7 @@ import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
-export function readJavaFindings(projectRoot, { crapLimit } = {}) {
+export function readJavaFindings(projectRoot, { crapLimit, fileLimits, exclude } = {}) {
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   const context = {
@@ -37,6 +41,7 @@ export function readJavaFindings(projectRoot, { crapLimit } = {}) {
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
+      ...readJavaFileLimitFindings(projectRoot, { manifest, fileLimits, exclude }),
       ...branchFindings(context, context.jacoco),
       ...readCouplingFindings(reportRoot, { projectRoot, sourceRoots: context.sourceRoots }),
     ],

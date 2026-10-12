@@ -8,8 +8,20 @@ import path from 'node:path';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
-/** Thresholds a project can set; both languages enforce a CRAP limit. */
-export const THRESHOLD_KEYS = ['crapLimit'];
+/** Thresholds a project can set; the file limits take whole numbers. */
+export const THRESHOLD_KEYS = [
+  'crapLimit',
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+];
+const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+]);
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -41,6 +53,9 @@ export function validateThresholds(thresholds) {
     }
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
       throw configError(`"thresholds.${key}" must be a positive number`);
+    }
+    if (WHOLE_NUMBER_THRESHOLD_KEYS.has(key) && !Number.isInteger(value)) {
+      throw configError(`"thresholds.${key}" must be a whole number`);
     }
   }
 }

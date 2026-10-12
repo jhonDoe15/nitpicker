@@ -42,7 +42,11 @@ export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   runJavaDuplicates(projectRoot);
   const { findings } = parseAnalyzerReport(
-    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit }),
+    readJavaFindings(projectRoot, {
+      crapLimit: options.policy?.crapLimit,
+      fileLimits: options.policy?.fileLimits,
+      exclude: options.policy?.exclude,
+    }),
     'java',
   );
   return applyJavaPolicy(findings, options.policy);
