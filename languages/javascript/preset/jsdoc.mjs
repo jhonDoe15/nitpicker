@@ -161,11 +161,11 @@ function isCaughtErrorSlot(tag) {
 const MEMBER_TAGS = new Set(['param', 'property', 'prop']);
 const OTHER_TYPE_TAGS = new Set(['returns', 'return', 'type', 'typedef', 'satisfies', 'this']);
 
-function closesMemberList({ opener, rest }) {
-  if (opener?.character === '{') {
-    return true;
-  }
-  return opener?.character === '(' && rest.trimStart().startsWith('=>');
+function closedMemberRegion({ opener, end, type }) {
+  const rest = type.slice(end + 1).trimStart();
+  const isMemberList =
+    opener?.character === '{' || (opener?.character === '(' && rest.startsWith('=>'));
+  return isMemberList ? [opener.start, end] : undefined;
 }
 
 function memberRegions(type) {
@@ -175,11 +175,11 @@ function memberRegions(type) {
     if ('({'.includes(character)) {
       open.push({ character, start: index });
     }
-    if (')}'.includes(character)) {
-      const opener = open.pop();
-      if (closesMemberList({ opener, rest: type.slice(index + 1) })) {
-        regions.push([opener.start, index]);
-      }
+    const region = ')}'.includes(character)
+      ? closedMemberRegion({ opener: open.pop(), end: index, type })
+      : undefined;
+    if (region !== undefined) {
+      regions.push(region);
     }
   }
   return regions;
