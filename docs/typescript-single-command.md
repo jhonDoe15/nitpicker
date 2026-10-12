@@ -120,8 +120,12 @@ Decision (proposed, pending owner review):
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
 - When the project has a `tsconfig.json`, the tsconfig copies extend it instead
   (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `skipLibCheck`
-  and the layout's include and exclude globs; `tsconfig.stryker.json` adds only `skipLibCheck`, so
-  mutants are checked the way the project's own `tsc` checks them. The copied vitest configs merge
+  and the layout's include and exclude globs; `tsconfig.stryker.json` adds `skipLibCheck` and the same
+  policy flags, so mutants that break the policy's indexing or return checks are compile errors.
+  The mutation runner first type-checks the project with that config and, if it fails, installs the
+  copy without the policy flags (the shipped file without `noImplicitReturns`,
+  `noFallthroughCasesInSwitch` and `noUncheckedIndexedAccess`) so a project that does not meet the
+  policy yet still gets a mutation run. The copied vitest configs merge
   the project's `vitest.config.*` or `vite.config.*` (via Vite's `loadConfigFromFile`) with the
   layout's test globs, clear `test.dir` and replace `test.coverage`. They are function configs,
   because a CommonJS project cannot load a config with top-level `await`.
