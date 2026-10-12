@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eslintMessageWithHint } from './eslint-hints.mjs';
+import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -60,18 +60,165 @@ describe('eslintMessageWithHint', () => {
     expect(inSource).toBe(REJECT);
   });
 
-  it.each([
-    '@typescript-eslint/no-unsafe-member-access',
-    '@typescript-eslint/no-unsafe-argument',
-    '@typescript-eslint/no-unsafe-assignment',
-    '@typescript-eslint/no-unsafe-call',
-    '@typescript-eslint/no-unsafe-return',
-  ])('names the reader-function fix for %s', (ruleId) => {
-    const text = 'Unsafe member access .id on an `any` value.';
+  describe('type-aware unsafe rules', () => {
+    const RULES = [
+      '@typescript-eslint/no-unsafe-member-access',
+      '@typescript-eslint/no-unsafe-argument',
+      '@typescript-eslint/no-unsafe-assignment',
+      '@typescript-eslint/no-unsafe-call',
+      '@typescript-eslint/no-unsafe-return',
+    ];
+    const ANY_TEXT = 'Unsafe member access .id on an `any` value.';
+    const FIX_FIRST = 'fix any TypeScript error on the line first';
 
-    expect(eslintMessageWithHint({ ruleId, text, relativePath: 'src/main/a.ts' })).toBe(
-      `${text} Read fields of a legacy \`any\` value through one reader function whose parameter is \`unknown\` and that returns a typed object.`,
+    it.each(RULES)('names the reader function and where it lives for %s', (ruleId) => {
+      expect(eslintMessageWithHint({ ruleId, text: ANY_TEXT, relativePath: 'src/main/a.ts' })).toBe(
+        `${ANY_TEXT} If the value is a legacy \`any\`, read it through one reader function whose parameter is \`unknown\` and that returns a typed object, kept in adapters/; ${FIX_FIRST}.`,
+      );
+    });
+
+    it.each(RULES)('says how domain code reads a legacy any for %s', (ruleId) => {
+      expect(
+        eslintMessageWithHint({
+          ruleId,
+          text: ANY_TEXT,
+          relativePath: 'src/main/features/billing/domain/split.ts',
+        }),
+      ).toBe(
+        `${ANY_TEXT} If the value is a legacy \`any\`, domain/ cannot take \`unknown\`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; ${FIX_FIRST}.`,
+      );
+    });
+
+    it.each(RULES)('points at asymmetric matchers in test files for %s', (ruleId) => {
+      expect(
+        eslintMessageWithHint({
+          ruleId,
+          text: 'Unsafe assignment of an `any` value.',
+          relativePath: 'test/notifications.test.ts',
+        }),
+      ).toBe(
+        `Unsafe assignment of an \`any\` value. In tests the \`any\` usually comes from an asymmetric matcher (\`expect.any\`, \`expect.stringContaining\`, \`expect.objectContaining\`): assert the whole value with \`toEqual\`, and ${FIX_FIRST}.`,
+      );
+    });
+
+    it.each([
+      'Unsafe return of a value of type error.',
+      'Unsafe assignment of an error typed value.',
+      'Unsafe argument of type error typed assigned to a parameter of type `number`.',
+      'Unsafe member access .stdout on a type that cannot be resolved.',
+      'Unsafe call of a type that could not be resolved.',
+    ])('sends an unresolved type to the TypeScript error first: %s', (text) => {
+      const hinted = ['src/main/features/a/domain/x.ts', 'test/x.test.ts'].map((relativePath) =>
+        eslintMessageWithHint({
+          ruleId: '@typescript-eslint/no-unsafe-return',
+          text,
+          relativePath,
+        }),
+      );
+
+      expect(hinted).toEqual([
+        `${text} The type is unresolved because of a TypeScript error, often a failed import: fix that error first.`,
+        `${text} The type is unresolved because of a TypeScript error, often a failed import: fix that error first.`,
+      ]);
+    });
+  });
+
+  describe('@typescript-eslint/only-throw-error', () => {
+    const UPSTREAM = 'Expected an error object to be thrown.';
+    const ruleId = '@typescript-eslint/only-throw-error';
+
+    it('names the unknown-typed throw for test doubles in test files', () => {
+      expect(
+        eslintMessageWithHint({ ruleId, text: UPSTREAM, relativePath: 'test/uploads.test.ts' }),
+      ).toBe(
+        'Throw an Error subclass. A test double that must throw a non-Error value types it `unknown`: `const value: unknown = 7; throw value;`.',
+      );
+    });
+
+    it('only asks for an Error subclass in production code', () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId,
+          text: UPSTREAM,
+          relativePath: 'src/main/features/a/adapters/x.ts',
+        }),
+      ).toBe('Throw an Error subclass.');
+    });
+
+    it('leaves the throw-undefined message as the rule wrote it', () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId,
+          text: 'Do not throw undefined.',
+          relativePath: 'test/a.test.ts',
+        }),
+      ).toBe('Do not throw undefined.');
+    });
+  });
+
+  describe('vitest/expect-expect', () => {
+    it('says the expect call belongs in the test body', () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId: 'vitest/expect-expect',
+          text: 'Test has no assertions',
+          relativePath: 'test/report.test.ts',
+        }),
+      ).toBe(
+        'Test has no assertions. Call `expect` in the test body: asserting helpers do not count, so return the value and `expect` it in the test.',
+      );
+    });
+
+    it('leaves another message from the rule as it was', () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId: 'vitest/expect-expect',
+          text: 'Something else',
+          relativePath: 'test/report.test.ts',
+        }),
+      ).toBe('Something else');
+    });
+  });
+
+  it('tells a collapsed union to use the type the feature exports', () => {
+    expect(
+      eslintMessageWithHint({
+        ruleId: '@typescript-eslint/no-duplicate-type-constituents',
+        text: 'Union type constituent is duplicated with ReturnType<typeof orderReceipt>.',
+        relativePath: 'src/main/composition-root.ts',
+      }),
+    ).toBe(
+      'Union type constituent is duplicated with ReturnType<typeof orderReceipt>. The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.',
     );
+  });
+
+  describe('@typescript-eslint/switch-exhaustiveness-check', () => {
+    const ruleId = '@typescript-eslint/switch-exhaustiveness-check';
+
+    it('suggests an exhaustive helper in case the function is over a size limit', () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId,
+          text: 'Switch is not exhaustive. Cases not matched: "on-hold"',
+          relativePath: 'src/main/features/shipping/domain/summary.ts',
+        }),
+      ).toBe(
+        'Switch is not exhaustive. Cases not matched: "on-hold". If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).',
+      );
+    });
+
+    it('leaves a message about the default case as it was', () => {
+      const text = 'The switch statement is exhaustive, so the default case is unnecessary.';
+
+      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'src/main/a.ts' })).toBe(text);
+    });
+  });
+
+  it('offers growth advice for nitpicker/no-throw only', () => {
+    expect(growthAdviceFor('nitpicker/no-throw')).toBe(
+      'This function had {base} of these at base and the count may not grow: route the new failure through an existing throw statement, or return a union from a new helper function.',
+    );
+    expect(growthAdviceFor('no-debugger')).toBeUndefined();
   });
 
   it('does not touch other rules', () => {
