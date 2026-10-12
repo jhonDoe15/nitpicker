@@ -60,6 +60,8 @@ export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
+  functionStatements:
+    '{name} has {value} statements; limit is {limit}. Split by responsibility and name each part for what it checks or does.',
   functionControlNesting:
     '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
   crapScoreLimit:
@@ -88,6 +90,18 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
+};
+
+export const HELD_MESSAGES = {
+  lines:
+    '{name}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+  statements:
+    '{name}: {value} statements (limit {limit}), allowed because base was {base}; any increase fails.',
+  maxControlNesting:
+    '{name}: control nesting {value} (limit {limit}), allowed because base was {base}; any increase fails.',
+  parameters:
+    '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
+  crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
 const BOTH = { typescript: true, java: true, kotlin: false };
