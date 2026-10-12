@@ -20,6 +20,13 @@ describe('python config validation', () => {
         },
       });
       validate({ preset: 'python', python: { environment: 'envs/ci' } });
+      validate({
+        preset: 'python',
+        python: {
+          typeChecker: 'pyright',
+          exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+        },
+      });
     }).not.toThrow();
   });
 
@@ -53,6 +60,25 @@ describe('python config validation', () => {
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
     [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
+    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright'],
+    [{ exceptions: {} }, '"python.exceptions" must be an array'],
+    [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
+    [
+      { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, reason',
+    ],
+    [
+      { exceptions: [{ paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].rule" must be a non-empty rule id',
+    ],
+    [
+      { exceptions: [{ rule: 'T201', paths: [], reason: 'r' }] },
+      '"python.exceptions[0].paths" needs at least one path glob',
+    ],
+    [
+      { exceptions: [{ rule: 'T201', paths: ['a'], reason: '  ' }] },
+      '"python.exceptions[0].reason" is required: say why the rule is lifted for these paths',
+    ],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
     [{ environment: '../outside' }, '"python.environment" must be a path inside the project'],
     [{ environment: '/usr' }, '"python.environment" must be a path inside the project'],

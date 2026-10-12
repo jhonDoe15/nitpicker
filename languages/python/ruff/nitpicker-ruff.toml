@@ -1,2 +1,26 @@
 [lint]
-select = ["F", "E4", "E7", "E9", "B", "C4", "SIM", "PIE", "RET", "PERF", "RUF", "T20"]
+select = [
+  "F",
+  "E4",
+  "E7",
+  "E9",
+  "B",
+  "C4",
+  "SIM",
+  "PIE",
+  "RET",
+  "PERF",
+  "RUF",
+  "T20",
+  "PTH",
+  "UP031",
+  "UP032",
+  "FLY002",
+  "BLE001",
+  "S110",
+  "S112",
+]
+ignore = ["F405", "RUF100", "SIM105"]
+
+[lint.flake8-bandit]
+check-typed-exception = true
