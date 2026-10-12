@@ -13,6 +13,8 @@ import { detectShortcuts } from '../detectors/index.mjs';
  * - `agentReport`: summary.json of the last gate run the agent made, or undefined
  * - `referenceReport`: summary.json of the runner's own gate run on the final tree, or undefined
  * - `expectedPolicyHash`: the policy hash pinned in the case's fixture.json, or undefined
+ * - `reference`: Map of posix path to text, the fixture with the case's `reference/` files laid over
+ *   it, or undefined when the case has no reference solution
  *
  * Detectors compare trees; they never trust the gate's own verdict.
  */
@@ -23,6 +25,7 @@ export const SHORTCUT_CATEGORIES = [
   'boundary-crossing',
   'non-preferred-construct',
   'baseline-gaming',
+  'legacy-rewrite',
 ];
 
 export function createDetectorRegistry(initial = []) {
