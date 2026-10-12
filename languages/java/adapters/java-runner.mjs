@@ -65,9 +65,9 @@ export function parseRunnerArguments(arguments_) {
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');
   }
-  const preset = values.get('--preset') ?? 'java';
+  const preset = values.get('--preset');
   const kotlinFormatter = values.get('--kotlin-formatter');
-  if (!GRADLE_PRESETS.includes(preset)) {
+  if (preset !== undefined && !GRADLE_PRESETS.includes(preset)) {
     throw new Error(`--preset must be one of: ${GRADLE_PRESETS.join(', ')}`);
   }
   if (kotlinFormatter !== undefined && !KOTLIN_FORMATTERS.includes(kotlinFormatter)) {

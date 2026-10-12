@@ -103,7 +103,7 @@ describe('parseRunnerArguments', () => {
     );
   });
 
-  it('defaults to the java preset and accepts the kotlin preset with a formatter', () => {
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
     expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
       crapLimit: undefined,
       exclude: [],
@@ -111,7 +111,7 @@ describe('parseRunnerArguments', () => {
       policyRoot: undefined,
       baselineRoot: undefined,
       snapshot: 'head',
-      preset: 'java',
+      preset: undefined,
       kotlinFormatter: undefined,
       kotlinDetektConfig: undefined,
     });
