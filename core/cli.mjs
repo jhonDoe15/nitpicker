@@ -23,8 +23,8 @@ import { resolveBase } from './diff/base-ref.mjs';
 import { captureWorkingTree, runGit } from './diff/git.mjs';
 import { withTemporaryWorktree } from './diff/worktree.mjs';
 import {
+  absoluteTextReportPath,
   clearDiffReports,
-  relativeTextReportPath,
   renderConsoleSummary,
   renderRuleFilterSection,
 } from './diff/reporters.mjs';
@@ -357,7 +357,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
-      diagnosticsPath: relativeTextReportPath(currentProjectRoot, outputRoot),
+      diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
   stdout.write(renderRuleFilterSection(report, options.ruleFilters));

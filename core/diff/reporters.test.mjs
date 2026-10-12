@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  absoluteTextReportPath,
   renderConsoleSummary,
   renderJunitReport,
   renderSarifReport,
@@ -252,6 +253,21 @@ describe('writeDiffReports', () => {
       JSON.parse(readFileSync(path.join(outputRoot, 'new-findings.json'), 'utf8')),
     ).toHaveLength(1);
     expect(readFileSync(path.join(outputRoot, 'report.txt'), 'utf8')).toContain('New findings: 1');
+  });
+});
+
+describe('absoluteTextReportPath', () => {
+  it('returns the report file inside an absolute output root', () => {
+    expect(absoluteTextReportPath(path.join(path.sep, 'work', 'out'))).toBe(
+      path.join(path.sep, 'work', 'out', 'report.txt'),
+    );
+  });
+
+  it('resolves a relative output root so the printed path works from any directory', () => {
+    const resolved = absoluteTextReportPath(path.join('..', 'control', 'reports'));
+
+    expect(path.isAbsolute(resolved)).toBe(true);
+    expect(resolved).toBe(path.resolve('..', 'control', 'reports', 'report.txt'));
   });
 });
 

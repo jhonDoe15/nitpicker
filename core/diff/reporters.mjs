@@ -48,8 +48,8 @@ export function writeDiffReports(outputRoot, report) {
   return text;
 }
 
-export function relativeTextReportPath(projectRoot, outputRoot) {
-  return path.relative(projectRoot, path.join(outputRoot, TEXT_REPORT_FILE_NAME));
+export function absoluteTextReportPath(outputRoot) {
+  return path.resolve(outputRoot, TEXT_REPORT_FILE_NAME);
 }
 
 export function renderTextReport(report) {
