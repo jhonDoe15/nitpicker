@@ -60,7 +60,11 @@ describe('analyzing a Python snapshot', () => {
 
     const { findings } = analyze(root);
 
-    expect(findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)).toEqual([
+    expect(
+      findings
+        .filter(({ tool }) => tool !== 'coupling')
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+    ).toEqual([
       'ruff F401 src/demo/a.py',
       'ruff B006 src/demo/a.py',
       'ruff-format format src/demo/a.py',
@@ -136,7 +140,7 @@ describe('analyzing a Python snapshot', () => {
       },
     });
 
-    expect(findings).toEqual([
+    expect(findings.filter(({ classification }) => classification !== 'descriptive')).toEqual([
       expect.objectContaining({
         tool: 'python',
         rule: 'baseline-expansion',

@@ -1,10 +1,14 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { checkRules } from './python-ast-rules.mjs';
-import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { scanImports } from './python-coupling.mjs';
 import { crap } from './python-crap.mjs';
+import { runDuplicates } from './python-duplicates.mjs';
+import { detectEnvironment, openEnvironment } from './python-environment.mjs';
 import { execute, run } from './python-execute.mjs';
+import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
@@ -39,6 +43,7 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
       formatter: detectFormatter(projectRoot, settings.formatter),
       typeChecker: detectTypeChecker(liveRoot, settings.typeChecker),
       testRunner: settings.testRunner,
+      importLinter: settings.importLinter,
       sourceRoots,
     },
     env: {
@@ -50,7 +55,23 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
 }
 
 export function runPythonTools(context) {
-  const failures = [lint, format, test, typeCheck, checkRules, structure, crap].flatMap((step) => {
+  const steps = [
+    lint,
+    format,
+    test,
+    typeCheck,
+    checkRules,
+    structure,
+    crap,
+    runDuplicates,
+    (stepContext) => {
+      scanImports(stepContext, run);
+    },
+    (stepContext) => {
+      runImportLinter(stepContext, run);
+    },
+  ];
+  const failures = steps.flatMap((step) => {
     try {
       step(context);
       return [];
@@ -189,6 +210,13 @@ function typeCheckerVersion(context) {
     : `${checker}@${probeVersion(context, [checker, '--version'])}`;
 }
 
+function importLinterVersion(context) {
+  const { importLinter } = context.project;
+  return importLinterEnabled(context.projectRoot, importLinter)
+    ? [`import-linter@${probeVersion(context, ['lint-imports', '--version'])}`]
+    : [];
+}
+
 export function toolVersions(context) {
   const { formatter } = context.project;
   return [
@@ -197,5 +225,7 @@ export function toolVersions(context) {
     typeCheckerVersion(context),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerVersion(context),
+    `jscpd@${jscpdVersion()}`,
+    ...importLinterVersion(context),
   ].join(';');
 }

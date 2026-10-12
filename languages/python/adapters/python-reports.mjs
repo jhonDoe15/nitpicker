@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readDuplicateFindings } from '../../java/adapters/java-duplicates.mjs';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
@@ -10,7 +11,9 @@ import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './python-ast-rules.mjs';
+import { readCouplingFindings } from './python-coupling.mjs';
 import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
+import { readImportLinterFindings } from './python-import-linter.mjs';
 import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
@@ -49,6 +52,9 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
         roots,
         crapLimit,
       }),
+      ...readDuplicateFindings(reportRoot),
+      ...readCouplingFindings(reportRoot),
+      ...readImportLinterFindings(reportRoot),
     ]),
   };
 }

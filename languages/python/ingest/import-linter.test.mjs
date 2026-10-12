@@ -1,0 +1,151 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { importLinterCompleted, ingestImportLinter } from './import-linter.mjs';
+
+const fixture = (name) => readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
+const FILES = new Map([
+  ['app.domain.model', 'src/app/domain/model.py'],
+  ['app.web.views', 'src/app/web/views.py'],
+]);
+
+describe('recognizing a finished import-linter run', () => {
+  it('needs the contract summary line', () => {
+    expect(importLinterCompleted(fixture('import-linter-kept.txt'))).toBe(true);
+    expect(importLinterCompleted(fixture('import-linter-broken.txt'))).toBe(true);
+    expect(importLinterCompleted(fixture('import-linter-no-config.txt'))).toBe(false);
+  });
+});
+
+describe('import-linter findings', () => {
+  it('reports nothing when every contract is kept', () => {
+    expect(ingestImportLinter(fixture('import-linter-kept.txt')).findings).toEqual([]);
+  });
+
+  it('reports each import chain of a broken contract at its first module', () => {
+    const { findings } = ingestImportLinter(fixture('import-linter-broken.txt'), { files: FILES });
+    const byIdentity = (identity) => findings.find((finding) => finding.identity === identity);
+
+    expect(findings.map(({ identity }) => identity).sort()).toEqual([
+      'contract:Domain is pure:app.domain.model -> app.infra.db',
+      'contract:Domain is pure:app.domain.model -> app.web.views -> app.infra.db',
+      'contract:Independent:app.web.views -> app.domain.model -> app.infra.db',
+      'contract:Independent:app.web.views -> app.infra.db',
+      'contract:Layered:app.domain.model -> app.web.views',
+    ]);
+    expect(byIdentity('contract:Layered:app.domain.model -> app.web.views')).toEqual({
+      tool: 'import-linter',
+      rule: 'contract-broken',
+      path: 'src/app/domain/model.py',
+      identity: 'contract:Layered:app.domain.model -> app.web.views',
+      message:
+        'Import contract "Layered" is broken: app.domain.model -> app.web.views. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+      classification: 'enforceable',
+      location: { line: 2 },
+    });
+    expect(byIdentity('contract:Independent:app.web.views -> app.infra.db')).toMatchObject({
+      path: 'src/app/web/views.py',
+      location: { line: 1 },
+    });
+  });
+
+  it('falls back to the project when a module is not a known file', () => {
+    const { findings } = ingestImportLinter(fixture('import-linter-broken.txt'));
+
+    expect(new Set(findings.map(({ path: file }) => file))).toEqual(new Set(['.']));
+  });
+
+  it('keeps every line of a chain in the identity, not the line numbers', () => {
+    const moved = fixture('import-linter-broken.txt').replaceAll('(l.1)', '(l.9)');
+
+    expect(ingestImportLinter(moved).findings.map(({ identity }) => identity)).toEqual(
+      ingestImportLinter(fixture('import-linter-broken.txt')).findings.map(
+        ({ identity }) => identity,
+      ),
+    );
+  });
+
+  it('reports the items of contract types that do not list import chains', () => {
+    const { findings } = ingestImportLinter(fixture('import-linter-other-types.txt'), {
+      files: FILES,
+    });
+
+    expect(findings.map(({ identity, path: file }) => [identity, file])).toEqual([
+      ['contract:Protected:app.web.views -> app.infra.db', 'src/app/web/views.py'],
+      ['contract:Acyclic:.web -> .domain (1 import)', '.'],
+    ]);
+    expect(findings[1].message).toBe(
+      'Import contract "Acyclic" is broken: .web -> .domain (1 import). Remove the import, or lift this file with exclude in nitpicker.config.json.',
+    );
+    expect(findings[1]).not.toHaveProperty('location');
+  });
+
+  it('reports a broken contract whose details cannot be read', () => {
+    const text = [
+      'Contracts',
+      '',
+      'Odd one BROKEN',
+      '',
+      'Contracts: 0 kept, 1 broken.',
+      '',
+      '----------------',
+      'Broken contracts',
+      '----------------',
+      '',
+      'Odd one',
+      '-------',
+      '',
+      'Something happened.',
+      '',
+    ].join('\n');
+
+    const { findings } = ingestImportLinter(text);
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        identity: 'contract:Odd one',
+        path: '.',
+        message:
+          'Import contract "Odd one" is broken. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+      }),
+    ]);
+  });
+
+  it('numbers identical identities', () => {
+    const text = [
+      'Twice BROKEN',
+      'Twice BROKEN',
+      'Contracts: 0 kept, 2 broken.',
+      'Broken contracts',
+      'Twice',
+      '-----',
+      '- a -> b (l.1)',
+      '- a -> b (l.2)',
+      '',
+    ].join('\n');
+
+    expect(ingestImportLinter(text).findings.map(({ identity }) => identity)).toEqual([
+      'contract:Twice:a -> b',
+      'contract:Twice:a -> b#2',
+      'contract:Twice:a -> b#3',
+      'contract:Twice:a -> b#4',
+    ]);
+  });
+
+  it('reads contract names that carry timings and a chain without line numbers', () => {
+    const text = [
+      'Fast one BROKEN [0.01s]',
+      'Contracts: 0 kept, 1 broken.',
+      'Broken contracts',
+      'Fast one',
+      '--------',
+      '- a -> b',
+      '  b -> c',
+      '',
+    ].join('\n');
+
+    expect(ingestImportLinter(text).findings).toEqual([
+      expect.objectContaining({ identity: 'contract:Fast one:a -> b -> c' }),
+    ]);
+  });
+});

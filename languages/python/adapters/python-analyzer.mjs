@@ -11,6 +11,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
 const SHARED_CONFIGURATION_FILES = [
+  'languages/java/adapters/java-duplicates.mjs',
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
@@ -20,12 +21,15 @@ const SHARED_CONFIGURATION_FILES = [
   'languages/java/ingest/crap.mjs',
   'languages/java/ingest/format-check.mjs',
   'languages/java/ingest/sarif.mjs',
+  'core/tooling/jscpd-clones.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
   'shared/policy.mjs',
   'shared/rules/baseline-expansion.mjs',
   'shared/rules/branch-coverage.mjs',
+  'shared/rules/coupling.mjs',
   'shared/rules/crap.mjs',
+  'shared/rules/duplicates.mjs',
   'shared/rules/finding-helpers.mjs',
   'shared/rules/structure.mjs',
 ];
@@ -71,6 +75,9 @@ export function createPythonAnalyzer(settings = {}) {
       RULES_TOOL,
       'structure',
       'crap',
+      'duplicates',
+      'coupling',
+      'import-linter',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {

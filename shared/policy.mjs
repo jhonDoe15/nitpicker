@@ -95,7 +95,6 @@ export const GREW_MESSAGES = {
 
 const BOTH = { typescript: true, java: true, python: false, kotlin: false };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
-const WITH_KOTLIN = { ...BOTH, kotlin: true };
 const ALL = { typescript: true, java: true, python: true, kotlin: true };
 
 /**
@@ -161,13 +160,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.noProductionRuntime,
