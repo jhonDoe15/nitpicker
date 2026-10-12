@@ -18,6 +18,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
+  'languages/java/adapters/java-spring.mjs',
   'languages/java/adapters/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
@@ -31,6 +32,7 @@ const CONFIGURATION_FILES = [
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/adapters/java-suppressions.mjs',
+  'languages/java/adapters/spring-config-parser.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/crap.mjs',
@@ -86,6 +88,7 @@ export const JAVA_TOOLS = [
   'pit',
   'structure',
   'coupling',
+  'spring',
 ];
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 

@@ -6,6 +6,7 @@ import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
 import { readInlineSuppressionFindings } from './java-suppressions.mjs';
+import { readSpringConfigFindings } from './java-spring.mjs';
 import { methodText, readJavaStructureFindings } from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
@@ -60,6 +61,10 @@ export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
+      ...readSpringConfigFindings(projectRoot, {
+        sourceRoots: context.sourceRoots,
+        resourceRoots: manifest.resourceRoots,
+      }),
     ],
   };
 }
