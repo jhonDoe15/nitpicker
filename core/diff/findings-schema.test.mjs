@@ -332,6 +332,24 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [finding] })).toEqual([]);
   });
 
+  it('accepts a ratchet with growth advice and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: { key: 'count:k', value: 2, growthAdvice: 'Had {base}.' },
+    };
+    const empty = { ...finding, ratchet: { ...finding.ratchet, growthAdvice: '' } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
   it('is exercised by a validator that covers every keyword the schema uses', () => {
     expect(() => validate({ findings: [] })).not.toThrow();
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);

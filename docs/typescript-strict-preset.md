@@ -334,6 +334,9 @@ replaced), it is not promoted: it stays baselined while the function has no more
 than on the base, and fails once the count rises. Lines the change added, and every line of a new
 file, stay fully strict. Formatting is the exception: `prettier/prettier` is strict on every edited
 line (`mustMeetOnEditedLines` in `strict-rules.mjs`).
+A finding that fails in a function whose base already had findings of the same rule and kind can carry
+`ratchet.growthAdvice`; the report appends it to the message with `{base}` replaced by the base count.
+`nitpicker/no-throw` uses it to say a new failure can go through an existing throw statement.
 
 Prettier findings use the same promotion: the formatter reports one finding per differing region
 (identity from the region's own text, `location.line` to `location.endLine` in the head file), and

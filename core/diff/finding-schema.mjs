@@ -105,6 +105,9 @@ function parseRatchet(value, context) {
   if (value.worseMessage !== undefined) {
     ratchet.worseMessage = requiredString(value.worseMessage, `${context}.worseMessage`);
   }
+  if (value.growthAdvice !== undefined) {
+    ratchet.growthAdvice = requiredString(value.growthAdvice, `${context}.growthAdvice`);
+  }
   if (value.existingCodeOnly !== undefined) {
     if (typeof value.existingCodeOnly !== 'boolean') {
       throw new TypeError(`${context}.existingCodeOnly must be a boolean`);
