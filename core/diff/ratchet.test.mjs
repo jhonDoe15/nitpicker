@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES } from '../../shared/policy.mjs';
+import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES, HELD_MESSAGES } from '../../shared/policy.mjs';
 import { crapFindings } from '../../shared/rules/crap.mjs';
 import { evaluateStructure } from '../../shared/rules/structure.mjs';
 import { compareFindings } from './compare.mjs';
@@ -105,6 +105,38 @@ describe('the message of a function that got worse', () => {
     expect(messages(result)).toEqual([expected]);
   });
 
+  it.each([
+    [
+      'lines',
+      'computeInvoice: 68 lines (limit 50), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'statements',
+      'computeInvoice: 16 statements (limit 15), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'maxControlNesting',
+      'computeInvoice: control nesting 3 (limit 2), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'parameters',
+      'computeInvoice: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
+    ],
+  ])('carries the held note for %s on the held finding', (metric, expected) => {
+    const start = METRIC_START[metric];
+
+    const result = compare(
+      [computeInvoice(metric, start, 'before')],
+      [computeInvoice(metric, start, 'after')],
+    );
+
+    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([expected]);
+  });
+
+  it('has a held note for every limited metric', () => {
+    expect(Object.keys(HELD_MESSAGES).sort()).toEqual(Object.keys(GREW_MESSAGES).sort());
+  });
+
   it('has a message for every limited metric', () => {
     expect(Object.keys(METRIC_START).sort()).toEqual(Object.keys(FUNCTION_STRUCTURE_LIMITS).sort());
     expect(Object.keys(GREW_MESSAGES)).toEqual(
@@ -158,6 +190,17 @@ describe('CRAP limit on edited legacy functions', () => {
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
     expect(result.unchangedFindings).toMatchObject([{ rule: 'crap-score-limit', heldAtBase: 15 }]);
+  });
+
+  it('carries a held note that shows the score, the limit and the base', () => {
+    const result = crapComparison(
+      [crapFunction({ score: 16.02, hash: 'before' })],
+      [crapFunction({ score: 10, hash: 'after' })],
+    );
+
+    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([
+      'priceOf: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
+    ]);
   });
 
   it('keeps an edited function baselined when its score fell but is still over the limit', () => {
@@ -320,6 +363,88 @@ describe('count ratchet on findings inside an edited function', () => {
     });
 
     expect(result.newFindings).toEqual([]);
+  });
+});
+
+describe('growth advice on a finding that is new in a function with findings at base', () => {
+  const ADVICE = 'The base had {base}; keep to it.';
+
+  function throwFinding(identity, line, count, ratchet = {}) {
+    return {
+      tool: 'eslint',
+      rule: 'nitpicker/no-throw',
+      path: 'src/f.ts',
+      identity,
+      message: 'Do not throw.',
+      classification: 'enforceable',
+      symbol: 'f',
+      location: { line },
+      ratchet: {
+        key: 'count:noThrow',
+        value: count,
+        existingCodeOnly: true,
+        growthAdvice: ADVICE,
+        ...ratchet,
+      },
+    };
+  }
+
+  const inserted = (lines) => ({
+    changedLines: new Map([['src/f.ts', { added: false, ranges: lines, inserted: lines }]]),
+    isStrictRule: () => true,
+    mustMeetOnEditedLines: () => false,
+  });
+
+  it('appends the advice with the base count to a throw added on a new line', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 2), throwFinding('second', 9, 2)],
+      headFindings: [
+        throwFinding('first', 4, 3),
+        throwFinding('second', 9, 3),
+        throwFinding('added', 12, 3),
+      ],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'Do not throw. The base had 2; keep to it.',
+    ]);
+  });
+
+  it('appends the advice to an edited throw the function now has more of', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 1)],
+      headFindings: [throwFinding('first-edited', 4, 2), throwFinding('second', 6, 2)],
+      touchedCode: {
+        ...inserted([]),
+        changedLines: new Map([['src/f.ts', { added: false, ranges: [[4, 6]], inserted: [] }]]),
+      },
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'Do not throw. The base had 1; keep to it.',
+      'Do not throw. The base had 1; keep to it.',
+    ]);
+  });
+
+  it('leaves the message alone when the base function had none of them', () => {
+    const result = compareFindings({
+      baseFindings: [],
+      headFindings: [throwFinding('added', 12, 1)],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual(['Do not throw.']);
+  });
+
+  it('leaves the message alone when the finding carries no advice', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 1, { growthAdvice: undefined })],
+      headFindings: [throwFinding('added', 12, 1, { growthAdvice: undefined })],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual(['Do not throw.']);
   });
 });
 

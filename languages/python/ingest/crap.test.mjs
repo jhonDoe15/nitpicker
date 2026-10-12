@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { GREW_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
+import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
 import { ingestPythonCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -38,6 +38,12 @@ describe('ingestPythonCrap', () => {
         worseMessage: renderMessage(GREW_MESSAGES.crap, {
           name: 'B.go',
           crap: 6,
+          limit: 4,
+          base: '{base}',
+        }),
+        heldMessage: renderMessage(HELD_MESSAGES.crap, {
+          name: 'B.go',
+          crap: '6.00',
           limit: 4,
           base: '{base}',
         }),

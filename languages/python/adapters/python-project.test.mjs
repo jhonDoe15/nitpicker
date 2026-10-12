@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { detectFormatter, detectSourceRoots, importRoots } from './python-project.mjs';
+import {
+  detectFormatter,
+  detectSourceRoots,
+  detectTargetVersion,
+  importRoots,
+} from './python-project.mjs';
 
 const roots = [];
 
@@ -62,6 +67,27 @@ describe('formatter detection', () => {
       { 'ruff.toml': '[format]\nquote-style = "single"\n', 'requirements.txt': 'black\n' },
       'ruff',
     ],
+    [
+      'a one-line dependency array',
+      { 'pyproject.toml': '[project.optional-dependencies]\ndev = ["pytest", "black>=24"]\n' },
+      'black',
+    ],
+    ['a requirements file in a directory', { 'requirements/dev.txt': 'black==24.1.0\n' }, 'black'],
+    ['a requirements-test file', { 'requirements-test.txt': 'black\n' }, 'black'],
+    [
+      'the black pre-commit mirror',
+      {
+        '.pre-commit-config.yaml':
+          'repos:\n  - repo: https://github.com/psf/black-pre-commit-mirror\n    rev: 24.1.0\n',
+      },
+      'black',
+    ],
+    [
+      'a pre-commit hook id',
+      { '.pre-commit-config.yaml': 'repos:\n  - repo: local\n    hooks:\n      - id: black\n' },
+      'black',
+    ],
+    ['a tox command', { 'tox.ini': '[testenv:lint]\ncommands = black --check .\n' }, 'black'],
     ['no hint', { 'pyproject.toml': '[project]\nname = "x"\n' }, 'ruff'],
     ['no configuration file', {}, 'ruff'],
     ['a similarly named package', { 'requirements.txt': 'black-macchiato\nblackd\n' }, 'ruff'],
@@ -122,5 +148,31 @@ describe('import roots', () => {
     const root = project({});
 
     expect(importRoots(root, ['.'])).toEqual([root]);
+  });
+});
+
+describe('target version detection', () => {
+  it.each([
+    ['PEP 621', { 'pyproject.toml': '[project]\nrequires-python = ">=3.10"\n' }, 'py310'],
+    ['an upper bound beside it', { 'pyproject.toml': 'requires-python = ">=3.9,<3.13"\n' }, 'py39'],
+    ['two lower bounds', { 'pyproject.toml': 'requires-python = ">=3.8,>=3.11"\n' }, 'py311'],
+    ['an exclusive bound', { 'pyproject.toml': 'requires-python = ">3.9"\n' }, 'py310'],
+    ['a compatible release', { 'pyproject.toml': 'requires-python = "~=3.11.2"\n' }, 'py311'],
+    ['poetry alternatives', { 'pyproject.toml': 'python = "^3.12 || ^3.9"\n' }, 'py39'],
+    ['setup.cfg', { 'setup.cfg': '[options]\npython_requires = >=3.9\n' }, 'py39'],
+    [
+      'a version older than the oldest supported',
+      { 'pyproject.toml': 'requires-python = ">=3.6"\n' },
+      'py38',
+    ],
+    [
+      'a bound without a minor version we know',
+      { 'pyproject.toml': 'requires-python = ">=2.7"\n' },
+      'py38',
+    ],
+    ['no declaration', { 'pyproject.toml': '[project]\nname = "x"\n' }, 'py38'],
+    ['no configuration file', {}, 'py38'],
+  ])('reads %s', (_, files, expected) => {
+    expect(detectTargetVersion(project(files))).toBe(expected);
   });
 });

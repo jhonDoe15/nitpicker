@@ -244,21 +244,26 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');
 
-    expect(result.json('new-findings.json')).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          tool: 'coverage',
-          rule: 'line-coverage',
-          path: 'src/demo/bad.py',
-          classification: 'descriptive',
-        }),
-        expect.objectContaining({
-          tool: 'coverage',
-          rule: 'uncovered-function',
-          symbol: 'f',
-        }),
-      ]),
-    );
+    expect(result.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual([
+      {
+        tool: 'coverage',
+        rule: 'line-coverage',
+        path: 'src/demo/bad.py',
+        identity: 'line-coverage',
+        message: 'line-coverage 0% (0/3)',
+        classification: 'descriptive',
+        metric: { name: 'line-coverage', value: 0 },
+      },
+      {
+        tool: 'coverage',
+        rule: 'uncovered-function',
+        path: 'src/demo/bad.py',
+        identity: expect.any(String),
+        message: 'Function f is not covered',
+        classification: 'descriptive',
+        symbol: 'f',
+      },
+    ]);
   });
 
   it('reports failing tests on head as a tool error with exit 2, never a throw', () => {
@@ -266,12 +271,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
         rule: 'tests-failed',
-        message: expect.stringContaining('assert'),
-      }),
+        path: '.',
+        message: expect.stringMatching(
+          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 1 passed in [\d.]+s$/,
+        ),
+      },
     ]);
   });
 
@@ -280,11 +288,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
-        message: expect.stringMatching(/^No Python environment at .*nowhere/),
-      }),
+        message: `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
+      },
     ]);
   });
 
@@ -445,6 +453,90 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
             .filter(({ classification }) => classification === 'enforceable'),
         ),
       ).toEqual(['black format extra.py']);
+    });
+  });
+
+  describe('a pytest project with coverage and xdist in its addopts and a legacy python 2 file', () => {
+    let configured;
+
+    beforeAll(() => {
+      configured = repository();
+      write(configured, {
+        'nitpicker.config.json': '{ "preset": "python" }\n',
+        '.gitignore': '.venv/\n__pycache__/\n',
+        'pyproject.toml':
+          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n',
+        'pkg/__init__.py': '',
+        'pkg/shape.py': 'def area(side):\n    return side * side\n',
+        'tests/test_shape.py':
+          'from pkg.shape import area\n\n\ndef test_area():\n    assert area(3) == 9\n',
+        'legacy/old.py': 'print "old"\n',
+      });
+      git(configured, 'init', '-q', '-b', 'main');
+      git(configured, 'add', '-A');
+      git(configured, 'commit', '-q', '-m', 'base');
+      command(configured, 'uv', ['venv', '-q', '.venv']);
+      command(configured, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'pytest',
+        'pytest-cov',
+        'pytest-xdist',
+        'black',
+      ]);
+      commitBranch(configured, 'clean', {
+        'pkg/shape.py': 'def area(side):\n    return side**2\n',
+      });
+      commitBranch(configured, 'excluded', {
+        'nitpicker.config.json': '{ "preset": "python", "exclude": ["legacy/**"] }\n',
+      });
+      git(configured, 'checkout', '-q', '-b', 'no-tests', 'main');
+      git(configured, 'rm', '-q', '-r', 'tests');
+      git(configured, 'commit', '-q', '-m', 'delete the tests');
+    });
+
+    it('keeps the project pytest options working and baselines the file black cannot parse', () => {
+      const result = gate(configured, 'clean');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual(
+        [],
+      );
+      expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
+    });
+
+    it('does not hand excluded files to the formatter', () => {
+      const result = gate(configured, 'excluded');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('resolved-findings.json')).toEqual([
+        {
+          tool: 'ruff',
+          rule: 'invalid-syntax',
+          path: 'legacy/old.py',
+          identity: expect.any(String),
+          message: expect.any(String),
+          classification: 'enforceable',
+          location: { line: 1, column: 7 },
+        },
+      ]);
+    });
+
+    it('fails a change that deletes every test', () => {
+      const result = gate(configured, 'no-tests');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(
+        summarize(
+          result
+            .json('new-findings.json')
+            .filter(({ classification }) => classification === 'enforceable'),
+        ),
+      ).toEqual(['python no-tests-ran .']);
     });
   });
 

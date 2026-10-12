@@ -9,13 +9,14 @@ import { HARDCODED, NEGATIVE_CASES, POSITIVE_CASES } from './case-table.mjs';
 // finding when the agent's report and the runner's differ; for the reference agent both come from
 // the same tree and config, so the tree-only verdict checked here is the one the runs record.
 function detect(caseId, overlay) {
-  const { caseDefinition, fixture, final } = referenceTrees(caseId, {
+  const { caseDefinition, fixture, final, reference } = referenceTrees(caseId, {
     overlay,
   });
   return defaultDetectors.run({
     caseId,
     fixture,
     final,
+    reference,
     agentReport: undefined,
     referenceReport: undefined,
     expectedPolicyHash: caseDefinition.pin.policyHash,
