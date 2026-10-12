@@ -90,6 +90,18 @@ export const rule = {
           hasProductionRuntime = true;
         }
       },
+      CallExpression(node) {
+        const [argument] = node.arguments;
+        if (
+          node.callee.type === 'Identifier' &&
+          node.callee.name === 'require' &&
+          argument?.type === 'Literal' &&
+          typeof argument.value === 'string' &&
+          isProductionModule(filename, argument.value)
+        ) {
+          hasProductionRuntime = true;
+        }
+      },
       'Program:exit'() {
         if (!hasProductionRuntime) {
           context.report({ node: program, messageId: 'missingRuntime' });

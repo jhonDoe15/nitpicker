@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
-  JAVASCRIPT_JSCPD_FORMATS,
+  JAVASCRIPT_JSCPD_FORMAT,
   JAVASCRIPT_KNIP_ENTRIES,
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
@@ -74,7 +74,7 @@ export function layoutKnipConfig(base, layout) {
 export function layoutJscpdConfig(base, layout) {
   return {
     ...base,
-    ...(layout.javascript ? { format: JAVASCRIPT_JSCPD_FORMATS } : {}),
+    ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
     path: expandLayoutRoots(base.path, layout),
     ignore: [...base.ignore, ...layout.exclude],
   };

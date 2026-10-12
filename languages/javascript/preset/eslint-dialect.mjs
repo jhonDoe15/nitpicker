@@ -1,9 +1,26 @@
-import { isJavascriptPolicy } from './javascript-preset.mjs';
+import {
+  isJavascriptPolicy,
+  JAVASCRIPT_EXTENSIONS,
+  TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
+} from './javascript-preset.mjs';
 
 export const DROPPED_RULES = [
   '@typescript-eslint/consistent-type-definitions',
   '@typescript-eslint/consistent-type-imports',
+  '@typescript-eslint/no-require-imports',
 ];
+
+const PROPERTY_ASSIGNMENT_SELECTOR = "AssignmentExpression[left.type='MemberExpression']";
+
+const SELECTOR_REWRITES = new Map([
+  [
+    PROPERTY_ASSIGNMENT_SELECTOR,
+    `${PROPERTY_ASSIGNMENT_SELECTOR}:not([left.object.name='exports']):not([left.object.name='module'][left.property.name='exports']):not([left.object.object.name='module'][left.object.property.name='exports'])`,
+  ],
+]);
+
+const JAVASCRIPT_FILES = `**/*.{${JAVASCRIPT_EXTENSIONS.join(',')}}`;
+const TYPESCRIPT_FILES = `**/*.{${TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT.join(',')}}`;
 
 export const JSDOC_RULE_OPTIONS = {
   'nitpicker/no-comments': { jsdocTypes: true },
@@ -26,12 +43,21 @@ function selectorText(restriction) {
   return typeof restriction === 'string' ? restriction : restriction.selector;
 }
 
+function dialectRestriction(restriction) {
+  const selector = selectorText(restriction);
+  const rewritten = SELECTOR_REWRITES.get(selector);
+  if (rewritten === undefined) {
+    return restriction;
+  }
+  return typeof restriction === 'string' ? rewritten : { ...restriction, selector: rewritten };
+}
+
 function withoutTypeScriptSyntax([severity, ...restrictions]) {
   return [
     severity,
-    ...restrictions.filter(
-      (restriction) => !TYPESCRIPT_SYNTAX_SELECTOR.test(selectorText(restriction)),
-    ),
+    ...restrictions
+      .filter((restriction) => !TYPESCRIPT_SYNTAX_SELECTOR.test(selectorText(restriction)))
+      .map(dialectRestriction),
   ];
 }
 
@@ -56,12 +82,28 @@ function dialectRules(rules) {
   );
 }
 
-function dialectEntry(entry) {
-  return entry.rules === undefined ? entry : { ...entry, rules: dialectRules(entry.rules) };
+function restrictToFiles(entry, glob) {
+  const files =
+    entry.files === undefined ? [glob] : entry.files.map((pattern) => [pattern, glob].flat());
+  return { ...entry, files };
+}
+
+function dialectEntries(entry) {
+  if (entry.rules === undefined) {
+    return [entry];
+  }
+  const rules = dialectRules(entry.rules);
+  if (JSON.stringify(rules) === JSON.stringify(entry.rules)) {
+    return [entry];
+  }
+  return [
+    restrictToFiles(entry, TYPESCRIPT_FILES),
+    restrictToFiles({ ...entry, rules }, JAVASCRIPT_FILES),
+  ];
 }
 
 export function applyJavascriptDialect(entries, policy) {
-  return isJavascriptPolicy(policy) ? entries.map(dialectEntry) : entries;
+  return isJavascriptPolicy(policy) ? entries.flatMap(dialectEntries) : entries;
 }
 
 export function javascriptRuleEntries(policy, files) {

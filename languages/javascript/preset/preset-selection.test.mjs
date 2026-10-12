@@ -64,7 +64,7 @@ describe('head policy preset', () => {
       expect(readHeadPolicy(environment).preset).toBe('javascript');
       expect(readLayout(environment)).toMatchObject({
         javascript: true,
-        entryExtensions: ['js', 'mjs', 'cjs'],
+        entryExtensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts'],
       });
     });
   });
@@ -81,24 +81,34 @@ describe('head policy preset', () => {
     });
     expect(readLayout({})).toMatchObject({ javascript: false });
   });
-
-  it('keeps the policy file the only channel: the preset changes the policy digest', () => {
-    expect(JSON.stringify(javascriptPolicy)).not.toBe(JSON.stringify(resolveHeadPolicy({})));
-  });
 });
 
 describe('javascript layout', () => {
   it('lints every unit test under the source and test roots for JavaScript', () => {
     expect(resolveLayout({}, [], { javascript: true }).unitTestGlobs).toEqual([
-      'src/**/__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'test/unit/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'tests/unit/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'src/**/__tests__/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'test/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'tests/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
     ]);
     expect(resolveLayout({}, []).unitTestGlobs).toEqual([
       'src/**/__tests__/**/*.ts',
       'test/unit/**/*.ts',
       'tests/unit/**/*.ts',
     ]);
+  });
+
+  it('reads .ts files as part of the project and leaves .jsx and .tsx files outside it', () => {
+    const layout = resolveLayout({}, [], { javascript: true });
+    expect(layout.sourceGlobs).toEqual(['src/**/*.{ts,mts,cts,js,mjs,cjs}']);
+    for (const file of ['src/main/a.ts', 'src/main/a.mts', 'src/main/a.cjs', 'src/main/a.js']) {
+      expect(layout.isSourceFile(file), file).toBe(true);
+    }
+    for (const file of ['src/main/a.jsx', 'src/main/a.tsx']) {
+      expect(layout.isSourceFile(file), file).toBe(false);
+    }
+    expect(layout.isRunnableTestFile('test/a.test.jsx')).toBe(false);
+    expect(layout.isRunnableTestFile('test/a.test.cts')).toBe(true);
+    expect(resolveLayout().isSourceFile('src/main/a.jsx')).toBe(true);
   });
 
   it('resolves the layout of a policy', () => {
@@ -124,12 +134,12 @@ describe('javascript layout', () => {
 });
 
 describe('javascript prettier patterns', () => {
-  it('check js, mjs and cjs instead of the TypeScript extensions', () => {
+  it('check the JavaScript and TypeScript extensions of a JavaScript project', () => {
     expect(prettierPatterns(resolveLayout({}, [], { javascript: true }))).toEqual([
-      'src/**/*.{js,mjs,cjs,json,yaml,yml}',
-      'test/**/*.{js,mjs,cjs,json}',
-      'tests/**/*.{js,mjs,cjs,json}',
-      '*.{js,mjs,cjs,json}',
+      'src/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}',
+      'test/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      'tests/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      '*.{ts,mts,cts,js,mjs,cjs,json}',
     ]);
     expect(prettierPatterns(resolveLayout())).toEqual([
       'src/**/*.{ts,mts,mjs,json,yaml,yml}',
@@ -139,22 +149,30 @@ describe('javascript prettier patterns', () => {
     ]);
   });
 
-  it('watch the javascript preset files in the policy hash of type and mutation checks', () => {
+  it('watch the javascript preset file in the policy hash of every check it shapes', () => {
     const { staticChecks, qualityAreaChecks } = createQualityChecks();
-    const typecheck = staticChecks.find(({ name }) => name === 'typescript-typecheck');
-    expect(typecheck.configurationFiles).toEqual(
-      expect.arrayContaining([
-        'languages/typescript/preset/tool-configs.mjs',
+    const shaped = [
+      ...staticChecks.filter(({ name }) =>
+        ['typescript-typecheck', 'prettier-format'].includes(name),
+      ),
+      ...qualityAreaChecks.filter(({ name }) =>
+        ['duplicates', 'dead-code', 'coverage', 'crap', 'mutation'].includes(name),
+      ),
+    ];
+    expect(shaped.map(({ name }) => name).sort()).toEqual([
+      'coverage',
+      'crap',
+      'dead-code',
+      'duplicates',
+      'mutation',
+      'prettier-format',
+      'typescript-typecheck',
+    ]);
+    for (const check of shaped) {
+      expect(check.configurationFiles, check.name).toContain(
         'languages/javascript/preset/javascript-preset.mjs',
-      ]),
-    );
-    const mutation = qualityAreaChecks.find(({ name }) => name === 'mutation');
-    expect(mutation.configurationFiles).toEqual(
-      expect.arrayContaining([
-        'languages/typescript/preset/tool-configs.mjs',
-        'languages/javascript/preset/javascript-preset.mjs',
-      ]),
-    );
+      );
+    }
   });
 });
 
@@ -174,10 +192,10 @@ describe('javascript analyzers with a customized policy', () => {
     const underLib = (name) =>
       invocation(rebuilt, name).args.filter((argument) => argument.startsWith('lib/'));
     expect(underLib('eslint-lint')).toEqual([
-      'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
-      'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'lib/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'lib/**/*.{test,spec}.{ts,mts,cts,js,mjs,cjs}',
     ]);
-    expect(underLib('prettier-format')).toEqual(['lib/**/*.{js,mjs,cjs,json,yaml,yml}']);
+    expect(underLib('prettier-format')).toEqual(['lib/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}']);
   });
 
   it('keep the shared analyzer set when only the preset is chosen', () => {

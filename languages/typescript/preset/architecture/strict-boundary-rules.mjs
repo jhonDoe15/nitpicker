@@ -1,7 +1,11 @@
 import { readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 
-const sourceRoot = `(?:${readLayout().sourceRoots.join('|')})`;
+const layout = readLayout();
+const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
+const publicIndex = layout.javascript
+  ? 'public index.js or index.mjs (src/main/features/<name>/index.js)'
+  : 'public index.ts (src/main/features/<name>/index.ts)';
 
 const { featureRoot, feature, shared, compositionRoot } = layoutFeatures;
 const codeFile = '\\.[cm]?[jt]sx?$';
@@ -38,16 +42,14 @@ export const strictBoundaryRules = [
   {
     name: 'feature-internals-only-through-index',
     severity: 'error',
-    comment:
-      'Import a feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.',
+    comment: `Import a feature only through its ${publicIndex}, not its internal files.`,
     from: { path: `(?:^|/)${sourceRoot}/`, pathNot: `${featureRoot}/` },
     to: { path: `${featureRoot}/[^/]+/(?!index${codeFile})` },
   },
   {
     name: 'features-do-not-import-other-feature-internals',
     severity: 'error',
-    comment:
-      'Import another feature only through its public index.ts (src/main/features/<name>/index.ts), not its internal files.',
+    comment: `Import another feature only through its ${publicIndex}, not its internal files.`,
     from: { path: `${featureRoot}/([^/]+)/` },
     to: {
       path: `${featureRoot}/[^/]+/(?!index${codeFile})`,
