@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { analyzerName } from './report-model.mjs';
+import { withSharedBuildDirectory } from '../tooling/build-once.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { headPolicyEnvironment } from '../../languages/typescript/preset/head-policy.mjs';
 
@@ -155,18 +156,21 @@ function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
 
 export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
   const liveProgress = Number.isInteger(progress?.stream.fd);
-  const result = spawnSync(process.execPath, [schedulerPath], {
-    input: JSON.stringify({
-      tasks: liveProgress ? withProgressLabel(tasks, progress.label) : tasks,
+  const result = withSharedBuildDirectory((sharedEnvironment) =>
+    spawnSync(process.execPath, [schedulerPath], {
+      input: JSON.stringify({
+        tasks: liveProgress ? withProgressLabel(tasks, progress.label) : tasks,
+      }),
+      stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress.stream.fd] : [])],
+      env: {
+        ...process.env,
+        ...(headPolicyFile === undefined ? {} : headPolicyEnvironment(headPolicyFile)),
+        ...sharedEnvironment,
+      },
+      encoding: 'utf8',
+      maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
     }),
-    stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress.stream.fd] : [])],
-    env:
-      headPolicyFile === undefined
-        ? process.env
-        : { ...process.env, ...headPolicyEnvironment(headPolicyFile) },
-    encoding: 'utf8',
-    maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
-  });
+  );
   if (result.error !== undefined) {
     throw result.error;
   }

@@ -35,6 +35,8 @@ import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
+import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
+import { loadDependencyGraph } from './project-dependency-graph.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
@@ -64,8 +66,6 @@ const QUALITY_AREA_RUNNERS = new Map([
   ['crap', runCrap],
   ['mutation', runMutation],
 ]);
-const DEPENDENCY_GRAPH_EXCLUSION =
-  '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
@@ -173,11 +173,7 @@ function prefixAggregates(root, rootCount, findings) {
 
 async function runCoupling(options) {
   const layout = readLayout();
-  const graph = await runDependencyCruiser(
-    options,
-    existingRoots(options.projectRoot, layout.sourceRoots),
-    layout,
-  );
+  const graph = runDependencyCruiser(options, layout);
   const { analyzeCoupling } = await importPolicyModule(
     options,
     'languages/typescript/preset/coupling/analyze.mjs',
@@ -189,11 +185,7 @@ async function runCoupling(options) {
 
 async function runTestRuntime(options) {
   const layout = readLayout();
-  const graph = await runDependencyCruiser(
-    options,
-    existingRoots(options.projectRoot, layout.graphRoots),
-    layout,
-  );
+  const graph = runDependencyCruiser(options, layout);
   const analyzer = await importPolicyModule(
     options,
     'languages/typescript/preset/test-runtime/analyze.mjs',
@@ -1192,37 +1184,14 @@ function sourceLineRange(source, startLine, endLine) {
     .join('\n');
 }
 
-async function runDependencyCruiser(options, sourcePaths, layout) {
-  const { withProjectTypeScriptConfig } = await importPolicyModule(
-    options,
-    'languages/typescript/preset/dependency-graph/cruise.mjs',
-  );
-  const result = withProjectTypeScriptConfig(
-    {
-      policyRoot: options.policyRoot,
-      projectRoot: options.projectRoot,
-      name: options.kind,
-    },
-    (environment) =>
-      runNodeTool({
-        options,
-        relativeToolPath: 'dependency-cruiser/bin/dependency-cruise.mjs',
-        arguments_: [
-          ...sourcePaths,
-          '--config',
-          path.join(options.policyRoot, 'languages/typescript/preset/dependency-graph/config.mjs'),
-          '--exclude',
-          [DEPENDENCY_GRAPH_EXCLUSION, layout.excludePattern]
-            .filter((pattern) => pattern !== undefined)
-            .join('|'),
-          '--output-type',
-          'json',
-        ],
-        environment,
-        acceptedStatuses: [0],
-      }),
-  );
-  const report = parseReportJson(result.stdout);
+function runDependencyCruiser(options, layout) {
+  const report = loadDependencyGraph({
+    projectRoot: options.projectRoot,
+    policyRoot: options.policyRoot,
+    liveProjectRoot: options.liveProjectRoot,
+    patterns: existingRoots(options.projectRoot, layout.graphRoots),
+    exclude: EXCLUDED_PATH_PATTERN,
+  });
   if (!Array.isArray(report.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
