@@ -3,8 +3,13 @@ const strictEqualityOperand = 'BinaryExpression[operator=/^[!=]==$/] > Literal';
 const jsonStringifyArgument =
   "CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] > Literal";
 
-const nullMessage =
-  'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.';
+const reactNullHost =
+  'CallExpression:matches([callee.name=/^(useRef|createContext)$/], [callee.property.name=/^(useRef|createContext)$/])';
+
+function nullMessageFor({ react }) {
+  const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
+  return `Use \`undefined\` for an absent value. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.`;
+}
 
 export const typeAssertionSelectors = [
   {
@@ -19,27 +24,41 @@ export const typeAssertionSelectors = [
   },
 ];
 
-export const escapeHatchSelectors = [
-  ...typeAssertionSelectors,
-  {
-    selector: 'TSAnyKeyword',
-    message:
-      'Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',
-  },
-  {
-    selector: 'TSNonNullExpression',
-    message:
-      'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
-  },
-  {
-    selector: `${nullLiteral}:not(${strictEqualityOperand}):not(${jsonStringifyArgument})`,
-    message: nullMessage,
-  },
-  {
-    selector: 'TSNullKeyword',
-    message: `${nullMessage} Type it as optional with \`undefined\`.`,
-  },
-];
+function except(allowed) {
+  return allowed.map((selector) => `:not(${selector})`).join('');
+}
+
+export function escapeHatchSelectorsFor({ react = false } = {}) {
+  const allowedNullLiterals = [
+    strictEqualityOperand,
+    jsonStringifyArgument,
+    ...(react ? [`${reactNullHost} > Literal`] : []),
+  ];
+  const allowedNullTypes = react
+    ? [`${reactNullHost} > TSTypeParameterInstantiation TSNullKeyword`]
+    : [];
+  return [
+    ...typeAssertionSelectors,
+    {
+      selector: 'TSAnyKeyword',
+      message:
+        'Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',
+    },
+    {
+      selector: 'TSNonNullExpression',
+      message:
+        'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
+    },
+    {
+      selector: `${nullLiteral}${except(allowedNullLiterals)}`,
+      message: nullMessageFor({ react }),
+    },
+    {
+      selector: `TSNullKeyword${except(allowedNullTypes)}`,
+      message: `${nullMessageFor({ react })} Type it as optional with \`undefined\`.`,
+    },
+  ];
+}
 
 export const escapeHatchRules = {
   'nitpicker/no-comments': 'error',

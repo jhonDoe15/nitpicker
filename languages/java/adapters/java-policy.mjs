@@ -11,7 +11,7 @@ import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expan
 
 const INVENTORY_TOOL = 'java';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'folderFiles'];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'tools'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),
 );
