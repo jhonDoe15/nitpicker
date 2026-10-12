@@ -40,7 +40,11 @@ const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints']
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
-const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
+const TOOL_SETTING_KEYS = new Map([
+  ['prettier', ['precedence']],
+  ['eslint', ['engine']],
+]);
+const LINT_ENGINES = ['oxlint', 'eslint'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 export function loadConfig(projectRoot) {
@@ -157,7 +161,19 @@ function validateToolSettings(name, settings) {
       `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
     );
   }
+  if (name === 'eslint') {
+    validateLintEngine(settings.engine);
+    return;
+  }
   validatePrecedence(settings.precedence, name);
+}
+
+function validateLintEngine(engine) {
+  if (!LINT_ENGINES.includes(engine)) {
+    throw configError(
+      `"tools.eslint.engine" must be "oxlint" or "eslint". "oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint`,
+    );
+  }
 }
 
 function validatePrecedence(precedence, name) {
