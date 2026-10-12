@@ -75,6 +75,10 @@
           "description": "Text appended to `message` when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
           "$ref": "#/$defs/nonEmptyString"
         },
+        "heldMessage": {
+          "description": "Message to report instead of `message` when the finding is held because its value did not exceed the base value; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "existingCodeOnly": {
           "description": "When true, a finding on a line the change added is never held by the ratchet or matched to the base by identity: the code it points at is new.",
           "type": "boolean"

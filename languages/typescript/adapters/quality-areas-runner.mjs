@@ -26,6 +26,7 @@ import {
   summaryMetrics,
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
+  TYPECHECK_FAILED_SKIPPED_RULE,
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
@@ -73,6 +74,12 @@ const DEPENDENCY_GRAPH_EXCLUSION =
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
+const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
+const STRUCTURE_HINTS = {
+  lines:
+    'Nested functions count: move inner functions to module level, passing what they close over as one object.',
+};
+
 const DEAD_CODE_DECLARATIONS = new Map([
   ['exports', 'Export'],
   ['types', 'Exported type'],
@@ -378,7 +385,7 @@ export function coverageFailureFindings(options, report, result) {
     );
   }
   return [
-    testsFailedFinding(options, {
+    toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
       message: formatVitestFailures(report, options.projectRoot),
@@ -409,7 +416,7 @@ function readVitestReport(reportPath, result) {
   }
 }
 
-function testsFailedFinding(options, { rule, path: findingPath = '.', message }) {
+function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
   return {
     tool: options.analyzerName,
     rule,
@@ -530,7 +537,7 @@ function runCrap(options) {
     hasRunnableTests(options)
   ) {
     return [
-      testsFailedFinding(options, {
+      toolErrorFinding(options, {
         rule: TESTS_FAILED_SKIPPED_RULE,
         message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
       }),
@@ -609,6 +616,22 @@ function writeStrykerConfig({ options, sourceConfig, configPath, createdFiles })
   );
 }
 
+export function mutationSkipFor(errorMessage) {
+  if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
+    return {
+      rule: TYPECHECK_FAILED_SKIPPED_RULE,
+      message:
+        'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+    };
+  }
+  return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
+    ? {
+        rule: TESTS_FAILED_SKIPPED_RULE,
+        message: 'mutation skipped: tests fail (see coverage findings)',
+      }
+    : undefined;
+}
+
 function runStrykerOrExplainSkip(options, configPath) {
   try {
     runNodeTool({
@@ -619,15 +642,11 @@ function runStrykerOrExplainSkip(options, configPath) {
     });
     return undefined;
   } catch (error) {
-    if (error instanceof Error && INITIAL_TEST_RUN_FAILED_PATTERN.test(error.message)) {
-      return [
-        testsFailedFinding(options, {
-          rule: TESTS_FAILED_SKIPPED_RULE,
-          message: 'Mutation testing did not run because the project tests fail.',
-        }),
-      ];
+    const skip = error instanceof Error ? mutationSkipFor(error.message) : undefined;
+    if (skip === undefined) {
+      throw error;
     }
-    throw error;
+    return [toolErrorFinding(options, skip)];
   }
 }
 
@@ -677,6 +696,7 @@ export function normalizeStructure(report, analyzerName) {
       })),
     },
     analyzerName,
+    { hints: STRUCTURE_HINTS },
   );
 }
 
