@@ -43,7 +43,9 @@ function moduleName(importRoot, absoluteFile) {
 
 function listDirectory(directory) {
   const entries = readdirSync(directory, { withFileTypes: true });
-  const named = (entry) => path.join(directory, entry.name);
+  function named(entry) {
+    return path.join(directory, entry.name);
+  }
   return {
     directories: entries
       .filter(
