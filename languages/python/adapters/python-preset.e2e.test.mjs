@@ -274,6 +274,82 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
   });
 
+  describe('a pytest project with coverage and xdist in its addopts and a legacy python 2 file', () => {
+    let configured;
+
+    beforeAll(() => {
+      configured = repository();
+      write(configured, {
+        'nitpicker.config.json': '{ "preset": "python" }\n',
+        '.gitignore': '.venv/\n__pycache__/\n',
+        'pyproject.toml':
+          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n',
+        'pkg/__init__.py': '',
+        'pkg/shape.py': 'def area(side):\n    return side * side\n',
+        'tests/test_shape.py':
+          'from pkg.shape import area\n\n\ndef test_area():\n    assert area(3) == 9\n',
+        'legacy/old.py': 'print "old"\n',
+      });
+      git(configured, 'init', '-q', '-b', 'main');
+      git(configured, 'add', '-A');
+      git(configured, 'commit', '-q', '-m', 'base');
+      command(configured, 'uv', ['venv', '-q', '.venv']);
+      command(configured, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'pytest',
+        'pytest-cov',
+        'pytest-xdist',
+        'black',
+      ]);
+      commitBranch(configured, 'clean', {
+        'pkg/shape.py': 'def area(side):\n    return side**2\n',
+      });
+      commitBranch(configured, 'excluded', {
+        'nitpicker.config.json': '{ "preset": "python", "exclude": ["legacy/**"] }\n',
+      });
+      git(configured, 'checkout', '-q', '-b', 'no-tests', 'main');
+      git(configured, 'rm', '-q', '-r', 'tests');
+      git(configured, 'commit', '-q', '-m', 'delete the tests');
+    });
+
+    it('keeps the project pytest options working and baselines the file black cannot parse', () => {
+      const result = gate(configured, 'clean');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual(
+        [],
+      );
+      expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
+    });
+
+    it('does not hand excluded files to the formatter', () => {
+      const result = gate(configured, 'excluded');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('resolved-findings.json')).toEqual([
+        expect.objectContaining({ tool: 'ruff', path: 'legacy/old.py' }),
+      ]);
+    });
+
+    it('fails a change that deletes every test', () => {
+      const result = gate(configured, 'no-tests');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(
+        summarize(
+          result
+            .json('new-findings.json')
+            .filter(({ classification }) => classification === 'enforceable'),
+        ),
+      ).toEqual(['python no-tests-ran .']);
+    });
+  });
+
   describe('a uv project', () => {
     let locked;
 
