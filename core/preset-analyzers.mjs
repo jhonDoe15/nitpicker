@@ -1,6 +1,9 @@
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
 import { createPythonAnalyzer } from '../languages/python/adapters/python-analyzer.mjs';
-import { configuredAnalyzers } from '../languages/typescript/preset/diff/configured-analyzers.mjs';
+import {
+  configuredAnalyzers,
+  javascriptAnalyzers,
+} from '../languages/typescript/preset/diff/configured-analyzers.mjs';
 
 export function presetAnalyzers(config, injected) {
   if (injected !== undefined) {
@@ -9,5 +12,8 @@ export function presetAnalyzers(config, injected) {
   if (config.preset === 'python') {
     return [createPythonAnalyzer(config.python)];
   }
-  return config.preset === 'java' ? [createJavaAnalyzer()] : configuredAnalyzers;
+  if (config.preset === 'java') {
+    return [createJavaAnalyzer()];
+  }
+  return config.preset === 'javascript' ? javascriptAnalyzers : configuredAnalyzers;
 }

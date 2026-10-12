@@ -1,3 +1,8 @@
+import {
+  jsdocOptionSchema,
+  unknownMemberTags,
+  withJsdoc,
+} from '../../../../javascript/preset/jsdoc.mjs';
 import { ancestorsOf } from './ancestry.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
@@ -43,14 +48,14 @@ export const rule = {
     docs: {
       description: 'Disallow the unknown type in parameter and property types of domain code',
     },
-    schema: [],
+    schema: jsdocOptionSchema,
     messages: {
       unknownType:
         'domain/ code takes typed values, not unknown. Parse the input with a zod schema in adapters/ and give this parameter or property the parsed type (z.infer<typeof schema>). A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
-    return {
+    const visitors = {
       TSUnknownKeyword(node) {
         const chain = [node, ...ancestorsOf(node)];
         const memberAt = chain.findIndex(
@@ -66,5 +71,9 @@ export const rule = {
         }
       },
     };
+    return withJsdoc(context, visitors, {
+      selectTags: unknownMemberTags,
+      messageId: 'unknownType',
+    });
   },
 };

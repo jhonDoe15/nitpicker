@@ -2,7 +2,9 @@
 
 Every check category in the TypeScript preset, derived from `languages/typescript/preset/quality-checks.mjs`
 and the adapters in `languages/typescript/adapters/`. Findings follow
-[`findings.schema.json`](findings.schema.json).
+[`findings.schema.json`](findings.schema.json). The `javascript` preset runs the same checks on `.js`, `.mjs`
+and `.cjs` files (and on `.ts`, `.mts` and `.cts` files while a project migrates), so this catalog applies to
+it unchanged.
 
 How classification works:
 

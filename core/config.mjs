@@ -13,7 +13,7 @@ import {
   validateThresholds,
 } from '../shared/config.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java', 'python'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', 'java', 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',

@@ -22,7 +22,7 @@ describe('config file', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
     expect(validateConfig({ preset: 'python' })).toEqual({ preset: 'python' });
     expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java, python',
+      '"preset" must be one of: typescript, javascript, java, python',
     );
   });
 
@@ -57,6 +57,16 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
       '"exceptions" is not supported with "preset": "python"',
     );
+  });
+
+  it('accepts the javascript preset with the TypeScript-pipeline keys', () => {
+    const config = {
+      preset: 'javascript',
+      layout: { sourceRoots: ['lib'] },
+      exceptions: [{ rule: 'nitpicker/no-throw', paths: ['lib/**'], reason: 'A reviewed reason.' }],
+      tools: { prettier: { precedence: ['project'] } },
+    };
+    expect(validateConfig(config)).toEqual(config);
   });
 
   it('shares thresholds, exclude and legacyInventory between presets', () => {
