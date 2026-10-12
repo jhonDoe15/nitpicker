@@ -15,10 +15,10 @@ export function readStructureFindings(reportRoot, projectRoot, textOf) {
   if (!existsSync(report)) {
     return [];
   }
-  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot);
+  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, textOf);
 }
 
-export function structureFindings(entries, projectRoot) {
+export function structureFindings(entries, projectRoot, textOf = methodText) {
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
