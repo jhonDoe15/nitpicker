@@ -6,12 +6,12 @@ import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
-  escapeHatchSelectors,
+  escapeHatchSelectorsFor,
 } from './strict-escape-hatches.mjs';
 import {
-  declarationRules,
-  declarationSelectors,
+  declarationSelectorsFor,
   defaultExportSelectors,
+  typeDefinitionSelectors,
   typedDeclarationRules,
 } from './strict-declarations.mjs';
 import {
@@ -34,24 +34,31 @@ import {
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
 
-const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectors];
-const productionSelectors = [
-  ...everywhereSelectors,
-  ...defaultExportSelectors,
-  ...controlFlowSelectors,
-];
+export function restrictedSyntaxFor(options = {}) {
+  const everywhereSelectors = [
+    ...escapeHatchSelectorsFor(options),
+    ...declarationSelectorsFor(options),
+  ];
+  const productionSelectors = [
+    ...everywhereSelectors,
+    ...typeDefinitionSelectors,
+    ...defaultExportSelectors,
+    ...controlFlowSelectors,
+  ];
+  return {
+    configFile: everywhereSelectors,
+    source: productionSelectors,
+    domain: [
+      ...productionSelectors.filter(
+        (selector) => ![...loopSelectors, ...forEachSelectors].includes(selector),
+      ),
+      ...domainRestrictedSyntax,
+    ],
+    adapters: [...productionSelectors, ...restrictedAdapterSyntax],
+  };
+}
 
-export const restrictedSyntaxByScope = {
-  configFile: everywhereSelectors,
-  source: productionSelectors,
-  domain: [
-    ...productionSelectors.filter(
-      (selector) => ![...loopSelectors, ...forEachSelectors].includes(selector),
-    ),
-    ...domainRestrictedSyntax,
-  ],
-  adapters: [...productionSelectors, ...restrictedAdapterSyntax],
-};
+export const restrictedSyntaxByScope = restrictedSyntaxFor();
 
 function configFileGlobsFor(layout) {
   return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
@@ -61,7 +68,8 @@ function productionScope(layout) {
   return { ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs] };
 }
 
-export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
+export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
+  const restrictedSyntax = restrictedSyntaxFor(options);
   return [
     { ignores: layout.excludedGlobs },
     {
@@ -72,15 +80,14 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
       plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
       rules: {
         ...escapeHatchRules,
-        ...declarationRules,
         ...controlFlowRules,
-        'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.source],
+        'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         'nitpicker/no-self-recursion': 'error',
       },
     },
     {
       files: configFileGlobsFor(layout),
-      rules: { 'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.configFile] },
+      rules: { 'no-restricted-syntax': ['error', ...restrictedSyntax.configFile] },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),
@@ -88,7 +95,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
       plugins: { functional, nitpicker: nitpickerRules },
       rules: {
         ...domainFunctionalRules,
-        'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.domain],
+        'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
         'nitpicker/no-throw': 'error',
         'nitpicker/no-unknown-in-domain': 'error',
       },
@@ -98,7 +105,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout) {
       ...productionScope(layout),
       plugins: { nitpicker: nitpickerRules },
       rules: {
-        'no-restricted-syntax': ['error', ...restrictedSyntaxByScope.adapters],
+        'no-restricted-syntax': ['error', ...restrictedSyntax.adapters],
         'no-empty': ['error', { allowEmptyCatch: false }],
         'nitpicker/no-silent-catch': 'error',
         'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
@@ -151,9 +158,9 @@ export const strictProductionRules = {
   'nitpicker/no-unvalidated-schema-field': 'error',
 };
 
-export function strictPresetConfig(layout, parserOptions) {
+export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
-    ...strictSyntaxConfigFor(layout),
+    ...strictSyntaxConfigFor(layout, options),
     ...strictTypedConfigFor(layout, parserOptions),
     {
       files: layout.sourceGlobs,
