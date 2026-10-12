@@ -6,29 +6,20 @@ const IMMUTABLE = (kind) =>
 const REJECT = 'Expected the Promise rejection reason to be an Error.';
 
 describe('eslintMessageWithHint', () => {
-  it('replaces the immutability jargon with the allowed forms for a variable', () => {
-    const message = eslintMessageWithHint({
-      ruleId: 'functional/prefer-immutable-types',
-      text: IMMUTABLE('Variable'),
-      relativePath: 'src/main/features/a/domain/x.ts',
-    });
+  it.each(['Variable', 'Parameter', 'Return type', 'Property'])(
+    'replaces the immutability jargon of a %s with two sentences when nothing more is known',
+    (kind) => {
+      const message = eslintMessageWithHint({
+        ruleId: 'functional/prefer-immutable-types',
+        text: IMMUTABLE(kind),
+        relativePath: 'src/main/features/a/domain/x.ts',
+      });
 
-    expect(message).toBe(
-      'Variable is mutable, but domain/ values must be deeply readonly. Annotate arrays from map, filter or toSorted as `readonly T[]`. Type a Set as `ReadonlySet<T>`, or build it inline: `[...new Set(xs)]`. Give a callback that returns an object or array literal an explicit readonly return type. Zod schemas and RegExp objects are always mutable: keep schemas in adapters/ and write the regex literal inline where it is used.',
-    );
-  });
-
-  it.each(['Parameter', 'Return type', 'Property'])('rewrites the %s message', (kind) => {
-    const message = eslintMessageWithHint({
-      ruleId: 'functional/prefer-immutable-types',
-      text: IMMUTABLE(kind),
-      relativePath: 'src/main/features/a/domain/x.ts',
-    });
-
-    expect(message).toBe(
-      `${kind} is mutable: type it deeply readonly, e.g. \`readonly T[]\` or \`{ readonly field: T }\`.`,
-    );
-  });
+      expect(message).toBe(
+        `${kind} is mutable; domain/ values must be deeply readonly. Type it deeply readonly, e.g. \`readonly T[]\` or \`{ readonly field: T }\`.`,
+      );
+    },
+  );
 
   it('leaves an immutability message it does not know as the rule wrote it', () => {
     const text = 'Something else about immutability.';
