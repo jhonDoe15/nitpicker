@@ -12,14 +12,24 @@ export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
-  const tool = options.tool ?? 'crap';
-  const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const coverageOf = coverageLookup({
     methods: jacocoMethods(jacocoXml),
     sourceRoots: options.sourceRoots ?? [''],
     selectMethods: options.selectMethods ?? selectNamedMethods,
     parsed,
   });
+  return crapOfFunctions(parsed, options, (fn, filePath) => ({
+    coverage: coverageOf(fn, filePath),
+  }));
+}
+
+export function ingestCrapRows(lizardCsv, options, resolve) {
+  return crapOfFunctions(parseLizardCsv(lizardCsv), options, resolve);
+}
+
+function crapOfFunctions(parsed, options, resolve) {
+  const tool = options.tool ?? 'crap';
+  const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const unique = createIdentityCounter();
   const functions = [];
 
@@ -28,15 +38,15 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
     if (filePath === undefined) {
       continue;
     }
-    const coverage = coverageOf(fn, filePath);
-    const key = unique(`function:${fn.longName}`);
+    const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined
         ? undefined
         : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
     functions.push({
       path: filePath,
-      name: fn.longName,
+      name,
       identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
       ratchetKey: `${key}:crap`,
       line: fn.start,

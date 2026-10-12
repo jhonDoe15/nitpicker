@@ -263,13 +263,16 @@ enforceable findings for it.
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
 format check (ruff format or black, whichever the project uses), a strict type check (mypy or
-pyright, whichever the project uses), a few small checks of nitpicker's own and the test suite under
-coverage.py run on the merge base and on head, inside the project's own environment, and only new
+pyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
+coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
+score (lizard 1.24.1 plus per-function coverage; it is looked up as `lizard` in the environment or
+on the `PATH`, then `uvx`, or set `NITPICKER_LIZARD`) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
 (`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, `types-failed`,
-`rules-failed`, or a plain one when the environment is missing; exit 2
+`rules-failed`, `structure-failed`, `lizard-failed`, or a plain one when the environment is
+missing; exit 2
 when there are no new findings), never thrown.
 
 The environment is detected: `uv.lock` runs the tools with `uv run --no-sync`, `poetry.lock` uses

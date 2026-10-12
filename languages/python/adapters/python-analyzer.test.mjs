@@ -32,6 +32,8 @@ describe('Python analyzer', () => {
       'mypy',
       'pyright',
       'python-rules',
+      'structure',
+      'crap',
     ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);

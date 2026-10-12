@@ -59,6 +59,7 @@ describe('npm package contents', () => {
     expect(files.has('languages/python/ingest/coverage-json.mjs')).toBe(true);
     expect(files.has('languages/python/rules/nitpicker_rules.py')).toBe(true);
     expect(files.has('languages/python/rules/rule-hints.mjs')).toBe(true);
+    expect(files.has('languages/python/metrics/structure_metrics.py')).toBe(true);
     expect(
       [...files].filter(
         (file) =>

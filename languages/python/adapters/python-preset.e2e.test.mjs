@@ -113,6 +113,68 @@ const ONE_WAY_VIOLATIONS = [
 ].join('\n');
 const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
 
+const SAMPLE_SOURCE = [
+  'import functools',
+  '',
+  '',
+  'class Service:',
+  '    def method(self, a, b, c):',
+  '        return a',
+  '',
+  '    @staticmethod',
+  '    def static(a, b, c, d):',
+  '        return a',
+  '',
+  '    @classmethod',
+  '    def build(cls, a):',
+  '        def inner(x):',
+  '            if x:',
+  '                return 1',
+  '            return 2',
+  '',
+  '        return inner(a)',
+  '',
+  '    @functools.cache',
+  '    async def fetch(self, *args, key=None, **kwargs):',
+  '        """Docstring is not a statement."""',
+  '        try:',
+  '            await self.method(1, 2, 3)',
+  '        except ValueError:',
+  '            pass',
+  '        finally:',
+  '            key = 1',
+  '        with open("f") as handle:',
+  '            return lambda q: q if handle else key',
+  '',
+  '',
+  'def chain(x):',
+  '    if x == 1:',
+  '        return 1',
+  '    elif x == 2:',
+  '        return 2',
+  '    elif x == 3:',
+  '        return 3',
+  '    return 0',
+  '',
+  '',
+  'def loops(items):',
+  '    for item in items:',
+  '        while item:',
+  '            item -= 1',
+  '            if item:',
+  '                break',
+  '    match items:',
+  '        case []:',
+  '            return 0',
+  '        case _:',
+  '            return 1',
+  '',
+  '',
+  'def positional(a, /, b, *, c):',
+  '    pass',
+  '',
+].join('\n');
+
 const roots = [];
 
 function repository() {
@@ -316,6 +378,118 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         message: expect.stringMatching(/^No Python environment at .*nowhere/),
       }),
     ]);
+  });
+
+  describe('function structure and CRAP', () => {
+    beforeAll(() => {
+      commitBranch(project, 'nested-and-wide', {
+        'src/demo/nested.py':
+          'def classify(rows, skip, stop, default):\n    for row in rows:\n        for cell in row:\n            if cell:\n                return cell\n    return None\n',
+        'tests/test_nested.py':
+          'from demo.nested import classify\n\n\ndef test_classify():\n    assert classify([[0, 5]], 0, 0, 0) == 5\n    assert classify([[0]], 0, 0, 0) is None\n',
+      });
+      commitBranch(project, 'legacy-edited', {
+        'src/demo/wide.py': 'def wide(a, b, c, d):\n    return a + b + c + d + 1\n',
+      });
+      commitBranch(project, 'legacy-grown', {
+        'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
+      });
+      commitBranch(project, 'untested-complex', {
+        'src/demo/branchy.py':
+          'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
+      });
+    });
+
+    const enforceable = (result) =>
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable');
+
+    it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
+      const result = gate(project, 'nested-and-wide');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(
+        enforceable(result).map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
+      ).toEqual([
+        'structure function-control-nesting-limit classify',
+        'structure function-parameters-limit classify',
+      ]);
+    });
+
+    it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
+      expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+
+      const grown = gate(project, 'legacy-grown');
+
+      expect(grown.exitCode, grown.text).toBe(1);
+      expect(enforceable(grown)).toEqual([
+        expect.objectContaining({
+          rule: 'function-parameters-limit',
+          message: expect.stringContaining('grew from 4 to 5 parameters'),
+        }),
+      ]);
+    });
+
+    it('fails a new untested branchy function on its CRAP score', () => {
+      const result = gate(project, 'untested-complex');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(enforceable(result)).toEqual([
+        expect.objectContaining({
+          tool: 'crap',
+          rule: 'crap-score-limit',
+          symbol: 'pick',
+          message: expect.stringContaining('CRAP 20.00'),
+        }),
+      ]);
+    });
+  });
+
+  describe('the structure metrics script', () => {
+    const script = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');
+
+    function metricsOf(files) {
+      const directory = repository();
+      write(directory, files);
+      const listing = path.join(directory, 'listing.txt');
+      writeFileSync(listing, Object.keys(files).join('\n'));
+      const output = path.join(directory, 'metrics.json');
+      command(directory, 'python3', [script, output, directory, listing]);
+      return JSON.parse(readFileSync(output, 'utf8'));
+    }
+
+    it('counts lines, statements, control nesting and parameters the way the shared limits mean them', () => {
+      const metrics = metricsOf({ 'sample.py': SAMPLE_SOURCE });
+
+      expect(
+        metrics.map((entry) => [
+          entry.name,
+          entry.start,
+          entry.end,
+          entry.lines,
+          entry.statements,
+          entry.maxControlNesting,
+          entry.parameters,
+        ]),
+      ).toEqual([
+        ['Service.method', 5, 6, 2, 1, 0, 3],
+        ['Service.static', 8, 10, 3, 1, 0, 4],
+        ['Service.build', 12, 19, 8, 2, 0, 1],
+        ['Service.build.inner', 14, 17, 4, 3, 1, 1],
+        ['Service.fetch', 21, 31, 11, 6, 1, 3],
+        ['chain', 34, 41, 8, 7, 3, 1],
+        ['loops', 44, 54, 11, 8, 3, 1],
+        ['positional', 57, 58, 2, 1, 0, 3],
+      ]);
+      expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
+    });
+
+    it('skips a file that does not parse', () => {
+      const metrics = metricsOf({ 'broken.py': 'def (:\n', 'ok.py': 'def f():\n    return 1\n' });
+
+      expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
+    });
   });
 
   describe('a unittest project formatted with black, using tools from the PATH', () => {

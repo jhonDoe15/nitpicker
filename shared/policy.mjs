@@ -93,6 +93,7 @@ export const GREW_MESSAGES = {
 const BOTH = { typescript: true, java: true, python: false, kotlin: false };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
 const WITH_KOTLIN = { ...BOTH, kotlin: true };
+const ALL = { typescript: true, java: true, python: true, kotlin: true };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -103,37 +104,37 @@ export const RULES = [
     id: RULE_IDS.functionLines,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.lines.limit)} lines`,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionStatements,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.statements.limit)} statements`,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionControlNesting,
     check: 'structure',
     limit: `control nesting deeper than ${String(FUNCTION_STRUCTURE_LIMITS.maxControlNesting.limit)}`,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionParameters,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.parameters.limit)} parameters`,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
     limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.changedBranchCoverage,
@@ -181,7 +182,7 @@ export const RULES = [
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: WITH_KOTLIN,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.publicAlternativeBypass,

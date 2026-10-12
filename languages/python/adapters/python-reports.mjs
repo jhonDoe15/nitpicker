@@ -9,6 +9,8 @@ import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './python-ast-rules.mjs';
+import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
+import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
@@ -18,16 +20,25 @@ function readReport(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
 }
 
-export function readPythonFindings({ projectRoot, reportRoot }) {
+export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
   const { formatter } = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   return {
     findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, formatter }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
-      ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
+      ...ingestCoverageJson(coverage, { roots }).findings,
+      ...readPythonStructureFindings(reportRoot, projectRoot),
+      ...readPythonCrapFindings({
+        lizard: readReport(reportRoot, LIZARD_REPORT),
+        coverage,
+        projectRoot,
+        roots,
+        crapLimit,
+      }),
     ]),
   };
 }

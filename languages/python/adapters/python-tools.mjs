@@ -3,6 +3,7 @@ import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { checkRules } from './python-ast-rules.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { crap } from './python-crap.mjs';
 import { execute, run } from './python-execute.mjs';
 import {
   detectFormatter,
@@ -11,6 +12,7 @@ import {
   importRoots,
 } from './python-project.mjs';
 import { RUFF_CONFIG } from './python-ruff-config.mjs';
+import { structure } from './python-structure.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
@@ -48,7 +50,7 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
 }
 
 export function runPythonTools(context) {
-  const failures = [lint, format, test, typeCheck, checkRules].flatMap((step) => {
+  const failures = [lint, format, test, typeCheck, checkRules, structure, crap].flatMap((step) => {
     try {
       step(context);
       return [];

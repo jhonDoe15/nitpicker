@@ -35,7 +35,11 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
     if (failures.length > 0) {
       return failures.map(toolError);
     }
-    const { findings } = readPythonFindings({ projectRoot, reportRoot });
+    const { findings } = readPythonFindings({
+      projectRoot,
+      reportRoot,
+      crapLimit: policy.crapLimit,
+    });
     return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,

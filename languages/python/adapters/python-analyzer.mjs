@@ -14,13 +14,19 @@ const SHARED_CONFIGURATION_FILES = [
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
+  'languages/java/adapters/java-structure.mjs',
+  'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/ingest/common.mjs',
+  'languages/java/ingest/crap.mjs',
   'languages/java/ingest/format-check.mjs',
   'languages/java/ingest/sarif.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
+  'shared/policy.mjs',
   'shared/rules/baseline-expansion.mjs',
+  'shared/rules/crap.mjs',
   'shared/rules/finding-helpers.mjs',
+  'shared/rules/structure.mjs',
 ];
 
 function pythonConfigurationFiles() {
@@ -53,7 +59,17 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage', 'mypy', 'pyright', RULES_TOOL],
+    reportedTools: [
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'mypy',
+      'pyright',
+      RULES_TOOL,
+      'structure',
+      'crap',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {

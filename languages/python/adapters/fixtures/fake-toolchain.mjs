@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const fakeTools = path.join(import.meta.dirname, 'fake-python-tools.mjs');
-const TOOLS = ['ruff', 'black', 'coverage', 'mypy', 'pyright', 'python', 'python3'];
+const TOOLS = ['ruff', 'black', 'coverage', 'mypy', 'pyright', 'python', 'python3', 'lizard'];
 
 function install(binDirectory, name, script) {
   mkdirSync(binDirectory, { recursive: true });
