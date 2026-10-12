@@ -17,7 +17,7 @@ const javascriptProjectExtensionNames = [
   ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
   ...JAVASCRIPT_EXTENSIONS,
 ];
-const typescriptFormatExtensionNames = ['ts', 'mts', 'mjs'];
+const typescriptFormatExtensionNames = ['ts', 'tsx', 'mts', 'mjs'];
 export const builtInExcludedGlobs = [
   '**/dist/**',
   '**/build/**',
