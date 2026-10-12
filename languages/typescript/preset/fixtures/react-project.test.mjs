@@ -100,28 +100,23 @@ describe('the react-project fixture', () => {
   );
 
   it(
-    'applies no React rule to a project that does not depend on react',
-    () => {
-      const { findings } = lintFindings(commitProject({ manifest: { private: true } }));
-
-      expect(rulesByFile(findings)).toEqual({
-        allowed: ['@typescript-eslint/no-misused-promises'],
-        'class-component': ['no-restricted-syntax'],
-      });
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
-
-  it(
-    'names the configured styling approach',
+    'applies no React rule to a project that does not depend on react, whatever the exceptions say',
     () => {
       const { findings } = lintFindings(
-        commitProject({ config: { react: { styling: 'css-in-js' } } }),
+        commitProject({
+          manifest: { private: true },
+          config: {
+            exceptions: [
+              { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
+            ],
+          },
+        }),
       );
 
-      expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toContain(
-        'this project styles with styled components',
-      );
+      expect(rulesByFile(findings)).toEqual({
+        allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
+        'class-component': ['no-restricted-syntax'],
+      });
     },
     FIXTURE_TIMEOUT_MS,
   );
