@@ -4,7 +4,7 @@ import { execute, run } from './python-execute.mjs';
 import { importRoots } from './python-project.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
-export const TYPES_FAILED_RULE = 'types-failed';
+const TYPES_FAILED_RULE = 'types-failed';
 const PYRIGHT_CONFIG = 'pyrightconfig.json';
 const MYPY_CACHE = 'mypy-cache';
 const TYPE_CHECKERS = ['mypy', 'pyright'];

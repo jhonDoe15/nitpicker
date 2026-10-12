@@ -1,5 +1,5 @@
 export const RULES_TOOL = 'python-rules';
-export const TYPE_CHECK_TOOLS = ['mypy', 'pyright'];
+const TYPE_CHECK_TOOLS = ['mypy', 'pyright'];
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
 const HANDLE_EXCEPTION =

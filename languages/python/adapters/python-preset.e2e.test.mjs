@@ -253,9 +253,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(enforceable(result)).toEqual([]);
-    expect(result.json('summary.json').configOverrides).toContainEqual(
-      expect.stringMatching(/^exception: .*"rule":"PTH118"/),
-    );
+    expect(result.json('summary.json').configOverrides).toEqual([
+      'preset: "python"',
+      'exception: {"rule":"PTH118","paths":["src/demo/rules.py"],"reason":"fixture"}',
+      'exception: {"rule":"frozen-dataclass","paths":["src/demo/*.py"],"reason":"fixture"}',
+      'exception: {"rule":"no-inline-suppression","paths":["src/**"],"reason":"fixture"}',
+    ]);
   });
 
   it('runs pyright when the project has a pyright config, in its strict mode', () => {
