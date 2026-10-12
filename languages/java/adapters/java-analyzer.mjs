@@ -10,6 +10,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
+  'languages/java/gradle/spring-ruleset.xml',
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-coupling.mjs',
   'languages/java/adapters/java-diff.mjs',
@@ -29,6 +30,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/kotlin-tools.mjs',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/adapters/java-suppressions.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/crap.mjs',

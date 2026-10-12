@@ -1,6 +1,6 @@
 ---
 name: nitpicker
-description: Use before writing or changing TypeScript, Kotlin or Python in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
+description: Use before writing or changing TypeScript, Java (including Spring), Kotlin or Python in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run.
 ---
 
 # nitpicker
@@ -8,8 +8,9 @@ description: Use before writing or changing TypeScript, Kotlin or Python in a pr
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
-Everything below is TypeScript, except the finishing steps. In a Python project
-(`"preset": "python"` in `nitpicker.config.json`) follow [Python](#python) instead.
+Everything below is TypeScript, except the finishing steps. Check `"preset"` in
+`nitpicker.config.json` first: for `"java"` read [java-spring.md](java-spring.md) instead of the
+rest of this page; for `"python"` follow [Python](#python) and for `"kotlin"` [Kotlin](#kotlin).
 
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
