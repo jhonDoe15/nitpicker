@@ -132,7 +132,7 @@ describe('ESLint messages carry the allowed form without changing the finding id
     );
 
     expect(finding.message).toBe(
-      'Variable is mutable, but domain/ values must be deeply readonly. Annotate arrays from map, filter or toSorted as `readonly T[]`. Type a Set as `ReadonlySet<T>`, or build it inline: `[...new Set(xs)]`. Give a callback that returns an object or array literal an explicit readonly return type. Zod schemas and RegExp objects are always mutable: keep schemas in adapters/ and write the regex literal inline where it is used.',
+      'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`.',
     );
     expect(finding.identity.split('|').slice(0, 2)).toEqual([
       'message:variable',

@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 
@@ -35,7 +36,8 @@ export function analyzeJavaSnapshot(
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
-  ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt]';
+  ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
+  ' [--kotlin-detekt-config <path>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -81,10 +83,10 @@ export function parseRunnerArguments(arguments_) {
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');
   }
-  const preset = values.get('--preset') ?? 'java';
+  const preset = values.get('--preset');
   const kotlinFormatter = values.get('--kotlin-formatter');
-  if (!['java', 'kotlin'].includes(preset)) {
-    throw new Error('--preset must be java or kotlin');
+  if (preset !== undefined && !GRADLE_PRESETS.includes(preset)) {
+    throw new Error(`--preset must be one of: ${GRADLE_PRESETS.join(', ')}`);
   }
   if (kotlinFormatter !== undefined && !KOTLIN_FORMATTERS.includes(kotlinFormatter)) {
     throw new Error(`--kotlin-formatter must be one of: ${KOTLIN_FORMATTERS.join(', ')}`);
@@ -101,6 +103,7 @@ export function parseRunnerArguments(arguments_) {
       snapshot: values.get('--snapshot') ?? 'head',
       preset,
       kotlinFormatter,
+      kotlinDetektConfig: values.get('--kotlin-detekt-config'),
     },
   };
 }
@@ -118,6 +121,7 @@ const RUNNER_OPTIONS = [
   '--legacy-inventory',
   '--preset',
   '--kotlin-formatter',
+  '--kotlin-detekt-config',
 ];
 
 function realpathOptional(directory) {

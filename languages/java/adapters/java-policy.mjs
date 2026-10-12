@@ -18,7 +18,8 @@ export function configureJavaAnalyzer(
     exclude.length === 0 &&
     exceptions.length === 0 &&
     legacyInventory === undefined &&
-    kotlin.formatter === undefined
+    kotlin.formatter === undefined &&
+    kotlin.detektConfig === undefined
   ) {
     return analyzer;
   }
@@ -29,6 +30,7 @@ export function configureJavaAnalyzer(
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
   ];
   const configured = {
     ...analyzer,

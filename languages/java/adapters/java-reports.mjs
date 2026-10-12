@@ -19,6 +19,7 @@ export const REPORT_DIRECTORY = 'build/nitpicker';
 export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {}) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
+  requireGradleReports(projectRoot, preset);
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   if (kotlin) {
     requireKotlinManifest(manifest);
@@ -48,6 +49,15 @@ export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {
       ...(kotlin ? readKotlinFindings(context) : []),
     ],
   };
+}
+
+export function requireGradleReports(projectRoot, preset) {
+  if (!existsSync(path.join(projectRoot, REPORT_DIRECTORY, 'manifest.json'))) {
+    const plugin = preset === 'kotlin' ? 'org.jetbrains.kotlin.jvm' : 'java';
+    throw new Error(
+      `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
+    );
+  }
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
