@@ -5,7 +5,7 @@ change only for the problems that change introduces.
 
 Flexible languages offer many ways to write the same thing. Coding agents use all of them, and
 they keep making the same mistakes: swallowed errors, untested branches, giant functions, slow
-tests, tangled imports. nitpicker narrows TypeScript (and Java) to roughly one allowed way of
+tests, tangled imports. nitpicker narrows TypeScript (and Java and Python) to roughly one allowed way of
 doing each thing. It checks every change in CI, so the quickest way to get a green build is
 also the right way.
 
@@ -50,6 +50,7 @@ Using a coding agent? Add the [agent snippet](docs/agents-snippet.md) to your `A
 - [TypeScript strict preset](docs/typescript-strict-preset.md): the rules, the project layout
   they assume, and why.
 - [Java preset](docs/java-preset.md)
+- [Python preset](docs/python-preset.md)
 - [Kotlin preset](docs/kotlin-preset.md)
 - [Checks](spec/checks.md): every check and rule, and what fails.
 

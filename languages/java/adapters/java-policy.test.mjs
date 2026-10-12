@@ -194,4 +194,24 @@ describe('applyJavaPolicy', () => {
       ),
     ).toEqual([['kotlin', 'baseline-expansion']]);
   });
+
+  it('names the tool of a baseline-expansion after the language that asks', () => {
+    const options = {
+      legacyInventory: 'nitpicker.legacy.json',
+      policyRoot: inventoryRoot([allow('a.py', 3)]),
+      baselineRoot: inventoryRoot([allow('a.py', 1)]),
+      snapshot: 'head',
+    };
+
+    expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
+      {
+        tool: 'python',
+        rule: 'baseline-expansion',
+        path: 'a.py',
+        identity: expect.any(String),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
+        classification: 'enforceable',
+      },
+    ]);
+  });
 });
