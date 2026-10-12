@@ -122,3 +122,6 @@ Applies when `react` is in `package.json`.
   goes in a custom property: `style={{ '--progress': percent }}`. If the project's `react.styling`
   is `css-in-js` or `inline-style`, follow that instead.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
+- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
+  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
+  or hook internals.

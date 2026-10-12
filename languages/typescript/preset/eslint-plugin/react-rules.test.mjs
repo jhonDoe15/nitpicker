@@ -4,6 +4,7 @@ import tseslint from 'typescript-eslint';
 import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
@@ -228,4 +229,84 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
       errors: [otherApproachError(inlineAllowed, 'a CSS-in-JS library')],
     },
   ].map((testCase) => ({ filename, options: [{ approach: 'inline-style' }], ...testCase })),
+});
+
+const testFilename = '/repo/test/ui/panel.test.tsx';
+
+function componentInternalsError(name) {
+  return { messageId: 'componentInternals', data: { name } };
+}
+
+function fiberInternalsError(name) {
+  return { messageId: 'fiberInternals', data: { name } };
+}
+
+tester.run('react-test-no-implementation-details', reactTestNoImplementationDetails, {
+  valid: [
+    "await userEvent.click(screen.getByRole('button', { name: 'Save' }));",
+    "expect(screen.getByRole('status')).toHaveTextContent('Saved');",
+    'const { result } = renderHook(() => useCounter()); expect(result.current.count).toBe(0);',
+    'const { rerender } = render(<Panel />); rerender(<Panel a={1} />);',
+    'expect(store.state).toEqual({});',
+    'const count = form.state;',
+    'const value = state();',
+    'instance();',
+    'vi.spyOn(console, "error");',
+    'vi.spyOn(React, "createElement");',
+    'vi.spyOn(Preact, "useState");',
+    'vi.spyOn(React);',
+    'vi.spyOn();',
+    'vi.spyOn(React, name);',
+    'vi.spyOn(React, `useState`);',
+    'vi.spyOn(React.hooks, "useState");',
+    'spyOn(React, "useState");',
+    'vi.fn(React, "useState");',
+    'node.ref;',
+    'node[name];',
+    'node["ref"];',
+    'node[0];',
+    'reactNode.value;',
+    'react.useState;',
+  ].map((code) => ({ filename: testFilename, code })),
+  invalid: [
+    { code: 'wrapper.instance();', errors: [componentInternalsError('instance()')] },
+    { code: 'renderer.getInstance();', errors: [componentInternalsError('getInstance()')] },
+    { code: 'expect(wrapper.state()).toEqual({});', errors: [componentInternalsError('state()')] },
+    {
+      code: 'wrapper.setState({ open: true });',
+      errors: [componentInternalsError('setState()')],
+    },
+    { code: 'wrapper["state"]();', errors: [componentInternalsError('state()')] },
+    ...['findByType', 'findAllByType', 'findByProps', 'findAllByProps'].map((method) => ({
+      code: `renderer.root.${method}(Panel);`,
+      errors: [componentInternalsError(`${method}()`)],
+    })),
+    ...[
+      '_reactInternals',
+      '_reactInternalFiber',
+      'stateNode',
+      'memoizedState',
+      'memoizedProps',
+    ].map((property) => ({
+      code: `const fiber = node.${property};`,
+      errors: [fiberInternalsError(property)],
+    })),
+    {
+      code: 'const key = Object.keys(node).find((name) => name.startsWith("__reactFiber$")); node[node.__reactFiber$abc];',
+      errors: [fiberInternalsError('__reactFiber$abc')],
+    },
+    { code: 'node["stateNode"];', errors: [fiberInternalsError('stateNode')] },
+    ...['useState', 'useEffect', 'useContext'].map((hook) => ({
+      code: `vi.spyOn(React, "${hook}");`,
+      errors: [{ messageId: 'hookSpy', data: { name: hook } }],
+    })),
+    {
+      code: 'jest.spyOn(react, "useState").mockReturnValue([1, setX]);',
+      errors: [{ messageId: 'hookSpy', data: { name: 'useState' } }],
+    },
+    {
+      code: 'vi.spyOn(React, "useState"); wrapper.state();',
+      errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
+    },
+  ].map((testCase) => ({ filename: testFilename, ...testCase })),
 });

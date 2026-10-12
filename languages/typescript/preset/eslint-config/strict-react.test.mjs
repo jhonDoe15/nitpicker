@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/harness.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
-import { reactRuleIds } from './react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from './react-rules.mjs';
 import strictSyntaxConfig, { restrictedSyntaxFor, strictSyntaxConfigFor } from './strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
@@ -122,8 +122,14 @@ function sourceRestrictedSyntax(config) {
 }
 
 const reactManifest = { dependencies: { react: '19.0.0' } };
-const reactPrefixes = ['react-hooks/', 'react-x/', 'jsx-a11y/', 'nitpicker/react-'];
-const reactPlugins = ['react-hooks', 'react-x', 'jsx-a11y'];
+const reactPrefixes = [
+  'react-hooks/',
+  'react-x/',
+  'jsx-a11y/',
+  'testing-library/',
+  'nitpicker/react-',
+];
+const reactPlugins = ['react-hooks', 'react-x', 'jsx-a11y', 'testing-library'];
 
 describe('the preset config', () => {
   it('has no React rule, plugin or class exemption in a project without react', async () => {
@@ -145,7 +151,7 @@ describe('the preset config', () => {
   it('turns the React scope on when package.json lists react', async () => {
     const config = await presetConfigFor({ manifest: reactManifest });
 
-    for (const id of reactRuleIds) {
+    for (const id of [...reactRuleIds, ...reactTestRuleIds]) {
       expect(ruleIdsOf(config).has(id), id).toBe(true);
     }
     for (const name of reactPlugins) {
@@ -199,6 +205,45 @@ describe('the preset config', () => {
 
     expect(legacy.rules['react-x/no-array-index-key'][0]).toBe(0);
     expect(fresh.rules['react-x/no-array-index-key'][0]).toBe(2);
+  });
+
+  it('lifts a Testing Library rule only for the configured test paths', async () => {
+    const config = await presetConfigFor({
+      manifest: reactManifest,
+      policy: {
+        exceptions: [
+          {
+            rule: 'testing-library/no-test-id-queries',
+            paths: ['test/legacy/**'],
+            reason: 'Third-party widget without roles',
+          },
+        ],
+      },
+    });
+    const eslint = new ESLint({
+      cwd: path.resolve(import.meta.dirname, '../defaults'),
+      overrideConfigFile: true,
+      overrideConfig: config,
+    });
+
+    const legacy = await eslint.calculateConfigForFile('test/legacy/widget.test.tsx');
+    const fresh = await eslint.calculateConfigForFile('test/fresh/widget.test.tsx');
+
+    expect(legacy.rules['testing-library/no-test-id-queries'][0]).toBe(0);
+    expect(fresh.rules['testing-library/no-test-id-queries'][0]).toBe(2);
+  });
+
+  it('rejects an exception for a Testing Library rule when the project is not a React project', async () => {
+    await expect(
+      presetConfigFor({
+        manifest: {},
+        policy: {
+          exceptions: [
+            { rule: 'testing-library/no-node-access', paths: ['test/**'], reason: 'Widgets' },
+          ],
+        },
+      }),
+    ).rejects.toThrow('unknown rules: testing-library/no-node-access');
   });
 
   it('rejects an exception for a React rule when the project is not a React project', async () => {
