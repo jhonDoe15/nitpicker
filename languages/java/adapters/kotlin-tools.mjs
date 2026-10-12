@@ -14,6 +14,7 @@ const DETEKT_CONFIGS = ['config/detekt/detekt', 'config/detekt', 'detekt'].flatM
 ]);
 const EDITORCONFIG = '.editorconfig';
 const SPOTLESS_SCRIPT_BLOCK = 'kotlinGradle';
+const BRACE_DELTA = { '{': 1, '}': -1 };
 
 function readIfExists(projectRoot, relative) {
   const absolute = path.join(projectRoot, relative);
@@ -27,33 +28,33 @@ function withoutComments(text) {
 function blockEnd(text, from) {
   let depth = 1;
   let index = from;
-  while (index < text.length && depth > 0) {
-    depth += { '{': 1, '}': -1 }[text[index]] ?? 0;
+  for (const character of text.slice(from)) {
     index += 1;
+    depth += BRACE_DELTA[character] ?? 0;
+    if (depth === 0) {
+      return index;
+    }
   }
   return index;
 }
 
 function withoutBlocks(text, name) {
-  const opener = new RegExp(String.raw`\b${name}\s*\{`, 'g');
-  const kept = [];
-  let from = 0;
-  for (let match = opener.exec(text); match !== null; match = opener.exec(text)) {
-    kept.push(text.slice(from, match.index));
-    from = blockEnd(text, match.index + match[0].length);
-    opener.lastIndex = from;
+  const opener = new RegExp(String.raw`\b${name}\s*\{`).exec(text);
+  if (opener === null) {
+    return text;
   }
-  return [...kept, text.slice(from)].join('');
+  const end = blockEnd(text, opener.index + opener[0].length);
+  return text.slice(0, opener.index) + withoutBlocks(text.slice(end), name);
 }
 
-export function buildText(projectRoot) {
+function buildText(projectRoot) {
   return withoutBlocks(
     withoutComments(BUILD_FILES.map((file) => readIfExists(projectRoot, file)).join('\n')),
     SPOTLESS_SCRIPT_BLOCK,
   ).toLowerCase();
 }
 
-export function detectFormatter({ build, editorconfig }) {
+function detectFormatter({ build, editorconfig }) {
   if (build.includes('ktlint')) {
     return 'ktlint';
   }
@@ -63,7 +64,7 @@ export function detectFormatter({ build, editorconfig }) {
   return editorconfig.includes('ktlint_') ? 'ktlint' : 'none';
 }
 
-export function ktfmtStyle(build) {
+function ktfmtStyle(build) {
   if (build.includes('kotlinlangstyle')) {
     return 'kotlinlang';
   }

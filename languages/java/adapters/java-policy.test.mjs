@@ -74,7 +74,13 @@ describe('configureJavaAnalyzer', () => {
 
     const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
 
-    expect(parsed.policy).toMatchObject({
+    expect(parsed.policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
       preset: 'kotlin',
       kotlinFormatter: 'ktfmt',
       kotlinDetektConfig: 'tools/rules.yml',
@@ -98,9 +104,16 @@ describe('parseRunnerArguments', () => {
   });
 
   it('defaults to the java preset and accepts the kotlin preset with a formatter', () => {
-    expect(parseRunnerArguments(['--project-root', '/p']).policy).toMatchObject({
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
       preset: 'java',
       kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
     });
     expect(
       parseRunnerArguments([
@@ -113,7 +126,13 @@ describe('parseRunnerArguments', () => {
         '--kotlin-detekt-config',
         'detekt.yaml',
       ]).policy,
-    ).toMatchObject({
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
       preset: 'kotlin',
       kotlinFormatter: 'none',
       kotlinDetektConfig: 'detekt.yaml',

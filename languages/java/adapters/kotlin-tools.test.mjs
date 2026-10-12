@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from './java-diff.mjs';
+import { collectJavaFindings, INIT_SCRIPT } from './java-diff.mjs';
 import { kotlinGradleArguments, resolveKotlinTools } from './kotlin-tools.mjs';
 
 const fakeGradle = path.join(import.meta.dirname, 'fixtures/fake-gradle.mjs');
@@ -147,11 +147,22 @@ describe('Gradle arguments', () => {
       collectJavaFindings(root, { gradle: fakeGradle, policy });
       return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
     };
+    const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
-    expect(argumentsOf({ preset: 'kotlin' })).toEqual(
-      expect.arrayContaining(['--no-configuration-cache', '-Pnitpicker.kotlin.formatter=ktlint']),
-    );
-    expect(argumentsOf({ preset: 'java' })).toContain('--no-configuration-cache');
-    expect(argumentsOf({ preset: 'java' }).join(' ')).not.toContain('nitpicker.kotlin');
+    expect(argumentsOf({ preset: 'kotlin' })).toEqual([
+      ...common,
+      '-Pnitpicker.kotlin=true',
+      '-Pnitpicker.kotlin.formatter=ktlint',
+      '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      '-I',
+      INIT_SCRIPT,
+      'nitpickerJava',
+    ]);
+    expect(argumentsOf({ preset: 'java' })).toEqual([
+      ...common,
+      '-I',
+      INIT_SCRIPT,
+      'nitpickerJava',
+    ]);
   });
 });
