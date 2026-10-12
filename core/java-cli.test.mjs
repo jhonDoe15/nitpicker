@@ -500,6 +500,114 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
+  const wideFunction = (name, parameters, start) => ({
+    file: 'src/main/kotlin/demo/Wide.kt',
+    name,
+    start,
+    end: start,
+    lines: 1,
+    statements: 1,
+    maxControlNesting: 0,
+    parameters,
+    complexity: 1,
+  });
+  const wideSource = (...signatures) =>
+    `package demo\n\n${signatures.map((signature) => `fun ${signature} = 0\n`).join('\n')}`;
+  const metricsOf = (...functions) => `${JSON.stringify({ functions, files: [] })}\n`;
+  const newEnforceable = (result, tool) =>
+    result
+      .json('new-findings.json')
+      .filter((finding) => finding.tool === tool && finding.classification === 'enforceable');
+  const FOUR_PARAMETERS = 'sum(a: Int, b: Int, c: Int, d: Int)';
+  const legacyWide = () =>
+    kotlinRepository({
+      'src/main/kotlin/demo/Wide.kt': wideSource(FOUR_PARAMETERS),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 3)),
+    });
+
+  it('keeps a Kotlin function over the parameter limit baselined when it only moves', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': `package demo\n\nval answer = 1\n\nfun ${FOUR_PARAMETERS} = 0\n`,
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 5)),
+    });
+    commit(root, 'move the function');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+  });
+
+  it('fails a Kotlin function that grows past the parameter limit it already exceeded', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': wideSource('sum(a: Int, b: Int, c: Int, d: Int, e: Int)'),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 5, 3)),
+    });
+    commit(root, 'add a parameter');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'structure')).toEqual([
+      expect.objectContaining({
+        tool: 'structure',
+        rule: 'function-parameters-limit',
+        path: 'src/main/kotlin/demo/Wide.kt',
+        message: expect.stringContaining('grew from 4 to 5 parameters'),
+      }),
+    ]);
+  });
+
+  it('fails a new Kotlin function over the parameter limit', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': wideSource(
+        FOUR_PARAMETERS,
+        'product(a: Int, b: Int, c: Int, d: Int)',
+      ),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 3), wideFunction('product', 4, 5)),
+    });
+    commit(root, 'add a function');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'structure')).toEqual([
+      expect.objectContaining({
+        tool: 'structure',
+        rule: 'function-parameters-limit',
+        symbol: 'product',
+      }),
+    ]);
+  });
+
+  it('fails a new Kotlin clone found by jscpd', () => {
+    const root = kotlinRepository();
+    const clone = (name) =>
+      `package demo\n\nclass ${name} {\n    fun total(a: Int, b: Int): Int {\n        var total = 0\n${Array.from(
+        { length: 10 },
+        (_, index) =>
+          `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }\n`,
+      ).join('')}        return total\n    }\n}\n`;
+    write(root, {
+      'src/main/kotlin/demo/Left.kt': clone('Left'),
+      'src/main/kotlin/demo/Right.kt': clone('Right'),
+    });
+    commit(root, 'copy a class');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'duplicates')).toEqual([
+      expect.objectContaining({
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/main/kotlin/demo/Left.kt',
+      }),
+    ]);
+  });
+
   const kotlinToolError = (snapshot) => [
     expect.objectContaining({
       tool: 'kotlin',
@@ -566,7 +674,7 @@ describe('Java analyzer', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;jscpd@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });

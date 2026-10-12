@@ -19,8 +19,10 @@
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
 //   build/nitpicker/detekt.sarif       detekt, SARIF 2.1.0
 //   build/nitpicker/kotlin-format.txt  ktlint or ktfmt: one Kotlin file needing a reformat per line
-// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. PMD, SpotBugs, PIT and jdeps
-// then only see the Java sources and classes; JaCoCo covers both languages.
+//   build/nitpicker/kotlin-metrics.json per-function lines, statements, control nesting, parameters and complexity, and the
+//                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
+// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. PMD, SpotBugs and PIT then only see
+// the Java sources and classes; JaCoCo and jdeps cover both languages.
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
 // its test classpath, JUnit Platform) are run by `nitpickerArchunit`. They are the test classes
@@ -41,6 +43,7 @@ def pinned = [
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
     ktfmt           : '0.64',
+    kotlinCompiler  : '2.4.21',
 ]
 
 // lizard is a Python tool, not a JVM artifact, so Gradle cannot download it. It is provisioned by
@@ -356,7 +359,7 @@ allprojects {
             dependsOn tasks.named('classes')
             doLast {
                 reportDir.get().asFile.mkdirs()
-                def classDirs = analyzedClassDirs().findAll { it.exists() }
+                def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
                 def classNames = classDirs.collectMany { dir ->
                     fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
                         dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
@@ -426,8 +429,10 @@ allprojects {
                     nitpickerDetektStdlib { canBeConsumed = false }
                     nitpickerKtlint { canBeConsumed = false }
                     nitpickerKtfmt { canBeConsumed = false }
+                    nitpickerKotlinCompiler { canBeConsumed = false }
                 }
                 dependencies {
+                    nitpickerKotlinCompiler "org.jetbrains.kotlin:kotlin-compiler-embeddable:${pinned.kotlinCompiler}"
                     nitpickerDetekt("io.gitlab.arturbosch.detekt:detekt-cli:${pinned.detekt}:all") { transitive = false }
                     nitpickerDetektStdlib("org.jetbrains.kotlin:kotlin-stdlib:${pinned.detektKotlin}") { transitive = false }
                     nitpickerKtlint("com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all") { transitive = false }
@@ -539,10 +544,40 @@ allprojects {
                     }
                 }
 
+                // --- kotlin structure (KT3) ---
+                // Per-function lines, statements, control nesting, parameters and complexity (the CRAP input), and
+                // the class names of each file (the coupling input). languages/java/gradle/KotlinMetrics.java
+                // parses the Kotlin sources with the PSI parser of the pinned Kotlin compiler in single-file
+                // source mode, run by the JVM that runs Gradle. lizard is not used for Kotlin: its Kotlin reader
+                // drops extension functions and lets a lambda arrow swallow the functions that follow it.
+                tasks.register('nitpickerKotlinMetrics') {
+                    group = 'nitpicker'
+                    def metricsSource = new File(initScriptDir, 'KotlinMetrics.java')
+                    doLast {
+                        reportDir.get().asFile.mkdirs()
+                        def output = reportDir.get().file('kotlin-metrics.json').asFile
+                        def roots = kotlinSourceDirs().collect { relative(it) }
+                        if (kotlinFiles().isEmpty()) {
+                            output.text = '{"functions":[],"files":[]}'
+                            return
+                        }
+                        def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true', '-cp',
+                                configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
+                                output.absolutePath, projectDir.absolutePath] + roots)
+                            .directory(projectDir).redirectErrorStream(true).start()
+                        def log = process.inputStream.getText('UTF-8')
+                        if (process.waitFor() != 0) {
+                            throw new GradleException("KotlinMetrics failed: ${log.trim()}")
+                        }
+                    }
+                }
+                // --- end kotlin structure ---
+
                 // Reports a skipped tool would have written, so the Nitpicker side reads the same files for
                 // every module; and the Kotlin entries of the manifest. The Java source roots stay Java-only.
                 tasks.named('nitpickerJava') {
-                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt'
+                    dependsOn 'nitpickerDetekt', 'nitpickerKtlint', 'nitpickerKtfmt', 'nitpickerKotlinMetrics'
                     doLast {
                         def directory = reportDir.get().asFile
                         def emptySarif = '{"version":"2.1.0","runs":[]}'
