@@ -395,6 +395,139 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('summary.json').tools[0].version).toMatch(/;unittest$/);
   });
 
+  describe('function structure and CRAP', () => {
+    const VALUE = { file: 'src/demo/a.py', name: 'value', start: 4, end: 5 };
+    const structureOf = (metrics) =>
+      JSON.stringify([{ ...VALUE, lines: 2, statements: 1, maxControlNesting: 0, ...metrics }]);
+    const LIZARD_ROW = (ccn) =>
+      `2,${ccn},9,0,2,"value@4-5@src/demo/a.py","src/demo/a.py","value","value( )",4,5\n`;
+    const COVERAGE = (covered) =>
+      JSON.stringify({
+        files: {
+          'src/demo/a.py': {
+            summary: { num_statements: 1, covered_lines: covered },
+            functions: {
+              value: {
+                executed_lines: covered === 0 ? [] : [5],
+                missing_lines: covered === 0 ? [5] : [],
+                summary: {
+                  num_statements: 1,
+                  covered_lines: covered,
+                  num_branches: 0,
+                  covered_branches: 0,
+                },
+              },
+            },
+          },
+        },
+      });
+
+    it('fails a new function over a structure limit with the shared rule and message', () => {
+      const root = pythonRepository();
+      write(root, { 'structure-data.json': structureOf({ parameters: 4 }) });
+      commit(root, 'add a function with four parameters');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({
+          tool: 'structure',
+          rule: 'function-parameters-limit',
+          path: 'src/demo/a.py',
+          message: 'value has 4 parameters; limit is 3',
+          classification: 'enforceable',
+        }),
+      ]);
+    });
+
+    it('lets a touched legacy function stay over its limit unless the change makes it worse', () => {
+      const root = pythonRepository({ 'structure-data.json': structureOf({ parameters: 4 }) });
+      write(root, { 'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n' });
+      commit(root, 'edit the legacy function');
+      const untouched = run(root);
+
+      write(root, { 'structure-data.json': structureOf({ parameters: 5 }) });
+      commit(root, 'add another parameter');
+      const worse = run(root);
+
+      expect(untouched.exitCode, untouched.text).toBe(0);
+      expect(worse.exitCode, worse.text).toBe(1);
+      expect(worse.json('new-findings.json')).toEqual([
+        expect.objectContaining({
+          rule: 'function-parameters-limit',
+          message: expect.stringContaining('grew from 4 to 5 parameters'),
+        }),
+      ]);
+    });
+
+    it('fails a new untested complex function and passes it once it is covered', () => {
+      const root = pythonRepository();
+      write(root, { 'lizard-data.csv': LIZARD_ROW(5), 'coverage-data.json': COVERAGE(0) });
+      commit(root, 'add a complex function without tests');
+      const untested = run(root);
+
+      write(root, { 'coverage-data.json': COVERAGE(1) });
+      commit(root, 'test it');
+      const tested = run(root);
+
+      expect(untested.exitCode, untested.text).toBe(1);
+      expect(
+        untested
+          .json('new-findings.json')
+          .filter(({ classification }) => classification === 'enforceable'),
+      ).toEqual([
+        expect.objectContaining({
+          tool: 'crap',
+          rule: 'crap-score-limit',
+          symbol: 'value',
+          message: expect.stringContaining('CRAP 30.00'),
+        }),
+      ]);
+      expect(tested.exitCode, tested.text).toBe(0);
+    });
+
+    it('fails a function whose coverage is unknown', () => {
+      const root = pythonRepository();
+      write(root, { 'lizard-data.csv': LIZARD_ROW(1) });
+      commit(root, 'add a function the coverage report does not know');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({ rule: 'crap-coverage-unknown', symbol: 'value' }),
+      ]);
+    });
+
+    it('takes the CRAP limit from thresholds.crapLimit', () => {
+      const root = pythonRepository({
+        'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
+      });
+      write(root, { 'lizard-data.csv': LIZARD_ROW(5), 'coverage-data.json': COVERAGE(0) });
+      commit(root, 'add a complex function without tests');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+    });
+
+    it('reports a failing lizard as a tool error', () => {
+      const root = pythonRepository({ 'fail.json': '{ "lizard": "lizard exploded" }\n' });
+      write(root, { 'src/demo/b.py': 'x = 1\n' });
+      commit(root, 'change');
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.json('tool-errors.json')).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ tool: 'python', rule: 'lizard-failed' }),
+        ]),
+      );
+    });
+  });
+
   it('rejects the TypeScript-only config keys', () => {
     const root = pythonRepository({
       'nitpicker.config.json': '{ "preset": "python", "layout": { "sourceRoots": ["src"] } }\n',

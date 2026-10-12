@@ -24,7 +24,14 @@ describe('Python analyzer', () => {
     const analyzer = createPythonAnalyzer();
 
     expect(analyzer.name).toBe(PYTHON_ANALYZER_NAME);
-    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage']);
+    expect(analyzer.reportedTools).toEqual([
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'structure',
+      'crap',
+    ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
