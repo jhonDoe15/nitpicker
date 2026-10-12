@@ -73,7 +73,7 @@ If your change edits a function that existed before it, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
-- Named exports only. No comments.
+- Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## domain/ is deeply readonly
 

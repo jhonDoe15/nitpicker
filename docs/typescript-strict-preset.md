@@ -115,7 +115,9 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - A `switch` over a discriminated union must handle every case.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
-- No comments. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
+- No comments, except doc comments (`/** ... */`) on exported declarations and the members of
+  exported types. They are allowed there, never required; the Java preset follows the same rule for
+  Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions.
 
