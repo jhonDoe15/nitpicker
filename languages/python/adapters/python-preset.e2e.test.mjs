@@ -111,11 +111,14 @@ const ONE_WAY_VIOLATIONS = [
   'LIMIT: int = 3  # noqa: E501',
   '',
 ].join('\n');
+const ONE_WAY_TEST =
+  'from demo.rules import home\n\n\ndef test_home():\n    assert home() == "a/b"\n';
 const LEGACY_CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
 const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${LEGACY_CLAMP}`;
 const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${LEGACY_CLAMP}`;
-const PRICING = 'def discount(price):\n    return price - 5 if price > 100 else price\n';
-const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused():\n    return 3\n`;
+const PRICING =
+  'def discount(price: int) -> int:\n    return price - 5 if price > 100 else price\n';
+const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused() -> int:\n    return 3\n`;
 const PRICING_TEST =
   'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n';
 const PRICING_FULL_TEST =
@@ -221,9 +224,13 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     commitBranch(project, 'moved', { 'src/demo/legacy.py': LEGACY_MOVED });
     commitBranch(project, 'violation', { 'src/demo/bad.py': VIOLATION });
     commitBranch(project, 'type-error', { 'src/demo/typed.py': TYPE_ERROR });
-    commitBranch(project, 'one-way', { 'src/demo/rules.py': ONE_WAY_VIOLATIONS });
+    commitBranch(project, 'one-way', {
+      'src/demo/rules.py': ONE_WAY_VIOLATIONS,
+      'tests/test_rules.py': ONE_WAY_TEST,
+    });
     commitBranch(project, 'excepted', {
       'src/demo/rules.py': ONE_WAY_VIOLATIONS,
+      'tests/test_rules.py': ONE_WAY_TEST,
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
         python: {
@@ -318,7 +325,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'type-error');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
+    expect(enforceable(result).filter((finding) => !finding.startsWith('mutmut '))).toEqual([
+      'mypy return-value typed.py',
+    ]);
     expect(result.text).toMatch(/Fix the type: correct the annotation or narrow the value/);
   });
 
@@ -355,9 +364,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+;mutmut@[\d.]+$/,
     );
-    expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
+    expect(enforceable(result).filter((finding) => !finding.startsWith('mutmut '))).toEqual([
+      'pyright reportReturnType typed.py',
+    ]);
   });
 
   it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
@@ -456,6 +467,8 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       });
       commitBranch(project, 'legacy-edited', {
         'src/demo/wide.py': 'def wide(a, b, c, d):\n    return a + b + c + d + 1\n',
+        'tests/test_wide.py':
+          'from demo.wide import wide\n\n\ndef test_wide():\n    assert wide(1, 2, 3, 4) == 11\n',
       });
       commitBranch(project, 'legacy-grown', {
         'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
@@ -466,17 +479,20 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       });
     });
 
-    const enforceable = (result) =>
+    const enforceable = (result, tool) =>
       result
         .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable');
+        .filter(({ classification }) => classification === 'enforceable')
+        .filter((finding) => finding.tool === tool);
 
     it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
       const result = gate(project, 'nested-and-wide');
 
       expect(result.exitCode, result.text).toBe(1);
       expect(
-        enforceable(result).map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
+        enforceable(result, 'structure').map(
+          ({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`,
+        ),
       ).toEqual([
         'structure function-control-nesting-limit classify',
         'structure function-parameters-limit classify',
@@ -484,12 +500,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
 
     it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
-      expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+      const edited = gate(project, 'legacy-edited');
+
+      expect(edited.exitCode, edited.text).toBe(0);
 
       const grown = gate(project, 'legacy-grown');
 
       expect(grown.exitCode, grown.text).toBe(1);
-      expect(enforceable(grown)).toEqual([
+      expect(enforceable(grown, 'structure')).toEqual([
         expect.objectContaining({
           rule: 'function-parameters-limit',
           message: expect.stringContaining('grew from 4 to 5 parameters'),
@@ -501,7 +519,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       const result = gate(project, 'untested-complex');
 
       expect(result.exitCode, result.text).toBe(1);
-      expect(enforceable(result)).toEqual([
+      expect(enforceable(result, 'crap')).toEqual([
         expect.objectContaining({
           tool: 'crap',
           rule: 'crap-score-limit',
@@ -647,12 +665,13 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   });
 });
 
-const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
-const CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
+const SIGNS = 'def sign(x: int) -> int:\n    if x < 0:\n        return -1\n    return 1\n';
+const CLAMP = 'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 const signsTest = (...assertions) =>
   `from demo import signs\n\n\n${assertions
     .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
     .join('\n\n')}`;
+const NOTHING_TO_MUTATE = '\n[tool.mutmut]\ndo_not_mutate = ["*"]\n';
 const SIGN_POSITIVE = ['sign_positive', 'signs.sign(5) == 1'];
 const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
 const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
@@ -671,6 +690,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     project = repository();
     cpSync(fixture, project, { recursive: true });
     write(project, {
+      'pyproject.toml': `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}${NOTHING_TO_MUTATE}`,
       'src/demo/signs.py': SIGNS,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE),
     });
@@ -687,7 +707,9 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
       '-e',
       '.',
       'coverage',
+      'mutmut',
       'pytest',
+      'mypy',
     ]);
     commitBranch(project, 'shifted', { 'src/demo/signs.py': `"""Signs."""\n\n\n${SIGNS}` });
     commitBranch(project, 'edited', {
@@ -766,6 +788,7 @@ const ORDER_TOTAL = [
 const LAYERED_FILES = {
   'nitpicker.config.json': '{ "preset": "python" }\n',
   '.gitignore': '.venv/\n__pycache__/\n',
+  'pyproject.toml': NOTHING_TO_MUTATE.trimStart(),
   '.importlinter':
     '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
   'src/shop/__init__.py': '',
@@ -788,6 +811,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     result
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable')
+      .filter(({ tool }) => tool !== 'mypy')
       .sort((left, right) =>
         `${left.tool}${left.identity}`.localeCompare(`${right.tool}${right.identity}`),
       );
@@ -808,11 +832,13 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
       '--python',
       '.venv',
       'coverage',
+      'mutmut',
       'pytest',
+      'mypy',
       'import-linter',
     ]);
     commitBranch(project, 'clean', {
-      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts):\n    return len(amounts)\n`,
+      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts: list[int]) -> int:\n    return len(amounts)\n`,
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
@@ -837,7 +863,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /;jscpd@[\d.]+;import-linter@[\d.]+$/,
+      /;jscpd@[\d.]+;import-linter@[\d.]+;mutmut@[\d.]+$/,
     );
   });
 
@@ -846,12 +872,14 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 
     expect(result.exitCode, result.text).toBe(1);
     expect(
-      enforceable(result).map(({ tool, rule, path: file, message }) => ({
-        tool,
-        rule,
-        file,
-        message,
-      })),
+      enforceable(result)
+        .filter(({ tool }) => tool === 'duplicates')
+        .map(({ tool, rule, path: file, message }) => ({
+          tool,
+          rule,
+          file,
+          message,
+        })),
     ).toEqual([
       {
         tool: 'duplicates',
