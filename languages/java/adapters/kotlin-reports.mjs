@@ -27,6 +27,14 @@ export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
   return kotlin ? [...new Set([...sourceRoots, ...manifest.kotlinSourceRoots])] : sourceRoots;
 }
 
+export function reportOnlyKotlinMutants(findings) {
+  return findings.map((finding) =>
+    finding.rule.startsWith('mutant-') && finding.path.endsWith('.kt')
+      ? { ...finding, classification: 'descriptive' }
+      : finding,
+  );
+}
+
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco } = context;
   const metrics = readKotlinMetrics(reportRoot);

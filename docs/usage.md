@@ -292,8 +292,11 @@ Inline `# noqa` comments are not honored: lift a rule for a path with `exclude`.
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
 Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses; `"kotlin": { "formatter": "ktfmt" }`
-overrides the detection) on the Kotlin sources, JaCoCo coverage for both, and the structure limits,
-CRAP, duplicates and package stability checks on Kotlin code. Config keys, Gradle
+overrides the detection) on the Kotlin sources, and JaCoCo coverage and changed-branch coverage
+for both (a changed Kotlin branch that no test takes fails; branches the compiler generated are
+ignored), and the structure limits, CRAP, duplicates and package stability checks on Kotlin code.
+PIT also mutates the Kotlin classes, but their mutants are only reported, because plain PIT on
+Kotlin bytecode reports mostly compiler-generated mutants. Config keys, Gradle
 requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
 

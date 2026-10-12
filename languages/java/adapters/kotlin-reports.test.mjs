@@ -26,6 +26,7 @@ const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
     <counter type="LINE" missed="1" covered="0"/>
   </sourcefile>
   <sourcefile name="Bad.kt">
+    <line nr="8" mi="1" ci="0" mb="1" cb="1"/>
     <line nr="9" mi="1" ci="0" mb="2" cb="0"/>
     <counter type="LINE" missed="3" covered="0"/>
   </sourcefile>
@@ -52,6 +53,25 @@ const MIXED_SOURCE = 'package demo\n\nfun pick(flag: Boolean) = if (flag) 1 else
 
 const JAVA_SOURCE =
   'package demo;\n\nclass Legacy {\n  int pick(boolean flag) { return flag ? 1 : 2; }\n}\n';
+
+const mutation = (
+  status,
+  className,
+  sourceFile,
+  line,
+) => `<mutation detected='false' status='${status}'>
+  <sourceFile>${sourceFile}</sourceFile><mutatedClass>${className}</mutatedClass>
+  <mutatedMethod>compute</mutatedMethod><methodDescription>(II)I</methodDescription>
+  <lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator>
+  <description>Replaced integer addition with subtraction</description></mutation>`;
+
+const PIT = `<mutations>${[
+  mutation('SURVIVED', 'demo.Bad', 'Bad.kt', 7),
+  mutation('NO_COVERAGE', 'demo.BadKt$lambda$1', 'Bad.kt', 8),
+  mutation('SURVIVED', 'demo.Legacy', 'Legacy.java', 4),
+  mutation('KILLED', 'demo.Bad', 'Bad.kt', 9),
+  mutation('SURVIVED', 'kotlin.properties.Delegates', 'Delegates.kt', 3),
+].join('\n')}</mutations>`;
 
 const EMPTY_SARIF = JSON.stringify({ version: '2.1.0', runs: [] });
 
@@ -87,6 +107,8 @@ function projectWithKotlinReports({
     '<checkstyle version="10.21.1"></checkstyle>',
   );
   writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
+  mkdirSync(path.join(reports, 'pit'));
+  writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
   writeFileSync(path.join(reports, 'lizard.csv'), '');
   writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(
@@ -250,7 +272,7 @@ describe('readJavaFindings with the kotlin preset', () => {
     expect(kotlinFindings(projectWithKotlinReports({ formatList: '' }), 'ktlint')).toEqual([]);
   });
 
-  it('reads JaCoCo coverage of Kotlin and Java files but gates branches of Java files only', () => {
+  it('reads JaCoCo coverage of Kotlin and Java files and gates the branches of both', () => {
     const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
     const jacoco = findings.filter((finding) => finding.tool === 'jacoco');
 
@@ -259,7 +281,31 @@ describe('readJavaFindings with the kotlin preset', () => {
       ['line-coverage', 'src/main/java/demo/Legacy.java'],
       ['line-coverage', bad],
       ['uncovered-method', bad],
+      ['changed-branch-coverage', 'src/main/java/demo/Mixed.kt'],
       ['changed-branch-coverage', 'src/main/java/demo/Legacy.java'],
+      ['changed-branch-coverage', bad],
+    ]);
+  });
+
+  it('ignores branches on Kotlin lines without any branching source syntax', () => {
+    const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
+    const branchLines = findings
+      .filter((finding) => finding.rule === 'changed-branch-coverage' && finding.path === bad)
+      .map((finding) => finding.location.line);
+
+    expect(branchLines).toEqual([8]);
+  });
+
+  it('reports mutants of Kotlin classes without failing and keeps Java mutants enforceable', () => {
+    const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
+    const mutants = findings
+      .filter((finding) => finding.rule.startsWith('mutant-'))
+      .map(({ rule, path: file, classification }) => [rule, file, classification]);
+
+    expect(mutants).toEqual([
+      ['mutant-survived', bad, 'descriptive'],
+      ['mutant-nocoverage', bad, 'descriptive'],
+      ['mutant-survived', 'src/main/java/demo/Legacy.java', 'enforceable'],
     ]);
   });
 

@@ -13,7 +13,12 @@ import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
-import { jacocoSourceRoots, readKotlinFindings, requireKotlinManifest } from './kotlin-reports.mjs';
+import {
+  jacocoSourceRoots,
+  readKotlinFindings,
+  reportOnlyKotlinMutants,
+  requireKotlinManifest,
+} from './kotlin-reports.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
@@ -124,27 +129,29 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimi
   }).findings;
 }
 
-function pitFindings({ reportRoot, projectRoot, sourceRoots }) {
+function pitFindings(context) {
+  const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
   if (!existsSync(pitReport)) {
     return [];
   }
-  return ingestPit(readFileSync(pitReport, 'utf8'), {
+  const sourceRoots = jacocoSourceRoots(context);
+  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) =>
       sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
-  }).findings;
+  });
+  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
 
-function branchFindings({ projectRoot, sourceRoots, kotlin }, jacoco) {
-  return sourceRoots.flatMap(
+function branchFindings(context, jacoco) {
+  const { projectRoot } = context;
+  return jacocoSourceRoots(context).flatMap(
     (sourceRoot) =>
       ingestJacocoBranches(jacoco, {
         sourceRoot,
         sourceText: (file) => {
           const absolute = path.join(projectRoot, file);
-          return existsSync(absolute) && (!kotlin || file.endsWith('.java'))
-            ? readFileSync(absolute, 'utf8')
-            : undefined;
+          return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
         },
       }).findings,
   );

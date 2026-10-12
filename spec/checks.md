@@ -91,23 +91,23 @@ over limit" and does not fail.
 
 <!-- generated:custom-rules begin (npm run gen:checks) -->
 
-| Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         | Kotlin       |
-| --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | ------------ |
-| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     | enforced     |
-| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     | enforced     |
-| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     | enforced     |
-| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     | enforced     |
-| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     | enforced     |
-| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     | enforced     |
-| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     | not enforced |
-| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     | not enforced |
-| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     | not enforced |
-| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     | enforced     |
-| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     | enforced     |
-| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced |
-| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced |
-| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     | enforced     |
-| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced | not enforced |
+| Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         | Python       | Kotlin       |
+| --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | ------------ | ------------ |
+| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     | not enforced | enforced     |
+| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     | not enforced | enforced     |
+| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     | not enforced | enforced     |
+| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     | not enforced | enforced     |
+| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     | not enforced | enforced     |
+| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     | not enforced | enforced     |
+| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     | not enforced | enforced     |
+| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     | not enforced | not enforced |
+| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     | not enforced | not enforced |
+| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     | not enforced | enforced     |
+| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     | not enforced | enforced     |
+| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced | not enforced |
+| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced | not enforced |
+| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     | not enforced | enforced     |
+| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 
@@ -119,3 +119,7 @@ Notes:
   `structure` and `duplicates` 1 minute.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.
+- Kotlin runs PIT and reports its mutants, but as descriptive findings that never fail (plain PIT
+  on Kotlin bytecode reports mostly compiler-generated mutants), so `mutant-survived` and
+  `mutant-nocoverage` are "not enforced" for Kotlin. Numbers and the decision:
+  [kotlin-preset.md](../docs/kotlin-preset.md).

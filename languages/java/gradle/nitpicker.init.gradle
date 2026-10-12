@@ -21,8 +21,8 @@
 //   build/nitpicker/kotlin-format.txt  ktlint or ktfmt: one Kotlin file needing a reformat per line
 //   build/nitpicker/kotlin-metrics.json per-function lines, statements, control nesting, parameters and complexity, and the
 //                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
-// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. PMD, SpotBugs and PIT then only see
-// the Java sources and classes; JaCoCo and jdeps cover both languages.
+// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. PMD and SpotBugs then only see
+// the Java sources and classes; JaCoCo, jdeps and PIT cover both languages.
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
 // its test classpath, JUnit Platform) are run by `nitpickerArchunit`. They are the test classes
@@ -117,6 +117,8 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
+        // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
+        def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
@@ -238,7 +240,7 @@ allprojects {
             mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
             def pitDir = reportDir.map { it.dir('pit') }
             doFirst {
-                def classDirs = analyzedClassDirs().findAll { it.exists() }
+                def classDirs = mutatedClassDirs().findAll { it.exists() }
                 def targets = classDirs.collectMany { dir ->
                     (dir.listFiles() ?: []).collect { entry ->
                         entry.isDirectory() ? "${entry.name}.*".toString()
@@ -281,7 +283,7 @@ allprojects {
                       '--failWhenNoMutations', 'false',
                       '--verbose', 'false'])
             }
-            onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
+            onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
                 // PIT writes no report when it found nothing to mutate.
                 def report = pitDir.get().file('mutations.xml').asFile
@@ -389,8 +391,8 @@ allprojects {
         // --- kotlin (KT1): detekt, a ktlint or ktfmt format check and JaCoCo on Kotlin classes ---
         // Only with -Pnitpicker.kotlin=true, and only in modules that apply org.jetbrains.kotlin.jvm.
         // The tools run from their own configurations, like the Java ones. Kotlin sources are left
-        // to these tools: PMD, SpotBugs, google-java-format, PIT and jdeps keep to the Java sources
-        // and the classes compiled from them (see analyzedClassDirs), JaCoCo covers both languages.
+        // to these tools: PMD, SpotBugs and google-java-format keep to the Java sources and the classes
+        // compiled from them (see analyzedClassDirs), JaCoCo, jdeps and PIT cover both languages.
         if (kotlinPreset) {
             plugins.withId('org.jetbrains.kotlin.jvm') {
                 def relative = { File file -> projectDir.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
