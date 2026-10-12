@@ -307,7 +307,16 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({ tool: 'pyright', rule: 'reportReturnType', path: 'src/demo/a.py' }),
+      {
+        tool: 'pyright',
+        rule: 'reportReturnType',
+        path: 'src/demo/a.py',
+        identity: 'Bad',
+        message:
+          'Bad. Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for reportReturnType in nitpicker.config.json.',
+        classification: 'enforceable',
+        location: { line: 4, column: 5 },
+      },
     ]);
     const typeCheckerRuns = calls().filter(({ args }) => !args.includes('--version'));
     expect(typeCheckerRuns.some(({ tool }) => tool === 'pyright')).toBe(true);
@@ -329,15 +338,12 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json')).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          tool: 'python',
-          rule: 'types-failed',
-          message: expect.stringContaining('No type checker found'),
-        }),
-      ]),
-    );
+    expect(
+      result.json('tool-errors.json').map(({ tool, rule, snapshot }) => [tool, rule, snapshot]),
+    ).toEqual([
+      ['python', 'types-failed', 'base'],
+      ['python', 'types-failed', 'head'],
+    ]);
   });
 
   it('fails a change that leaves the project without any test', () => {

@@ -34,12 +34,15 @@ describe('mypy text report', () => {
     const text = '/work/project/src/a.py:7:5: error: Something is off\n';
 
     expect(ingestMypy(text, { roots })).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'mypy',
         rule: 'type-error',
         path: 'src/a.py',
+        identity: 'Something is off',
         message: 'Something is off',
+        classification: 'enforceable',
         location: { line: 7, column: 5 },
-      }),
+      },
     ]);
   });
 
@@ -124,12 +127,24 @@ describe('pyright JSON report', () => {
     })}`;
 
     expect(ingestPyright(text, { roots })).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'pyright',
         rule: 'reportX',
+        path: 'a.py',
+        identity: 'Hm',
+        message: 'Hm',
         classification: 'descriptive',
         location: { line: 1 },
-      }),
-      expect.objectContaining({ rule: 'type-error', path: 'b.py', classification: 'enforceable' }),
+      },
+      {
+        tool: 'pyright',
+        rule: 'type-error',
+        path: 'b.py',
+        identity: 'Syntax',
+        message: 'Syntax',
+        classification: 'enforceable',
+        location: { line: 1 },
+      },
     ]);
   });
 

@@ -124,9 +124,9 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      expect.stringContaining('Use `logging`'),
-      expect.stringContaining('Fix the type'),
-      expect.stringContaining('@dataclass(frozen=True)'),
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
     ]);
   });
 
@@ -214,7 +214,14 @@ describe('analyzing a Python snapshot', () => {
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
         classification: 'tool-error',
       },
-      expect.objectContaining({ rule: 'rules-failed', identity: 'rules-failed' }),
+      {
+        tool: 'python',
+        rule: 'rules-failed',
+        path: '.',
+        identity: 'rules-failed',
+        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
+        classification: 'tool-error',
+      },
     ]);
   });
 
