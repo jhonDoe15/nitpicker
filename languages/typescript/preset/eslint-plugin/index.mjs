@@ -8,6 +8,7 @@ import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composit
 import { rule as noHandwrittenBoundaryGuard } from './rules/no-handwritten-boundary-guard.mjs';
 import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
+import { rule as cognitiveComplexity } from './rules/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/no-comments.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
@@ -54,6 +55,7 @@ export const nitpickerRules = {
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
+    'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,

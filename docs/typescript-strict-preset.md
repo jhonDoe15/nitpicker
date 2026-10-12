@@ -106,6 +106,9 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`).
 - `===` and `!==` only (`eqeqeq`).
+- Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
+  Each branch, loop, `catch`, ternary, `switch`, labelled jump and run of `&&`/`||`/`??` costs 1,
+  plus 1 per level it is nested in. Every function, callbacks included, is scored on its own.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`. No `enum` (use unions of string literals) and no `namespace`.
