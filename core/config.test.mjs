@@ -18,10 +18,44 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
-  it('accepts the java preset and rejects other presets', () => {
+  it('accepts the java and python presets and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
+    expect(validateConfig({ preset: 'python' })).toEqual({ preset: 'python' });
     expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java',
+      '"preset" must be one of: typescript, java, python',
+    );
+  });
+
+  it('accepts python settings only with the python preset', () => {
+    const python = { environment: 'uv', formatter: 'black', sourceRoots: ['src'] };
+    expect(validateConfig({ preset: 'python', python })).toEqual({ preset: 'python', python });
+    expect(() => validateConfig({ preset: 'python', python: { formatter: 'x' } })).toThrow(
+      '"python.formatter" must be one of',
+    );
+    expect(() => validateConfig({ preset: 'java', python })).toThrow(
+      '"python" is only supported with "preset": "python"',
+    );
+    expect(describeConfigOverrides({ preset: 'python', python })).toEqual([
+      'preset: "python"',
+      `python: ${JSON.stringify(python)}`,
+    ]);
+  });
+
+  it('shares thresholds, exclude and legacyInventory with the python preset', () => {
+    const shared = {
+      thresholds: { crapLimit: 12 },
+      exclude: ['generated/**'],
+      legacyInventory: 'config/legacy.json',
+    };
+    expect(validateConfig({ preset: 'python', ...shared })).toEqual({
+      preset: 'python',
+      ...shared,
+    });
+    expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
+      '"layout" is not supported with "preset": "python"',
+    );
+    expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
+      '"exceptions" is not supported with "preset": "python"',
     );
   });
 
@@ -41,7 +75,7 @@ describe('config file', () => {
     );
   });
 
-  it.each(['layout', 'exceptions'])(
+  it.each(['layout', 'exceptions', 'react'])(
     'rejects %s with the java preset instead of ignoring it',
     (key) => {
       expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
@@ -198,5 +232,43 @@ describe('layout keys', () => {
     expect(() => validateConfig({ layout: { roots: ['lib'] } })).toThrow(
       /Allowed layout keys: sourceRoots, testRoots, excludedGlobs/,
     );
+  });
+});
+
+describe('react keys', () => {
+  it('accepts enabled and every styling approach', () => {
+    for (const react of [
+      {},
+      { enabled: true },
+      { enabled: false },
+      { styling: 'class-names' },
+      { styling: 'css-in-js' },
+      { styling: 'inline-style' },
+      { enabled: true, styling: 'css-in-js' },
+    ]) {
+      expect(validateConfig({ react })).toEqual({ react });
+    }
+  });
+
+  it.each([
+    [[], /"react" must be an object/],
+    ['react', /"react" must be an object/],
+    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
+    [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
+    [{ enabled: 1 }, /"react.enabled" must be true or false/],
+    [
+      { styling: 'tailwind' },
+      /"react.styling" must be one of: class-names, css-in-js, inline-style/,
+    ],
+  ])('rejects react %j', (react, message) => {
+    expect(() => validateConfig({ react })).toThrow(message);
+  });
+
+  it('reports the react override and changes the policy hash', () => {
+    const overrides = describeConfigOverrides({ react: { styling: 'css-in-js' } });
+    const analyzers = [{ name: 'a', version: '1', configurationHash: 'h' }];
+
+    expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
+    expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
   });
 });

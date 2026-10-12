@@ -38,14 +38,19 @@ function cruiseSpecification({
       policyRoot,
       path.posix.join(path.posix.dirname(configRelativePath), TSCONFIG_NAME),
     ),
-    exclusion: [exclude, readLayout().excludePattern]
-      .filter((pattern) => pattern !== undefined)
-      .join('|'),
+    exclusion: graphExclusion(exclude, readLayout().excludePattern),
     tool: resolveTool('dependency-cruiser', {
       projectRoot: liveProjectRoot,
       bin: 'bin/dependency-cruise.mjs',
     }).binPath,
   };
+}
+
+function graphExclusion(requested, layoutPattern) {
+  const layoutAlreadyIncluded = layoutPattern !== undefined && requested?.includes(layoutPattern);
+  return [requested, layoutAlreadyIncluded ? undefined : layoutPattern]
+    .filter((pattern) => pattern !== undefined)
+    .join('|');
 }
 
 function policyPath(policyRoot, relativePath) {
