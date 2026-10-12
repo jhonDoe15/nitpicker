@@ -11,17 +11,39 @@ import {
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
+import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INIT_SCRIPT } = {}) {
+function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
+  return preset === 'kotlin'
+    ? kotlinGradleArguments(projectRoot, {
+        formatter: kotlinFormatter,
+        detektConfig: kotlinDetektConfig,
+        snapshot,
+      })
+    : [];
+}
+
+function runJavaPreset(
+  projectRoot,
+  { gradle = 'gradle', initScript = INIT_SCRIPT, policy = {} } = {},
+) {
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', '-I', initScript, 'nitpickerJava'],
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      ...kotlinProperties(projectRoot, policy),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ],
     {
       cwd: projectRoot,
       encoding: 'utf8',
@@ -39,11 +61,13 @@ export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INI
 }
 
 export function collectJavaFindings(projectRoot, options = {}) {
+  const preset = options.policy?.preset ?? 'java';
   runJavaPreset(projectRoot, options);
+  requireGradleReports(projectRoot, preset);
   runJavaDuplicates(projectRoot);
   const { findings } = parseAnalyzerReport(
-    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit }),
-    'java',
+    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
+    preset,
   );
   return applyJavaPolicy(findings, options.policy);
 }

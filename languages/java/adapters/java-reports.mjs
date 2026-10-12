@@ -12,18 +12,25 @@ import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { jacocoSourceRoots, readKotlinFindings, requireKotlinManifest } from './kotlin-reports.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
-export function readJavaFindings(projectRoot, { crapLimit } = {}) {
+export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {}) {
+  const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
+  requireGradleReports(projectRoot, preset);
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
+  if (kotlin) {
+    requireKotlinManifest(manifest);
+  }
   const context = {
     projectRoot,
     reportRoot,
     manifest,
     sourceRoots: manifest.sourceRoots ?? [],
     roots: projectRoots(projectRoot),
+    kotlin,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
@@ -39,8 +46,18 @@ export function readJavaFindings(projectRoot, { crapLimit } = {}) {
       ...readJavaStructureFindings(reportRoot, projectRoot),
       ...branchFindings(context, context.jacoco),
       ...readCouplingFindings(reportRoot, { projectRoot, sourceRoots: context.sourceRoots }),
+      ...(kotlin ? readKotlinFindings(context) : []),
     ],
   };
+}
+
+export function requireGradleReports(projectRoot, preset) {
+  if (!existsSync(path.join(projectRoot, REPORT_DIRECTORY, 'manifest.json'))) {
+    const plugin = preset === 'kotlin' ? 'org.jetbrains.kotlin.jvm' : 'java';
+    throw new Error(
+      `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
+    );
+  }
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
@@ -74,8 +91,9 @@ function checkstyleFindings({ reportRoot, roots, projectRoot }) {
   );
 }
 
-function jacocoFindings({ sourceRoots, projectRoot }, jacoco) {
-  return sourceRoots.flatMap((sourceRoot) =>
+function jacocoFindings(context, jacoco) {
+  const { projectRoot } = context;
+  return jacocoSourceRoots(context).flatMap((sourceRoot) =>
     ingestJacoco(jacoco, { sourceRoot }).findings.filter((finding) =>
       existsSync(path.join(projectRoot, finding.path)),
     ),
@@ -122,14 +140,16 @@ function pitFindings({ reportRoot, projectRoot, sourceRoots }) {
   }).findings;
 }
 
-function branchFindings({ projectRoot, sourceRoots }, jacoco) {
+function branchFindings({ projectRoot, sourceRoots, kotlin }, jacoco) {
   return sourceRoots.flatMap(
     (sourceRoot) =>
       ingestJacocoBranches(jacoco, {
         sourceRoot,
         sourceText: (file) => {
           const absolute = path.join(projectRoot, file);
-          return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+          return existsSync(absolute) && (!kotlin || file.endsWith('.java'))
+            ? readFileSync(absolute, 'utf8')
+            : undefined;
         },
       }).findings,
   );
