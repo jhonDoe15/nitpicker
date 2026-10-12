@@ -313,13 +313,24 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.json('new-findings.json')).toEqual([
-        expect.objectContaining({
+        {
           tool: 'structure',
           rule: 'function-parameters-limit',
           path: 'src/demo/a.py',
+          symbol: 'value',
+          identity: expect.any(String),
           message: 'value has 4 parameters; limit is 3',
           classification: 'enforceable',
-        }),
+          location: { line: 4 },
+          ratchet: {
+            key: 'function:value:occurrence:1:parameters',
+            value: 4,
+            worseMessage:
+              'value grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            heldMessage:
+              'value: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
+          },
+        },
       ]);
     });
 
@@ -336,10 +347,25 @@ describe('nitpicker with "preset": "python"', () => {
       expect(untouched.exitCode, untouched.text).toBe(0);
       expect(worse.exitCode, worse.text).toBe(1);
       expect(worse.json('new-findings.json')).toEqual([
-        expect.objectContaining({
+        {
+          tool: 'structure',
           rule: 'function-parameters-limit',
-          message: expect.stringContaining('grew from 4 to 5 parameters'),
-        }),
+          path: 'src/demo/a.py',
+          symbol: 'value',
+          identity: expect.any(String),
+          message:
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          classification: 'enforceable',
+          location: { line: 4 },
+          ratchet: {
+            key: 'function:value:occurrence:1:parameters',
+            value: 5,
+            worseMessage:
+              'value grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            heldMessage:
+              'value: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+          },
+        },
       ]);
     });
 
@@ -359,12 +385,25 @@ describe('nitpicker with "preset": "python"', () => {
           .json('new-findings.json')
           .filter(({ classification }) => classification === 'enforceable'),
       ).toEqual([
-        expect.objectContaining({
+        {
           tool: 'crap',
           rule: 'crap-score-limit',
+          path: 'src/demo/a.py',
           symbol: 'value',
-          message: expect.stringContaining('CRAP 30.00'),
-        }),
+          identity: expect.any(String),
+          message:
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+          classification: 'enforceable',
+          location: { line: 4 },
+          ratchet: {
+            key: 'function:value:crap',
+            value: 30,
+            worseMessage:
+              'value CRAP rose from {base} to 30 (limit 9). Put new code in a new function and cover it with tests.',
+            heldMessage:
+              'value: CRAP 30.00 (limit 9), allowed because base was {base}; any increase fails.',
+          },
+        },
       ]);
       expect(tested.exitCode, tested.text).toBe(0);
     });
@@ -378,7 +417,17 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.json('new-findings.json')).toEqual([
-        expect.objectContaining({ rule: 'crap-coverage-unknown', symbol: 'value' }),
+        {
+          tool: 'crap',
+          rule: 'crap-coverage-unknown',
+          path: 'src/demo/a.py',
+          symbol: 'value',
+          identity: 'function:value',
+          message:
+            'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+          classification: 'enforceable',
+          location: { line: 4 },
+        },
       ]);
     });
 
@@ -402,11 +451,22 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode).toBe(2);
-      expect(result.json('tool-errors.json')).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ tool: 'python', rule: 'lizard-failed' }),
-        ]),
-      );
+      expect(result.json('tool-errors.json')).toEqual([
+        {
+          tool: 'python',
+          rule: 'lizard-failed',
+          path: '.',
+          snapshot: 'base',
+          message: 'lizard exited 2 in the virtualenv environment:\nlizard exploded',
+        },
+        {
+          tool: 'python',
+          rule: 'lizard-failed',
+          path: '.',
+          snapshot: 'head',
+          message: 'lizard exited 2 in the virtualenv environment:\nlizard exploded',
+        },
+      ]);
     });
   });
 

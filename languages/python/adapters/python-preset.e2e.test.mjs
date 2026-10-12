@@ -340,10 +340,25 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(grown.exitCode, grown.text).toBe(1);
       expect(enforceable(grown)).toEqual([
-        expect.objectContaining({
+        {
+          tool: 'structure',
           rule: 'function-parameters-limit',
-          message: expect.stringContaining('grew from 4 to 5 parameters'),
-        }),
+          path: 'src/demo/wide.py',
+          symbol: 'wide',
+          identity: expect.any(String),
+          message:
+            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          classification: 'enforceable',
+          location: { line: 1 },
+          ratchet: {
+            key: 'function:wide:occurrence:1:parameters',
+            value: 5,
+            worseMessage:
+              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            heldMessage:
+              'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+          },
+        },
       ]);
     });
 
@@ -352,12 +367,25 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(enforceable(result)).toEqual([
-        expect.objectContaining({
+        {
           tool: 'crap',
           rule: 'crap-score-limit',
+          path: 'src/demo/branchy.py',
           symbol: 'pick',
-          message: expect.stringContaining('CRAP 20.00'),
-        }),
+          identity: expect.any(String),
+          message:
+            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+          classification: 'enforceable',
+          location: { line: 1 },
+          ratchet: {
+            key: 'function:pick:crap',
+            value: 20,
+            worseMessage:
+              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests.',
+            heldMessage:
+              'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
+          },
+        },
       ]);
     });
   });
