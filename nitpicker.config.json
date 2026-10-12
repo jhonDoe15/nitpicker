@@ -20,6 +20,7 @@
   "exclude": [
     "languages/java/ingest/fixtures/**",
     "languages/java/adapters/fixtures/**",
+    "languages/javascript/preset/fixtures/**",
     "languages/python/ingest/fixtures/**",
     "languages/python/adapters/fixtures/**",
     "core/diff/fixtures/**",

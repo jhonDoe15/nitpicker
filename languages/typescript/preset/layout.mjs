@@ -1,6 +1,11 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
+import {
+  isJavascriptPolicy,
+  JAVASCRIPT_EXTENSIONS,
+  TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
+} from '../../javascript/preset/javascript-preset.mjs';
 
 export { globToRegExp };
 
@@ -8,6 +13,11 @@ const defaultSourceRoots = ['src'];
 const defaultTestRoots = ['test', 'tests'];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
+const javascriptProjectExtensionNames = [
+  ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
+  ...JAVASCRIPT_EXTENSIONS,
+];
+const typescriptFormatExtensionNames = ['ts', 'tsx', 'mts', 'mjs'];
 export const builtInExcludedGlobs = [
   '**/dist/**',
   '**/build/**',
@@ -25,41 +35,68 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-export function resolveLayout(layout = {}, exclude = []) {
-  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
-  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
-  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
-  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
-  const excludeMatchers = exclude.map(globToRegExp);
+function filePatterns({ sourceRoots, testRoots, extensions }) {
   const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
   const testAlternatives = testRoots.map(escapeRegExp).join('|');
+  const suffix = `(?:${extensions.join('|')})$`;
   const testPattern = new RegExp(
     [
       `^(?:${testAlternatives})/`,
-      `^(?:${sourceAlternatives})/.*\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
+      `^(?:${sourceAlternatives})/.*\\.(?:test|spec)\\.${suffix}`,
       `^(?:${sourceAlternatives})/(?:.*/)?__tests__/`,
     ]
       .map((pattern) => `(?:${pattern})`)
       .join('|'),
   );
-  const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.[cm]?[jt]sx?$`);
+  const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.${suffix}`);
+  return {
+    testPattern,
+    sourcePattern,
+    codePattern: new RegExp(`\\.${suffix}`),
+    runnableTestPattern: new RegExp(`\\.(?:test|spec)\\.${suffix}`),
+  };
+}
 
+function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
+  const extension = javascript ? extensionGlob : 'ts';
+  return [
+    ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.${extension}`),
+    ...testRoots.map((root) => `${root}/unit/**/*.${extension}`),
+  ];
+}
+
+export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
+  const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
+  const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
+  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
+  const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
+  const excludeMatchers = exclude.map(globToRegExp);
+  const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
+  const extensionGlob = `{${extensions.join(',')}}`;
+  const { testPattern, sourcePattern, codePattern, runnableTestPattern } = filePatterns({
+    sourceRoots,
+    testRoots,
+    extensions,
+  });
   const resolved = {
+    javascript,
+    extensions,
+    entryExtensions: javascript
+      ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
+      : ['ts'],
+    formatExtensions: javascript ? extensions : typescriptFormatExtensionNames,
     sourceRoots,
     sourceRoot,
     testRoots,
     exclude,
     excludedGlobs,
-    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${codeExtensions}`),
+    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
     testGlobs: [
-      ...testRoots.map((root) => `${root}/**/*.${codeExtensions}`),
-      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`),
+      ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
+      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
     ],
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: [
-      ...sourceRoots.map((root) => `${root}/**/__tests__/**/*.ts`),
-      ...testRoots.map((root) => `${root}/unit/**/*.ts`),
-    ],
+    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
     graphRoots: [...sourceRoots, ...testRoots],
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
     excludePattern:
@@ -70,11 +107,11 @@ export function resolveLayout(layout = {}, exclude = []) {
     },
     isTestFile(file) {
       const normalized = file.replaceAll('\\', '/');
-      if (!/\.[cm]?[jt]sx?$/.test(normalized) || normalized.endsWith('.d.ts')) return false;
+      if (!codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
       return testPattern.test(normalized);
     },
     isRunnableTestFile(file) {
-      return resolved.isTestFile(file) && /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file);
+      return resolved.isTestFile(file) && runnableTestPattern.test(file);
     },
     isSourceFile(file) {
       const normalized = file.replaceAll('\\', '/');
@@ -125,6 +162,10 @@ export function resolveLayout(layout = {}, exclude = []) {
 
 export function existingRoots(projectRoot, roots) {
   return roots.filter((root) => existsSync(path.join(projectRoot, root)));
+}
+
+export function resolveLayoutFor(policy = {}) {
+  return resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) });
 }
 
 const defaults = resolveLayout();

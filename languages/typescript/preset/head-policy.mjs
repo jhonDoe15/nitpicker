@@ -5,6 +5,7 @@ import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
+import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
 import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
@@ -75,6 +76,7 @@ export function readHeadPolicy(environment = process.env) {
     exceptions: policy.exceptions ?? [],
     thresholds: policy.thresholds ?? {},
     react: policy.react ?? {},
+    preset: policy.preset,
     tools: policy.tools ?? {},
   };
 }
@@ -82,7 +84,7 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude),
+    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
     entryPoints: policy.layout.entryPoints ?? [],
   };
 }
