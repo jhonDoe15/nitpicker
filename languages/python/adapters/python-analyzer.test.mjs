@@ -24,9 +24,9 @@ describe('Python analyzer', () => {
     const analyzer = createPythonAnalyzer();
 
     expect(analyzer.name).toBe(PYTHON_ANALYZER_NAME);
-    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage']);
+    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage', 'mutmut']);
     expect(analyzer.exclusions).toEqual([]);
-    expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
+    expect(analyzer.timeoutMs).toBe(90 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
 
@@ -86,10 +86,10 @@ describe('Python analyzer', () => {
     installFakeToolchain(path.join(live, '.venv/bin'));
 
     expect(createPythonAnalyzer().resolveVersion(live)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
     );
     expect(createPythonAnalyzer({ formatter: 'black' }).resolveVersion(live)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
     );
   });
 

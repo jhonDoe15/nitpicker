@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -72,6 +80,36 @@ describe('analyzing a Python snapshot', () => {
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
+  });
+
+  it('turns the mutmut run into mutant findings and cleans the snapshot unless it is the base', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const files = {
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+      'src/demo/a.py': 'def f():\n    return 1\n',
+    };
+    const head = project(files);
+    const base = project(files);
+
+    const { findings } = analyze(head);
+    const baseFindings = analyze(base, { policy: { snapshot: 'base' } }).findings;
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        tool: 'mutmut',
+        rule: 'mutant-survived',
+        path: 'src/demo/a.py',
+        identity: 'f|1→2#1',
+        symbol: 'f',
+        location: { line: 2 },
+      }),
+    ]);
+    expect(baseFindings).toEqual(findings);
+    expect(existsSync(path.join(head, 'mutants'))).toBe(false);
+    expect(existsSync(path.join(base, 'mutants'))).toBe(true);
   });
 
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {

@@ -3,6 +3,7 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { runMutation } from './python-mutation.mjs';
 import { detectFormatter, detectSourceRoots, importRoots } from './python-project.mjs';
 
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
@@ -17,9 +18,21 @@ const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
 const MESSAGE_TAIL_LENGTH = 3000;
 const NO_TESTS_EXIT = 5;
 const PYTEST_VERSION_PROBE = ['python', '-c', 'import pytest; print(pytest.__version__)'];
+const MUTMUT_VERSION_PROBE = [
+  'python',
+  '-c',
+  'import importlib.metadata; print(importlib.metadata.version("mutmut"))',
+];
 const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 
-export function createToolContext({ projectRoot, liveRoot, settings = {}, reportRoot }) {
+export function createToolContext({
+  projectRoot,
+  liveRoot,
+  settings = {},
+  reportRoot,
+  snapshot = 'head',
+  baselineRoot,
+}) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
@@ -28,6 +41,8 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
   return {
     projectRoot,
     reportRoot,
+    snapshot,
+    baselineRoot,
     launcher,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
@@ -42,7 +57,7 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
   };
 }
 
-function execute(context, command) {
+function execute(context, command, timeout = TOOL_TIMEOUT_MS) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
   return spawnSync(launch.command, launch.args, {
@@ -50,13 +65,17 @@ function execute(context, command) {
     env: { ...process.env, ...launch.env, ...context.env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: TOOL_TIMEOUT_MS,
+    timeout,
   });
 }
 
-function run(context, command, { accepted = [0], rule }) {
-  const result = execute(context, command);
-  if (result.error !== undefined || !accepted.includes(result.status)) {
+function isAccepted(accepted, result) {
+  return typeof accepted === 'function' ? accepted(result) : accepted.includes(result.status);
+}
+
+function run(context, command, { accepted = [0], rule, timeoutMs }) {
+  const result = execute(context, command, timeoutMs);
+  if (result.error !== undefined || !isAccepted(accepted, result)) {
     throw Object.assign(new Error(describeFailure({ context, command, result })), { rule });
   }
   return result;
@@ -78,20 +97,29 @@ function describeFailure({ context, command, result }) {
   return `${label} exited ${String(result.status)} in ${where}:\n${tail}`;
 }
 
+function attempt(context, step) {
+  try {
+    step(context);
+    return [];
+  } catch (error) {
+    return [
+      {
+        rule: error.rule ?? 'python-failed',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    ];
+  }
+}
+
+function mutation(context) {
+  runMutation(context, run);
+}
+
 export function runPythonTools(context) {
-  const failures = [lint, format, test].flatMap((step) => {
-    try {
-      step(context);
-      return [];
-    } catch (error) {
-      return [
-        {
-          rule: error.rule ?? 'python-failed',
-          message: error instanceof Error ? error.message : String(error),
-        },
-      ];
-    }
-  });
+  const failures = [lint, format, test].flatMap((step) => attempt(context, step));
+  if (!failures.some(({ rule }) => rule === TESTS_FAILED_RULE)) {
+    failures.push(...attempt(context, mutation));
+  }
   writeFileSync(
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
@@ -218,5 +246,6 @@ export function toolVersions(context) {
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerVersion(context),
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
   ].join(';');
 }
