@@ -48,15 +48,19 @@ export const FILE_LIMIT_DEFAULTS = {
   folderFiles: 6,
 };
 
-/** Rules any preset lets `exceptions` lift for some paths (the TypeScript preset also takes ESLint rules). */
+/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
 ];
 
+/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
+export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
+
+/** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
 const EXCEPTION_HINT =
-  'If this is intended, add an exception for this rule in nitpicker.config.json.';
+  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -94,9 +98,9 @@ export const MESSAGES = {
   crapCoverageUnknown:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
-  fileLines: `{path} has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
+  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
-  folderFiles: `{path} has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders. ${EXCEPTION_HINT}`,
+  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -118,10 +122,9 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
-  fileLines:
-    '{path} grew from {base} to {value} lines (limit {limit}). Put new code in a new file.',
-  folderFiles:
-    '{path} grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder.',
+  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
+  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
+  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
 };
 
 export const HELD_MESSAGES = {
@@ -135,9 +138,11 @@ export const HELD_MESSAGES = {
     '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
   fileLines:
-    '{path}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+  lineLength:
+    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
   folderFiles:
-    '{path}: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
+    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
 const BOTH = { typescript: true, java: true };

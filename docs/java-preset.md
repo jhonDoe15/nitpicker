@@ -164,8 +164,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
-    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+    `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
+    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
+    is Checkstyle's; `thresholds.lineLength` is a config error.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -173,8 +175,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` and ESLint `exceptions` configure TypeScript source roots and rules; they have no Java
+    meaning and stay a config error with `"preset": "java"` instead of being ignored. `exceptions`
+    for `file-lines-limit` and `folder-files-limit` are accepted.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
