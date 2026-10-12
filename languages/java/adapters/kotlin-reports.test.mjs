@@ -55,6 +55,33 @@ const JAVA_SOURCE =
 
 const EMPTY_SARIF = JSON.stringify({ version: '2.1.0', runs: [] });
 
+const ktlintResult = (ruleId, text, line) => ({
+  ruleId,
+  level: 'error',
+  message: { text },
+  locations: [
+    {
+      physicalLocation: {
+        artifactLocation: { uri: 'src/main/kotlin/demo/Bad.kt' },
+        region: { startLine: line, startColumn: 1 },
+      },
+    },
+  ],
+});
+
+const KTLINT_SARIF = JSON.stringify({
+  runs: [
+    {
+      tool: { driver: { name: 'ktlint' } },
+      results: [
+        ktlintResult('standard:no-wildcard-imports', 'Wildcard import', 3),
+        ktlintResult('standard:indent', 'Unexpected indentation (6) (should be 4)', 6),
+        ktlintResult('standard:indent', 'Unexpected indentation (9) (should be 4)', 7),
+      ],
+    },
+  ],
+});
+
 function projectWithKotlinReports({
   manifest = {},
   formatList = 'src/main/kotlin/demo/Bad.kt\n',
@@ -93,7 +120,8 @@ function projectWithKotlinReports({
     path.join(reports, 'detekt.sarif'),
     readFileSync(path.join(import.meta.dirname, '../ingest/fixtures/detekt.sarif'), 'utf8'),
   );
-  writeFileSync(path.join(reports, 'kotlin-format.txt'), formatList);
+  writeFileSync(path.join(reports, 'ktfmt.txt'), formatList);
+  writeFileSync(path.join(reports, 'ktlint.sarif'), KTLINT_SARIF);
   return root;
 }
 
@@ -132,7 +160,7 @@ describe('readJavaFindings with the kotlin preset', () => {
     expect(detekt[0].location).toEqual({ line: 6, column: 26 });
   });
 
-  it('keeps fingerprints a detekt result already has and treats note-level results as descriptive', () => {
+  it('treats note-level detekt results as descriptive', () => {
     const root = projectWithKotlinReports();
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     writeFileSync(
@@ -142,13 +170,6 @@ describe('readJavaFindings with the kotlin preset', () => {
           {
             tool: { driver: { name: 'detekt' } },
             results: [
-              {
-                ruleId: 'detekt.style.MagicNumber',
-                level: 'warning',
-                message: { text: 'Magic' },
-                partialFingerprints: { signature: 'abc' },
-                locations: [at],
-              },
               {
                 ruleId: 'detekt.style.ForbiddenComment',
                 level: 'note',
@@ -166,34 +187,125 @@ describe('readJavaFindings with the kotlin preset', () => {
         identity,
         classification,
       ]),
-    ).toEqual([
-      ['fp:signature=abc', 'enforceable'],
-      ['fp:nitpicker/subject=Todo', 'descriptive'],
-    ]);
+    ).toEqual([['fp:nitpicker/subject=Todo', 'descriptive']]);
   });
 
-  it('reports a file the formatter wants changed, named after the formatter in use', () => {
-    const ktlint = kotlinFindings(projectWithKotlinReports(), 'ktlint');
-    const ktfmt = kotlinFindings(
-      projectWithKotlinReports({ manifest: { kotlinFormatter: 'ktfmt' } }),
-      'ktfmt',
-    );
+  describe('identity of a finding with a measured value', () => {
+    const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
+    const identitiesOf = (messages) => {
+      const root = projectWithKotlinReports();
+      writeFileSync(
+        path.join(root, 'build/nitpicker/detekt.sarif'),
+        JSON.stringify({
+          runs: [
+            {
+              tool: { driver: { name: 'detekt' } },
+              results: messages.map((text) => ({
+                ruleId: 'detekt.style.Measured',
+                level: 'warning',
+                message: { text },
+                locations: [at],
+              })),
+            },
+          ],
+        }),
+      );
+      return kotlinFindings(root, 'detekt').map(({ identity }) => identity);
+    };
 
-    expect(ktlint).toEqual([
+    it.each([
+      [
+        'The function run is too long (64). The maximum length is 60.',
+        'The function run is too long (63). The maximum length is 60.',
+      ],
+      [
+        "Class 'Big' with '14' functions detected. Defined threshold inside classes is set to '11'",
+        "Class 'Big' with '12' functions detected. Defined threshold inside classes is set to '11'",
+      ],
+      [
+        'Function f has 3 return statements which exceeds the limit of 2.',
+        'Function f has 2 return statements which exceeds the limit of 2.',
+      ],
+    ])('stays baselined when the value changes: %s', (before, after) => {
+      expect(identitiesOf([before])).toEqual(identitiesOf([after]));
+    });
+
+    it('keeps names that end in digits apart', () => {
+      expect(identitiesOf(['Private property `unused1` is unused.'])).not.toEqual(
+        identitiesOf(['Private property `unused2` is unused.']),
+      );
+    });
+  });
+
+  it('reports each ktlint violation with its rule and line, and how to lift the rule', () => {
+    const ktlint = kotlinFindings(projectWithKotlinReports(), 'ktlint');
+
+    expect(
+      ktlint.map(({ rule, path: file, identity, location, classification }) => ({
+        rule,
+        file,
+        identity,
+        line: location.line,
+        classification,
+      })),
+    ).toEqual([
       {
-        tool: 'ktlint',
-        rule: 'format',
-        path: bad,
-        identity: 'format',
-        message: 'File is not formatted with ktlint',
+        rule: 'ktlint.standard:no-wildcard-imports',
+        file: bad,
+        identity: 'fp:nitpicker/subject=Wildcard import',
+        line: 3,
+        classification: 'enforceable',
+      },
+      {
+        rule: 'ktlint.standard:indent',
+        file: bad,
+        identity: 'fp:nitpicker/subject=Unexpected indentation (#) (should be #)',
+        line: 6,
+        classification: 'enforceable',
+      },
+      {
+        rule: 'ktlint.standard:indent',
+        file: bad,
+        identity: 'fp:nitpicker/subject=Unexpected indentation (#) (should be #)#2',
+        line: 7,
         classification: 'enforceable',
       },
     ]);
-    expect(ktfmt).toEqual([expect.objectContaining({ tool: 'ktfmt', path: bad })]);
+    expect(ktlint[0].message).toBe(
+      'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+    );
+    expect(ktlint[0].message).not.toContain('--format');
   });
 
-  it('reports no format finding for a list without files', () => {
-    expect(kotlinFindings(projectWithKotlinReports({ formatList: '' }), 'ktlint')).toEqual([]);
+  it('reports a file ktfmt wants changed and names the override', () => {
+    const root = projectWithKotlinReports({ manifest: { kotlinFormatter: 'ktfmt' } });
+
+    expect(kotlinFindings(root, 'ktfmt')).toEqual([
+      {
+        tool: 'ktfmt',
+        rule: 'format',
+        path: bad,
+        identity: 'format',
+        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        classification: 'enforceable',
+      },
+    ]);
+    expect(kotlinFindings(root, 'ktlint')).toEqual([]);
+  });
+
+  it('reports no format finding for a list without files or without a formatter', () => {
+    expect(
+      kotlinFindings(
+        projectWithKotlinReports({ formatList: '', manifest: { kotlinFormatter: 'ktfmt' } }),
+        'ktfmt',
+      ),
+    ).toEqual([]);
+    const none = projectWithKotlinReports({ manifest: { kotlinFormatter: 'none' } });
+    expect(
+      readJavaFindings(none, { preset: 'kotlin' }).findings.filter(({ tool }) =>
+        ['ktlint', 'ktfmt'].includes(tool),
+      ),
+    ).toEqual([]);
   });
 
   it('reads JaCoCo coverage of Kotlin and Java files but gates branches of Java files only', () => {
@@ -223,4 +335,16 @@ describe('readJavaFindings with the kotlin preset', () => {
       'applies org.jetbrains.kotlin.jvm',
     );
   });
+
+  it.each(['kotlin', 'java'])(
+    'fails with a clear error when the root project wrote no reports (preset %s)',
+    (preset) => {
+      const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-reports-')));
+      temporaryRoots.push(root);
+
+      expect(() => readJavaFindings(root, { preset })).toThrow(
+        `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the`,
+      );
+    },
+  );
 });
