@@ -79,7 +79,7 @@ export function runMutation(context, run, platform = process.platform) {
   });
   const data = collectRunData({
     projectRoot,
-    uncheckedExitCode: result.status === 0 ? null : NO_COVERAGE_EXIT_CODE,
+    uncheckedExitCode: result.status === 0 ? undefined : NO_COVERAGE_EXIT_CODE,
   });
   writeFileSync(path.join(reportRoot, MUTATION_REPORT), JSON.stringify(data));
   if (context.snapshot !== 'base') {

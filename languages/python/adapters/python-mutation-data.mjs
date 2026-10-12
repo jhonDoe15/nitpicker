@@ -26,11 +26,14 @@ function readExitCodes(file, mutantsDirectory) {
 
 function withDefault(exitCodes, unchecked) {
   return Object.fromEntries(
-    Object.entries(exitCodes).map(([key, code]) => [key, code === null ? unchecked : code]),
+    Object.entries(exitCodes).map(([key, code]) => [
+      key,
+      code === null && unchecked !== undefined ? unchecked : code,
+    ]),
   );
 }
 
-export function collectRunData({ projectRoot, uncheckedExitCode = null }) {
+export function collectRunData({ projectRoot, uncheckedExitCode }) {
   const mutantsDirectory = path.join(projectRoot, MUTANTS_DIRECTORY);
   if (!existsSync(mutantsDirectory)) {
     throw new Error('mutmut finished without writing a mutants directory');

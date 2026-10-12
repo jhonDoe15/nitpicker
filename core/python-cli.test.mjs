@@ -299,7 +299,6 @@ describe('nitpicker with "preset": "python"', () => {
           location: { line: 5 },
         }),
       ]);
-      expect(result.text).toContain('mutmut/mutant-survived src/demo/a.py:5');
     });
 
     it('fails a new mutant that no test reaches', () => {

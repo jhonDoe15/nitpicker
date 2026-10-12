@@ -203,8 +203,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     const mutants = result.json('new-findings.json').filter(({ tool }) => tool === 'mutmut');
-    expect(mutants.map(({ rule }) => rule)).toContain('mutant-nocoverage');
-    expect(mutants.map(({ rule }) => rule)).toContain('mutant-survived');
+    expect(new Set(mutants.map(({ rule }) => rule))).toEqual(
+      new Set(['mutant-survived', 'mutant-nocoverage']),
+    );
     expect(new Set(mutants.map(({ path: file }) => file))).toEqual(
       new Set(['src/demo/pricing.py']),
     );
