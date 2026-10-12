@@ -66,6 +66,31 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
+  it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const exceptions = [
+      {
+        rule: 'detekt.style.ForbiddenImport',
+        paths: ['a/Main.kt', 'b/**'],
+        reason: 'Entry point.',
+      },
+      { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'], reason: 'Mapped by a framework.' },
+    ];
+    const configured = configureJavaAnalyzer(analyzer, { exceptions });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'detekt.style.ForbiddenImport', glob: 'a/Main.kt' },
+      { rule: 'detekt.style.ForbiddenImport', glob: 'b/**' },
+      { rule: 'detekt.style.UseDataClass', glob: 'c/*.kt' },
+    ]);
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { exceptions: [exceptions[0]] }).configurationHash,
+    ).not.toBe(configured.configurationHash);
+  });
+
   it('hands the Kotlin formatter to the runner and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
     const configured = configureJavaAnalyzer(analyzer, { kotlin: { formatter: 'ktfmt' } });
@@ -104,6 +129,21 @@ describe('parseRunnerArguments', () => {
     ).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktlint' });
   });
 
+  it.each(['nocolon', ':glob/**', 'rule:'])(
+    'rejects the exception %s without a rule or a glob',
+    (value) => {
+      expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+        /Usage/,
+      );
+    },
+  );
+
+  it('keeps a colon inside the glob', () => {
+    expect(
+      parseRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy.exceptions,
+    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+  });
+
   it('rejects an unknown preset or Kotlin formatter', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
       '--preset must be java or kotlin',
@@ -120,6 +160,21 @@ describe('applyJavaPolicy', () => {
 
     expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
     expect(applyJavaPolicy(findings, {})).toEqual(findings);
+  });
+
+  it('drops only the findings of the excepted rule under the excepted globs', () => {
+    const at = (file, rule) => ({ ...finding(file), rule });
+    const findings = [
+      at('src/Main.kt', 'detekt.style.ForbiddenImport'),
+      at('src/Other.kt', 'detekt.style.ForbiddenImport'),
+      at('src/Main.kt', 'detekt.style.UseDataClass'),
+    ];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ rule: 'detekt.style.ForbiddenImport', glob: 'src/Main.kt' }],
+      }),
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
