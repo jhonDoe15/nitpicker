@@ -5,6 +5,7 @@ import {
   greetAll,
   totalLength,
 } from '../src/main/features/greeting/domain/greet.js';
+import { initials } from '../src/main/features/greeting/domain/initials.cjs';
 import { runGreeting } from '../src/main/features/greeting/index.js';
 
 describe('greeting', () => {
@@ -19,6 +20,10 @@ describe('greeting', () => {
   it('sums name lengths with reduce and an initial value', () => {
     expect(totalLength(['Ada', 'Bo'])).toBe(5);
     expect(totalLength([])).toBe(0);
+  });
+
+  it('takes the initial with a CommonJS domain module', () => {
+    expect(initials('ada')).toBe('A');
   });
 
   it('reports an empty name', () => {

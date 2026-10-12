@@ -15,7 +15,7 @@ function defaultCompositionRoots(layout) {
 }
 
 function concreteFilePattern(layout) {
-  return new RegExp(`${CONCRETE_NAME}\\.[cm]?${layout.javascript ? 'js' : 'ts'}$`, 'i');
+  return new RegExp(`${CONCRETE_NAME}\\.[cm]?${layout.javascript ? '[jt]s' : 'ts'}$`, 'i');
 }
 
 function declaredEntryPoints({ components, productionModules, root, layout }) {

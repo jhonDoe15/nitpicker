@@ -45,6 +45,11 @@ describe('shared policy', () => {
       }),
     ).toBe('f has 60 lines; limit is 50');
     expect(
+      renderMessage(MESSAGES.functionStatements, { name: 'validate', value: 16, limit: 15 }),
+    ).toBe(
+      'validate has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+    );
+    expect(
       renderMessage(MESSAGES.functionControlNesting, { name: 'shippingFor', value: 3, limit: 2 }),
     ).toBe('shippingFor nests control flow 3 deep (limit 2). Return early instead of nesting.');
     expect(renderMessage(MESSAGES.changedBranchCoverage, { percent: '50.00', minimum: 95 })).toBe(

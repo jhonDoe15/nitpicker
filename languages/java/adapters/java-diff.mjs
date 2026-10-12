@@ -11,21 +11,22 @@ import {
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
+import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-function kotlinProperties({ preset, kotlinFormatter }) {
-  if (preset !== 'kotlin') {
-    return [];
-  }
-  return [
-    '-Pnitpicker.kotlin=true',
-    ...(kotlinFormatter === undefined ? [] : [`-Pnitpicker.kotlin.formatter=${kotlinFormatter}`]),
-  ];
+function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
+  return preset === 'kotlin'
+    ? kotlinGradleArguments(projectRoot, {
+        formatter: kotlinFormatter,
+        detektConfig: kotlinDetektConfig,
+        snapshot,
+      })
+    : [];
 }
 
 function runJavaPreset(
@@ -34,7 +35,15 @@ function runJavaPreset(
 ) {
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', ...kotlinProperties(policy), '-I', initScript, 'nitpickerJava'],
+    [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      ...kotlinProperties(projectRoot, policy),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ],
     {
       cwd: projectRoot,
       encoding: 'utf8',
@@ -52,9 +61,10 @@ function runJavaPreset(
 }
 
 export function collectJavaFindings(projectRoot, options = {}) {
-  runJavaPreset(projectRoot, options);
-  runJavaDuplicates(projectRoot);
   const preset = options.policy?.preset ?? 'java';
+  runJavaPreset(projectRoot, options);
+  requireGradleReports(projectRoot, preset);
+  runJavaDuplicates(projectRoot);
   const { findings } = parseAnalyzerReport(
     readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
     preset,

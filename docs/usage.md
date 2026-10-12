@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
@@ -44,6 +44,8 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
+- **Mutation testing** in a comparison mutates only the source lines the change adds or edits, on
+  the head side, so every surviving mutant it reports is new. `--all` mutates every source file.
 
 The base ref is the first match of:
 
@@ -159,21 +161,21 @@ is visible in review.
 }
 ```
 
-| Key               | Type     | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ----------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`            | string   | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `preset`          | string   | The preset: `typescript` (default), `javascript`, `java`, `kotlin` or `python`. None is auto-detected. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project; see [Java preset](#java-preset) and [Kotlin preset](#kotlin-preset). `python` gates a Python project; see [Python preset](#python-preset).                                                                                                                                                                                                                                          |
-| `disable`         | string[] | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `thresholds`      | object   | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). Both presets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `exclude`         | string[] | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java preset the built-in list does not apply and findings whose path matches a glob are dropped.                                                                                                                                                                                                                                     |
-| `layout`          | object   | TypeScript only. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
-| `exceptions`      | object[] | TypeScript only. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
-| `react`           | object   | TypeScript only. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"` by default, `"css-in-js"` or `"inline-style"`) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                   |
-| `python`          | object   | Python preset only: `environment`, `formatter`, `testRunner` and `sourceRoots` overrides for what nitpicker detects; see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `analyzers`       | object[] | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `legacyInventory` | string   | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `tools`           | object   | TypeScript only. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `kotlin`          | object   | Kotlin preset only. `formatter`: `"ktlint"` or `"ktfmt"`, the format check to run; detected from the build files when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Key               | Type                                                               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                     |
+| `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                              |
+| `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
+| `exceptions`      | object[]                                                           | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
+| `react`           | object                                                             | TypeScript preset. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                 |
+| `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner` and `sourceRoots` overrides for what nitpicker detects; see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `tools`           | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -189,12 +191,14 @@ no state derived from props or state in an effect, no data fetching in an effect
 `key`, one styling approach and the `jsx-a11y` accessibility rules. Detection reads the package.json
 of each tree being analyzed (base and head), so adopting React is judged by the code that adds it.
 Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
-`false` to turn it off. `react.styling` picks the approach: `class-names` (the default) flags inline
-`style` objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style`
-objects, `inline-style` flags stylesheet imports and CSS-in-JS imports. A rule that flags legitimate
-code is lifted for some paths with an entry in `exceptions` (for example
-`react-hooks/exhaustive-deps`); a React rule named there while the scope is off is an error. The
-rules and their allowed forms are in [The strict preset](typescript-strict-preset.md#react).
+`false` to turn it off. `react.styling` picks the approach: `class-names` flags inline `style`
+objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style` objects,
+`inline-style` flags stylesheet imports and CSS-in-JS imports. Unset, it is `css-in-js` when
+`package.json` lists styled-components, Emotion or another CSS-in-JS library, else `class-names`. A
+rule that flags legitimate code is lifted for some paths with an entry in `exceptions` (for example
+`react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
+off, so adding or removing React in a PR does not break either side of the comparison. The rules and
+their allowed forms are in [The strict preset](typescript-strict-preset.md#react).
 
 ### Custom analyzers
 
@@ -217,8 +221,8 @@ and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
 Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
-Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared by both
-languages, `thresholds` (`crapLimit`, the one threshold the Java preset enforces), `exclude`
+Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
+presets, `thresholds` (`crapLimit`, the one threshold the Java preset enforces), `exclude`
 (findings under the globs are dropped) and `legacyInventory`. The inventory has the same format as
 the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
@@ -227,36 +231,73 @@ baselined, and raising a `count` (or adding a site) on head over the base fails 
 have no Java meaning, and stay a config error with this preset. Details:
 [java-preset.md](java-preset.md).
 
+## Kotlin preset
+
+Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
+Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
+format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
+neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources, and
+JaCoCo coverage for both. The project's detekt config is found in the usual places or set with
+`"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
+requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
+analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
+
 ## JavaScript preset
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
 It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
-have one. `typescript` and `vitest` are peers as for TypeScript, and Vitest is the only runner.
+have one. `typescript` and `vitest` are peers as for TypeScript.
 
-Rules that police TypeScript syntax become their JSDoc form; every other rule is identical:
+What the preset does not support:
 
-| TypeScript rule                             | JavaScript preset                                                                                                                                                      |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| no `as`, `<T>value`, `!`                    | no JSDoc cast `/** @type {T} */ (value)` (`@type {const}` is allowed); there is no `!`                                                                                 |
-| no `any`                                    | no `any` or `*` in a JSDoc type                                                                                                                                        |
-| no `null`                                   | no `null` literal, and no `null` in a JSDoc type                                                                                                                       |
-| no `enum`, `namespace`, `interface`         | not expressible; a JSDoc tag outside the list below is an error                                                                                                        |
-| no `unknown` in parameter or property types | no `unknown` in `@param`, `@property` or an object `@typedef`                                                                                                          |
-| no handwritten type guard                   | no `@returns {x is T}` or `asserts`                                                                                                                                    |
-| no comments                                 | JSDoc holds types only: `@param`, `@property`, `@typedef`, `@returns`, `@type`, `@satisfies`, `@this`, `@callback`, `@template`, `@import`, `@overload`, with no prose |
-| `import type`, `type` over `interface`      | dropped (no such syntax)                                                                                                                                               |
-| module load effects                         | `module.exports = ...` and `exports.x = ...` are not effects                                                                                                           |
+- **Test runner.** Vitest is the only runner, for both presets. A Jest or `node:test` project cannot
+  pass yet: coverage, CRAP and mutation run Vitest, and `vitest/no-import-node-test` fails a
+  `node:test` import (its message points to an exception for that rule, which silences the lint
+  finding only). Support for both runners is tracked in issue #162.
+- **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
+  `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
+- **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. A `.jsx` or `.tsx` file is outside
+  the JavaScript layout: no analyzer reads it.
+
+TypeScript files are part of a JavaScript project, so a project can migrate one file at a time:
+`.ts`, `.mts` and `.cts` files get the full TypeScript rules of the strict preset (`as`, `enum` and
+`interface` stay banned there) and are checked by Prettier, jscpd and the other analyzers like `.js`
+files. A directory must not hold `x.js` and `x.ts` side by side: TypeScript drops the `.js` from the project.
+
+Rules that police TypeScript syntax become their JSDoc form in `.js`, `.mjs` and `.cjs` files; every other
+rule is identical:
+
+| TypeScript rule                             | JavaScript preset                                                                                                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| no `as`, `<T>value`, `!`                    | no JSDoc cast `/** @type {T} */ (value)` (`@type {const}` is allowed); there is no `!`                                                                                                                                 |
+| no `any`                                    | no `any`, `*` or a bare `?` in a JSDoc type                                                                                                                                                                            |
+| no `null`                                   | no `null` literal, and no `null`, `?T` or `T?` in a JSDoc type                                                                                                                                                         |
+| no `enum`, `namespace`, `interface`         | not expressible; a JSDoc tag outside the list below is an error                                                                                                                                                        |
+| no `unknown` in parameter or property types | no `unknown` in `@param`, `@property` or `@prop`, and none inside an object type or function parameter of `@returns`, `@return`, `@type`, `@typedef`, `@satisfies` or `@this`                                          |
+| no handwritten type guard                   | no `@returns {x is T}` or `asserts`                                                                                                                                                                                    |
+| no comments                                 | JSDoc holds types only, with no prose: `@param`, `@property` (`@prop`), `@typedef`, `@returns` (`@return`), `@type`, `@satisfies`, `@extends` (`@augments`), `@this`, `@callback`, `@template`, `@import`, `@overload` |
+| `import type`, `type` over `interface`      | dropped (no such syntax)                                                                                                                                                                                               |
+| no `require()`                              | allowed: `@typescript-eslint/no-require-imports` is dropped, and `test-must-use-production-runtime` counts a `require()` of production code                                                                            |
+| no property assignment in `domain/`         | `module.exports = ...`, `module.exports.x = ...` and `exports.x = ...` are allowed                                                                                                                                     |
+| module load effects                         | `module.exports = ...` and `exports.x = ...` are not effects                                                                                                                                                           |
+
+A JSDoc tag or form the rules reject (`@throws`, `@private`, a `?T` from a legacy API) is reported with the
+exception route: an entry for `nitpicker/no-comments` in `exceptions` lifts the JSDoc checks for the
+paths it names. In `domain/`, destructure a `require()` (`const { basename } = require('node:path')`):
+the module object itself is a mutable value.
 
 The code rules (`const`, `for...of`, named exports, no recursion, the layout and the `domain/` and
 `adapters/` rules) apply as written in [The strict preset](#the-strict-preset), with `.js`, `.mjs` and `.cjs`
-in place of `.ts`: a component's public file is `index.js`, `index.mjs` or `index.cjs`, the composition
-root is `composition-root.mjs` (or `main`/`server`), and Prettier, duplicates, dead-code and `--fix` cover all
-three extensions. `no-var`, `prefer-const`, `prefer-rest-params` and `prefer-spread` are enforced, which
-typescript-eslint turns on only for TypeScript files. A small project that follows all of this is kept in
-`languages/javascript/preset/fixtures/js-clean`, and its tests assert that `nitpicker --all` reports no
-enforceable findings for it.
+in place of `.ts`: a component's public file is `index.js`, `index.mjs` or `index.cjs` (or `index.ts` while
+migrating), the composition root is `composition-root.mjs` (or `main`/`server`), and Prettier, duplicates,
+dead-code and `--fix` cover all of them. `no-var`, `prefer-const`, `prefer-rest-params` and `prefer-spread`
+are enforced, which typescript-eslint turns on only for TypeScript files. A small project that follows all of
+this is kept in `languages/javascript/preset/fixtures/js-clean`, and its tests assert that `nitpicker --all`
+reports no enforceable findings for it.
+
+CRAP is measured on `.js`, `.mjs`, `.cjs` and `.ts` files like on TypeScript ones.
 
 ## Python preset
 
@@ -273,30 +314,24 @@ environment, failing tests, a crashing tool), the failure is reported as a `pyth
 environment is missing; exit 2
 when there are no new findings), never thrown.
 
-The environment is detected: `uv.lock` runs the tools with `uv run --no-sync`, `poetry.lock` uses
-the environment poetry reports, a `.venv/` directory is used as is, otherwise the tools come from
-the `PATH`. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
+The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
+tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
+directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
+an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
 install step) and needs `coverage` and, for pytest projects, `pytest`; `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
-Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds`, `exclude` (findings
+Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds` (`crapLimit`), `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
-`"black"`), `testRunner` (`"pytest"` or `"unittest"`) and `sourceRoots` (default `src`, else the
-top-level packages). `layout` and `exceptions` describe TypeScript and stay a config error.
-Inline `# noqa` comments are not honored: lift a rule for a path with `exclude`. Details:
+`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it) and
+`sourceRoots` (default `src`, else the top-level packages). `layout` and `exceptions` describe TypeScript and stay a config error.
+Inline `# noqa` comments are not honored: lift a rule for a path with `exclude` (for `T201`
+`print` in a command-line tool, `PERF203` `try` in a loop, `F401` in an `__init__.py` that
+re-exports). A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details:
 [python-preset.md](python-preset.md).
-
-## Kotlin preset
-
-Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
-Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
-format check (ktlint or ktfmt, whichever the project uses; `"kotlin": { "formatter": "ktfmt" }`
-overrides the detection) on the Kotlin sources, and JaCoCo coverage for both. Config keys, Gradle
-requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
-analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
 
 ## The strict preset
 
@@ -310,11 +345,16 @@ new and touched code must comply.
   callbacks); named exports only (config files may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
+  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
+- **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
+  per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
+  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
+  `toEqual`/`toStrictEqual`: assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -366,7 +406,10 @@ own tools do:
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots.
-- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
+  `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
+  flags are only added when the project already type-checks with them; otherwise mutants are checked
+  with the project's `tsconfig.json` as it is.
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
   aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and

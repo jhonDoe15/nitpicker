@@ -38,6 +38,17 @@ function isProductionModule(filename, source) {
   return layout.sourceRootOf(`${resolved}/`) !== undefined && !TEST_SUPPORT.test(resolved);
 }
 
+function isProductionRequire(filename, node) {
+  const [argument] = node.arguments;
+  return (
+    node.callee.type === 'Identifier' &&
+    node.callee.name === 'require' &&
+    argument?.type === 'Literal' &&
+    typeof argument.value === 'string' &&
+    isProductionModule(filename, argument.value)
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -87,6 +98,11 @@ export const rule = {
           typeof node.source.value === 'string' &&
           isProductionModule(filename, node.source.value)
         ) {
+          hasProductionRuntime = true;
+        }
+      },
+      CallExpression(node) {
+        if (isProductionRequire(filename, node)) {
           hasProductionRuntime = true;
         }
       },

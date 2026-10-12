@@ -55,14 +55,18 @@ that applies wins):
 
 | Order | Detected by                 | The tools run as                                                                                             |
 | ----- | --------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 0     | `python.environment` is set | `uv`, `poetry` or `path` as named; any other value is a virtualenv directory inside the project              |
+| 0     | `python.environment` is set | `uv`, `poetry` or `path` as named; any other value is a virtualenv directory, inside the project or absolute |
 | 1     | `uv.lock`                   | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`) |
 | 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
-| 3     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 4     | nothing                     | `ruff`, `black`, `coverage` and `python3` from the `PATH`                                                    |
+| 3     | a uv workspace root above   | as 1: an ancestor with a `uv.lock` and a `[tool.uv.workspace]` table; its `.venv` is the environment         |
+| 4     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
+| 5     | nothing                     | `ruff`, `black`, `coverage` and `python3` from the `PATH`                                                    |
 
 The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
-It is never created or synced by nitpicker, and `uv run --no-sync` never touches it. A tool that is
+It is never created or synced by nitpicker: the uv environment is checked before `uv run --no-sync`
+is called, so a missing `.venv` is an error and not an empty environment created in your checkout.
+A virtualenv outside the project (a shared `/opt/venv`, an activated CI environment) is used with
+an absolute `python.environment`. A tool that is
 not installed in the environment but is on the `PATH` (typically `ruff`, which many projects use
 from `pipx` or `uvx`) is used from the `PATH`. `coverage` and `pytest` must be in the environment,
 since pytest imports the project's code and dependencies; the error says so.
@@ -119,20 +123,37 @@ other preset.
 | ------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
 | `environment` | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
 | `formatter`   | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`  | `pytest`, `unittest`                   | `pytest` if it can be imported in the environment, else `unittest`                   |
+| `testRunner`  | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
 | `sourceRoots` | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
 
 Exceptions: there is no inline disable (`# noqa` is not honored, `--ignore-noqa`), and the
 TypeScript `exceptions` key does not exist here. A path that legitimately breaks a rule is lifted
-with `exclude` in `nitpicker.config.json`; existing violations are baselined with the legacy
+with `exclude` in `nitpicker.config.json` (it drops every finding under the globs, and the paths
+are not handed to ruff or black either); existing violations are baselined with the legacy
 inventory, where `source` is the finding's `identity` as printed in `new-findings.json`
-(`fp:nitpicker/subject=<ruff message>` for ruff).
+(`fp:nitpicker/subject=<ruff message>` for ruff). The rules most likely to flag code that is right
+for its place are `T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a
+loop that must handle each item) and `F401` (an `__init__.py` that re-exports): `exclude` the
+path, for example `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff
+configuration (`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and
+coverage, so the result means the same on every project; there is no override key for them.
 
-The formatter is `black` when `pyproject.toml`, `requirements*.txt`, `setup.cfg`, `tox.ini` or
-`.pre-commit-config.yaml` has a `[tool.black]` table, a dependency named `black`, or the
-`psf/black` hook, and none of them configures ruff's formatter (`[tool.ruff.format]`, a `[format]`
-table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own formatter
-configuration (line length and so on); only the lint rules are nitpicker's.
+The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
+`.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
+`[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
+TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
+or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
+`[format]` table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own
+formatter configuration (line length and so on); only the lint rules are nitpicker's. A format
+finding from a detected formatter says so and names `python.formatter`, the setting that changes
+it.
+
+The test runner is `pytest` when the project shows it uses it: a `[tool.pytest.ini_options]`,
+`[pytest]` or `[tool:pytest]` section, `pytest.ini`, `pytest` or a pytest plugin as a dependency or
+tox command, a `conftest.py`, or test files with top-level `def test_` functions, `import pytest`
+or `Test` classes without a base. It is decided from the project, not from what the environment
+can import, so an environment without pytest is an error (`environment-failed`, naming
+`python.testRunner`) and not a silent run of `unittest` that finds none of the tests.
 
 ## Slice 1: tools, reports and identities
 
@@ -140,23 +161,36 @@ configuration (line length and so on); only the lint rules are nitpicker's.
 --no-cache --output-format sarif`. The rule set is nitpicker's, not the project's, so the gate
   means the same on every project: pyflakes (`F`), the error rules of pycodestyle that are not
   formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`), `SIM`, `PIE`, `RET`, `PERF`,
-  `RUF` and `T20` (no `print`). Nothing is version-sensitive, so the result does not depend on the
-  project's `requires-python`. The SARIF goes through the existing generic ingester; identity is the
+  `RUF` and `T20` (no `print`), without `B008` (a call in an argument default, which the web
+  frameworks need) and `RUF001`, `RUF002`, `RUF003` and `RUF012` (non-ASCII text and mutable class
+  attributes, both common in correct code). The target version follows the project's
+  `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
+  than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
+  `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the
   rule plus the message text (which names the symbol), never a line, so edits above a finding keep
   it baselined. All findings are enforceable.
 - **Format check.** `ruff format --check --diff` or `black --check`, one `ruff-format/format` or
   `black/format` finding per file that would change, identity `format`, like the other
   format checks. The files are read from the `--- path`/`+++ path` diff headers (ruff) or the
   `would reformat` lines (black), because ruff's own summary format changes between versions. A
-  formatter that exits 1 without naming a file is a tool error, not a pass.
-- **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -p no:cacheprovider`
-  or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists), then
-  `coverage json`. The coverage settings are nitpicker's, written to the report directory: branch
-  coverage on, `parallel` off, `source` the source roots. The project's `.coveragerc` is not used,
-  so a project that measures subprocesses or uses a coverage plugin needs more than this slice.
-  `# pragma: no cover` keeps its coverage.py meaning for now. Exit status 5 (no tests collected) is
-  accepted; any other non-zero status is a tool error. coverage.py 7.6 or newer is needed for the
-  per-function data.
+  formatter that exits 1 without naming a file is a tool error, not a pass. Files matching
+  `exclude` are not given to the formatter, and a file it cannot parse (a legacy Python 2 file) is
+  skipped, because ruff already reports it as an `invalid-syntax` finding; any other formatter
+  failure is a tool error.
+- **Tests under coverage.** `coverage run --rcfile <nitpicker> -m pytest -q -o cache_dir=<report
+directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that directory exists,
+  and `-t .` when it is a package), then `coverage json`. The project's pytest configuration keeps
+  working: `--no-cov` and `-n0` are added only when pytest-cov or xdist is installed, so
+  `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
+  `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
+  written to the report directory: branch coverage on, `parallel` off, `source` the source roots
+  that exist in the snapshot. The project's `.coveragerc` is not used, so a project that measures
+  subprocesses or uses a coverage plugin needs more than this slice. `# pragma: no cover` keeps
+  its coverage.py meaning for now. Exit status 5 (no tests collected) is accepted; any other
+  non-zero status is a tool error. A snapshot where no test ran has an enforceable
+  `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
+  tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
+  needed for the per-function data.
 - **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-json.mjs`:
   `line-coverage` per file (a metric, as for JaCoCo and lcov) and `uncovered-function` for each
   function none of whose statements ran. Both are descriptive in this slice; PY3 and PY4 turn the
@@ -258,8 +292,9 @@ configuration (line length and so on); only the lint rules are nitpicker's.
 
 ## Slices
 
-Each slice is one PR, adds one concern, and changes only the Python adapters, ingesters or rules,
-tests, and this document.
+Each slice is one PR, adds one concern, and changes the Python adapters, ingesters or rules, tests,
+and this document. Slice 1 also made the config validation, the preset wiring in `core/` and the
+exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one language.
 
 | #   | Ticket                                                    | Slice                        | Tool and report                                                          | Findings                                                                                         | Status  |
 | --- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------- |
@@ -281,21 +316,25 @@ and CRAP rules.
 
 - `core/python-cli.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
   (`languages/python/adapters/fixtures/fake-python-tools.mjs` behind wrapper scripts in a
-  `.venv/bin`, plus a fake `uv` and `poetry`): clean and failing changes in every report format,
-  `exclude`, the legacy inventory, black and unittest detection, `uv.lock` and `poetry.lock`
-  environments, tool errors (failing tests, a crashing tool, no environment), `--all`, rejected
-  TypeScript-only keys, and that base and head each run with their own sources on `PYTHONPATH`.
-- Unit tests next to the code: environment, formatter and source root detection, the tool steps
-  (including long output and missing tools), the runner and its arguments, the analyzer, config
-  validation and the coverage ingester (on a real coverage.py report).
+  `.venv/bin`): clean and failing changes in every report format, a change that removes every test,
+  tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys, and that
+  base and head each run with their own sources on `PYTHONPATH`. One test per behaviour that no
+  unit test below covers.
+- Unit tests next to the code: environment (including uv, poetry and workspace launchers), formatter,
+  test runner, target version and source root detection, the tool steps (arguments, long output,
+  missing tools, unparsable files), the runner (exclude, legacy inventory, messages) and its
+  arguments, the analyzer and its configuration files, config validation and the coverage ingester
+  (on a real coverage.py report).
 - `languages/python/adapters/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
-  (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 50
-  seconds. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
+  (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 2
+  minutes. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;
   failing tests and a missing environment are tool errors with exit 2; a `unittest` project
-  formatted with black passes and fails correctly using tools from the `PATH`; and a `uv.lock`
-  project runs through `uv run`.
+  formatted with black passes and fails correctly using tools from the `PATH`; a `uv.lock` project
+  runs through `uv run`; and a pytest project whose `addopts` has `--cov`, `-n 2` and `--lf`,
+  with a legacy Python 2 file, which stays gated (the file is skipped by black, or excluded) and
+  fails a change that deletes every test.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config, are in
   the npm package.

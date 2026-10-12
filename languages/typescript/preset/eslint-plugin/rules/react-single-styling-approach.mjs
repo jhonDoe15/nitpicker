@@ -1,3 +1,5 @@
+import { variableNamed } from './ancestry.mjs';
+
 const approaches = {
   'class-names': {
     allowed: '`className` with CSS Modules or utility classes',
@@ -16,6 +18,8 @@ const approaches = {
 export const stylingApproaches = Object.keys(approaches);
 
 const customPropertyExample = "style={{ '--progress': percent }}";
+const customPropertyTyping =
+  "declare module 'csstype' { interface Properties { '--progress'?: number } }";
 
 const found = {
   inlineStyle: 'an inline `style` object',
@@ -24,7 +28,8 @@ const found = {
 };
 
 const stylesheetSource = /\.(?:css|scss|sass|less|styl|pcss)$/u;
-const cssInJsSource = /^(?:styled-components$|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
+export const cssInJsSource =
+  /^(?:styled-components$|@emotion\/|@stitches\/react$|goober$|@linaria\/)/u;
 
 function isCustomPropertyProperty(property) {
   return (
@@ -35,13 +40,63 @@ function isCustomPropertyProperty(property) {
   );
 }
 
-function isInlineStyleObject(attribute) {
+const wrappedExpressionTypes = new Set([
+  'TSSatisfiesExpression',
+  'TSAsExpression',
+  'TSNonNullExpression',
+]);
+
+function initializersOf(sourceCode, identifier) {
+  const definitions = variableNamed(sourceCode, identifier)?.defs ?? [];
+  const [definition] = definitions;
+  const declarator = definition?.node;
+  return definitions.length === 1 &&
+    declarator.type === 'VariableDeclarator' &&
+    declarator.id.type === 'Identifier' &&
+    declarator.init
+    ? [declarator.init]
+    : [];
+}
+
+function innerExpressions(sourceCode, expression) {
+  if (wrappedExpressionTypes.has(expression.type)) {
+    return [expression.expression];
+  }
+  if (expression.type === 'ConditionalExpression') {
+    return [expression.consequent, expression.alternate];
+  }
+  if (expression.type === 'LogicalExpression') {
+    return [expression.left, expression.right];
+  }
+  return expression.type === 'Identifier' ? initializersOf(sourceCode, expression) : [];
+}
+
+function objectLiteralsIn(sourceCode, start) {
+  const pending = [start];
+  const seen = new Set();
+  const objects = [];
+  for (const expression of pending) {
+    if (seen.has(expression)) {
+      continue;
+    }
+    seen.add(expression);
+    if (expression.type === 'ObjectExpression') {
+      objects.push(expression);
+    } else {
+      pending.push(...innerExpressions(sourceCode, expression));
+    }
+  }
+  return objects;
+}
+
+function isInlineStyleObject(sourceCode, attribute) {
   const value = attribute.value;
   return (
     attribute.name.name === 'style' &&
     value?.type === 'JSXExpressionContainer' &&
-    value.expression.type === 'ObjectExpression' &&
-    !value.expression.properties.every(isCustomPropertyProperty)
+    objectLiteralsIn(sourceCode, value.expression).some(
+      (object) => !object.properties.every(isCustomPropertyProperty),
+    )
   );
 }
 
@@ -68,7 +123,7 @@ export const rule = {
     defaultOptions: [{ approach: 'class-names' }],
     messages: {
       inlineStyle:
-        'Do not style with an inline `style` object: this project styles with {{allowed}}. A value known only at runtime goes in a CSS custom property that the stylesheet reads: `{{example}}`. To change the approach set "styling" under "react" in nitpicker.config.json; for a one-off, add an exception for this rule in nitpicker.config.json.',
+        'Style with {{allowed}}, not an inline `style` object. Pass a runtime value as a CSS custom property, `{{example}}`, typed once with `{{typing}}`. For a one-off, add an exception for this rule in nitpicker.config.json.',
       otherApproach:
         'This project styles with {{allowed}}, not with {{found}}. To change the approach set "styling" under "react" in nitpicker.config.json; for a one-off, add an exception for this rule in nitpicker.config.json.',
     },
@@ -81,14 +136,19 @@ export const rule = {
         context.report({
           node,
           messageId: kind === 'inlineStyle' ? 'inlineStyle' : 'otherApproach',
-          data: { allowed, found: found[kind], example: customPropertyExample },
+          data: {
+            allowed,
+            found: found[kind],
+            example: customPropertyExample,
+            typing: customPropertyTyping,
+          },
         });
       }
     }
 
     return {
       JSXAttribute(node) {
-        if (isInlineStyleObject(node)) {
+        if (isInlineStyleObject(context.sourceCode, node)) {
           report(node, 'inlineStyle');
         }
       },
