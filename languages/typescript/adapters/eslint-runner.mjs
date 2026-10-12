@@ -15,7 +15,7 @@ import {
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
-import { eslintMessageWithHint } from './eslint-hints.mjs';
+import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
@@ -239,12 +239,14 @@ function withRatchets(findings, plans) {
       return finding;
     }
     if (plan.kind === 'count') {
+      const growthAdvice = growthAdviceFor(finding.rule);
       return {
         ...finding,
         ratchet: {
           key: `count:${plan.key}`,
           value: counts.get(countGroupOf(finding, plan)),
           existingCodeOnly: true,
+          ...(growthAdvice === undefined ? {} : { growthAdvice }),
         },
       };
     }
