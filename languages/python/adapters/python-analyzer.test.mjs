@@ -29,6 +29,7 @@ describe('Python analyzer', () => {
       'ruff-format',
       'black',
       'coverage',
+      'coverage-py',
       'mypy',
       'pyright',
       'python-rules',

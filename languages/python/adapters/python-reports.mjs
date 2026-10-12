@@ -1,9 +1,10 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
+import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
@@ -20,6 +21,11 @@ function readReport(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
 }
 
+function readSource(projectRoot, file) {
+  const absolute = path.join(projectRoot, file);
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+}
+
 export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
   const { formatter } = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
@@ -31,6 +37,10 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
       ...ingestCoverageJson(coverage, { roots }).findings,
+      ...ingestCoverageBranches(coverage, {
+        roots,
+        sourceText: (file) => readSource(projectRoot, file),
+      }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...readPythonCrapFindings({
         lizard: readReport(reportRoot, LIZARD_REPORT),
