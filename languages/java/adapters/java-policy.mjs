@@ -7,13 +7,16 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
+export const EXCEPTION_SEPARATOR = ':';
+
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], legacyInventory, kotlin = {} },
+  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
 ) {
   if (
     thresholds.crapLimit === undefined &&
     exclude.length === 0 &&
+    exceptions.length === 0 &&
     legacyInventory === undefined &&
     kotlin.formatter === undefined
   ) {
@@ -22,6 +25,9 @@ export function configureJavaAnalyzer(
   const adapterArguments = [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
+    ...exceptions.flatMap(({ rule, paths }) =>
+      paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
+    ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
   ];
   const configured = {
@@ -62,6 +68,7 @@ export function applyJavaPolicy(
   findings,
   {
     exclude = [],
+    exceptions = [],
     legacyInventory,
     policyRoot,
     baselineRoot,
@@ -71,8 +78,11 @@ export function applyJavaPolicy(
   } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
+  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
-    (finding) => !excluders.some((matcher) => matcher.test(finding.path)),
+    (finding) =>
+      !excluders.some((matcher) => matcher.test(finding.path)) &&
+      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;

@@ -5,6 +5,13 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from './java-diff.mjs';
 import { analyzeJavaSnapshot } from './java-runner.mjs';
+import {
+  expectedMessage,
+  fixturePath,
+  fixtureSource,
+  kotlinRuleCases,
+} from './fixtures/kotlin-rules/cases.mjs';
+import { addOneWayHint, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs
 // Java 21, Gradle, lizard (see java-preset.e2e.test.mjs) and network access to Maven Central and
@@ -101,6 +108,24 @@ const LEGACY_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
 ];
 
+const ruleFixtures = (variant) =>
+  Object.fromEntries(
+    kotlinRuleCases.map((testCase) => [
+      fixturePath(testCase, variant),
+      fixtureSource(testCase, variant),
+    ]),
+  );
+
+const detektFindingsOf = (findings, testCase) =>
+  findings.filter(
+    ({ tool, path: file }) => tool === 'detekt' && file.includes(`/demo/${testCase.id}/`),
+  );
+
+const USE_DATA_CLASS_OFF = `style:
+  UseDataClass:
+    active: false
+`;
+
 let repository;
 
 function git(...args) {
@@ -170,6 +195,12 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'build.gradle.kts': `${readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
     });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch('one-way-banned', ruleFixtures('banned'));
+    commitBranch('one-way-allowed', ruleFixtures('allowed'));
+    commitBranch('one-way-config', {
+      ...ruleFixtures('banned'),
+      'config/detekt/detekt.yml': USE_DATA_CLASS_OFF,
+    });
   });
 
   afterAll(() => {
@@ -237,6 +268,92 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
     expect(formatters.has('ktfmt')).toBe(true);
     expect(formatters.has('ktlint')).toBe(false);
+  });
+
+  describe('one-way rules', () => {
+    const results = new Map();
+    const diffOnce = (branch) => {
+      if (!results.has(branch)) {
+        results.set(branch, diffOf(branch));
+      }
+      return results.get(branch);
+    };
+
+    it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
+      'fails the banned form %s with a message that names the allowed form',
+      (_id, testCase) => {
+        const result = diffOnce('one-way-banned');
+        const found = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+
+        expect(found.length, summarize(result.newEnforceable).join('\n')).toBeGreaterThan(0);
+        for (const finding of found) {
+          expect(finding.message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
+        }
+      },
+    );
+
+    it('reports the detekt message each case records and the hint that the gate adds', () => {
+      const result = diffOnce('one-way-banned');
+
+      for (const testCase of kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE)) {
+        const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+        const recorded = addOneWayHint({
+          tool: 'detekt',
+          rule: testCase.rule,
+          message: expectedMessage(testCase, 'banned'),
+        });
+
+        expect(finding.message).toBe(recorded.message);
+      }
+    });
+
+    it('lets the allowed form of every case through detekt', () => {
+      const result = diffOnce('one-way-allowed');
+
+      expect(fromTool(result.newEnforceable, 'detekt')).toEqual([]);
+    });
+
+    it('does not report the suppressed finding twice: the suppression is the finding', () => {
+      const result = diffOnce('one-way-banned');
+      const suppression = kotlinRuleCases.find(({ rule }) => rule === SUPPRESSION_RULE);
+
+      expect(detektFindingsOf(result.newEnforceable, suppression).map(({ rule }) => rule)).toEqual([
+        SUPPRESSION_RULE,
+      ]);
+    });
+
+    it('keeps a one-way rule on when the project switches it off in its detekt config', () => {
+      const result = diffOnce('one-way-config');
+      const record = kotlinRuleCases.find(({ id }) => id === 'recordClass');
+
+      expect(detektFindingsOf(result.newEnforceable, record).map(({ rule }) => rule)).toEqual([
+        record.rule,
+      ]);
+    });
+
+    it('lifts a rule for the paths of an exception in nitpicker.config.json only', () => {
+      git('checkout', '-q', 'one-way-banned');
+      const exception = (testCase) => ({
+        rule: testCase.rule,
+        glob: fixturePath(testCase, 'banned'),
+      });
+      const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
+        kotlinRuleCases.find((testCase) => testCase.id === id),
+      );
+      const result = runJavaDiff({
+        repositoryRoot: repository,
+        requestedBaseRef: 'main',
+        gradle,
+        policy: { ...kotlinPolicy, exceptions: [exception(scopeRun)] },
+      });
+
+      expect(detektFindingsOf(result.newEnforceable, scopeRun)).toEqual([]);
+      expect(detektFindingsOf(result.newEnforceable, scopeWith)).toHaveLength(1);
+    });
   });
 
   it('reports a Gradle failure as a tool error instead of throwing', () => {

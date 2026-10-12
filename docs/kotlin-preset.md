@@ -1,6 +1,6 @@
 # Kotlin preset
 
-Status: slice KT1 (ticket #176) implemented; KT2 to KT4 are planned below.
+Status: slices KT1 (ticket #176) and KT2 (ticket #177) implemented; KT3 and KT4 are planned below.
 
 The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`),
 including modules that mix Java and Kotlin, with the same differential gate as the
@@ -67,9 +67,17 @@ a Kotlin-aware path and source mapping.
 - **Run.** The detekt CLI jar (`detekt-cli:1.23.8:all`) with `--input` the main Kotlin source
   directories, `--report sarif:...` and `--base-path` the project directory. Exit code 2 (findings)
   and 0 are success; any other exit code, or a missing report, fails the Gradle task.
-- **Config.** `config/detekt/detekt.yml` (or `detekt.yml`) in the root project is laid over
-  detekt's default config (`--build-upon-default-config`). A rule the project sets `active: false` stays off; a rule it omits runs with its
-  default. Rules that need type resolution do not run (no classpath is passed); that is a follow-up.
+- **Config.** Three layers, later ones win: detekt's default config (`--build-upon-default-config`),
+  `config/detekt/detekt.yml` (or `detekt.yml`) in the root project, and Nitpicker's own
+  `languages/java/detekt/nitpicker-detekt.yml` with the [one-way rules](#one-way-rules). A rule the
+  project sets `active: false` stays off, unless Nitpicker's file turns it on; a rule it omits runs
+  with its default.
+- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run:
+  the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
+  detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
+  cannot read the metadata of a newer standard library, and then no call to it resolves, so
+  `run`, `with` and `!!` would pass unseen. A library compiled with a Kotlin newer than 2.1 stays
+  unresolved the same way: rules report less on it, never more.
 - **Findings.** Rule `detekt.<ruleset>.<Rule>`, for example `detekt.style.MagicNumber`. SARIF
   levels `warning` and `error` are enforceable; a rule the project sets to `severity: info` reports
   `note` and is descriptive.
@@ -78,9 +86,82 @@ a Kotlin-aware path and source mapping.
   repeats of one message in a file get `#2`, `#3` in report order. A line never takes part, so a
   moved finding stays baselined. Messages that embed a measured value (`LongMethod`: "too long (62)")
   change identity when the value changes, as for Checkstyle.
-- **Exceptions.** Turn a rule off or tune it in the detekt config, or drop findings under a path
-  with `exclude` in `nitpicker.config.json`. Both are files in the repository, so a lifted rule
-  shows up in review. The gate adds no inline-suppression mechanism of its own.
+- **Exceptions.** For a rule that is not a one-way rule: turn it off or tune it in the detekt config,
+  or drop findings under a path with `exclude` in `nitpicker.config.json`. Both are files in the
+  repository, so a lifted rule shows up in review. One-way rules have `exceptions` (below).
+
+## One-way rules
+
+The common many-ways spots of Kotlin are narrowed with detekt rules, set in
+`languages/java/detekt/nitpicker-detekt.yml`. They are existing detekt rules (no custom rule jar, so
+no separate build to ship), turned on and configured. Every message ends with the allowed form;
+the gate appends it to detekt's text when detekt's own text does not name it, and appends the
+exception route to all of them. Each rule has a banned and an allowed fixture in
+`languages/java/adapters/fixtures/kotlin-rules/cases.mjs`.
+
+| Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
+| ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Scope functions   | `run`, `with`, `also`                 | `let` (`value?.let { ... }`) and `apply` (configure an object)    | `style.ForbiddenMethodCall` (`kotlin.run`, `kotlin.with`, `kotlin.also`) |
+|                   | `let` or `apply` that changes nothing | call the member directly                                          | `style.UnnecessaryLet`, `style.UnnecessaryApply`                         |
+| Nullable handling | `!!`                                  | `?:`, `?.let`, `checkNotNull(value) { "why" }`                    | `potential-bugs.UnsafeCallOnNullableType`                                |
+|                   | `value as String` on a nullable value | handle null first, or `as?`                                       | `potential-bugs.CastNullableToNonNullableType`                           |
+|                   | `if (x == null) null else ...`        | `x?.let { ... }`                                                  | `style.UseLet`                                                           |
+| Coroutines        | `GlobalScope`                         | `coroutineScope { launch { ... } }`, or a scope its owner cancels | `coroutines.GlobalCoroutineUsage`                                        |
+|                   | `runBlocking` (import)                | a `suspend` caller (`suspend fun main()`)                         | `style.ForbiddenImport` (`kotlinx.coroutines.runBlocking`)               |
+| Records           | a class that only holds data          | `data class`                                                      | `style.UseDataClass`                                                     |
+|                   | a `data class` with a `var`           | `val` and `copy(...)`                                             | `style.DataClassShouldBeImmutable`                                       |
+
+Rule ids in findings are `detekt.<ruleset>.<Rule>`. Only main source sets are analyzed, so
+`runBlocking` in tests is not seen.
+
+**Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
+block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
+are `let` with `this`, and `also` is `apply` with `it`, so each is a second way to the same thing.
+`let` and `apply` are the ones that cover the other three.
+
+**Owned by Nitpicker.** The file is laid over the project's detekt config, so a project cannot
+switch these rules off in `detekt.yml`; its values for the keys the file sets (for example the
+`methods` list of `ForbiddenMethodCall`) are ignored. Other rules and keys in the project's config
+work as before.
+
+**Exceptions.** A rule that flags legitimate code is lifted for paths with the same `exceptions` key as
+the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
+
+```json
+{
+  "preset": "kotlin",
+  "exceptions": [
+    {
+      "rule": "detekt.style.ForbiddenImport",
+      "paths": ["src/main/kotlin/app/Main.kt"],
+      "reason": "The entry point blocks on its coroutine."
+    }
+  ]
+}
+```
+
+`rule` is one of the ids above (anything else is a config error naming them). Findings of that rule
+under the globs are dropped on both snapshots, like `exclude`, and the exception changes the
+analyzer's cache key. The rule is lifted for the whole file, so one exception for
+`kotlin.run` also lifts `kotlin.with` and `kotlin.also` there (they share a detekt rule).
+
+**Inline suppression.** `@Suppress("UnsafeCallOnNullableType")` (and `@file:Suppress`, `@SuppressWarnings`,
+`names = [...]`) would hide a finding from the report, so a source scan fails any suppression
+that names a one-way rule in any form detekt honors (`detekt.Rule`, `detekt:ruleset:Rule`, ...), a
+ruleset that contains one (`style`, `potential-bugs`, `coroutines`) or `all`. Rule `inline-suppression`,
+tool `detekt`, one finding per token, identified by the token. detekt's own `ForbiddenSuppress` is not
+used: it cannot report `all` or `style`, because the suppression hides its report too. The scan reads
+string literals of those annotations in `.kt` files of the Kotlin source roots, after removing comments;
+a constant used as the argument is not seen.
+
+**Gaps.**
+
+- Custom rules would need a detekt plugin jar built from Kotlin, which the package does not ship; this
+  is why `let` is not limited to `?.let` (detekt cannot tell the two apart), `takeIf`, `takeUnless`,
+  `lateinit` and unstructured `CoroutineScope(...)` are not covered, and `runBlocking` is found by
+  its import (a fully qualified call without an import is not).
+- Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
+  `!!` on a value of such a type is not seen.
 
 ## Format check: ktlint or ktfmt
 
@@ -130,7 +211,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `base`, `disable`, `analyzers`, `thresholds`, `exclude`, `legacyInventory` as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` is new
-and valid only with this preset. `layout` and `exceptions` are a config error.
+and valid only with this preset. `exceptions` lifts the [one-way rules](#one-way-rules) per path.
+`layout` is a config error.
 
 ## Tests
 
@@ -141,31 +223,38 @@ and valid only with this preset. `layout` and `exceptions` are a config error.
 - `languages/java/adapters/kotlin-reports.test.mjs`: a real detekt SARIF
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; the Java preset ignoring Kotlin reports.
-- `core/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config key and the runner
-  arguments.
+- `core/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
+  Kotlin `exceptions`) and the runner arguments.
+- `languages/java/adapters/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
+  `fixtures/kotlin-rules/cases.mjs` gets its message from the recorded detekt text and must name the
+  allowed form and the exception route; the suppression scan; `core/java-cli.test.mjs` runs an
+  exception through the CLI.
 - `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle, lizard (the Java preset's) and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
   finding baselined; new detekt and ktlint findings fail; a Java change in the Kotlin module is
   still gated by the Java tools; a detekt config lifts a rule; ktfmt by override and by detection;
-  a Kotlin compile error becomes a tool error.
+  a Kotlin compile error becomes a tool error; for each case of the one-way rules the banned fixture
+  fails with the recorded message and the allowed one passes; a project detekt config cannot switch
+  a one-way rule off; an exception lifts one rule for one path.
 
 ## Remaining slices
 
-| #   | Slice                                        | Scope                                                                                                                                                   |
-| --- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| KT1 | Gradle integration, detekt, format           | This document: done.                                                                                                                                    |
-| KT2 | One-way rules and skill (#177)               | The Kotlin rules that narrow the language to one way of doing each thing, enforced through detekt and custom rules, and the agent skill for the preset. |
-| KT3 | Structure, CRAP, duplicates, coupling (#178) | The shared structure limits, CRAP (lizard has a Kotlin mode), jscpd with the Kotlin format and package coupling from Kotlin sources and classes.        |
-| KT4 | Changed coverage and mutation (#179)         | `changed-branch-coverage` and PIT on Kotlin classes, with source mapping and generated-code filtering.                                                  |
+| #   | Slice                                        | Scope                                                                                                                                            |
+| --- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| KT1 | Gradle integration, detekt, format           | This document: done.                                                                                                                             |
+| KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                             |
+| KT3 | Structure, CRAP, duplicates, coupling (#178) | The shared structure limits, CRAP (lizard has a Kotlin mode), jscpd with the Kotlin format and package coupling from Kotlin sources and classes. |
+| KT4 | Changed coverage and mutation (#179)         | `changed-branch-coverage` and PIT on Kotlin classes, with source mapping and generated-code filtering.                                           |
 
 ## Known limits
 
 - Multi-module builds: every module with the Kotlin plugin gets the tasks, but Nitpicker reads the
   root project's `build/nitpicker`, as for Java.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
-- detekt runs without type resolution; its results can differ from a project's own detekt run that
-  has a classpath.
+- detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](#detekt)), so its
+  results can differ from a project's own detekt run, and a library built with a newer Kotlin stays
+  unresolved.
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
   findings to source files is only verified for Java.
