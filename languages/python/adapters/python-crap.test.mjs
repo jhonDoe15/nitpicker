@@ -112,7 +112,9 @@ describe('the crap step', () => {
       files: { 'src/demo/a.py': 'x = 1\n', 'fail.json': '{ "lizard": "lizard exploded" }' },
     });
 
-    expect(() => crap(context)).toThrow(
+    expect(() => {
+      crap(context);
+    }).toThrow(
       expect.objectContaining({
         rule: 'lizard-failed',
         message: expect.stringContaining('lizard exploded'),
