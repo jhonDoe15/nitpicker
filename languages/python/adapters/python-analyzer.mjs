@@ -10,15 +10,19 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
 const SHARED_CONFIGURATION_FILES = [
+  'languages/java/adapters/java-duplicates.mjs',
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
   'languages/java/ingest/common.mjs',
   'languages/java/ingest/format-check.mjs',
   'languages/java/ingest/sarif.mjs',
+  'core/tooling/jscpd-clones.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
   'shared/rules/baseline-expansion.mjs',
+  'shared/rules/coupling.mjs',
+  'shared/rules/duplicates.mjs',
   'shared/rules/finding-helpers.mjs',
 ];
 
@@ -52,7 +56,15 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage'],
+    reportedTools: [
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'duplicates',
+      'coupling',
+      'import-linter',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {

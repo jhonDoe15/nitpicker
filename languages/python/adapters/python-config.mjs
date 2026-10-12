@@ -8,7 +8,7 @@ import {
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
-const SETTING_KEYS = ['environment', 'formatter', 'testRunner', 'sourceRoots'];
+const SETTING_KEYS = ['environment', 'formatter', 'testRunner', 'importLinter', 'sourceRoots'];
 
 export function validatePythonConfig(config, typescriptOnlyKeys) {
   if (config.preset !== 'python') {
@@ -43,6 +43,9 @@ function validateSettings(settings) {
   validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateProjectRelativePath(settings.environment, 'python.environment');
+  }
+  if (settings.importLinter !== undefined && typeof settings.importLinter !== 'boolean') {
+    throw configError('"python.importLinter" must be true or false');
   }
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);
