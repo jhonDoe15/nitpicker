@@ -20,7 +20,13 @@
 // A function metric above its limit in FUNCTION_STRUCTURE_LIMITS is an enforceable finding keyed by
 // name, occurrence and source hash; every other numeric metric is descriptive.
 
-import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES, MESSAGES, renderMessage } from '../policy.mjs';
+import {
+  FUNCTION_STRUCTURE_LIMITS,
+  GREW_MESSAGES,
+  HELD_MESSAGES,
+  MESSAGES,
+  renderMessage,
+} from '../policy.mjs';
 import {
   addMetric,
   hash,
@@ -107,6 +113,12 @@ function addLimitViolations(findings, analyzerName, entry, occurrence) {
         key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
         value: entry[metricName],
         worseMessage: renderMessage(GREW_MESSAGES[metricName], {
+          name: entry.name,
+          value: entry[metricName],
+          limit,
+          base: '{base}',
+        }),
+        heldMessage: renderMessage(HELD_MESSAGES[metricName], {
           name: entry.name,
           value: entry[metricName],
           limit,
