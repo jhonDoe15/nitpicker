@@ -3,6 +3,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { applyJavascriptDialect } from '../../../javascript/preset/eslint-dialect.mjs';
 import { applyMatchingRuleExceptions } from './exceptions.mjs';
 
 const { sourceGlobs, testGlobs, excludedGlobs, sourceTestDirectoryGlobs, entryPoints } =
@@ -29,5 +30,6 @@ export function productionPolicyConfig(rules) {
     },
     ...entryPointScripts,
   );
-  return applyMatchingRuleExceptions(config, readHeadPolicy().exceptions);
+  const policy = readHeadPolicy();
+  return applyMatchingRuleExceptions(applyJavascriptDialect(config, policy), policy.exceptions);
 }

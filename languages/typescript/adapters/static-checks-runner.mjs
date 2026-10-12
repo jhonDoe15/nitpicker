@@ -253,9 +253,10 @@ function runTypecheck(options) {
   }
 }
 
-function architectureExclusion(requested, layoutPattern) {
-  const layoutAlreadyIncluded = layoutPattern !== undefined && requested?.includes(layoutPattern);
-  return [requested, layoutAlreadyIncluded ? undefined : layoutPattern]
+function architectureExclusion(exclude, layoutPattern) {
+  const repeated =
+    exclude !== undefined && layoutPattern !== undefined && exclude.includes(layoutPattern);
+  return [exclude, repeated ? undefined : layoutPattern]
     .filter((pattern) => pattern !== undefined)
     .join('|');
 }
