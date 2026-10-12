@@ -62,7 +62,7 @@ Work from a clean checkout of `main` with full history.
    npm asks for a one-time password. Add `--tag next` for a pre-release. The package is unscoped,
    so no `--access` flag is needed.
 7. **Verify.** In an empty directory: `npm view nitpicker version`, then
-   `npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript && npx nitpicker --help`.
+   `npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node && npx nitpicker --help`.
 8. **GitHub release.** Create a release from the tag with the changes since the previous tag.
 
 ## Container image

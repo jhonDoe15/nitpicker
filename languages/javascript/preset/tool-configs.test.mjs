@@ -10,12 +10,6 @@ import {
   layoutTransformFor,
   layoutTsconfig,
 } from '../../typescript/preset/tool-configs.mjs';
-import {
-  JAVASCRIPT_COMPILER_OPTIONS,
-  JAVASCRIPT_JSCPD_FORMATS,
-  JAVASCRIPT_KNIP_ENTRIES,
-  JAVASCRIPT_KNIP_PROJECT,
-} from './javascript-preset.mjs';
 
 const defaults = path.join(import.meta.dirname, '../../typescript/preset/defaults');
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
@@ -46,16 +40,11 @@ function transformed(name, layout, root) {
   return JSON.parse(transform(defaultText(name), path.join(root, name)));
 }
 
-describe('javascript compiler options', () => {
-  it('check JavaScript files for types', () => {
-    expect(JAVASCRIPT_COMPILER_OPTIONS).toEqual({ allowJs: true, checkJs: true });
-  });
-});
-
 describe('generated tsconfig.quality.json', () => {
   it('type-checks JavaScript without emitting for the javascript preset', () => {
     const config = transformed('tsconfig.quality.json', javascriptLayout, projectWith());
-    expect(config.compilerOptions).toMatchObject({
+    const { allowJs, checkJs, noEmit, strict, noUncheckedIndexedAccess } = config.compilerOptions;
+    expect({ allowJs, checkJs, noEmit, strict, noUncheckedIndexedAccess }).toEqual({
       allowJs: true,
       checkJs: true,
       noEmit: true,
@@ -88,7 +77,8 @@ describe('generated tsconfig.quality.json', () => {
       projectWith('tsconfig.json'),
     );
     expect(config.extends).toBe('./tsconfig.json');
-    expect(config.compilerOptions).toMatchObject({
+    const { allowJs, checkJs, noEmit, skipLibCheck, strict } = config.compilerOptions;
+    expect({ allowJs, checkJs, noEmit, skipLibCheck, strict }).toEqual({
       allowJs: true,
       checkJs: true,
       noEmit: true,
@@ -140,20 +130,31 @@ describe('generated tsconfig.quality.json', () => {
 describe('generated tsconfig.stryker.json', () => {
   it('type-checks JavaScript mutants without forcing noEmit', () => {
     const config = transformed('tsconfig.stryker.json', javascriptLayout, projectWith());
-    expect(config.compilerOptions).toMatchObject({ allowJs: true, checkJs: true, strict: true });
+    const { allowJs, checkJs, strict } = config.compilerOptions;
+    expect({ allowJs, checkJs, strict }).toEqual({ allowJs: true, checkJs: true, strict: true });
     expect(config.compilerOptions).not.toHaveProperty('noEmit');
   });
 
   it('layers the JavaScript options over the project config', () => {
-    expect(
-      transformed('tsconfig.stryker.json', javascriptLayout, projectWith('jsconfig.json')),
-    ).toEqual({
-      extends: './jsconfig.json',
-      compilerOptions: { skipLibCheck: true, allowJs: true, checkJs: true },
+    const javascript = transformed(
+      'tsconfig.stryker.json',
+      javascriptLayout,
+      projectWith('jsconfig.json'),
+    );
+    expect(javascript.extends).toBe('./jsconfig.json');
+    const { skipLibCheck, allowJs, checkJs } = javascript.compilerOptions;
+    expect({ skipLibCheck, allowJs, checkJs }).toEqual({
+      skipLibCheck: true,
+      allowJs: true,
+      checkJs: true,
     });
-    expect(
-      transformed('tsconfig.stryker.json', typescriptLayout, projectWith('tsconfig.json')),
-    ).toEqual({ extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } });
+    const typescript = transformed(
+      'tsconfig.stryker.json',
+      typescriptLayout,
+      projectWith('tsconfig.json'),
+    );
+    expect(typescript.extends).toBe('./tsconfig.json');
+    expect(typescript.compilerOptions).not.toHaveProperty('checkJs');
   });
 
   it('leaves the TypeScript stryker config untouched for the default layout', () => {
@@ -169,10 +170,15 @@ describe('generated knip.json', () => {
 
   it('adds the JavaScript entry files and config files', () => {
     const config = layoutKnipConfig(base, javascriptLayout);
-    expect(config.entry).toEqual(expect.arrayContaining(JAVASCRIPT_KNIP_ENTRIES));
-    expect(config.entry).toEqual(expect.arrayContaining(base.entry));
-    expect(config.project).toEqual(expect.arrayContaining(JAVASCRIPT_KNIP_PROJECT));
-    expect(config.project).toEqual(expect.arrayContaining(base.project));
+    expect(config.entry.slice(0, base.entry.length)).toEqual(base.entry);
+    for (const entry of [
+      'src/main.{js,mjs,cjs}',
+      'vitest.config.{js,mjs,cjs}',
+      'tests/fixtures/*harness*.{js,mjs,cjs}',
+    ]) {
+      expect(config.entry.includes(entry), entry).toBe(true);
+    }
+    expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
   });
 
   it('does not add them for TypeScript', () => {
@@ -209,20 +215,14 @@ describe('generated knip.json', () => {
 describe('generated jscpd.json', () => {
   const base = JSON.parse(defaultText('jscpd.json'));
 
-  it('scans the JavaScript formats', () => {
-    expect(JAVASCRIPT_JSCPD_FORMATS).toEqual(['javascript', 'jsx']);
-    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(['javascript', 'jsx']);
+  it('scans the JavaScript format next to the base formats, so .ts files in a JavaScript project are scanned', () => {
+    const formats = [...base.format, 'javascript'];
+    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(formats);
+    expect(transformed('jscpd.json', javascriptLayout, projectWith()).format).toEqual(formats);
   });
 
-  it('keeps the TypeScript format for the TypeScript preset', () => {
-    expect(layoutJscpdConfig(base, typescriptLayout).format).toEqual(['typescript']);
-  });
-
-  it('is rewritten for the default JavaScript layout', () => {
-    expect(transformed('jscpd.json', javascriptLayout, projectWith()).format).toEqual([
-      'javascript',
-      'jsx',
-    ]);
+  it('keeps the base formats for the TypeScript preset', () => {
+    expect(layoutJscpdConfig(base, typescriptLayout).format).toEqual(base.format);
   });
 });
 

@@ -1,6 +1,16 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
+import { register } from 'node:module';
 import path from 'node:path';
-import { analyzeProject } from '@barney-media/crap-typescript-core';
+import { readLayout } from '../head-policy.mjs';
+
+async function loadAnalyzeProject() {
+  if (readLayout().javascript) {
+    register('../../../javascript/preset/crap-extensions-hook.mjs', import.meta.url);
+  }
+  return (await import('@barney-media/crap-typescript-core')).analyzeProject;
+}
+
+const analyzeProject = await loadAnalyzeProject();
 
 const FUNCTION_MAP_CONFLICT = 'fnmap_conflict';
 

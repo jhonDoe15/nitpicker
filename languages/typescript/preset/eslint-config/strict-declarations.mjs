@@ -76,9 +76,16 @@ export const defaultExportSelectors = [
   },
 ];
 
-export const declarationRules = {
-  '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
-};
+const moduleAugmentation =
+  ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
+
+export const typeDefinitionSelectors = [
+  {
+    selector: `TSInterfaceDeclaration:not(${moduleAugmentation} TSInterfaceDeclaration)`,
+    message:
+      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
+  },
+];
 
 export const typedDeclarationRules = {
   '@typescript-eslint/switch-exhaustiveness-check': [

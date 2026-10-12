@@ -38,7 +38,14 @@ describe('entry points of a JavaScript project', () => {
       [['src/main/other/use.js', 'src/main/greeting/index.js'], ...publicImport],
       javascriptLayout,
     );
-    expect(report.summary).toMatchObject({
+    const { components, declaredEntryPoints, throughEntryPoint, missingEntryPointImports } =
+      report.summary;
+    expect({
+      components,
+      declaredEntryPoints,
+      throughEntryPoint,
+      missingEntryPointImports,
+    }).toEqual({
       components: 2,
       declaredEntryPoints: 1,
       throughEntryPoint: 1,
@@ -52,7 +59,9 @@ describe('entry points of a JavaScript project', () => {
         [[`src/main/other/use.js`, `src/main/greeting/index.${extension}`]],
         javascriptLayout,
       );
-      expect(report.summary).toMatchObject({ declaredEntryPoints: 1, throughEntryPoint: 1 });
+      expect([report.summary.declaredEntryPoints, report.summary.throughEntryPoint]).toEqual([
+        1, 1,
+      ]);
     }
   });
 
@@ -62,7 +71,8 @@ describe('entry points of a JavaScript project', () => {
       javascriptLayout,
     );
     expect(report.summary.publicAlternativeBypasses).toBe(1);
-    expect(report.publicAlternativeBypasses[0]).toMatchObject({
+    const { source, target, publicEntryPoint } = report.publicAlternativeBypasses[0];
+    expect({ source, target, publicEntryPoint }).toEqual({
       source: 'src/main/other/use.js',
       target: 'src/main/greeting/adapters/run.js',
       publicEntryPoint: 'src/main/greeting/index.js',
@@ -85,7 +95,9 @@ describe('entry points of a JavaScript project', () => {
       [['src/main/other/use.ts', 'src/main/greeting/index.js']],
       typescriptLayout,
     );
-    expect(report.summary).toMatchObject({ declaredEntryPoints: 0, missingEntryPointImports: 1 });
+    expect([report.summary.declaredEntryPoints, report.summary.missingEntryPointImports]).toEqual([
+      0, 1,
+    ]);
   });
 
   it('exempts composition roots of every JavaScript extension', () => {
@@ -98,7 +110,7 @@ describe('entry points of a JavaScript project', () => {
     }
   });
 
-  it('does not exempt a TypeScript composition root name for JavaScript sources', () => {
+  it('exempts a TypeScript composition root of a project that is migrating', () => {
     const report = entryPointReport(
       [
         ['src/main/composition-root.ts', 'src/main/greeting/adapters/run.js'],
@@ -106,7 +118,7 @@ describe('entry points of a JavaScript project', () => {
       ],
       javascriptLayout,
     );
-    expect(report.summary.publicAlternativeBypasses).toBe(1);
+    expect(report.summary.publicAlternativeBypasses).toBe(0);
   });
 
   it('flags concrete clients imported across components', () => {
@@ -122,9 +134,9 @@ describe('entry points of a JavaScript project', () => {
     }
   });
 
-  it('flags a TypeScript client name only for TypeScript projects', () => {
+  it('flags a TypeScript client name in both projects and a JavaScript one only in JavaScript', () => {
     const edges = [['src/main/other/use.js', 'src/main/greeting/client.ts']];
-    expect(entryPointReport(edges, javascriptLayout).summary.concreteCrossBoundaryImports).toBe(0);
+    expect(entryPointReport(edges, javascriptLayout).summary.concreteCrossBoundaryImports).toBe(1);
     expect(entryPointReport(edges, typescriptLayout).summary.concreteCrossBoundaryImports).toBe(1);
     const jsEdges = [['src/main/other/use.ts', 'src/main/greeting/client.js']];
     expect(entryPointReport(jsEdges, typescriptLayout).summary.concreteCrossBoundaryImports).toBe(
@@ -170,14 +182,18 @@ describe('test runtime of a JavaScript project', () => {
     }
   });
 
-  it('does not accept the TypeScript bridge for a JavaScript project', () => {
+  it('accepts the TypeScript bridge of a JavaScript project that is migrating', () => {
     expect(bridgeUsage("spawn('./fixtures/app-process.ts')", javascriptLayout).category).toBe(
-      'no-production-runtime',
+      'subprocess-production-runtime',
     );
   });
 
-  it('keeps the TypeScript bridge for a TypeScript project only', () => {
-    expect(bridgeUsage("spawn('./fixtures/app-process.ts')", typescriptLayout)).toMatchObject({
+  it('accepts only the TypeScript bridge in a TypeScript project', () => {
+    const { category, subprocessBridges } = bridgeUsage(
+      "spawn('./fixtures/app-process.ts')",
+      typescriptLayout,
+    );
+    expect({ category, subprocessBridges }).toEqual({
       category: 'subprocess-production-runtime',
       subprocessBridges: ['test/fixtures/app-process.ts', 'tests/fixtures/app-process.ts'],
     });
