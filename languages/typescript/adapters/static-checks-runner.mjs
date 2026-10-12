@@ -253,6 +253,13 @@ function runTypecheck(options) {
   }
 }
 
+function architectureExclusion(requested, layoutPattern) {
+  const layoutAlreadyIncluded = layoutPattern !== undefined && requested?.includes(layoutPattern);
+  return [requested, layoutAlreadyIncluded ? undefined : layoutPattern]
+    .filter((pattern) => pattern !== undefined)
+    .join('|');
+}
+
 function runArchitecture(options) {
   if (options.patterns.length === 0) {
     throw new Error('Architecture requires at least one --pattern');
@@ -267,9 +274,7 @@ function runArchitecture(options) {
     if (options.includeOnly !== undefined) {
       arguments_.push('--include-only', options.includeOnly);
     }
-    const exclusion = [options.exclude, layout.excludePattern]
-      .filter((pattern) => pattern !== undefined)
-      .join('|');
+    const exclusion = architectureExclusion(options.exclude, layout.excludePattern);
     if (exclusion.length > 0) {
       arguments_.push('--exclude', exclusion);
     }
