@@ -1,6 +1,7 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
+import { hasBranchingSyntax } from './kotlin-branches.mjs';
 
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
@@ -33,27 +34,33 @@ function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
   );
 }
 
-function fileFindings(sourcefile, { path: filePath, lines: sourceLines }, { tool, minimum }) {
-  const branches = [];
-  for (const line of childrenNamed(sourcefile, 'line')) {
-    const missed = Number.parseInt(line.attrs.mb, 10);
-    const covered = Number.parseInt(line.attrs.cb, 10);
-    const lineNumber = Number.parseInt(line.attrs.nr, 10);
-    const total = missed + covered;
-    const source = sourceLines[lineNumber - 1]?.trim().replaceAll(/\s+/g, ' ');
-    if (!(total > 0) || !Number.isInteger(lineNumber) || source === undefined || source === '') {
-      continue;
-    }
-    branches.push({
-      path: filePath,
-      key: hashIdentity('branch-source', [source]),
-      percent: (covered / total) * 100,
-      line: lineNumber,
-    });
-  }
+function fileFindings(sourcefile, file, { tool, minimum }) {
+  const branches = childrenNamed(sourcefile, 'line')
+    .map((line) => lineBranch(line, file))
+    .filter((branch) => branch !== undefined);
   return branchCoverageFindings(branches, {
     tool,
     minimum,
     identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
   });
+}
+
+function lineBranch(line, { path: filePath, lines: sourceLines }) {
+  const missed = Number.parseInt(line.attrs.mb, 10);
+  const covered = Number.parseInt(line.attrs.cb, 10);
+  const lineNumber = Number.parseInt(line.attrs.nr, 10);
+  const total = missed + covered;
+  const source = sourceLines[lineNumber - 1]?.trim().replaceAll(/\s+/g, ' ');
+  if (!(total > 0) || !Number.isInteger(lineNumber) || !source) {
+    return undefined;
+  }
+  if (filePath.endsWith('.kt') && !hasBranchingSyntax(source)) {
+    return undefined;
+  }
+  return {
+    path: filePath,
+    key: hashIdentity('branch-source', [source]),
+    percent: (covered / total) * 100,
+    line: lineNumber,
+  };
 }

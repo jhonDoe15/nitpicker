@@ -4,6 +4,7 @@
 // line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
 // `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
 // src/main/kotlin/demo/K.kt and each line of `kotlin-format.txt` a file the formatter would change.
+// A file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT report.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -75,5 +76,12 @@ writeFileSync(
 writeFileSync('build/nitpicker/spotbugs.sarif', sarif('SpotBugs', []));
 writeFileSync('build/nitpicker/format.txt', '');
 writeFileSync('build/nitpicker/checkstyle.xml', '<checkstyle version="10.21.1"></checkstyle>');
-writeFileSync('build/nitpicker/jacoco.xml', '<report name="demo"></report>');
+writeFileSync(
+  'build/nitpicker/jacoco.xml',
+  existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
+);
+if (existsSync('mutations.xml')) {
+  mkdirSync('build/nitpicker/pit', { recursive: true });
+  writeFileSync('build/nitpicker/pit/mutations.xml', readFileSync('mutations.xml'));
+}
 writeFileSync('build/nitpicker/lizard.csv', '');
