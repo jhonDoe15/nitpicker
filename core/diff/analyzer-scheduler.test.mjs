@@ -28,9 +28,11 @@ function task(
   };
 }
 
+const SCHEDULING_TURNS = [1, 2, 3, 4];
+
 async function flushScheduling() {
-  for (let index = 0; index < 4; index += 1) {
-    await Promise.resolve();
+  for (const turn of SCHEDULING_TURNS) {
+    await Promise.resolve(turn);
   }
 }
 

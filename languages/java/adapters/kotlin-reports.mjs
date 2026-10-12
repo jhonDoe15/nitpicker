@@ -5,7 +5,9 @@ import { ingestSarif } from '../ingest/sarif.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
-const FORMAT_REPORT = 'kotlin-format.txt';
+const KTLINT_REPORT = 'ktlint.sarif';
+const KTFMT_REPORT = 'ktfmt.txt';
+const KTLINT_PREFIX = 'ktlint.';
 
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
@@ -20,12 +22,14 @@ export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
 }
 
 export function readKotlinFindings({ reportRoot, manifest }) {
-  return [...detektFindings(reportRoot), ...formatFindings(reportRoot, manifest.kotlinFormatter)];
+  return [
+    ...detektFindings(reportRoot),
+    ...formatterFindings(reportRoot, manifest.kotlinFormatter),
+  ];
 }
 
-function detektFindings(reportRoot) {
-  const log = JSON.parse(readFileSync(path.join(reportRoot, DETEKT_REPORT), 'utf8'));
-  return ingestSarif(identifiedBySubject(log), { tool: DETEKT_TOOL }).findings;
+function subjectOf(text) {
+  return text.replaceAll(/\b\d+\b/g, '#');
 }
 
 function identifiedBySubject(log) {
@@ -35,17 +39,44 @@ function identifiedBySubject(log) {
       ...run,
       results: run.results.map((result) => ({
         ...result,
-        partialFingerprints: result.partialFingerprints ?? {
-          'nitpicker/subject': result.message.text,
-        },
+        partialFingerprints: { 'nitpicker/subject': subjectOf(result.message.text) },
       })),
     })),
   };
 }
 
-function formatFindings(reportRoot, formatter) {
-  return ingestFormatCheck(readFileSync(path.join(reportRoot, FORMAT_REPORT), 'utf8'), {
-    tool: formatter,
-    message: `File is not formatted with ${formatter}`,
+function readSarif(reportRoot, file) {
+  return identifiedBySubject(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')));
+}
+
+function detektFindings(reportRoot) {
+  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings;
+}
+
+function ktlintSwitch(ruleId) {
+  return `ktlint_${ruleId.replace(':', '_')}`;
+}
+
+function ktlintFindings(reportRoot) {
+  return ingestSarif(readSarif(reportRoot, KTLINT_REPORT), { tool: 'ktlint' }).findings.map(
+    (finding) => ({
+      ...finding,
+      rule: `${KTLINT_PREFIX}${finding.rule}`,
+      message: `${finding.message}. Lift this rule: ${ktlintSwitch(finding.rule)} = disabled in .editorconfig. Not your formatter: set kotlin.formatter`,
+    }),
+  );
+}
+
+function ktfmtFindings(reportRoot) {
+  return ingestFormatCheck(readFileSync(path.join(reportRoot, KTFMT_REPORT), 'utf8'), {
+    tool: 'ktfmt',
+    message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
   }).findings;
+}
+
+function formatterFindings(reportRoot, formatter) {
+  if (formatter === 'ktlint') {
+    return ktlintFindings(reportRoot);
+  }
+  return formatter === 'ktfmt' ? ktfmtFindings(reportRoot) : [];
 }

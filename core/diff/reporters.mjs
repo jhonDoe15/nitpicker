@@ -48,8 +48,8 @@ export function writeDiffReports(outputRoot, report) {
   return text;
 }
 
-export function relativeTextReportPath(projectRoot, outputRoot) {
-  return path.relative(projectRoot, path.join(outputRoot, TEXT_REPORT_FILE_NAME));
+export function absoluteTextReportPath(outputRoot) {
+  return path.resolve(outputRoot, TEXT_REPORT_FILE_NAME);
 }
 
 export function renderTextReport(report) {
@@ -238,11 +238,22 @@ function heldFindings(unchangedFindings = []) {
 }
 
 function heldLine(finding) {
+  const { ratchet, heldAtBase } = finding;
+  const base = String(heldAtBase);
   const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
-  const where = `${finding.tool}/${finding.rule} ${finding.path}${location} ${singleLine(finding.message)}`;
-  return finding.ratchet?.worseMessage === undefined
-    ? `${where} (the base had ${String(finding.heldAtBase)} of these in this function, now no more)`
-    : `${where} (was ${String(finding.heldAtBase)} at base, not worse)`;
+  const prefix = `${finding.tool}/${finding.rule} ${finding.path}${location}`;
+  if (ratchet?.worseMessage === undefined) {
+    const counts =
+      ratchet.value === heldAtBase
+        ? `${base} at base and now`
+        : `${base} at base, ${String(ratchet.value)} now`;
+    return `${prefix} ${singleLine(finding.message)} (${counts}; any increase fails)`;
+  }
+  const note =
+    ratchet.heldMessage === undefined
+      ? `${singleLine(finding.message)} (allowed because base was ${base}; any increase fails)`
+      : ratchet.heldMessage.replaceAll('{base}', base);
+  return `${prefix} ${note}`;
 }
 
 function appendHeldSection(lines, unchangedFindings) {
