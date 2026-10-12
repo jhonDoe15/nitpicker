@@ -8,6 +8,7 @@ import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
 import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
 import { strictCompositionRootConfig } from '../eslint-config/strict-composition-root.mjs';
+import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
 const cognitiveComplexityConfig = [
@@ -339,4 +340,5 @@ export const failureMessageCases = [
     banned: 'export function pick(a: boolean) { if (a) { return 1; } return 0; }',
     allowed: 'exception for this rule in nitpicker.config.json',
   },
+  ...reactFailureMessageCases,
 ];

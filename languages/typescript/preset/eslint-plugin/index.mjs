@@ -33,6 +33,9 @@ import { rule as noRaisedTestTimeout } from './rules/no-raised-test-timeout.mjs'
 import { rule as noPartialOutputAssertion } from './rules/no-partial-output-assertion.mjs';
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/no-process-globals-outside-main-guard.mjs';
 import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
+import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
+import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -76,5 +79,8 @@ export const nitpickerRules = {
     'no-partial-output-assertion': noPartialOutputAssertion,
     'no-process-globals-outside-main-guard': noProcessGlobalsOutsideMainGuard,
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
+    'react-no-effect-data-fetching': reactNoEffectDataFetching,
+    'react-no-effect-derived-state': reactNoEffectDerivedState,
+    'react-single-styling-approach': reactSingleStylingApproach,
   },
 };
