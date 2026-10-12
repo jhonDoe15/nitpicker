@@ -77,7 +77,15 @@ describe('readSuppressionFindings', () => {
           'Suppressing "UnsafeCallOnNullableType" inline hides a rule nitpicker enforces. Fix the code the rule flags; to allow a rule on specific paths, add an "exceptions" entry for it in nitpicker.config.json.',
         classification: 'enforceable',
       },
-      expect.objectContaining({ identity: 'suppress:all' }),
+      {
+        tool: 'detekt',
+        rule: 'inline-suppression',
+        path: file,
+        identity: 'suppress:all',
+        message:
+          'Suppressing "all" inline hides a rule nitpicker enforces. Fix the code the rule flags; to allow a rule on specific paths, add an "exceptions" entry for it in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
     ]);
   });
 

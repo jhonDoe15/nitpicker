@@ -64,7 +64,7 @@ describe('Java structure findings', () => {
       [RULE_IDS.functionLines, 'Big.big has 51 lines; limit is 50', 'enforceable', 'structure'],
       [
         RULE_IDS.functionStatements,
-        'Big.big has 16 statements; limit is 15',
+        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
         'enforceable',
         'structure',
       ],

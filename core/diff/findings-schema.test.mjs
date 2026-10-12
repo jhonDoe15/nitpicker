@@ -83,9 +83,15 @@ function validate(value, node = schema, errors = [], at = '$') {
     checkObject(value, node, errors, at);
   }
   if (Array.isArray(value) && node.items !== undefined) {
-    value.forEach((item, index) => validate(item, node.items, errors, `${at}[${String(index)}]`));
+    validateItems(value, node.items, errors, at);
   }
   return errors;
+}
+
+function validateItems(items, node, errors, at) {
+  for (const [index, item] of items.entries()) {
+    validate(item, node, errors, `${at}[${String(index)}]`);
+  }
 }
 
 function checkType(value, node, errors, at) {
@@ -330,6 +336,24 @@ describe('spec/findings.schema.json', () => {
 
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);
+  });
+
+  it('accepts a ratchet with growth advice and rejects an empty one', () => {
+    const finding = {
+      tool: 'tool',
+      rule: 'rule',
+      path: 'src/a.ts',
+      identity: 'id',
+      message: 'message',
+      classification: 'enforceable',
+      ratchet: { key: 'count:k', value: 2, growthAdvice: 'Had {base}.' },
+    };
+    const empty = { ...finding, ratchet: { ...finding.ratchet, growthAdvice: '' } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(empty)).toThrow(TypeError);
+    expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {

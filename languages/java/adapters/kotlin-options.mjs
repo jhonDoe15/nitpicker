@@ -1,8 +1,12 @@
-import { configError, isPlainObject } from '../../../shared/config.mjs';
+import {
+  configError,
+  isPlainObject,
+  validateProjectRelativePath,
+} from '../../../shared/config.mjs';
 import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
 
-export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt'];
-const KOTLIN_KEYS = ['formatter'];
+export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
+const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 
 function validateKotlinExceptions(config) {
   if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
@@ -34,8 +38,11 @@ export function validateKotlinOptions(config) {
       throw configError(`unknown key "kotlin.${key}". Allowed keys: ${KOTLIN_KEYS.join(', ')}`);
     }
   }
-  const { formatter } = config.kotlin;
+  const { formatter, detektConfig } = config.kotlin;
   if (formatter !== undefined && !KOTLIN_FORMATTERS.includes(formatter)) {
     throw configError(`"kotlin.formatter" must be one of: ${KOTLIN_FORMATTERS.join(', ')}`);
+  }
+  if (detektConfig !== undefined) {
+    validateProjectRelativePath(detektConfig, 'kotlin.detektConfig');
   }
 }

@@ -18,7 +18,6 @@ import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
 const typescriptExtensions = new Set(['.ts', '.mts', '.cts', '.tsx']);
-const javascriptExtensions = new Set(['.js', '.mjs', '.cjs', '.jsx']);
 const prettierExtensions = new Set([
   ...typescriptExtensions,
   '.js',
@@ -77,7 +76,7 @@ function fixWithPolicy(settings) {
 
 function eslintExtensionsFor(layout) {
   return layout.javascript
-    ? new Set([...typescriptExtensions, ...javascriptExtensions])
+    ? new Set(layout.extensions.map((extension) => `.${extension}`))
     : typescriptExtensions;
 }
 

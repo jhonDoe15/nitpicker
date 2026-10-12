@@ -57,6 +57,7 @@ describe('npm package contents', () => {
     expect(files.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
     expect(files.has('languages/python/adapters/python-runner.mjs')).toBe(true);
     expect(files.has('languages/python/ingest/coverage-json.mjs')).toBe(true);
+    expect(files.has('languages/java/gradle/checkstyle-suppressions.xml')).toBe(true);
     expect(
       [...files].filter(
         (file) =>

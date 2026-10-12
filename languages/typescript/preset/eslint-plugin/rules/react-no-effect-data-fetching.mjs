@@ -38,12 +38,15 @@ export const rule = {
     schema: [],
     messages: {
       fetchInEffect:
-        'Do not fetch data in useEffect: it races, refetches and caches nothing. Use a data-fetching library or the framework: TanStack Query `useQuery`, SWR `useSWR`, a route loader or a Server Component. If this effect sends a request that is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
+        'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. If this request is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     function check(node) {
-      if (sendsRequest(node) && ancestorsOf(node).some(isEffectCallback)) {
+      if (
+        sendsRequest(node) &&
+        ancestorsOf(node).some((ancestor) => isEffectCallback(context.sourceCode, ancestor))
+      ) {
         context.report({ node, messageId: 'fetchInEffect' });
       }
     }
