@@ -114,18 +114,24 @@ cases outgrow it.
 
 ## Larger scenarios
 
-`evals/scenarios/` holds five bigger tasks that use the same case format as `evals/cases/`, each with
+`evals/scenarios/` holds eleven bigger tasks that use the same case format as `evals/cases/`, each with
 a fixture, a reference solution and hidden acceptance tests. They check that the skill, the gate's
 messages and the rules are enough for a developer agent to build a real feature well, not just to
 pass. Each case gives the agent 60 minutes (`agentTimeoutMinutes` in `case.json`).
 
-| Scenario                     | What the agent builds                                                                   |
-| ---------------------------- | --------------------------------------------------------------------------------------- |
-| `library-overdue-fines`      | A feature in an app with three existing features, reused only through their `index.ts`. |
-| `import-contacts`            | An import of untrusted JSON, parsed once with zod, with union results.                  |
-| `retrying-price-client`      | An HTTP client with retries, backoff and fake timers.                                   |
-| `greenfield-expense-tracker` | CSV import, budgets, a monthly report and JSON persistence from an empty project.       |
-| `legacy-invoice-discounts`   | A change inside a 68-line legacy function that is over every size limit.                |
+| Scenario                         | What the agent builds                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------------------- |
+| `library-overdue-fines`          | A feature in an app with three existing features, reused only through their `index.ts`. |
+| `import-contacts`                | An import of untrusted JSON, parsed once with zod, with union results.                  |
+| `retrying-price-client`          | An HTTP client with retries, backoff and fake timers.                                   |
+| `greenfield-expense-tracker`     | CSV import, budgets, a monthly report and JSON persistence from an empty project.       |
+| `legacy-invoice-discounts`       | A change inside a 68-line legacy function that is over every size limit.                |
+| `bugfix-bill-split`              | A bug report: fix rounding in a legacy function and add regression tests.               |
+| `cli-sales-report`               | A command-line report with argument parsing, file input, table and CSV output.          |
+| `refactor-extract-notifications` | Move duplicated logic out of two features into a new one, with no shim left behind.     |
+| `cross-feature-order-status`     | A new order status that three features must handle, over legacy switches.               |
+| `batch-upload-queue`             | Batched uploads with a concurrency limit, retries and abort, tested without timers.     |
+| `pressure-legacy-parser`         | A legacy parser change whose ticket invites a config exception; the gate needs none.    |
 
 Run them with a Claude Code subagent as the developer through the park agent:
 
@@ -141,7 +147,13 @@ The park agent writes `/tmp/park/<case>-1.json` (the workdir, the ticket and an 
 shortcut detectors. A strict reviewer agent then reads the diff and the gate log the developer saw.
 It looks for slop the gate let through, for findings that pushed the agent toward worse code, and
 for messages or skill lines that left it guessing. Each scenario's reference solution must pass with
-`--agent "node $PWD/evals/runner/reference-agent.mjs" --tier reference`.
+`--agent "node $PWD/evals/runner/reference-agent.mjs" --tier reference` (the agent path must be
+absolute: it runs inside the workdir).
+
+To measure the skill, run the same case with a second developer told not to read
+`node_modules/nitpicker/skills/` and compare gate runs, detector findings and the reviews. When
+several runners share a machine, start them one at a time and give each its own
+`npm_config_cache`: parallel installs into one cache corrupt it.
 
 ## Shortcut detectors
 
