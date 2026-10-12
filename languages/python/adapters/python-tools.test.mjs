@@ -105,6 +105,7 @@ describe('tool context', () => {
     });
     expect(context.project).toEqual({
       formatter: 'ruff',
+      typeChecker: undefined,
       testRunner: undefined,
       sourceRoots: ['src'],
     });
@@ -144,6 +145,11 @@ describe('running the tools', () => {
     expect(JSON.parse(readReport(reportRoot, 'ruff.sarif')).runs[0].results).toHaveLength(1);
     expect(readReport(reportRoot, 'format.txt')).toBe('src/demo/a.py');
     expect(readReport(reportRoot, 'coverage.json')).toBe('{"files":{}}');
+    expect(JSON.parse(readReport(reportRoot, 'type-check.json'))).toEqual({
+      checker: 'mypy',
+      output: '',
+    });
+    expect(readReport(reportRoot, 'rules.json')).toBe('[]');
     expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
       formatter: 'ruff',
       sourceRoots: ['src'],
@@ -177,21 +183,30 @@ describe('running the tools', () => {
   });
 
   it.each([
-    ['ruff check', 'ruff-failed'],
-    ['ruff format', 'format-failed'],
-    ['coverage run', 'tests-failed'],
-    ['coverage json', 'coverage-failed'],
-  ])('names the failing step: %s is %s', (call, rule) => {
+    ['ruff format', ['format-failed']],
+    ['coverage run', ['tests-failed']],
+    ['coverage json', ['coverage-failed']],
+    ['mypy', ['types-failed']],
+    ['python', ['rules-failed']],
+  ])('names the failing step: %s is %s', (call, rules) => {
     const root = project({ 'fail.json': JSON.stringify({ [call]: 'it blew up' }) });
     const { context } = contextFor(root);
 
-    expect(runPythonTools(context)).toEqual([
-      {
-        rule,
-        message: expect.stringMatching(
-          new RegExp(`^${call} exited 2 in the virtualenv environment:\\nit blew up$`),
-        ),
-      },
+    const failures = runPythonTools(context);
+
+    expect(failures.map(({ rule }) => rule)).toEqual(rules);
+    expect(failures[0].message).toMatch(
+      new RegExp(`^${call} exited 2 in the virtualenv environment:\\nit blew up$`),
+    );
+  });
+
+  it('fails the lint step and the rules step when ruff itself fails', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'ruff check': 'it blew up' }) });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context).map(({ rule }) => rule)).toEqual([
+      'ruff-failed',
+      'rules-failed',
     ]);
   });
 
@@ -203,6 +218,7 @@ describe('running the tools', () => {
       'ruff-failed',
       'format-failed',
       'tests-failed',
+      'rules-failed',
     ]);
   });
 
@@ -308,9 +324,14 @@ describe('test runner and versions', () => {
   it('lists the versions of the tools in use', () => {
     const root = project();
 
-    expect(toolVersions(contextFor(root).context)).toBe('ruff@0.9.9;coverage@7.6.1;pytest@8.3.1');
+    expect(toolVersions(contextFor(root).context)).toBe(
+      'ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
+    );
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
+    );
+    expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
+      'ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1',
     );
   });
 
@@ -319,9 +340,11 @@ describe('test runner and versions', () => {
     setEnvironment('PATH', temporaryRoot());
 
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      'ruff@missing;coverage@missing;pytest@missing',
+      'ruff@missing;types@missing;coverage@missing;pytest@missing',
     );
-    expect(toolVersions(contextFor(root).context)).toBe('ruff@missing;coverage@missing;unittest');
+    expect(toolVersions(contextFor(root).context)).toBe(
+      'ruff@missing;types@missing;coverage@missing;unittest',
+    );
   });
 
   it('marks a version it cannot read', () => {

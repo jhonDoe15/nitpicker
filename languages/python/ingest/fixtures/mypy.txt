@@ -1,0 +1,2 @@
+src/demo/untyped.py:1: error: Function is missing a type annotation  [no-untyped-def]
+src/demo/double.py:2: error: Incompatible return value type (got "int", expected "str")  [return-value]

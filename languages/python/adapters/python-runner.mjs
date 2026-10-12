@@ -8,6 +8,7 @@ import {
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { applyPythonExceptions } from './python-exceptions.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
 
@@ -35,7 +36,10 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       return failures.map(toolError);
     }
     const { findings } = readPythonFindings({ projectRoot, reportRoot });
-    return applyJavaPolicy(findings, { ...policy, inventoryTool: PYTHON_ANALYZER_NAME });
+    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+      ...policy,
+      inventoryTool: PYTHON_ANALYZER_NAME,
+    });
   } finally {
     rmSync(reportRoot, { recursive: true, force: true });
     untrackTemporaryPath(reportRoot);

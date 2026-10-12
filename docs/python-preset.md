@@ -1,7 +1,7 @@
 # Python preset
 
-Status: slice 1 (ticket PY1) implemented; later slices are planned below. The scope is a proposal
-pending owner review.
+Status: slices 1 and 2 (tickets PY1 and PY2) implemented; later slices are planned below. The scope
+is a proposal pending owner review.
 
 The Python preset runs the same differential gate as the TypeScript and Java presets on a Python
 project: run the tools on the merge base and on head, turn each report into findings
@@ -23,6 +23,8 @@ node languages/python/adapters/python-runner.mjs   (one process per snapshot: ba
   -> ruff check  --config nitpicker-ruff.toml      -> ruff.sarif
   -> ruff format --check --diff | black --check    -> format.txt
   -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
+  -> mypy --strict | pyright (strict)              -> type-check.json
+  -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
   -> readPythonFindings                             (languages/python/adapters/python-reports.mjs)
   -> compareFindings(base, head, renames)           (core)
 ```
@@ -35,8 +37,8 @@ directory is the contract between the tool runs and the readers; later slices ad
   auto-detection of `pyproject.toml`. `nitpicker` finds the project from the nearest directory with
   a `package.json` or a `nitpicker.config.json`, so a Python project needs no `package.json`.
 - **One analyzer, several tools.** A single analyzer, `python`, whose findings carry the tool names
-  `ruff`, `ruff-format` or `black`, and `coverage`. The version is the versions of the tools in the
-  project's environment (`ruff@0.9.9;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
+  `ruff`, `ruff-format` or `black`, `coverage`, `mypy` or `pyright`, and `python-rules`. The version is the versions of the tools in the
+  project's environment (`ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1`), read from the live checkout, and
   the configuration hash covers the Python adapter files, the nitpicker-owned ruff config and the
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
 - **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
@@ -57,7 +59,7 @@ that applies wins):
 | 1     | `uv.lock`                   | `uv run --project <checkout> --no-sync -- <tool>`; needs `uv sync` to have run (or `UV_PROJECT_ENVIRONMENT`) |
 | 2     | `poetry.lock`               | the virtualenv `poetry env info --path` reports, first on `PATH`; needs `poetry install` to have run         |
 | 3     | a `.venv/` directory        | `.venv/bin` first on `PATH`, `VIRTUAL_ENV` set                                                               |
-| 4     | nothing                     | `ruff`, `black`, `coverage` and `python3` from the `PATH`                                                    |
+| 4     | nothing                     | `ruff`, `black`, `coverage`, `mypy`, `pyright` and `python3` from the `PATH`                                 |
 
 The environment is always the one of the live checkout (the head work tree you run `nitpicker` in).
 It is never created or synced by nitpicker, and `uv run --no-sync` never touches it. A tool that is
@@ -97,9 +99,9 @@ set `python.sourceRoots`.
 Config keys with this preset: `base`, `disable`, `analyzers`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3), `exclude` (findings under the globs are
 dropped) and `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the
-`python` object below. `layout` and `exceptions` describe TypeScript source roots and ESLint rules,
-have no Python meaning, and stay a config error with this preset. `python` is an error with any
-other preset.
+`python` object below. `layout` and the top-level `exceptions` describe TypeScript source roots and
+ESLint rules and stay a config error with this preset; the Python equivalent of `exceptions` is
+`python.exceptions`. `python` is an error with any other preset.
 
 ```json
 {
@@ -108,7 +110,15 @@ other preset.
     "environment": "uv",
     "formatter": "black",
     "testRunner": "pytest",
-    "sourceRoots": ["src"]
+    "typeChecker": "mypy",
+    "sourceRoots": ["src"],
+    "exceptions": [
+      {
+        "rule": "T201",
+        "paths": ["src/cli/**"],
+        "reason": "Command line entry points print their result."
+      }
+    ]
   }
 }
 ```
@@ -118,19 +128,104 @@ other preset.
 | `environment` | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
 | `formatter`   | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
 | `testRunner`  | `pytest`, `unittest`                   | `pytest` if it can be imported in the environment, else `unittest`                   |
+| `typeChecker` | `mypy`, `pyright`                      | detected from the project, see below                                                 |
 | `sourceRoots` | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `exceptions`  | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
 
-Exceptions: there is no inline disable (`# noqa` is not honored, `--ignore-noqa`), and the
-TypeScript `exceptions` key does not exist here. A path that legitimately breaks a rule is lifted
-with `exclude` in `nitpicker.config.json`; existing violations are baselined with the legacy
-inventory, where `source` is the finding's `identity` as printed in `new-findings.json`
-(`fp:nitpicker/subject=<ruff message>` for ruff).
+The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
+`[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
+`[tool.pyright]` table. Failing that, whichever it declares as a dependency (a requirements line, a
+pyproject entry, the `mirrors-mypy` or `pyright-python` hook). Declaring both, or neither, falls
+back to mypy and then pyright, whichever runs in the environment; `python.typeChecker` overrides all
+of it. The choice is read from the checkout you run `nitpicker` in, so base and head use the same
+checker; a change that switches checker makes every finding of the new one new.
+
+Existing violations are baselined with the legacy inventory, where `source` is the finding's
+`identity` as printed in `new-findings.json` (`fp:nitpicker/subject=<ruff message>` for ruff, the
+tool's message for the type checkers, the subject for the nitpicker rules). A whole path that is not
+yours to fix (generated code) is dropped with `exclude`.
+
+### Exceptions
+
+There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
+in the table below are findings themselves. The way out is `python.exceptions` in
+`nitpicker.config.json`, the Python counterpart of the TypeScript `exceptions` key and of the same
+shape: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+`return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
+and `reason` (required text). It lifts that rule for those paths, in the base and in the head
+snapshot alike, and every exception is listed in the report's config overrides. Rule ids match
+exactly: `PTH` does not lift `PTH118`. Prefer fixing the code; an exception is for code that is
+legitimately outside the rule, such as a command line entry point that prints or a module that
+must keep a mutable dataclass.
 
 The formatter is `black` when `pyproject.toml`, `requirements*.txt`, `setup.cfg`, `tox.ini` or
 `.pre-commit-config.yaml` has a `[tool.black]` table, a dependency named `black`, or the
 `psf/black` hook, and none of them configures ruff's formatter (`[tool.ruff.format]`, a `[format]`
 table in `ruff.toml`, the `ruff-format` hook). The format check uses the project's own formatter
 configuration (line length and so on); only the lint rules are nitpicker's.
+
+## Slice 2: type checking and the one-way rules
+
+The purpose of this slice is the "one way" for each construct. Every finding message names the
+allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
+The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
+through the real tools.
+
+- **Type checking.** `mypy --strict` or `pyright` with `typeCheckingMode: strict`, on the source
+  roots. Strict is not configurable: a project that cannot pass yet baselines its existing errors
+  (they only count when new). The project's own mypy or pyright configuration still applies
+  (plugins, `mypy_path`, per-module overrides, `pythonVersion`, excludes): mypy reads it from the
+  working directory, and pyright gets a generated config that `extends` it, adds the strict mode,
+  the source roots and `enableTypeIgnoreComments: false`. Tests are not type-checked unless a
+  source root contains them. Findings are one per diagnostic: tool `mypy` or `pyright`, rule the
+  error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text, never a
+  line, with `#n` for repeats in one file. Only the first line of a pyright message is used, since
+  the detail lines vary with surrounding code. A checker that exits other than 0 or 1 is a
+  `types-failed` tool error. The checker runs in the project's environment like pytest, so it must
+  be installed there (or on the `PATH`).
+- **Lint rules.** `languages/python/ruff/nitpicker-ruff.toml` selects, besides slice 1's rules,
+  `PTH`, `UP031`, `UP032`, `FLY002`, `BLE001`, `S110` and `S112`, turns on
+  `check-typed-exception` (so `except ValueError: pass` is swallowing too) and ignores `F405`
+  (the star import itself is `F403`), `SIM105` (it recommends the swallowing form `S110` bans)
+  and `RUF100` (every `noqa` is already a finding).
+- **AST rules.** `languages/python/rules/nitpicker_rules.py` runs with `python -I` (standard
+  library only, never importing project code) over the files `ruff check --show-files` lists, so
+  it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
+  Files that do not parse are left to ruff's syntax errors.
+
+| Allowed form                                    | Banned form                                              | Rule                                  |
+| ----------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
+| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                  | ruff `PTH*`                           |
+| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list | ruff `UP031`, `UP032`, `FLY002`       |
+| `None` default, value built in the function     | a mutable default argument                               | ruff `B006`                           |
+| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`, `except X: pass`    | ruff `E722`, `BLE001`, `S110`, `S112` |
+| explicit imports                                | `from module import *`                                   | ruff `F403`                           |
+| `logging`                                       | `print`, `pprint`                                        | ruff `T201`, `T203`                   |
+| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests        | `frozen-dataclass`                    |
+| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere    | `pydantic-boundary`                   |
+| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`    | `enum-string-constants`               |
+| fixing the cause                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...     | `no-inline-suppression`               |
+
+Details that are decisions rather than the table:
+
+- `frozen-dataclass` and `pydantic-boundary` do not apply to test files (a `tests` or `test`
+  directory, `test_*.py`, `*_test.py`, `conftest.py`), where fakes mutate and tests exercise the
+  adapters. `frozen=True` must be the literal `True`.
+- The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
+  as in the TypeScript preset; a project that keeps its pydantic models elsewhere (`schemas/`,
+  `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
+- `enum-string-constants` flags a class with no bases or decorators whose body assigns at least two
+  `UPPER_CASE` names to string literals, and module-level `UPPER_CASE` string constants where at
+  least three share the prefix before the first underscore (`STATUS_ACTIVE`, `STATUS_CLOSED`, ...).
+  Subjects are the class name or `PREFIX_*`, so identities survive edits above them.
+- `no-inline-suppression` reads real comments only (the tokenizer, not string contents). It bans
+  `# type: ignore`, `# noqa`, `# ruff: noqa`, `# flake8: noqa`, `# pyright: ignore`, the
+  `# pyright: basic|standard|off` modes and `# pyright: reportX=false|none|warning|information`,
+  and any `# mypy:` directive except `strict`. `# pyright: strict` is allowed. Mypy has no switch
+  that ignores `# type: ignore` comments, so there the comment still silences the checker; the
+  rule reports it all the same, and pyright is run with `enableTypeIgnoreComments: false`.
+- `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ## Slice 1: tools, reports and identities
 
@@ -163,13 +258,14 @@ configuration (line length and so on); only the lint rules are nitpicker's.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
   tool `python` and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
-  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `environment-failed`
-  and `python-failed` for anything unexpected. An environment that cannot be found at all (no
+  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and
+  `rules-failed` (slice 2), `environment-failed` and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain `python` tool error for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java.
-- **Not included.** Type checking, the architecture rules, structure limits, CRAP, changed-branch
-  coverage, duplicates, coupling and mutation testing are the next slices. Multi-project
+- **Not included in slice 1.** Type checking and the one-way rules are slice 2 (above); structure
+  limits, CRAP, changed-branch coverage, duplicates, coupling and mutation testing are the later
+  slices. Multi-project
   repositories are analyzed one project root at a time. Windows is untested.
 
 ## Slices
@@ -179,8 +275,8 @@ tests, and this document.
 
 | #   | Ticket                                                    | Slice                        | Tool and report                                                          | Findings                                                                                         | Status  |
 | --- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------- |
-| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py         | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                    | this PR |
-| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way     | type errors; one-way rules with their failure messages; the Python skill                         | planned |
+| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py         | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                    | done    |
+| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way     | type errors; one-way rules with their failure messages; the Python skill                         | this PR |
 | PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | function metrics (lizard or ast) joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown` | planned |
 | PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git             | `changed-branch-coverage`                                                                        | planned |
 | PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability               | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`                                 | planned |
@@ -212,5 +308,16 @@ rules each slice adds are listed in [`spec/checks.md`](../spec/checks.md) (gener
   failing tests and a missing environment are tool errors with exit 2; a `unittest` project
   formatted with black passes and fails correctly using tools from the `PATH`; and a `uv.lock`
   project runs through `uv run`.
-- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config, are in
-  the npm package.
+- Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
+  banned and an allowed fixture directory and that its message names the allowed form and the
+  exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,
+  `python-ast-rules.test.mjs` and `python-exceptions.test.mjs` cover the ingesters, the two new
+  steps and the exception filter with the fake toolchain.
+- `languages/python/rules/rule-cases.e2e.test.mjs` and `nitpicker-rules.e2e.test.mjs`: gated behind
+  `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
+  (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy
+  and pyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
+  nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
+  the one-way rules and `python.exceptions` end to end.
+- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+  rules script, are in the npm package.

@@ -5,7 +5,12 @@ import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
+import { ingestRulesReport } from '../ingest/rules-report.mjs';
+import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { RULES_REPORT } from './python-ast-rules.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { TYPES_REPORT } from './python-types.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 
@@ -17,15 +22,17 @@ export function readPythonFindings({ projectRoot, reportRoot }) {
   const { formatter } = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   return {
-    findings: [
+    findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, formatter }),
+      ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
+      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
       ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
-    ],
+    ]),
   };
 }
 
-function ruffFindings(log, { roots, projectRoot }) {
+export function ruffFindings(log, { roots, projectRoot }) {
   const prepared = prepareSarif(log, {
     roots,
     sourceRoots: [],
@@ -33,6 +40,12 @@ function ruffFindings(log, { roots, projectRoot }) {
     identityKey: (result) => result.message?.text,
   });
   return ingestSarif(prepared, { tool: 'ruff' }).findings;
+}
+
+const TYPE_INGESTERS = { mypy: ingestMypy, pyright: ingestPyright };
+
+export function typeFindings({ checker, output }, roots) {
+  return TYPE_INGESTERS[checker](output, { roots });
 }
 
 function formatFindings(text, { roots, formatter }) {

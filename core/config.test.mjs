@@ -42,6 +42,23 @@ describe('config file', () => {
     ]);
   });
 
+  it('lists each python exception separately in the config overrides', () => {
+    const exception = { rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' };
+
+    expect(
+      describeConfigOverrides({
+        python: { typeChecker: 'mypy', exceptions: [exception, { ...exception, rule: 'B006' }] },
+      }),
+    ).toEqual([
+      'python: {"typeChecker":"mypy"}',
+      `exception: ${JSON.stringify(exception)}`,
+      `exception: ${JSON.stringify({ ...exception, rule: 'B006' })}`,
+    ]);
+    expect(describeConfigOverrides({ python: { exceptions: [exception] } })).toEqual([
+      `exception: ${JSON.stringify(exception)}`,
+    ]);
+  });
+
   it('shares thresholds, exclude and legacyInventory with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },

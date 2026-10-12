@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createToolContext, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
@@ -52,7 +53,7 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage'],
+    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage', 'mypy', 'pyright', RULES_TOOL],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {

@@ -24,7 +24,15 @@ describe('Python analyzer', () => {
     const analyzer = createPythonAnalyzer();
 
     expect(analyzer.name).toBe(PYTHON_ANALYZER_NAME);
-    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage']);
+    expect(analyzer.reportedTools).toEqual([
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'mypy',
+      'pyright',
+      'python-rules',
+    ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
@@ -76,6 +84,10 @@ describe('Python analyzer', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     expect(createPythonAnalyzer({}).configurationHash).toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'black' }).configurationHash).not.toBe(hash);
+    expect(
+      createPythonAnalyzer({ exceptions: [{ rule: 'T201', paths: ['cli/**'], reason: 'CLI' }] })
+        .configurationHash,
+    ).not.toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'ruff' }).configurationHash).not.toBe(
       createPythonAnalyzer({ formatter: 'black' }).configurationHash,
     );
@@ -86,10 +98,13 @@ describe('Python analyzer', () => {
     installFakeToolchain(path.join(live, '.venv/bin'));
 
     expect(createPythonAnalyzer().resolveVersion(live)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
     );
     expect(createPythonAnalyzer({ formatter: 'black' }).resolveVersion(live)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
+    );
+    expect(createPythonAnalyzer({ typeChecker: 'pyright' }).resolveVersion(live)).toBe(
+      'ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1',
     );
   });
 
