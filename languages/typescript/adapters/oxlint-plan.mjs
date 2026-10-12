@@ -16,18 +16,30 @@ try {
 
 async function lintPlan(root, globs) {
   const eslint = new ESLint({ cwd: root, overrideConfigFile: wrapperConfigPath });
-  const groups = new Map();
-  const noInlineConfig = [];
-  const typedPluginRules = new Set();
+  const plan = {
+    groups: new Map(),
+    noInlineConfig: [],
+    typedPluginRules: new Set(),
+    ruleMessages: {},
+  };
   for (const file of candidateFiles(root, globs)) {
     const config = await lintedConfig(eslint, file);
-    if (config === undefined) continue;
-    const rules = enabledRules(config.rules);
-    addToGroup(groups, file, { rules, globals: sortedGlobals(config.languageOptions?.globals) });
-    if (config.linterOptions?.noInlineConfig === true) noInlineConfig.push(file);
-    for (const ruleId of typedRulesOf(config, rules)) typedPluginRules.add(ruleId);
+    if (config !== undefined) addFile(plan, file, config);
   }
-  return { groups: [...groups.values()], noInlineConfig, typedPluginRules: [...typedPluginRules] };
+  return {
+    groups: [...plan.groups.values()],
+    noInlineConfig: plan.noInlineConfig,
+    typedPluginRules: [...plan.typedPluginRules],
+    ruleMessages: plan.ruleMessages,
+  };
+}
+
+function addFile(plan, file, config) {
+  const rules = enabledRules(config.rules);
+  addToGroup(plan.groups, file, { rules, globals: sortedGlobals(config.languageOptions?.globals) });
+  if (config.linterOptions?.noInlineConfig === true) plan.noInlineConfig.push(file);
+  for (const ruleId of typedRulesOf(config, rules)) plan.typedPluginRules.add(ruleId);
+  addRuleMessages(plan.ruleMessages, config, rules);
 }
 
 function candidateFiles(root, globs) {
@@ -87,4 +99,10 @@ function typedRulesOf(config, rules) {
   return Object.keys(rules).filter(
     (ruleId) => ruleDefinition(config, ruleId)?.meta?.docs?.requiresTypeChecking === true,
   );
+}
+
+function addRuleMessages(ruleMessages, config, rules) {
+  for (const ruleId of Object.keys(rules)) {
+    ruleMessages[ruleId] ??= ruleDefinition(config, ruleId)?.meta?.messages ?? {};
+  }
 }

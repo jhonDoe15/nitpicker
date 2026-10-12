@@ -517,7 +517,7 @@ natively, type-aware rules run on its TypeScript 7 checker, and every other rule
 and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin. The few type-aware
 plugin rules oxlint cannot run still run on ESLint, for those rules only.
 
-Findings match ESLint's with three known differences:
+Findings match ESLint's with these known differences:
 
 - Type-aware rules see the project through TypeScript 7, so a rule such as
   `@typescript-eslint/unbound-method` can find a few cases TypeScript 6 missed.
@@ -525,6 +525,9 @@ Findings match ESLint's with three known differences:
   reports that the rule definition was not found.
 - `oxlint-disable` comments are honored like `eslint-disable` comments, except where the policy
   turns off inline config.
+- Rules oxlint has its own port of word some messages differently, and a few report a different
+  column. Switching engines therefore shows those findings as new once.
+- Files and folders whose names start with a dot are not linted.
 
 To run the policy on ESLint itself, set the engine:
 

@@ -21,6 +21,7 @@ const ESLINT_DEFAULTS_FOR_NATIVE_RULES = new Map([
     },
   ],
 ]);
+const MESSAGE_PLACEHOLDER = /\{\{\s*[^{}\s]+\s*\}\}/gu;
 const SEVERITIES = new Map([
   [1, 'warn'],
   [2, 'error'],
@@ -135,4 +136,29 @@ export function rejectedRuleIds(errorText, ruleNames) {
   return [...ruleNames]
     .filter(([name]) => rejected.some((rule) => name === rule || name.endsWith(`/${rule}`)))
     .map(([, ruleId]) => ruleId);
+}
+
+export function messageIdResolver(ruleMessages = {}) {
+  const templates = new Map(
+    Object.entries(ruleMessages).map(([ruleId, messages]) => [ruleId, compiledTemplates(messages)]),
+  );
+  return (ruleId, text) =>
+    templates.get(ruleId)?.find(({ pattern }) => pattern.test(text))?.messageId;
+}
+
+function compiledTemplates(messages) {
+  return Object.entries(messages)
+    .map(([messageId, template]) => ({
+      messageId,
+      pattern: templatePattern(template),
+      literalLength: template.replaceAll(MESSAGE_PLACEHOLDER, '').length,
+    }))
+    .sort((left, right) => right.literalLength - left.literalLength);
+}
+
+function templatePattern(template) {
+  const literals = template
+    .split(MESSAGE_PLACEHOLDER)
+    .map((literal) => literal.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  return new RegExp(`^${literals.join('[\\s\\S]*?')}$`, 'u');
 }

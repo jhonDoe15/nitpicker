@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   escapeGlob,
+  messageIdResolver,
   nativeRuleIndex,
   PARITY_BRIDGED_RULES,
   rejectedRuleIds,
@@ -143,5 +144,26 @@ describe('rejectedRuleIds', () => {
 describe('escapeGlob', () => {
   it('matches a file name with glob characters literally', () => {
     expect(escapeGlob('src/[id]/page{1}.ts')).toBe('src/\\[id\\]/page\\{1\\}.ts');
+  });
+});
+
+describe('messageIdResolver', () => {
+  const messageIdOf = messageIdResolver({
+    'no-restricted-syntax': { restrictedSyntax: '{{message}}' },
+    'nitpicker/size': {
+      tooLong: "Function '{{name}}' has {{count}} lines.",
+      tooLongAnonymous: 'Function has {{count}} lines.',
+    },
+  });
+
+  it('recovers the ESLint message id from the reported text', () => {
+    expect(messageIdOf('no-restricted-syntax', 'Use a for...of loop.')).toBe('restrictedSyntax');
+    expect(messageIdOf('nitpicker/size', "Function 'a.b' has 40 lines.")).toBe('tooLong');
+    expect(messageIdOf('nitpicker/size', 'Function has 40 lines.')).toBe('tooLongAnonymous');
+  });
+
+  it('leaves the id out when no template of the rule matches', () => {
+    expect(messageIdOf('nitpicker/size', 'Something else.')).toBeUndefined();
+    expect(messageIdOf('eslint/no-debugger', 'Unexpected debugger statement.')).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
@@ -7,6 +8,7 @@ import {
   realpathSync,
   rmSync,
   symlinkSync,
+  unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -17,11 +19,18 @@ import ts from 'typescript';
 import {
   directiveComments,
   inlineConfigMessages,
+  materializedDirectory,
   overlayFile,
   withoutDirectives,
+  withRenamedRules,
 } from './oxlint-inline-config.mjs';
+import {
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../../../core/tooling/temporary-files.mjs';
 import { resolveTool } from '../../../core/tooling/tool-resolution.mjs';
 import {
+  messageIdResolver,
   nativeRuleIndex,
   PARITY_BRIDGED_RULES,
   rejectedRuleIds,
@@ -34,29 +43,49 @@ const MAX_ARGUMENT_BYTES = 1024 * 1024;
 const MAX_CONFIGURATION_ATTEMPTS = 20;
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
+const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const TOLERATED_TSCONFIG_ERRORS = [
+  /Cannot find type definition file/u,
+  /Option '[^']+' (?:has been removed|is deprecated)/u,
+];
+const ENGINE_HINT =
+  'Set "tools": { "eslint": { "engine": "eslint" } } in nitpicker.config.json to lint with ESLint instead.';
 
 export function lintWithOxlint({ options, environment, projectConfigPath, runEslintCli }) {
   const plan = spawnJson(
     [path.join(import.meta.dirname, 'oxlint-plan.mjs'), options.projectRoot, ...options.patterns],
-    { cwd: options.projectRoot, env: environment, context: 'oxlint planning' },
+    {
+      cwd: options.projectRoot,
+      env: environment,
+      context: 'oxlint planning',
+      timeoutMs: options.timeoutMs,
+    },
   );
-  const stage = createStage(options.projectRoot, projectConfigPath);
+  const files = plan.groups.flatMap((group) => group.files);
+  const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
   try {
+    if (projectConfigPath !== undefined) {
+      hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
+    }
     const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
     const { translation, results } = lintUntilAccepted({
       plan,
       stage,
       projectRoot: options.projectRoot,
       environment,
+      timeoutMs: options.timeoutMs,
+      neutralized: inlineConfig.neutralized,
+      directiveFiles: directiveFilesOf(options.projectRoot, files, plan.noInlineConfig),
     });
     return mergeResults([
       ...results,
-      ...inlineConfig,
+      ...inlineConfig.results,
       ...residualResults(options.projectRoot, translation.residual, runEslintCli),
     ]).map((result) => ({ ...result, filePath: path.join(options.projectRoot, result.filePath) }));
   } finally {
     rmSync(stage, { recursive: true, force: true });
+    untrackTemporaryPath(stage);
   }
 }
 
@@ -67,9 +96,17 @@ function oxlintBinary() {
 function tsgolintBinary() {
   const packageRoot = path.dirname(resolveTool('oxlint-tsgolint', { bin: 'package.json' }).binPath);
   const executable = process.platform === 'win32' ? 'tsgolint.exe' : 'tsgolint';
-  return createRequire(path.join(packageRoot, 'package.json')).resolve(
-    `@oxlint-tsgolint/${process.platform}-${process.arch}/${executable}`,
-  );
+  const platformPackage = `@oxlint-tsgolint/${process.platform}-${process.arch}`;
+  try {
+    return createRequire(path.join(packageRoot, 'package.json')).resolve(
+      `${platformPackage}/${executable}`,
+    );
+  } catch (error) {
+    throw new Error(
+      `The type-aware lint rules need ${platformPackage}, which is not installed. ${ENGINE_HINT}`,
+      { cause: error },
+    );
+  }
 }
 
 function nativeRules(environment) {
@@ -79,6 +116,31 @@ function nativeRules(environment) {
     context: 'oxlint rule listing',
   });
   return { nativeRules: nativeRuleIndex(listed) };
+}
+
+function hideNestedTypeScriptConfigs(stage, projectRoot, files) {
+  for (const directory of nestedConfigDirectories(projectRoot, files)) {
+    const stageDirectory = materializedDirectory({
+      stage,
+      projectRoot,
+      relativeDirectory: directory,
+    });
+    unlinkSync(path.join(stageDirectory, 'tsconfig.json'));
+  }
+}
+
+function nestedConfigDirectories(projectRoot, files) {
+  const directories = new Set(
+    files.flatMap((file) => ancestorDirectories(path.posix.dirname(file))),
+  );
+  return [...directories]
+    .sort()
+    .filter((directory) => existsSync(path.join(projectRoot, directory, 'tsconfig.json')));
+}
+
+function ancestorDirectories(directory) {
+  const segments = directory === '.' ? [] : directory.split('/');
+  return segments.map((_segment, index) => segments.slice(0, index + 1).join('/'));
 }
 
 function createStage(projectRoot, projectConfigPath) {
@@ -154,12 +216,11 @@ function stageConfig(translation, jsPlugins) {
   };
 }
 
-function lintUntilAccepted({ plan, stage, projectRoot, environment }) {
+function lintUntilAccepted({ plan, environment, ...settings }) {
   const context = {
     plan,
-    stage,
-    projectRoot,
     environment,
+    ...settings,
     native: nativeRules(environment),
     files: plan.groups.flatMap((group) => group.files),
     bridgedRules: new Set(PARITY_BRIDGED_RULES),
@@ -172,14 +233,29 @@ function lintUntilAccepted({ plan, stage, projectRoot, environment }) {
   throw new Error('oxlint rejected the lint configuration too many times');
 }
 
-function lintAttempt({ plan, stage, projectRoot, environment, native, files, bridgedRules }) {
+function lintAttempt({
+  plan,
+  stage,
+  projectRoot,
+  native,
+  bridgedRules,
+  neutralized,
+  directiveFiles,
+  ...run
+}) {
   const translation = translatePlan(plan, { ...native, bridgedRules });
   const sampleFile = plan.groups[0]?.files[0];
   const configPath = writeStageConfig({ stage, projectRoot, sampleFile, translation });
+  renameBridgedDirectives({ stage, projectRoot, directiveFiles, ruleNames: translation.ruleNames });
+  const naming = {
+    ruleNames: translation.ruleNames,
+    messageIdOf: messageIdResolver(plan.ruleMessages),
+    neutralized,
+  };
   try {
     return {
       translation,
-      results: lintStage({ stage, configPath, files, translation, environment }),
+      results: lintStage({ stage, configPath, translation, naming, ...run }),
     };
   } catch (error) {
     bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
@@ -193,7 +269,10 @@ function bridgeRejectedRules(error, ruleNames, bridgedRules) {
   for (const ruleId of rejected) bridgedRules.add(ruleId);
 }
 
-function lintStage({ stage, configPath, files, translation, environment }) {
+function lintStage({ stage, configPath, files, translation, naming, environment, timeoutMs }) {
+  const typeAwareEnvironment = translation.typeAware
+    ? { OXLINT_TSGOLINT_PATH: tsgolintBinary() }
+    : {};
   return argumentChunks(files).flatMap((chunk) => {
     const report = spawnJson(
       [
@@ -210,12 +289,13 @@ function lintStage({ stage, configPath, files, translation, environment }) {
       ],
       {
         cwd: stage,
-        env: { ...environment, OXLINT_TSGOLINT_PATH: tsgolintBinary() },
+        env: { ...environment, ...typeAwareEnvironment },
         context: 'oxlint',
+        timeoutMs,
         acceptedStatuses: [0, 1],
       },
     );
-    return eslintShapedResults(stage, report.diagnostics, translation.ruleNames);
+    return eslintShapedResults(stage, report.diagnostics, naming);
   });
 }
 
@@ -233,30 +313,58 @@ function argumentChunks(files) {
   return chunks.filter((chunk) => chunk.length > 0);
 }
 
-function eslintShapedResults(stage, diagnostics, ruleNames) {
-  const reported = diagnostics.filter((diagnostic) => !isIgnoredDiagnostic(diagnostic));
+function eslintShapedResults(stage, diagnostics, naming) {
+  const reported = distinctDiagnostics(diagnostics).filter(
+    (diagnostic) => !isIgnoredDiagnostic(diagnostic),
+  );
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
+    const filePath = filename.replaceAll('\\', '/');
     const locate = byteLocator(readFileSync(path.join(stage, filename)));
+    const neutralized = naming.neutralized.get(filePath) ?? new Set();
     return {
-      filePath: filename.replaceAll('\\', '/'),
-      messages: fileDiagnostics.map((diagnostic) => eslintMessage(diagnostic, ruleNames, locate)),
+      filePath,
+      messages: fileDiagnostics
+        .map((diagnostic) => eslintMessage(diagnostic, naming, locate))
+        .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });
 }
 
-function isIgnoredDiagnostic(diagnostic) {
+function distinctDiagnostics(diagnostics) {
+  const seen = new Set();
+  return diagnostics.filter((diagnostic) => {
+    const key = JSON.stringify([
+      diagnostic.filename,
+      diagnostic.code,
+      diagnostic.labels?.[0]?.span?.offset,
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function isNeutralizerWhitespace(message, neutralized) {
   return (
-    diagnostic.code === TSCONFIG_ERROR_CODE ||
-    (diagnostic.code === undefined && diagnostic.message.startsWith('Unused oxlint-'))
+    message.ruleId === IRREGULAR_WHITESPACE_RULE &&
+    neutralized.has(`${String(message.line)}:${String(message.column)}`)
   );
+}
+
+function isIgnoredDiagnostic(diagnostic) {
+  if (diagnostic.code === TSCONFIG_ERROR_CODE) {
+    const text = `${diagnostic.message} ${diagnostic.help ?? ''}`;
+    return TOLERATED_TSCONFIG_ERRORS.some((pattern) => pattern.test(text));
+  }
+  return diagnostic.code === undefined && diagnostic.message.startsWith('Unused oxlint-');
 }
 
 function isUnusedEslintDirective(diagnostic) {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
-function eslintMessage(diagnostic, ruleNames, locate) {
+function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
   const end = locate(span.offset + span.length);
@@ -279,7 +387,8 @@ function eslintMessage(diagnostic, ruleNames, locate) {
       `oxlint reported ${diagnostic.code}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
-  return { ruleId, message: withoutSentinelHint(diagnostic.message), severity: 2, ...position };
+  const message = withoutSentinelHint(diagnostic.message);
+  return { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position };
 }
 
 function withoutSentinelHint(message) {
@@ -287,9 +396,10 @@ function withoutSentinelHint(message) {
 }
 
 function byteLocator(bytes) {
-  const lineStarts = [0];
-  for (const [index, byte] of bytes.entries()) {
-    if (byte === 0x0a) lineStarts.push(index + 1);
+  const lineStarts = [hasByteOrderMark(bytes) ? 3 : 0];
+  for (const index of bytes.keys()) {
+    const breakLength = lineBreakLengthAt(bytes, index);
+    if (breakLength > 0) lineStarts.push(index + breakLength);
   }
   return (offset) => {
     const lineIndex = lastLineStartAtOrBefore(lineStarts, offset);
@@ -298,12 +408,27 @@ function byteLocator(bytes) {
   };
 }
 
+function hasByteOrderMark(bytes) {
+  return bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
+}
+
+function lineBreakLengthAt(bytes, index) {
+  if (bytes[index] === 0x0a) return 1;
+  if (bytes[index] === 0x0d) return bytes[index + 1] === 0x0a ? 0 : 1;
+  const isSeparator =
+    bytes[index] === 0xe2 &&
+    bytes[index + 1] === 0x80 &&
+    (bytes[index + 2] === 0xa8 || bytes[index + 2] === 0xa9);
+  return isSeparator ? 3 : 0;
+}
+
 function lastLineStartAtOrBefore(lineStarts, offset) {
   return lineStarts.findLastIndex((lineStart) => lineStart <= offset);
 }
 
 function neutralizeInlineConfig(stage, projectRoot, files) {
-  return files.flatMap((file) => {
+  const neutralized = new Map();
+  const results = files.flatMap((file) => {
     const text = readFileSync(path.join(projectRoot, file), 'utf8');
     const directives = directiveComments(text, file);
     if (directives.length === 0) return [];
@@ -313,9 +438,36 @@ function neutralizeInlineConfig(stage, projectRoot, files) {
       relativePath: file,
       content: withoutDirectives(text, directives),
     });
+    neutralized.set(
+      file,
+      new Set(directives.map(({ neutralizedLocation }) => neutralizedLocation)),
+    );
     const messages = inlineConfigMessages(directives);
     return messages.length === 0 ? [] : [{ filePath: file, messages }];
   });
+  return { results, neutralized };
+}
+
+function directiveFilesOf(projectRoot, files, noInlineConfig) {
+  const locked = new Set(noInlineConfig);
+  return files
+    .filter((file) => !locked.has(file))
+    .map((file) => ({ file, text: readFileSync(path.join(projectRoot, file), 'utf8') }))
+    .filter(({ text }) => text.includes('eslint-'))
+    .map(({ file, text }) => ({ file, text, directives: directiveComments(text, file) }))
+    .filter(({ directives }) => directives.some(({ isEslint }) => isEslint));
+}
+
+function renameBridgedDirectives({ stage, projectRoot, directiveFiles, ruleNames }) {
+  const renames = new Map(
+    [...ruleNames]
+      .filter(([oxlintName]) => oxlintName.startsWith('js-'))
+      .map(([oxlintName, ruleId]) => [ruleId, oxlintName]),
+  );
+  for (const { file, text, directives } of directiveFiles) {
+    const content = withRenamedRules(text, directives, renames);
+    if (content !== text) overlayFile({ stage, projectRoot, relativePath: file, content });
+  }
 }
 
 function residualResults(projectRoot, residual, runEslintCli) {
@@ -324,8 +476,8 @@ function residualResults(projectRoot, residual, runEslintCli) {
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
   return runEslintCli(files, { NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules) }).map(
     (result) => ({
-      ...result,
       filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
+      messages: result.messages.filter((message) => rules.includes(message.ruleId)),
     }),
   );
 }
@@ -349,17 +501,20 @@ function byPosition(left, right) {
   );
 }
 
-function spawnJson(argumentList, { cwd, env, context, acceptedStatuses = [0] }) {
+function spawnJson(argumentList, { cwd, env, context, timeoutMs, acceptedStatuses = [0] }) {
   const result = spawnSync(process.execPath, argumentList, {
     cwd,
     env,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: timeoutMs,
   });
-  if (result.error !== undefined) throw result.error;
+  if (result.error !== undefined) {
+    throw new Error(`${context} failed: ${result.error.message}`, { cause: result.error });
+  }
   if (!acceptedStatuses.includes(result.status)) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${context} exited with ${String(result.status)}: ${detail}`);
+    throw new Error(`${context} exited with ${String(result.status)}: ${detail}\n${ENGINE_HINT}`);
   }
   try {
     return JSON.parse(result.stdout);

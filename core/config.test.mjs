@@ -301,13 +301,13 @@ describe('tool precedence', () => {
   });
 
   it('accepts either lint engine for the ESLint checks', () => {
-    for (const engine of ['oxlint', 'eslint']) {
+    for (const engine of ['oxlint', 'eslint', undefined]) {
       expect(validateConfig({ tools: { eslint: { engine } } })).toBeDefined();
     }
   });
 
   it('rejects an unknown lint engine', () => {
-    for (const engine of ['biome', undefined]) {
+    for (const engine of ['biome', '']) {
       expect(() => validateConfig({ tools: { eslint: { engine } } })).toThrow(
         '"tools.eslint.engine" must be "oxlint" or "eslint"',
       );

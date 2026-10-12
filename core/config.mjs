@@ -169,7 +169,7 @@ function validateToolSettings(name, settings) {
 }
 
 function validateLintEngine(engine) {
-  if (!LINT_ENGINES.includes(engine)) {
+  if (engine !== undefined && !LINT_ENGINES.includes(engine)) {
     throw configError(
       `"tools.eslint.engine" must be "oxlint" or "eslint". "oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint`,
     );
