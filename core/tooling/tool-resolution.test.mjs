@@ -200,7 +200,7 @@ function writeManifest(packageRoot, manifest) {
   writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify(manifest));
 }
 
-it('finds the nearest package bounded by the git repository', () => {
+it('finds the nearest package or nitpicker config bounded by the git repository', () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
   temporaryRoots.push(root);
   execFileSync('git', ['init', '-q'], { cwd: root });
@@ -208,8 +208,13 @@ it('finds the nearest package bounded by the git repository', () => {
   mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
   writeFileSync(path.join(root, 'packages/package.json'), '{}');
   expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
+  mkdirSync(path.join(root, 'service/src'), { recursive: true });
+  writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
+  expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
   const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
   temporaryRoots.push(emptyRoot);
   execFileSync('git', ['init', '-q'], { cwd: emptyRoot });
-  expect(() => resolveProjectRoot(emptyRoot)).toThrow('No package.json found');
+  expect(() => resolveProjectRoot(emptyRoot)).toThrow(
+    'No package.json or nitpicker.config.json found',
+  );
 });
