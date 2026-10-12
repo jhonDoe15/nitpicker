@@ -173,7 +173,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
+  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
+    finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
+    the tools the Java analyzer reports. Matching findings are dropped on both snapshots. Each
+    exception is listed in the report and changes the configuration hash.
+  - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`

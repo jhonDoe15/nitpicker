@@ -57,6 +57,14 @@ export function configureJavaAnalyzer(
     : withLegacyInventory(configured, legacyInventory);
 }
 
+function isLifted(finding, lifted) {
+  const printedRule = `${finding.tool}/${finding.rule}`;
+  return lifted.some(
+    ({ rule, matcher }) =>
+      (rule === finding.rule || rule === printedRule) && matcher.test(finding.path),
+  );
+}
+
 function hashWithArguments(configurationHash, adapterArguments) {
   return adapterArguments.length === 0
     ? configurationHash
@@ -83,8 +91,7 @@ export function applyJavaPolicy(
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
     (finding) =>
-      !excluders.some((matcher) => matcher.test(finding.path)) &&
-      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
+      !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;
