@@ -25,6 +25,7 @@ import {
   summaryMetrics,
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
+  TYPECHECK_FAILED_SKIPPED_RULE,
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
@@ -65,31 +66,21 @@ const QUALITY_AREA_RUNNERS = new Map([
 ]);
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
+const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
+const STRUCTURE_HINTS = {
+  lines:
+    'Nested functions count: move inner functions to module level, passing what they close over as one object.',
+};
+
 const DEAD_CODE_DECLARATIONS = new Map([
   ['exports', 'Export'],
   ['types', 'Exported type'],
 ]);
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
-
-const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const options = parseArguments(process.argv.slice(2));
-    const findings = await runQualityArea(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (error) {
-    process.stderr.write(
-      `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
 
 export async function runQualityArea(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
@@ -390,7 +381,7 @@ export function coverageFailureFindings(options, report, result) {
     );
   }
   return [
-    testsFailedFinding(options, {
+    toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
       message: formatVitestFailures(report, options.projectRoot),
@@ -421,7 +412,7 @@ function readVitestReport(reportPath, result) {
   }
 }
 
-function testsFailedFinding(options, { rule, path: findingPath = '.', message }) {
+function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
   return {
     tool: options.analyzerName,
     rule,
@@ -542,7 +533,7 @@ function runCrap(options) {
     hasRunnableTests(options)
   ) {
     return [
-      testsFailedFinding(options, {
+      toolErrorFinding(options, {
         rule: TESTS_FAILED_SKIPPED_RULE,
         message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
       }),
@@ -595,11 +586,7 @@ async function runMutation(options) {
 }
 
 function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
-  const tsconfigPath = installMutationCompanion(
-    options,
-    [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
-    createdFiles,
-  );
+  const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
@@ -621,6 +608,30 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
   );
 }
 
+const SKIP_MESSAGES = {
+  head: {
+    typecheck:
+      'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+    tests: 'mutation skipped: tests fail (see coverage findings)',
+  },
+  base: {
+    typecheck:
+      'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+    tests:
+      'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+  },
+};
+
+export function mutationSkipFor(errorMessage, snapshot = 'head') {
+  const messages = SKIP_MESSAGES[snapshot];
+  if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
+    return { rule: TYPECHECK_FAILED_SKIPPED_RULE, message: messages.typecheck };
+  }
+  return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
+    ? { rule: TESTS_FAILED_SKIPPED_RULE, message: messages.tests }
+    : undefined;
+}
+
 function runStrykerOrExplainSkip(options, configPath) {
   try {
     runNodeTool({
@@ -631,15 +642,12 @@ function runStrykerOrExplainSkip(options, configPath) {
     });
     return undefined;
   } catch (error) {
-    if (error instanceof Error && INITIAL_TEST_RUN_FAILED_PATTERN.test(error.message)) {
-      return [
-        testsFailedFinding(options, {
-          rule: TESTS_FAILED_SKIPPED_RULE,
-          message: 'Mutation testing did not run because the project tests fail.',
-        }),
-      ];
+    const skip =
+      error instanceof Error ? mutationSkipFor(error.message, options.snapshot) : undefined;
+    if (skip === undefined) {
+      throw error;
     }
-    throw error;
+    return [toolErrorFinding(options, skip)];
   }
 }
 
@@ -681,6 +689,7 @@ export function normalizeStructure(report, analyzerName) {
       })),
     },
     analyzerName,
+    { hints: STRUCTURE_HINTS },
   );
 }
 
@@ -1220,14 +1229,22 @@ async function runDependencyCruiser(options, sourcePaths, layout) {
   return report;
 }
 
-function runNodeTool({
+function runNodeTool({ acceptedStatuses, ...invocation }) {
+  const result = spawnNodeTool(invocation);
+  if (!acceptedStatuses.includes(result.status)) {
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`${invocation.options.kind} exited with ${String(result.status)}: ${detail}`);
+  }
+  return result;
+}
+
+function spawnNodeTool({
   options,
   relativeToolPath,
   absoluteToolPath,
   arguments_,
   cwd = options.projectRoot,
   environment = {},
-  acceptedStatuses,
 }) {
   const name = relativeToolPath === undefined ? undefined : toolNameForPath(relativeToolPath);
   const toolPath =
@@ -1244,10 +1261,6 @@ function runNodeTool({
   });
   if (result.error !== undefined) {
     throw result.error;
-  }
-  if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${options.kind} exited with ${String(result.status)}: ${detail}`);
   }
   return result;
 }
@@ -1267,20 +1280,40 @@ export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigF
   };
 }
 
-function installMutationCompanion(options, [sourceRelativePath, targetName], createdFiles) {
+export function installStrykerTsconfig(options, sourceRelativePath, createdFiles) {
+  const target = [sourceRelativePath, STRYKER_TSCONFIG_TARGET];
+  const tsconfigPath = installMutationCompanion(options, target, createdFiles);
+  if (!typechecksCleanly(options, tsconfigPath)) {
+    writeFileSync(tsconfigPath, mutationCompanionText(options, target, { strictMutants: false }));
+  }
+  return tsconfigPath;
+}
+
+function typechecksCleanly(options, tsconfigPath) {
+  return (
+    spawnNodeTool({
+      options,
+      relativeToolPath: 'typescript/bin/tsc',
+      arguments_: ['--project', tsconfigPath, '--noEmit', '--incremental', 'false'],
+    }).status === 0
+  );
+}
+
+function installMutationCompanion(options, target, createdFiles) {
+  const targetPath = path.join(options.projectRoot, target[1]);
+  writeTemporaryFile(targetPath, mutationCompanionText(options, target), createdFiles);
+  return targetPath;
+}
+
+function mutationCompanionText(options, [sourceRelativePath, targetName], transformOptions) {
   const sourcePath = policyFile(
     options.policyRoot,
     companionPath(path.posix.dirname(STRYKER_CONFIG_PATH), sourceRelativePath),
   );
   const targetPath = path.join(options.projectRoot, targetName);
-  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout());
+  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout(), transformOptions);
   const text = readFileSync(sourcePath, 'utf8');
-  writeTemporaryFile(
-    targetPath,
-    transform === undefined ? text : transform(text, targetPath),
-    createdFiles,
-  );
-  return targetPath;
+  return transform === undefined ? text : transform(text, targetPath);
 }
 
 function companionPath(configDirectory, relativePath) {
@@ -1437,4 +1470,21 @@ function requiredValue(values, name) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
+}
+
+const invokedPath = process.argv[1];
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
+  try {
+    const options = parseArguments(process.argv.slice(2));
+    const findings = await runQualityArea(options);
+    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+  } catch (error) {
+    process.stderr.write(
+      `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+  }
 }

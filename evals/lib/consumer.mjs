@@ -84,6 +84,7 @@ export function createConsumer({
           vitest: manifest.devDependencies.vitest,
           '@vitest/coverage-v8': manifest.devDependencies['@vitest/coverage-v8'],
           typescript: manifest.devDependencies.typescript,
+          '@types/node': manifest.devDependencies['@types/node'],
           ...packageJson.devDependencies,
         },
       },
