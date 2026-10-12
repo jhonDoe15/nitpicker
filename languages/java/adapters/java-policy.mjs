@@ -69,6 +69,7 @@ export function applyJavaPolicy(
     baselineRoot,
     snapshot = 'head',
     preset = 'java',
+    inventoryTool = preset,
   } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
@@ -86,6 +87,6 @@ export function applyJavaPolicy(
   const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
   return [
     ...baselined,
-    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, preset),
+    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, inventoryTool),
   ];
 }

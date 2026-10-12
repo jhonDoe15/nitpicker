@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
 import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
@@ -14,7 +15,7 @@ import {
 import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', ...GRADLE_PRESETS];
+const SUPPORTED_PRESETS = ['typescript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
@@ -27,6 +28,7 @@ const KEYS = [
   'react',
   'analyzers',
   'legacyInventory',
+  'python',
   'tools',
   'kotlin',
 ];
@@ -85,6 +87,7 @@ function validateScalars(config) {
     validateJavaKeys(config);
   }
   validateKotlinOptions(config);
+  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
 }
 
 function validateJavaKeys(config) {
