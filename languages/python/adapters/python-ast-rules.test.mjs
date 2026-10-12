@@ -67,7 +67,9 @@ describe('running the rules script', () => {
     const root = fakes.project({ 'fail.json': JSON.stringify({ python: 'no interpreter' }) });
     const { context } = fakes.contextFor(root);
 
-    expect(() => checkRules(context)).toThrow(
+    expect(() => {
+      checkRules(context);
+    }).toThrow(
       expect.objectContaining({
         rule: 'rules-failed',
         message: expect.stringContaining('no interpreter'),
