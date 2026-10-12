@@ -36,6 +36,9 @@ const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test b
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
 
+const INVALID_VOID_HINT =
+  ' Use `undefined` instead of `void` here: `Promise.withResolvers<undefined>()` and `resolve(undefined)`.';
+
 const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 
 const SWITCH_NOT_EXHAUSTIVE_HINT =
@@ -44,7 +47,7 @@ const SWITCH_NOT_EXHAUSTIVE_HINT =
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
-    'This function had {base} of these at base and the count may not grow: route the new failure through an existing throw statement, or return a union from a new helper function.',
+    'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
   ],
 ]);
 
@@ -82,6 +85,10 @@ function duplicateConstituentsMessage({ text }) {
   return `${text}${DUPLICATE_CONSTITUENTS_HINT}`;
 }
 
+function invalidVoidMessage({ text }) {
+  return `${text}${INVALID_VOID_HINT}`;
+}
+
 function switchExhaustivenessMessage({ text }) {
   return text.startsWith(SWITCH_NOT_EXHAUSTIVE_TEXT)
     ? `${text}${SWITCH_NOT_EXHAUSTIVE_HINT}`
@@ -100,6 +107,7 @@ const MESSAGE_REWRITERS = new Map([
   ['vitest/expect-expect', expectExpectMessage],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
+  ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],
 ]);
 
 export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {

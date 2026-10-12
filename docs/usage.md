@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
