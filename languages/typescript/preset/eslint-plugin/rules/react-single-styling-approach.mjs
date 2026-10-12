@@ -46,41 +46,47 @@ const wrappedExpressionTypes = new Set([
   'TSNonNullExpression',
 ]);
 
-function initializerOf(sourceCode, identifier) {
+function initializersOf(sourceCode, identifier) {
   const definitions = variableNamed(sourceCode, identifier)?.defs ?? [];
   const [definition] = definitions;
   const declarator = definition?.node;
   return definitions.length === 1 &&
     declarator.type === 'VariableDeclarator' &&
-    declarator.id.type === 'Identifier'
-    ? declarator.init
-    : undefined;
+    declarator.id.type === 'Identifier' &&
+    declarator.init
+    ? [declarator.init]
+    : [];
 }
 
-function objectLiteralsIn(sourceCode, expression, seen = new Set()) {
-  if (expression === null || expression === undefined || seen.has(expression)) {
-    return [];
-  }
-  seen.add(expression);
-  if (expression.type === 'ObjectExpression') {
-    return [expression];
-  }
+function innerExpressions(sourceCode, expression) {
   if (wrappedExpressionTypes.has(expression.type)) {
-    return objectLiteralsIn(sourceCode, expression.expression, seen);
+    return [expression.expression];
   }
   if (expression.type === 'ConditionalExpression') {
-    return [expression.consequent, expression.alternate].flatMap((branch) =>
-      objectLiteralsIn(sourceCode, branch, seen),
-    );
+    return [expression.consequent, expression.alternate];
   }
   if (expression.type === 'LogicalExpression') {
-    return [expression.left, expression.right].flatMap((operand) =>
-      objectLiteralsIn(sourceCode, operand, seen),
-    );
+    return [expression.left, expression.right];
   }
-  return expression.type === 'Identifier'
-    ? objectLiteralsIn(sourceCode, initializerOf(sourceCode, expression), seen)
-    : [];
+  return expression.type === 'Identifier' ? initializersOf(sourceCode, expression) : [];
+}
+
+function objectLiteralsIn(sourceCode, start) {
+  const pending = [start];
+  const seen = new Set();
+  const objects = [];
+  for (const expression of pending) {
+    if (seen.has(expression)) {
+      continue;
+    }
+    seen.add(expression);
+    if (expression.type === 'ObjectExpression') {
+      objects.push(expression);
+    } else {
+      pending.push(...innerExpressions(sourceCode, expression));
+    }
+  }
+  return objects;
 }
 
 function isInlineStyleObject(sourceCode, attribute) {

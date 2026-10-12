@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/harness.mjs';
+import { lintFixture } from '../failure-messages/harness.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { accessibilityRuleNames, reactRuleIds } from './react-rules.mjs';
 import {
@@ -189,16 +189,18 @@ describe('the React scope config', () => {
       { languageOptions: { parser: tseslint.parser } },
       ...(await reactSyntaxConfigFor(layout)),
     ];
-    const lint = (body) =>
-      failureMessagesFor({
+    const rulesFlaggedIn = (body) =>
+      lintFixture({
         config,
         filename: 'src/main/ui/boundary.tsx',
         code: `import { Component } from 'react'; export class Boundary extends Component { ${body} render() { return <div />; } }`,
-      });
+      }).map(({ ruleId }) => ruleId);
 
-    expect(lint('static getDerivedStateFromError() { return { failed: true }; }')).toEqual([]);
-    expect(lint('componentDidCatch() {}')).toEqual([]);
-    expect(lint('')).toEqual([expect.stringContaining('nitpicker.config.json')]);
+    expect(
+      rulesFlaggedIn('static getDerivedStateFromError() { return { failed: true }; }'),
+    ).toEqual([]);
+    expect(rulesFlaggedIn('componentDidCatch() {}')).toEqual([]);
+    expect(rulesFlaggedIn('')).toEqual(['react-x/no-class-component']);
   });
 
   it('keeps the accessibility rule options of the plugin', async () => {

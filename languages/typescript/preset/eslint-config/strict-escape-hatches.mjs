@@ -24,6 +24,10 @@ export const typeAssertionSelectors = [
   },
 ];
 
+function except(allowed) {
+  return allowed.map((selector) => `:not(${selector})`).join('');
+}
+
 export function escapeHatchSelectorsFor({ react = false } = {}) {
   const allowedNullLiterals = [
     strictEqualityOperand,
@@ -33,7 +37,6 @@ export function escapeHatchSelectorsFor({ react = false } = {}) {
   const allowedNullTypes = react
     ? [`${reactNullHost} > TSTypeParameterInstantiation TSNullKeyword`]
     : [];
-  const except = (allowed) => allowed.map((selector) => `:not(${selector})`).join('');
   return [
     ...typeAssertionSelectors,
     {
