@@ -325,17 +325,27 @@ function parseFileSection(section, projectRelativePath) {
     ranges: [],
     inserted: [],
   };
-  for (const hunk of hunks) {
-    recordHunk(file, hunk);
-  }
+  const read = hunks.map((hunk) => recordHunk(file, hunk));
+  const added = read.flatMap((hunk) => hunk.added);
+  const unpaired = unpairedOffsets(
+    read.flatMap((hunk) => hunk.removed),
+    added.map(({ text }) => text),
+  );
+  const insertedLines = [
+    ...read.flatMap((hunk) => hunk.inserted),
+    ...unpaired.map((index) => added[index].line),
+  ].toSorted((left, right) => left - right);
+  file.inserted.push(...offsetRanges(0, insertedLines));
   return file;
 }
+
+const NO_LINES = { removed: [], added: [], inserted: [] };
 
 function recordHunk(file, hunkText) {
   const [headerLine = '', ...body] = hunkText.split('\n');
   const hunk = HUNK_HEADER.exec(headerLine);
   if (hunk === null) {
-    return;
+    return NO_LINES;
   }
   const removedCount = hunk[1] === undefined ? 1 : Number(hunk[1]);
   const start = Number(hunk[2]);
@@ -345,11 +355,18 @@ function recordHunk(file, hunkText) {
   }
   const removed = body.filter((line) => line.startsWith('-')).map((line) => line.slice(1));
   const added = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1));
-  const insertedOffsets =
-    added.length === count && removed.length === removedCount
-      ? unpairedOffsets(removed, added)
-      : beyondReplacedOffsets(removedCount, count);
-  file.inserted.push(...offsetRanges(start, insertedOffsets));
+  if (added.length === count && removed.length === removedCount) {
+    return {
+      removed,
+      added: added.map((text, offset) => ({ line: start + offset, text })),
+      inserted: [],
+    };
+  }
+  return {
+    removed: [],
+    added: [],
+    inserted: beyondReplacedOffsets(removedCount, count).map((offset) => start + offset),
+  };
 }
 
 function beyondReplacedOffsets(removedCount, count) {

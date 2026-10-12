@@ -77,7 +77,8 @@ allprojects {
         }
         jacoco { toolVersion = pinned.jacoco }
         // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
-        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format).
+        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format), with
+        // Javadoc allowed but not required, the same doc comment rule as the TypeScript preset.
         checkstyle {
             toolVersion = pinned.checkstyle
             ignoreFailures = true
@@ -88,6 +89,8 @@ allprojects {
             } else {
                 def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
                 config = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+                configProperties = ['org.checkstyle.google.suppressionfilter.config':
+                    new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
             }
         }
         tasks.named('checkstyleMain') {
