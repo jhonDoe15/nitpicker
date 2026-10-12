@@ -220,7 +220,7 @@ new and touched code must comply.
   callbacks); named exports only (config files may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments, no inline lint disables, no `@ts-ignore`,
+  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
