@@ -79,6 +79,9 @@
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
     "eslint-plugin-functional": "10.0.1",
+    "eslint-plugin-jsx-a11y-x": "0.2.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-x": "5.21.0",
     "globals": "17.11.0",
     "jscpd": "5.0.16",
     "knip": "6.32.3",
@@ -87,6 +90,7 @@
   },
   "devDependencies": {
     "@types/node": "25.6.0",
+    "@types/react": "19.2.2",
     "@vitest/coverage-v8": "4.1.11",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
