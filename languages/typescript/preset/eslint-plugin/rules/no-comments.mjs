@@ -2,6 +2,8 @@ import { castTags, isJsdocBlock, parseJsdoc } from '../../../../javascript/prese
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
+const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
+const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const toolDirective =
   /^\s*(?:eslint\b|prettier-ignore|istanbul\b|c8\b|v8\b|stryker\b|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
 
@@ -22,6 +24,39 @@ function jsdocReports(comment, sourceCode) {
   ];
 }
 
+function declarationStartingAt(sourceCode, token) {
+  const innermost = sourceCode.getNodeByRangeIndex(token.range[0]);
+  if (!innermost) return undefined;
+  return [...sourceCode.getAncestors(innermost), innermost].find(
+    (node) => node.type !== 'Program' && node.range[0] === token.range[0],
+  );
+}
+
+function isExportedTypeMember(node) {
+  if (!typeMembers.has(node.type)) return false;
+  const typeLiteral = node.parent;
+  const alias = typeLiteral?.parent;
+  return (
+    typeLiteral?.type === 'TSTypeLiteral' &&
+    alias?.type === 'TSTypeAliasDeclaration' &&
+    exportDeclarations.has(alias.parent?.type)
+  );
+}
+
+function documentsPublicApi(sourceCode, comment) {
+  const token = sourceCode.getTokenAfter(comment);
+  if (!token) return false;
+  const node = declarationStartingAt(sourceCode, token);
+  if (!node) return false;
+  return exportDeclarations.has(node.type) || isExportedTypeMember(node);
+}
+
+function plainCommentReports(comment, sourceCode) {
+  if (toolDirective.test(comment.value)) return [];
+  if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
+  return documentsPublicApi(sourceCode, comment) ? [] : [{ messageId: 'internalDocComment' }];
+}
+
 function commentReports(comment, { jsdocTypes, sourceCode }) {
   const suppression = suppressionReport(comment);
   if (suppression !== undefined) {
@@ -30,14 +65,15 @@ function commentReports(comment, { jsdocTypes, sourceCode }) {
   if (jsdocTypes && isJsdocBlock(comment)) {
     return jsdocReports(comment, sourceCode);
   }
-  return toolDirective.test(comment.value) ? [] : [{ messageId: 'comment' }];
+  return plainCommentReports(comment, sourceCode);
 }
 
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Allow only non-suppression tool directives as comments',
+      description:
+        'Allow only non-suppression tool directives as comments, plus doc comments on exported API',
     },
     schema: [
       {
@@ -64,6 +100,8 @@ export const rule = {
         'Use `undefined` for an absent value; `null` is not allowed in a JSDoc type. Type it as optional with `undefined`.',
       jsdocCast:
         'Do not assert with a JSDoc cast (`/** @type {T} */ (value)`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `/** @type {const} */` is allowed.',
+      internalDocComment:
+        'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },
   },
   create(context) {

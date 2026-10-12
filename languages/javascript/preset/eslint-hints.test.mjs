@@ -39,7 +39,7 @@ describe('unsafe any hint', () => {
   it('keeps the TypeScript wording for a TypeScript project', () => {
     withPreset({}, () => {
       expect(unsafeAnyMessage()).toBe(
-        'Unsafe return of a value of type `any`. Read fields of a legacy `any` value through one reader function whose parameter is `unknown` and that returns a typed object.',
+        'Unsafe return of a value of type `any`. If the value is a legacy `any`, read it through one reader function whose parameter is `unknown` and that returns a typed object, kept in adapters/; fix any TypeScript error on the line first.',
       );
     });
   });

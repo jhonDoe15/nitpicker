@@ -9,6 +9,7 @@ import {
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
+const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
 
 export function expandLayoutRoots(entries, layout) {
   const expanded = entries.flatMap((entry) => {
@@ -88,30 +89,52 @@ export function jsonTransform(rewrite, layout) {
 
 const REWRITES = new Map([
   ['tsconfig.quality.json', layoutTsconfig],
-  ['tsconfig.stryker.json', layoutStrykerTsconfig],
+  [STRYKER_TSCONFIG, layoutStrykerTsconfig],
   ['knip.json', layoutKnipConfig],
   ['jscpd.json', layoutJscpdConfig],
 ]);
 
-const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', 'tsconfig.stryker.json']);
+const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', STRYKER_TSCONFIG]);
 
-export function layoutTransformFor(policyFileName, layout) {
+export function layoutTransformFor(policyFileName, layout, { strictMutants = true } = {}) {
   const name = policyFileName.split('/').at(-1);
   const rewrite = REWRITES.get(name);
   const layoutTransform = rewrite === undefined ? undefined : jsonTransform(rewrite, layout);
   if (!TSCONFIG_POLICY_FILES.has(name)) {
     return layoutTransform;
   }
+  const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
   return (text, targetPath) => {
     const projectConfig = projectConfigName(path.dirname(targetPath), layout);
-    return projectConfig === undefined
-      ? (layoutTransform?.(text) ?? text)
-      : `${JSON.stringify(projectLayeredTsconfig(JSON.parse(text), layout, { name, projectConfig }), null, 2)}\n`;
+    if (projectConfig !== undefined) {
+      const layered =
+        name === STRYKER_TSCONFIG
+          ? projectLayeredMutationTsconfig({ strictMutants, layout, projectConfig })
+          : projectLayeredTsconfig(JSON.parse(text), layout, projectConfig);
+      return `${JSON.stringify(layered, null, 2)}\n`;
+    }
+    const rewritten = layoutTransform?.(text) ?? text;
+    return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
   };
+}
+
+function withoutMutantStrictness(text) {
+  const config = JSON.parse(text);
+  const compilerOptions = Object.fromEntries(
+    Object.entries(config.compilerOptions).filter(
+      ([option]) => !MUTANT_STRICTNESS_OPTIONS.has(option),
+    ),
+  );
+  return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
 }
 
 const PROJECT_TSCONFIG = 'tsconfig.json';
 const PROJECT_JSCONFIG = 'jsconfig.json';
+const MUTANT_STRICTNESS_OPTIONS = new Set([
+  'noImplicitReturns',
+  'noFallthroughCasesInSwitch',
+  'noUncheckedIndexedAccess',
+]);
 
 function projectConfigName(directory, layout) {
   if (existsSync(path.join(directory, PROJECT_TSCONFIG))) {
@@ -140,14 +163,19 @@ const POLICY_COMPILER_OPTIONS = {
 
 const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
 
-function projectLayeredTsconfig(base, layout, { name, projectConfig }) {
+function projectLayeredMutationTsconfig({ strictMutants, layout, projectConfig }) {
+  return {
+    extends: `./${projectConfig}`,
+    compilerOptions: {
+      skipLibCheck: true,
+      ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
+      ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
+    },
+  };
+}
+
+function projectLayeredTsconfig(base, layout, projectConfig) {
   const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
-  if (name === 'tsconfig.stryker.json') {
-    return {
-      extends: `./${projectConfig}`,
-      compilerOptions: { skipLibCheck: true, ...javascriptOptions },
-    };
-  }
   const layered = layoutTsconfig(base, layout);
   return {
     extends: `./${projectConfig}`,

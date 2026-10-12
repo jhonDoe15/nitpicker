@@ -119,13 +119,8 @@ tester.run('no-comments with JSDoc types', noComments, {
       errors: [{ messageId: 'eslintSuppression' }],
     },
     {
-      code: '/** @param {string} name */\nexport function greet(name) { return name; }',
-      errors: [{ messageId: 'comment' }],
-    },
-    {
-      code: '/** @param {string} name */\nexport function greet(name) { return name; }',
-      options: [{ jsdocTypes: false }],
-      errors: [{ messageId: 'comment' }],
+      code: '/** @param {string} name */\nfunction greet(name) { return name; }',
+      errors: [{ messageId: 'internalDocComment' }],
     },
   ],
 });

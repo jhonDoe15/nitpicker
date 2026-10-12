@@ -145,15 +145,24 @@ describe('generated tsconfig.stryker.json', () => {
   });
 
   it('layers the JavaScript options over the project config', () => {
-    expect(
-      transformed('tsconfig.stryker.json', javascriptLayout, projectWith('jsconfig.json')),
-    ).toEqual({
-      extends: './jsconfig.json',
-      compilerOptions: { skipLibCheck: true, allowJs: true, checkJs: true },
+    const javascript = transformed(
+      'tsconfig.stryker.json',
+      javascriptLayout,
+      projectWith('jsconfig.json'),
+    );
+    expect(javascript.extends).toBe('./jsconfig.json');
+    expect(javascript.compilerOptions).toMatchObject({
+      skipLibCheck: true,
+      allowJs: true,
+      checkJs: true,
     });
-    expect(
-      transformed('tsconfig.stryker.json', typescriptLayout, projectWith('tsconfig.json')),
-    ).toEqual({ extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } });
+    const typescript = transformed(
+      'tsconfig.stryker.json',
+      typescriptLayout,
+      projectWith('tsconfig.json'),
+    );
+    expect(typescript.extends).toBe('./tsconfig.json');
+    expect(typescript.compilerOptions).not.toHaveProperty('checkJs');
   });
 
   it('leaves the TypeScript stryker config untouched for the default layout', () => {

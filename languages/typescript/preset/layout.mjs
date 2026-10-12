@@ -159,6 +159,5 @@ export const graphIncludeOnly = defaults.graphIncludeOnly;
 export const projectCodeFiles = defaults.projectCodeFiles;
 export const isTestFixture = defaults.isTestFixture;
 export const isTestFile = defaults.isTestFile;
-export const isRunnableTestFile = defaults.isRunnableTestFile;
 export const isSourceUnderRoot = defaults.isSourceUnderRoot;
 export const isSourceFile = defaults.isSourceFile;
