@@ -60,6 +60,8 @@ export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
+  functionStatements:
+    '{name} has {value} statements; limit is {limit}. Split by responsibility and name each part for what it checks or does.',
   functionControlNesting:
     '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
   crapScoreLimit:
