@@ -166,9 +166,25 @@ describe('config file', () => {
     );
   });
 
+  it('accepts exceptions with the java preset when they name a printed Java rule', () => {
+    const exceptions = [
+      { rule: 'pmd/SpringConstructorInjection', paths: ['src/main/**'], reason: 'Legacy wiring' },
+    ];
+    expect(validateConfig({ preset: 'java', exceptions })).toEqual({ preset: 'java', exceptions });
+    for (const rule of [
+      'SpringConstructorInjection',
+      'eslint/no-var',
+      'pmd/',
+      'java/gradle-failure',
+    ]) {
+      expect(() =>
+        validateConfig({ preset: 'java', exceptions: [{ ...exceptions[0], rule }] }),
+      ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    }
+  });
+
   it.each([
     ['java', 'layout'],
-    ['java', 'exceptions'],
     ['java', 'react'],
     ['kotlin', 'layout'],
     ['kotlin', 'react'],

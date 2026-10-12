@@ -72,9 +72,10 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-const JAVA_TOOLS = [
+export const JAVA_TOOLS = [
   'pmd',
   'spotbugs',
+  'archunit',
   'google-java-format',
   'jacoco',
   'checkstyle',

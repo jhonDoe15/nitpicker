@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { createJavaAnalyzer, JAVA_TOOLS } from './java-analyzer.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
@@ -117,6 +117,11 @@ describe('configureJavaAnalyzer', () => {
         .configurationHash,
     ).not.toBe(analyzer.configurationHash);
   });
+
+  it('declares every tool the Java reports produce', () => {
+    expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
+    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+  });
 });
 
 describe('parseRunnerArguments', () => {
@@ -213,6 +218,21 @@ describe('applyJavaPolicy', () => {
         exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
       }),
     ).toEqual([findings[1], findings[2]]);
+  });
+
+  it('lifts a Java finding named as printed, <tool>/<rule>, only under the excepted glob', () => {
+    const findings = [
+      finding('src/main/java/legacy/A.java'),
+      { ...finding('src/main/java/legacy/A.java'), rule: 'Other' },
+      finding('src/main/java/app/B.java'),
+      { ...finding('src/main/java/legacy/C.java'), tool: 'spotbugs' },
+    ];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ rule: 'pmd/Rule', glob: 'src/main/java/legacy/**' }],
+      }),
+    ).toEqual([findings[1], findings[2], findings[3]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
