@@ -5,28 +5,32 @@ import { sourceLines } from '../../java/adapters/java-structure.mjs';
 const SOURCE_LISTING = 'python-files.txt';
 const SKIPPED_DIRECTORIES = new Set(['__pycache__', 'node_modules', 'site-packages']);
 
-const isPythonFile = (entry) => entry.isFile() && entry.name.endsWith('.py');
-const isSearched = (entry) =>
-  entry.isDirectory() && !entry.name.startsWith('.') && !SKIPPED_DIRECTORIES.has(entry.name);
+function isPythonFile(entry) {
+  return entry.isFile() && entry.name.endsWith('.py');
+}
 
-function collect(projectRoot, directory, found) {
-  const absolute = path.join(projectRoot, directory);
-  if (!existsSync(absolute) || !statSync(absolute).isDirectory()) {
-    return;
-  }
-  const entries = readdirSync(absolute, { withFileTypes: true });
-  for (const entry of entries.filter(isPythonFile)) {
-    found.add(path.posix.join(directory, entry.name));
-  }
-  for (const entry of entries.filter(isSearched)) {
-    collect(projectRoot, path.posix.join(directory, entry.name), found);
-  }
+function isSearched(entry) {
+  return entry.isDirectory() && !entry.name.startsWith('.') && !SKIPPED_DIRECTORIES.has(entry.name);
+}
+
+function isDirectory(absolute) {
+  return existsSync(absolute) && statSync(absolute).isDirectory();
 }
 
 export function pythonSourceFiles(projectRoot, sourceRoots) {
   const found = new Set();
-  for (const root of sourceRoots) {
-    collect(projectRoot, root, found);
+  const pending = [...sourceRoots];
+  for (const directory of pending) {
+    if (!isDirectory(path.join(projectRoot, directory))) {
+      continue;
+    }
+    const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true });
+    for (const entry of entries.filter(isPythonFile)) {
+      found.add(path.posix.join(directory, entry.name));
+    }
+    pending.push(
+      ...entries.filter(isSearched).map((entry) => path.posix.join(directory, entry.name)),
+    );
   }
   return [...found].sort();
 }

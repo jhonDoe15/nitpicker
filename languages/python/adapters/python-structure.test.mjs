@@ -53,7 +53,9 @@ describe('the structure step', () => {
   it('fails with the structure-failed rule when the script fails', () => {
     const { context } = project({ 'fail.json': '{ "python": "SyntaxError in the script" }' });
 
-    expect(() => structure(context)).toThrow(
+    expect(() => {
+      structure(context);
+    }).toThrow(
       expect.objectContaining({
         rule: 'structure-failed',
         message: expect.stringContaining('SyntaxError in the script'),

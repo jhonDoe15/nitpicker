@@ -111,7 +111,7 @@ const SAMPLE_SOURCE = [
   '',
   '    @functools.cache',
   '    async def fetch(self, *args, key=None, **kwargs):',
-  '        \"\"\"Docstring is not a statement.\"\"\"',
+  '        """Docstring is not a statement."""',
   '        try:',
   '            await self.method(1, 2, 3)',
   '        except ValueError:',
