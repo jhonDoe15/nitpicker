@@ -311,13 +311,20 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
     const { findings } = analyzeJavaSnapshot(repository, { gradle, policy: kotlinPolicy });
 
-    expect(findings).toEqual([
-      expect.objectContaining({
+    expect(
+      findings.map(({ tool, rule, classification, message }) => ({
+        tool,
+        rule,
+        classification,
+        namesTheBrokenFile: message.includes('Broken.kt'),
+      })),
+    ).toEqual([
+      {
         tool: 'kotlin',
         rule: 'gradle-failure',
         classification: 'tool-error',
-        message: expect.stringContaining('Broken.kt'),
-      }),
+        namesTheBrokenFile: true,
+      },
     ]);
   });
 

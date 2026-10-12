@@ -39,12 +39,16 @@ function blockEnd(text, from) {
 }
 
 function withoutBlocks(text, name) {
-  const opener = new RegExp(String.raw`\b${name}\s*\{`).exec(text);
-  if (opener === null) {
-    return text;
+  const opener = new RegExp(String.raw`\b${name}\s*\{`, 'g');
+  const kept = [];
+  let from = 0;
+  for (const match of text.matchAll(opener)) {
+    if (match.index >= from) {
+      kept.push(text.slice(from, match.index));
+      from = blockEnd(text, match.index + match[0].length);
+    }
   }
-  const end = blockEnd(text, opener.index + opener[0].length);
-  return text.slice(0, opener.index) + withoutBlocks(text.slice(end), name);
+  return [...kept, text.slice(from)].join('');
 }
 
 function buildText(projectRoot) {
