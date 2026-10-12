@@ -385,7 +385,7 @@ describe('test runner and versions', () => {
     const root = project({ '.importlinter': '[importlinter]\n' });
 
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
     );
     expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
       'import-linter',

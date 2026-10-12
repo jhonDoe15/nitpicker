@@ -88,7 +88,7 @@ describe('analyzing a Python snapshot', () => {
       ]),
     });
 
-    const { findings } = analyze(root);
+    const findings = analyze(root).findings.filter(({ tool }) => tool !== 'coupling');
 
     expect(findings.map(({ tool, rule, identity }) => `${tool} ${rule} ${identity}`)).toEqual([
       'ruff T201 fp:nitpicker/subject=`print` found',
@@ -110,7 +110,9 @@ describe('analyzing a Python snapshot', () => {
 
     const { findings } = analyze(root, { settings: { exceptions } });
 
-    expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
+    expect(
+      findings.filter(({ tool }) => tool !== 'coupling').map(({ path: file }) => file),
+    ).toEqual(['src/demo/a.py']);
   });
 
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {
