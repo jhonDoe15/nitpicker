@@ -188,8 +188,10 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
-    expect(applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' })).toEqual([
-      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
-    ]);
+    expect(
+      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+        ({ tool, rule }) => [tool, rule],
+      ),
+    ).toEqual([['kotlin', 'baseline-expansion']]);
   });
 });

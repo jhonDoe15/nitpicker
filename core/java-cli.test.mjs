@@ -466,7 +466,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
+      {
+        tool: 'kotlin',
+        rule: 'baseline-expansion',
+        path: 'src/main/kotlin/demo/K.kt',
+        identity: 'site:fbe5622ec73235ebeafafa81',
+        message: 'Legacy allowance increased from 1 to 2 for detekt.style.MagicNumber',
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -508,9 +515,21 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual(
-      expect.arrayContaining(['detekt', 'ktlint', 'ktfmt', 'jacoco', 'pmd']),
-    );
+    expect(analyzer.reportedTools).toEqual([
+      'pmd',
+      'spotbugs',
+      'google-java-format',
+      'jacoco',
+      'checkstyle',
+      'crap',
+      'duplicates',
+      'pit',
+      'structure',
+      'coupling',
+      'detekt',
+      'ktlint',
+      'ktfmt',
+    ]);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');
@@ -526,7 +545,14 @@ describe('Kotlin analyzer', () => {
     });
 
     expect(findings).toEqual([
-      expect.objectContaining({ tool: 'kotlin', classification: 'tool-error' }),
+      {
+        tool: 'kotlin',
+        rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `Java preset failed in ${root}: detekt crashed`,
+        classification: 'tool-error',
+      },
     ]);
   });
 });
@@ -571,12 +597,14 @@ describe('Java analyzer', () => {
     const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'java',
         rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `Java preset failed in ${root}: tool crashed`,
         classification: 'tool-error',
-        message: expect.stringContaining('tool crashed'),
-      }),
+      },
     ]);
   });
 });
