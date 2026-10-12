@@ -11,9 +11,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
+import { failure } from './python-process.mjs';
 import {
   createToolContext,
-  detectTestRunner,
+  onlyUnparsableFiles,
   runPythonTools,
   toolVersions,
   unformattedPaths,
@@ -60,12 +61,30 @@ function project(files = {}, { tools } = {}) {
   return root;
 }
 
-function contextFor(root, settings = {}) {
+function contextFor(root, settings = {}, exclude = []) {
   const reportRoot = temporaryRoot();
   return {
-    context: createToolContext({ projectRoot: root, liveRoot: root, settings, reportRoot }),
+    context: createToolContext({
+      projectRoot: root,
+      liveRoot: root,
+      settings,
+      reportRoot,
+      exclude,
+    }),
     reportRoot,
   };
+}
+
+function callsLog() {
+  const log = path.join(temporaryRoot(), 'calls.jsonl');
+  writeFileSync(log, '');
+  setEnvironment('FAKE_PYTHON_LOG', log);
+  return (tool, subcommand) =>
+    readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+      .filter((call) => call.tool === tool && call.args[0] === subcommand);
 }
 
 const readReport = (reportRoot, name) => readFileSync(path.join(reportRoot, name), 'utf8');
@@ -99,6 +118,30 @@ describe('parsing formatter output', () => {
   });
 });
 
+describe('formatter failures that are only unparsable files', () => {
+  it.each([
+    ['black', 123, 'error: cannot format /w/a.py: Cannot parse: 1:6\n    print "a"\n'],
+    [
+      'black',
+      123,
+      'error: cannot format /w/a.py: Cannot parse for target version Python 3.9: 1:6\n',
+    ],
+    ['black', 123, 'error: cannot parse for target version Python 3.15: /w/a.py:1:6\n'],
+    ['ruff', 2, 'error: Failed to parse a.py:1:7: Simple statements must be separated\n'],
+  ])('accepts %s exit %i for %j', (formatter, status, stderr) => {
+    expect(onlyUnparsableFiles(formatter, { status, stdout: '', stderr })).toBe(true);
+  });
+
+  it.each([
+    ['black', 123, 'error: cannot format /w/a.py: INTERNAL ERROR: boom\n'],
+    ['black', 1, 'error: cannot format /w/a.py: Cannot parse: 1:6\n'],
+    ['black', 123, ''],
+    ['ruff', 2, 'error: Failed to parse a.py:1:7: x\nerror: Invalid value for --config\n'],
+  ])('rejects %s exit %i for %j', (formatter, status, stderr) => {
+    expect(onlyUnparsableFiles(formatter, { status, stdout: '', stderr })).toBe(false);
+  });
+});
+
 describe('tool context', () => {
   it('puts the snapshot import roots before any existing PYTHONPATH', () => {
     const root = project();
@@ -113,7 +156,9 @@ describe('tool context', () => {
     });
     expect(context.project).toEqual({
       formatter: 'ruff',
-      testRunner: undefined,
+      formatterDetected: true,
+      testRunner: 'unittest',
+      targetVersion: 'py38',
       sourceRoots: ['src'],
     });
   });
@@ -135,7 +180,13 @@ describe('tool context', () => {
       PYTHONDONTWRITEBYTECODE: '1',
     });
     expect(context.launcher.launch('ruff', []).env.VIRTUAL_ENV).toBe(path.join(live, '.venv'));
-    expect(context.project).toMatchObject({ formatter: 'black', testRunner: 'unittest' });
+    expect(context.project).toEqual({
+      formatter: 'black',
+      formatterDetected: false,
+      testRunner: 'unittest',
+      targetVersion: 'py38',
+      sourceRoots: ['src'],
+    });
   });
 });
 
@@ -154,7 +205,9 @@ describe('running the tools', () => {
     expect(readReport(reportRoot, 'coverage.json')).toBe('{"files":{}}');
     expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
       formatter: 'ruff',
+      formatterDetected: true,
       sourceRoots: ['src'],
+      testsRan: true,
     });
     expect(readReport(reportRoot, 'coveragerc')).toBe(
       '[run]\nbranch = True\nparallel = False\nsource =\n    src\n',
@@ -173,15 +226,19 @@ describe('running the tools', () => {
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
 
-  it('lists the source roots in the coverage configuration', () => {
-    const root = project();
-    const { context, reportRoot } = contextFor(root, { sourceRoots: ['src', 'lib'] });
-
-    runPythonTools(context);
-
-    expect(readReport(reportRoot, 'coveragerc')).toBe(
+  it('measures the source roots that exist and writes an empty report when none does', () => {
+    const calls = callsLog();
+    const root = project({ 'lib/a.py': '' });
+    const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
+    runPythonTools(both.context);
+    expect(readReport(both.reportRoot, 'coveragerc')).toBe(
       '[run]\nbranch = True\nparallel = False\nsource =\n    src\n    lib\n',
     );
+
+    const none = contextFor(root, { sourceRoots: ['missing'] });
+    expect(runPythonTools(none.context)).toEqual([]);
+    expect(readReport(none.reportRoot, 'coverage.json')).toBe('{"files":{}}');
+    expect(calls('coverage', 'json')).toHaveLength(1);
   });
 
   it.each([
@@ -219,6 +276,7 @@ describe('running the tools', () => {
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([]);
+    expect(JSON.parse(readReport(context.reportRoot, 'manifest.json')).testsRan).toBe(false);
   });
 
   describe('mutation testing', () => {
@@ -331,7 +389,7 @@ describe('running the tools', () => {
         {
           rule: 'mutation-failed',
           message:
-            'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency)',
+            'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
         },
       ]);
     });
@@ -355,7 +413,10 @@ describe('running the tools', () => {
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
-      { rule: 'tests-failed', message: expect.stringContaining('1 failed: test_greet') },
+      {
+        rule: 'tests-failed',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+      },
     ]);
   });
 
@@ -382,9 +443,8 @@ describe('running the tools', () => {
     expect(runPythonTools(context)).toEqual([
       {
         rule: 'format-failed',
-        message: expect.stringContaining(
-          'ruff reported unformatted files but its output named none',
-        ),
+        message:
+          'ruff reported unformatted files but its output named none:\nsomething unexpected\n',
       },
     ]);
   });
@@ -397,7 +457,7 @@ describe('running the tools', () => {
     expect(runPythonTools(context)[0]).toEqual({
       rule: 'ruff-failed',
       message:
-        'ruff was not found in the virtualenv environment: install it there (for example as a dev dependency)',
+        'ruff was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
     });
   });
 
@@ -420,36 +480,152 @@ describe('running the tools', () => {
     mkdirSync(path.join(reportRoot, 'format.txt'));
 
     expect(runPythonTools(context)).toEqual([
-      { rule: 'python-failed', message: expect.stringContaining('EISDIR') },
+      {
+        rule: 'python-failed',
+        message: `EISDIR: illegal operation on a directory, open '${path.join(reportRoot, 'format.txt')}'`,
+      },
     ]);
   });
 });
 
-describe('test runner and versions', () => {
-  it('uses pytest when it can be imported and unittest otherwise', () => {
+describe('lint and format arguments', () => {
+  it('lints for the python versions the project supports and keeps excluded paths out of every tool', () => {
+    const calls = callsLog();
+    const root = project({ 'pyproject.toml': '[project]\nrequires-python = ">=3.10"\n' });
+
+    const { context, reportRoot } = contextFor(root, {}, ['legacy/**']);
+    runPythonTools(context);
+
+    expect(calls('ruff', 'check')[0].args).toEqual([
+      'check',
+      '--config',
+      path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml'),
+      '--target-version',
+      'py310',
+      '--ignore-noqa',
+      '--no-cache',
+      '--extend-exclude',
+      'legacy/**',
+      '--output-format',
+      'sarif',
+      '--output-file',
+      path.join(reportRoot, 'ruff.sarif'),
+      '.',
+    ]);
+    expect(calls('ruff', 'format')[0].args).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--extend-exclude',
+      'legacy/**',
+      '.',
+    ]);
+  });
+
+  it('gives black the excluded globs as one regular expression', () => {
+    const calls = callsLog();
+    const root = project({ 'pyproject.toml': '[tool.black]\n' });
+
+    runPythonTools(contextFor(root, {}, ['legacy/**', 'gen']).context);
+
+    const { args } = calls('black', '--check')[0];
+    expect(args[args.indexOf('--extend-exclude') + 1]).toBe(
+      '^/(?:legacy/.*)(?:/.*)?/?$|^/(?:gen)(?:/.*)?/?$',
+    );
+  });
+
+  it.each(['ruff', 'black'])('skips the files %s cannot parse', (formatter) => {
+    const root = project({
+      'unparsable.txt': 'legacy/old.py\n',
+      'unformatted.txt': 'src/demo/a.py\n',
+    });
+    const { context, reportRoot } = contextFor(root, { formatter });
+
+    expect(runPythonTools(context)).toEqual([]);
+    expect(readReport(reportRoot, 'format.txt')).toMatch(/src\/demo\/a\.py$/);
+  });
+
+  it('still fails when the formatter exits with its failure status for another reason', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'ruff format': 'invalid config' }) });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'format-failed',
+        message: 'ruff format exited 2 in the virtualenv environment:\ninvalid config',
+      },
+    ]);
+  });
+});
+
+describe('running pytest', () => {
+  it('keeps the project pytest configuration working under the outer coverage run', () => {
+    const calls = callsLog();
+    const root = project({
+      'conftest.py': '',
+      'pytest-cov.txt': '',
+      'xdist.txt': '',
+    });
+    const { context, reportRoot } = contextFor(root);
+
+    runPythonTools(context);
+
+    expect(calls('coverage', 'run')[0].args.slice(3)).toEqual([
+      '-m',
+      'pytest',
+      '-q',
+      '-o',
+      `cache_dir=${path.join(reportRoot, 'pytest-cache')}`,
+      '--no-cov',
+      '-n0',
+    ]);
+  });
+
+  it('is an environment error naming the override when pytest is indicated but not importable', () => {
+    const root = project({ 'conftest.py': '', 'no-pytest.txt': '' });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'environment-failed',
+        message:
+          'pytest is used by this project but cannot be imported in the virtualenv environment: install it there, or set "python.testRunner" to "unittest"',
+      },
+    ]);
+  });
+});
+
+describe('failure messages', () => {
+  it('says a tool timed out instead of quoting the system error', () => {
     const root = project();
     const { context } = contextFor(root);
-    expect(detectTestRunner(context)).toBe('pytest');
 
-    writeFileSync(path.join(root, 'no-pytest.txt'), '');
-    expect(detectTestRunner(context)).toBe('unittest');
+    const error = failure({
+      context,
+      command: ['coverage', 'run'],
+      result: { error: { code: 'ETIMEDOUT' } },
+      rule: 'x',
+    });
+
+    expect(error.message).toBe(
+      'coverage run timed out after 25 minutes in the virtualenv environment',
+    );
   });
+});
 
-  it('keeps the configured test runner even when it is missing', () => {
-    const root = project({ 'no-pytest.txt': '' });
-
-    expect(detectTestRunner(contextFor(root, { testRunner: 'pytest' }).context)).toBe('pytest');
-    expect(detectTestRunner(contextFor(root, { testRunner: 'unittest' }).context)).toBe('unittest');
-  });
-
+describe('tool versions', () => {
   it('lists the versions of the tools in use', () => {
-    const root = project();
+    const root = project({ 'conftest.py': '' });
 
     expect(toolVersions(contextFor(root).context)).toBe(
       'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
     );
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
       'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
+    );
+    expect(toolVersions(contextFor(project()).context)).toBe(
+      'ruff@0.9.9;coverage@7.6.1;unittest;mutmut@3.8.0',
     );
   });
 

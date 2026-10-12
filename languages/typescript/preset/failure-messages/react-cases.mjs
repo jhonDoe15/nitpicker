@@ -32,6 +32,16 @@ export const reactFailureMessageCases = [
   ],
   ['conditional hook names the same call order', panel('if (a) { useState(1); }'), 'same order'],
   [
+    'conditional hook names the config exception',
+    panel('if (a) { useState(1); }'),
+    'nitpicker.config.json',
+  ],
+  [
+    'class component names the config exception',
+    "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
+    'nitpicker.config.json',
+  ],
+  [
     'missing effect dependency names the config exception',
     panel('useEffect(() => { log(a); }, []);'),
     'nitpicker.config.json',
@@ -39,7 +49,7 @@ export const reactFailureMessageCases = [
   [
     'index key names a stable id',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
-    'stable unique id',
+    'stable id',
   ],
   [
     'index key names the config exception',
@@ -77,8 +87,18 @@ export const reactFailureMessageCases = [
     'CSS custom property',
   ],
   [
-    'inline style names the styling setting',
+    'inline style names the typed custom property',
     "export const Box = () => <div style={{ color: 'red' }} />;",
+    "declare module 'csstype'",
+  ],
+  [
+    'inline style names the config exception',
+    "export const Box = () => <div style={{ color: 'red' }} />;",
+    'nitpicker.config.json',
+  ],
+  [
+    'another styling approach names the styling setting',
+    "import styled from 'styled-components';",
     '"styling" under "react"',
   ],
   [

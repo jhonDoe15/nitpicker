@@ -75,11 +75,48 @@ describe('analyzing a Python snapshot', () => {
       'coverage line-coverage src/demo/a.py',
       'coverage uncovered-function src/demo/a.py',
     ]);
-    expect(findings[0]).toMatchObject({
+    expect(findings[0]).toEqual({
+      tool: 'ruff',
+      rule: 'F401',
+      path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
+      message: '`os` imported but unused',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
+  });
+
+  it('says how to lift the rules that flag idiomatic code and when the formatter was guessed', () => {
+    const root = project({
+      'violations.txt': 'T201|src/demo/a.py|`print` found\nB006|src/demo/a.py|mutable\n',
+      'unformatted.txt': 'src/demo/a.py\n',
+    });
+
+    const messages = analyze(root).findings.map(({ rule, message }) => `${rule}: ${message}`);
+
+    expect(messages).toEqual([
+      'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
+      'B006: mutable',
+      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+    ]);
+    expect(analyze(root, { settings: { formatter: 'ruff' } }).findings.at(-1).message).toBe(
+      'File is not formatted with ruff',
+    );
+  });
+
+  it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
+    const root = project({ 'test-exit.txt': '5\n' });
+
+    expect(analyze(root).findings).toEqual([
+      {
+        tool: 'python',
+        rule: 'no-tests-ran',
+        path: '.',
+        identity: 'no-tests-ran',
+        message: 'No tests ran. Keep the project tests, or restore the ones this change removed.',
+        classification: 'enforceable',
+      },
+    ]);
   });
 
   it('turns the mutmut run into mutant findings and cleans the snapshot unless it is the base', () => {
@@ -98,14 +135,17 @@ describe('analyzing a Python snapshot', () => {
     const baseFindings = analyze(base, { policy: { snapshot: 'base' } }).findings;
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'mutmut',
         rule: 'mutant-survived',
         path: 'src/demo/a.py',
         identity: 'f|1→2#1',
         symbol: 'f',
+        message:
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        classification: 'enforceable',
         location: { line: 2 },
-      }),
+      },
     ]);
     expect(baseFindings).toEqual(findings);
     expect(existsSync(path.join(head, 'mutants'))).toBe(false);
@@ -140,11 +180,14 @@ describe('analyzing a Python snapshot', () => {
     });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         rule: 'baseline-expansion',
+        path: 'src/demo/a.py',
+        identity: expect.any(String),
         message: 'Legacy allowance increased from 1 to 2 for F401',
-      }),
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -166,8 +209,22 @@ describe('analyzing a Python snapshot', () => {
         message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
         classification: 'tool-error',
       },
-      expect.objectContaining({ rule: 'format-failed', identity: 'format-failed' }),
-      expect.objectContaining({ rule: 'tests-failed', identity: 'tests-failed' }),
+      {
+        tool: 'python',
+        rule: 'format-failed',
+        path: '.',
+        identity: 'format-failed',
+        message: 'ruff format exited 2 in the virtualenv environment:\nruff crashed',
+        classification: 'tool-error',
+      },
+      {
+        tool: 'python',
+        rule: 'tests-failed',
+        path: '.',
+        identity: 'tests-failed',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        classification: 'tool-error',
+      },
     ]);
   });
 
@@ -177,11 +234,14 @@ describe('analyzing a Python snapshot', () => {
     const { findings } = analyze(root, { settings: { environment: 'nowhere' } });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'python',
         rule: 'environment-failed',
+        path: '.',
+        identity: 'environment-failed',
+        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
         classification: 'tool-error',
-        message: expect.stringContaining('No Python environment'),
-      }),
+      },
     ]);
   });
 
@@ -191,12 +251,14 @@ describe('analyzing a Python snapshot', () => {
     const { findings } = analyze(root);
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         rule: 'python-failed',
+        path: '.',
+        identity: 'python-failed',
+        message: expect.any(String),
         classification: 'tool-error',
-        message: expect.stringContaining('JSON'),
-      }),
+      },
     ]);
   });
 
@@ -215,10 +277,11 @@ describe('analyzing a Python snapshot', () => {
 
 describe('runner arguments', () => {
   it('defaults the live root to the project and the settings to none', () => {
-    expect(parsePythonArguments(['--project-root', '/p'])).toMatchObject({
+    expect(parsePythonArguments(['--project-root', '/p'])).toEqual({
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
+      policy: { exclude: [], snapshot: 'head' },
     });
   });
 
@@ -236,7 +299,7 @@ describe('runner arguments', () => {
       'base',
     ]);
 
-    expect(parsed).toMatchObject({
+    expect(parsed).toEqual({
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },

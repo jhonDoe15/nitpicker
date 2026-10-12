@@ -15,7 +15,8 @@ export function configureJavaAnalyzer(
     thresholds.crapLimit === undefined &&
     exclude.length === 0 &&
     legacyInventory === undefined &&
-    kotlin.formatter === undefined
+    kotlin.formatter === undefined &&
+    kotlin.detektConfig === undefined
   ) {
     return analyzer;
   }
@@ -23,6 +24,7 @@ export function configureJavaAnalyzer(
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
   ];
   const configured = {
     ...analyzer,
