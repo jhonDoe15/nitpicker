@@ -241,17 +241,24 @@ describe('nitpicker with "preset": "python"', () => {
     expect(
       result
         .json('new-findings.json')
-        .map(({ tool, rule, identity }) => `${tool}/${rule} ${identity}`),
+        .map(({ tool, rule, identity, message }) => [`${tool}/${rule}`, identity, message]),
     ).toEqual([
-      'mypy/return-value Incompatible return value type (got "int", expected "str")',
-      'python-rules/frozen-dataclass Order',
-      'python-rules/no-inline-suppression noqa',
+      [
+        'mypy/return-value',
+        'Incompatible return value type (got "int", expected "str")',
+        'Incompatible return value type (got "int", expected "str"). Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      ],
+      [
+        'python-rules/frozen-dataclass',
+        'Order',
+        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+      ],
+      [
+        'python-rules/no-inline-suppression',
+        'noqa',
+        'Inline suppression `# noqa`. Fix the cause instead: `# type: ignore`, `# noqa` and `# pyright: ignore` are banned. If the code is legitimate, add a "python.exceptions" entry for the rule it suppressed.',
+      ],
     ]);
-    expect(result.output.out).toContain(
-      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)`',
-    );
-    expect(result.output.out).toContain('Fix the type: correct the annotation');
-    expect(result.output.out).toContain('Inline suppression `# noqa`. Fix the cause instead');
   });
 
   it('lifts a rule for some paths with python.exceptions and lists the exception', () => {
@@ -291,7 +298,12 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(result.output.out).toContain('add a "python.exceptions" entry for T201');
+    expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
+      [
+        'T201',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      ],
+    ]);
   });
 
   it('uses the type checker the project configures, pyright here', () => {

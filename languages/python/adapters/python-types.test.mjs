@@ -110,7 +110,9 @@ describe('running mypy', () => {
     setEnvironment('PATH', fakes.temporaryRoot());
     const { context } = fakes.contextFor(root);
 
-    expect(() => typeCheck(context)).toThrow(
+    expect(() => {
+      typeCheck(context);
+    }).toThrow(
       'No type checker found in the virtualenv environment: install mypy or pyright there, or set "python.typeChecker" in nitpicker.config.json',
     );
   });
@@ -120,16 +122,18 @@ describe('running mypy', () => {
     setEnvironment('PATH', fakes.temporaryRoot());
     const { context } = fakes.contextFor(root, { typeChecker: 'mypy' });
 
-    expect(() => typeCheck(context)).toThrow(
-      'mypy was not found in the virtualenv environment: install it there',
-    );
+    expect(() => {
+      typeCheck(context);
+    }).toThrow('mypy was not found in the virtualenv environment: install it there');
   });
 
   it('fails with the types-failed rule when the checker crashes', () => {
     const root = fakes.project({ 'fail.json': JSON.stringify({ mypy: 'internal error' }) });
     const { context } = fakes.contextFor(root);
 
-    expect(() => typeCheck(context)).toThrow(
+    expect(() => {
+      typeCheck(context);
+    }).toThrow(
       expect.objectContaining({
         rule: 'types-failed',
         message: expect.stringContaining('internal error'),

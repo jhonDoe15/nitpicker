@@ -1,14 +1,11 @@
-import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-
-// Runs the rules script (nitpicker_rules.py) with the python3 on the PATH, so it only runs with
-// NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
+import { RULES_REPORT, checkRules } from '../adapters/python-ast-rules.mjs';
+import { createToolContext } from '../adapters/python-tools.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const script = path.join(import.meta.dirname, 'nitpicker_rules.py');
 const roots = [];
 
 afterEach(() => {
@@ -19,18 +16,20 @@ afterEach(() => {
 
 function findingsOf(files) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-script-')));
-  roots.push(root);
+  const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-report-')));
+  roots.push(root, reportRoot);
   for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), content);
   }
-  writeFileSync(path.join(root, 'files.txt'), Object.keys(files).join('\n'));
-  const result = spawnSync('python3', ['-I', script, 'files.txt', 'out.json'], {
-    cwd: root,
-    encoding: 'utf8',
+  const context = createToolContext({
+    projectRoot: root,
+    liveRoot: root,
+    settings: { environment: 'path', sourceRoots: ['.'] },
+    reportRoot,
   });
-  expect(result.status, result.stderr).toBe(0);
-  return JSON.parse(readFileSync(path.join(root, 'out.json'), 'utf8')).map(
+  checkRules(context);
+  return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).map(
     ({ rule, path: file, subject, line }) => `${rule} ${file}:${String(line)} ${subject}`,
   );
 }

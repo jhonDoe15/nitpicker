@@ -5,7 +5,7 @@ import { run } from './python-execute.mjs';
 import { RUFF_CONFIG } from './python-ruff-config.mjs';
 
 export const RULES_REPORT = 'rules.json';
-export const RULES_FAILED_RULE = 'rules-failed';
+const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
 const RULES_SCRIPT = path.resolve(import.meta.dirname, '../rules/nitpicker_rules.py');
 
