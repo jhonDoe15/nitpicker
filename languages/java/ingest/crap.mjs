@@ -8,19 +8,27 @@ export function calculateCrap(complexity, coveragePercent) {
 }
 
 export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
+  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+}
+
+export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const sourceRoots = options.sourceRoots ?? [''];
-  const methods = jacocoMethods(jacocoXml);
+  const coverageOf = coverageLookup({
+    methods: jacocoMethods(jacocoXml),
+    sourceRoots: options.sourceRoots ?? [''],
+    selectMethods: options.selectMethods ?? selectNamedMethods,
+    parsed,
+  });
   const unique = createIdentityCounter();
   const functions = [];
 
-  for (const fn of parseLizardCsv(lizardCsv)) {
+  for (const fn of parsed) {
     const filePath = normalizeReportPath(fn.file, options.root);
     if (filePath === undefined) {
       continue;
     }
-    const coverage = coverageFor(fn, filePath, methods, sourceRoots);
+    const coverage = coverageOf(fn, filePath);
     const key = unique(`function:${fn.longName}`);
     const sourceHash =
       coverage === undefined
@@ -103,6 +111,7 @@ function jacocoMethods(xml) {
           ...(byFile.get(file) ?? []),
           {
             name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
+            className: cls.attrs.name ?? '',
             line,
             lines: counter(method, 'LINE'),
             branches: counter(method, 'BRANCH'),
@@ -125,17 +134,32 @@ function counter(element, type) {
   return { covered, total: covered + Number.parseInt(found.attrs.missed, 10) };
 }
 
-function coverageFor(fn, filePath, methods, sourceRoots) {
+function selectNamedMethods(fn, candidates) {
   const methodName = fn.name.split('::').at(-1);
-  const matches = sourceRoots.flatMap((root) => {
-    const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
-    if (!filePath.startsWith(prefix)) {
-      return [];
-    }
-    return (methods.get(filePath.slice(prefix.length)) ?? []).filter(
-      (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
-    );
-  });
+  return candidates.filter(
+    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+  );
+}
+
+function coverageLookup({ methods, sourceRoots, selectMethods, parsed }) {
+  const siblings = Map.groupBy(parsed, (fn) => fn.file);
+  return (fn, filePath) => {
+    const matches = sourceRoots.flatMap((root) => {
+      const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
+      if (!filePath.startsWith(prefix)) {
+        return [];
+      }
+      return selectMethods(
+        fn,
+        methods.get(filePath.slice(prefix.length)) ?? [],
+        siblings.get(fn.file),
+      );
+    });
+    return lowestCoverage(matches);
+  };
+}
+
+function lowestCoverage(matches) {
   const sum = (key) => ({
     covered: matches.reduce((total, method) => total + method[key].covered, 0),
     total: matches.reduce((total, method) => total + method[key].total, 0),

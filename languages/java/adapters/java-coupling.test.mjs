@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import { analyzeJavaCoupling, parseJdeps, readCouplingFindings } from './java-coupling.mjs';
+import { kotlinModules } from './kotlin-metrics.mjs';
 
 const temporaryRoots = [];
 
@@ -147,5 +148,101 @@ describe('readCouplingFindings', () => {
           finding.rule === 'module-coupling' && finding.path === 'src/main/java/stable/S.java',
       ),
     ).toBeDefined();
+  });
+});
+
+describe('Kotlin classes', () => {
+  const KOTLIN_CLASSES = [
+    'client.Orders',
+    'client.OrdersKt',
+    'client.OrdersKt$total$1',
+    'other.Reports',
+    'stable.Core',
+    'stable.Core$Companion',
+    'stable.CoreKt',
+    'churn.Volatile',
+    'leaf.Leaf',
+  ];
+  const KOTLIN_JDEPS = `main -> /build/classes/kotlin/main
+   client.Orders                  -> stable.Core                          main
+   client.OrdersKt                -> stable.CoreKt                        main
+   client.OrdersKt$total$1        -> stable.Core$Companion                main
+   client.OrdersKt                -> kotlin.jvm.internal.Intrinsics       kotlin-stdlib-2.4.21.jar
+   other.Reports                  -> stable.Core                          main
+   stable.Core                    -> stable.Core$Companion                main
+   stable.Core$Companion          -> churn.Volatile                       main
+   stable.CoreKt                  -> churn.Volatile                       main
+   churn.Volatile                 -> leaf.Leaf                            main
+`;
+  const kotlin = kotlinModules({
+    functions: [],
+    files: [
+      { file: 'src/main/kotlin/client/Orders.kt', classes: ['client.Orders', 'client.OrdersKt'] },
+      { file: 'src/main/kotlin/stable/Core.kt', classes: ['stable.Core', 'stable.CoreKt'] },
+    ],
+  });
+
+  function analyzeKotlin() {
+    return analyzeJavaCoupling({
+      classes: KOTLIN_CLASSES,
+      edges: parseJdeps(KOTLIN_JDEPS),
+      fileOf: (name) =>
+        kotlin.fileOf.get(name) ?? `src/main/kotlin/${name.replaceAll('.', '/')}.kt`,
+      moduleOf: (name) => {
+        const outer = name.split('$')[0];
+        return kotlin.moduleOf.get(outer) ?? outer;
+      },
+    });
+  }
+
+  it('makes a source file one module: the classes, file facade and nested classes of a file', () => {
+    const report = analyzeKotlin();
+
+    expect(report.summary).toEqual({ modules: 5, dependencies: 4, packages: 5 });
+    expect(report.modules.map(({ file }) => file).sort()).toEqual([
+      'src/main/kotlin/churn/Volatile.kt',
+      'src/main/kotlin/client/Orders.kt',
+      'src/main/kotlin/leaf/Leaf.kt',
+      'src/main/kotlin/other/Reports.kt',
+      'src/main/kotlin/stable/Core.kt',
+    ]);
+    expect(report.modules.find(({ file }) => file.endsWith('stable/Core.kt'))).toMatchObject({
+      fanIn: 2,
+      fanOut: 1,
+    });
+  });
+
+  it('finds a stability direction violation between Kotlin packages', () => {
+    expect(analyzeKotlin().stabilityDirection).toEqual([
+      { source: 'stable', target: 'churn', delta: 0.1667 },
+    ]);
+  });
+
+  it('reads the Kotlin file of a class through the findings', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-coupling-'));
+    temporaryRoots.push(root);
+    const reportRoot = path.join(root, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(path.join(reportRoot, 'jdeps.txt'), KOTLIN_JDEPS);
+    writeFileSync(path.join(reportRoot, 'jdeps-classes.txt'), `${KOTLIN_CLASSES.join('\n')}\n`);
+
+    const findings = readCouplingFindings(reportRoot, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java'],
+      kotlin,
+    });
+
+    expect(
+      findings.find(
+        (finding) =>
+          finding.rule === 'module-coupling' && finding.path === 'src/main/kotlin/stable/Core.kt',
+      ),
+    ).toBeDefined();
+    expect(findings.filter((finding) => finding.classification === 'enforceable')).toEqual([
+      expect.objectContaining({
+        rule: 'stability-direction',
+        identity: 'package-edge:stable->churn',
+      }),
+    ]);
   });
 });

@@ -16,15 +16,18 @@ export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-export function runJavaDuplicates(projectRoot) {
+export function runJavaDuplicates(
+  projectRoot,
+  { format = 'java', rootsKey = 'sourceRoots', reportFile = DUPLICATES_REPORT } = {},
+) {
   const reportRoot = path.join(projectRoot, 'build/nitpicker');
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  const roots = (manifest.sourceRoots ?? []).filter((root) =>
+  const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const runs = roots.map((root, index) => {
-    const output = path.join(reportRoot, 'jscpd', String(index));
+    const output = path.join(reportRoot, `jscpd-${format}`, String(index));
     rmSync(output, { recursive: true, force: true });
     mkdirSync(output, { recursive: true });
     const result = spawnSync(
@@ -33,7 +36,7 @@ export function runJavaDuplicates(projectRoot) {
         jscpd,
         root,
         '--format',
-        'java',
+        format,
         '--mode',
         DUPLICATES_MODE,
         '--reporters',
@@ -61,11 +64,11 @@ export function runJavaDuplicates(projectRoot) {
     const report = JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
     return { root, report };
   });
-  writeFileSync(path.join(reportRoot, DUPLICATES_REPORT), `${JSON.stringify({ runs })}\n`);
+  writeFileSync(path.join(reportRoot, reportFile), `${JSON.stringify({ runs })}\n`);
 }
 
-export function readDuplicateFindings(reportRoot) {
-  const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
+export function readDuplicateFindings(reportRoot, reportFile = DUPLICATES_REPORT) {
+  const { runs } = JSON.parse(readFileSync(path.join(reportRoot, reportFile), 'utf8'));
   return runs.flatMap(({ root, report }) =>
     evaluateDuplicates(jscpdClones(report, [root]), DUPLICATES_TOOL),
   );
