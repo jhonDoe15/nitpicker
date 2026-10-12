@@ -1,7 +1,8 @@
 import accessibility from 'eslint-plugin-jsx-a11y-x';
 import hooks from 'eslint-plugin-react-hooks';
 import reactX from 'eslint-plugin-react-x';
-import { accessibilityRuleNames } from './react-rules.mjs';
+import testingLibrary from 'eslint-plugin-testing-library';
+import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
 import { withHint } from './rule-hints.mjs';
 
 const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
@@ -50,3 +51,12 @@ export const accessibilityRuleOptions = Object.fromEntries(
     ];
   }),
 );
+
+export const testingLibraryPlugin = {
+  rules: Object.fromEntries(
+    Object.entries(testingLibraryHints).map(([name, hint]) => [
+      name,
+      withHint(testingLibrary.rules[name], hint),
+    ]),
+  ),
+};
