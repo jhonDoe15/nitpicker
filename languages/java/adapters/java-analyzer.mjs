@@ -40,6 +40,7 @@ const CONFIGURATION_FILES = [
   'languages/java/ingest/format-check.mjs',
   'languages/java/ingest/jacoco.mjs',
   'languages/java/ingest/jacoco-branches.mjs',
+  'languages/java/ingest/kotlin-branches.mjs',
   'languages/java/ingest/pit.mjs',
   'languages/java/ingest/sarif.mjs',
 ];

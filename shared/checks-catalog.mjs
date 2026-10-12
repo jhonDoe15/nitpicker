@@ -1,6 +1,11 @@
 import { DUPLICATES_MODE, LANGUAGES, RULES } from './policy.mjs';
 
-const LANGUAGE_TITLES = { typescript: 'TypeScript', java: 'Java' };
+const LANGUAGE_TITLES = {
+  typescript: 'TypeScript',
+  java: 'Java',
+  python: 'Python',
+  kotlin: 'Kotlin',
+};
 
 export const GENERATED_BLOCK_START = '<!-- generated:custom-rules begin (npm run gen:checks) -->';
 export const GENERATED_BLOCK_END = '<!-- generated:custom-rules end -->';
