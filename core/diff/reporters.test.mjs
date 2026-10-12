@@ -314,7 +314,7 @@ describe('renderConsoleSummary', () => {
           testsFailed(
             'mutation',
             'tests-failed-skipped',
-            'Mutation testing did not run because the project tests fail.',
+            'mutation skipped: tests fail (see coverage findings)',
           ),
         ],
       },
@@ -345,7 +345,7 @@ describe('renderConsoleSummary', () => {
             tool: 'mutation',
             snapshot: 'head',
             rule: 'tests-failed-skipped',
-            message: 'Mutation testing did not run because the project tests fail.',
+            message: 'mutation skipped: tests fail (see coverage findings)',
           },
         ],
       },
@@ -358,11 +358,34 @@ describe('renderConsoleSummary', () => {
         'Quality gate summary',
         'No new enforceable violations, but the run is incomplete:',
         '✖ 1 tool error',
-        '  mutation (head): Mutation testing did not run because the project tests fail.',
+        '  mutation (head): mutation skipped: tests fail (see coverage findings)',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
     );
+  });
+
+  it('shows a mutation run skipped by a type error as one line', () => {
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [],
+        toolErrors: [
+          {
+            tool: 'mutation',
+            snapshot: 'head',
+            rule: 'typecheck-failed-skipped',
+            message:
+              'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+          },
+        ],
+      },
+      { color: false },
+    );
+
+    expect(summary).toContain(
+      '  mutation (head): mutation skipped: the change does not type-check (see typescript-typecheck findings)\n',
+    );
+    expect(summary).not.toContain('initialization');
   });
 
   it('collapses repeated findings of one rule and message in one file into a single entry', () => {
