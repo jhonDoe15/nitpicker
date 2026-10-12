@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 type Item = { readonly id: string; readonly label: string };
 
 export function Counter({ items }: { readonly items: readonly Item[] }) {
   const [count, setCount] = useState(0);
   const total = count * items.length;
+  const list = useRef<HTMLUListElement>(null);
   return (
-    <ul className="counter" data-total={total}>
+    <ul ref={list} className="counter" data-total={total} style={{ '--total': total }}>
       {items.map((item) => (
         <li key={item.id}>
           <button

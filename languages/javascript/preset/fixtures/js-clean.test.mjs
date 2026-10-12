@@ -71,7 +71,15 @@ function runSnapshot(root, extraArguments = []) {
   const output = path.join(root, 'reports/snapshot');
   const result = run(root, ['--all', '--output', output, ...extraArguments]);
   const summary = JSON.parse(readFileSync(path.join(output, 'summary.json'), 'utf8'));
-  return { ...result, summary };
+  const findings = JSON.parse(readFileSync(path.join(output, 'findings.json'), 'utf8'));
+  return { ...result, summary: { ...summary, findings } };
+}
+
+const SOURCE_FILES = 6;
+
+function crapMeasuredFiles({ findings }) {
+  return findings.find(({ tool, identity }) => tool === 'crap' && identity === 'summary:files')
+    ?.metric.value;
 }
 
 describe('the js-clean fixture project', () => {
@@ -85,23 +93,8 @@ describe('the js-clean fixture project', () => {
       expect(stdoutText).toContain('Tool errors: 0');
       expect(summary.overallStatus).toBe('clean');
       expect(summary.tools.length).toBeGreaterThan(10);
+      expect(crapMeasuredFiles(summary)).toBe(SOURCE_FILES);
       expect(exitCode).toBe(0);
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
-
-  it(
-    'fails when a banned form is added, so the run above is a real check',
-    () => {
-      const root = createProject();
-      const target = path.join(root, 'src/main/features/greeting/domain/greet.js');
-      writeFileSync(target, `${readFileSync(target, 'utf8')}\nexport const empty = null;\n`);
-
-      const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
-
-      expect(exitCode).toBe(1);
-      expect(stdoutText).toContain('no-restricted-syntax');
-      expect(stdoutText).toContain('Use `undefined` for an absent value');
     },
     FIXTURE_TIMEOUT_MS,
   );
@@ -138,6 +131,8 @@ export const wrong = nameLength(1);
 `,
   'src/main/format/messy.js': 'export const   messy={a:1,b:2}\n',
   'src/main/format/messy.cjs': 'module.exports={a:1}\n',
+  'src/main/format/unformatted.ts': 'export const   messy:number=1\n',
+  'src/main/lint/mode.ts': 'export enum Mode {\n  On,\n}\n',
   'src/main/billing/adapters/charge.js': `/**
  * @param {number} cents
  * @returns {number}
@@ -208,6 +203,8 @@ describe('the analyzers that could not read JavaScript', () => {
       );
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.js:1');
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.cjs:1');
+      expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/unformatted.ts:1');
+      expect(stdoutText).toContain('eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1');
       expect(stdoutText).toContain('duplicates/duplicate-clone src/main/dup/a.js:5');
       expect(stdoutText).toContain(
         'entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js',

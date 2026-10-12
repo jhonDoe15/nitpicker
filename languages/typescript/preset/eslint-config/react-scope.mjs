@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { cssInJsSource } from '../eslint-plugin/rules/react-single-styling-approach.mjs';
 import { codeExtensions } from '../layout.mjs';
 import { defaultStylingApproach, reactTestRuleIds } from './react-rules.mjs';
 
@@ -25,6 +26,15 @@ function readDependencyNames(projectRoot) {
 
 export function isReactProject({ projectRoot, react = {} }) {
   return react.enabled ?? readDependencyNames(projectRoot).includes(REACT_PACKAGE);
+}
+
+export function stylingApproachFor({ projectRoot, react = {} }) {
+  if (react.styling !== undefined) {
+    return react.styling;
+  }
+  return readDependencyNames(projectRoot).some((name) => cssInJsSource.test(name))
+    ? 'css-in-js'
+    : defaultStylingApproach;
 }
 
 export function analyzedProjectRoot(environment = process.env) {
@@ -76,7 +86,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
   ];
 }
 
-export function reactTypedConfigFor(layout) {
+function reactTypedConfigFor(layout) {
   return [
     {
       ...productionScope(layout),
@@ -91,6 +101,10 @@ export function reactTypedConfigFor(layout) {
   ];
 }
 
-export async function reactScopeConfigFor(layout, react = {}) {
-  return [...(await reactSyntaxConfigFor(layout, react)), ...reactTypedConfigFor(layout)];
+export async function reactScopeConfigFor(layout, react = {}, projectRoot = analyzedProjectRoot()) {
+  const styling = stylingApproachFor({ projectRoot, react });
+  return [
+    ...(await reactSyntaxConfigFor(layout, { ...react, styling })),
+    ...reactTypedConfigFor(layout),
+  ];
 }

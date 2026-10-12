@@ -14,7 +14,8 @@ If your change edits a function that existed before it, read
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
-   The gate type-checks for you.
+   The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
+   `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
    configs (don't format with plain `prettier`), then checks your change against the merge base. It
@@ -36,13 +37,16 @@ If your change edits a function that existed before it, read
   copy a type another feature exports: import it, or derive it from a function you call
   (`Parameters<typeof runGreeting>[1]`). Declare the types your task defines in your feature.
 - Export only what another module imports; an exported type nobody imports fails dead-code.
-  Callers derive result types: `Awaited<ReturnType<typeof importContacts>>`.
+  Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
+  inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
 - `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
   if it isn't a dependency). Field rules and conversions live in the schema
-  (`z.string().trim().min(1)`, `z.email()`, `.transform(toCents)`), never `z.unknown()` fields
-  plus hand checks.
+  (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
+  `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
+  `path` (`[index, field]`) names the bad record.
 - `domain/` is pure and takes parsed, typed values, never `unknown`. Decisions go here. No I/O or
-  `process`; time, IDs and randomness are parameters.
+  `process`; time, IDs and randomness are parameters. Code that drives injected async deps
+  (retries, worker pools, abort) is `adapters/`; the decisions it needs are domain functions.
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
@@ -50,12 +54,12 @@ If your change edits a function that existed before it, read
 
 ## Write it this way
 
-- `function` declarations for named functions; arrows only as callbacks, with a block body when
+- `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - `type`, never `interface`; string-literal unions, never `enum`; no classes except `Error`
   subclasses.
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
-  `regex.exec(s)?.[0]` or a strict `!== null` check. Narrow with checks, and
+  `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
@@ -66,25 +70,34 @@ If your change edits a function that existed before it, read
   returns -1, 1 or 0 from `<` and `>`, with its own unit test (a sort reads only the sign). Chain
   keys on its result: `const byMonth = compareText(a.month, b.month); if (byMonth !== 0) return byMonth;`.
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
-- At most 3 parameters: group related values into one object, or close over `deps` in a factory.
+- Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
+  inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
-- Named exports only. No comments.
+- Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## domain/ is deeply readonly
 
 - `const` only, no loops, no mutation: use `map`, `filter`, `flatMap`, `reduce` with an initial
   value, `toSorted`. Text parsing (CSV lines, tokens) is domain logic too:
-  `Array.from(line).reduce(step, initial)`.
+  `Array.from(line).reduce(step, initial)`; a value a schema can check (a date, a number) is
+  checked by the schema in `adapters/`.
 - Annotate results as readonly (`const owing: readonly Total[] = rows.toSorted(byTotal);`), and
   give a callback that returns an object or array literal a readonly return type. Return readonly
   results as they are; don't spread-copy them.
 - No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
+- A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
+  `Readonly<Date>`.
+- Count by a union as `Readonly<Record<Status, number>>` with one `reduce` from a literal with every
+  member (`xs.reduce((c, x) => ({ ...c, [x.status]: c[x.status] + 1 }), { paid: 0, ... })`), so a
+  new member fails to compile. Group by key with `[...new Set(xs.map(key))]` and `filter`.
+- Variants of one union share one array type (`readonly Share[]` in each).
 
 ## Errors
 
 - `domain/` returns expected failures as discriminated unions (`{ kind: 'empty-name' }`), never
-  throws them.
+  throws them. Success is a `kind` member too: never `T | Failure` narrowed with `typeof`, never
+  `Failure | undefined`.
 - A `catch` returns a failure result (carrying the caught error only if something reads it) or
   rethrows an `Error` subclass with `{ cause: error }`, which a test asserts. Keep the `try` around
   the call that throws:
@@ -98,10 +111,13 @@ If your change edits a function that existed before it, read
   change. Test each outcome of each union.
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
-  `vi.fn().mockRejectedValue(42)`. Spy on `process.stdout` only to test composition-root wiring,
+  `vi.fn().mockRejectedValue(42)`, a non-Error throw is `const value: unknown = 7; throw value;`.
+  Read a fake's calls through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring,
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
   restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
-- Assert whole outputs with `toEqual`/`toBe`, not `toContain`.
+- Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
+  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
+  not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
@@ -119,8 +135,10 @@ Applies when `react` is in `package.json`.
   state in an effect. Reset state with a `key`.
 - Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
 - Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property: `style={{ '--progress': percent }}`. If the project's `react.styling`
-  is `css-in-js` or `inline-style`, follow that instead.
+  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
+  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
+  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
+- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
 - Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
   `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances

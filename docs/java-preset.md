@@ -226,7 +226,10 @@ Notes on the glue in `java-reports.mjs`:
   the HTML report is off.
 - **Configuration.** The consumer's `config/checkstyle/checkstyle.xml` in the root project wins
   (like `config/pmd/ruleset.xml`). Without one, the preset uses `google_checks.xml` from the pinned
-  Checkstyle jar, which matches google-java-format. Decision to review: google_checks is noisy on
+  Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
+  `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
+  allowed on public API but not required, the same rule as the TypeScript preset. Javadoc that is
+  there still has to be well formed. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
@@ -409,7 +412,7 @@ resolved plus a new finding, as in the TypeScript check.
 - Custom PMD rules: the default ruleset is `category/java/errorprone.xml` plus
   `category/java/bestpractices.xml`; a consumer can place `config/pmd/ruleset.xml` in the root
   project. A `layout`-style config key for this is still open (slice 2 did not add one).
-- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
+- Kotlin or Groovy sources, Maven.
 
 ## Tests
 
