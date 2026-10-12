@@ -225,6 +225,11 @@ new and touched code must comply.
   `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
+- **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
+  per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
+  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
+  `toEqual`/`toStrictEqual`: assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
