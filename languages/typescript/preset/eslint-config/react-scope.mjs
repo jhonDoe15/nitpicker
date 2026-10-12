@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { defaultStylingApproach } from './react-rules.mjs';
+import { codeExtensions } from '../layout.mjs';
+import { defaultStylingApproach, reactTestRuleIds } from './react-rules.mjs';
 
 const REACT_PACKAGE = 'react';
 
@@ -37,8 +38,18 @@ function productionScope(layout) {
   };
 }
 
+function testScope(layout) {
+  return {
+    files: [
+      ...layout.testGlobs,
+      ...layout.sourceRoots.map((root) => `${root}/**/__tests__/**/*.${codeExtensions}`),
+    ],
+  };
+}
+
 export async function reactSyntaxConfigFor(layout, react = {}) {
-  const { reactPlugins, accessibilityRuleOptions } = await import('./react-plugins.mjs');
+  const { reactPlugins, accessibilityRuleOptions, testingLibraryPlugin } =
+    await import('./react-plugins.mjs');
   return [
     {
       ...productionScope(layout),
@@ -56,6 +67,11 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
           { approach: react.styling ?? defaultStylingApproach },
         ],
       },
+    },
+    {
+      ...testScope(layout),
+      plugins: { nitpicker: nitpickerRules, 'testing-library': testingLibraryPlugin },
+      rules: Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
     },
   ];
 }

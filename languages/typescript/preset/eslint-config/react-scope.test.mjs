@@ -6,7 +6,12 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveLayout } from '../layout.mjs';
-import { accessibilityRuleNames, reactRuleIds } from './react-rules.mjs';
+import {
+  accessibilityRuleNames,
+  reactRuleIds,
+  reactTestRuleIds,
+  testingLibraryHints,
+} from './react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
@@ -98,25 +103,41 @@ async function calculatedConfig(entries, file) {
 
 describe('the React scope config', () => {
   it('configures exactly the listed React rule ids', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
+    const [production, tests] = await reactSyntaxConfigFor(layout);
 
-    expect(Object.keys(entry.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(Object.keys(production.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(Object.keys(tests.rules).toSorted()).toEqual(reactTestRuleIds.toSorted());
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
-
-    for (const id of Object.keys(entry.rules)) {
-      const [pluginName, ...rest] = id.split('/');
-      expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
+    for (const entry of await reactSyntaxConfigFor(layout)) {
+      for (const id of Object.keys(entry.rules)) {
+        const [pluginName, ...rest] = id.split('/');
+        expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
+      }
     }
   });
 
   it('runs every rule as an error', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
+    for (const entry of await reactSyntaxConfigFor(layout)) {
+      for (const [id, setting] of Object.entries(entry.rules)) {
+        expect([setting].flat()[0], id).toBe('error');
+      }
+    }
+  });
 
-    for (const [id, setting] of Object.entries(entry.rules)) {
-      expect([setting].flat()[0], id).toBe('error');
+  it('gives every Testing Library rule a hint naming the allowed form', async () => {
+    const { testingLibraryPlugin } = await import('./react-plugins.mjs');
+
+    expect(Object.keys(testingLibraryPlugin.rules).toSorted()).toEqual(
+      Object.keys(testingLibraryHints).toSorted(),
+    );
+    for (const [name, hint] of Object.entries(testingLibraryHints)) {
+      const messages = Object.values(testingLibraryPlugin.rules[name].meta.messages);
+      expect(messages.length, name).toBeGreaterThan(0);
+      for (const message of messages) {
+        expect(message.endsWith(hint), name).toBe(true);
+      }
     }
   });
 
@@ -170,6 +191,27 @@ describe('the React scope config', () => {
     }
   });
 
+  it('applies the test rules to test files only, not to production source', async () => {
+    const entries = await reactScopeConfigFor(layout);
+
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'src/ui/panel.spec.jsx',
+      'test/panel.tsx',
+      'tests/ui/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+    ]) {
+      const config = await calculatedConfig(entries, file);
+      expect(config?.rules?.['testing-library/no-test-id-queries'], file).toBeDefined();
+      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeDefined();
+    }
+    for (const file of ['src/ui/panel.tsx', 'src/hooks/use-panel.ts']) {
+      const config = await calculatedConfig(entries, file);
+      expect(config.rules['testing-library/no-test-id-queries'], file).toBeUndefined();
+      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeUndefined();
+    }
+  });
+
   it('follows a custom layout', async () => {
     const entries = await reactScopeConfigFor(resolveLayout({ sourceRoots: ['lib'] }));
 
@@ -178,6 +220,17 @@ describe('the React scope config', () => {
     );
     expect((await calculatedConfig(entries, 'src/panel.tsx'))?.rules ?? {}).not.toHaveProperty(
       'react-hooks/rules-of-hooks',
+    );
+  });
+
+  it('follows a custom test root', async () => {
+    const entries = await reactScopeConfigFor(resolveLayout({ testRoots: ['spec'] }));
+
+    expect((await calculatedConfig(entries, 'spec/panel.tsx')).rules).toHaveProperty(
+      'testing-library/no-test-id-queries',
+    );
+    expect((await calculatedConfig(entries, 'test/panel.tsx'))?.rules ?? {}).not.toHaveProperty(
+      'testing-library/no-test-id-queries',
     );
   });
 
@@ -197,7 +250,8 @@ describe('the React scope config', () => {
   it('combines the syntax and the typed entries', async () => {
     const entries = await reactScopeConfigFor(layout);
 
-    expect(entries).toHaveLength(2);
-    expect(entries[1]).toEqual(reactTypedConfigFor(layout)[0]);
+    expect(entries).toHaveLength(3);
+    expect(entries.slice(0, 2)).toEqual(await reactSyntaxConfigFor(layout));
+    expect(entries[2]).toEqual(reactTypedConfigFor(layout)[0]);
   });
 });
