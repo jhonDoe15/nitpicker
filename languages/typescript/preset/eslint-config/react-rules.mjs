@@ -57,7 +57,7 @@ export const testingLibraryHints = {
     '. `userEvent` fires the whole sequence of browser events: `await userEvent.click(button)`. If an event has no `userEvent` equivalent, add an exception for this rule in nitpicker.config.json.',
 };
 
-export const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
+const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
   (name) => `testing-library/${name}`,
 );
 
