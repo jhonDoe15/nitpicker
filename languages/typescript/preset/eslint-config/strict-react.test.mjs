@@ -76,17 +76,58 @@ describe('class components in the strict syntax rules', () => {
     }
   });
 
-  it('keeps every other restricted selector identical', () => {
+  it('changes only the null and class selectors', () => {
     const plain = restrictedSyntaxFor();
     const react = restrictedSyntaxFor({ react: true });
 
     for (const scope of Object.keys(plain)) {
       expect(react[scope]).toHaveLength(plain[scope].length);
-      const changed = react[scope].filter((selector, index) => selector !== plain[scope][index]);
+      const changed = react[scope].filter(
+        ({ selector }, index) => selector !== plain[scope][index].selector,
+      );
       expect(changed.map(({ selector }) => selector)).toEqual([
+        expect.stringContaining("Literal[raw='null']"),
+        expect.stringContaining('TSNullKeyword'),
         expect.stringContaining('Component'),
       ]);
     }
+  });
+});
+
+describe('null in a React project', () => {
+  const nullMessage = 'Use `undefined` for an absent value';
+  const nullMessages = (config, code) =>
+    failureMessagesFor({ config, filename: 'src/main/ui/panel.tsx', code }).filter((message) =>
+      message.includes(nullMessage),
+    );
+
+  it.each([
+    'export const ref = useRef<HTMLDivElement>(null);',
+    'export const ref = React.useRef(null);',
+    'export const Theme = createContext<Theme | null>(null);',
+    'export const Theme = React.createContext<Theme | null>(null);',
+    'export const ref = useRef<number | null>(null);',
+  ])('allows %s only with the React scope on', (code) => {
+    expect(nullMessages(reactConfig, code)).toEqual([]);
+    expect(nullMessages(strictSyntaxConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    'export const value = null;',
+    'export const state = useState(null);',
+    'export const state = useState<string | null>(undefined);',
+    'export function read(): string | null { return undefined; }',
+    'export const ref = useRef(load(null));',
+    'export const ref = useRef<number>(undefined) ?? null;',
+    'export const ref = notUseRef(null);',
+  ])('still bans %s', (code) => {
+    expect(nullMessages(reactConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it('names the allowed React form in the message', () => {
+    const [message] = nullMessages(reactConfig, 'export const value = null;');
+
+    expect(message).toContain('`useRef` and `createContext`');
   });
 });
 
@@ -201,16 +242,47 @@ describe('the preset config', () => {
     expect(fresh.rules['react-x/no-array-index-key'][0]).toBe(2);
   });
 
-  it('rejects an exception for a React rule when the project is not a React project', async () => {
-    await expect(
-      presetConfigFor({
-        manifest: {},
-        policy: {
-          exceptions: [
-            { rule: 'react-x/no-array-index-key', paths: ['src/**'], reason: 'Static lists' },
-          ],
-        },
-      }),
-    ).rejects.toThrow('unknown rules: react-x/no-array-index-key');
+  it('skips an exception that names a React rule when the project is not a React project', async () => {
+    const config = await presetConfigFor({
+      manifest: {},
+      policy: {
+        exceptions: [
+          { rule: 'react-x/no-array-index-key', paths: ['src/**'], reason: 'Static lists' },
+          { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
+          { rule: 'jsx-a11y/alt-text', paths: ['src/**'], reason: 'Legacy markup' },
+        ],
+      },
+    });
+
+    expect(ruleIdsOf(config).has('react-x/no-array-index-key')).toBe(false);
+  });
+
+  it('still rejects an exception that names an unknown rule', async () => {
+    for (const manifest of [{}, reactManifest]) {
+      await expect(
+        presetConfigFor({
+          manifest,
+          policy: {
+            exceptions: [{ rule: 'react-hooks/exhaustive-dep', paths: ['src/**'], reason: 'Typo' }],
+          },
+        }),
+      ).rejects.toThrow('unknown rules: react-hooks/exhaustive-dep');
+    }
+  });
+
+  it('infers CSS-in-JS styling from the manifest unless the config sets it', async () => {
+    const manifest = { dependencies: { react: '19.0.0', 'styled-components': '6.0.0' } };
+    const stylingOf = (config) =>
+      config
+        .map((entry) => entry.rules?.['nitpicker/react-single-styling-approach'])
+        .find((setting) => setting !== undefined);
+
+    expect(stylingOf(await presetConfigFor({ manifest }))).toEqual([
+      'error',
+      { approach: 'css-in-js' },
+    ]);
+    expect(
+      stylingOf(await presetConfigFor({ manifest, policy: { react: { styling: 'class-names' } } })),
+    ).toEqual(['error', { approach: 'class-names' }]);
   });
 });

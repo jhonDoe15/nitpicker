@@ -135,6 +135,8 @@ Applies when `react` is in `package.json`.
   state in an effect. Reset state with a `key`.
 - Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
 - Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property: `style={{ '--progress': percent }}`. If the project's `react.styling`
-  is `css-in-js` or `inline-style`, follow that instead.
+  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
+  `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
+  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
+- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.

@@ -42,6 +42,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/ancestry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-comments.mjs',

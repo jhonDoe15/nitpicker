@@ -1,20 +1,27 @@
-import { ancestorsOf } from './ancestry.mjs';
+import { ancestorsOf, variableNamed } from './ancestry.mjs';
 import { hookName, isEffectCallback, isFunctionNode } from './react-effects.mjs';
 
-function isStateSetterDefinition(definition) {
-  const declarator = definition.node;
-  return (
-    declarator.type === 'VariableDeclarator' &&
-    declarator.id.type === 'ArrayPattern' &&
-    declarator.id.elements[1] === definition.name &&
-    declarator.init?.type === 'CallExpression' &&
-    hookName(declarator.init.callee) === 'useState'
-  );
-}
+const SETTER_INDEX = 1;
 
 function runsOnce(effectCall) {
   const dependencies = effectCall.arguments[1];
   return dependencies?.type === 'ArrayExpression' && dependencies.elements.length === 0;
+}
+
+function enclosingFunction(node) {
+  return ancestorsOf(node).find(isFunctionNode);
+}
+
+function declaredName(fn) {
+  if (fn.type === 'FunctionDeclaration') {
+    return fn.id ?? undefined;
+  }
+  const declarator = fn.parent;
+  return declarator.type === 'VariableDeclarator' &&
+    declarator.init === fn &&
+    declarator.id.type === 'Identifier'
+    ? declarator.id
+    : undefined;
 }
 
 export const rule = {
@@ -27,20 +34,79 @@ export const rule = {
     schema: [],
     messages: {
       derivedState:
-        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`, wrapped in `useMemo` if it is costly), or reset state by giving the component a `key`. If this effect synchronizes with an external system (measuring the DOM in `useLayoutEffect`), add an exception for this rule in nitpicker.config.json.',
+        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     const sourceCode = context.sourceCode;
 
-    function isStateSetterCall(node) {
-      if (node.callee.type !== 'Identifier') {
+    function isUseStateCall(node) {
+      return node?.type === 'CallExpression' && hookName(sourceCode, node.callee) === 'useState';
+    }
+
+    function isStateTuple(identifier) {
+      return (
+        variableNamed(sourceCode, identifier)?.defs.some(
+          ({ node }) => node.type === 'VariableDeclarator' && isUseStateCall(node.init),
+        ) ?? false
+      );
+    }
+
+    function isSetterIndexAccess(init) {
+      return (
+        init?.type === 'MemberExpression' &&
+        init.computed &&
+        init.property.type === 'Literal' &&
+        init.property.value === SETTER_INDEX &&
+        init.object.type === 'Identifier' &&
+        isStateTuple(init.object)
+      );
+    }
+
+    function isStateSetterDefinition(definition) {
+      const declarator = definition.node;
+      if (declarator.type !== 'VariableDeclarator') {
         return false;
       }
-      const reference = sourceCode
-        .getScope(node)
-        .references.find(({ identifier }) => identifier === node.callee);
-      return reference?.resolved?.defs.some(isStateSetterDefinition) ?? false;
+      if (declarator.id.type === 'ArrayPattern') {
+        return (
+          declarator.id.elements[SETTER_INDEX] === definition.name &&
+          isUseStateCall(declarator.init)
+        );
+      }
+      return isSetterIndexAccess(declarator.init);
+    }
+
+    function isStateSetterCall(node) {
+      return (
+        node.callee.type === 'Identifier' &&
+        (variableNamed(sourceCode, node.callee)?.defs.some(isStateSetterDefinition) ?? false)
+      );
+    }
+
+    function isCalledSynchronouslyIn(fn, effect) {
+      const name = declaredName(fn);
+      const variable = name === undefined ? undefined : variableNamed(sourceCode, name);
+      return (
+        variable?.references.some(
+          ({ identifier }) =>
+            identifier.parent.type === 'CallExpression' &&
+            identifier.parent.callee === identifier &&
+            enclosingFunction(identifier.parent) === effect,
+        ) ?? false
+      );
+    }
+
+    function owningEffect(fn) {
+      if (isEffectCallback(sourceCode, fn)) {
+        return fn;
+      }
+      const outer = fn.async || fn.generator ? undefined : enclosingFunction(fn);
+      return outer !== undefined &&
+        isEffectCallback(sourceCode, outer) &&
+        isCalledSynchronouslyIn(fn, outer)
+        ? outer
+        : undefined;
     }
 
     return {
@@ -48,8 +114,9 @@ export const rule = {
         if (!isStateSetterCall(node)) {
           return;
         }
-        const effect = ancestorsOf(node).find(isFunctionNode);
-        if (effect !== undefined && isEffectCallback(effect) && !runsOnce(effect.parent)) {
+        const fn = enclosingFunction(node);
+        const effect = fn === undefined ? undefined : owningEffect(fn);
+        if (effect !== undefined && !runsOnce(effect.parent)) {
           context.report({ node, messageId: 'derivedState' });
         }
       },
