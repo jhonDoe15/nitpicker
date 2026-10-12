@@ -42,9 +42,15 @@ export function loadCase(caseDirectory) {
     directory: caseDirectory,
     fixtureDirectory: path.join(caseDirectory, 'fixture'),
     acceptanceDirectory: path.join(caseDirectory, 'acceptance'),
+    referenceDirectory: path.join(caseDirectory, 'reference'),
     acceptanceCommand: definition.acceptance?.command ?? ['npx', '--no-install', 'vitest', 'run'],
     pin,
   };
+}
+
+export function referenceTree(caseDefinition, fixtureTree) {
+  if (!existsSync(caseDefinition.referenceDirectory)) return undefined;
+  return new Map([...fixtureTree, ...loadTree(caseDefinition.referenceDirectory)]);
 }
 
 export function listCases(casesDirectory) {
@@ -256,6 +262,7 @@ export function runCase({
       agentReport: iterations.length ? readSummary(iterations.at(-1).reportDirectory) : undefined,
       referenceReport: readSummary(finalReports),
       expectedPolicyHash: caseDefinition.pin.policyHash,
+      reference: referenceTree(caseDefinition, fixtureTree),
     });
 
     const outcome = outcomeOf({
