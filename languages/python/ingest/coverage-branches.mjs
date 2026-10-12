@@ -46,19 +46,20 @@ function fileFindings(data, { path, lines, tool, minimum }) {
 
 function outcomesByLine(data) {
   const byLine = new Map();
-  const outcomesOf = (line) => {
-    if (!byLine.has(line)) {
-      byLine.set(line, { taken: 0, missed: [] });
-    }
-    return byLine.get(line);
-  };
   for (const [line] of validArcs(data.executed_branches)) {
-    outcomesOf(line).taken += 1;
+    outcomesOf(byLine, line).taken += 1;
   }
   for (const [line, destination] of validArcs(data.missing_branches)) {
-    outcomesOf(line).missed.push(destination);
+    outcomesOf(byLine, line).missed.push(destination);
   }
   return [...byLine].sort(([a], [b]) => a - b);
+}
+
+function outcomesOf(byLine, line) {
+  if (!byLine.has(line)) {
+    byLine.set(line, { taken: 0, missed: [] });
+  }
+  return byLine.get(line);
 }
 
 function validArcs(arcs) {

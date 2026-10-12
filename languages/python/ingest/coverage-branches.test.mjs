@@ -65,7 +65,9 @@ describe('ingestCoverageBranches', () => {
   it('describes a jump out of the enclosing scope', () => {
     const [finding] = ingest({}, reportOf([[2, 3]], [[2, -1]]));
 
-    expect(finding.message).toContain('Not taken: the exit from the enclosing scope.');
+    expect(finding.message).toBe(
+      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen.",
+    );
   });
 
   it('skips files without source, without branches and with unusable data', () => {
