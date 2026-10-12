@@ -41,20 +41,35 @@ function moduleName(importRoot, absoluteFile) {
   return parts.at(-1) === '__init__' ? parts.slice(0, -1).join('.') : parts.join('.');
 }
 
-function walk(directory) {
-  return readdirSync(directory, { withFileTypes: true })
-    .sort((left, right) => left.name.localeCompare(right.name))
-    .flatMap((entry) => {
-      const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        const skipped =
-          entry.name.startsWith(HIDDEN_PREFIX) || EXCLUDED_DIRECTORIES.includes(entry.name);
-        return skipped ? [] : walk(absolute);
-      }
-      return entry.isFile() && entry.name.endsWith('.py') && !TEST_FILE.test(entry.name)
-        ? [absolute]
-        : [];
-    });
+function listDirectory(directory) {
+  const entries = readdirSync(directory, { withFileTypes: true });
+  const named = (entry) => path.join(directory, entry.name);
+  return {
+    directories: entries
+      .filter(
+        (entry) =>
+          entry.isDirectory() &&
+          !entry.name.startsWith(HIDDEN_PREFIX) &&
+          !EXCLUDED_DIRECTORIES.includes(entry.name),
+      )
+      .map(named),
+    files: entries
+      .filter(
+        (entry) => entry.isFile() && entry.name.endsWith('.py') && !TEST_FILE.test(entry.name),
+      )
+      .map(named),
+  };
+}
+
+function productionFiles(top) {
+  const pending = [top];
+  const files = [];
+  for (const directory of pending) {
+    const listed = listDirectory(directory);
+    pending.push(...listed.directories);
+    files.push(...listed.files);
+  }
+  return files.sort();
 }
 
 export function listProductionModules(projectRoot, sourceRoots) {
@@ -62,7 +77,7 @@ export function listProductionModules(projectRoot, sourceRoots) {
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
-    return walk(path.resolve(projectRoot, root)).flatMap((absolute) => {
+    return productionFiles(path.resolve(projectRoot, root)).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
       const module = moduleName(importRoot, absolute);
       if (seen.has(module) || module === '') {

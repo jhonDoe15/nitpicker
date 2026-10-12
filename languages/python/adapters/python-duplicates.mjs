@@ -1,7 +1,7 @@
 import { runJscpd } from '../../java/adapters/java-duplicates.mjs';
 import { existingSourceRoots, NON_PRODUCTION_GLOBS } from './python-sources.mjs';
 
-export const DUPLICATES_FAILED_RULE = 'duplicates-failed';
+const DUPLICATES_FAILED_RULE = 'duplicates-failed';
 
 export function runDuplicates(context) {
   try {
@@ -13,6 +13,8 @@ export function runDuplicates(context) {
       reportRoot: context.reportRoot,
     });
   } catch (error) {
-    throw Object.assign(error, { rule: DUPLICATES_FAILED_RULE });
+    throw Object.assign(new Error(error.message, { cause: error }), {
+      rule: DUPLICATES_FAILED_RULE,
+    });
   }
 }

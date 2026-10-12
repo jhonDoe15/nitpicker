@@ -8,7 +8,6 @@ const FILES = new Map([
   ['app.domain.model', 'src/app/domain/model.py'],
   ['app.web.views', 'src/app/web/views.py'],
 ]);
-const fileOf = (name) => FILES.get(name);
 
 describe('recognizing a finished import-linter run', () => {
   it('needs the contract summary line', () => {
@@ -24,7 +23,7 @@ describe('import-linter findings', () => {
   });
 
   it('reports each import chain of a broken contract at its first module', () => {
-    const { findings } = ingestImportLinter(fixture('import-linter-broken.txt'), { fileOf });
+    const { findings } = ingestImportLinter(fixture('import-linter-broken.txt'), { files: FILES });
     const byIdentity = (identity) => findings.find((finding) => finding.identity === identity);
 
     expect(findings.map(({ identity }) => identity).sort()).toEqual([
@@ -67,7 +66,9 @@ describe('import-linter findings', () => {
   });
 
   it('reports the items of contract types that do not list import chains', () => {
-    const { findings } = ingestImportLinter(fixture('import-linter-other-types.txt'), { fileOf });
+    const { findings } = ingestImportLinter(fixture('import-linter-other-types.txt'), {
+      files: FILES,
+    });
 
     expect(findings.map(({ identity, path: file }) => [identity, file])).toEqual([
       ['contract:Protected:app.web.views -> app.infra.db', 'src/app/web/views.py'],

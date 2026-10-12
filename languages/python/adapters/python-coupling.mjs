@@ -3,8 +3,8 @@ import path from 'node:path';
 import { buildCouplingReport, evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import { listProductionModules } from './python-sources.mjs';
 
-export const IMPORTS_REPORT = 'imports.json';
-export const COUPLING_FAILED_RULE = 'coupling-failed';
+const IMPORTS_REPORT = 'imports.json';
+const COUPLING_FAILED_RULE = 'coupling-failed';
 const COUPLING_TOOL = 'coupling';
 const SCAN_SCRIPT = path.join(import.meta.dirname, 'import-scan.py');
 const SCAN_REQUEST = 'import-scan-request.json';
@@ -33,12 +33,10 @@ function parentOf(name) {
 }
 
 function longestKnownPrefix(name, known) {
-  for (let candidate = name; candidate !== ''; candidate = parentOf(candidate)) {
-    if (known.has(candidate)) {
-      return candidate;
-    }
-  }
-  return undefined;
+  const parts = name.split('.');
+  return parts
+    .map((_, index) => parts.slice(0, parts.length - index).join('.'))
+    .find((candidate) => known.has(candidate));
 }
 
 function relativeBase(importer, { level, module }) {

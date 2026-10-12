@@ -119,9 +119,11 @@ describe('running import-linter', () => {
   it('does not run when the setting turns it off', () => {
     const setup = context(CONFIGURED, false);
 
-    runImportLinter(setup, () => {
-      throw new Error('should not run');
-    });
+    expect(() => {
+      runImportLinter(setup, () => {
+        throw new Error('should not run');
+      });
+    }).not.toThrow();
   });
 
   it('reports output without a contract summary as a failure with its output', () => {

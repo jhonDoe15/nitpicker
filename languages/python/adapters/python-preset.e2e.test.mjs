@@ -343,12 +343,15 @@ const LAYERED_FILES = {
 describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end to end', () => {
   let project;
 
-  const newRules = (result) =>
+  const enforceable = (result) =>
     result
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable')
-      .map(({ tool, rule }) => `${tool} ${rule}`)
-      .sort();
+      .sort((left, right) =>
+        `${left.tool}${left.identity}`.localeCompare(`${right.tool}${right.identity}`),
+      );
+
+  const newRules = (result) => enforceable(result).map(({ tool, rule }) => `${tool} ${rule}`);
 
   beforeAll(() => {
     project = repository();
@@ -400,46 +403,48 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
   it('fails a copied function as a duplicate against the original', () => {
     const result = gate(project, 'copy');
 
-    expect(newRules(result)).toContain('duplicates duplicate-clone');
     expect(result.exitCode, result.text).toBe(1);
-    expect(result.json('new-findings.json')).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          rule: 'duplicate-clone',
-          path: 'src/shop/domain/bulk.py',
-          message: expect.stringContaining('This code repeats src/shop/domain/pricing.py'),
-        }),
-      ]),
-    );
+    expect(
+      enforceable(result).map(({ tool, rule, path: file, message }) => ({
+        tool,
+        rule,
+        file,
+        message,
+      })),
+    ).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        file: 'src/shop/domain/bulk.py',
+        message: expect.stringContaining('This code repeats src/shop/domain/pricing.py'),
+      },
+    ]);
   });
 
   it('fails a stable package importing an unstable one and the contract it breaks', () => {
     const result = gate(project, 'upward-import');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(newRules(result)).toEqual([
-      'coupling stability-direction',
-      'import-linter contract-broken',
-      'import-linter contract-broken',
+    expect(
+      enforceable(result).map(({ rule, path: file, identity }) => ({ rule, file, identity })),
+    ).toEqual([
+      {
+        rule: 'stability-direction',
+        file: '.',
+        identity: 'package-edge:shop.domain->shop.web',
+      },
+      {
+        rule: 'contract-broken',
+        file: 'src/shop/domain/pricing.py',
+        identity: 'contract:Domain is pure:shop.domain.pricing -> shop.web.views',
+      },
+      {
+        rule: 'contract-broken',
+        file: 'src/shop/domain/pricing.py',
+        identity:
+          'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
+      },
     ]);
-    expect(result.json('new-findings.json')).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          rule: 'contract-broken',
-          path: 'src/shop/domain/pricing.py',
-          identity: 'contract:Domain is pure:shop.domain.pricing -> shop.web.views',
-        }),
-        expect.objectContaining({
-          rule: 'contract-broken',
-          identity:
-            'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
-        }),
-        expect.objectContaining({
-          rule: 'stability-direction',
-          identity: 'package-edge:shop.domain->shop.web',
-        }),
-      ]),
-    );
   });
 
   it('does not run the contracts when the config turns import-linter off', () => {

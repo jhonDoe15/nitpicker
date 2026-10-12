@@ -89,8 +89,12 @@ export function runPythonTools(context) {
     format,
     test,
     runDuplicates,
-    (stepContext) => scanImports(stepContext, run),
-    (stepContext) => runImportLinter(stepContext, run),
+    (stepContext) => {
+      scanImports(stepContext, run);
+    },
+    (stepContext) => {
+      runImportLinter(stepContext, run);
+    },
   ];
   const failures = steps.flatMap((step) => {
     try {
