@@ -89,14 +89,9 @@ export function functionBlocks(source) {
 }
 
 function blockLines(lines, start, indent) {
-  let end = start + 1;
-  while (end < lines.length && continuesBlock(lines[end], indent)) {
-    end += 1;
-  }
-  while (lines[end - 1].trim() === '') {
-    end -= 1;
-  }
-  return lines.slice(start, end);
+  const stop = lines.findIndex((line, index) => index > start && !continuesBlock(line, indent));
+  const block = lines.slice(start, stop === -1 ? lines.length : stop);
+  return block.slice(0, block.findLastIndex((line) => line.trim() !== '') + 1);
 }
 
 function continuesBlock(line, indent) {
@@ -155,11 +150,8 @@ function changedRegion(original, mutated) {
 }
 
 function commonLength(left, right) {
-  let length = 0;
-  while (length < left.length && length < right.length && left[length] === right[length]) {
-    length += 1;
-  }
-  return length;
+  const differing = left.findIndex((token, index) => token !== right[index]);
+  return differing === -1 ? left.length : differing;
 }
 
 function labelOf({ original, replacement }) {

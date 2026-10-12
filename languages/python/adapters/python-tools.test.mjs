@@ -243,7 +243,9 @@ describe('running the tools', () => {
         }),
       ]);
       expect(existsSync(path.join(root, 'mutants'))).toBe(false);
-      expect(readReport(root, 'pyproject.toml')).toContain('source_paths = ["src"]');
+      expect(readReport(root, 'pyproject.toml')).toBe(
+        '\n[tool.mutmut]\nsource_paths = ["src"]\ndo_not_mutate = ["tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"]\n',
+      );
     });
 
     it('runs after every other step, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {

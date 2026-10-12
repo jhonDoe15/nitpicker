@@ -199,12 +199,10 @@ describe('mutmut run data ingester', () => {
 
   it('finds the line of a change below the function header and in multi-line signatures', () => {
     const source = 'import os\n\n\ndef f(\n    a,\n    b,\n):\n    x = 1\n    return a + b\n';
-    const mutatedText = source.replace('    return a + b', '    return a - b');
     const mutatedSource = [
       `def x_f__mutmut_orig(\n    a,\n    b,\n):\n    x = 1\n    return a + b`,
       `def x_f__mutmut_1(\n    a,\n    b,\n):\n    x = 1\n    return a - b`,
     ].join('\n\n\n');
-    expect(mutatedText).toContain('a - b');
 
     const [finding] = ingest([
       {

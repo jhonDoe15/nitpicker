@@ -49,6 +49,9 @@ function contextOf(files = {}, overrides = {}) {
   };
 }
 
+const section = (sourcePaths) =>
+  `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = ["tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"]\n`;
+
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
 
 function leaveMutants(context, exitCodes = { 'm.x_f__mutmut_1': 1 }) {
@@ -65,12 +68,9 @@ describe('the mutmut configuration', () => {
 
     ensureMutmutConfiguration(context);
 
-    const text = read(context.projectRoot, 'pyproject.toml');
-    expect(text).toMatch(
-      /^\[project\]\nname = "demo"\n\n\[tool\.mutmut\]\nsource_paths = \["src"\]\n/,
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `[project]\nname = "demo"\n\n${section('["src"]')}`,
     );
-    expect(text).toContain('do_not_mutate = ["tests/*",');
-    expect(text).toContain('"*/conftest.py"]');
   });
 
   it('creates pyproject.toml when the project has none', () => {
@@ -78,7 +78,7 @@ describe('the mutmut configuration', () => {
 
     ensureMutmutConfiguration(context);
 
-    expect(read(context.projectRoot, 'pyproject.toml')).toContain('source_paths = ["pkg","lib"]');
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["pkg","lib"]')}`);
   });
 
   it('keeps the [tool.mutmut] table of the project', () => {
@@ -137,12 +137,9 @@ describe('running mutmut', () => {
   it('marks the failure as a mutation failure', () => {
     const context = contextOf();
 
-    expect.assertions(1);
-    try {
+    expect(() => {
       runMutation(context, () => ({}), 'win32');
-    } catch (error) {
-      expect(error.rule).toBe(MUTATION_FAILED_RULE);
-    }
+    }).toThrow(expect.objectContaining({ rule: MUTATION_FAILED_RULE }));
   });
 
   it('runs mutmut from scratch, writes its run data to the report directory and removes mutants/ on head', () => {
