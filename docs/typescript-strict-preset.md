@@ -107,8 +107,11 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   left without being awaited (`@typescript-eslint/no-floating-promises`).
 - `===` and `!==` only (`eqeqeq`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
-  Each branch, loop, `catch`, ternary, `switch`, labelled jump and run of `&&`/`||`/`??` costs 1,
-  plus 1 per level it is nested in. Every function, callbacks included, is scored on its own.
+  Each `if`, ternary, `switch`, loop and `catch` costs 1 plus its nesting level; `else`, `else if`,
+  labelled `break`/`continue` and each run of like `&&`/`||` cost 1. Unlike the published algorithm,
+  every function, callbacks included, is scored on its own with nesting starting at 0, and code
+  outside any function is not scored. A function that must stay complex gets an exception for the
+  rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`. No `enum` (use unions of string literals) and no `namespace`.

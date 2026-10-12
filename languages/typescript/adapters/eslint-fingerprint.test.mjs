@@ -282,7 +282,7 @@ describe('a new throw in a legacy function', () => {
 
 describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
-    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions.`;
+    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions. If it must stay this way, add an exception for this rule in nitpicker.config.json.`;
 
   const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
   const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
