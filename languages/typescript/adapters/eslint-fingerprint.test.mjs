@@ -222,6 +222,64 @@ describe('a finding in an edited function stays baselined while the function has
   });
 });
 
+describe('a new throw in a legacy function', () => {
+  const NO_THROW = 'nitpicker/no-throw';
+  const NO_THROW_MESSAGE = 'Return a discriminated-union failure result instead of throwing.';
+  const oneThrow = [
+    'export function parse(text: string): string {',
+    "  if (text === '') {",
+    "    throw new Error('empty');",
+    '  }',
+    '  return text;',
+    '}',
+  ].join('\n');
+  const twoThrows = oneThrow.replace(
+    '  return text;',
+    "  if (text === ' ') {\n    throw new Error('blank');\n  }\n  return text;",
+  );
+  const withoutThrow = oneThrow.replace("    throw new Error('empty');", '    return text;');
+
+  const throws = (code) =>
+    findingFor({
+      code,
+      reported: [...code.matchAll(/throw new Error\('[a-z]+'\);/g)].map(([reported]) => reported),
+      ruleId: NO_THROW,
+      messageId: 'noThrow',
+      message: NO_THROW_MESSAGE,
+    });
+
+  const compareWithInserted = (before, after, inserted) =>
+    compareFindings({
+      baseFindings: before,
+      headFindings: after,
+      touchedCode: {
+        changedLines: new Map([['src/legacy.ts', { added: false, ranges: inserted, inserted }]]),
+        isStrictRule,
+      },
+    });
+
+  it('carries advice for the count ratchet of the rule', () => {
+    expect(throws(oneThrow)[0].ratchet).toMatchObject({
+      key: 'count:noThrow',
+      growthAdvice: expect.stringContaining('{base}'),
+    });
+  });
+
+  it('says the count may not grow when the base already had a throw', () => {
+    const result = compareWithInserted(throws(oneThrow), throws(twoThrows), [[5, 7]]);
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${NO_THROW_MESSAGE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.`,
+    ]);
+  });
+
+  it('keeps the plain message when the base function had no throw', () => {
+    const result = compareWithInserted(throws(withoutThrow), throws(oneThrow), [[3, 3]]);
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([NO_THROW_MESSAGE]);
+  });
+});
+
 describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
     `Refactor this function to reduce its Cognitive Complexity from ${String(amount)} to the 15 allowed.`;
@@ -269,7 +327,7 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare(find(build, reported, 16), find(build, reported, 12));
 
     expect(result.newFindings).toEqual([]);
-    expect(result.unchangedFindings).toMatchObject([
+    expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
       { rule: 'sonarjs/cognitive-complexity', heldAtBase: 16 },
     ]);
   });

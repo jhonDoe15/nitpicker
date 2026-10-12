@@ -671,6 +671,31 @@ ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
     { filename: '/repo/test/report.test.ts', code: 'expect(list).not.toContainEqual({ id: 1 });' },
     { filename: '/repo/test/report.test.ts', code: 'expect(list).toContain(item);' },
     { filename: '/repo/test/report.test.ts', code: "text.toContain('a');" },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).not.toMatchObject({ a: 1 });' },
+    { filename: '/repo/test/report.test.ts', code: 'matcher.toMatchObject({ a: 1 });' },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).not.toEqual(expect.objectContaining({ a: 1 }));',
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ id: expect.any(String), tags: [expect.anything()] });',
+    },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual({ a: 1, b: [2, 3] });' },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ a: expect.not.stringContaining('x') });",
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(send).toHaveBeenCalledWith(expect.objectContaining({ a: 1 }));',
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual(build(expect.stringContaining('x')));",
+    },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual({ ...rest, a: 1 });' },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual([, 1]);' },
   ],
   invalid: [
     {
@@ -697,6 +722,56 @@ ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
       filename: '/repo/test/report.test.ts',
       code: "expect.soft(output).toContain('fragment');",
       errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(send()).toMatchObject({ channel: 'email' });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "await expect(send()).resolves.toMatchObject({ channel: 'email' });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(list).toMatchObject([{ id: 1 }]);',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual(expect.objectContaining({ a: 1 }));',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toStrictEqual(expect.stringContaining('x'));",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual([expect.arrayContaining([1]), 2]);',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ to: 'a', body: expect.stringContaining('x') });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ ...rest, nested: { items: [expect.objectContaining({ a: 1 })] } });',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ ...expect.objectContaining({ a: 1 }) });',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ a: expect.stringContaining('x'), b: expect.stringContaining('y') });",
+      errors: [{ messageId: 'partialMatcher' }],
     },
   ],
 });

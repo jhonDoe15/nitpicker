@@ -23,8 +23,8 @@ import { resolveBase } from './diff/base-ref.mjs';
 import { captureWorkingTree, runGit } from './diff/git.mjs';
 import { withTemporaryWorktree } from './diff/worktree.mjs';
 import {
+  absoluteTextReportPath,
   clearDiffReports,
-  relativeTextReportPath,
   renderConsoleSummary,
   renderRuleFilterSection,
 } from './diff/reporters.mjs';
@@ -109,7 +109,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveHeadPolicy(config);
+  const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
   const analyzers = configureAnalyzers(
     presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
     config,
@@ -162,7 +162,7 @@ function runCacheCommand({
   const projectRoot =
     currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
   const config = loadConfig(projectRoot);
-  const headPolicy = resolveHeadPolicy(config);
+  const headPolicy = resolveHeadPolicy(config, projectRoot);
   const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   const selected =
     shardCount === undefined
@@ -352,12 +352,12 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 }
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
-  const { options, environment, currentProjectRoot, stdout } = cli;
+  const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
-      diagnosticsPath: relativeTextReportPath(currentProjectRoot, outputRoot),
+      diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
   stdout.write(renderRuleFilterSection(report, options.ruleFilters));
