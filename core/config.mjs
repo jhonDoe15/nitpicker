@@ -1,19 +1,23 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
 import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
   isNonEmptyString,
   isPlainObject,
+  liftsOnlyRules,
   validateProjectRelativePath,
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
 import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
+import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java'];
+const SUPPORTED_PRESETS = ['typescript', 'java', 'python'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
   'preset',
@@ -25,6 +29,7 @@ const KEYS = [
   'react',
   'analyzers',
   'legacyInventory',
+  'python',
   'tools',
 ];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
@@ -81,6 +86,12 @@ function validateScalars(config) {
   if (config.preset === 'java') {
     validateJavaConfig(config);
   }
+  validatePythonConfig(
+    config,
+    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
+      : TYPESCRIPT_ONLY_KEYS,
+  );
 }
 
 function validateDisable(disable) {
