@@ -1,19 +1,8 @@
 import { readLayout } from '../preset/head-policy.mjs';
+import { immutableTypesMessage } from './immutable-types-hint.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
-
-const READONLY_EXAMPLE = 'type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`';
-
-const IMMUTABLE_TYPES_HINTS = new Map([
-  [
-    'Variable',
-    'Variable is mutable, but domain/ values must be deeply readonly. Annotate arrays from map, filter or toSorted as `readonly T[]`. Type a Set as `ReadonlySet<T>`, or build it inline: `[...new Set(xs)]`. Give a callback that returns an object or array literal an explicit readonly return type. Zod schemas and RegExp objects are always mutable: keep schemas in adapters/ and write the regex literal inline where it is used.',
-  ],
-  ['Parameter', `Parameter is mutable: ${READONLY_EXAMPLE}.`],
-  ['Return type', `Return type is mutable: ${READONLY_EXAMPLE}.`],
-  ['Property', `Property is mutable: ${READONLY_EXAMPLE}.`],
-]);
 
 const REJECT_ERRORS_TEST_HINT =
   ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.';
@@ -59,9 +48,9 @@ const GROWTH_ADVICE = new Map([
   ],
 ]);
 
-function immutableTypesMessage({ text }) {
+function immutableTypesRewrite({ text, node, sourceFile }) {
   const kind = IMMUTABLE_TYPES_PREFIX.exec(text)?.[1];
-  return IMMUTABLE_TYPES_HINTS.get(kind) ?? text;
+  return kind === undefined ? text : immutableTypesMessage({ kind, node, sourceFile });
 }
 
 function rejectErrorsMessage({ text, relativePath }) {
@@ -100,7 +89,7 @@ function switchExhaustivenessMessage({ text }) {
 }
 
 const MESSAGE_REWRITERS = new Map([
-  ['functional/prefer-immutable-types', immutableTypesMessage],
+  ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
   ['@typescript-eslint/no-unsafe-argument', unsafeAnyMessage],
@@ -113,9 +102,9 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
 ]);
 
-export function eslintMessageWithHint({ ruleId, text, relativePath }) {
+export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
-  return rewrite === undefined ? text : rewrite({ text, relativePath });
+  return rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
 }
 
 export function growthAdviceFor(ruleId) {
