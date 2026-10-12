@@ -2,14 +2,20 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { hash, nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
 
-export const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
-export const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
+const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
+const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
-const SUPPRESS_WARNINGS = /@(?:java\.lang\.)?SuppressWarnings\s*\(([^)]*)\)/g;
+const LITERALS_AND_COMMENTS =
+  /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
+const SUPPRESS_WARNINGS = /@(?:java\.lang\.)?SuppressWarnings\s*\(/g;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
-const NOPMD_COMMENT = /\/[/*][^\n]*?\bNOPMD\b/g;
+const UNICODE_ESCAPE = /\\u+([0-9a-fA-F]{4})/g;
+const NESTED_PARENTHESES = /(\([^()]*)\([^()]*\)/g;
+const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
+const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
+const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
-  'Do not silence PMD inline. Fix the finding, or lift the rule for these paths with an exception in nitpicker.config.json, where it shows in review. The one inline marker nitpicker accepts is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -33,22 +39,12 @@ function javaFiles(directory) {
 }
 
 export function fileFindings(source, filePath) {
+  const views = sourceViews(
+    source.replace(UNICODE_ESCAPE, (_, code) => String.fromCodePoint(Number.parseInt(code, 16))),
+  );
   const occurrences = new Map();
-  const suppressions = [
-    ...[...source.matchAll(SUPPRESS_WARNINGS)].flatMap((match) => {
-      const values = [...match[1].matchAll(STRING_LITERAL)].map(([, value]) => value);
-      const silencesPmd = values.filter((value) => value === 'all' || /^PMD(?:\.|$)/.test(value));
-      return silencesPmd.length === 0 || isAcceptedMarker(silencesPmd, source, match)
-        ? []
-        : [{ offset: match.index, found: silencesPmd.map((value) => `"${value}"`).join(', ') }];
-    }),
-    ...[...source.matchAll(NOPMD_COMMENT)].map((match) => ({
-      offset: match.index,
-      found: 'NOPMD',
-    })),
-  ].sort((left, right) => left.offset - right.offset);
-  return suppressions.map(({ offset, found }) => {
-    const key = `${found}\0${declarationAfter(source, offset)}\0${lineText(source, offset)}`;
+  return annotationSuppressions(views).map(({ offset, found }) => {
+    const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
     const occurrence = nextOccurrence(occurrences, key);
     return {
       tool: 'pmd',
@@ -57,59 +53,88 @@ export function fileFindings(source, filePath) {
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
       message: `${MESSAGE} Found: ${found}.`,
       classification: 'enforceable',
-      location: { line: lineOf(source, offset) },
+      location: { line: lineOf(views.code, offset) },
     };
   });
 }
 
-function lineText(source, offset) {
-  const start = source.lastIndexOf('\n', offset) + 1;
-  const end = source.indexOf('\n', offset);
-  return source.slice(start, end === -1 ? undefined : end).trim();
+function sourceViews(source) {
+  const code = source.replace(LITERALS_AND_COMMENTS, (token) =>
+    isComment(token) ? blank(token) : `${token[0]}${blank(token.slice(1, -1))}${token.at(-1)}`,
+  );
+  const withoutComments = source.replace(LITERALS_AND_COMMENTS, (token) =>
+    isComment(token) ? blank(token) : token,
+  );
+  return { code, withoutComments };
 }
 
-function isAcceptedMarker(silencesPmd, source, match) {
+function isComment(token) {
+  return token.startsWith('/');
+}
+
+function blank(text) {
+  return text.replace(/[^\n]/g, ' ');
+}
+
+function annotationSuppressions({ code, withoutComments }) {
+  return [...code.matchAll(SUPPRESS_WARNINGS)].flatMap((match) => {
+    const start = match.index + match[0].length;
+    const end = code.indexOf(')', start);
+    const values = [...withoutComments.slice(start, end).matchAll(STRING_LITERAL)].map(
+      ([, value]) => value,
+    );
+    if (!LITERAL_ARGUMENTS.test(code.slice(start, end))) {
+      return [{ offset: match.index, found: 'a constant expression' }];
+    }
+    const silencesPmd = values.filter(
+      (value) => PMD_WARNING_NAMES.has(value) || /^PMD(?:\.|$)/.test(value),
+    );
+    return silencesPmd.length === 0 || isAcceptedMarker(silencesPmd, code, end + 1)
+      ? []
+      : [{ offset: match.index, found: silencesPmd.map((value) => `"${value}"`).join(', ') }];
+  });
+}
+
+function isAcceptedMarker(silencesPmd, code, offset) {
   return (
     silencesPmd.every((value) => INLINE_SUPPRESSIBLE_RULES.includes(value)) &&
-    isMethodDeclaration(declarationAfter(source, match.index + match[0].length))
+    isMethodDeclaration(declarationAfter(code, offset))
   );
 }
 
-function declarationAfter(source, offset) {
-  return headerUntilBody(source.slice(offset))
-    .replace(/@[\w.]+(?:\s*\((?:[^()"]|"(?:[^"\\]|\\.)*")*\))?/g, ' ')
+function declarationAfter(code, offset) {
+  const rest = code.slice(offset);
+  const end = rest.search(/[{;]/);
+  return withoutNestedParentheses(end === -1 ? rest : rest.slice(0, end))
+    .replace(ANNOTATION, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function headerUntilBody(rest) {
-  let quote = '';
-  for (let index = 0; index < rest.length; index += 1) {
-    const character = rest[index];
-    if (quote !== '') {
-      if (character === '\\') {
-        index += 1;
-      } else if (rest.startsWith(quote, index)) {
-        index += quote.length - 1;
-        quote = '';
-      }
-    } else if (rest.startsWith('"""', index)) {
-      quote = '"""';
-      index += 2;
-    } else if (character === '"') {
-      quote = '"';
-    } else if (character === '{' || character === ';') {
-      return rest.slice(0, index);
+function withoutNestedParentheses(text) {
+  const versions = [text];
+  for (const version of versions) {
+    const flattened = version.replace(NESTED_PARENTHESES, '$1');
+    if (flattened !== version) {
+      versions.push(flattened);
     }
   }
-  return rest;
+  return versions.at(-1);
 }
 
 function isMethodDeclaration(declaration) {
+  const head = declaration.slice(0, declaration.indexOf('('));
   return (
     declaration.includes('(') &&
-    !/\b(?:class|interface|record|enum)\b/.test(declaration.slice(0, declaration.indexOf('(')))
+    !head.includes('=') &&
+    !/\b(?:class|interface|record|enum)\b/.test(head)
   );
+}
+
+function lineText(code, offset) {
+  const start = code.lastIndexOf('\n', offset) + 1;
+  const end = code.indexOf('\n', offset);
+  return code.slice(start, end === -1 ? undefined : end).trim();
 }
 
 function lineOf(source, offset) {

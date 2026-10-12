@@ -258,12 +258,14 @@ describe('applyJavaPolicy', () => {
     };
 
     expect(applyJavaPolicy([], { ...options, snapshot: 'head' })).toEqual([
-      expect.objectContaining({
+      {
         tool: 'java',
         rule: 'baseline-expansion',
         path: 'a.java',
+        identity: expect.stringMatching(/^site:\w+$/),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
         classification: 'enforceable',
-      }),
+      },
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
     expect(

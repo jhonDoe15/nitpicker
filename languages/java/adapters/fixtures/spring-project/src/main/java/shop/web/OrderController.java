@@ -1,6 +1,7 @@
 package shop.web;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -38,6 +39,12 @@ public class OrderController {
 
   @PostMapping("/raw")
   public void raw(@RequestBody String body, @RequestBody Map<String, String> fields) {}
+
+  @PostMapping("/flags")
+  public void flags(@RequestBody boolean enabled, @RequestBody List<String> skus) {}
+
+  @PostMapping("/batch")
+  public void batch(@RequestBody List<NewOrder> orders) {} // violation: SpringValidRequestBody
 
   @Transactional // violation: SpringNoTransactionalController
   @PostMapping("/bulk")

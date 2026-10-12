@@ -157,6 +157,7 @@ allprojects {
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
                     '--aux-classpath', "file:${auxClasspath.absolutePath}",
+                    '--suppress-marker', 'NITPICKER-NO-INLINE-SUPPRESSION',
                     '--dir', mainSources.files.findAll { it.exists() }.join(',')
             }
         }

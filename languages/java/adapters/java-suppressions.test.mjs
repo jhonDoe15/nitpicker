@@ -18,6 +18,9 @@ const REPOSITORY = `interface Products extends Repository<Product, Long> {
 }
 `;
 
+const MESSAGE =
+  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+
 const lines = (findings) => findings.map((finding) => finding.location.line);
 
 describe('fileFindings', () => {
@@ -30,7 +33,7 @@ describe('fileFindings', () => {
     expect(lines(fileFindings(source, 'Products.java'))).toEqual([1]);
   });
 
-  it('reports every other PMD suppression and NOPMD comment, but not compiler warnings', () => {
+  it('reports every other PMD suppression, but not compiler warnings or NOPMD comments, which PMD is told to ignore', () => {
     const source = [
       'class A {',
       '  @SuppressWarnings({"PMD.UnusedPrivateField", "unchecked"})',
@@ -46,17 +49,89 @@ describe('fileFindings', () => {
 
     const findings = fileFindings(source, 'src/main/java/A.java');
 
-    expect(lines(findings)).toEqual([2, 4, 6, 7, 9]);
-    expect(findings[0]).toMatchObject({
+    expect(lines(findings)).toEqual([2, 4, 6, 9]);
+    expect(findings[0]).toEqual({
       tool: 'pmd',
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
+      identity: expect.stringMatching(/^InlineSuppression:\w+$/),
+      message: `${MESSAGE} Found: "PMD.UnusedPrivateField".`,
       classification: 'enforceable',
+      location: { line: 2 },
     });
-    expect(findings[0].message).toContain('"PMD.UnusedPrivateField"');
-    expect(findings[3].message).toContain('NOPMD');
+    expect(findings.map((finding) => finding.message.slice(MESSAGE.length))).toEqual([
+      ' Found: "PMD.UnusedPrivateField".',
+      ' Found: "PMD".',
+      ' Found: "all".',
+      ' Found: "PMD.SpringDataNativeQuery", "PMD.UnusedFormalParameter".',
+    ]);
   });
 
+  it('ignores suppressions that only appear inside strings and comments', () => {
+    const source = [
+      'class A {',
+      '  /** Never write @SuppressWarnings("PMD") here. */',
+      '  String a = "// NOPMD";',
+      '  String b = """',
+      '      @SuppressWarnings("PMD") { ;',
+      '      """;',
+      '  /* @SuppressWarnings("all") */ void c() {}',
+      '}',
+    ].join('\n');
+
+    expect(fileFindings(source, 'A.java')).toEqual([]);
+  });
+
+  it('reads suppressions written with unicode escapes, constants or PMD warning names', () => {
+    const source = [
+      'class A {',
+      '  @\\u0053uppressWarnings("PMD.X") void a() {}',
+      '  @SuppressWarnings("\\u0050MD.X") void b() {}',
+      '  @SuppressWarnings(NAME) void c() {}',
+      '  @SuppressWarnings("PMD" + ".X") void d() {}',
+      '  @SuppressWarnings({"x)", "PMD.X"}) void e() {}',
+      '  @SuppressWarnings(value = {"unused", "serial"}) void f() {}',
+      '  @SuppressWarnings(value = "unchecked") void g() {}',
+      '}',
+    ].join('\n');
+
+    expect(
+      fileFindings(source, 'A.java').map(
+        (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
+      ),
+    ).toEqual([
+      '2 Found: "PMD.X".',
+      '3 Found: "PMD.X".',
+      '4 Found: a constant expression.',
+      '5 Found: a constant expression.',
+      '6 Found: "PMD.X".',
+      '7 Found: "unused", "serial".',
+    ]);
+  });
+
+  it('reports the native-query marker on a type behind comments and nested annotation arguments', () => {
+    const source = [
+      '@SuppressWarnings("PMD.SpringDataNativeQuery")',
+      '// legacy (see X)',
+      '@Foo(a = (1))',
+      'public interface R extends JpaRepository<P, Long> {}',
+    ].join('\n');
+    expect(lines(fileFindings(source, 'R.java'))).toEqual([1]);
+  });
+
+  it('reports the native-query marker on a field, even one initialized by a call', () => {
+    const source =
+      'class A {\n  @SuppressWarnings("PMD.SpringDataNativeQuery")\n  private final B b = make();\n}\n';
+    expect(lines(fileFindings(source, 'A.java'))).toEqual([2]);
+  });
+
+  it('accepts the native-query marker when the query text holds braces and semicolons', () => {
+    const source = REPOSITORY.replace('for update skip locked', "and note = '{;}'");
+    expect(fileFindings(source, 'Products.java')).toEqual([]);
+  });
+});
+
+describe('fileFindings identities', () => {
   it('keeps identities when lines shift and tells repeated suppressions apart', () => {
     const source =
       'class A {\n  @SuppressWarnings("PMD") void a() {}\n  @SuppressWarnings("PMD") void a() {}\n}\n';

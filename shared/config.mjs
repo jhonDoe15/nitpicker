@@ -1,6 +1,6 @@
 // The project config (`nitpicker.config.json`) rules that do not depend on a language: the file
 // name, the keys every preset honours and their validation. `core/config.mjs` adds the
-// TypeScript-only keys (`layout`, `exceptions`) and the preset gate on top of these.
+// TypeScript-only keys (`layout`, `tools`) and the preset gate on top of these.
 //
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 

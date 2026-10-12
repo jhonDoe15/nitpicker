@@ -61,7 +61,9 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
         ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerPmd', 'nitpickerJava'],
         { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
       );
-      expect(result.status, result.stderr).toBe(0);
+      if (result.status !== 0) {
+        throw new Error(`Gradle failed: ${result.stderr}`);
+      }
     },
     16 * 60 * 1000,
   );
@@ -83,6 +85,9 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
     const manifest = JSON.parse(
       readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'manifest.json'), 'utf8'),
     );
-    expect(manifest).toMatchObject({ spring: true, resourceRoots: ['src/main/resources'] });
+    expect({ spring: manifest.spring, resourceRoots: manifest.resourceRoots }).toEqual({
+      spring: true,
+      resourceRoots: ['src/main/resources'],
+    });
   });
 });
