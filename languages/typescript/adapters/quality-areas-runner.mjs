@@ -70,6 +70,7 @@ const QUALITY_AREA_RUNNERS = new Map([
 ]);
 const DEPENDENCY_GRAPH_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
@@ -599,11 +600,7 @@ async function runMutation(options) {
 }
 
 function writeStrykerConfig({ options, sourceConfig, configPath, createdFiles }) {
-  const tsconfigPath = installMutationCompanion(
-    options,
-    [sourceConfig.tsconfigFile, '.nitpicker-diff-tsconfig.stryker.json'],
-    createdFiles,
-  );
+  const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
@@ -1233,14 +1230,22 @@ async function runDependencyCruiser(options, sourcePaths, layout) {
   return report;
 }
 
-function runNodeTool({
+function runNodeTool({ acceptedStatuses, ...invocation }) {
+  const result = spawnNodeTool(invocation);
+  if (!acceptedStatuses.includes(result.status)) {
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`${invocation.options.kind} exited with ${String(result.status)}: ${detail}`);
+  }
+  return result;
+}
+
+function spawnNodeTool({
   options,
   relativeToolPath,
   absoluteToolPath,
   arguments_,
   cwd = options.projectRoot,
   environment = {},
-  acceptedStatuses,
 }) {
   const name = relativeToolPath === undefined ? undefined : toolNameForPath(relativeToolPath);
   const toolPath =
@@ -1257,10 +1262,6 @@ function runNodeTool({
   });
   if (result.error !== undefined) {
     throw result.error;
-  }
-  if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${options.kind} exited with ${String(result.status)}: ${detail}`);
   }
   return result;
 }
@@ -1280,20 +1281,40 @@ export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigF
   };
 }
 
-function installMutationCompanion(options, [sourceRelativePath, targetName], createdFiles) {
+export function installStrykerTsconfig(options, sourceRelativePath, createdFiles) {
+  const target = [sourceRelativePath, STRYKER_TSCONFIG_TARGET];
+  const tsconfigPath = installMutationCompanion(options, target, createdFiles);
+  if (!typechecksCleanly(options, tsconfigPath)) {
+    writeFileSync(tsconfigPath, mutationCompanionText(options, target, { strictMutants: false }));
+  }
+  return tsconfigPath;
+}
+
+function typechecksCleanly(options, tsconfigPath) {
+  return (
+    spawnNodeTool({
+      options,
+      relativeToolPath: 'typescript/bin/tsc',
+      arguments_: ['--project', tsconfigPath, '--noEmit', '--incremental', 'false'],
+    }).status === 0
+  );
+}
+
+function installMutationCompanion(options, target, createdFiles) {
+  const targetPath = path.join(options.projectRoot, target[1]);
+  writeTemporaryFile(targetPath, mutationCompanionText(options, target), createdFiles);
+  return targetPath;
+}
+
+function mutationCompanionText(options, [sourceRelativePath, targetName], transformOptions) {
   const sourcePath = policyFile(
     options.policyRoot,
     companionPath(path.posix.dirname(STRYKER_CONFIG_PATH), sourceRelativePath),
   );
   const targetPath = path.join(options.projectRoot, targetName);
-  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout());
+  const transform = layoutTransformFor(sourceRelativePath ?? '', readLayout(), transformOptions);
   const text = readFileSync(sourcePath, 'utf8');
-  writeTemporaryFile(
-    targetPath,
-    transform === undefined ? text : transform(text, targetPath),
-    createdFiles,
-  );
-  return targetPath;
+  return transform === undefined ? text : transform(text, targetPath);
 }
 
 function companionPath(configDirectory, relativePath) {
