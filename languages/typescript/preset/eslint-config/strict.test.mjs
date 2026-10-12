@@ -44,8 +44,29 @@ describe('strict declaration and control-flow rules', () => {
     ['early return', 'export function read(a) { if (a) { return 1; } return 2; }'],
     ['else without return', 'export function read(a) { if (a) { log(); } else { return 2; } }'],
     ['single ternary', 'export const value = a ? 1 : 2;'],
+    [
+      'an interface in a module augmentation',
+      "declare module 'csstype' { interface Properties { '--progress'?: number } }\nexport {};",
+    ],
+    [
+      'an interface in a global augmentation',
+      'declare global { interface Window { app: number } }\nexport {};',
+    ],
   ])('allows %s', (_name, code) => {
     expect(messages(code)).toEqual([]);
+  });
+
+  it.each([
+    ['an interface', 'export interface Shape { size: number }'],
+    [
+      'an interface in a declared namespace',
+      'declare namespace Shapes { interface Shape { size: number } }',
+    ],
+    ['an interface in a module block', 'module Shapes { export interface Shape { size: number } }'],
+  ])('bans %s with the type form', (_name, code) => {
+    expect(messages(code)).toEqual(
+      expect.arrayContaining([expect.stringContaining('Use a `type` instead of an `interface`')]),
+    );
   });
 
   it('allows a default export in a config file', () => {

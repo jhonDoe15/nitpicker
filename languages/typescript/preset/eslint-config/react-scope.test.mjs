@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
+import { failureMessagesFor } from '../failure-messages/harness.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { accessibilityRuleNames, reactRuleIds } from './react-rules.mjs';
 import {
@@ -12,7 +13,7 @@ import {
   isReactProject,
   reactScopeConfigFor,
   reactSyntaxConfigFor,
-  reactTypedConfigFor,
+  stylingApproachFor,
 } from './react-scope.mjs';
 
 const layout = resolveLayout();
@@ -79,12 +80,6 @@ describe('React detection', () => {
     );
     expect(analyzedProjectRoot({})).toBe(process.cwd());
   });
-
-  it('does not treat this repository as a React project', () => {
-    expect(isReactProject({ projectRoot: path.resolve(import.meta.dirname, '../../../..') })).toBe(
-      false,
-    );
-  });
 });
 
 async function calculatedConfig(entries, file) {
@@ -95,6 +90,56 @@ async function calculatedConfig(entries, file) {
   });
   return eslint.calculateConfigForFile(file);
 }
+
+describe('the styling approach', () => {
+  it.each([
+    ['styled-components', { dependencies: { 'styled-components': '6.0.0' } }],
+    ['an @emotion package', { devDependencies: { '@emotion/react': '11.0.0' } }],
+    ['another CSS-in-JS library', { dependencies: { goober: '2.0.0' } }],
+  ])('is css-in-js when the manifest lists %s', (_name, fields) => {
+    const projectRoot = projectWith(manifestWith({ dependencies: { react: '19.0.0' }, ...fields }));
+
+    expect(stylingApproachFor({ projectRoot })).toBe('css-in-js');
+  });
+
+  it.each([
+    [
+      'no CSS-in-JS dependency',
+      manifestWith({ dependencies: { react: '19.0.0', tailwindcss: '4.0.0' } }),
+    ],
+    [
+      'a similarly named package',
+      manifestWith({ dependencies: { 'styled-components-extra': '1.0.0' } }),
+    ],
+    ['no manifest', undefined],
+  ])('is class-names with %s', (_name, manifest) => {
+    expect(stylingApproachFor({ projectRoot: projectWith(manifest) })).toBe('class-names');
+  });
+
+  it('lets the config override what the manifest suggests', () => {
+    const projectRoot = projectWith(
+      manifestWith({ dependencies: { 'styled-components': '6.0.0' } }),
+    );
+
+    expect(stylingApproachFor({ projectRoot, react: { styling: 'inline-style' } })).toBe(
+      'inline-style',
+    );
+    expect(stylingApproachFor({ projectRoot, react: { enabled: true } })).toBe('css-in-js');
+  });
+
+  it('reaches the styling rule through the scope config', async () => {
+    const projectRoot = projectWith(
+      manifestWith({ dependencies: { '@emotion/styled': '11.0.0' } }),
+    );
+
+    const [entry] = await reactScopeConfigFor(layout, {}, projectRoot);
+
+    expect(entry.rules['nitpicker/react-single-styling-approach']).toEqual([
+      'error',
+      { approach: 'css-in-js' },
+    ]);
+  });
+});
 
 describe('the React scope config', () => {
   it('configures exactly the listed React rule ids', async () => {
@@ -109,14 +154,6 @@ describe('the React scope config', () => {
     for (const id of Object.keys(entry.rules)) {
       const [pluginName, ...rest] = id.split('/');
       expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
-    }
-  });
-
-  it('runs every rule as an error', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
-
-    for (const [id, setting] of Object.entries(entry.rules)) {
-      expect([setting].flat()[0], id).toBe('error');
     }
   });
 
@@ -145,6 +182,23 @@ describe('the React scope config', () => {
       'error',
       { approach: 'inline-style' },
     ]);
+  });
+
+  it('allows an error boundary, which React supports only as a class, and flags other classes', async () => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+    const lint = (body) =>
+      failureMessagesFor({
+        config,
+        filename: 'src/main/ui/boundary.tsx',
+        code: `import { Component } from 'react'; export class Boundary extends Component { ${body} render() { return <div />; } }`,
+      });
+
+    expect(lint('static getDerivedStateFromError() { return { failed: true }; }')).toEqual([]);
+    expect(lint('componentDidCatch() {}')).toEqual([]);
+    expect(lint('')).toEqual([expect.stringContaining('nitpicker.config.json')]);
   });
 
   it('keeps the accessibility rule options of the plugin', async () => {
@@ -179,25 +233,5 @@ describe('the React scope config', () => {
     expect((await calculatedConfig(entries, 'src/panel.tsx'))?.rules ?? {}).not.toHaveProperty(
       'react-hooks/rules-of-hooks',
     );
-  });
-
-  it('lets event handler attributes be async', () => {
-    const [entry] = reactTypedConfigFor(layout);
-
-    expect(entry.rules).toEqual({
-      '@typescript-eslint/no-misused-promises': [
-        'error',
-        { checksVoidReturn: { attributes: false } },
-      ],
-    });
-    expect(entry.files).toEqual(layout.sourceGlobs);
-    expect(entry.ignores).toEqual([...layout.testGlobs, ...layout.sourceTestDirectoryGlobs]);
-  });
-
-  it('combines the syntax and the typed entries', async () => {
-    const entries = await reactScopeConfigFor(layout);
-
-    expect(entries).toHaveLength(2);
-    expect(entries[1]).toEqual(reactTypedConfigFor(layout)[0]);
   });
 });

@@ -7,6 +7,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import { reactRuleIds } from '../eslint-config/react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
@@ -120,4 +121,8 @@ const presetConfig = tseslint.config(
   },
 );
 
-export default applyRuleExceptions(presetConfig, policy.exceptions);
+const applicableExceptions = react
+  ? policy.exceptions
+  : policy.exceptions.filter(({ rule }) => !reactRuleIds.includes(rule));
+
+export default applyRuleExceptions(presetConfig, applicableExceptions);
