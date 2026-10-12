@@ -388,11 +388,27 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ).toEqual(['detekt/detekt.style.MagicNumber']);
   });
 
-  it.each([
-    [undefined, 'ktlint'],
-    ['ktfmt', 'ktfmt'],
-  ])('fails on a newly unformatted file with the formatter %s', (formatter, tool) => {
-    const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
+  it('fails on a newly violated ktlint rule of a project that uses ktlint, naming rule and exception', () => {
+    const root = kotlinRepository({ '.editorconfig': 'ktlint_code_style = ktlint_official\n' });
+    write(root, { 'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n' });
+    commit(root, 'add a wildcard import');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      expect.objectContaining({
+        tool: 'ktlint',
+        rule: 'ktlint.standard:no-wildcard-imports',
+        path: 'src/main/kotlin/demo/K.kt',
+        location: { line: 3 },
+        message: expect.stringContaining('ktlint_standard_no-wildcard-imports = disabled'),
+      }),
+    ]);
+  });
+
+  it('fails on a newly unformatted file with the configured ktfmt and names kotlin.formatter', () => {
+    const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig('ktfmt') });
     write(root, { 'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n' });
     commit(root, 'misformat a file');
 
@@ -401,13 +417,29 @@ describe('nitpicker with "preset": "kotlin"', () => {
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({
-        tool,
+        tool: 'ktfmt',
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
-        message: `File is not formatted with ${tool}`,
+        message: expect.stringContaining('kotlin.formatter'),
       }),
     ]);
   });
+
+  it.each([undefined, 'none'])(
+    'runs no format check for a project without a detected formatter (kotlin.formatter %s)',
+    (formatter) => {
+      const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
+      write(root, {
+        'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n',
+        'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n',
+      });
+      commit(root, 'violate every formatter');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    },
+  );
 
   it('reports a raised legacy allowance under the kotlin analyzer', () => {
     const inventory = (count) =>
@@ -490,6 +522,26 @@ describe('Kotlin analyzer', () => {
 
     expect(findings).toEqual([
       expect.objectContaining({ tool: 'kotlin', classification: 'tool-error' }),
+    ]);
+  });
+});
+
+describe('a root project without Nitpicker reports', () => {
+  it.each([
+    ['kotlin', 'org.jetbrains.kotlin.jvm'],
+    ['java', 'java'],
+  ])('is a tool error naming the plugin for the %s preset', (preset, plugin) => {
+    const root = temporaryRoot('nitpicker-no-reports-');
+    write(root, { NO_REPORTS: '' });
+
+    const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle, policy: { preset } });
+
+    expect(findings).toEqual([
+      expect.objectContaining({
+        tool: preset,
+        classification: 'tool-error',
+        message: expect.stringContaining(`the root project must apply the ${plugin} plugin`),
+      }),
     ]);
   });
 });
