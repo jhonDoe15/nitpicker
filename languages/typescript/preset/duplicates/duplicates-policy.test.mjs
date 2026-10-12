@@ -14,6 +14,9 @@ const productionIgnore = layoutJscpdConfig(
   JSON.parse(readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8')),
   resolveLayout(),
 ).ignore;
+const shippedFormats = JSON.parse(
+  readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8'),
+).format;
 const temporaryDirectories = [];
 
 afterEach(() => {
@@ -22,7 +25,7 @@ afterEach(() => {
   }
 });
 
-function analyzeFixture(name, extraArguments = []) {
+function analyzeFixture(name, extraArguments = [], formats = ['typescript']) {
   const output = mkdtempSync(path.join(tmpdir(), 'nitpicker-jscpd-'));
   temporaryDirectories.push(output);
   const result = spawnSync(
@@ -30,7 +33,7 @@ function analyzeFixture(name, extraArguments = []) {
     [
       path.join(fixtureRoot, name),
       '--format',
-      'typescript',
+      formats.join(','),
       '--reporters',
       'json',
       '--output',
@@ -51,6 +54,15 @@ describe('duplicate-code report', () => {
     expect(result.status, result.stderr || result.stdout).toBe(0);
     expect(report.duplicates.length).toBeGreaterThan(0);
     expect(report.statistics.total.clones).toBeGreaterThan(0);
+  });
+
+  it('reports a component copied between two tsx files in the shipped formats', () => {
+    const { result, report } = analyzeFixture('tsx-clones', [], shippedFormats);
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(report.duplicates.map(({ firstFile }) => path.basename(firstFile.name))).toEqual([
+      'first.tsx',
+    ]);
   });
 
   it('reports a helper copied between two test files', () => {

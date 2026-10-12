@@ -1,6 +1,6 @@
 {
   "name": "nitpicker",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "description": "A quality gate for code written by coding agents. It fails a change only for the problems that change introduces.",
   "keywords": [
     "quality-gate",
@@ -79,6 +79,9 @@
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
     "eslint-plugin-functional": "10.0.1",
+    "eslint-plugin-jsx-a11y-x": "0.2.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-x": "5.21.0",
     "eslint-plugin-sonarjs": "4.2.0",
     "globals": "17.11.0",
     "jscpd": "5.0.16",
@@ -88,6 +91,7 @@
   },
   "devDependencies": {
     "@types/node": "25.6.0",
+    "@types/react": "19.2.2",
     "@vitest/coverage-v8": "4.1.11",
     "typescript": "6.0.3",
     "vitest": "4.1.11"
