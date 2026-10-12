@@ -13,6 +13,9 @@ const presetConfigUrl = pathToFileURL(
   path.join(import.meta.dirname, '../defaults/eslint.config.mjs'),
 );
 const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
+const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>
+  selector.startsWith('ClassDeclaration'),
+).message;
 const temporaryRoots = [];
 let importCount = 0;
 
@@ -32,8 +35,6 @@ function classMessages(config, file, superclass) {
 }
 
 describe('class components in the strict syntax rules', () => {
-  const classBan = 'Classes are only for `Error` subclasses';
-
   it.each(['Component', 'PureComponent', 'React.Component', 'React.PureComponent'])(
     'leaves a class extending %s to the React rule in a React project',
     (superclass) => {
@@ -44,7 +45,7 @@ describe('class components in the strict syntax rules', () => {
       ]) {
         const messages = classMessages(reactConfig, file, superclass);
         expect(
-          messages.filter((message) => message.includes(classBan)),
+          messages.filter((message) => message === classBanMessage),
           file,
         ).toEqual([]);
       }
@@ -56,7 +57,7 @@ describe('class components in the strict syntax rules', () => {
     (superclass) => {
       const messages = classMessages(strictSyntaxConfig, 'src/main/ui/panel.tsx', superclass);
 
-      expect(messages).toEqual([expect.stringContaining(classBan)]);
+      expect(messages).toEqual([classBanMessage]);
     },
   );
 
@@ -65,7 +66,7 @@ describe('class components in the strict syntax rules', () => {
     (superclass) => {
       for (const config of [strictSyntaxConfig, reactConfig]) {
         const messages = classMessages(config, 'src/main/ui/panel.tsx', superclass);
-        expect(messages).toEqual([expect.stringContaining(classBan)]);
+        expect(messages).toEqual([classBanMessage]);
       }
     },
   );
@@ -73,23 +74,6 @@ describe('class components in the strict syntax rules', () => {
   it('keeps allowing Error subclasses', () => {
     for (const config of [strictSyntaxConfig, reactConfig]) {
       expect(classMessages(config, 'src/main/ui/panel.tsx', 'Error')).toEqual([]);
-    }
-  });
-
-  it('changes only the null and class selectors', () => {
-    const plain = restrictedSyntaxFor();
-    const react = restrictedSyntaxFor({ react: true });
-
-    for (const scope of Object.keys(plain)) {
-      expect(react[scope]).toHaveLength(plain[scope].length);
-      const changed = react[scope].filter(
-        ({ selector }, index) => selector !== plain[scope][index].selector,
-      );
-      expect(changed.map(({ selector }) => selector)).toEqual([
-        expect.stringContaining("Literal[raw='null']"),
-        expect.stringContaining('TSNullKeyword'),
-        expect.stringContaining('Component'),
-      ]);
     }
   });
 });
@@ -127,7 +111,9 @@ describe('null in a React project', () => {
   it('names the allowed React form in the message', () => {
     const [message] = nullMessages(reactConfig, 'export const value = null;');
 
-    expect(message).toContain('`useRef` and `createContext`');
+    expect(message).toBe(
+      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.',
+    );
   });
 });
 

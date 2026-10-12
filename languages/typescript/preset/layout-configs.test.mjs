@@ -230,7 +230,7 @@ describe('layout-aware tool configurations', () => {
         'the project config has compiler options of its own',
         {
           'tsconfig.json': JSON.stringify({
-            compilerOptions: { strict: true },
+            compilerOptions: { strict: true, types: [], lib: ['ES2022'] },
             references: [{ path: './tsconfig.app.json' }],
           }),
           'tsconfig.app.json': appConfig,
