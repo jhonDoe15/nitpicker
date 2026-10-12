@@ -1,9 +1,18 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import {
+  installStrykerTsconfig,
   mutationSkipFor,
   normalizeStructure,
   parseArguments,
@@ -30,23 +39,25 @@ function snapshotWith(files) {
   return root;
 }
 
+function optionsFor(kind, projectRoot) {
+  return parseArguments([
+    '--analyzer-name',
+    kind,
+    '--kind',
+    kind,
+    '--project-root',
+    projectRoot,
+    '--policy-root',
+    PACKAGE_ROOT,
+    '--tool-root',
+    PACKAGE_ROOT,
+    '--snapshot',
+    'head',
+  ]);
+}
+
 function runKind(kind, projectRoot) {
-  return runQualityArea(
-    parseArguments([
-      '--analyzer-name',
-      kind,
-      '--kind',
-      kind,
-      '--project-root',
-      projectRoot,
-      '--policy-root',
-      PACKAGE_ROOT,
-      '--tool-root',
-      PACKAGE_ROOT,
-      '--snapshot',
-      'head',
-    ]),
-  );
+  return runQualityArea(optionsFor(kind, projectRoot));
 }
 
 describe('crap runner without a coverage report', () => {
@@ -176,5 +187,56 @@ describe('mutation testing that cannot start', () => {
 
   it('leaves any other Stryker failure to be reported as it is', () => {
     expect(mutationSkipFor('Error: Stryker crashed')).toBeUndefined();
+  });
+});
+
+describe('mutation type-check config', () => {
+  const projectTsconfig = `${JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      lib: ['ES2022'],
+      types: [],
+    },
+    include: ['src'],
+  })}\n`;
+  const stryker = (projectRoot) => {
+    const created = [];
+    const tsconfigPath = installStrykerTsconfig(
+      optionsFor('mutation', projectRoot),
+      'tsconfig.stryker.json',
+      created,
+    );
+    return JSON.parse(readFileSync(tsconfigPath, 'utf8'));
+  };
+
+  it('adds the policy compiler options when the project type-checks with them', () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'tsconfig.json': projectTsconfig,
+      'src/first.ts': 'export const first = (rows: string[]): string | undefined => rows[0];\n',
+    });
+
+    expect(stryker(projectRoot).compilerOptions).toMatchObject({
+      skipLibCheck: true,
+      strict: true,
+      noImplicitReturns: true,
+      noFallthroughCasesInSwitch: true,
+      noUncheckedIndexedAccess: true,
+    });
+  });
+
+  it('keeps the project options when the project does not type-check with them yet', () => {
+    const projectRoot = snapshotWith({
+      'package.json': '{"name":"p","type":"module"}\n',
+      'tsconfig.json': projectTsconfig,
+      'src/first.ts': 'export const first = (rows: string[]): string => rows[0].toUpperCase();\n',
+    });
+
+    expect(stryker(projectRoot)).toEqual({
+      extends: './tsconfig.json',
+      compilerOptions: { skipLibCheck: true },
+    });
   });
 });
