@@ -3,7 +3,8 @@
 // Every tool version is pinned exactly; bump them here only.
 //
 // Output contract (relative to each project directory), read by the Nitpicker side:
-//   build/nitpicker/pmd.sarif        PMD, SARIF 2.1.0
+//   build/nitpicker/pmd.sarif        PMD, SARIF 2.1.0 (plus languages/java/gradle/spring-ruleset.xml when the
+//                                    compile classpath has spring-context or spring-boot)
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
 //   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
@@ -128,8 +129,13 @@ allprojects {
         // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
+        def usesSpring = {
+            sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
+        }
+
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
+            dependsOn tasks.named('classes')
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
@@ -138,9 +144,19 @@ allprojects {
                 : 'category/java/errorprone.xml,category/java/bestpractices.xml'
             doFirst {
                 reportDir.get().asFile.mkdirs()
+                // Type resolution: the compile classpath and the main classes, so rules can match
+                // annotation and supertype names exactly.
+                def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
+                auxClasspath.text = (sourceSets.main.compileClasspath.files
+                    + sourceSets.main.output.classesDirs.files).findAll { it.exists() }
+                    .collect { it.absolutePath }.join('\n')
+                def rulesets = usesSpring()
+                    ? "${ruleset},${new File(initScriptDir, 'spring-ruleset.xml').absolutePath}"
+                    : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
-                    '--rulesets', ruleset,
+                    '--rulesets', rulesets,
+                    '--aux-classpath', "file:${auxClasspath.absolutePath}",
                     '--dir', mainSources.files.findAll { it.exists() }.join(',')
             }
         }
@@ -353,10 +369,15 @@ allprojects {
                 def testRoots = sourceSets.test.allJava.sourceDirectories.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                 }
+                def resourceRoots = sourceSets.main.resources.srcDirs.collect {
+                    project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+                }
                 reportDir.get().file('manifest.json').asFile.text = groovy.json.JsonOutput.toJson([
                     versions       : pinned,
                     sourceRoots    : roots,
                     testSourceRoots: testRoots,
+                    resourceRoots  : resourceRoots,
+                    spring         : usesSpring(),
                 ])
             }
         }
