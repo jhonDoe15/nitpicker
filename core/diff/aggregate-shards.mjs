@@ -8,8 +8,8 @@ import { configureAnalyzers } from '../configure-analyzers.mjs';
 import { presetAnalyzers } from '../preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../config.mjs';
 import {
+  absoluteTextReportPath,
   clearDiffReports,
-  relativeTextReportPath,
   renderConsoleSummary,
   writeDiffReports,
 } from './reporters.mjs';
@@ -175,7 +175,7 @@ export function runAggregateCli({
     stdout.write(
       renderConsoleSummary(report, {
         color: environment.NO_COLOR === undefined,
-        diagnosticsPath: relativeTextReportPath(currentProjectRoot, outputRoot),
+        diagnosticsPath: absoluteTextReportPath(outputRoot),
       }),
     );
     if (report.summary.newEnforceableFindings > 0) {
