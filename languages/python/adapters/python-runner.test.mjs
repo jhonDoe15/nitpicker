@@ -74,6 +74,41 @@ describe('analyzing a Python snapshot', () => {
     });
   });
 
+  it('reads type errors and the one-way rules, each message naming the allowed form', () => {
+    const root = project({
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'type-errors.txt':
+        'src/demo/a.py:3: error: Incompatible return value type (got "int", expected "str")  [return-value]\nsrc/demo/a.py:3: note: ignored\n',
+      'rules.json': JSON.stringify([
+        { rule: 'frozen-dataclass', path: 'src/demo/a.py', subject: 'Order', line: 5 },
+      ]),
+    });
+
+    const { findings } = analyze(root);
+
+    expect(findings.map(({ tool, rule, identity }) => `${tool} ${rule} ${identity}`)).toEqual([
+      'ruff T201 fp:nitpicker/subject=`print` found',
+      'mypy return-value Incompatible return value type (got "int", expected "str")',
+      'python-rules frozen-dataclass Order',
+    ]);
+    expect(findings.map(({ message }) => message)).toEqual([
+      expect.stringContaining('Use `logging`'),
+      expect.stringContaining('Fix the type'),
+      expect.stringContaining('@dataclass(frozen=True)'),
+    ]);
+  });
+
+  it('lifts a rule for the paths of a python exception and nothing else', () => {
+    const root = project({
+      'violations.txt': 'T201|scripts/run.py|`print` found\nT201|src/demo/a.py|`print` found\n',
+    });
+    const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
+
+    const { findings } = analyze(root, { settings: { exceptions } });
+
+    expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
+  });
+
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {
     const headRoot = project({
       'violations.txt': 'F401|src/demo/a.py|unused\nF401|gen/b.py|unused\n',
@@ -130,6 +165,7 @@ describe('analyzing a Python snapshot', () => {
       },
       expect.objectContaining({ rule: 'format-failed', identity: 'format-failed' }),
       expect.objectContaining({ rule: 'tests-failed', identity: 'tests-failed' }),
+      expect.objectContaining({ rule: 'rules-failed', identity: 'rules-failed' }),
     ]);
   });
 

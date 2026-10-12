@@ -14,8 +14,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
 
 // End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
-// ruff and network access to PyPI (it installs pytest and coverage into throwaway environments),
-// so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
+// ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
+// environments), so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixture = path.resolve(import.meta.dirname, 'fixtures/python-project');
@@ -79,6 +79,13 @@ function gate(root, branch, extra = []) {
   return { exitCode, json, text: output.text, reports };
 }
 
+const enforceable = (result) =>
+  summarize(
+    result
+      .json('new-findings.json')
+      .filter(({ classification }) => classification === 'enforceable'),
+  );
+
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
@@ -86,6 +93,24 @@ const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const GREETER_HI = 'def greet(name):\n    return f"Hi, {name}!"\n';
 const GREETER_HI_TEST =
   'from demo.greeter import greet\nfrom demo.legacy import value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n';
+const TYPE_ERROR = 'def double(value: int) -> str:\n    return value * 2\n';
+const ONE_WAY_VIOLATIONS = [
+  'import os',
+  'from dataclasses import dataclass',
+  '',
+  '',
+  '@dataclass',
+  'class Order:',
+  '    identifier: str',
+  '',
+  '',
+  'def home() -> str:',
+  '    return os.path.join("a", "b")',
+  '',
+  '',
+  'LIMIT: int = 3  # noqa: E501',
+  '',
+].join('\n');
 const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
 
 const roots = [];
@@ -116,6 +141,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       '.',
       'coverage',
       'pytest',
+      'mypy',
     ]);
     commitBranch(project, 'clean', {
       'src/demo/greeter.py': GREETER_HI,
@@ -123,6 +149,25 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
     commitBranch(project, 'moved', { 'src/demo/legacy.py': LEGACY_MOVED });
     commitBranch(project, 'violation', { 'src/demo/bad.py': VIOLATION });
+    commitBranch(project, 'type-error', { 'src/demo/typed.py': TYPE_ERROR });
+    commitBranch(project, 'one-way', { 'src/demo/rules.py': ONE_WAY_VIOLATIONS });
+    commitBranch(project, 'excepted', {
+      'src/demo/rules.py': ONE_WAY_VIOLATIONS,
+      'nitpicker.config.json': JSON.stringify({
+        preset: 'python',
+        python: {
+          exceptions: [
+            { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
+            { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
+            { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
+          ],
+        },
+      }),
+    });
+    commitBranch(project, 'pyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyrightconfig.json': '{}\n',
+    });
     commitBranch(project, 'failing-tests', {
       'tests/test_greeter.py': GREETER_HI_TEST,
     });
@@ -143,7 +188,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+      /^ruff@[\d.]+;mypy@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
     );
     expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
   });
@@ -167,16 +212,60 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           .json('new-findings.json')
           .filter(({ classification }) => classification === 'enforceable'),
       ),
-    ).toEqual(['ruff F401 bad.py', 'ruff-format format bad.py']);
+    ).toEqual(['mypy no-untyped-def bad.py', 'ruff F401 bad.py', 'ruff-format format bad.py']);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coverage/line-coverage',
       'coverage/uncovered-function',
+      'mypy/no-untyped-def',
       'ruff/F401',
       'ruff-format/format',
     ]);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
     expect(result.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+  });
+
+  it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
+    const result = gate(project, 'type-error');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
+    expect(result.text).toMatch(/Fix the type: correct the annotation or narrow the value/);
+  });
+
+  it('fails the one-way rules, each message naming the allowed form', () => {
+    const result = gate(project, 'one-way');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual([
+      'python-rules frozen-dataclass rules.py',
+      'python-rules no-inline-suppression rules.py',
+      'ruff PTH118 rules.py',
+    ]);
+    expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
+    expect(result.text).toMatch(/Use `pathlib\.Path`/);
+    expect(result.text).toMatch(/`# noqa` and `# pyright: ignore` are banned/);
+    expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
+  });
+
+  it('passes the same code when python.exceptions lifts its rules', () => {
+    const result = gate(project, 'excepted');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(enforceable(result)).toEqual([]);
+    expect(result.json('summary.json').configOverrides).toContainEqual(
+      expect.stringMatching(/^exception: .*"rule":"PTH118"/),
+    );
+  });
+
+  it('runs pyright when the project has a pyright config, in its strict mode', () => {
+    const result = gate(project, 'pyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('summary.json').tools[0].version).toMatch(
+      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+    );
+    expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
   });
 
   it('reports line coverage as a descriptive finding', () => {
@@ -256,7 +345,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('summary.json').tools[0].version).toMatch(
-        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest$/,
+        /^ruff@[\d.]+;black@[\d.]+;(?:mypy|pyright)@[\d.]+;coverage@[\d.]+;unittest$/,
       );
     });
 
