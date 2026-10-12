@@ -1,17 +1,25 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
 import { isProfileKey, parseProperties, parseYaml, relaxKey } from './spring-config-parser.mjs';
+import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
 const CONFIG_FILE = /^application(?:-(.+))?\.(properties|ya?ml)$/;
 const MAIN_FILES = ['application.properties', 'application.yml', 'application.yaml'];
-const LOCAL_PROFILES = new Set(['local', 'dev']);
+const LOCAL_PROFILES = new Set(['local', 'dev', 'development']);
+const TEST_PROFILES = new Set(['it', 'integration-test']);
+const PROFILE_SEPARATORS = /[,|&!() ]/;
+const TRUE_SPELLINGS = new Set(['true', 'on', 'yes', '1']);
 const PERSISTENCE_IMPORT = /^\s*import\s+(?:jakarta|javax)\.persistence\./m;
-const SECRET_SEGMENTS = new Set(['apikey', 'privatekey', 'credentials']);
-const SECRET_SUFFIXES = ['password', 'secret', 'token'];
 const OPEN_IN_VIEW = 'spring.jpa.open-in-view';
+const DDL_MODE_NAMES = [
+  'spring.jpa.hibernate.ddl-auto',
+  'spring.jpa.properties.hibernate.hbm2ddl.auto',
+];
+const DDL_MODES = new Set(DDL_MODE_NAMES.map(relaxKey));
+const GENERATE_DDL = relaxKey('spring.jpa.generate-ddl');
 const STARTUP_FLAG_NAMES = [
   'spring.main.allow-circular-references',
   'spring.main.allow-bean-definition-overriding',
@@ -21,26 +29,40 @@ const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
   'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
 
-function isTest(document) {
-  return document.profiles.some((profile) => profile.startsWith('test'));
+function isTestProfile(profile) {
+  return profile.startsWith('test') || TEST_PROFILES.has(profile);
 }
 
-function isLocal(document) {
-  return isTest(document) || document.profiles.some((profile) => LOCAL_PROFILES.has(profile));
+function isLocalProfile(profile) {
+  return LOCAL_PROFILES.has(profile);
 }
+
+function exemptWhenEvery(matches) {
+  return (document) =>
+    !document.negated && document.profiles.length > 0 && document.profiles.every(matches);
+}
+
+const isTest = exemptWhenEvery(isTestProfile);
+const isTestOrLocal = exemptWhenEvery(
+  (profile) => isTestProfile(profile) || isLocalProfile(profile),
+);
 
 function isTrue(entry) {
-  return entry.value.toLowerCase() === 'true';
+  return TRUE_SPELLINGS.has(entry.value.toLowerCase());
 }
 
 function isPlaceholder(entry) {
   return entry.value.startsWith('${');
 }
 
+function stripBracketsAndQuotes(text) {
+  return text.replaceAll(/[[\]"']/g, '');
+}
+
 const ENTRY_RULES = [
   {
     rule: 'ddl-auto',
-    exempt: isLocal,
+    exempt: isTestOrLocal,
     problem: ddlProblem,
   },
   {
@@ -53,7 +75,7 @@ const ENTRY_RULES = [
   },
   {
     rule: 'actuator-exposure',
-    exempt: isLocal,
+    exempt: isTestOrLocal,
     lists: true,
     problem: (entry, key) =>
       key === relaxKey('management.endpoints.web.exposure.include') && exposesAll(entry.value)
@@ -62,7 +84,7 @@ const ENTRY_RULES = [
   },
   {
     rule: 'error-details',
-    exempt: isLocal,
+    exempt: isTestOrLocal,
     problem: (entry, key) =>
       key === relaxKey('server.error.include-stacktrace') &&
       ['always', 'on-param', 'on_param'].includes(entry.value.toLowerCase())
@@ -71,25 +93,29 @@ const ENTRY_RULES = [
   },
   {
     rule: 'literal-secret',
-    exempt: isLocal,
+    exempt: isTestOrLocal,
     problem: (entry) =>
-      entry.value !== '' && !isPlaceholder(entry) && isSecretKey(entry.key)
-        ? `${entry.key} holds a literal secret. Read it from an environment variable or a secret store, for example \${${secretVariable(entry.key)}}.`
-        : undefined,
+      isLiteralSecret(entry.key, entry.value) ? secretProblem(entry) : undefined,
   },
 ];
+
+function secretProblem(entry) {
+  return entry.value.trim().startsWith('${')
+    ? `${entry.key} falls back to a literal secret. Drop the default from the placeholder.`
+    : `${entry.key} holds a literal secret. Remove it and set ${secretVariable(entry.key)} in the environment, or read it from a secret store.`;
+}
 
 function ddlProblem(entry, key) {
   if (isPlaceholder(entry)) {
     return undefined;
   }
-  if (key === relaxKey('spring.jpa.hibernate.ddl-auto')) {
+  if (DDL_MODES.has(key)) {
     const mode = entry.value.toLowerCase();
     return mode !== '' && mode !== 'none' && mode !== 'validate'
-      ? 'spring.jpa.hibernate.ddl-auto lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.'
+      ? `${displayName(key, DDL_MODE_NAMES)} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`
       : undefined;
   }
-  return key === relaxKey('spring.jpa.generate-ddl') && isTrue(entry)
+  return key === GENERATE_DDL && isTrue(entry)
     ? 'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.'
     : undefined;
 }
@@ -99,23 +125,9 @@ function displayName(key, names) {
 }
 
 function exposesAll(value) {
-  return value
-    .replaceAll(/[[\]"']/g, '')
+  return stripBracketsAndQuotes(value)
     .split(',')
     .some((item) => item.trim() === '*');
-}
-
-function isSecretKey(key) {
-  const last = relaxKey(key.split('.').at(-1));
-  return SECRET_SEGMENTS.has(last) || SECRET_SUFFIXES.some((suffix) => last.endsWith(suffix));
-}
-
-function secretVariable(key) {
-  return key
-    .split('.')
-    .at(-1)
-    .replaceAll(/[^A-Za-z0-9]+/g, '_')
-    .toUpperCase();
 }
 
 function allowance(rule) {
@@ -137,29 +149,63 @@ export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resour
   ];
 }
 
+function joinPosix(...parts) {
+  return parts.filter((part) => part !== '').join('/');
+}
+
+function attempt(action) {
+  try {
+    return { ok: true, value: action() };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function valueOr(fallback, action) {
+  const result = attempt(action);
+  return result.ok ? result.value : fallback;
+}
+
+function readText(file) {
+  return valueOr(undefined, () => readFileSync(file, 'utf8'));
+}
+
+function configFileNames(directory) {
+  return valueOr([], () =>
+    readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && CONFIG_FILE.test(entry.name))
+      .map((entry) => entry.name)
+      .sort(),
+  );
+}
+
 function readSpringDocuments(projectRoot, resourceRoots) {
   return resourceRoots.flatMap((root) => {
     const directory = root.replaceAll('\\', '/').replace(/\/+$/, '');
-    const absolute = path.join(projectRoot, directory);
-    if (!existsSync(absolute)) {
-      return [];
-    }
-    return readdirSync(absolute, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && CONFIG_FILE.test(entry.name))
-      .map((entry) => entry.name)
-      .sort()
-      .flatMap((name) => fileDocuments(absolute, `${directory}/${name}`, name));
+    return [directory, joinPosix(directory, 'config')].flatMap((relative) =>
+      directoryDocuments(projectRoot, relative),
+    );
   });
+}
+
+function directoryDocuments(projectRoot, relative) {
+  const absolute = path.join(projectRoot, relative);
+  return configFileNames(absolute).flatMap((name) =>
+    fileDocuments(absolute, joinPosix(relative, name), name),
+  );
 }
 
 function fileDocuments(absoluteDirectory, relativePath, name) {
   const [, fileProfile, extension] = CONFIG_FILE.exec(name);
-  const text = readFileSync(path.join(absoluteDirectory, name), 'utf8');
+  const text = readText(path.join(absoluteDirectory, name));
+  if (text === undefined) {
+    return [];
+  }
   const parsed = extension === 'properties' ? parseProperties(text) : parseYaml(text);
   return parsed.map((document) => ({
     path: relativePath,
     main: MAIN_FILES.includes(name),
-    profiles: documentProfiles(document.entries, fileProfile),
+    ...documentProfiles(document.entries, fileProfile),
     entries: document.entries,
   }));
 }
@@ -167,25 +213,29 @@ function fileDocuments(absoluteDirectory, relativePath, name) {
 function documentProfiles(entries, fileProfile) {
   const declared = entries
     .filter((entry) => isProfileKey(entry.key))
-    .flatMap((entry) => entry.value.replaceAll(/[[\]"']/g, '').split(','))
-    .map((profile) => profile.trim().toLowerCase())
-    .filter((profile) => profile !== '');
-  if (declared.length > 0) {
-    return declared;
+    .map((entry) => stripBracketsAndQuotes(entry.value).toLowerCase());
+  const profiles = declared.flatMap((value) =>
+    value.split(PROFILE_SEPARATORS).filter((profile) => profile !== ''),
+  );
+  if (profiles.length > 0) {
+    return { profiles, negated: declared.some((value) => value.includes('!')) };
   }
-  return fileProfile === undefined ? [] : [fileProfile.toLowerCase()];
+  return { profiles: fileProfile === undefined ? [] : [fileProfile.toLowerCase()], negated: false };
+}
+
+function javaFiles(directory) {
+  return valueOr([], () =>
+    readdirSync(directory, { recursive: true })
+      .map(String)
+      .filter((file) => file.endsWith('.java')),
+  );
 }
 
 function usesJpa(projectRoot, sourceRoots) {
   return sourceRoots.some((root) => {
     const absolute = path.join(projectRoot, root);
-    return (
-      existsSync(absolute) &&
-      readdirSync(absolute, { recursive: true }).some(
-        (file) =>
-          String(file).endsWith('.java') &&
-          PERSISTENCE_IMPORT.test(readFileSync(path.join(absolute, String(file)), 'utf8')),
-      )
+    return javaFiles(absolute).some((file) =>
+      PERSISTENCE_IMPORT.test(readText(path.join(absolute, file)) ?? ''),
     );
   });
 }
@@ -202,16 +252,31 @@ function openInViewFindings(documents, occurrences) {
   const enabled = entries.filter(({ entry }) => isTrue(entry));
   if (enabled.length > 0) {
     return enabled.map(({ document, entry }) =>
-      buildFinding({ rule: 'open-in-view', document, entry, key, occurrences }),
+      buildFinding({
+        rule: 'open-in-view',
+        document,
+        entry,
+        key,
+        message: OPEN_IN_VIEW_MESSAGE,
+        occurrences,
+      }),
     );
   }
   if (entries.length > 0) {
     return [];
   }
-  const anchor = documents.find((document) => document.main) ?? documents[0];
-  return [
-    buildFinding({ rule: 'open-in-view', document: anchor, key: `${key}:missing`, occurrences }),
-  ];
+  const anchor = documents.find((document) => document.main);
+  return anchor === undefined
+    ? []
+    : [
+        buildFinding({
+          rule: 'open-in-view',
+          document: anchor,
+          key: `${key}:missing`,
+          message: OPEN_IN_VIEW_MESSAGE,
+          occurrences,
+        }),
+      ];
 }
 
 function entryFindings(documents, { rule, exempt, problem, lists = false }, occurrences) {
@@ -228,7 +293,7 @@ function entryFindings(documents, { rule, exempt, problem, lists = false }, occu
     );
 }
 
-function buildFinding({ rule, document, entry, key, message = OPEN_IN_VIEW_MESSAGE, occurrences }) {
+function buildFinding({ rule, document, entry, key, message, occurrences }) {
   const occurrence = nextOccurrence(occurrences, `${document.path}\0${rule}\0${key}`);
   return {
     tool: SPRING_TOOL,

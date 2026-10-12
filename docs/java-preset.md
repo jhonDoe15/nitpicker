@@ -16,6 +16,7 @@ side contributes only two things: producing reports, and converting them into fi
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
+  -> languages/java/adapters/java-spring.mjs           (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
 
@@ -144,8 +145,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   the config.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
-  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as `reportedTools`, the one scheduler change this slice
-  needed (a finding for a tool that is neither the analyzer nor a declared one is still an error).
+  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
+  `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
   init script and the Java adapter files, so a tool bump invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
@@ -474,38 +475,73 @@ accept.
 Findings with tool `spring`, produced in Node from the project's `application.properties`,
 `application.yml`, `application.yaml` and `application-<profile>.(properties|yml|yaml)`. No JVM and
 no new dependency: `spring-config-parser.mjs` flattens properties and YAML (nested maps, dotted
-keys, comments, quotes, multi-document files) to dotted keys with their line, and
-`java-spring.mjs` applies the rules. Only files directly in a resource root are read:
-`manifest.json`'s `resourceRoots` when present, else `src/main/resources`. Without such files
-there are no findings.
+keys, comments, quotes, single-line flow maps and sequences, multi-document files) to dotted keys
+with their line, `spring-secrets.mjs` decides what counts as a literal secret, and `java-spring.mjs`
+applies the rules.
 
-- **Keys.** Compared in relaxed form (lowercase, `-` and `_` removed), so `open-in-view`,
-  `openInView` and `open_in_view` are the same key.
-- **Profiles.** A document's profile is the file name's (`application-test.yml`) or, in YAML, the
-  `spring.config.activate.on-profile` (legacy `spring.profiles`) of its `---` document. The plain
-  `application.*` main document has none. A test profile is `test` or a name starting with `test`.
-  Local profiles are `local` and `dev`.
+- **Spring projects only.** The checks run only when `manifest.json` says `spring: true` (the
+  compile classpath has `spring-context` or `spring-boot`, see Spring rules above). Quarkus,
+  Micronaut and plain projects also have `application.*` files with other meanings, so they get no
+  `spring` findings; a manifest without the key counts as not Spring.
+- **Where.** Files directly in a resource root (`manifest.json`'s `resourceRoots` when present, else
+  `src/main/resources`) or in its `config/` directory. Without such files there are no findings; a
+  file that cannot be read is skipped.
+- **Keys.** Compared in relaxed form (lowercase, `-` and `_` removed, `[0]`-style list indexes
+  removed), so `open-in-view`, `openInView` and `open_in_view` are the same key and
+  `management.endpoints.web.exposure.include[0]=*` is the key `...include`.
+- **Profiles.** A document's profile is the file name's (`application-test.yml`) or the
+  `spring.config.activate.on-profile` (legacy `spring.profiles`) of its document: a `---` document in
+  YAML, a `#---` or `!---` document in a properties file. The plain `application.*` main document has
+  none. The expression is split on `, | & ! ( )` and spaces. A document is exempt from a rule only
+  when it has at least one profile, every positive token is exempt for that rule, and the expression
+  has no `!`. Test profiles are `test` or a name starting with `test`, `it` and `integration-test`;
+  local profiles are `local`, `dev` and `development`.
+- **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
+  any case.
 - **Rules**, all enforceable. Each message ends with the exception line to add to
   `nitpicker.config.json`.
 
-| Rule (`spring/<rule>`) | Fires on                                                                                                                       | Exempt profiles  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
-| `open-in-view`         | JPA in the main sources (`jakarta.persistence` or `javax.persistence` import) and `spring.jpa.open-in-view` unset, or `true`   | test             |
-| `ddl-auto`             | `spring.jpa.hibernate.ddl-auto` other than `none`/`validate`, or `spring.jpa.generate-ddl=true`                                | test, local, dev |
-| `risky-startup-flags`  | `spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` set to `true`             | test             |
-| `actuator-exposure`    | `management.endpoints.web.exposure.include` containing `*`                                                                     | test, local, dev |
-| `error-details`        | `server.error.include-stacktrace` set to `always` or `on-param`                                                                | test, local, dev |
-| `literal-secret`       | a key ending in `password`, `secret` or `token`, or `apikey`, `privatekey`, `credentials`, with a value not starting with `${` | test, local, dev |
+| Rule (`spring/<rule>`) | Fires on                                                                                                                                          | Exempt profiles  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `open-in-view`         | JPA in the main sources (`jakarta.persistence` or `javax.persistence` import) and `spring.jpa.open-in-view` unset, or true                        | test             |
+| `ddl-auto`             | `spring.jpa.hibernate.ddl-auto` or `spring.jpa.properties.hibernate.hbm2ddl.auto` other than `none`/`validate`, or `spring.jpa.generate-ddl` true | test, local, dev |
+| `risky-startup-flags`  | `spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` true                                         | test             |
+| `actuator-exposure`    | `management.endpoints.web.exposure.include` containing `*`                                                                                        | test, local, dev |
+| `error-details`        | `server.error.include-stacktrace` set to `always` or `on-param`                                                                                   | test, local, dev |
+| `literal-secret`       | a literal value under a key whose last segment is, or ends in a separate word that is, a secret word (below)                                      | test, local, dev |
 
+- **Literal secrets.** The last key segment, split into words at `-`, `_` and case changes, must
+  end in `password`, `secret`, `token`, `credentials`, `api-key` (or `apikey`), `private-key`,
+  `secret-key` or `access-key`, so `db-password`, `client-secret` and `jwtSecret` match while
+  `password-file`, `token-validity-seconds` and `passwords` do not. Settings
+  such as `app.require-password=true` are not judged, because booleans (`true`, `false`, `on`,
+  `off`, `yes`, `no`) and numbers never count. Also not judged: empty values, YAML `null` and `~`,
+  aliases (`*ref`), Maven filtering (`@db.password@`), Jasypt (`ENC(...)`), encrypted or hashed
+  prefixes (`{cipher}`, `{bcrypt}`, `{pbkdf2}`, `{scrypt}`, `{argon2}`, `{sha256}`), SpEL
+  (`#{...}`) and placeholders: `${DB_PASS}` and `${DB_PASS:}` pass while `${DB_PASS:hunter2}` fires
+  on its default. For keys ending in `token`, a single lowercase word such as `header` is read as a
+  setting, not a token (`feature.reset-token=header`), so a real token that is one lowercase word
+  is missed; `{noop}secret` and every other literal fire. The message names the key and the
+  environment variable Spring binds to it (`spring.datasource.password` reads
+  `SPRING_DATASOURCE_PASSWORD`), or asks to drop a placeholder's literal default; never the value.
 - **Anchor and identity.** Findings sit at the offending key's line (`location`). A missing
-  `open-in-view` is one finding at the main `application.*` file with no line. Identity is the
-  relaxed key (plus `#2`, `#3` for repeats in one file); never the line, and never a secret's value.
+  `open-in-view` is one finding at the main `application.*` file with no line; a directory with only
+  profile files (`application-test.yml`, `application-prod.yml`) has none. Identity is the relaxed
+  key (plus `#2`, `#3` for repeats in one file); never the line, and never a secret's value.
 - **Exceptions.** The printed id works in `exceptions`, for example
   `{ "rule": "spring/open-in-view", "paths": ["src/main/resources/**"], "reason": "..." }`.
-- **Limits.** Values that are placeholders (`${...}`) are not judged. YAML anchors, flow maps and
-  profile expressions such as `!prod` are not interpreted, and profile groups and `spring.config.import` files are not followed.
-- **Tests.** `java-spring.test.mjs` (parser, relaxed keys, every rule and profile exemption, line
-  stability, exceptions), `java-reports.test.mjs` (glue).
+- **Limits.** Placeholders (`${...}`) are not judged, except the default of a literal-secret
+  value. YAML anchors and aliases are not resolved: `base: &b` followed by a nested map keeps
+  its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that
+  continues on later lines (`include: [` ... `]`), multi-line quoted or plain scalars (their
+  continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
+  skipped. Profile groups, `spring.config.import` files and `spring.profiles.active` are not
+  followed.
+- **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
+  order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
+  (key words, value judgement), `java-spring.test.mjs` (relaxed keys, every rule, profile
+  expressions, line stability, exceptions, the configuration hash) and `java-reports.test.mjs`
+  (glue, the `spring: true` gate).
 
 ## Slice 1: what is deliberately not included
 

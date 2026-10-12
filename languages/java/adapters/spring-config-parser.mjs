@@ -1,32 +1,73 @@
 const PROFILE_KEYS = new Set(
   ['spring.config.activate.on-profile', 'spring.profiles'].map(relaxKey),
 );
+const LINE_BREAK = /\r\n|\r|\n/;
+const BOM = '﻿';
+const PROPERTIES_DOCUMENT_MARK = /^\s*[#!]---\s*$/;
+const PROPERTY_KEY = /^((?:\\.|[^\\=:\s])*)\s*[=:]?\s*/;
+const PROPERTY_ESCAPE = /\\(?:u([0-9a-fA-F]{4})|(.))/g;
+const PROPERTY_ESCAPES = { n: '\n', t: '\t', r: '\r', f: '\f' };
+const NODE_PROPERTIES = /^(?:[&!]\S*(?:\s+|$))+/;
+const FLOW_TOKEN = /"(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[{}[\],]|[^"'{}[\],]+|./g;
+const QUOTED_OR_COMMENT = /(?<=^|[\s:[,{])(?:"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')|(?<=^|\s)#/g;
 
 export function relaxKey(key) {
-  return key.toLowerCase().replaceAll(/[-_]/g, '');
+  return key
+    .toLowerCase()
+    .replaceAll(/\[\d+\]/g, '')
+    .replaceAll(/[-_]/g, '');
 }
 
 export function isProfileKey(key) {
   return PROFILE_KEYS.has(relaxKey(key));
 }
 
+function splitLines(text) {
+  return (text.startsWith(BOM) ? text.slice(1) : text).split(LINE_BREAK);
+}
+
+function keepDocuments(entryLists) {
+  const kept = entryLists.filter((entries) => entries.length > 0);
+  return (kept.length > 0 ? kept : [[]]).map((entries) => ({ entries }));
+}
+
 export function parseProperties(text) {
-  const entries = [];
-  let pending;
-  for (const [index, raw] of text.split(/\r?\n/).entries()) {
-    const logical = pending === undefined ? raw.trimStart() : `${pending.text}${raw.trimStart()}`;
-    const line = pending === undefined ? index + 1 : pending.line;
-    if (!isCommentLine(logical) && hasContinuation(logical)) {
-      pending = { text: logical.slice(0, -1), line };
-    } else {
-      pending = undefined;
-      entries.push(propertyEntry(logical, line));
-    }
+  const state = { documents: [[]], parts: [], line: 0 };
+  for (const [index, raw] of splitLines(text).entries()) {
+    readPropertiesLine(state, raw, index + 1);
   }
-  if (pending !== undefined) {
-    entries.push(propertyEntry(pending.text, pending.line));
+  flushProperty(state);
+  return keepDocuments(state.documents);
+}
+
+function readPropertiesLine(state, raw, line) {
+  const continued = state.parts.length > 0;
+  if (!continued && PROPERTIES_DOCUMENT_MARK.test(raw)) {
+    state.documents.push([]);
+    return;
   }
-  return [{ entries: entries.filter((entry) => entry !== undefined) }];
+  const piece = raw.trimStart();
+  if (!continued && isCommentLine(piece)) {
+    return;
+  }
+  state.line = continued ? state.line : line;
+  if (hasContinuation(piece)) {
+    state.parts.push(piece.slice(0, -1));
+    return;
+  }
+  state.parts.push(piece);
+  flushProperty(state);
+}
+
+function flushProperty(state) {
+  if (state.parts.length === 0) {
+    return;
+  }
+  const entry = propertyEntry(state.parts.join(''), state.line);
+  state.parts = [];
+  if (entry !== undefined) {
+    state.documents.at(-1).push(entry);
+  }
 }
 
 function isCommentLine(line) {
@@ -34,38 +75,43 @@ function isCommentLine(line) {
 }
 
 function hasContinuation(line) {
-  const trailing = /\\+$/.exec(line);
-  return trailing !== null && trailing[0].length % 2 === 1;
+  return /(?<!\\)(?:\\\\)*\\$/.test(line);
 }
 
 function propertyEntry(logical, line) {
-  if (logical === '' || isCommentLine(logical)) {
+  if (logical === '') {
     return undefined;
   }
-  const separator = /(?<!\\)[=:\s]/.exec(logical);
-  const keyEnd = separator === null ? logical.length : separator.index;
-  const key = unescapeProperty(logical.slice(0, keyEnd));
-  const rest = logical.slice(keyEnd).replace(/^\s*[=:]?\s*/, '');
-  return { key, value: unescapeProperty(rest.trim()), line, list: false };
+  const match = PROPERTY_KEY.exec(logical);
+  return {
+    key: unescapeProperty(match[1]),
+    value: unescapeProperty(logical.slice(match[0].length).trim()),
+    line,
+    list: false,
+  };
 }
 
 function unescapeProperty(text) {
-  return text.replaceAll(/\\(.)/g, '$1');
+  return text.replaceAll(PROPERTY_ESCAPE, (_, code, char) =>
+    code === undefined
+      ? (PROPERTY_ESCAPES[char] ?? char)
+      : String.fromCodePoint(Number.parseInt(code, 16)),
+  );
 }
 
 export function parseYaml(text) {
-  const documents = [];
+  const entryLists = [];
   let state = freshDocument();
-  for (const [index, raw] of text.split(/\r?\n/).entries()) {
+  for (const [index, raw] of splitLines(text).entries()) {
     if (/^---(\s|$)/.test(raw)) {
-      documents.push({ entries: state.entries });
+      entryLists.push(state.entries);
       state = freshDocument();
     } else {
       readYamlLine(state, raw, index + 1);
     }
   }
-  documents.push({ entries: state.entries });
-  return documents.filter((document) => document.entries.length > 0);
+  entryLists.push(state.entries);
+  return keepDocuments(entryLists);
 }
 
 function freshDocument() {
@@ -97,7 +143,7 @@ function readListItem(state, { content, indent, line }) {
   state.listIndent = indent;
   const item = content.slice(1).trim();
   if (state.pending !== '' && item !== '' && splitPair(item) === undefined) {
-    state.entries.push({ key: state.pending, value: unquote(item), line, list: true });
+    state.entries.push({ key: state.pending, value: scalarValue(item), line, list: true });
   }
 }
 
@@ -110,22 +156,73 @@ function readYamlPair(state, { content, indent, line }) {
   state.stack = parents;
   state.pending = '';
   const key = [...parents.map((parent) => parent.key), split.key].join('.');
-  if (split.value === '') {
+  const value = withoutNodeProperties(split.value);
+  if (value === '') {
     state.stack.push({ indent, key: split.key });
     state.pending = key;
     return;
   }
-  readScalar(state, { key, value: split.value, indent, line });
+  readScalar(state, { key, value, indent, line });
 }
 
 function readScalar(state, { key, value, indent, line }) {
-  if (/^[|>]/.test(value)) {
-    state.blockIndent = indent;
-    return;
+  state.blockIndent = indent;
+  if (!/^[|>]/.test(value) && !isOpenFlow(value) && !isOpenQuote(value)) {
+    state.entries.push(...flowEntries(key, value, line));
   }
-  if (!value.startsWith('{')) {
-    state.entries.push({ key, value: unquote(value), line, list: false });
+}
+
+function isOpenFlow(value) {
+  return (
+    (value.startsWith('{') && !value.endsWith('}')) ||
+    (value.startsWith('[') && !value.endsWith(']'))
+  );
+}
+
+function isOpenQuote(value) {
+  if (value.startsWith('"')) {
+    return !/^"(?:[^"\\]|\\.)*"$/.test(value);
   }
+  return value.startsWith("'") && !/^'(?:[^']|'')*'$/.test(value);
+}
+
+function flowEntries(key, value, line) {
+  if (value.startsWith('[')) {
+    return flowItems(value)
+      .filter((item) => !/^[[{]/.test(item))
+      .map((item) => ({ key, value: scalarValue(item), line, list: true }));
+  }
+  if (value.startsWith('{')) {
+    return flowItems(value).flatMap((item) => flowPairEntries(key, item, line));
+  }
+  return [{ key, value: scalarValue(value), line, list: false }];
+}
+
+function flowPairEntries(parent, item, line) {
+  const pair = splitPair(item);
+  const value = pair === undefined ? '' : withoutNodeProperties(pair.value);
+  return value === '' ? [] : flowEntries(`${parent}.${pair.key}`, value, line);
+}
+
+function flowItems(value) {
+  const parts = [''];
+  let depth = 0;
+  for (const [token] of value.slice(1, -1).matchAll(FLOW_TOKEN)) {
+    depth += depthChange(token);
+    if (token === ',' && depth === 0) {
+      parts.push('');
+    } else {
+      parts[parts.length - 1] += token;
+    }
+  }
+  return parts.map((part) => part.trim()).filter((part) => part !== '');
+}
+
+function depthChange(token) {
+  if (token === '{' || token === '[') {
+    return 1;
+  }
+  return token === '}' || token === ']' ? -1 : 0;
 }
 
 function enclosingKeys(stack, indent) {
@@ -144,13 +241,9 @@ function splitPair(content) {
     return undefined;
   }
   const at = from + colon.index;
-  return {
-    key: unquote(content.slice(0, at).trim()),
-    value: content.slice(at + 1).trim(),
-  };
+  const key = unquote(content.slice(0, at).trim());
+  return key === '' ? undefined : { key, value: content.slice(at + 1).trim() };
 }
-
-const QUOTED_OR_COMMENT = /(?<=^|[\s:[,{])(?:"(?:[^"\\]|\\.)*"|'(?:[^']|'')*')|(?<=^|\s)#/g;
 
 function stripComment(raw) {
   for (const match of raw.matchAll(QUOTED_OR_COMMENT)) {
@@ -159,6 +252,14 @@ function stripComment(raw) {
     }
   }
   return raw;
+}
+
+function withoutNodeProperties(text) {
+  return text.replace(NODE_PROPERTIES, '');
+}
+
+function scalarValue(text) {
+  return unquote(withoutNodeProperties(text.trim()));
 }
 
 function unquote(text) {

@@ -3,10 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { CONFIGURATION_FILES, createJavaAnalyzer } from './java-analyzer.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
-import { parseProperties, parseYaml, relaxKey } from './spring-config-parser.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -36,16 +35,43 @@ function read(files, options) {
   return readSpringConfigFindings(project(files, options), { sourceRoots });
 }
 
-function openInView(file, line) {
+const OPEN_IN_VIEW_MESSAGE =
+  'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
+const MAIN_PROPERTIES = 'src/main/resources/application.properties';
+
+function finding({ rule, file, identity, message, line }) {
   return {
     tool: 'spring',
-    rule: 'open-in-view',
+    rule,
     path: file,
-    identity: line === undefined ? 'spring.jpa.openinview:missing' : 'spring.jpa.openinview',
-    message: expect.any(String),
+    identity,
+    message: `${message} To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`,
     classification: 'enforceable',
     ...(line === undefined ? {} : { location: { line } }),
   };
+}
+
+function openInView(file, line) {
+  return finding({
+    rule: 'open-in-view',
+    file,
+    identity: line === undefined ? 'spring.jpa.openinview:missing' : 'spring.jpa.openinview',
+    message: OPEN_IN_VIEW_MESSAGE,
+    line,
+  });
+}
+
+function secretFinding({ key, variable, file = MAIN_PROPERTIES, line = 1, identity = key }) {
+  return finding({
+    rule: 'literal-secret',
+    file,
+    identity: identity.toLowerCase().replaceAll(/[-_]/g, ''),
+    message:
+      variable === undefined
+        ? `${key} falls back to a literal secret. Drop the default from the placeholder.`
+        : `${key} holds a literal secret. Remove it and set ${variable} in the environment, or read it from a secret store.`,
+    line,
+  });
 }
 
 const OPEN_IN_VIEW_OFF = 'spring.jpa.open-in-view=false';
@@ -53,150 +79,6 @@ const OPEN_IN_VIEW_OFF_YAML = 'spring.jpa.open-in-view: false';
 function rules(findings) {
   return findings.map((finding) => finding.rule);
 }
-
-describe('parseProperties', () => {
-  it('reads separators, comments, continuations and line numbers', () => {
-    const [document] = parseProperties(
-      [
-        '# comment',
-        '! also a comment',
-        'a.b=1',
-        '  c.d : two  ',
-        'e.f three',
-        'long=one \\',
-        '   two',
-        'after=x',
-        'empty=',
-        'esc\\:aped=y',
-      ].join('\n'),
-    );
-
-    expect(document.entries.map(({ key, value, line }) => [key, value, line])).toEqual([
-      ['a.b', '1', 3],
-      ['c.d', 'two', 4],
-      ['e.f', 'three', 5],
-      ['long', 'one two', 6],
-      ['after', 'x', 8],
-      ['empty', '', 9],
-      ['esc:aped', 'y', 10],
-    ]);
-  });
-
-  it('does not continue a comment line', () => {
-    const [document] = parseProperties('# note \\\na=1');
-
-    expect(document.entries.map(({ key }) => key)).toEqual(['a']);
-  });
-});
-
-describe('parseYaml', () => {
-  const flat = (text) =>
-    parseYaml(text).flatMap(({ entries }) =>
-      entries.map(({ key, value, line }) => [key, value, line]),
-    );
-
-  it('flattens nested maps and dotted keys with line numbers', () => {
-    expect(
-      flat(
-        [
-          'spring:',
-          '  jpa:',
-          '    open-in-view: true',
-          '  main.lazy-initialization: false',
-          'top: 1',
-        ].join('\n'),
-      ),
-    ).toEqual([
-      ['spring.jpa.open-in-view', 'true', 3],
-      ['spring.main.lazy-initialization', 'false', 4],
-      ['top', '1', 5],
-    ]);
-  });
-
-  it('strips comments outside quotes and unquotes scalars', () => {
-    expect(
-      flat(
-        [
-          'a: 1 # trailing',
-          '# whole line',
-          'b: "x # not a comment" # comment',
-          "c: 'it''s'",
-          "d: ''  # empty",
-          'url: http://host:80/path#frag',
-          "e: it's fine",
-        ].join('\n'),
-      ),
-    ).toEqual([
-      ['a', '1', 1],
-      ['b', 'x # not a comment', 3],
-      ['c', "it''s", 4],
-      ['d', '', 5],
-      ['url', 'http://host:80/path#frag', 6],
-      ['e', "it's fine", 7],
-    ]);
-  });
-
-  it('ignores list items and block scalars', () => {
-    const documents = parseYaml(
-      [
-        'items:',
-        '  - name: a',
-        '    password: hidden',
-        '  - b',
-        'script: |',
-        '  password: nope',
-        '  more',
-        'folded: >-',
-        '  text',
-        'after: ok',
-      ].join('\n'),
-    );
-
-    expect(documents[0].entries.map(({ key, value, list }) => [key, value, list])).toEqual([
-      ['items', 'b', true],
-      ['after', 'ok', false],
-    ]);
-  });
-
-  it('keeps scalar list items only as list entries of their parent key', () => {
-    const [document] = parseYaml('include:\n  - health\n  - "*"\nnext: 1');
-
-    expect(document.entries).toEqual([
-      { key: 'include', value: 'health', line: 2, list: true },
-      { key: 'include', value: '*', line: 3, list: true },
-      { key: 'next', value: '1', line: 4, list: false },
-    ]);
-  });
-
-  it('splits multi-document files and drops empty documents', () => {
-    const documents = parseYaml(
-      [
-        '---',
-        'a: 1',
-        '---',
-        'spring:',
-        '  config:',
-        '    activate:',
-        '      on-profile: test',
-        'b: 2',
-      ].join('\n'),
-    );
-
-    expect(documents).toHaveLength(2);
-    expect(documents[1].entries.map(({ key, value }) => [key, value])).toEqual([
-      ['spring.config.activate.on-profile', 'test'],
-      ['b', '2'],
-    ]);
-  });
-});
-
-describe('relaxKey', () => {
-  it('matches camel, snake and kebab case', () => {
-    const forms = ['spring.jpa.open-in-view', 'spring.jpa.openInView', 'SPRING.JPA.open_in_view'];
-
-    expect(new Set(forms.map(relaxKey)).size).toBe(1);
-  });
-});
 
 describe('readSpringConfigFindings', () => {
   it('reports nothing without Spring configuration files', () => {
@@ -211,20 +93,8 @@ describe('readSpringConfigFindings', () => {
       [resource('application.properties')]: '\n\nspring.jpa.open-in-view=true\n',
     });
 
-    expect(findings).toEqual([
-      {
-        tool: 'spring',
-        rule: 'open-in-view',
-        path: 'src/main/resources/application.properties',
-        identity: 'spring.jpa.openinview',
-        message: expect.stringMatching(
-          /open-in-view[^]*To allow it here, add an exception for spring\/open-in-view in nitpicker\.config\.json\.$/,
-        ),
-        classification: 'enforceable',
-        location: { line: 3 },
-      },
-    ]);
-    expect(parseAnalyzerReport({ findings })).toBeDefined();
+    expect(findings).toEqual([openInView(MAIN_PROPERTIES, 3)]);
+    expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
   });
 
   it('lets a spring/<rule> exception drop the finding', () => {
@@ -246,14 +116,40 @@ describe('readSpringConfigFindings', () => {
     expect(readSpringConfigFindings(root, { sourceRoots })).toEqual([]);
   });
 
-  it('only reads application files directly in a resource root', () => {
+  it('only reads application files directly in a resource root or its config directory', () => {
     const findings = read({
-      [resource('config/application.properties')]: 'spring.jpa.open-in-view=true',
+      [resource('nested/application.properties')]: 'spring.jpa.open-in-view=true',
+      [resource('config/nested/application.properties')]: 'spring.jpa.open-in-view=true',
       [resource('other.properties')]: 'spring.jpa.open-in-view=true',
       [resource('application-.properties')]: 'spring.jpa.open-in-view=true',
     });
 
     expect(findings).toEqual([]);
+  });
+
+  it('reads application files in the config directory of a resource root', () => {
+    expect(read({ [resource('config/application.yml')]: 'spring.jpa.open-in-view: true' })).toEqual(
+      [openInView('src/main/resources/config/application.yml', 1)],
+    );
+    expect(
+      readSpringConfigFindings(project({ 'conf/config/application.properties': 'x=1' }), {
+        sourceRoots,
+        resourceRoots: ['conf'],
+      }),
+    ).toEqual([openInView('conf/config/application.properties')]);
+  });
+
+  it('skips files it cannot read', () => {
+    const root = project({ [resource('application.properties')]: 'spring.jpa.open-in-view=true' });
+    mkdirSync(path.join(root, 'src/main/resources/application.yml'));
+    mkdirSync(path.join(root, 'src/main/java/demo/Dir.java'));
+
+    expect(readSpringConfigFindings(root, { sourceRoots })).toEqual([
+      openInView(MAIN_PROPERTIES, 1),
+    ]);
+    expect(readSpringConfigFindings(root, { sourceRoots: ['missing'], resourceRoots: [] })).toEqual(
+      [],
+    );
   });
 
   it('keeps identity when lines shift', () => {
@@ -300,14 +196,19 @@ describe('open-in-view', () => {
     expect(findings).toEqual([openInView('src/main/resources/application.properties')]);
   });
 
-  it('anchors at the first application file when there is no main file', () => {
-    const findings = read({
-      [resource('application-b.properties')]: 'x=1',
-      [resource('application-a.properties')]: 'x=1',
-    });
+  it('does not report a missing setting when only profile files exist', () => {
+    expect(
+      read({
+        [resource('application-b.properties')]: 'x=1',
+        [resource('application-test.yml')]: 'x: 1',
+        [resource('application-prod.yml')]: 'x: 1',
+      }),
+    ).toEqual([]);
+  });
 
-    expect(findings.map((finding) => finding.path)).toEqual([
-      'src/main/resources/application-a.properties',
+  it('reports a missing setting at an empty main file', () => {
+    expect(read({ [resource('application.yaml')]: '' })).toEqual([
+      openInView('src/main/resources/application.yaml'),
     ]);
   });
 
@@ -371,6 +272,16 @@ describe('open-in-view', () => {
   });
 });
 
+function ddlFinding(key, line, file = MAIN_PROPERTIES, suffix = '') {
+  return finding({
+    rule: 'ddl-auto',
+    file,
+    identity: `${key.replaceAll('-', '')}${suffix}`,
+    message: `${key} lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and use none or validate.`,
+    line,
+  });
+}
+
 describe('ddl-auto', () => {
   it('flags values other than none and validate, and generate-ddl=true', () => {
     const findings = read({
@@ -381,9 +292,42 @@ describe('ddl-auto', () => {
       ].join('\n'),
     });
 
-    expect(findings.map((finding) => [finding.rule, finding.identity])).toEqual([
-      ['ddl-auto', 'spring.jpa.hibernate.ddlauto'],
-      ['ddl-auto', 'spring.jpa.generateddl'],
+    expect(findings).toEqual([
+      ddlFinding('spring.jpa.hibernate.ddl-auto', 2),
+      finding({
+        rule: 'ddl-auto',
+        file: MAIN_PROPERTIES,
+        identity: 'spring.jpa.generateddl',
+        message:
+          'spring.jpa.generate-ddl lets Hibernate change the schema. Manage the schema with Flyway or Liquibase and keep it false.',
+        line: 3,
+      }),
+    ]);
+  });
+
+  it('covers the Hibernate property in every spelling', () => {
+    const key = 'spring.jpa.properties.hibernate.hbm2ddl.auto';
+
+    expect(
+      read({
+        [resource('application.properties')]: `${OPEN_IN_VIEW_OFF}\n${key}=create-drop`,
+        [resource('application-prod.yml')]:
+          'spring:\n  jpa:\n    properties:\n      hibernate.hbm2ddl.auto: update',
+      }),
+    ).toEqual([ddlFinding(key, 4, 'src/main/resources/application-prod.yml'), ddlFinding(key, 2)]);
+  });
+
+  it('reads flow maps and the on, yes and 1 spellings of true', () => {
+    expect(
+      read({
+        [resource('application.yml')]: [
+          OPEN_IN_VIEW_OFF_YAML,
+          'spring: {jpa: {hibernate: {ddl-auto: create}, generate-ddl: on}}',
+        ].join('\n'),
+      }).map((found) => [found.identity, found.location.line]),
+    ).toEqual([
+      ['spring.jpa.hibernate.ddlauto', 2],
+      ['spring.jpa.generateddl', 2],
     ]);
   });
 
@@ -396,14 +340,17 @@ describe('ddl-auto', () => {
     ).toEqual([]);
   });
 
-  it.each(['test', 'testcontainers', 'local', 'dev'])('is exempt in the %s profile', (profile) => {
-    expect(
-      read({
-        [resource('application.properties')]: OPEN_IN_VIEW_OFF,
-        [resource(`application-${profile}.yml`)]: 'spring.jpa.hibernate.ddl-auto: create-drop',
-      }),
-    ).toEqual([]);
-  });
+  it.each(['test', 'testcontainers', 'local', 'dev', 'development', 'it', 'integration-test'])(
+    'is exempt in the %s profile',
+    (profile) => {
+      expect(
+        read({
+          [resource('application.properties')]: OPEN_IN_VIEW_OFF,
+          [resource(`application-${profile}.yml`)]: 'spring.jpa.hibernate.ddl-auto: create-drop',
+        }),
+      ).toEqual([]);
+    },
+  );
 
   it('is not exempt in other profiles, nor in a prod document of a multi-document file', () => {
     const findings = read({
@@ -421,8 +368,49 @@ describe('ddl-auto', () => {
       ].join('\n'),
     });
 
-    expect(findings.map((finding) => [finding.rule, finding.location.line])).toEqual([
-      ['ddl-auto', 4],
+    expect(findings).toEqual([
+      ddlFinding('spring.jpa.hibernate.ddl-auto', 4, resource('application.yml')),
+    ]);
+  });
+
+  it('exempts a profile expression only when every positive token is a test or local profile', () => {
+    const document = (expression) =>
+      `---\nspring.config.activate.on-profile: ${expression}\nspring.jpa.hibernate.ddl-auto: update`;
+    const expressions = [
+      '"test | local"',
+      '"dev & !prod"',
+      '"!local"',
+      '"test | prod"',
+      '"(dev,prod)"',
+      '[dev, integration-test]',
+      '"!test"',
+    ];
+    const findings = read({
+      [resource('application.yml')]: [OPEN_IN_VIEW_OFF_YAML, ...expressions.map(document)].join(
+        '\n',
+      ),
+    });
+
+    expect(findings.map((found) => found.location.line)).toEqual([7, 10, 13, 16, 22]);
+  });
+
+  it('applies a #--- profile document of a properties file to its own lines only', () => {
+    const findings = read({
+      [resource('application.properties')]: [
+        OPEN_IN_VIEW_OFF,
+        'spring.jpa.hibernate.ddl-auto=update',
+        '#---',
+        'spring.config.activate.on-profile=local',
+        'spring.jpa.hibernate.ddl-auto=update',
+        '#---',
+        'spring.config.activate.on-profile=prod',
+        'spring.jpa.hibernate.ddl-auto=update',
+      ].join('\n'),
+    });
+
+    expect(findings).toEqual([
+      ddlFinding('spring.jpa.hibernate.ddl-auto', 2),
+      ddlFinding('spring.jpa.hibernate.ddl-auto', 8, MAIN_PROPERTIES, '#2'),
     ]);
   });
 
@@ -449,6 +437,15 @@ describe('risky-startup-flags', () => {
     'spring.main.lazy-initialization',
   ];
 
+  const flagFinding = (file, flag, line) =>
+    finding({
+      rule: 'risky-startup-flags',
+      file: resource(file),
+      identity: flag.replaceAll('-', ''),
+      message: `${flag}=true hides wiring problems instead of fixing them. Remove it, or restructure the beans.`,
+      line,
+    });
+
   it('flags each key once, including in local and dev profiles', () => {
     const findings = read(
       {
@@ -458,13 +455,12 @@ describe('risky-startup-flags', () => {
       { jpa: false },
     );
 
-    expect(findings.map((finding) => [finding.path.split('/').at(-1), finding.identity])).toEqual([
-      ['application-dev.properties', 'spring.main.lazyinitialization'],
-      ['application.properties', 'spring.main.allowcircularreferences'],
-      ['application.properties', 'spring.main.allowbeandefinitionoverriding'],
-      ['application.properties', 'spring.main.lazyinitialization'],
+    expect(findings).toEqual([
+      flagFinding('application-dev.properties', flags[2], 1),
+      flagFinding('application.properties', flags[0], 1),
+      flagFinding('application.properties', flags[1], 2),
+      flagFinding('application.properties', flags[2], 3),
     ]);
-    expect(findings[1].message.split(' ')[0]).toBe('spring.main.allow-circular-references=true');
   });
 
   it('is silent for false, relaxed false, and test profiles', () => {
@@ -486,29 +482,79 @@ describe('risky-startup-flags', () => {
       { jpa: false },
     );
 
-    expect(rules(findings)).toEqual(['risky-startup-flags']);
+    expect(findings).toEqual([flagFinding('application.yml', flags[2], 3)]);
+  });
+
+  it.each(['TRUE', 'on', 'Yes', '1'])('treats %s as true', (spelling) => {
+    const findings = read(
+      { [resource('application.properties')]: `${flags[0]}=${spelling}` },
+      { jpa: false },
+    );
+
+    expect(findings).toEqual([flagFinding('application.properties', flags[0], 1)]);
+  });
+
+  it.each(['off', 'no', '0', 'false'])('accepts %s', (spelling) => {
+    expect(
+      read({ [resource('application.properties')]: `${flags[0]}=${spelling}` }, { jpa: false }),
+    ).toEqual([]);
+  });
+
+  it('is exempt only in test profiles, not in local ones', () => {
+    const findings = read(
+      {
+        [resource('application-it.properties')]: `${flags[0]}=true`,
+        [resource('application-local.properties')]: `${flags[0]}=true`,
+      },
+      { jpa: false },
+    );
+
+    expect(findings).toEqual([flagFinding('application-local.properties', flags[0], 1)]);
   });
 });
 
 describe('actuator-exposure', () => {
   const exposure = 'management.endpoints.web.exposure.include';
+  const actuatorFinding = (file, line, identity = exposure) =>
+    finding({
+      rule: 'actuator-exposure',
+      file,
+      identity,
+      message:
+        'management.endpoints.web.exposure.include=* exposes every actuator endpoint. List the endpoints you need, for example health,info.',
+      line,
+    });
 
   it.each([
     `${exposure}=*`,
     `${exposure}=health,*`,
+    `${exposure}[0]=*`,
     `${exposure}: "*"`,
     `${exposure}: [health, '*']`,
+    `management: {endpoints: {web: {exposure: {include: "*"}}}}`,
+    `management.endpoints.web.exposure: {include: [health, "*"]}`,
   ])('flags %s', (line) => {
     const name = line.includes(': ') ? 'application.yml' : 'application.properties';
-    expect(rules(read({ [resource(name)]: line }, { jpa: false }))).toEqual(['actuator-exposure']);
+
+    expect(read({ [resource(name)]: line }, { jpa: false })).toEqual([
+      actuatorFinding(resource(name), 1),
+    ]);
+  });
+
+  it('flags the wildcard at any index', () => {
+    const text = `${exposure}[0]=health\n${exposure}[1]=*`;
+
+    expect(read({ [resource('application.properties')]: text }, { jpa: false })).toEqual([
+      actuatorFinding(MAIN_PROPERTIES, 2),
+    ]);
   });
 
   it('flags a YAML list containing *', () => {
     const text =
       'management:\n  endpoints:\n    web:\n      exposure:\n        include:\n          - "*"\n';
 
-    expect(rules(read({ [resource('application.yml')]: text }, { jpa: false }))).toEqual([
-      'actuator-exposure',
+    expect(read({ [resource('application.yml')]: text }, { jpa: false })).toEqual([
+      actuatorFinding(resource('application.yml'), 6),
     ]);
   });
 
@@ -516,7 +562,8 @@ describe('actuator-exposure', () => {
     expect(
       read(
         {
-          [resource('application.properties')]: `${exposure}=health,info`,
+          [resource('application.properties')]: `${exposure}=health,info\n${exposure}[0]=health`,
+          [resource('application.yml')]: `${exposure}: [health, info]`,
           [resource('application-local.properties')]: `${exposure}=*`,
           [resource('application-dev.properties')]: `${exposure}=*`,
           [resource('application-test.properties')]: `${exposure}=*`,
@@ -528,15 +575,21 @@ describe('actuator-exposure', () => {
 });
 
 describe('error-details', () => {
+  const stacktraceFinding = finding({
+    rule: 'error-details',
+    file: MAIN_PROPERTIES,
+    identity: 'server.error.includestacktrace',
+    message: 'server.error.include-stacktrace sends stack traces to clients. Use never.',
+    line: 1,
+  });
+
   it.each(['always', 'on-param', 'on_param', 'ALWAYS'])('flags %s', (value) => {
     expect(
-      rules(
-        read(
-          { [resource('application.properties')]: `server.error.include-stacktrace=${value}` },
-          { jpa: false },
-        ),
+      read(
+        { [resource('application.properties')]: `server.error.include-stacktrace=${value}` },
+        { jpa: false },
       ),
-    ).toEqual(['error-details']);
+    ).toEqual([stacktraceFinding]);
   });
 
   it('accepts never and exempt profiles', () => {
@@ -555,30 +608,39 @@ describe('error-details', () => {
 
 describe('literal-secret', () => {
   const secretKeys = [
-    'spring.datasource.password',
-    'app.secret',
-    'app.api-key',
-    'app.apiKey',
-    'app.private_key',
-    'app.client-secret',
-    'app.credentials',
-    'jwt.token',
-    'server.ssl.key-store-password',
-    'app.refresh-token',
-    'app.service.jwtSecret',
+    ['spring.datasource.password', 'SPRING_DATASOURCE_PASSWORD'],
+    ['app.secret', 'APP_SECRET'],
+    ['app.api-key', 'APP_APIKEY'],
+    ['app.apiKey', 'APP_APIKEY'],
+    ['app.apikey', 'APP_APIKEY'],
+    ['app.private_key', 'APP_PRIVATE_KEY'],
+    ['app.client-secret', 'APP_CLIENTSECRET'],
+    ['app.credentials', 'APP_CREDENTIALS'],
+    ['jwt.token', 'JWT_TOKEN'],
+    ['server.ssl.key-store-password', 'SERVER_SSL_KEYSTOREPASSWORD'],
+    ['app.refresh-token', 'APP_REFRESHTOKEN'],
+    ['app.service.jwtSecret', 'APP_SERVICE_JWTSECRET'],
+    ['spring.cloud.aws.credentials.secret-key', 'SPRING_CLOUD_AWS_CREDENTIALS_SECRETKEY'],
+    ['spring.cloud.aws.credentials.access-key', 'SPRING_CLOUD_AWS_CREDENTIALS_ACCESSKEY'],
+    ['app.db-password', 'APP_DBPASSWORD'],
   ];
 
-  it.each(secretKeys)('flags a literal in %s without leaking the value', (key) => {
-    const findings = read(
-      { [resource('application.properties')]: `${key}=hunter2value` },
-      { jpa: false },
-    );
-
-    expect(rules(findings)).toEqual(['literal-secret']);
-    expect(JSON.stringify(findings)).not.toContain('hunter2value');
+  it.each(secretKeys)('flags a literal in %s without leaking the value', (key, variable) => {
+    expect(
+      read({ [resource('application.properties')]: `${key}=hunter2value` }, { jpa: false }),
+    ).toEqual([secretFinding({ key, variable })]);
   });
 
-  it('flags YAML values and ignores placeholders, empty values and other keys', () => {
+  it('flags a literal default inside a placeholder', () => {
+    expect(
+      read(
+        { [resource('application.properties')]: 'spring.datasource.password=${DB_PASS:hunter2}' },
+        { jpa: false },
+      ),
+    ).toEqual([secretFinding({ key: 'spring.datasource.password' })]);
+  });
+
+  it('flags YAML values, flow maps and !!str scalars, and ignores other keys', () => {
     const findings = read(
       {
         [resource('application.yml')]: [
@@ -593,13 +655,33 @@ describe('literal-secret', () => {
           '  passwords-file: x',
           '  keys:',
           '    - password',
+          '  client: {secret: abc, id: x}',
+          '  api-key: !!str 12345abc',
+          '  null-password: null',
         ].join('\n'),
       },
       { jpa: false },
     );
 
-    expect(findings.map((finding) => [finding.identity, finding.location.line])).toEqual([
-      ['spring.datasource.password', 3],
+    expect(findings).toEqual([
+      secretFinding({
+        key: 'spring.datasource.password',
+        variable: 'SPRING_DATASOURCE_PASSWORD',
+        file: resource('application.yml'),
+        line: 3,
+      }),
+      secretFinding({
+        key: 'app.client.secret',
+        variable: 'APP_CLIENT_SECRET',
+        file: resource('application.yml'),
+        line: 12,
+      }),
+      secretFinding({
+        key: 'app.api-key',
+        variable: 'APP_APIKEY',
+        file: resource('application.yml'),
+        line: 13,
+      }),
     ]);
   });
 
@@ -614,8 +696,12 @@ describe('literal-secret', () => {
       { jpa: false },
     );
 
-    expect(findings.map((finding) => finding.path)).toEqual([
-      'src/main/resources/application-prod.properties',
+    expect(findings).toEqual([
+      secretFinding({
+        key: 'app.password',
+        variable: 'APP_PASSWORD',
+        file: 'src/main/resources/application-prod.properties',
+      }),
     ]);
   });
 
@@ -629,12 +715,53 @@ describe('literal-secret', () => {
       { jpa: false },
     );
 
-    expect(first[0].identity).toBe(second[0].identity);
+    expect(first).toEqual(second);
+  });
+
+  it('judges every secret-looking line of a realistic file', () => {
+    const findings = read(
+      {
+        [resource('application.properties')]: [
+          'app.require-password=true',
+          'feature.reset-token=header',
+          'app.jwt.expiration-token=3600',
+          'app.csrf-token=true',
+          'spring.datasource.password=@db.password@',
+          'app.secret=ENC(abc123)',
+          'spring.cloud.config.password={cipher}AQB1',
+          'app.user.password={bcrypt}$2a$10$abc',
+          'app.token=#{systemProperties.token}',
+          'app.api-key=${API_KEY}',
+          'app.client-secret=${CLIENT_SECRET:}',
+          'spring.datasource.password-file=/run/secrets/db',
+          'spring.datasource.password=hunter2',
+        ].join('\n'),
+      },
+      { jpa: false },
+    );
+
+    expect(findings).toEqual([
+      secretFinding({
+        key: 'spring.datasource.password',
+        variable: 'SPRING_DATASOURCE_PASSWORD',
+        line: 13,
+      }),
+    ]);
   });
 });
 
 describe('Java analyzer declaration', () => {
   it('declares spring as a reported tool', () => {
     expect(createJavaAnalyzer().reportedTools.includes('spring')).toBe(true);
+  });
+
+  it('hashes the Spring configuration modules', () => {
+    const modules = [
+      'languages/java/adapters/java-spring.mjs',
+      'languages/java/adapters/spring-config-parser.mjs',
+      'languages/java/adapters/spring-secrets.mjs',
+    ];
+
+    expect(CONFIGURATION_FILES.filter((file) => modules.includes(file)).sort()).toEqual(modules);
   });
 });
