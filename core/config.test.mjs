@@ -18,11 +18,12 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
-  it('accepts the java and python presets and rejects other presets', () => {
+  it('accepts the java, kotlin and python presets and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
+    expect(validateConfig({ preset: 'kotlin' })).toEqual({ preset: 'kotlin' });
     expect(validateConfig({ preset: 'python' })).toEqual({ preset: 'python' });
-    expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, javascript, java, python',
+    expect(() => validateConfig({ preset: 'cobol' })).toThrow(
+      '"preset" must be one of: typescript, javascript, java, kotlin, python',
     );
   });
 
@@ -59,6 +60,46 @@ describe('config file', () => {
     );
   });
 
+  describe('kotlin options', () => {
+    it.each([
+      { formatter: 'ktfmt' },
+      { formatter: 'none' },
+      { detektConfig: 'tools/detekt-rules.yml' },
+      {},
+    ])('accepts %j with the kotlin preset', (kotlin) => {
+      const config = { preset: 'kotlin', kotlin };
+      expect(validateConfig(config)).toEqual(config);
+    });
+
+    it.each([
+      [
+        { preset: 'kotlin', kotlin: { formatter: 'prettier' } },
+        /must be one of: ktlint, ktfmt, none/,
+      ],
+      [{ preset: 'kotlin', kotlin: { style: 'google' } }, /unknown key "kotlin.style"/],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '/etc/detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '../detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '' } },
+        /"kotlin.detektConfig" must be a non-empty string/,
+      ],
+      [{ preset: 'kotlin', kotlin: 'ktlint' }, /"kotlin" must be an object/],
+      [
+        { preset: 'java', kotlin: { formatter: 'ktlint' } },
+        /only supported with "preset": "kotlin"/,
+      ],
+      [{ kotlin: { formatter: 'ktlint' } }, /only supported with "preset": "kotlin"/],
+    ])('rejects %j', (config, message) => {
+      expect(() => validateConfig(config)).toThrow(message);
+    });
+  });
+
   it('accepts the javascript preset with the TypeScript-pipeline keys', () => {
     const config = {
       preset: 'javascript',
@@ -85,14 +126,15 @@ describe('config file', () => {
     );
   });
 
-  it.each(['layout', 'exceptions', 'react'])(
-    'rejects %s with the java preset instead of ignoring it',
-    (key) => {
-      expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
-        `"${key}" is not supported with "preset": "java"`,
-      );
-    },
-  );
+  it.each(
+    ['java', 'kotlin'].flatMap((preset) =>
+      ['layout', 'exceptions', 'react'].map((key) => [preset, key]),
+    ),
+  )('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
+    expect(() => validateConfig({ preset, [key]: {} })).toThrow(
+      `"${key}" is not supported with "preset": "${preset}"`,
+    );
+  });
 
   it.each([
     [[], /must be a JSON object/],
