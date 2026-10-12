@@ -704,7 +704,9 @@ describe('quality diff identities and arguments', () => {
     expect(exitCode).toBe(0);
     expect(output.stdoutText).toContain('Quality gate summary');
     expect(output.stdoutText).toContain('✓ No new enforceable violations');
-    expect(output.stdoutText).toContain('Full diagnostics: reports/quality/diff/report.txt');
+    expect(output.stdoutText).toContain(
+      `Full diagnostics: ${path.join(repository.outputRoot, 'report.txt')}`,
+    );
     expect(output.stdoutText).not.toContain('Per-tool counts:');
     expect(readFileSync(path.join(repository.outputRoot, 'report.txt'), 'utf8')).toContain(
       'Per-tool counts:',

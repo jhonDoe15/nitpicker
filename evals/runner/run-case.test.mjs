@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -10,6 +10,7 @@ import {
   isStale,
   listCases,
   loadCase,
+  referenceTree,
   runCase,
 } from './run-case.mjs';
 import { packNitpicker } from '../lib/consumer.mjs';
@@ -212,6 +213,41 @@ describe('running a case with a fake agent', () => {
     expect(seen.agentReport.policyHash).toBe('fake-hash');
     expect(seen.referenceReport.overallStatus).toBe('completed');
     expect(seen.expectedPolicyHash).toBeUndefined();
+    expect(seen.reference).toBeUndefined();
+  });
+
+  it('passes the detectors the fixture with the reference solution laid over it', () => {
+    const referenceDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-eval-reference-'));
+    try {
+      mkdirSync(path.join(referenceDirectory, 'src', 'main'), { recursive: true });
+      writeFileSync(path.join(referenceDirectory, 'src', 'main', 'math.ts'), 'export {};\n');
+      writeFileSync(path.join(referenceDirectory, 'src', 'extra.ts'), 'export {};\n');
+      let seen;
+      const detectors = createDetectorRegistry([
+        {
+          category: 'legacy-rewrite',
+          detect: (context) => {
+            seen = context;
+            return [];
+          },
+        },
+      ]);
+      run('good', { detectors }, { referenceDirectory });
+      expect([...seen.reference.keys()].sort()).toEqual([
+        'src/extra.ts',
+        'src/main/math.ts',
+        'test/math.test.ts',
+      ]);
+      expect(seen.reference.get('src/main/math.ts')).toBe('export {};\n');
+      expect(seen.reference.get('test/math.test.ts')).toBe(seen.fixture.get('test/math.test.ts'));
+    } finally {
+      rmSync(referenceDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it('builds no reference tree for a case without a reference solution', () => {
+    const trivial = loadCase(path.join(casesDirectory, 'trivial'));
+    expect(referenceTree(trivial, new Map([['src/a.ts', 'a']]))).toBeUndefined();
   });
 
   it('keeps a throwing detector from hiding the others', () => {

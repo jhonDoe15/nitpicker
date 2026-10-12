@@ -121,6 +121,27 @@ describe('changed line ranges', () => {
     expect(changed.get('src/a.ts')).toMatchObject({ ranges: [[43, 44]], inserted: [[43, 43]] });
   });
 
+  it('pairs an edited line with the line it replaced in another hunk of the file', () => {
+    const changed = parseChangedLines(
+      [
+        'diff --git a/src/a.ts b/src/a.ts',
+        '--- a/src/a.ts',
+        '+++ b/src/a.ts',
+        '@@ -12 +11,0 @@',
+        "-      throw new Error('Line ' + (i + 1) + ': missing key');",
+        '@@ -30,0 +30 @@',
+        "+      throw new Error('Line ' + (i + 1) + ': ' + entry.reason);",
+      ].join('\n'),
+    );
+
+    expect(changed.get('src/a.ts')).toEqual({
+      path: 'src/a.ts',
+      added: false,
+      ranges: [[30, 30]],
+      inserted: [],
+    });
+  });
+
   it('treats a rewritten line that shares little with the replaced one as added', () => {
     const changed = parseChangedLines(
       [

@@ -3,7 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
-import { createPythonAnalyzer, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import {
+  configurationFiles,
+  createPythonAnalyzer,
+  PYTHON_ANALYZER_NAME,
+} from './python-analyzer.mjs';
 
 const roots = [];
 
@@ -28,6 +32,21 @@ describe('Python analyzer', () => {
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(90 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
+  });
+
+  it('hashes the ruff config, the adapters and every file the runner imports, not the tests', () => {
+    const files = configurationFiles();
+
+    const required = [
+      'languages/python/ruff/nitpicker-ruff.toml',
+      'languages/python/adapters/python-test-runner.mjs',
+      'languages/python/ingest/coverage-json.mjs',
+      'languages/java/ingest/sarif.mjs',
+      'shared/policy.mjs',
+      'shared/rules/baseline-expansion.mjs',
+    ];
+    expect(required.filter((file) => !files.includes(file))).toEqual([]);
+    expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
   });
 
   it('runs the runner with the snapshot, the live checkout and the settings', () => {
@@ -85,12 +104,12 @@ describe('Python analyzer', () => {
     const live = temporaryRoot();
     installFakeToolchain(path.join(live, '.venv/bin'));
 
-    expect(createPythonAnalyzer().resolveVersion(live)).toBe(
+    expect(createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live)).toBe(
       'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
     );
-    expect(createPythonAnalyzer({ formatter: 'black' }).resolveVersion(live)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
-    );
+    expect(
+      createPythonAnalyzer({ formatter: 'black', testRunner: 'pytest' }).resolveVersion(live),
+    ).toBe('ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0');
   });
 
   it('reports a missing environment when resolving the version', () => {

@@ -8,7 +8,10 @@
 //   unformatted.txt      one path per line: files ruff format / black would reformat
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
+//   unparsable.txt       one path per line: files the formatter cannot parse (it exits like the real
+//                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
+//   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
 //                        `mutmut run` leaves in mutants/ (default: an empty mutants/)
@@ -78,8 +81,12 @@ function ruff() {
     process.exit(lines('violations.txt').length > 0 ? 1 : 0);
   } else {
     const files = lines('unformatted.txt');
+    const unparsable = lines('unparsable.txt');
     process.stdout.write(files.map((file) => `--- ${file}\n+++ ${file}\n@@ -1 +1 @@\n`).join(''));
-    process.exit(files.length > 0 ? 1 : 0);
+    process.stderr.write(
+      unparsable.map((file) => `error: Failed to parse ${file}:1:7: Expected newline\n`).join(''),
+    );
+    process.exit(unparsable.length > 0 ? 2 : files.length > 0 ? 1 : 0);
   }
 }
 
@@ -89,8 +96,16 @@ function black() {
     return;
   }
   const files = lines('unformatted.txt');
-  process.stderr.write(files.map((file) => `would reformat ${path.join(cwd, file)}\n`).join(''));
-  process.exit(files.length > 0 ? 1 : 0);
+  const unparsable = lines('unparsable.txt');
+  process.stderr.write(
+    [
+      ...files.map((file) => `would reformat ${path.join(cwd, file)}\n`),
+      ...unparsable.map(
+        (file) => `error: cannot format ${path.join(cwd, file)}: Cannot parse: 1:6\n`,
+      ),
+    ].join(''),
+  );
+  process.exit(unparsable.length > 0 ? 123 : files.length > 0 ? 1 : 0);
 }
 
 function coverage() {
@@ -119,7 +134,8 @@ function python() {
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
-  process.stdout.write('8.3.1\n');
+  const flag = (file) => (existsSync(file) ? 1 : 0);
+  process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
 }
 
 const MUTMUT_MESSAGES = {

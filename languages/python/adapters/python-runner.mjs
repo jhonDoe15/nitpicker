@@ -34,8 +34,9 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
         liveRoot,
         settings,
         reportRoot,
-        snapshot: policy.snapshot,
-        baselineRoot: policy.baselineRoot,
+        exclude: policy?.exclude,
+        snapshot: policy?.snapshot,
+        baselineRoot: policy?.baselineRoot,
       }),
     );
     if (failures.length > 0) {
