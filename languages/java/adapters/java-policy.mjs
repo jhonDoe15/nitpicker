@@ -5,12 +5,12 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { configError } from '../../../shared/config.mjs';
+import { configError, liftsOnlyRules } from '../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 const INVENTORY_TOOL = 'java';
-const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'folderFiles'];
+const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),
@@ -19,7 +19,8 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
 export function validateJavaConfig(config) {
   const unsupported = TYPESCRIPT_ONLY_KEYS.filter(
     (key) =>
-      config[key] !== undefined && !(key === 'exceptions' && liftsJavaRulesOnly(config[key])),
+      config[key] !== undefined &&
+      !(key === 'exceptions' && liftsOnlyRules(config[key], JAVA_EXCEPTION_RULES)),
   );
   if (unsupported.length > 0) {
     throw configError(
@@ -31,13 +32,6 @@ export function validateJavaConfig(config) {
       '"thresholds.lineLength" is not supported with "preset": "java": Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
     );
   }
-}
-
-function liftsJavaRulesOnly(exceptions) {
-  return (
-    Array.isArray(exceptions) &&
-    exceptions.every((entry) => JAVA_EXCEPTION_RULES.includes(entry?.rule))
-  );
 }
 
 export function configureJavaAnalyzer(
@@ -90,7 +84,7 @@ function javaFileLimits(thresholds, exceptions) {
       thresholds[key],
     ]),
   );
-  const lifted = exceptions.filter(({ rule }) => JAVA_EXCEPTION_RULES.includes(rule));
+  const lifted = exceptions.filter(({ rule }) => SHARED_EXCEPTION_RULES.includes(rule));
   return Object.keys(limits).length === 0 && lifted.length === 0
     ? undefined
     : { thresholds: limits, exceptions: lifted };
@@ -107,7 +101,14 @@ function hashWithArguments(configurationHash, adapterArguments) {
 
 export function applyJavaPolicy(
   findings,
-  { exclude = [], legacyInventory, policyRoot, baselineRoot, snapshot = 'head' } = {},
+  {
+    exclude = [],
+    legacyInventory,
+    policyRoot,
+    baselineRoot,
+    snapshot = 'head',
+    inventoryTool = INVENTORY_TOOL,
+  } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const kept = findings.filter(
@@ -124,6 +125,6 @@ export function applyJavaPolicy(
   const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
   return [
     ...baselined,
-    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, INVENTORY_TOOL),
+    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, inventoryTool),
   ];
 }

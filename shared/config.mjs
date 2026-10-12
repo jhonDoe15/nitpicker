@@ -60,6 +60,11 @@ export function validateThresholds(thresholds) {
   }
 }
 
+/** Whether every `exceptions` entry lifts one of `rules` (the file limits a non-ESLint preset honours). */
+export function liftsOnlyRules(exceptions, rules) {
+  return Array.isArray(exceptions) && exceptions.every((entry) => rules.includes(entry?.rule));
+}
+
 export function validateProjectRelativePath(value, name) {
   if (!isNonEmptyString(value)) {
     throw configError(`"${name}" must be a non-empty string`);
