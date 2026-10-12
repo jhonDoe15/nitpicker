@@ -20,6 +20,7 @@ describe('python config validation', () => {
         },
       });
       validate({ preset: 'python', python: { environment: 'envs/ci' } });
+      validate({ preset: 'python', python: { environment: '/opt/venv' } });
       validate({
         preset: 'python',
         python: {
@@ -81,7 +82,6 @@ describe('python config validation', () => {
     ],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
     [{ environment: '../outside' }, '"python.environment" must be a path inside the project'],
-    [{ environment: '/usr' }, '"python.environment" must be a path inside the project'],
     [{ sourceRoots: 'src' }, '"python.sourceRoots" must be an array of non-empty strings'],
     [{ sourceRoots: [] }, '"python.sourceRoots" must not be empty'],
     [{ sourceRoots: ['../src'] }, '"python.sourceRoots" must be a path inside the project'],

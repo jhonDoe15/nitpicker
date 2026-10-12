@@ -1,3 +1,4 @@
+import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
 import { createPythonAnalyzer } from '../languages/python/adapters/python-analyzer.mjs';
 import {
@@ -12,7 +13,7 @@ export function presetAnalyzers(config, injected) {
   if (config.preset === 'python') {
     return [createPythonAnalyzer(config.python)];
   }
-  if (config.preset === 'java' || config.preset === 'kotlin') {
+  if (GRADLE_PRESETS.includes(config.preset)) {
     return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
   }
   return config.preset === 'javascript' ? javascriptAnalyzers : configuredAnalyzers;

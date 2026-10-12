@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { execute, run } from './python-execute.mjs';
+import { execute, run } from './python-process.mjs';
 import { importRoots } from './python-project.mjs';
 
 export const TYPES_REPORT = 'type-check.json';

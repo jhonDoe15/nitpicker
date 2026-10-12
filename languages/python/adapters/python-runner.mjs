@@ -30,7 +30,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
   const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-')));
   try {
     const failures = runPythonTools(
-      createToolContext({ projectRoot, liveRoot, settings, reportRoot }),
+      createToolContext({ projectRoot, liveRoot, settings, reportRoot, exclude: policy?.exclude }),
     );
     if (failures.length > 0) {
       return failures.map(toolError);

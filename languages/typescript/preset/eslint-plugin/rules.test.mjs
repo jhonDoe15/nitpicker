@@ -10,6 +10,7 @@ import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composit
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
 import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
+import { rule as noComments } from './rules/no-comments.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
 import { rule as noPartialOutputAssertion } from './rules/no-partial-output-assertion.mjs';
@@ -388,6 +389,10 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
       code: "const { execute } = await import('../feature.js'); execute();",
     },
     {
+      filename: '/repo/tests/greet.test.cjs',
+      code: "const { greet } = require('../src/main/greet.cjs'); greet();",
+    },
+    {
       filename: '/repo/preset/test-runtime/fixtures/positive/tests/unit/fixture.test.ts',
       code: "import { describe } from 'vitest'; describe('fixture', () => {});",
       options: [{ exemptPattern: String.raw`/tests/contract/|/preset/.*/fixtures/` }],
@@ -401,6 +406,11 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
     {
       filename: '/repo/src/main/feature/__tests__/feature.test.ts',
       code: "import type { Feature } from '../feature.js'; const value: Feature | undefined = undefined;",
+      errors: [{ messageId: 'missingRuntime' }],
+    },
+    {
+      filename: '/repo/tests/greet.test.cjs',
+      code: "const path = require('node:path'); path.join('a');",
       errors: [{ messageId: 'missingRuntime' }],
     },
     {
@@ -671,6 +681,31 @@ ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
     { filename: '/repo/test/report.test.ts', code: 'expect(list).not.toContainEqual({ id: 1 });' },
     { filename: '/repo/test/report.test.ts', code: 'expect(list).toContain(item);' },
     { filename: '/repo/test/report.test.ts', code: "text.toContain('a');" },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).not.toMatchObject({ a: 1 });' },
+    { filename: '/repo/test/report.test.ts', code: 'matcher.toMatchObject({ a: 1 });' },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).not.toEqual(expect.objectContaining({ a: 1 }));',
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ id: expect.any(String), tags: [expect.anything()] });',
+    },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual({ a: 1, b: [2, 3] });' },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ a: expect.not.stringContaining('x') });",
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(send).toHaveBeenCalledWith(expect.objectContaining({ a: 1 }));',
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual(build(expect.stringContaining('x')));",
+    },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual({ ...rest, a: 1 });' },
+    { filename: '/repo/test/report.test.ts', code: 'expect(output).toEqual([, 1]);' },
   ],
   invalid: [
     {
@@ -697,6 +732,94 @@ ruleTester.run('no-partial-output-assertion', noPartialOutputAssertion, {
       filename: '/repo/test/report.test.ts',
       code: "expect.soft(output).toContain('fragment');",
       errors: [{ messageId: 'partialOutput' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(send()).toMatchObject({ channel: 'email' });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "await expect(send()).resolves.toMatchObject({ channel: 'email' });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(list).toMatchObject([{ id: 1 }]);',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual(expect.objectContaining({ a: 1 }));',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toStrictEqual(expect.stringContaining('x'));",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual([expect.arrayContaining([1]), 2]);',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ to: 'a', body: expect.stringContaining('x') });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ ...rest, nested: { items: [expect.objectContaining({ a: 1 })] } });',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: 'expect(output).toEqual({ ...expect.objectContaining({ a: 1 }) });',
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+    {
+      filename: '/repo/test/report.test.ts',
+      code: "expect(output).toEqual({ a: expect.stringContaining('x'), b: expect.stringContaining('y') });",
+      errors: [{ messageId: 'partialMatcher' }],
+    },
+  ],
+});
+
+ruleTester.run('no-comments', noComments, {
+  valid: [
+    { code: '/** Parses a date. */\nexport function parse(text: string) { return text; }' },
+    { code: '/** The default port. */\nexport const port = 80;' },
+    { code: '/** Reads the config. */\nexport default function read() { return 1; }' },
+    { code: '/** A user. */\nexport type User = {\n  /** Display name. */\n  name: string;\n};' },
+    { code: '/** @jsxImportSource preact */\nexport const a = 1;' },
+    { code: '/* eslint no-console: off */\nexport const a = 1;' },
+  ],
+  invalid: [
+    {
+      code: '/** Parses a date. */\nfunction parse(text: string) { return text; }',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    {
+      code: 'export function parse(text: string) {\n  /** Trim first. */\n  return text.trim();\n}',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    {
+      code: 'type User = {\n  /** Display name. */\n  name: string;\n};',
+      errors: [{ messageId: 'internalDocComment' }],
+    },
+    { code: '/** Trailing doc. */', errors: [{ messageId: 'internalDocComment' }] },
+    {
+      code: '// Parses a date.\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'comment' }],
+    },
+    {
+      code: '/* Parses a date. */\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'comment' }],
+    },
+    {
+      code: '/** @ts-ignore */\nexport const a = 1;',
+      errors: [{ messageId: 'typescriptSuppression' }],
     },
   ],
 });

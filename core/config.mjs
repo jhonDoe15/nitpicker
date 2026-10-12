@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
+import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
@@ -13,10 +13,10 @@ import {
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
+import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
-const GRADLE_PRESETS = ['java', 'kotlin'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
@@ -86,8 +86,8 @@ function validateScalars(config) {
   if (GRADLE_PRESETS.includes(config.preset)) {
     validateJavaKeys(config);
   }
-  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
   validateKotlinOptions(config);
+  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
 }
 
 function validateJavaKeys(config) {

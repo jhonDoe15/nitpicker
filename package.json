@@ -1,6 +1,6 @@
 {
   "name": "nitpicker",
-  "version": "0.1.0",
+  "version": "0.1.0-rc.1",
   "description": "A quality gate for code written by coding agents. It fails a change only for the problems that change introduces.",
   "keywords": [
     "quality-gate",

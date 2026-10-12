@@ -33,6 +33,11 @@ export const RULE_HINTS = [
   },
   { tool: 'ruff', rules: ['T201', 'T203'], allowed: LOGGING },
   {
+    tool: 'ruff',
+    rules: ['PERF203'],
+    allowed: 'Move the `try` out of the loop, or handle each item in a helper function.',
+  },
+  {
     tool: RULES_TOOL,
     rules: ['frozen-dataclass'],
     describe: (subject) => `Dataclass ${subject} is not frozen`,

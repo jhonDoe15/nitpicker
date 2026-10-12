@@ -10,21 +10,26 @@ files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the s
 every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
 and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`
-reporter, and turns `Survived` and `NoCoverage` mutants into findings. The mutation area is
-therefore already whole-`src` on both base and head.
+reporter, and turns `Survived` and `NoCoverage` mutants into findings. `nitpicker --all` mutates
+that whole area.
 
-## Reusing base results on head
+## Scope in a comparison
 
-Both sides run Stryker with `incremental: true`. The base run writes
-`reports/quality/mutation/incremental.json`. Before the head run, the gate copies that file into the
-head snapshot when every file changed between the two commits is a mutated source file or a runnable
-test file inside the project. Stryker then re-tests only the mutants in changed files and the
-mutants covered by changed tests, and reuses every other result.
+A comparison mutates only what the change wrote. On the head side, `mutate` becomes one
+`<file>:<first>-<last>` line range per changed hunk of a source file (from `git diff --unified=0
+--find-renames` between the merge base and the head snapshot); test files, deleted lines and files
+outside the source roots are skipped, and a change with no source lines skips Stryker entirely. The
+base side runs no mutants: a mutant on a line the change wrote has no counterpart on the base, so
+every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
+findings.
 
-Any other change (a dependency, `package.json`, a config file, a test helper, a file outside the
-project) makes the head run test every mutant, because Stryker cannot see how such a change affects
-results it would reuse. When the base side comes from the findings cache there is no base file to
-copy, so head also runs every mutant.
+What this gives up: a change that weakens existing tests, or changes a dependency or config, can
+let mutants survive in lines it did not touch, and a comparison does not see them. `--all` (for
+example on a schedule) still mutates every source file.
+
+Before this scope, both sides mutated the whole source area. On ufo (1,575 source lines, 1,017
+mutants) that took 426 s with the TypeScript checker; the changed lines of a three-line function
+(6 mutants) take 18 s.
 
 ## Question
 
@@ -40,7 +45,7 @@ Not now. Do not add a second profile in this phase; revisit when a consumer asks
   themselves is not what Stryker measures.
 - A second profile adds a config file and policy surface that must stay in sync with the layout
   constants, and it would be a path to a report nobody gates on.
-- Mutation runs are the slowest analyzer and run on both base and head. A wider scope adds cost
+- Mutation runs are the slowest analyzer. A wider scope adds cost
   without a decision that depends on the result.
 - The gate's own contract is unchanged either way: only the default profile can produce enforceable
   findings. A manual profile would be report-only by construction.

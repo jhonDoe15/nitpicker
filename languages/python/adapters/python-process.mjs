@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
+const TOOL_TIMEOUT_MINUTES = TOOL_TIMEOUT_MS / 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
 
 export function execute(context, command, { env = {} } = {}) {
@@ -19,9 +20,13 @@ export function execute(context, command, { env = {} } = {}) {
 export function run(context, command, { accepted = [0], rule, env }) {
   const result = execute(context, command, { env });
   if (result.error !== undefined || !accepted.includes(result.status)) {
-    throw Object.assign(new Error(describeFailure({ context, command, result })), { rule });
+    throw failure({ context, command, result, rule });
   }
   return result;
+}
+
+export function failure({ context, command, result, rule }) {
+  return Object.assign(new Error(describeFailure({ context, command, result })), { rule });
 }
 
 function describeFailure({ context, command, result }) {
@@ -29,7 +34,10 @@ function describeFailure({ context, command, result }) {
   const label = subcommand.startsWith('-') ? tool : `${tool} ${subcommand}`;
   const where = `the ${context.launcher.description} environment`;
   if (result.error?.code === 'ENOENT') {
-    return `${tool} was not found in ${where}: install it there (for example as a dev dependency)`;
+    return `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it`;
+  }
+  if (result.error?.code === 'ETIMEDOUT') {
+    return `${label} timed out after ${String(TOOL_TIMEOUT_MINUTES)} minutes in ${where}`;
   }
   if (result.error !== undefined) {
     return `${label} could not run in ${where}: ${result.error.message}`;
