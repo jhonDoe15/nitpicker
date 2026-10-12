@@ -1,5 +1,7 @@
 package shop.config;
 
+import static org.springframework.security.crypto.password.NoOpPasswordEncoder.getInstance;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -16,6 +18,11 @@ public class AppConfig {
   @Profile("local")
   PasswordEncoder localEncoder() {
     return NoOpPasswordEncoder.getInstance(); // violation: SpringPasswordEncoder
+  }
+
+  @Bean
+  PasswordEncoder legacyEncoder() {
+    return getInstance(); // violation: SpringPasswordEncoder
   }
 
   @Bean

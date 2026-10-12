@@ -428,26 +428,44 @@ the `rule` of a config exception.
 | JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`                                                                                                                                                                                                                                                        |
 | Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery`, `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                      |
 
-**Inline suppressions.** PMD honors `@SuppressWarnings("PMD...")`, `@SuppressWarnings("all")` and
-`// NOPMD` comments, which would let a change silence any rule without review. nitpicker reports each
-of them as `pmd/InlineSuppression` (Node side, `languages/java/adapters/java-suppressions.mjs`, for
-every Java project). The one accepted marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on
-a method: native SQL is sometimes needed, and the decision belongs on that one method rather than
-in a config exception that covers paths. Compiler warnings such as `"unchecked"` are not affected.
+**Inline suppressions.** PMD would let a change silence any rule without review. nitpicker runs PMD
+with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do nothing. PMD still
+honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
+evaluates constant expressions there, so nitpicker reports each such annotation, and any whose
+arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
+`languages/java/adapters/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
+and strings and comments skipped first). The one accepted marker is
+`@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
+the decision belongs on that one method rather than in a config exception that covers paths.
+Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
+
+**Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
+when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
+"reason": "..." }`.
 
 **Limits.** Rules are per file. `JpaVersion` checks the root of each entity hierarchy: an `@Entity`
-without a superclass, or a `@MappedSuperclass` that declares the `@Id`. An entity with a superclass is
-skipped, because its `@Version` field may be inherited. `SpringDataDerivedQuery` leaves redeclared
-CRUD methods alone (`findById`, `findAll`, `save`, `deleteById` and the rest of `ListCrudRepository`,
-`ListPagingAndSortingRepository`, `JpaRepository` and `QueryByExampleExecutor`), since Spring
-implements those without parsing the name. Proxy annotations on interface methods are accepted,
-because Spring reads them for both proxy kinds. `SpringProxySelfCall` matches by method name, so an overload
-without the annotation is reported too. Layering, entities in controller signatures and test
+without a superclass, or a `@MappedSuperclass` that declares the `@Id`, so the `@Version` field
+belongs next to the `@Id`. An entity with a superclass is skipped, because its `@Version` may be
+inherited. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
+them. `SpringDataDerivedQuery` leaves redeclared CRUD methods alone (`findById`, `findAll`, `save`,
+`deleteById` and the rest of `ListCrudRepository`, `ListPagingAndSortingRepository`,
+`JpaRepository` and `QueryByExampleExecutor`), since Spring implements those without parsing the
+name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Couchbase and
+Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
+on interface methods are accepted, because Spring reads them for both proxy kinds.
+`SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
+method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` and
+`SpringDataNoFlush` skip a loop that also calls `EntityManager.clear()`, the JPA batch idiom.
+`SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
+`Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
+exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
 placement need a cross-class view and come with nitpicker's ArchUnit rules.
 
-**Tests.** `java-spring.e2e.test.mjs` (gated like the other Java e2e tests) runs PMD through the init
-script on `adapters/fixtures/spring-project`, whose sources mark every expected violation with a
-`// violation: <rule>` comment, and asserts the reported set equals the marked set.
+**Tests.** `java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+`npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
+sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
+reported set equals the marked set. The fixture also holds the legitimate forms each rule must
+accept.
 
 ## Slice 1: what is deliberately not included
 
@@ -465,7 +483,7 @@ script on `adapters/fixtures/spring-project`, whose sources mark every expected 
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
