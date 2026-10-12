@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const DEFAULT_SOURCE_ROOT = 'src';
@@ -79,11 +80,13 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
   }
   const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
   return (text, targetPath) => {
-    if (existsSync(path.join(path.dirname(targetPath), PROJECT_TSCONFIG))) {
+    const projectDirectory = path.dirname(targetPath);
+    if (existsSync(path.join(projectDirectory, PROJECT_TSCONFIG))) {
+      const extended = projectBaseTsconfig(projectDirectory, layout);
       const layered =
         name === STRYKER_TSCONFIG
-          ? projectLayeredMutationTsconfig(strictMutants)
-          : projectLayeredTsconfig(JSON.parse(text), layout);
+          ? projectLayeredMutationTsconfig(extended, strictMutants)
+          : projectLayeredTsconfig(extended, JSON.parse(text), layout);
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
     const rewritten = layoutTransform?.(text) ?? text;
@@ -126,17 +129,58 @@ const POLICY_COMPILER_OPTIONS = {
 
 const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
 
-function projectLayeredMutationTsconfig(strictMutants) {
+function readJsonc(file) {
+  const typescript = createRequire(import.meta.url)('typescript');
+  const { config } = typescript.readConfigFile(file, typescript.sys.readFile);
+  return config;
+}
+
+function referencedConfigFile(projectDirectory, reference) {
+  const target = path.resolve(projectDirectory, reference.path);
+  return path.extname(target) === '.json' ? target : path.join(target, PROJECT_TSCONFIG);
+}
+
+function includesSourceRoot(config, layout) {
+  return (config?.include ?? []).some((entry) =>
+    layout.sourceRoots.includes(path.posix.normalize(entry).split('/')[0]),
+  );
+}
+
+function isSolutionTsconfig(config) {
+  return (
+    Array.isArray(config?.references) &&
+    config.references.length > 0 &&
+    config.compilerOptions === undefined &&
+    config.include === undefined &&
+    (config.files ?? []).length === 0
+  );
+}
+
+function projectBaseTsconfig(projectDirectory, layout) {
+  const project = readJsonc(path.join(projectDirectory, PROJECT_TSCONFIG));
+  const projectBase = `./${PROJECT_TSCONFIG}`;
+  if (!isSolutionTsconfig(project)) {
+    return projectBase;
+  }
+  const sourceConfig = project.references
+    .map((reference) => referencedConfigFile(projectDirectory, reference))
+    .find((file) => existsSync(file) && includesSourceRoot(readJsonc(file), layout));
+  return sourceConfig === undefined
+    ? projectBase
+    : `./${path.relative(projectDirectory, sourceConfig).split(path.sep).join('/')}`;
+}
+
+function projectLayeredMutationTsconfig(extended, strictMutants) {
   return {
-    extends: `./${PROJECT_TSCONFIG}`,
+    extends: extended,
     compilerOptions: { skipLibCheck: true, ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}) },
   };
 }
 
-function projectLayeredTsconfig(base, layout) {
+function projectLayeredTsconfig(extended, base, layout) {
   const layered = layoutTsconfig(base, layout);
   return {
-    extends: `./${PROJECT_TSCONFIG}`,
+    extends: extended,
     compilerOptions: { ...NO_EMIT_ANALYSIS_OPTIONS, ...POLICY_COMPILER_OPTIONS },
     include: layered.include,
     exclude: layered.exclude,
