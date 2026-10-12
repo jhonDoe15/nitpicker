@@ -79,23 +79,6 @@ const DEAD_CODE_DECLARATIONS = new Map([
 ]);
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
 
-const invokedPath = process.argv[1];
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const options = parseArguments(process.argv.slice(2));
-    const findings = await runQualityArea(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (error) {
-    process.stderr.write(
-      `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
-}
-
 export async function runQualityArea(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
@@ -1450,4 +1433,21 @@ function requiredValue(values, name) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
+}
+
+const invokedPath = process.argv[1];
+if (
+  invokedPath !== undefined &&
+  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
+) {
+  try {
+    const options = parseArguments(process.argv.slice(2));
+    const findings = await runQualityArea(options);
+    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+  } catch (error) {
+    process.stderr.write(
+      `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    process.exitCode = 2;
+  }
 }
