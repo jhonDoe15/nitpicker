@@ -32,11 +32,15 @@ const presetConfig = tseslint.config(
       globals: globals.node,
       parserOptions,
     },
+    plugins: {
+      nitpicker: nitpickerRules,
+    },
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
+      'nitpicker/cognitive-complexity': ['error', 15],
     },
   },
   {
