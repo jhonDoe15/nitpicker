@@ -161,22 +161,23 @@ function isCaughtErrorSlot(tag) {
 const MEMBER_TAGS = new Set(['param', 'property', 'prop']);
 const OTHER_TYPE_TAGS = new Set(['returns', 'return', 'type', 'typedef', 'satisfies', 'this']);
 
+function closesMemberList({ opener, rest }) {
+  if (opener?.character === '{') {
+    return true;
+  }
+  return opener?.character === '(' && rest.trimStart().startsWith('=>');
+}
+
 function memberRegions(type) {
   const regions = [];
   const open = [];
   for (const [index, character] of [...type].entries()) {
     if ('({'.includes(character)) {
       open.push({ character, start: index });
-    } else if (')}'.includes(character)) {
+    }
+    if (')}'.includes(character)) {
       const opener = open.pop();
-      const isMemberList =
-        opener?.character === '{' ||
-        (opener?.character === '(' &&
-          type
-            .slice(index + 1)
-            .trimStart()
-            .startsWith('=>'));
-      if (isMemberList) {
+      if (closesMemberList({ opener, rest: type.slice(index + 1) })) {
         regions.push([opener.start, index]);
       }
     }

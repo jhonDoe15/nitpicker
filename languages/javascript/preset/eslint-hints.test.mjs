@@ -60,7 +60,9 @@ describe('unsafe any hint', () => {
           text: 'Unsafe return.',
           relativePath: 'src/main/features/billing/domain/split.js',
         }),
-      ).toContain('domain/ cannot take `{unknown}`, so have adapters/ parse');
+      ).toBe(
+        'Unsafe return. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`): domain/ cannot take `{unknown}`, so have adapters/ parse a legacy `any` value into a typed object and pass that in.',
+      );
     });
   });
 

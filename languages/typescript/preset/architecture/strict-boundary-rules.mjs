@@ -3,9 +3,14 @@ import { layoutFeatures } from './strict-layout.mjs';
 
 const layout = readLayout();
 const sourceRoot = `(?:${layout.sourceRoots.join('|')})`;
-const publicIndex = layout.javascript
-  ? 'public index.js or index.mjs (src/main/features/<name>/index.js)'
-  : 'public index.ts (src/main/features/<name>/index.ts)';
+
+export function publicIndexFor({ javascript }) {
+  return javascript
+    ? 'public index.js or index.mjs (src/main/features/<name>/index.js)'
+    : 'public index.ts (src/main/features/<name>/index.ts)';
+}
+
+const publicIndex = publicIndexFor(layout);
 
 const { featureRoot, feature, shared, compositionRoot } = layoutFeatures;
 const codeFile = '\\.[cm]?[jt]sx?$';

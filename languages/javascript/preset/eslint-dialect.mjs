@@ -4,7 +4,7 @@ import {
   TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT,
 } from './javascript-preset.mjs';
 
-export const DROPPED_RULES = [
+const DROPPED_RULES = [
   '@typescript-eslint/consistent-type-definitions',
   '@typescript-eslint/consistent-type-imports',
   '@typescript-eslint/no-require-imports',

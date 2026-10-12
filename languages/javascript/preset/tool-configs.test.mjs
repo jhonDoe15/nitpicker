@@ -43,7 +43,8 @@ function transformed(name, layout, root) {
 describe('generated tsconfig.quality.json', () => {
   it('type-checks JavaScript without emitting for the javascript preset', () => {
     const config = transformed('tsconfig.quality.json', javascriptLayout, projectWith());
-    expect(config.compilerOptions).toMatchObject({
+    const { allowJs, checkJs, noEmit, strict, noUncheckedIndexedAccess } = config.compilerOptions;
+    expect({ allowJs, checkJs, noEmit, strict, noUncheckedIndexedAccess }).toEqual({
       allowJs: true,
       checkJs: true,
       noEmit: true,
@@ -76,7 +77,8 @@ describe('generated tsconfig.quality.json', () => {
       projectWith('tsconfig.json'),
     );
     expect(config.extends).toBe('./tsconfig.json');
-    expect(config.compilerOptions).toMatchObject({
+    const { allowJs, checkJs, noEmit, skipLibCheck, strict } = config.compilerOptions;
+    expect({ allowJs, checkJs, noEmit, skipLibCheck, strict }).toEqual({
       allowJs: true,
       checkJs: true,
       noEmit: true,
@@ -128,7 +130,8 @@ describe('generated tsconfig.quality.json', () => {
 describe('generated tsconfig.stryker.json', () => {
   it('type-checks JavaScript mutants without forcing noEmit', () => {
     const config = transformed('tsconfig.stryker.json', javascriptLayout, projectWith());
-    expect(config.compilerOptions).toMatchObject({ allowJs: true, checkJs: true, strict: true });
+    const { allowJs, checkJs, strict } = config.compilerOptions;
+    expect({ allowJs, checkJs, strict }).toEqual({ allowJs: true, checkJs: true, strict: true });
     expect(config.compilerOptions).not.toHaveProperty('noEmit');
   });
 
@@ -139,7 +142,8 @@ describe('generated tsconfig.stryker.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(javascript.extends).toBe('./jsconfig.json');
-    expect(javascript.compilerOptions).toMatchObject({
+    const { skipLibCheck, allowJs, checkJs } = javascript.compilerOptions;
+    expect({ skipLibCheck, allowJs, checkJs }).toEqual({
       skipLibCheck: true,
       allowJs: true,
       checkJs: true,
@@ -166,14 +170,14 @@ describe('generated knip.json', () => {
 
   it('adds the JavaScript entry files and config files', () => {
     const config = layoutKnipConfig(base, javascriptLayout);
-    expect(config.entry).toEqual(
-      expect.arrayContaining([
-        ...base.entry,
-        'src/main.{js,mjs,cjs}',
-        'vitest.config.{js,mjs,cjs}',
-        'tests/fixtures/*harness*.{js,mjs,cjs}',
-      ]),
-    );
+    expect(config.entry.slice(0, base.entry.length)).toEqual(base.entry);
+    for (const entry of [
+      'src/main.{js,mjs,cjs}',
+      'vitest.config.{js,mjs,cjs}',
+      'tests/fixtures/*harness*.{js,mjs,cjs}',
+    ]) {
+      expect(config.entry.includes(entry), entry).toBe(true);
+    }
     expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
   });
 

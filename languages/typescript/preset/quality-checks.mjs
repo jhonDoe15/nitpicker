@@ -360,6 +360,17 @@ function repositoryChecksFor(exclusions) {
   ];
 }
 
+const CRAP_CONFIGURATION_FILES = [
+  'languages/typescript/preset/defaults/crap.config.mjs',
+  'languages/typescript/preset/crap/report.mjs',
+  'languages/typescript/preset/crap/analyze.mjs',
+  'languages/javascript/preset/crap-extensions-hook.mjs',
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'shared/rules/crap.mjs',
+];
+
 function testExecutionChecksFor(exclusions) {
   return [
     {
@@ -388,16 +399,7 @@ function testExecutionChecksFor(exclusions) {
       shardWeight: 2,
       timeoutMs: 2 * MINUTE_MS,
       adapterArguments: ['--crap-score-limit', String(DEFAULT_CRAP_SCORE_LIMIT)],
-      configurationFiles: [
-        'languages/typescript/preset/defaults/crap.config.mjs',
-        'languages/typescript/preset/crap/report.mjs',
-        'languages/typescript/preset/crap/analyze.mjs',
-        'languages/javascript/preset/crap-extensions-hook.mjs',
-        'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
-        JAVASCRIPT_PRESET_FILE,
-        'shared/rules/crap.mjs',
-      ],
+      configurationFiles: CRAP_CONFIGURATION_FILES,
     },
     {
       name: 'mutation',

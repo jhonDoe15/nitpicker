@@ -58,11 +58,12 @@ describe('preset selection', () => {
 
 describe('head policy preset', () => {
   it('carries the javascript preset to the runners', () => {
-    expect(javascriptPolicy).toMatchObject({ preset: 'javascript' });
+    expect(javascriptPolicy.preset).toBe('javascript');
     withHeadPolicyFile(javascriptPolicy, (policyFile) => {
       const environment = { NITPICKER_POLICY: policyFile };
       expect(readHeadPolicy(environment).preset).toBe('javascript');
-      expect(readLayout(environment)).toMatchObject({
+      const { javascript, entryExtensions } = readLayout(environment);
+      expect({ javascript, entryExtensions }).toEqual({
         javascript: true,
         entryExtensions: ['js', 'mjs', 'cjs', 'ts', 'mts', 'cts'],
       });
@@ -74,12 +75,13 @@ describe('head policy preset', () => {
       expect(resolveHeadPolicy({ preset })).not.toHaveProperty('preset');
     }
     withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
-      expect(readLayout({ NITPICKER_POLICY: policyFile })).toMatchObject({
+      const { javascript, entryExtensions } = readLayout({ NITPICKER_POLICY: policyFile });
+      expect({ javascript, entryExtensions }).toEqual({
         javascript: false,
         entryExtensions: ['ts'],
       });
     });
-    expect(readLayout({})).toMatchObject({ javascript: false });
+    expect(readLayout({}).javascript).toBe(false);
   });
 });
 
@@ -115,15 +117,18 @@ describe('javascript layout', () => {
     expect(resolveLayoutFor(javascriptPolicy).javascript).toBe(true);
     expect(resolveLayoutFor(resolveHeadPolicy({})).javascript).toBe(false);
     expect(resolveLayoutFor().javascript).toBe(false);
-    expect(
-      resolveLayoutFor(
-        resolveHeadPolicy({
-          preset: 'javascript',
-          layout: { sourceRoots: ['lib'] },
-          exclude: ['x/**'],
-        }),
-      ),
-    ).toMatchObject({ sourceRoots: ['lib'], exclude: ['x/**'], javascript: true });
+    const { sourceRoots, exclude, javascript } = resolveLayoutFor(
+      resolveHeadPolicy({
+        preset: 'javascript',
+        layout: { sourceRoots: ['lib'] },
+        exclude: ['x/**'],
+      }),
+    );
+    expect({ sourceRoots, exclude, javascript }).toEqual({
+      sourceRoots: ['lib'],
+      exclude: ['x/**'],
+      javascript: true,
+    });
   });
 
   it('keeps the default layout flags off', () => {
@@ -169,9 +174,10 @@ describe('javascript prettier patterns', () => {
       'typescript-typecheck',
     ]);
     for (const check of shaped) {
-      expect(check.configurationFiles, check.name).toContain(
-        'languages/javascript/preset/javascript-preset.mjs',
-      );
+      expect(
+        check.configurationFiles.includes('languages/javascript/preset/javascript-preset.mjs'),
+        check.name,
+      ).toBe(true);
     }
   });
 });

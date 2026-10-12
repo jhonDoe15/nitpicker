@@ -190,7 +190,7 @@ describe('the dialect applied to files', () => {
 
   it('still rejects any other property assignment in domain code', () => {
     expect(messages(`${domain}/total.js`, 'function bump(order) { order.count = 1; }')).toEqual([
-      expect.stringContaining('domain/ code does not assign to properties'),
+      'domain/ code does not assign to properties: return a new object with spread, e.g. { ...value, field }.',
     ]);
   });
 
