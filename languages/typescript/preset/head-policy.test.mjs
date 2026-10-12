@@ -33,6 +33,29 @@ afterEach(() => {
   }
 });
 
+describe('head policy react key', () => {
+  it('is left out of the policy until the config sets it', () => {
+    expect(Object.keys(resolveHeadPolicy({}))).toEqual([
+      'exclude',
+      'layout',
+      'exceptions',
+      'thresholds',
+    ]);
+  });
+
+  it('carries the react setting to the readers of the policy file', () => {
+    const policy = resolveHeadPolicy({ react: { enabled: false, styling: 'css-in-js' } });
+
+    expect(policy.react).toEqual({ enabled: false, styling: 'css-in-js' });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).react).toEqual({
+        enabled: false,
+        styling: 'css-in-js',
+      });
+    });
+  });
+});
+
 describe('head policy reader', () => {
   it('falls back to preset layout defaults without a policy file', () => {
     expect(readHeadPolicy({})).toEqual({
@@ -40,6 +63,7 @@ describe('head policy reader', () => {
       layout: defaultLayout,
       exceptions: [],
       thresholds: {},
+      react: {},
       tools: {},
     });
   });
@@ -56,6 +80,7 @@ describe('head policy reader', () => {
         layout: { ...defaultLayout, sourceRoots: ['lib'] },
         exceptions: [],
         thresholds: { crapLimit: 12 },
+        react: {},
         tools: {},
       });
     });
@@ -173,6 +198,7 @@ describe('head policy delivery', () => {
         layout: { ...defaultLayout, sourceRoots: ['lib'] },
         exceptions: [],
         thresholds: { crapLimit: 12 },
+        react: {},
         tools: {},
       });
     }
