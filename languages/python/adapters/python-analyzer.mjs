@@ -18,7 +18,9 @@ const SHARED_CONFIGURATION_FILES = [
   'languages/java/ingest/sarif.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
+  'shared/policy.mjs',
   'shared/rules/baseline-expansion.mjs',
+  'shared/rules/branch-coverage.mjs',
   'shared/rules/finding-helpers.mjs',
 ];
 
@@ -52,7 +54,7 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage'],
+    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage', 'coverage-py'],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {

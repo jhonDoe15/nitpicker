@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java'];
+export const LANGUAGES = ['typescript', 'java', 'python'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -55,7 +55,10 @@ export function mutantRuleId(status) {
  * if the base had it. `tools` limits a rule to findings from those tools (the TypeScript check of
  * the same name keys its identity on branch source instead).
  */
-export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] }];
+export const TOUCHED_CODE_RULES = [
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
+];
 
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
@@ -90,8 +93,9 @@ export const GREW_MESSAGES = {
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
 };
 
-const BOTH = { typescript: true, java: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false };
+const BOTH = { typescript: true, java: true, python: false };
+const ALL = { typescript: true, java: true, python: true };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -138,7 +142,7 @@ export const RULES = [
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.mutantSurvived,
