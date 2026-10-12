@@ -2,7 +2,7 @@ import { existsSync, readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { write } from '../lib/consumer.mjs';
 import { loadTree } from '../detectors/tree.mjs';
-import { copiedWorkdir, loadCase, runCase } from '../runner/run-case.mjs';
+import { copiedWorkdir, loadCase, referenceTree, runCase } from '../runner/run-case.mjs';
 
 export const casesDirectory = import.meta.dirname;
 export const packageRoot = path.resolve(casesDirectory, '..', '..');
@@ -95,7 +95,7 @@ const overlayDirectories = (caseDefinition, overlay) => [
  * The trees the runner hands the detectors for a reference-agent run, built in memory: `fixture` is
  * the workdir `linkedWorkdir` prepares (node_modules is a symlink, which `loadTree` skips) and
  * `final` is that tree with the reference solution and then the cheat laid over it, as
- * reference-agent.mjs copies them.
+ * reference-agent.mjs copies them, and `reference` is the fixture with the reference solution alone.
  */
 export function referenceTrees(caseId, { overlay } = {}) {
   const caseDefinition = loadCase(path.join(casesDirectory, caseId));
@@ -109,7 +109,7 @@ export function referenceTrees(caseId, { overlay } = {}) {
     if (!existsSync(directory)) throw new Error(`${caseId} has no ${directory}`);
     for (const [file, text] of loadTree(directory)) final.set(file, text);
   }
-  return { caseDefinition, fixture, final };
+  return { caseDefinition, fixture, final, reference: referenceTree(caseDefinition, fixture) };
 }
 
 /**
