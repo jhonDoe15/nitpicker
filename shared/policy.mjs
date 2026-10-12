@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java'];
+export const LANGUAGES = ['typescript', 'java', 'python'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -90,8 +90,9 @@ export const GREW_MESSAGES = {
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
 };
 
-const BOTH = { typescript: true, java: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false };
+const BOTH = { typescript: true, java: true, python: false };
+const ALL = { typescript: true, java: true, python: true };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -156,13 +157,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.noProductionRuntime,

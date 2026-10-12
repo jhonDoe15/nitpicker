@@ -1,8 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { scanImports } from './python-coupling.mjs';
+import { runDuplicates } from './python-duplicates.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { detectFormatter, detectSourceRoots, importRoots } from './python-project.mjs';
 
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
@@ -32,6 +36,7 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       testRunner: settings.testRunner,
+      importLinter: settings.importLinter,
       sourceRoots,
     },
     env: {
@@ -79,7 +84,15 @@ function describeFailure({ context, command, result }) {
 }
 
 export function runPythonTools(context) {
-  const failures = [lint, format, test].flatMap((step) => {
+  const steps = [
+    lint,
+    format,
+    test,
+    runDuplicates,
+    (stepContext) => scanImports(stepContext, run),
+    (stepContext) => runImportLinter(stepContext, run),
+  ];
+  const failures = steps.flatMap((step) => {
     try {
       step(context);
       return [];
@@ -211,6 +224,13 @@ export function detectTestRunner(context) {
   return testRunnerVersion(context).split('@')[0];
 }
 
+function importLinterVersion(context) {
+  const { importLinter } = context.project;
+  return importLinterEnabled(context.projectRoot, importLinter)
+    ? [`import-linter@${probeVersion(context, ['lint-imports', '--version'])}`]
+    : [];
+}
+
 export function toolVersions(context) {
   const { formatter } = context.project;
   return [
@@ -218,5 +238,7 @@ export function toolVersions(context) {
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerVersion(context),
+    `jscpd@${jscpdVersion()}`,
+    ...importLinterVersion(context),
   ].join(';');
 }

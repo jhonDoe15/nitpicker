@@ -1,8 +1,9 @@
 export function jscpdClones(report, configuredPaths) {
-  const prefix =
+  const single =
     Array.isArray(configuredPaths) && configuredPaths.length === 1
       ? configuredPaths[0].replace(/\/$/, '')
       : '';
+  const prefix = single === '.' ? '' : single;
   return (report.duplicates ?? []).map((duplicate) => ({
     first: {
       file: prefixedPath(prefix, duplicate.firstFile?.name),
