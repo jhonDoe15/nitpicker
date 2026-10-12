@@ -186,7 +186,9 @@ describe('running pyright', () => {
     const root = fakes.project({ 'pkg/__init__.py': '' });
     const { context, reportRoot } = fakes.contextFor(root, { sourceRoots: ['pkg', 'src'] });
 
-    expect(pyrightConfig(context)).toMatchObject({
+    expect(pyrightConfig(context)).toEqual({
+      typeCheckingMode: 'strict',
+      enableTypeIgnoreComments: false,
       include: [
         path.relative(reportRoot, path.join(root, 'pkg')),
         path.relative(reportRoot, path.join(root, 'src')),

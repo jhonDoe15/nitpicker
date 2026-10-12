@@ -67,7 +67,8 @@ describe('every message names the allowed form', () => {
 
 describe('hints', () => {
   it('end the tool message and add the allowed form and the exception route', () => {
-    expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toMatchObject({
+    expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
+      ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
         'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
     });
