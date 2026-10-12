@@ -1,0 +1,210 @@
+# Kotlin preset
+
+Status: slice KT1 (ticket #176) implemented; KT2 to KT4 are planned below.
+
+The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`),
+including modules that mix Java and Kotlin, with the same differential gate as the
+[Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
+findings, fail only on new enforceable findings. It is not a second implementation. It shares the
+Gradle init script, the runner, the ingesters, the failure policy and the cache with the Java
+preset, and adds Kotlin tools next to the Java ones.
+
+## Selection
+
+`"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
+auto-detected.
+
+**Why a preset of its own and not the Java preset covering Kotlin sources (decision).** The Java
+preset already builds a Kotlin module, because the Kotlin plugin applies `java`, but it would
+change meaning for every project that already uses it with a Kotlin module the moment it started
+running detekt and a Kotlin formatter: new findings and a different tool set under the same key.
+A preset of its own is a pure opt-in, so the Java preset's behavior is unchanged by construction
+(the Kotlin tasks exist only with `-Pnitpicker.kotlin=true`, which only this preset passes). It
+also lets the reports say what ran: the analyzer is named `kotlin`, so a Gradle failure is a
+`kotlin/gradle-failure` tool error and `baseline-expansion` findings carry the tool `kotlin`. What
+stays shared is everything else: `languages/java/` holds both presets, and `createJavaAnalyzer`
+takes `{ kotlin: true }`. A project whose build has no Kotlin module and sets `"preset": "kotlin"`
+fails with a tool error saying so.
+
+## How it works
+
+```
+gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
+  -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
+  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/java-reports.mjs)
+       -> readKotlinFindings                         (languages/java/adapters/kotlin-reports.mjs)
+  -> compareFindings(base, head, renames)
+```
+
+The consumer build is not edited. In modules that apply the Kotlin plugin, the init script
+registers `nitpickerDetekt`, `nitpickerKtlint` and `nitpickerKtfmt`, each running from its own
+Gradle configuration (`nitpickerDetekt` and so on) so nothing touches the consumer's classpath,
+and makes `nitpickerJava` depend on them. The tool versions are in the same pinned map as the
+Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
+`kotlinSourceRoots` and `kotlinFormatter`; its `sourceRoots` stay the Java source roots. Which
+formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
+(`languages/java/adapters/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
+properties.
+
+## What runs on what
+
+| Tool                                                        | Java sources | Kotlin sources | Notes                                                                                                                   |
+| ----------------------------------------------------------- | ------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| detekt                                                      |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
+| ktlint or ktfmt                                             |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
+| JaCoCo                                                      | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) for both languages. Branch gating is Java only for now (KT4).      |
+| PMD, Checkstyle, google-java-format                         | yes          | no             | Java-only tools. A Kotlin-only module has no Java files; the tasks are skipped and write empty reports.                 |
+| SpotBugs                                                    | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
+| lizard (CRAP), structure, duplicates, jdeps (coupling), PIT | yes          | no             | Java sources and classes only until KT3 and KT4 teach them Kotlin.                                                      |
+
+**PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so nothing is lost: it
+keeps running on the Java files of a mixed module. SpotBugs analyzes bytecode, and on
+Kotlin-generated bytecode it reports on compiler output the author cannot fix in source (null-check
+intrinsics, synthetic accessors, lambdas, `when` tables). It is therefore restricted to the classes
+Gradle compiled from Java sources (`compileJava`'s output); detekt is the Kotlin source-level
+counterpart. The same restriction keeps PIT and jdeps off Kotlin classes until KT3 and KT4 give them
+a Kotlin-aware path and source mapping.
+
+## detekt
+
+- **Run.** The detekt CLI jar (`detekt-cli:1.23.8:all`) with `--input` the main Kotlin source
+  directories, `--report sarif:...` and `--base-path` the project directory. Exit code 2 (findings)
+  and 0 are success; any other exit code, or a missing report, fails the Gradle task. Source
+  directories under the build directory (code generated by OpenAPI, protobuf or KSP and added with
+  `srcDir`) or outside the project are not analyzed: nobody edits generated code, and the findings
+  would be new for every regeneration. Only the main source set is analyzed, as the Java preset's
+  PMD and Checkstyle only read main.
+- **Config.** The project's detekt config is found at `config/detekt/detekt.yml`,
+  `config/detekt.yml` or `detekt.yml` in the project (also with the `.yaml` extension, in that order)
+  and set explicitly with `"kotlin": { "detektConfig": "path/inside/the/project.yml" }`, which wins.
+  A configured file that does not exist is an error on head (and is ignored on base, so a pull
+  request can add the file and the key together). The config is laid over detekt's default config
+  (`--build-upon-default-config`): a rule the project sets `active: false` stays off, and a rule it
+  omits runs with detekt's default, which is not what the detekt Gradle plugin does without
+  `buildUponDefaultConfig`. Nitpicker keeps detekt's defaults on purpose: they are part of the one
+  way, and a config that lists only the rules a project wants to turn on would otherwise gate
+  almost nothing. Config validation is switched off (`languages/java/detekt/detekt-validation.yml`):
+  a config may configure rulesets of detekt plugins, for example `formatting:` of detekt-formatting,
+  that the CLI run does not load, and validation would end the run on them. The price is that a
+  misspelled key is not reported. Rules that need type resolution do not run (no classpath is
+  passed); that is a follow-up.
+- **Findings.** Rule `detekt.<ruleset>.<Rule>`, for example `detekt.style.MagicNumber`. SARIF
+  levels `warning` and `error` are enforceable; a rule the project sets to `severity: info` reports
+  `note` and is descriptive.
+- **Identity.** The message text through `partialFingerprints["nitpicker/subject"]`, like PMD,
+  with every number replaced by `#`: it names the offending member where detekt says so
+  (``Private property `unused` is unused.``), and repeats of one message in a file get `#2`, `#3`
+  in report order. A line never takes part, so a moved finding stays baselined. A measured value
+  does not take part either (`LongMethod`: "too long (62)", `TooManyFunctions`, complexity,
+  nesting depth), so a legacy finding that improves or stays the same stays baselined and only a
+  finding that is new fails. A legacy finding whose value gets worse is not new either; limits on
+  size and complexity are the structure analyzer's job (KT3).
+- **Exceptions.** Turn a rule off or tune it in the detekt config, or drop findings under a path
+  with `exclude` in `nitpicker.config.json`. Both are files in the repository, so a lifted rule
+  shows up in review. detekt honors `@Suppress("Rule")` and `@file:Suppress` in the source and
+  hides the finding from the report; the `inline-suppression` check that fails those is KT2's.
+
+## Format check: ktlint, ktfmt or none
+
+The format check runs only for a project that uses a Kotlin formatter: Nitpicker does not make a
+project adopt ktlint's style. `kotlin.formatter` (`"ktlint"`, `"ktfmt"` or `"none"`) overrides the
+detection, and every format finding names it.
+
+1. `"kotlin": { "formatter": "ktlint" | "ktfmt" | "none" }` in `nitpicker.config.json`.
+2. Otherwise the build files (`build.gradle(.kts)`, `settings.gradle(.kts)`,
+   `gradle/libs.versions.toml` of the project root; comments removed) are searched for the names:
+   `ktlint` means ktlint, and only `ktfmt` means ktfmt (this finds the Gradle plugins and Spotless'
+   `ktfmt()`). A Spotless `kotlinGradle { }` block is not searched, so
+   `kotlin { ktfmt() } kotlinGradle { ktlint() }` is a ktfmt project. A project that names both tools
+   gets ktlint; set the override if it uses ktfmt.
+3. Otherwise `ktlint_` properties in `.editorconfig` mean ktlint.
+4. Otherwise none: no format check runs.
+
+Build logic that lives in `buildSrc`, an included build or a submodule is not searched; use the
+override there.
+
+- **ktlint.** The pinned CLI reads the project's `.editorconfig` itself (code style, disabled rules,
+  `max_line_length`). Each violation is one finding: rule `ktlint.<ruleset>:<rule>` (for example
+  `ktlint.standard:no-wildcard-imports`), the line, and ktlint's message. Not every violation is
+  fixed by `ktlint --format`; the message says how to lift the rule instead. The identity is the
+  message with its numbers replaced, like detekt's. **Exception route.** Turn a rule off in
+  `.editorconfig`: `ktlint_standard_no-wildcard-imports = disabled` (`ktlint_<ruleset>_<rule>`),
+  or drop findings under a path with `exclude`.
+- **ktfmt.** `--dry-run` lists the files that would change. The style is `--kotlinlang-style` or
+  `--google-style` when the build files name `kotlinLangStyle`/`googleStyle`, else ktfmt's default
+  (Meta); `--enable-editorconfig` is passed when the project has an `.editorconfig`. One `format`
+  finding per file, tool `ktfmt`, identity `format`; a file that already failed on the base stays
+  baselined, new files and files that start failing do not.
+
+## Coverage
+
+JaCoCo, as for Java: the pinned JaCoCo agent runs the project's tests and the XML report is read
+through `ingestJacoco` for both source languages (`kotlinSourceRoots` map the report's package-relative
+paths to files). JaCoCo 0.8.12 filters common Kotlin-generated code (null checks, default-argument
+bridges, `when` tables), so the metrics are close to what the author wrote. Everything it yields for Kotlin today is descriptive (`line-coverage`,
+`uncovered-method`). The changed-branch gate (`changed-branch-coverage`) stays on Java lines and moves
+to Kotlin in KT4, together with mutation testing. Kover is not detected: JaCoCo is applied by the init
+script whatever the project uses, so a Kover-only project still gets coverage; reading Kover's own
+report is a follow-up only if it is wanted.
+
+## Failure policy
+
+As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a test fails, a tool
+crashes, a tool jar cannot be downloaded, no `gradle` on the PATH) is one `kotlin/gradle-failure`
+finding with classification `tool-error`, which the comparison reports for that snapshot, skipping
+the comparison and exiting with 2. Nothing is silently skipped and nothing throws.
+
+## Config keys
+
+`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `legacyInventory` as for the Java preset
+(legacy inventory sources are the findings' `identity`, for example
+`fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
+`kotlin.detektConfig` are new and valid only with this preset. `layout` and `exceptions` are a
+config error.
+
+## Tests
+
+- `core/java-cli.test.mjs`: the CLI with the fake `gradle`
+  (`languages/java/adapters/fixtures/fake-gradle.mjs`, which writes the Kotlin reports when it sees
+  `-Pnitpicker.kotlin=true`): pass, new detekt finding, new unformatted file with each formatter,
+  baseline expansion, Gradle failure on either snapshot.
+- `languages/java/adapters/kotlin-reports.test.mjs`: a real detekt SARIF
+  (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
+  through `readJavaFindings`; JaCoCo roots; the Java preset ignoring Kotlin reports.
+- `languages/java/adapters/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
+  blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
+  the Gradle arguments (including `--no-configuration-cache`).
+- `core/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys and the runner
+  arguments.
+- `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+  (`npm run test:kotlin`). Needs Java 21, Gradle, lizard (the Java preset's) and network access
+  to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
+  (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
+  finding baselined; new detekt and ktlint findings fail; a Java change in the Kotlin module is
+  still gated by the Java tools; a detekt config in `config/detekt.yml` (with a `formatting:`
+  ruleset) lifts a rule; ktfmt by override and by detection; no format check without a formatter;
+  generated sources are not linted; a Kotlin-only module (a second repository without Java); a
+  Kotlin compile error becomes a tool error.
+
+## Remaining slices
+
+| #   | Slice                                        | Scope                                                                                                                                                   |
+| --- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| KT1 | Gradle integration, detekt, format           | This document: done.                                                                                                                                    |
+| KT2 | One-way rules and skill (#177)               | The Kotlin rules that narrow the language to one way of doing each thing, enforced through detekt and custom rules, and the agent skill for the preset. |
+| KT3 | Structure, CRAP, duplicates, coupling (#178) | The shared structure limits, CRAP (lizard has a Kotlin mode), jscpd with the Kotlin format and package coupling from Kotlin sources and classes.        |
+| KT4 | Changed coverage and mutation (#179)         | `changed-branch-coverage` and PIT on Kotlin classes, with source mapping and generated-code filtering.                                                  |
+
+## Known limits
+
+- Multi-module builds: every module with the Kotlin plugin gets the tasks, but Nitpicker reads the
+  root project's `build/nitpicker`, as for Java. A root project that does not apply the Kotlin plugin
+  (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
+  when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
+  per-module reports is not done for either preset yet.
+- Only main sources are linted, and generated sources under the build directory are skipped.
+- Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
+- detekt runs without type resolution; its results can differ from a project's own detekt run that
+  has a classpath.
+- ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
+  findings to source files is only verified for Java.

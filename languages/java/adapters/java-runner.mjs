@@ -1,5 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { GRADLE_PRESETS } from './gradle-presets.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 const MAX_MESSAGE_LENGTH = 4000;
@@ -15,7 +17,7 @@ export function analyzeJavaSnapshot(
     return {
       findings: [
         {
-          tool: 'java',
+          tool: policy?.preset ?? 'java',
           rule: GRADLE_FAILURE_RULE,
           path: '.',
           identity: GRADLE_FAILURE_RULE,
@@ -32,7 +34,9 @@ export function analyzeJavaSnapshot(
 
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]';
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]' +
+  ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
+  ' [--kotlin-detekt-config <path>]';
 
 function readOptionValues(arguments_) {
   const values = new Map();
@@ -61,6 +65,14 @@ export function parseRunnerArguments(arguments_) {
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');
   }
+  const preset = values.get('--preset');
+  const kotlinFormatter = values.get('--kotlin-formatter');
+  if (preset !== undefined && !GRADLE_PRESETS.includes(preset)) {
+    throw new Error(`--preset must be one of: ${GRADLE_PRESETS.join(', ')}`);
+  }
+  if (kotlinFormatter !== undefined && !KOTLIN_FORMATTERS.includes(kotlinFormatter)) {
+    throw new Error(`--kotlin-formatter must be one of: ${KOTLIN_FORMATTERS.join(', ')}`);
+  }
   return {
     projectRoot: values.get('--project-root'),
     policy: {
@@ -70,6 +82,9 @@ export function parseRunnerArguments(arguments_) {
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
       snapshot: values.get('--snapshot') ?? 'head',
+      preset,
+      kotlinFormatter,
+      kotlinDetektConfig: values.get('--kotlin-detekt-config'),
     },
   };
 }
@@ -82,6 +97,9 @@ const RUNNER_OPTIONS = [
   '--crap-limit',
   '--exclude',
   '--legacy-inventory',
+  '--preset',
+  '--kotlin-formatter',
+  '--kotlin-detekt-config',
 ];
 
 function realpathOptional(directory) {
