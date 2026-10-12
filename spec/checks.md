@@ -28,7 +28,7 @@ function is identified by the function's signature, not its body. A message insi
 function whose code was edited keeps matching the base while the function has no more messages of
 that rule and kind than on the base (a count ratchet); a message on a line the change touched, of a
 strict rule, is still new, and so is a message on a line the change added. Rules that report a
-number about a function (`sonarjs/cognitive-complexity`, `complexity`, `max-lines-per-function`,
+number about a function (`complexity`, `max-lines-per-function`,
 `max-statements`, `max-params`, `max-depth`) fail an edited function only when that number rises.
 
 | Check                   | Scope                              | Config                                                         | Status      |

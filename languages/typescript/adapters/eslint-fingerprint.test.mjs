@@ -282,7 +282,7 @@ describe('a new throw in a legacy function', () => {
 
 describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
-    `Refactor this function to reduce its Cognitive Complexity from ${String(amount)} to the 15 allowed.`;
+    `Function 'total' has a complexity of ${String(amount)}. Maximum allowed is 15.`;
 
   const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
   const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
@@ -296,8 +296,8 @@ describe('a complexity finding fails only when the number rises', () => {
     return findingFor({
       code: build(body),
       reported,
-      ruleId: 'sonarjs/cognitive-complexity',
-      messageId: 'refactorFunction',
+      ruleId: 'complexity',
+      messageId: 'complex',
       message: complexity(amount),
     });
   }
@@ -319,7 +319,7 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare(find(build, reported, 16), find(build, reported, 60));
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'total cognitive complexity grew from 16 to 60. Put new code in a new function.',
+      'total complexity grew from 16 to 60. Put new code in a new function.',
     ]);
   });
 
@@ -328,7 +328,7 @@ describe('a complexity finding fails only when the number rises', () => {
 
     expect(result.newFindings).toEqual([]);
     expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
-      { rule: 'sonarjs/cognitive-complexity', heldAtBase: 16 },
+      { rule: 'complexity', heldAtBase: 16 },
     ]);
   });
 

@@ -31,7 +31,6 @@ export const ESLINT_PLUGIN_PACKAGES = [
   '@eslint/js',
   '@vitest/eslint-plugin',
   'eslint-plugin-functional',
-  'eslint-plugin-sonarjs',
   'typescript-eslint',
 ];
 

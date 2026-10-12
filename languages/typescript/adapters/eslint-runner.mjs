@@ -202,10 +202,6 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
 
 function metricRules() {
   return {
-    'sonarjs/cognitive-complexity': {
-      pattern: /Cognitive Complexity from (\d+) to/u,
-      label: 'cognitive complexity',
-    },
     complexity: { pattern: /complexity of (\d+)\./u, label: 'complexity' },
     'max-lines-per-function': { pattern: /too many lines \((\d+)\)/u, label: 'line count' },
     'max-statements': { pattern: /too many statements \((\d+)\)/u, label: 'statement count' },

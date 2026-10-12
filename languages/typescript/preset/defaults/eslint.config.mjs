@@ -1,6 +1,5 @@
 import eslint from '@eslint/js';
 import vitest from '@vitest/eslint-plugin';
-import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
@@ -33,15 +32,11 @@ const presetConfig = tseslint.config(
       globals: globals.node,
       parserOptions,
     },
-    plugins: {
-      sonarjs,
-    },
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
-      'sonarjs/cognitive-complexity': ['error', 15],
     },
   },
   {
