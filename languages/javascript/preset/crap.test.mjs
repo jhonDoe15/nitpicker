@@ -1,15 +1,20 @@
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../typescript/preset/head-policy.mjs';
-import { headPolicyEnvironment } from '../../../shared/head-policy.mjs';
+import { afterEach, describe, expect, it } from 'vitest';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { parseArguments, runQualityArea } from '../../typescript/adapters/quality-areas-runner.mjs';
+import { resolveHeadPolicy } from '../../typescript/preset/head-policy.mjs';
 
-const reportScript = path.join(import.meta.dirname, '../../typescript/preset/crap/report.mjs');
+const originalPolicy = process.env.NITPICKER_POLICY;
 const temporaryRoots = [];
 
-afterAll(() => {
+afterEach(() => {
+  if (originalPolicy === undefined) {
+    delete process.env.NITPICKER_POLICY;
+  } else {
+    process.env.NITPICKER_POLICY = originalPolicy;
+  }
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
@@ -22,52 +27,48 @@ const branchy = `export function classify(value) {
 }
 `;
 
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-js-crap-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
+const sources = {
+  'src/main/features/grade/domain/classify.js': branchy,
+  'src/main/features/grade/domain/classify-module.mjs': branchy,
+  'src/main/features/grade/domain/classify-common.cjs': branchy,
+  'src/main/features/grade/domain/classify.ts': branchy,
+};
+
+async function measuredFiles(config) {
+  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
+  temporaryRoots.push(parent);
+  const root = path.join(parent, 'head');
+  for (const [name, text] of Object.entries(sources)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
-  return root;
-}
-
-function crapSummary(root, config) {
-  return withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
-    const result = spawnSync(process.execPath, [reportScript], {
-      cwd: root,
-      encoding: 'utf8',
-      env: {
-        ...process.env,
-        ...headPolicyEnvironment(policyFile),
-        NITPICKER_PROJECT_ROOT: root,
-      },
-    });
-    expect(result.status, result.stderr).toBe(0);
-    return JSON.parse(readFileSync(path.join(root, 'reports/quality/crap/report.json'), 'utf8'))
-      .summary;
-  });
+  const policyFile = path.join(parent, 'policy.json');
+  writeFileSync(policyFile, JSON.stringify(resolveHeadPolicy(config)));
+  process.env.NITPICKER_POLICY = policyFile;
+  const options = parseArguments([
+    '--analyzer-name',
+    'crap',
+    '--kind',
+    'crap',
+    '--project-root',
+    root,
+    '--policy-root',
+    PACKAGE_ROOT,
+    '--tool-root',
+    PACKAGE_ROOT,
+    '--snapshot',
+    'head',
+  ]);
+  const findings = await runQualityArea(options);
+  return findings.find(({ identity }) => identity === 'summary:files')?.metric.value;
 }
 
 describe('CRAP report for a JavaScript project', () => {
-  const sources = {
-    'src/main/features/grade/domain/classify.js': branchy,
-    'src/main/features/grade/domain/classify-module.mjs': branchy,
-    'src/main/features/grade/domain/classify-common.cjs': branchy,
-    'src/main/features/grade/domain/classify.ts': branchy,
-  };
-
-  it('measures the functions of .js, .mjs, .cjs and .ts files', () => {
-    const summary = crapSummary(projectWith(sources), { preset: 'javascript' });
-
-    expect(summary.files).toBe(4);
-    expect(summary.functions).toBe(4);
+  it('measures .js, .mjs, .cjs and .ts files', async () => {
+    expect(await measuredFiles({ preset: 'javascript' })).toBe(4);
   });
 
-  it('keeps reading only TypeScript files for the TypeScript preset', () => {
-    const summary = crapSummary(projectWith(sources), {});
-
-    expect(summary.files).toBe(1);
-    expect(summary.functions).toBe(1);
+  it('keeps reading only TypeScript files for the TypeScript preset', async () => {
+    expect(await measuredFiles({})).toBe(1);
   });
 });

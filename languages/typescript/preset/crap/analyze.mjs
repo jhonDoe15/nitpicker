@@ -3,11 +3,14 @@ import { register } from 'node:module';
 import path from 'node:path';
 import { readLayout } from '../head-policy.mjs';
 
-if (readLayout().javascript) {
-  register('../../../javascript/preset/crap-extensions-hook.mjs', import.meta.url);
+async function loadAnalyzeProject() {
+  if (readLayout().javascript) {
+    register('../../../javascript/preset/crap-extensions-hook.mjs', import.meta.url);
+  }
+  return (await import('@barney-media/crap-typescript-core')).analyzeProject;
 }
 
-const { analyzeProject } = await import('@barney-media/crap-typescript-core');
+const analyzeProject = await loadAnalyzeProject();
 
 const FUNCTION_MAP_CONFLICT = 'fnmap_conflict';
 
