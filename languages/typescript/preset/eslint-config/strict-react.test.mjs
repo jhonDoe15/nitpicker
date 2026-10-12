@@ -13,6 +13,9 @@ const presetConfigUrl = pathToFileURL(
   path.join(import.meta.dirname, '../defaults/eslint.config.mjs'),
 );
 const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
+const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>
+  selector.startsWith('ClassDeclaration'),
+).message;
 const temporaryRoots = [];
 let importCount = 0;
 
@@ -32,8 +35,6 @@ function classMessages(config, file, superclass) {
 }
 
 describe('class components in the strict syntax rules', () => {
-  const classBan = 'Classes are only for `Error` subclasses';
-
   it.each(['Component', 'PureComponent', 'React.Component', 'React.PureComponent'])(
     'leaves a class extending %s to the React rule in a React project',
     (superclass) => {
@@ -44,7 +45,7 @@ describe('class components in the strict syntax rules', () => {
       ]) {
         const messages = classMessages(reactConfig, file, superclass);
         expect(
-          messages.filter((message) => message.includes(classBan)),
+          messages.filter((message) => message === classBanMessage),
           file,
         ).toEqual([]);
       }
@@ -56,7 +57,7 @@ describe('class components in the strict syntax rules', () => {
     (superclass) => {
       const messages = classMessages(strictSyntaxConfig, 'src/main/ui/panel.tsx', superclass);
 
-      expect(messages).toEqual([expect.stringContaining(classBan)]);
+      expect(messages).toEqual([classBanMessage]);
     },
   );
 
@@ -65,7 +66,7 @@ describe('class components in the strict syntax rules', () => {
     (superclass) => {
       for (const config of [strictSyntaxConfig, reactConfig]) {
         const messages = classMessages(config, 'src/main/ui/panel.tsx', superclass);
-        expect(messages).toEqual([expect.stringContaining(classBan)]);
+        expect(messages).toEqual([classBanMessage]);
       }
     },
   );
@@ -75,18 +76,44 @@ describe('class components in the strict syntax rules', () => {
       expect(classMessages(config, 'src/main/ui/panel.tsx', 'Error')).toEqual([]);
     }
   });
+});
 
-  it('keeps every other restricted selector identical', () => {
-    const plain = restrictedSyntaxFor();
-    const react = restrictedSyntaxFor({ react: true });
+describe('null in a React project', () => {
+  const nullMessage = 'Use `undefined` for an absent value';
+  const nullMessages = (config, code) =>
+    failureMessagesFor({ config, filename: 'src/main/ui/panel.tsx', code }).filter((message) =>
+      message.includes(nullMessage),
+    );
 
-    for (const scope of Object.keys(plain)) {
-      expect(react[scope]).toHaveLength(plain[scope].length);
-      const changed = react[scope].filter((selector, index) => selector !== plain[scope][index]);
-      expect(changed.map(({ selector }) => selector)).toEqual([
-        expect.stringContaining('Component'),
-      ]);
-    }
+  it.each([
+    'export const ref = useRef<HTMLDivElement>(null);',
+    'export const ref = React.useRef(null);',
+    'export const Theme = createContext<Theme | null>(null);',
+    'export const Theme = React.createContext<Theme | null>(null);',
+    'export const ref = useRef<number | null>(null);',
+  ])('allows %s only with the React scope on', (code) => {
+    expect(nullMessages(reactConfig, code)).toEqual([]);
+    expect(nullMessages(strictSyntaxConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it.each([
+    'export const value = null;',
+    'export const state = useState(null);',
+    'export const state = useState<string | null>(undefined);',
+    'export function read(): string | null { return undefined; }',
+    'export const ref = useRef(load(null));',
+    'export const ref = useRef<number>(undefined) ?? null;',
+    'export const ref = notUseRef(null);',
+  ])('still bans %s', (code) => {
+    expect(nullMessages(reactConfig, code).length).toBeGreaterThan(0);
+  });
+
+  it('names the allowed React form in the message', () => {
+    const [message] = nullMessages(reactConfig, 'export const value = null;');
+
+    expect(message).toBe(
+      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.',
+    );
   });
 });
 
@@ -207,6 +234,50 @@ describe('the preset config', () => {
     expect(fresh.rules['react-x/no-array-index-key'][0]).toBe(2);
   });
 
+  it('skips an exception that names a React rule when the project is not a React project', async () => {
+    const config = await presetConfigFor({
+      manifest: {},
+      policy: {
+        exceptions: [
+          { rule: 'react-x/no-array-index-key', paths: ['src/**'], reason: 'Static lists' },
+          { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
+          { rule: 'jsx-a11y/alt-text', paths: ['src/**'], reason: 'Legacy markup' },
+        ],
+      },
+    });
+
+    expect(ruleIdsOf(config).has('react-x/no-array-index-key')).toBe(false);
+  });
+
+  it('still rejects an exception that names an unknown rule', async () => {
+    for (const manifest of [{}, reactManifest]) {
+      await expect(
+        presetConfigFor({
+          manifest,
+          policy: {
+            exceptions: [{ rule: 'react-hooks/exhaustive-dep', paths: ['src/**'], reason: 'Typo' }],
+          },
+        }),
+      ).rejects.toThrow('unknown rules: react-hooks/exhaustive-dep');
+    }
+  });
+
+  it('infers CSS-in-JS styling from the manifest unless the config sets it', async () => {
+    const manifest = { dependencies: { react: '19.0.0', 'styled-components': '6.0.0' } };
+    const stylingOf = (config) =>
+      config
+        .map((entry) => entry.rules?.['nitpicker/react-single-styling-approach'])
+        .find((setting) => setting !== undefined);
+
+    expect(stylingOf(await presetConfigFor({ manifest }))).toEqual([
+      'error',
+      { approach: 'css-in-js' },
+    ]);
+    expect(
+      stylingOf(await presetConfigFor({ manifest, policy: { react: { styling: 'class-names' } } })),
+    ).toEqual(['error', { approach: 'class-names' }]);
+  });
+
   it('lifts a Testing Library rule only for the configured test paths', async () => {
     const config = await presetConfigFor({
       manifest: reactManifest,
@@ -233,29 +304,16 @@ describe('the preset config', () => {
     expect(fresh.rules['testing-library/no-test-id-queries'][0]).toBe(2);
   });
 
-  it('rejects an exception for a Testing Library rule when the project is not a React project', async () => {
-    await expect(
-      presetConfigFor({
-        manifest: {},
-        policy: {
-          exceptions: [
-            { rule: 'testing-library/no-node-access', paths: ['test/**'], reason: 'Widgets' },
-          ],
-        },
-      }),
-    ).rejects.toThrow('unknown rules: testing-library/no-node-access');
-  });
+  it('skips an exception that names a Testing Library rule when the project is not a React project', async () => {
+    const config = await presetConfigFor({
+      manifest: {},
+      policy: {
+        exceptions: [
+          { rule: 'testing-library/no-node-access', paths: ['test/**'], reason: 'Widgets' },
+        ],
+      },
+    });
 
-  it('rejects an exception for a React rule when the project is not a React project', async () => {
-    await expect(
-      presetConfigFor({
-        manifest: {},
-        policy: {
-          exceptions: [
-            { rule: 'react-x/no-array-index-key', paths: ['src/**'], reason: 'Static lists' },
-          ],
-        },
-      }),
-    ).rejects.toThrow('unknown rules: react-x/no-array-index-key');
+    expect(ruleIdsOf(config).has('testing-library/no-node-access')).toBe(false);
   });
 });

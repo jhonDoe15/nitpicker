@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
+import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
@@ -12,10 +12,8 @@ import {
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
-import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
-const GRADLE_PRESETS = ['java', 'kotlin'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', 'java', 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
@@ -30,7 +28,6 @@ const KEYS = [
   'legacyInventory',
   'python',
   'tools',
-  'kotlin',
 ];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
@@ -83,18 +80,17 @@ function validateScalars(config) {
   if (config.preset !== undefined && !SUPPORTED_PRESETS.includes(config.preset)) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
-  if (GRADLE_PRESETS.includes(config.preset)) {
+  if (config.preset === 'java') {
     validateJavaKeys(config);
   }
   validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
-  validateKotlinOptions(config);
 }
 
 function validateJavaKeys(config) {
   const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
     );
   }
 }

@@ -59,6 +59,18 @@ tester.run('react-no-effect-derived-state', reactNoEffectDerivedState, {
     withState('for (const [, setY] of pairs) { setY(a); }'),
     component('function Inner({ setX }) { useEffect(() => { setX(a); }, [a]); return null; }'),
     withState('useCustomEffect(() => { setX(a); }, [a]);'),
+    withState(
+      'useEffect(() => { const sync = () => setX(a); setTimeout(() => sync(), 0); }, [a]);',
+    ),
+    withState('useEffect(() => { const sync = () => setX(a); items.forEach(sync); }, [a]);'),
+    withState('useEffect(() => { const sync = () => setX(a); }, [a]);'),
+    withState('useEffect(() => { async function sync() { setX(a); } void sync(); }, [a]);'),
+    withState('const sync = () => setX(a); useEffect(() => { sync(); }, [a]);'),
+    withState('useEffect(() => { const sync = () => setX(a); sync(); }, []);'),
+    "import { useEffect } from './effects'; import { useState } from 'react'; function Panel({ a }) { const [x, setX] = useState(0); useEffect(() => { setX(a); }, [a]); return <div />; }",
+    "import { useEffect, useState } from 'react'; function Panel({ a }) { function useState() { return [0, () => undefined]; } const [x, setX] = useState(); useEffect(() => { setX(a); }, [a]); return <div />; }",
+    "import * as Preact from 'preact/hooks'; function Panel({ a }) { const [x, setX] = Preact.useState(0); Preact.useEffect(() => { setX(a); }, [a]); return <div />; }",
+    "import { createElement as useEffect } from 'react'; function Panel({ a }) { const [x, setX] = useState(0); useEffect(() => { setX(a); }, [a]); return <div />; }",
   ].map((code) => ({ filename, code })),
   invalid: [
     {
@@ -78,6 +90,15 @@ tester.run('react-no-effect-derived-state', reactNoEffectDerivedState, {
       component(
         'const [x, setX] = useState(0); const [y, setY] = useState(0); useEffect(() => { setY(x); }, [x]);',
       ),
+      withState('useEffect(() => { const sync = () => setX(a * 2); sync(); }, [a]);'),
+      withState('useEffect(() => { function sync() { setX(a * 2); } sync(); }, [a]);'),
+      withState('useEffect(() => { const sync = function () { setX(a * 2); }; sync(); }, [a]);'),
+      component(
+        'const state = useState(0); const setX = state[1]; useEffect(() => { setX(a); }, [a]);',
+      ),
+      "import { useEffect as onEffect, useState as useValue } from 'react'; function Panel({ a }) { const [x, setX] = useValue(0); onEffect(() => { setX(a); }, [a]); return <div />; }",
+      "import * as R from 'react'; function Panel({ a }) { const [x, setX] = R.useState(0); R.useEffect(() => { setX(a); }, [a]); return <div />; }",
+      "import React from 'react'; function Panel({ a }) { const [x, setX] = React['useState'](0); React['useLayoutEffect'](() => { setX(a); }, [a]); return <div />; }",
     ].map((code) => ({
       filename,
       code,
@@ -102,6 +123,7 @@ tester.run('react-no-effect-data-fetching', reactNoEffectDataFetching, {
     component('useEffect(load, [a]);'),
     component('useData(() => { fetch(a); });'),
     component('useEffect(() => { const run = () => 1; run(); }, []); fetch(a);'),
+    "import { useEffect } from './effects'; function Panel({ a }) { useEffect(() => { fetch(a); }, [a]); return <div />; }",
   ].map((code) => ({ filename, code })),
   invalid: [
     'useEffect(() => { fetch(`/items/${a}`); }, [a]);',
@@ -116,11 +138,13 @@ tester.run('react-no-effect-data-fetching', reactNoEffectDataFetching, {
     'useEffect(() => { new XMLHttpRequest(); }, [a]);',
     'useLayoutEffect(() => { fetch(a); }, [a]);',
     'React.useEffect(function () { fetch(a); }, [a]);',
-  ].map((effect) => ({
-    filename,
-    code: component(effect),
-    errors: [{ messageId: 'fetchInEffect' }],
-  })),
+  ]
+    .map((effect) => component(effect))
+    .concat([
+      "import { useEffect as onEffect } from 'react'; function Panel({ a }) { onEffect(() => { fetch(a); }, [a]); return <div />; }",
+      "import * as R from 'react'; function Panel({ a }) { R.useEffect(() => { fetch(a); }, [a]); return <div />; }",
+    ])
+    .map((code) => ({ filename, code, errors: [{ messageId: 'fetchInEffect' }] })),
 });
 
 const inlineAllowed = 'inline `style` objects';
@@ -131,7 +155,11 @@ const inlineStyleObject = '<div style={{ color: "red" }} />';
 function inlineStyleError(allowed) {
   return {
     messageId: 'inlineStyle',
-    data: { allowed, example: "style={{ '--progress': percent }}" },
+    data: {
+      allowed,
+      example: "style={{ '--progress': percent }}",
+      typing: "declare module 'csstype' { interface Properties { '--progress'?: number } }",
+    },
   };
 }
 
@@ -150,6 +178,9 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
     jsx('<div style={{ "--a": 1, "--b": 2 }} />'),
     jsx('<div style={{}} />'),
     jsx('<div style={style} />'),
+    'export function Panel({ style }) { return <div style={style} />; }',
+    "const vars = { '--progress': 1 }; export function Panel() { return <div style={vars} />; }",
+    "export function Panel({ on }) { return <div style={on ? { '--a': 1 } : { '--b': 2 }} />; }",
     jsx('<div style="color: red" />'),
     jsx('<div style />'),
     jsx('<Chart title={{ color: "red" }} />'),
@@ -169,6 +200,19 @@ tester.run('react-single-styling-approach: class names by default', reactSingleS
       errors: [inlineStyleError(classNamesAllowed)],
     },
     { code: jsx('<div style={{ ...base }} />'), errors: [inlineStyleError(classNamesAllowed)] },
+    ...[
+      'const shared = { color: "red" }; export function Panel() { return <div style={shared} />; }',
+      'const shared: CSSProperties = { color: "red" }; export function Panel() { return <div style={shared} />; }',
+      'const first = { color: "red" }; const second = first; export function Panel() { return <div style={second} />; }',
+      'export function Panel({ on }) { return <div style={on ? { width: 1 } : { width: 2 }} />; }',
+      'export function Panel({ on }) { return <div style={on ? { width: 1 } : undefined} />; }',
+      'export function Panel({ on }) { return <div style={on && { width: 1 }} />; }',
+      'export function Panel({ on }) { return <div style={base ?? { width: 1 }} />; }',
+      'export function Panel() { return <div style={{ width: 1 } satisfies CSSProperties} />; }',
+      'export function Panel() { return <div style={{ width: 1 } as const} />; }',
+      'const shared = { width: 1 }; export function Panel({ on }) { return <div style={on ? shared : undefined} />; }',
+      'const shared = { "--a": 1, width: 1 }; export function Panel() { return <div style={shared} />; }',
+    ].map((code) => ({ code, errors: [inlineStyleError(classNamesAllowed)] })),
     { code: jsx('<div style={{ [name]: 1 }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     { code: jsx('<div style={{ 1: "a" }} />'), errors: [inlineStyleError(classNamesAllowed)] },
     {

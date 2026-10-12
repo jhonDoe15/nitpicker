@@ -18,23 +18,10 @@ export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicke
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-function kotlinProperties({ preset, kotlinFormatter }) {
-  if (preset !== 'kotlin') {
-    return [];
-  }
-  return [
-    '-Pnitpicker.kotlin=true',
-    ...(kotlinFormatter === undefined ? [] : [`-Pnitpicker.kotlin.formatter=${kotlinFormatter}`]),
-  ];
-}
-
-function runJavaPreset(
-  projectRoot,
-  { gradle = 'gradle', initScript = INIT_SCRIPT, policy = {} } = {},
-) {
+export function runJavaPreset(projectRoot, { gradle = 'gradle', initScript = INIT_SCRIPT } = {}) {
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', ...kotlinProperties(policy), '-I', initScript, 'nitpickerJava'],
+    ['--console=plain', '--quiet', '-I', initScript, 'nitpickerJava'],
     {
       cwd: projectRoot,
       encoding: 'utf8',
@@ -54,10 +41,9 @@ function runJavaPreset(
 export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   runJavaDuplicates(projectRoot);
-  const preset = options.policy?.preset ?? 'java';
   const { findings } = parseAnalyzerReport(
-    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
-    preset,
+    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit }),
+    'java',
   );
   return applyJavaPolicy(findings, options.policy);
 }
