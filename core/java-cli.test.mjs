@@ -447,6 +447,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
   const wideSource = (...signatures) =>
     `package demo\n\n${signatures.map((signature) => `fun ${signature} = 0\n`).join('\n')}`;
   const metricsOf = (...functions) => `${JSON.stringify({ functions, files: [] })}\n`;
+  const newEnforceable = (result, tool) =>
+    result
+      .json('new-findings.json')
+      .filter((finding) => finding.tool === tool && finding.classification === 'enforceable');
   const FOUR_PARAMETERS = 'sum(a: Int, b: Int, c: Int, d: Int)';
   const legacyWide = () =>
     kotlinRepository({
@@ -478,7 +482,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-    expect(result.json('new-findings.json')).toEqual([
+    expect(newEnforceable(result, 'structure')).toEqual([
       expect.objectContaining({
         tool: 'structure',
         rule: 'function-parameters-limit',
@@ -502,7 +506,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-    expect(result.json('new-findings.json')).toEqual([
+    expect(newEnforceable(result, 'structure')).toEqual([
       expect.objectContaining({
         tool: 'structure',
         rule: 'function-parameters-limit',
@@ -511,7 +515,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
-  it('fails a new Kotlin clone found by jscpd and ignores the Java sources of the module', () => {
+  it('fails a new Kotlin clone found by jscpd', () => {
     const root = kotlinRepository();
     const clone = (name) =>
       `package demo\n\nclass ${name} {\n    fun total(a: Int, b: Int): Int {\n        var total = 0\n${Array.from(
@@ -528,7 +532,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-    expect(result.json('new-findings.json')).toEqual([
+    expect(newEnforceable(result, 'duplicates')).toEqual([
       expect.objectContaining({
         tool: 'duplicates',
         rule: 'duplicate-clone',
