@@ -58,17 +58,20 @@ function optionPairs(arguments_) {
   return pairs;
 }
 
+function valuesOf(pairs, option) {
+  return pairs.filter(([name]) => name === option).map(([, value]) => value);
+}
+
 function readOptionValues(arguments_) {
   const pairs = optionPairs(arguments_);
   const values = new Map(pairs.filter(([name]) => !REPEATED_OPTIONS.includes(name)));
   if (!values.has('--project-root')) {
     throw new Error(USAGE);
   }
-  const repeated = (option) => pairs.filter(([name]) => name === option).map(([, value]) => value);
   return {
     values,
-    exclude: repeated('--exclude'),
-    exceptions: repeated('--exception').map(parseException),
+    exclude: valuesOf(pairs, '--exclude'),
+    exceptions: valuesOf(pairs, '--exception').map(parseException),
   };
 }
 
