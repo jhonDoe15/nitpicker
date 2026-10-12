@@ -432,9 +432,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
       expect(result.json('new-findings.json')).toEqual([
         expect.objectContaining({
           rule: importRule,
-          message: expect.stringMatching(
-            /suspend.*"exceptions" entry for rule detekt\.style\.ForbiddenImport in nitpicker\.config\.json/,
-          ),
+          message:
+            'The import has been forbidden. Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenImport in nitpicker.config.json.',
         }),
       ]);
     });

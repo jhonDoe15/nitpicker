@@ -27,11 +27,21 @@ describe('one-way rule messages', () => {
         detektFinding(testCase.rule, expectedMessage(testCase, 'banned')),
       );
 
-      expect(message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
-      expect(message).toContain(
-        `"exceptions" entry for rule ${testCase.rule} in nitpicker.config.json`,
-      );
-      expect(message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, ''))).toBe(true);
+      const wording = {
+        id: testCase.id,
+        namesAllowedForm: message.toLowerCase().includes(testCase.allowedForm.toLowerCase()),
+        namesExceptionRoute: message.endsWith(
+          `"exceptions" entry for rule ${testCase.rule} in nitpicker.config.json.`,
+        ),
+        keepsDetektText: message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, '')),
+      };
+
+      expect(wording).toEqual({
+        id: testCase.id,
+        namesAllowedForm: true,
+        namesExceptionRoute: true,
+        keepsDetektText: true,
+      });
     },
   );
 
