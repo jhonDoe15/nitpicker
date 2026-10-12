@@ -211,19 +211,14 @@ describe('generated knip.json', () => {
 describe('generated jscpd.json', () => {
   const base = JSON.parse(defaultText('jscpd.json'));
 
-  it('scans the JavaScript format next to the TypeScript one, so .ts files in a JavaScript project are scanned', () => {
-    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(['typescript', 'javascript']);
+  it('scans the JavaScript format next to the base formats, so .ts files in a JavaScript project are scanned', () => {
+    const formats = [...base.format, 'javascript'];
+    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(formats);
+    expect(transformed('jscpd.json', javascriptLayout, projectWith()).format).toEqual(formats);
   });
 
-  it('keeps the TypeScript format for the TypeScript preset', () => {
-    expect(layoutJscpdConfig(base, typescriptLayout).format).toEqual(['typescript']);
-  });
-
-  it('is rewritten for the default JavaScript layout', () => {
-    expect(transformed('jscpd.json', javascriptLayout, projectWith()).format).toEqual([
-      'typescript',
-      'javascript',
-    ]);
+  it('keeps the base formats for the TypeScript preset', () => {
+    expect(layoutJscpdConfig(base, typescriptLayout).format).toEqual(base.format);
   });
 });
 
