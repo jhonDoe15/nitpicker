@@ -56,7 +56,7 @@ export function detectTestRunner(projectRoot, setting) {
   return indicated ? 'pytest' : 'unittest';
 }
 
-export function probePytest(context) {
+function probePytest(context) {
   if (!probes.has(context)) {
     const result = execute(context, PYTEST_PROBE);
     const [version, coverage, xdist] =

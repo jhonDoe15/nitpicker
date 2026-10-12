@@ -51,16 +51,19 @@ function readFiles(projectRoot, names) {
     .map((name) => readFileSync(path.join(projectRoot, name), 'utf8'));
 }
 
+function requirementsInDirectory(projectRoot) {
+  const directory = path.join(projectRoot, REQUIREMENT_DIRECTORY);
+  return isDirectory(directory)
+    ? readdirSync(directory)
+        .filter((name) => name.endsWith('.txt') || name.endsWith('.in'))
+        .map((name) => path.posix.join(REQUIREMENT_DIRECTORY, name))
+    : [];
+}
+
 function requirementFiles(projectRoot) {
-  const inDirectory = (directory) =>
-    isDirectory(path.join(projectRoot, directory))
-      ? readdirSync(path.join(projectRoot, directory))
-          .filter((name) => name.endsWith('.txt') || name.endsWith('.in'))
-          .map((name) => path.posix.join(directory, name))
-      : [];
   return [
     ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
-    ...inDirectory(REQUIREMENT_DIRECTORY),
+    ...requirementsInDirectory(projectRoot),
   ];
 }
 

@@ -37,16 +37,15 @@ describe('Python analyzer', () => {
   it('hashes the ruff config, the adapters and every file the runner imports, not the tests', () => {
     const files = configurationFiles();
 
-    expect(files).toEqual(
-      expect.arrayContaining([
-        'languages/python/ruff/nitpicker-ruff.toml',
-        'languages/python/adapters/python-test-runner.mjs',
-        'languages/python/ingest/coverage-json.mjs',
-        'languages/java/ingest/sarif.mjs',
-        'shared/policy.mjs',
-        'shared/rules/baseline-expansion.mjs',
-      ]),
-    );
+    const required = [
+      'languages/python/ruff/nitpicker-ruff.toml',
+      'languages/python/adapters/python-test-runner.mjs',
+      'languages/python/ingest/coverage-json.mjs',
+      'languages/java/ingest/sarif.mjs',
+      'shared/policy.mjs',
+      'shared/rules/baseline-expansion.mjs',
+    ];
+    expect(required.filter((file) => !files.includes(file))).toEqual([]);
     expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
   });
 

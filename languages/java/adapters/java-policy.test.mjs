@@ -128,7 +128,14 @@ describe('applyJavaPolicy', () => {
     };
 
     expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
-      expect.objectContaining({ tool: 'python', rule: 'baseline-expansion' }),
+      {
+        tool: 'python',
+        rule: 'baseline-expansion',
+        path: 'a.py',
+        identity: expect.any(String),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
+        classification: 'enforceable',
+      },
     ]);
   });
 });

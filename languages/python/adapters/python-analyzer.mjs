@@ -12,19 +12,14 @@ const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
 const IMPORT_PATTERN = /(?:from|import)\s+'(\.[^']+)'/g;
 
 function importedFiles(entry) {
-  const found = new Set();
-  collectImports(entry, found);
-  return [...found];
-}
-
-function collectImports(file, found) {
-  if (found.has(file)) {
-    return;
+  const found = [entry];
+  for (const file of found) {
+    const imports = [...readFileSync(file, 'utf8').matchAll(IMPORT_PATTERN)].map(([, specifier]) =>
+      path.resolve(path.dirname(file), specifier),
+    );
+    found.push(...new Set(imports.filter((imported) => !found.includes(imported))));
   }
-  found.add(file);
-  for (const [, specifier] of readFileSync(file, 'utf8').matchAll(IMPORT_PATTERN)) {
-    collectImports(path.resolve(path.dirname(file), specifier), found);
-  }
+  return found;
 }
 
 function pythonResourceFiles() {
