@@ -2,6 +2,10 @@ const NAME = /^(?:\[[^\]]*\]|[\w$.]+)/;
 const NAME_LIST = /^[\w$]+(?:\s*,\s*[\w$]+)*/;
 const IMPORT_FORM = /^(?:\{[^}]*\}|\*\s+as\s+[\w$]+)\s+from\s+(?:'[^']+'|"[^"]+")$/;
 const STRING_LITERAL = /'[^']*'|"[^"]*"|`[^`]*`/g;
+const STAR_TYPE = /(?<![\w$.])\*(?![\w$.])/;
+const BARE_NULLABLE = /(?:^|[<(,|&:[{])\s*\?\s*(?=$|[>),|}\]])/;
+const PREFIX_NULLABLE = /(?:^|[<(,|&:[{])\s*\?(?=\s*[\w$({[<])/;
+const SUFFIX_NULLABLE = /[\w$>\])]\s*\?(?=\s*(?:$|[|>]))/;
 const TAG_LINE = /^\s*@(\w+)/;
 const COMMENT_PREFIX = /^\s*\*?\s?/;
 
@@ -14,16 +18,14 @@ const GRAMMARS = {
   return: { type: 'required', usage: '@return {Type}' },
   type: { type: 'required', usage: '@type {Type}' },
   satisfies: { type: 'required', usage: '@satisfies {Type}' },
+  extends: { type: 'required', usage: '@extends {Type}' },
+  augments: { type: 'required', usage: '@augments {Type}' },
   this: { type: 'required', usage: '@this {Type}' },
   callback: { name: NAME, usage: '@callback Name' },
   template: { type: 'optional', name: NAME_LIST, usage: '@template T' },
   import: { whole: IMPORT_FORM, usage: "@import {Name} from 'module'" },
   overload: { usage: '@overload' },
 };
-
-const ALLOWED_TAGS = Object.keys(GRAMMARS)
-  .map((tag) => `@${tag}`)
-  .join(', ');
 
 export function isJsdocBlock(comment) {
   return comment.type === 'Block' && comment.value.startsWith('*');
@@ -87,8 +89,9 @@ function parseBody(grammar, body) {
 function parseTag(segment) {
   const grammar = GRAMMARS[segment.tag];
   if (grammar === undefined) {
-    const data = { tag: segment.tag, allowed: ALLOWED_TAGS };
-    return { problems: [{ messageId: 'jsdocUnsupportedTag', data }] };
+    return {
+      problems: [{ messageId: 'jsdocUnsupportedTag', data: { tag: segment.tag } }],
+    };
   }
   const parsed = parseBody(grammar, segment.text);
   if (parsed === undefined) {
@@ -111,7 +114,13 @@ function mentionsWord(type, word) {
 }
 
 function mentionsAny(type) {
-  return mentionsWord(type, 'any') || /(?<![\w$.])\*(?![\w$.])/.test(withoutStrings(type));
+  const text = withoutStrings(type);
+  return mentionsWord(type, 'any') || STAR_TYPE.test(text) || BARE_NULLABLE.test(text);
+}
+
+function mentionsNull(type) {
+  const text = withoutStrings(type);
+  return mentionsWord(type, 'null') || PREFIX_NULLABLE.test(text) || SUFFIX_NULLABLE.test(text);
 }
 
 function typeProblems(tag) {
@@ -120,7 +129,7 @@ function typeProblems(tag) {
   }
   return [
     ...(mentionsAny(tag.type) ? [{ messageId: 'jsdocAnyType' }] : []),
-    ...(mentionsWord(tag.type, 'null') ? [{ messageId: 'jsdocNullType' }] : []),
+    ...(mentionsNull(tag.type) ? [{ messageId: 'jsdocNullType' }] : []),
   ];
 }
 
@@ -142,23 +151,56 @@ export function castTags(tags) {
   return tags.filter((tag) => tag.tag === 'type' && tag.type !== 'const');
 }
 
+const UNKNOWN_WORD = /(?<![\w$.])unknown(?![\w$])(?!\s*\??:)/g;
 const CAUGHT_ERROR_NAMES = new Set(['cause', 'error']);
 
 function isCaughtErrorSlot(tag) {
   return tag.type === 'unknown' && CAUGHT_ERROR_NAMES.has(tag.name);
 }
 
-function declaresMembers(tag) {
-  return (
-    ['param', 'property', 'prop'].includes(tag.tag) ||
-    (tag.tag === 'typedef' && tag.type.startsWith('{'))
+const MEMBER_TAGS = new Set(['param', 'property', 'prop']);
+const OTHER_TYPE_TAGS = new Set(['returns', 'return', 'type', 'typedef', 'satisfies', 'this']);
+
+function memberRegions(type) {
+  const regions = [];
+  const open = [];
+  for (const [index, character] of [...type].entries()) {
+    if ('({'.includes(character)) {
+      open.push({ character, start: index });
+    } else if (')}'.includes(character)) {
+      const opener = open.pop();
+      const isMemberList =
+        opener?.character === '{' ||
+        (opener?.character === '(' &&
+          type
+            .slice(index + 1)
+            .trimStart()
+            .startsWith('=>'));
+      if (isMemberList) {
+        regions.push([opener.start, index]);
+      }
+    }
+  }
+  return regions;
+}
+
+function unknownInMemberPosition(type) {
+  const text = withoutStrings(type);
+  const regions = memberRegions(text);
+  return [...text.matchAll(UNKNOWN_WORD)].some(({ index }) =>
+    regions.some(([start, end]) => index > start && index < end),
   );
 }
 
+function mentionsUnknownAsMember(tag) {
+  if (MEMBER_TAGS.has(tag.tag)) {
+    return mentionsWord(tag.type, 'unknown');
+  }
+  return OTHER_TYPE_TAGS.has(tag.tag) && unknownInMemberPosition(tag.type);
+}
+
 export function unknownMemberTags(tags) {
-  return tags.filter(
-    (tag) => declaresMembers(tag) && mentionsWord(tag.type, 'unknown') && !isCaughtErrorSlot(tag),
-  );
+  return tags.filter((tag) => mentionsUnknownAsMember(tag) && !isCaughtErrorSlot(tag));
 }
 
 const TYPE_PREDICATE = /^(?:asserts\s+[\w$]+(?:\s+is\s+.+)?|[\w$]+\s+is\s+.+)$/s;

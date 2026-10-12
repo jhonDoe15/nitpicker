@@ -10,12 +10,6 @@ import {
   layoutTransformFor,
   layoutTsconfig,
 } from '../../typescript/preset/tool-configs.mjs';
-import {
-  JAVASCRIPT_COMPILER_OPTIONS,
-  JAVASCRIPT_JSCPD_FORMATS,
-  JAVASCRIPT_KNIP_ENTRIES,
-  JAVASCRIPT_KNIP_PROJECT,
-} from './javascript-preset.mjs';
 
 const defaults = path.join(import.meta.dirname, '../../typescript/preset/defaults');
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
@@ -45,12 +39,6 @@ function transformed(name, layout, root) {
   const transform = layoutTransformFor(name, layout);
   return JSON.parse(transform(defaultText(name), path.join(root, name)));
 }
-
-describe('javascript compiler options', () => {
-  it('check JavaScript files for types', () => {
-    expect(JAVASCRIPT_COMPILER_OPTIONS).toEqual({ allowJs: true, checkJs: true });
-  });
-});
 
 describe('generated tsconfig.quality.json', () => {
   it('type-checks JavaScript without emitting for the javascript preset', () => {
@@ -178,10 +166,15 @@ describe('generated knip.json', () => {
 
   it('adds the JavaScript entry files and config files', () => {
     const config = layoutKnipConfig(base, javascriptLayout);
-    expect(config.entry).toEqual(expect.arrayContaining(JAVASCRIPT_KNIP_ENTRIES));
-    expect(config.entry).toEqual(expect.arrayContaining(base.entry));
-    expect(config.project).toEqual(expect.arrayContaining(JAVASCRIPT_KNIP_PROJECT));
-    expect(config.project).toEqual(expect.arrayContaining(base.project));
+    expect(config.entry).toEqual(
+      expect.arrayContaining([
+        ...base.entry,
+        'src/main.{js,mjs,cjs}',
+        'vitest.config.{js,mjs,cjs}',
+        'tests/fixtures/*harness*.{js,mjs,cjs}',
+      ]),
+    );
+    expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
   });
 
   it('does not add them for TypeScript', () => {
@@ -218,9 +211,8 @@ describe('generated knip.json', () => {
 describe('generated jscpd.json', () => {
   const base = JSON.parse(defaultText('jscpd.json'));
 
-  it('scans the JavaScript formats', () => {
-    expect(JAVASCRIPT_JSCPD_FORMATS).toEqual(['javascript', 'jsx']);
-    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(['javascript', 'jsx']);
+  it('scans the JavaScript format next to the TypeScript one, so .ts files in a JavaScript project are scanned', () => {
+    expect(layoutJscpdConfig(base, javascriptLayout).format).toEqual(['typescript', 'javascript']);
   });
 
   it('keeps the TypeScript format for the TypeScript preset', () => {
@@ -229,8 +221,8 @@ describe('generated jscpd.json', () => {
 
   it('is rewritten for the default JavaScript layout', () => {
     expect(transformed('jscpd.json', javascriptLayout, projectWith()).format).toEqual([
+      'typescript',
       'javascript',
-      'jsx',
     ]);
   });
 });

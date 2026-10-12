@@ -51,6 +51,9 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
+const NODE_TEST_HINT =
+  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
@@ -110,7 +113,12 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function nodeTestMessage({ text }) {
+  return `${text}${NODE_TEST_HINT}`;
+}
+
 const MESSAGE_REWRITERS = new Map([
+  ['vitest/no-import-node-test', nodeTestMessage],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],

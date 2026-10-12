@@ -24,6 +24,10 @@ const jsdocTypes = [{ jsdocTypes: true }];
 tester.run('no-comments with JSDoc types', noComments, {
   valid: [
     {
+      code: '/** @extends {Base<string>} */\nexport class Child extends Base {}',
+      options: jsdocTypes,
+    },
+    {
       code: '/** @param {string} name */\nexport function greet(name) { return name; }',
       options: jsdocTypes,
     },
@@ -60,11 +64,7 @@ tester.run('no-comments with JSDoc types', noComments, {
       errors: [
         {
           messageId: 'jsdocUnsupportedTag',
-          data: {
-            tag: 'enum',
-            allowed:
-              '@param, @property, @prop, @typedef, @returns, @return, @type, @satisfies, @this, @callback, @template, @import, @overload',
-          },
+          data: { tag: 'enum' },
         },
       ],
     },
@@ -80,6 +80,11 @@ tester.run('no-comments with JSDoc types', noComments, {
     },
     {
       code: '/** @returns {string | null} */\nexport function find() { return undefined; }',
+      options: jsdocTypes,
+      errors: [{ messageId: 'jsdocNullType' }],
+    },
+    {
+      code: '/** @returns {?string} */\nexport function find() { return undefined; }',
       options: jsdocTypes,
       errors: [{ messageId: 'jsdocNullType' }],
     },
@@ -152,6 +157,16 @@ tester.run('no-unknown-in-domain with JSDoc types', noUnknownInDomain, {
     },
     {
       code: '/** @typedef {{ payload: unknown }} Message */',
+      options: jsdoc,
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: '/** @returns {{ readonly payload: unknown }} */\nexport function read() { return { payload: 1 }; }',
+      options: jsdoc,
+      errors: [{ messageId: 'unknownType' }],
+    },
+    {
+      code: '/** @typedef {Readonly<{ readonly payload: unknown }>} Wrapped */',
       options: jsdoc,
       errors: [{ messageId: 'unknownType' }],
     },

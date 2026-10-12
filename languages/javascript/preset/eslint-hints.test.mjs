@@ -27,12 +27,40 @@ function withPreset(config, check) {
   });
 }
 
+function nodeTestMessage() {
+  return eslintMessageWithHint({
+    ruleId: 'vitest/no-import-node-test',
+    text: 'Import from vitest instead of node:test',
+    relativePath: 'test/greet.test.mjs',
+  });
+}
+
+describe('node:test hint', () => {
+  it('says Vitest is the only runner, names issue #162 and the exception route', () => {
+    expect(nodeTestMessage()).toBe(
+      'Import from vitest instead of node:test nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.',
+    );
+  });
+});
+
 describe('unsafe any hint', () => {
   it('points a JavaScript project at JSDoc types', () => {
     withPreset({ preset: 'javascript' }, () => {
       expect(unsafeAnyMessage()).toBe(
         'Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
       );
+    });
+  });
+
+  it('tells domain code to have adapters parse a legacy any', () => {
+    withPreset({ preset: 'javascript' }, () => {
+      expect(
+        eslintMessageWithHint({
+          ruleId: '@typescript-eslint/no-unsafe-return',
+          text: 'Unsafe return.',
+          relativePath: 'src/main/features/billing/domain/split.js',
+        }),
+      ).toContain('domain/ cannot take `{unknown}`, so have adapters/ parse');
     });
   });
 
