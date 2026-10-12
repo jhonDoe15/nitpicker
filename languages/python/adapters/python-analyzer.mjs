@@ -6,7 +6,7 @@ import { createToolContext, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 const UNRESOLVED_VERSION = 'unresolved';
-const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
+const ANALYZER_TIMEOUT_MS = 90 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
@@ -31,6 +31,7 @@ const SHARED_CONFIGURATION_FILES = [
   'shared/rules/crap.mjs',
   'shared/rules/duplicates.mjs',
   'shared/rules/finding-helpers.mjs',
+  'shared/rules/mutation.mjs',
   'shared/rules/structure.mjs',
 ];
 
@@ -78,6 +79,7 @@ export function createPythonAnalyzer(settings = {}) {
       'duplicates',
       'coupling',
       'import-linter',
+      'mutmut',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {

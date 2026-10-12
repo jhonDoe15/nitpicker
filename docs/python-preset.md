@@ -1,7 +1,7 @@
 # Python preset
 
-Status: slices 1 to 5 (tickets PY1 to PY5) implemented; slice 6 is planned below. The scope is a
-proposal pending owner review.
+Status: slices 1 to 6 (tickets PY1 to PY6) implemented. The scope is a proposal pending owner
+review.
 
 The Python preset runs the same differential gate as the TypeScript and Java presets on a Python
 project: run the tools on the merge base and on head, turn each report into findings
@@ -30,6 +30,7 @@ node languages/python/adapters/python-runner.mjs   (one process per snapshot: ba
   -> jscpd --format python (per source root)       -> duplicates.json
   -> python import-scan.py (stdlib ast)            -> imports.json    (modules and their imports)
   -> lint-imports (only with an import-linter config) -> import-linter.txt
+  -> mutmut run (after the tests passed)           -> mutation.json  (read from mutmut's mutants/)
   -> readPythonFindings                             (languages/python/adapters/python-reports.mjs)
   -> compareFindings(base, head, renames)           (core)
 ```
@@ -266,14 +267,105 @@ Details that are decisions rather than the table:
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
   tool `python` and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
   tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and
-  `rules-failed` (slice 2), `structure-failed` and `lizard-failed` (slice 3), `environment-failed` and `python-failed` for anything unexpected. An environment that cannot be found at all (no
+  `rules-failed` (slice 2), `structure-failed` and `lizard-failed` (slice 3), `mutation-failed` (slice 6), `environment-failed` and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain `python` tool error for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java.
 - **Not included.** Type checking and the one-way rules are slice 2 (above), structure limits and
-  CRAP slice 3, changed-branch coverage slice 4 and duplicates and coupling slice 5 (below);
-  mutation testing is the last slice. Multi-project
-  repositories are analyzed one project root at a time. Windows is untested.
+  CRAP slice 3, changed-branch coverage slice 4, duplicates and coupling slice 5 and mutation
+  testing slice 6 (below). Multi-project
+  repositories are analyzed one project root at a time. Windows is untested (mutation testing
+  needs WSL, see slice 6).
+
+## Slice 6: mutation testing
+
+Mutation testing follows [mutation-testing.md](mutation-testing.md) and the shared mutation rule
+(`shared/rules/mutation.mjs`, the one the Java preset's PIT ingester feeds too): no score gate, a
+new `Survived` mutant fails as `mutant-survived`, a new `NoCoverage` mutant fails as
+`mutant-nocoverage`, and every other status (`Timeout`, `RuntimeError`, `CompileError`, `Ignored`)
+is a descriptive finding that never fails. A mutant is identified by its function (`Class.method`),
+the original and the mutated text and its occurrence among identical mutants of that status in the
+function, never by a line number, so edits above a survivor keep it baselined. The line is only the
+location.
+
+- **Tool: mutmut 3**, in the project's environment like the other tools. It has to be installed
+  there (a dev dependency); a missing mutmut is a `mutation-failed` tool error that says so. The
+  version in the cache key is read from the package metadata (`mutmut --version` fails in a
+  project where mutmut cannot guess its source directory).
+- **What runs.** `mutmut run` in the snapshot after the other steps, and only when the tests
+  passed (a failing test run is already `tests-failed`, and mutmut starts with a clean run of the
+  same tests). The snapshot is a disposable work tree; mutmut writes its `mutants/` directory into
+  it. On head the directory is removed afterwards. On base it stays, because head reads its
+  results (see below), and it is the one place where the preset writes into the analyzed tree.
+  Keep `mutants/` out of version control in your project, like `.venv/`.
+- **Configuration.** mutmut reads `[tool.mutmut]` in `pyproject.toml` (or `[mutmut]` in
+  `setup.cfg`). If the project has one, it is used as it is: `source_paths`, `also_copy`,
+  `pytest_add_cli_args` and the rest stay the project's decision. If it has none, nitpicker adds
+  one to the snapshot's `pyproject.toml` (never to your checkout): `source_paths` is the source
+  roots and `do_not_mutate` skips the test files (`tests/`, `test_*.py`, `*_test.py`,
+  `conftest.py`). Source roots of `.` are an error in that case, since mutmut would copy the whole
+  project: set `python.sourceRoots` or `[tool.mutmut]`.
+- **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
+  project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
+  `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.
+- **Windows.** mutmut forks processes (`os.fork`), so it does not run on native Windows: run
+  nitpicker inside WSL. On Windows the step fails with `mutation-failed` and says so.
+- **A run with nothing covered.** When no test reaches any mutant mutmut stops with exit status 1
+  and "could not find any test case for any mutant", leaving every result unchecked. That is not a
+  tool error: every mutant is reported as `NoCoverage` (and a project with nothing to mutate
+  reports nothing).
+
+### Why mutmut, and how its results are read
+
+mutmut 3 has no report file: `mutmut results` prints text for humans, `export-cicd-stats` only
+counts, and the results live in `mutants/`. What was observed on mutmut 3.8.0 (and, reading the
+sources of 3.2 to 3.5, on older releases):
+
+- `mutants/<source file>.meta` is JSON with `exit_code_by_key` (`module.x_function__mutmut_N` to
+  the exit status of the test run: 0 survived, 1 or 3 killed, 33 or 5 no tests, 36 and a few more
+  timeout, 37 caught by the type checker, `null` not checked). That key is in every 3.x release
+  checked; the other keys of the file change from one minor release to the next, so they are not
+  read.
+- `mutants/<source file>` is the generated code: `x_function__mutmut_orig` and one
+  `x_function__mutmut_N` per mutant, whole functions. Diffing the two on tokens gives the original
+  and mutated text, and finding the original function in the real file gives the line. mutmut does
+  not record the mutation operator, so the text change stands in for it (the message only says
+  whether a number, a string, an operator or an expression changed). The numbers `N` shift when a
+  mutant is added above, which is why they are not part of the identity.
+- A step in `python-mutation-data.mjs` reads those files into `mutation.json` in the report
+  directory, the way the other tools write a report there, and `languages/python/ingest/mutmut.mjs`
+  turns it into findings. A `.meta` file without `exit_code_by_key` is a tool error that says which
+  mutmut is supported, not a silent pass.
+
+cosmic-ray was the alternative. Its `dump` command is a proper machine-readable report with the
+operator name, occurrence and position, and it runs on Windows. It was tried on the same small
+project (99 mutants, 80 s against 3 s for mutmut's 34): it runs the whole test command for every
+mutant, with no per-function test selection, so it is more than an order of magnitude slower; it
+has no "no coverage" status (an untested function only shows as survived); and it rewrites the
+source files in place while it runs. mutmut's function-level test selection and `NoCoverage` map
+directly onto the shared rule, and the run data was stable enough to read, so mutmut it is. If a
+future mutmut release changes the layout, the failure is loud and the fix is local to
+`python-mutation-data.mjs`.
+
+### Reusing base results on head
+
+As the TypeScript preset does with Stryker's incremental file, head starts from the base run's
+results when that is safe: the `mutants/*.meta` files of the base work tree are copied into the
+head work tree before `mutmut run`, and mutmut re-tests the mutants of the functions whose code
+changed and the ones it has no result for. This happens when every file changed between the base
+commit and head is an added or modified `.py` file under a source root that is not a test
+(`tests/`, `test/`, `test_*.py`, `*_test.py`, `conftest.py`). Anything else (a test, a dependency
+file, a deleted or renamed file, a file outside the project) runs every mutant. When the base side
+comes from the findings cache, there are no base results to copy and head runs every mutant.
+
+Two things about mutmut shaped this. Its own cache is not trusted as a whole: carrying over the
+`mutants/` directory of another checkout keeps its `mutmut-stats.json` (which tests cover which
+function), and after adding a function that file makes the new function look untested, a false
+`NoCoverage` (reproduced on 3.8.0). So only the per-mutant results are copied and mutmut collects
+the statistics again, which is one run of the suite. And changed tests are not handled: a survivor
+stays "survived" after a test that kills it was added, and a killed mutant stays "killed" after a
+test was weakened, so a test change cannot reuse anything. Stryker re-tests the mutants covered by
+a changed test; mutmut has no such step yet, hence source-only.
 
 ## Slice 3: structure limits and CRAP
 
@@ -461,14 +553,14 @@ as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the modu
 Each slice is one PR, adds one concern, and changes only the Python adapters, ingesters or rules,
 tests, and this document.
 
-| #   | Ticket                                                    | Slice                        | Tool and report                                                          | Findings                                                                                          | Status  |
-| --- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------- |
-| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py         | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done    |
-| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way     | type errors; one-way rules with their failure messages; the Python skill                          | done    |
-| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script; lizard joined with the coverage report             | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done    |
-| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git             | `changed-branch-coverage`                                                                         | done    |
-| PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability               | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done    |
-| PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | a Python mutation tool (mutmut or cosmic-ray), per docs/mutation-testing | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | planned |
+| #   | Ticket                                                    | Slice                        | Tool and report                                                      | Findings                                                                                          | Status |
+| --- | --------------------------------------------------------- | ---------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ------ |
+| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py     | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done   |
+| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way | type errors; one-way rules with their failure messages; the Python skill                          | done   |
+| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | `ast` metrics script; lizard joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | done   |
+| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git         | `changed-branch-coverage`                                                                         | done   |
+| PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability           | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done   |
+| PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | mutmut 3 run data, per docs/mutation-testing                         | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | done   |
 
 Slice order follows what each one needs: PY2 to PY6 all reuse PY1's environment detection and
 snapshot handling, PY3 and PY4 reuse its coverage report, and PY6 is last because it is the
@@ -487,7 +579,11 @@ and CRAP rules.
   TypeScript-only keys, and that base and head each run with their own sources on `PYTHONPATH`.
 - Unit tests next to the code: environment, formatter and source root detection, the tool steps
   (including long output and missing tools), the runner and its arguments, the analyzer, config
-  validation and the coverage ingester (on a real coverage.py report).
+  validation and the coverage ingester (on a real coverage.py report). The mutmut ingester runs on
+  the recorded run data of a real mutmut 3.8 run (`languages/python/ingest/fixtures/mutmut-run.json`);
+  the reuse check runs against real work trees of a repository; the fake `mutmut` writes a
+  `mutants/` directory from a `mutants-data.json` in the project and logs which result files it
+  found there.
 - `languages/python/adapters/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 50
   seconds. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
@@ -496,7 +592,10 @@ and CRAP rules.
   stays baselined; a new unused import and an unformatted file fail in every report format;
   failing tests and a missing environment are tool errors with exit 2; a `unittest` project
   formatted with black passes and fails correctly using tools from the `PATH`; and a `uv.lock`
-  project runs through `uv run`.
+  project runs through `uv run`. For mutation testing: new survivors and uncovered mutants fail
+  (and the legacy survivors of the fixture do not), a change whose mutants are all killed passes,
+  a source-only change that adds a survivor is caught while reusing the base results, and the
+  flat-layout `unittest` project mutates with a `[tool.mutmut]` that nitpicker adds.
 - Slice 2: `languages/python/rules/rule-hints.test.mjs` (always on) checks that every rule has a
   banned and an allowed fixture directory and that its message names the allowed form and the
   exception route; `type-check.test.mjs`, `rules-report.test.mjs`, `python-types.test.mjs`,

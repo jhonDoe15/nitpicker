@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -230,6 +238,135 @@ describe('running the tools', () => {
     expect(runPythonTools(context)).toEqual([]);
   });
 
+  describe('mutation testing', () => {
+    const MUTATED =
+      'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n';
+    const mutantsData = (exitCodes) =>
+      JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_value__mutmut_1': exitCodes }, mutated: MUTATED },
+      });
+
+    it('writes what mutmut left in mutants/ and cleans the head snapshot', () => {
+      const root = project({ 'mutants-data.json': mutantsData(0) });
+      const { context, reportRoot } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([]);
+
+      expect(JSON.parse(readReport(reportRoot, 'mutation.json')).files).toEqual([
+        expect.objectContaining({
+          path: 'src/demo/a.py',
+          exitCodes: { 'demo.a.x_value__mutmut_1': 0 },
+          mutated: MUTATED,
+        }),
+      ]);
+      expect(existsSync(path.join(root, 'mutants'))).toBe(false);
+      expect(readReport(root, 'pyproject.toml')).toBe(
+        '\n[tool.mutmut]\nsource_paths = ["src"]\ndo_not_mutate = ["tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"]\n',
+      );
+    });
+
+    it('runs after every other step, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {
+      const log = path.join(temporaryRoot(), 'calls.jsonl');
+      setEnvironment('FAKE_PYTHON_LOG', log);
+      const root = project();
+      const { context } = contextFor(root);
+
+      runPythonTools(context);
+
+      const calls = readFileSync(log, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => JSON.parse(line))
+        .filter(({ tool }) => tool !== 'python');
+      expect(calls.at(-2)).toEqual(
+        expect.objectContaining({
+          tool: 'mutmut',
+          args: ['run'],
+          cwd: root,
+          pythonPath: path.join(root, 'src'),
+        }),
+      );
+      expect(calls.slice(0, -2).map(({ tool }) => tool)).not.toContain('mutmut');
+    });
+
+    it('keeps mutants/ of a base snapshot for the head run', () => {
+      const root = project({ 'mutants-data.json': mutantsData(0) });
+      const reportRoot = temporaryRoot();
+      const context = createToolContext({
+        projectRoot: root,
+        liveRoot: root,
+        reportRoot,
+        snapshot: 'base',
+      });
+
+      runPythonTools(context);
+
+      expect(existsSync(path.join(root, 'mutants/src/demo/a.py.meta'))).toBe(true);
+    });
+
+    it('does not run when the tests fail', () => {
+      const log = path.join(temporaryRoot(), 'calls.jsonl');
+      setEnvironment('FAKE_PYTHON_LOG', log);
+      const root = project({ 'test-exit.txt': '1\n' });
+      const { context, reportRoot } = contextFor(root);
+
+      expect(runPythonTools(context).map(({ rule }) => rule)).toEqual(['tests-failed']);
+
+      expect(readFileSync(log, 'utf8')).not.toContain('mutmut');
+      expect(existsSync(path.join(reportRoot, 'mutation.json'))).toBe(false);
+    });
+
+    it('reports a mutmut run that fails as a mutation failure with its output', () => {
+      const root = project({ 'mutants-data.json': mutantsData(0), 'mutmut-exit.txt': '2\n' });
+      const { context } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([
+        {
+          rule: 'mutation-failed',
+          message: 'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
+        },
+      ]);
+    });
+
+    it('counts every mutant as uncovered when mutmut finds no test for any of them', () => {
+      const root = project({ 'mutants-data.json': mutantsData(null), 'mutmut-exit.txt': '1\n' });
+      const { context, reportRoot } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([]);
+
+      expect(JSON.parse(readReport(reportRoot, 'mutation.json')).files[0].exitCodes).toEqual({
+        'demo.a.x_value__mutmut_1': 33,
+      });
+    });
+
+    it('says where mutmut should be installed', () => {
+      const root = project({}, { tools: ['ruff', 'black', 'coverage', 'python'] });
+      setEnvironment('PATH', temporaryRoot());
+      const { context } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([
+        {
+          rule: 'mutation-failed',
+          message:
+            'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency)',
+        },
+      ]);
+    });
+
+    it('reports a mutmut that left no mutants directory', () => {
+      const root = project();
+      writeFileSync(path.join(root, '.venv/bin/mutmut'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+      const { context } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([
+        {
+          rule: 'python-failed',
+          message: 'mutmut finished without writing a mutants directory',
+        },
+      ]);
+    });
+  });
+
   it('reports a failing test run with its output', () => {
     const root = project({ 'test-exit.txt': '1\n' });
     const { context } = contextFor(root);
@@ -398,27 +535,27 @@ describe('test runner and versions', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
     expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
-      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
   });
 
   it('marks tools that are missing', () => {
-    const root = project({ 'no-pytest.txt': '' }, { tools: ['python'] });
+    const root = project({ 'no-pytest.txt': '', 'no-mutmut.txt': '' }, { tools: ['python'] });
     setEnvironment('PATH', temporaryRoot());
 
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      `ruff@missing;types@missing;coverage@missing;pytest@missing;${jscpd}`,
+      `ruff@missing;types@missing;coverage@missing;pytest@missing;${jscpd};mutmut@missing`,
     );
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@missing;types@missing;coverage@missing;unittest;${jscpd}`,
+      `ruff@missing;types@missing;coverage@missing;unittest;${jscpd};mutmut@missing`,
     );
   });
 

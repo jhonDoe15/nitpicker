@@ -9,6 +9,7 @@ import { runDuplicates } from './python-duplicates.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
 import { execute, run } from './python-execute.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
+import { runMutation } from './python-mutation.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
@@ -27,9 +28,21 @@ const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
 const NO_TESTS_EXIT = 5;
 const PYTEST_VERSION_PROBE = ['python', '-c', 'import pytest; print(pytest.__version__)'];
+const MUTMUT_VERSION_PROBE = [
+  'python',
+  '-c',
+  'import importlib.metadata; print(importlib.metadata.version("mutmut"))',
+];
 const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 
-export function createToolContext({ projectRoot, liveRoot, settings = {}, reportRoot }) {
+export function createToolContext({
+  projectRoot,
+  liveRoot,
+  settings = {},
+  reportRoot,
+  snapshot = 'head',
+  baselineRoot,
+}) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
@@ -38,6 +51,8 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
   return {
     projectRoot,
     reportRoot,
+    snapshot,
+    baselineRoot,
     launcher,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
@@ -52,6 +67,24 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
       ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
     },
   };
+}
+
+function attempt(context, step) {
+  try {
+    step(context);
+    return [];
+  } catch (error) {
+    return [
+      {
+        rule: error.rule ?? 'python-failed',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    ];
+  }
+}
+
+function mutation(context) {
+  runMutation(context, run);
 }
 
 export function runPythonTools(context) {
@@ -71,19 +104,10 @@ export function runPythonTools(context) {
       runImportLinter(stepContext, run);
     },
   ];
-  const failures = steps.flatMap((step) => {
-    try {
-      step(context);
-      return [];
-    } catch (error) {
-      return [
-        {
-          rule: error.rule ?? 'python-failed',
-          message: error instanceof Error ? error.message : String(error),
-        },
-      ];
-    }
-  });
+  const failures = steps.flatMap((step) => attempt(context, step));
+  if (!failures.some(({ rule }) => rule === TESTS_FAILED_RULE)) {
+    failures.push(...attempt(context, mutation));
+  }
   writeFileSync(
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
@@ -227,5 +251,6 @@ export function toolVersions(context) {
     testRunnerVersion(context),
     `jscpd@${jscpdVersion()}`,
     ...importLinterVersion(context),
+    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
   ].join(';');
 }

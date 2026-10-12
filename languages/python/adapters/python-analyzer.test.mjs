@@ -39,9 +39,10 @@ describe('Python analyzer', () => {
       'duplicates',
       'coupling',
       'import-linter',
+      'mutmut',
     ]);
     expect(analyzer.exclusions).toEqual([]);
-    expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
+    expect(analyzer.timeoutMs).toBe(90 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
 
@@ -107,13 +108,13 @@ describe('Python analyzer', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(createPythonAnalyzer().resolveVersion(live)).toBe(
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
     expect(createPythonAnalyzer({ formatter: 'black' }).resolveVersion(live)).toBe(
-      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
     expect(createPythonAnalyzer({ typeChecker: 'pyright' }).resolveVersion(live)).toBe(
-      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd};mutmut@3.8.0`,
     );
   });
 

@@ -95,6 +95,7 @@ export const GREW_MESSAGES = {
 
 const BOTH = { typescript: true, java: true, python: false, kotlin: false };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+const WITH_PYTHON = { ...BOTH, python: true };
 const ALL = { typescript: true, java: true, python: true, kotlin: true };
 
 /**
@@ -148,13 +149,13 @@ export const RULES = [
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: BOTH,
+    enforcedBy: WITH_PYTHON,
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: BOTH,
+    enforcedBy: WITH_PYTHON,
   },
   {
     id: RULE_IDS.duplicateClone,

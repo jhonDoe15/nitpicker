@@ -7,6 +7,7 @@ import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
+import { ingestMutmut } from '../ingest/mutmut.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
@@ -14,6 +15,7 @@ import { RULES_REPORT } from './python-ast-rules.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
 import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
+import { MUTATION_REPORT } from './python-mutation-data.mjs';
 import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
@@ -55,8 +57,16 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...mutationFindings(reportRoot),
     ]),
   };
+}
+
+function mutationFindings(reportRoot) {
+  if (!existsSync(path.join(reportRoot, MUTATION_REPORT))) {
+    return [];
+  }
+  return ingestMutmut(JSON.parse(readReport(reportRoot, MUTATION_REPORT))).findings;
 }
 
 export function ruffFindings(log, { roots, projectRoot }) {

@@ -198,7 +198,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
     expect(result.json('summary.json').tools[0].version).toBe(
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};mutmut@3.8.0`,
     );
   });
 
@@ -255,7 +255,7 @@ describe('nitpicker with "preset": "python"', () => {
       }),
     ]);
     expect(result.json('summary.json').tools[0].version).toBe(
-      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};mutmut@3.8.0`,
     );
   });
 
@@ -441,6 +441,117 @@ describe('nitpicker with "preset": "python"', () => {
     ]);
   });
 
+  describe('mutation testing', () => {
+    const MUTATED_VALUE =
+      'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n\n\ndef x_value__mutmut_2():\n    return 3\n';
+    const mutants = (exitCodes) =>
+      JSON.stringify({
+        'src/demo/a.py': {
+          exitCodes: Object.fromEntries(
+            exitCodes.map((code, index) => [`demo.a.x_value__mutmut_${String(index + 1)}`, code]),
+          ),
+          mutated: MUTATED_VALUE,
+        },
+      });
+
+    it('fails a new surviving mutant and reports it with the function and the change', () => {
+      const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
+      write(root, { 'mutants-data.json': mutants([1, 0]) });
+      commit(root, 'a mutant survives');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({
+          tool: 'mutmut',
+          rule: 'mutant-survived',
+          path: 'src/demo/a.py',
+          symbol: 'value',
+          classification: 'enforceable',
+          identity: 'value|1→3#1',
+          location: { line: 5 },
+        }),
+      ]);
+    });
+
+    it('fails a new mutant that no test reaches', () => {
+      const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
+      write(root, { 'mutants-data.json': mutants([1, 33]) });
+      commit(root, 'a mutant is not covered');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({ rule: 'mutant-nocoverage', classification: 'enforceable' }),
+      ]);
+    });
+
+    it('does not fail the survivor the base already had, even when its line moves', () => {
+      const root = pythonRepository({ 'mutants-data.json': mutants([0]) });
+      write(root, { 'src/demo/a.py': 'import os\n\n\n\ndef value():\n    return 1\n' });
+      commit(root, 'move the function');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('new-findings.json')).toEqual([]);
+    });
+
+    it('lists the mutants that are neither killed, survived nor uncovered without failing', () => {
+      const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
+      write(root, { 'mutants-data.json': mutants([36]) });
+      commit(root, 'a mutant times out');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('new-findings.json')).toEqual([
+        expect.objectContaining({ rule: 'mutant-timeout', classification: 'descriptive' }),
+      ]);
+    });
+
+    it.each([
+      ['only mutated sources changed', { 'src/demo/a.py': 'def value():\n    return 3\n' }, true],
+      ['a test changed too', { 'tests/test_a.py': 'x = 2\n', 'src/demo/a.py': 'x = 1\n' }, false],
+    ])('reuses the base results on head when %s: %s', (_, changes, reused) => {
+      const calls = callsLog();
+      const root = pythonRepository({
+        'mutants-data.json': mutants([0]),
+        'tests/test_a.py': 'x = 1\n',
+      });
+      write(root, changes);
+      commit(root, 'change');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      const seeded = calls()
+        .filter(({ tool }) => tool === 'mutmut-seeded')
+        .map(({ seeded: files }) => files);
+      expect(seeded).toEqual([[], reused ? ['src/demo/a.py.meta'] : []]);
+    });
+
+    it('reports a failing mutmut run as a tool error on head', () => {
+      const root = pythonRepository();
+      write(root, { 'mutmut-exit.txt': '2\n' });
+      commit(root, 'break mutmut');
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.json('tool-errors.json')).toEqual([
+        expect.objectContaining({
+          tool: 'python',
+          snapshot: 'head',
+          rule: 'mutation-failed',
+          message: expect.stringContaining('Failed to run clean test'),
+        }),
+      ]);
+    });
+  });
+
   it('reports a failing test run on head as a tool error with exit 2 instead of throwing', () => {
     const root = pythonRepository();
     write(root, { 'test-exit.txt': '1\n' });
@@ -570,7 +681,9 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.exitCode, result.text).toBe(0);
     const testRun = calls().find(({ tool, args }) => tool === 'coverage' && args[0] === 'run');
     expect(testRun.args.slice(-5)).toEqual(['-m', 'unittest', 'discover', '-s', 'tests']);
-    expect(result.json('summary.json').tools[0].version).toMatch(/;unittest;jscpd@/);
+    expect(result.json('summary.json').tools[0].version).toMatch(
+      /;unittest;jscpd@[\d.]+;mutmut@3\.8\.0$/,
+    );
   });
 
   describe('function structure and CRAP', () => {

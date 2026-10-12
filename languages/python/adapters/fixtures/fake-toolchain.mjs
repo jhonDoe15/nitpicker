@@ -12,6 +12,7 @@ const TOOLS = [
   'python3',
   'lizard',
   'lint-imports',
+  'mutmut',
 ];
 
 function install(binDirectory, name, script) {
