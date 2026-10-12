@@ -75,6 +75,11 @@ const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
 const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
+const STRUCTURE_HINTS = {
+  lines:
+    'Nested functions count: move inner functions to module level, passing what they close over as one object.',
+};
+
 const DEAD_CODE_DECLARATIONS = new Map([
   ['exports', 'Export'],
   ['types', 'Exported type'],
@@ -691,11 +696,6 @@ export function normalizeCoupling(report, analyzerName) {
 export function normalizeTestRuntime(report, analyzerName) {
   return evaluateTestRuntime(report, analyzerName);
 }
-
-const STRUCTURE_HINTS = {
-  lines:
-    'Nested functions count: move inner functions to module level, passing what they close over as one object.',
-};
 
 export function normalizeStructure(report, analyzerName) {
   return evaluateStructure(
