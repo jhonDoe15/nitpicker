@@ -366,7 +366,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({ tool: 'pyright', rule: 'reportReturnType', path: 'src/demo/a.py' }),
     ]);
-    const typeCheckerRuns = calls().filter(({ args }) => !args.includes('--version'));
+    const typeCheckerRuns = calls().filter(({ args = [] }) => !args.includes('--version'));
     expect(typeCheckerRuns.some(({ tool }) => tool === 'pyright')).toBe(true);
     expect(typeCheckerRuns.some(({ tool }) => tool === 'mypy')).toBe(false);
   });

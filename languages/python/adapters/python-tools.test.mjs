@@ -340,7 +340,7 @@ describe('running the tools', () => {
     });
 
     it('says where mutmut should be installed', () => {
-      const root = project({}, { tools: ['ruff', 'black', 'coverage', 'python'] });
+      const root = project({}, { tools: ['ruff', 'black', 'coverage', 'mypy', 'python'] });
       setEnvironment('PATH', temporaryRoot());
       const { context } = contextFor(root);
 
@@ -522,7 +522,7 @@ describe('test runner and versions', () => {
     const root = project({ '.importlinter': '[importlinter]\n' });
 
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5;mutmut@3.8.0`,
     );
     expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
       'import-linter',

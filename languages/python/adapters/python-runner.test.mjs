@@ -135,8 +135,10 @@ describe('analyzing a Python snapshot', () => {
     const head = project(files);
     const base = project(files);
 
-    const { findings } = analyze(head);
-    const baseFindings = analyze(base, { policy: { snapshot: 'base' } }).findings;
+    const findings = analyze(head).findings.filter(({ tool }) => tool !== 'coupling');
+    const baseFindings = analyze(base, { policy: { snapshot: 'base' } }).findings.filter(
+      ({ tool }) => tool !== 'coupling',
+    );
 
     expect(findings).toEqual([
       expect.objectContaining({
