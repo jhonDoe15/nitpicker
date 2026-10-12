@@ -266,16 +266,22 @@ coverage.py run on the merge base and on head, inside the project's own environm
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
-(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, or a plain one when the
-environment is missing; exit 2
+(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, `mutation-failed`, or a plain one
+when the environment is missing; exit 2
 when there are no new findings), never thrown.
 
 The environment is detected: `uv.lock` runs the tools with `uv run --no-sync`, `poetry.lock` uses
 the environment poetry reports, a `.venv/` directory is used as is, otherwise the tools come from
 the `PATH`. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage` and, for pytest projects, `pytest`; `ruff` (or `black`) may come
-from the `PATH`. The base snapshot runs against the same environment with its own sources first on
+install step) and needs `coverage`, `mutmut` and `pytest` (mutmut runs every suite with pytest, which
+also runs `unittest` tests); `ruff` (or `black`) may come from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
+
+Mutation testing runs mutmut after the tests passed: a new surviving or uncovered mutant fails
+(`mutant-survived`, `mutant-nocoverage`), there is no score gate, and mutants that survived on the
+base stay baselined. A project's own `[tool.mutmut]` is used as it is; without one nitpicker
+mutates the source roots and skips test files. mutmut needs `fork`, so on Windows run nitpicker in
+WSL. Add `mutants/` to your ignore file. See [python-preset.md](python-preset.md).
 
 Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds`, `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the

@@ -5,7 +5,7 @@ import { createToolContext, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 const UNRESOLVED_VERSION = 'unresolved';
-const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
+const ANALYZER_TIMEOUT_MS = 90 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
@@ -18,8 +18,10 @@ const SHARED_CONFIGURATION_FILES = [
   'languages/java/ingest/sarif.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
+  'shared/policy.mjs',
   'shared/rules/baseline-expansion.mjs',
   'shared/rules/finding-helpers.mjs',
+  'shared/rules/mutation.mjs',
 ];
 
 function pythonConfigurationFiles() {
@@ -52,7 +54,7 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage'],
+    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage', 'mutmut'],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {

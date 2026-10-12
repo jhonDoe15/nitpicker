@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java'];
+export const LANGUAGES = ['typescript', 'java', 'python'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -90,8 +90,9 @@ export const GREW_MESSAGES = {
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
 };
 
-const BOTH = { typescript: true, java: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false };
+const BOTH = { typescript: true, java: true, python: false };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
+const ALL_LANGUAGES = { typescript: true, java: true, python: true };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -144,13 +145,13 @@ export const RULES = [
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: BOTH,
+    enforcedBy: ALL_LANGUAGES,
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: BOTH,
+    enforcedBy: ALL_LANGUAGES,
   },
   {
     id: RULE_IDS.duplicateClone,

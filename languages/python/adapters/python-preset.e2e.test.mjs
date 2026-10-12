@@ -85,8 +85,16 @@ const summarize = (findings) =>
 const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const GREETER_HI = 'def greet(name):\n    return f"Hi, {name}!"\n';
 const GREETER_HI_TEST =
-  'from demo.greeter import greet\nfrom demo.legacy import value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n';
-const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
+  'from demo.greeter import greet\nfrom demo.legacy import clamp, value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n\n\ndef test_clamp():\n    assert clamp(3) == 3\n';
+const CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
+const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${CLAMP}`;
+const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${CLAMP}`;
+const PRICING = 'def discount(price):\n    return price - 5 if price > 100 else price\n';
+const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused():\n    return 3\n`;
+const PRICING_TEST =
+  'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n';
+const PRICING_FULL_TEST =
+  'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n    assert discount(101) == 96\n    assert discount(100) == 100\n';
 
 const roots = [];
 
@@ -115,6 +123,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       '-e',
       '.',
       'coverage',
+      'mutmut',
       'pytest',
     ]);
     commitBranch(project, 'clean', {
@@ -123,6 +132,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
     commitBranch(project, 'moved', { 'src/demo/legacy.py': LEGACY_MOVED });
     commitBranch(project, 'violation', { 'src/demo/bad.py': VIOLATION });
+    commitBranch(project, 'weaker-source', { 'src/demo/legacy.py': LEGACY_WEAKER });
+    commitBranch(project, 'survivors', {
+      'src/demo/pricing.py': PRICING_WITH_UNUSED,
+      'tests/test_pricing.py': PRICING_TEST,
+    });
+    commitBranch(project, 'killed', {
+      'src/demo/pricing.py': PRICING,
+      'tests/test_pricing.py': PRICING_FULL_TEST,
+    });
     commitBranch(project, 'failing-tests', {
       'tests/test_greeter.py': GREETER_HI_TEST,
     });
@@ -143,7 +161,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;mutmut@[\d.]+$/,
     );
     expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
   });
@@ -167,16 +185,55 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           .json('new-findings.json')
           .filter(({ classification }) => classification === 'enforceable'),
       ),
-    ).toEqual(['ruff F401 bad.py', 'ruff-format format bad.py']);
+    ).toEqual(['mutmut mutant-nocoverage bad.py', 'ruff F401 bad.py', 'ruff-format format bad.py']);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coverage/line-coverage',
       'coverage/uncovered-function',
+      'mutmut/mutant-nocoverage',
       'ruff/F401',
       'ruff-format/format',
     ]);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
     expect(result.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+  });
+
+  it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
+    const result = gate(project, 'survivors');
+
+    expect(result.exitCode, result.text).toBe(1);
+    const mutants = result.json('new-findings.json').filter(({ tool }) => tool === 'mutmut');
+    expect(mutants.map(({ rule }) => rule)).toContain('mutant-nocoverage');
+    expect(mutants.map(({ rule }) => rule)).toContain('mutant-survived');
+    expect(new Set(mutants.map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
+    expect(mutants.find(({ rule }) => rule === 'mutant-survived')).toEqual(
+      expect.objectContaining({
+        classification: 'enforceable',
+        symbol: 'discount',
+        location: expect.objectContaining({ line: expect.any(Number) }),
+      }),
+    );
+  });
+
+  it('passes new code whose mutants are all killed', () => {
+    const result = gate(project, 'killed');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('new-findings.json').filter(({ tool }) => tool === 'mutmut')).toEqual([]);
+  });
+
+  it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
+    const result = gate(project, 'weaker-source');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
+    ).toEqual(['mutmut mutant-survived value']);
   });
 
   it('reports line coverage as a descriptive finding', () => {
@@ -232,8 +289,8 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     beforeAll(() => {
       plain = repository();
       write(plain, {
-        'nitpicker.config.json': '{ "preset": "python" }\n',
-        '.gitignore': '.venv/\n__pycache__/\n',
+        'nitpicker.config.json': '{ "preset": "python", "python": { "testRunner": "unittest" } }\n',
+        '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
         'pyproject.toml': '[tool.black]\nline-length = 88\n',
         'pkg/__init__.py': '',
         'pkg/shape.py': 'def area(side):\n    return side * side\n',
@@ -244,7 +301,16 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       git(plain, 'add', '-A');
       git(plain, 'commit', '-q', '-m', 'base');
       command(plain, 'uv', ['venv', '-q', '.venv']);
-      command(plain, 'uv', ['pip', 'install', '-q', '--python', '.venv', 'coverage']);
+      command(plain, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'mutmut',
+        'pytest',
+      ]);
       commitBranch(plain, 'clean', {
         'pkg/shape.py': 'def area(side):\n    return side**2\n',
       });
@@ -256,7 +322,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('summary.json').tools[0].version).toMatch(
-        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest$/,
+        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest;mutmut@[\d.]+$/,
       );
     });
 
