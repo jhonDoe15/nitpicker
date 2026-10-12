@@ -1,6 +1,7 @@
 import {
   configError,
   isPlainObject,
+  validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../shared/config.mjs';
@@ -8,7 +9,15 @@ import {
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
 const TEST_RUNNERS = ['pytest', 'unittest'];
-const SETTING_KEYS = ['environment', 'formatter', 'testRunner', 'sourceRoots'];
+const TYPE_CHECKERS = ['mypy', 'pyright'];
+const SETTING_KEYS = [
+  'environment',
+  'formatter',
+  'testRunner',
+  'typeChecker',
+  'sourceRoots',
+  'exceptions',
+];
 
 export function validatePythonConfig(config, typescriptOnlyKeys) {
   if (config.preset !== 'python') {
@@ -41,11 +50,15 @@ function validateSettings(settings) {
   }
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
   validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
+  validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateProjectRelativePath(settings.environment, 'python.environment');
   }
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);
+  }
+  if (settings.exceptions !== undefined) {
+    validateExceptions(settings.exceptions, 'python.exceptions');
   }
 }
 

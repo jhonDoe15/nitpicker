@@ -9,9 +9,15 @@
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
 //   no-pytest.txt        `python -c "import pytest"` fails
-// When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
-// PYTHONPATH.
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+//   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
+//                        .py file below the project, except .venv)
+//   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
+//   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
+//                        absolute (exit 1 when it has diagnostics)
+//   rules.json           written by the nitpicker rules script (default: no findings)
+// When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
+// PYTHONPATH and MYPYPATH.
+import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 const [tool, ...args] = process.argv.slice(2);
@@ -23,7 +29,13 @@ const valueOf = (flag) => args[args.indexOf(flag) + 1];
 if (process.env.FAKE_PYTHON_LOG !== undefined) {
   appendFileSync(
     process.env.FAKE_PYTHON_LOG,
-    `${JSON.stringify({ tool, args, cwd, pythonPath: process.env.PYTHONPATH ?? '' })}\n`,
+    `${JSON.stringify({
+      tool,
+      args,
+      cwd,
+      pythonPath: process.env.PYTHONPATH ?? '',
+      mypyPath: process.env.MYPYPATH ?? '',
+    })}\n`,
   );
 }
 
@@ -58,9 +70,23 @@ const sarif = () => ({
   ],
 });
 
+function sources() {
+  const listed = lines('sources.txt');
+  const found = readdirSync(cwd, { recursive: true }).filter(
+    (file) => file.endsWith('.py') && !file.startsWith('.venv'),
+  );
+  return (listed.length > 0 ? listed : found.sort()).map((file) => path.join(cwd, file));
+}
+
 function ruff() {
   if (args[0] === '--version') {
     process.stdout.write('ruff 0.9.9\n');
+  } else if (args.includes('--show-files')) {
+    process.stdout.write(
+      sources()
+        .map((file) => `${file}\n`)
+        .join(''),
+    );
   } else if (args[0] === 'check') {
     writeFileSync(valueOf('--output-file'), JSON.stringify(sarif()));
     process.exit(lines('violations.txt').length > 0 ? 1 : 0);
@@ -96,12 +122,43 @@ function coverage() {
   }
 }
 
+function mypy() {
+  if (args[0] === '--version') {
+    process.stdout.write('mypy 1.13.0 (compiled: yes)\n');
+    return;
+  }
+  const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
+  process.stdout.write(report);
+  process.exit(report === '' ? 0 : 1);
+}
+
+function pyright() {
+  if (args[0] === '--version') {
+    process.stdout.write('pyright 1.1.390\n');
+    return;
+  }
+  const { generalDiagnostics = [] } = existsSync('pyright.json')
+    ? JSON.parse(readFileSync('pyright.json', 'utf8'))
+    : {};
+  const absolute = generalDiagnostics.map((item) => ({
+    ...item,
+    file: path.resolve(cwd, item.file),
+  }));
+  process.stdout.write(JSON.stringify({ generalDiagnostics: absolute }));
+  process.exit(absolute.length === 0 ? 0 : 1);
+}
+
 function python() {
+  if (args[0] === '-I') {
+    const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
+    writeFileSync(args[3], report);
+    return;
+  }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
   process.stdout.write('8.3.1\n');
 }
 
-const tools = { ruff, black, coverage, python };
+const tools = { ruff, black, coverage, mypy, pyright, python };
 tools[tool]();

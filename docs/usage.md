@@ -167,9 +167,9 @@ is visible in review.
 | `thresholds`      | object   | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). Both presets.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `exclude`         | string[] | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java preset the built-in list does not apply and findings whose path matches a glob are dropped.                                                                                                                                                                                                                                     |
 | `layout`          | object   | TypeScript only. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
-| `exceptions`      | object[] | TypeScript, JavaScript and Kotlin. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)), `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                     |
+| `exceptions`      | object[] | TypeScript, JavaScript and Kotlin (Python: `python.exceptions`). Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)), `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                       |
 | `react`           | object   | TypeScript only. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"` by default, `"css-in-js"` or `"inline-style"`) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                   |
-| `python`          | object   | Python preset only: `environment`, `formatter`, `testRunner` and `sourceRoots` overrides for what nitpicker detects; see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `python`          | object   | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                               |
 | `analyzers`       | object[] | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `legacyInventory` | string   | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `tools`           | object   | TypeScript only. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -262,30 +262,54 @@ enforceable findings for it.
 ## Python preset
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
-format check (ruff format or black, whichever the project uses) and the test suite under
+format check (ruff format or black, whichever the project uses), a strict type check (mypy or
+pyright, whichever the project uses), a few small checks of nitpicker's own and the test suite under
 coverage.py run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
-(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, or a plain one when the
-environment is missing; exit 2
+(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, `types-failed`,
+`rules-failed`, or a plain one when the environment is missing; exit 2
 when there are no new findings), never thrown.
 
 The environment is detected: `uv.lock` runs the tools with `uv run --no-sync`, `poetry.lock` uses
 the environment poetry reports, a `.venv/` directory is used as is, otherwise the tools come from
 the `PATH`. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage` and, for pytest projects, `pytest`; `ruff` (or `black`) may come
-from the `PATH`. The base snapshot runs against the same environment with its own sources first on
+install step) and needs `coverage`, a type checker (`mypy` or `pyright`) and, for pytest projects,
+`pytest`; `ruff` (or `black`) may come from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
 Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds`, `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
-`"black"`), `testRunner` (`"pytest"` or `"unittest"`) and `sourceRoots` (default `src`, else the
-top-level packages). `layout` and `exceptions` describe TypeScript and stay a config error.
-Inline `# noqa` comments are not honored: lift a rule for a path with `exclude`. Details:
-[python-preset.md](python-preset.md).
+`"black"`), `testRunner` (`"pytest"` or `"unittest"`), `typeChecker` (`"mypy"` or `"pyright"`) and
+`sourceRoots` (default `src`, else the top-level packages). `layout` and the top-level `exceptions`
+describe TypeScript and stay a config error.
+
+The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
+`import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
+instead of string constants) and the strict type check name the allowed form in every failure
+message. Inline `# type: ignore`, `# noqa` and `# pyright: ignore` are findings themselves. Code
+that is legitimately outside a rule is lifted with `python.exceptions`, the Python counterpart of
+`exceptions` and of the same shape (`rule`, `paths`, `reason`, all required):
+
+```json
+{
+  "preset": "python",
+  "python": {
+    "exceptions": [
+      {
+        "rule": "T201",
+        "paths": ["src/cli/**"],
+        "reason": "Command line entry points print their result."
+      }
+    ]
+  }
+}
+```
+
+`rule` is the id printed in the finding. Details: [python-preset.md](python-preset.md).
 
 ## Kotlin preset
 

@@ -106,7 +106,7 @@ const FAILING_SUMMARY = [
   'Quality gate summary',
   '✖ 2 new enforceable violations',
   '  ruff/B006 src/demo/a.py:2',
-  '    Do not use mutable data structures for argument defaults',
+  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
   '    File is not formatted with ruff',
   'Full diagnostics: <path>',
@@ -162,7 +162,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
     expect(result.json('summary.json').tools[0].version).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
     );
   });
 
@@ -219,7 +219,145 @@ describe('nitpicker with "preset": "python"', () => {
       }),
     ]);
     expect(result.json('summary.json').tools[0].version).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+      'ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1',
+    );
+  });
+
+  it('fails on a type error, a one-way rule and an inline ignore, each naming the allowed form', () => {
+    const root = pythonRepository();
+    write(root, {
+      'type-errors.txt':
+        'src/demo/a.py:4: error: Incompatible return value type (got "int", expected "str")  [return-value]\n',
+      'rules.json': JSON.stringify([
+        { rule: 'frozen-dataclass', path: 'src/demo/a.py', subject: 'Order', line: 6 },
+        { rule: 'no-inline-suppression', path: 'src/demo/a.py', subject: 'noqa', line: 7 },
+      ]),
+    });
+    commit(root, 'add findings');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .map(({ tool, rule, identity, message }) => [`${tool}/${rule}`, identity, message]),
+    ).toEqual([
+      [
+        'mypy/return-value',
+        'Incompatible return value type (got "int", expected "str")',
+        'Incompatible return value type (got "int", expected "str"). Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      ],
+      [
+        'python-rules/frozen-dataclass',
+        'Order',
+        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+      ],
+      [
+        'python-rules/no-inline-suppression',
+        'noqa',
+        'Inline suppression `# noqa`. Fix the cause instead: `# type: ignore`, `# noqa` and `# pyright: ignore` are banned. If the code is legitimate, add a "python.exceptions" entry for the rule it suppressed.',
+      ],
+    ]);
+  });
+
+  it('lifts a rule for some paths with python.exceptions and lists the exception', () => {
+    const root = pythonRepository();
+    write(root, {
+      'nitpicker.config.json': JSON.stringify({
+        preset: 'python',
+        python: {
+          exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+        },
+      }),
+      'violations.txt': `${LEGACY_VIOLATION}T201|scripts/run.py|\`print\` found\n`,
+    });
+    commit(root, 'print in a script');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('new-findings.json')).toEqual([]);
+    expect(result.json('summary.json').configOverrides).toEqual([
+      'preset: "python"',
+      'exception: {"rule":"T201","paths":["scripts/**"],"reason":"command line scripts"}',
+    ]);
+  });
+
+  it('keeps a rule that an exception for other paths does not lift', () => {
+    const root = pythonRepository();
+    write(root, {
+      'nitpicker.config.json': JSON.stringify({
+        preset: 'python',
+        python: { exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }] },
+      }),
+      'violations.txt': `${LEGACY_VIOLATION}T201|src/demo/a.py|\`print\` found\n`,
+    });
+    commit(root, 'print in the library');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
+      [
+        'T201',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      ],
+    ]);
+  });
+
+  it('uses the type checker the project configures, pyright here', () => {
+    const calls = callsLog();
+    const root = pythonRepository({ 'pyrightconfig.json': '{}\n' });
+    write(root, {
+      'pyright.json': JSON.stringify({
+        generalDiagnostics: [
+          {
+            file: 'src/demo/a.py',
+            severity: 'error',
+            message: 'Bad\n  detail',
+            range: { start: { line: 3, character: 4 } },
+            rule: 'reportReturnType',
+          },
+        ],
+      }),
+    });
+    commit(root, 'a type error');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      expect.objectContaining({ tool: 'pyright', rule: 'reportReturnType', path: 'src/demo/a.py' }),
+    ]);
+    const typeCheckerRuns = calls().filter(({ args }) => !args.includes('--version'));
+    expect(typeCheckerRuns.some(({ tool }) => tool === 'pyright')).toBe(true);
+    expect(typeCheckerRuns.some(({ tool }) => tool === 'mypy')).toBe(false);
+  });
+
+  it('reports a project without a type checker as a tool error', () => {
+    const root = pythonRepository();
+    rmSync(path.join(root, '.venv/bin/mypy'));
+    rmSync(path.join(root, '.venv/bin/pyright'));
+    const broken = temporaryRoot('nitpicker-python-broken-checkers-');
+    for (const name of ['mypy', 'pyright']) {
+      writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    }
+    setEnvironment('PATH', `${broken}${path.delimiter}${process.env.PATH}`);
+    write(root, { 'src/demo/b.py': 'x = 1\n' });
+    commit(root, 'change');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          tool: 'python',
+          rule: 'types-failed',
+          message: expect.stringContaining('No type checker found'),
+        }),
+      ]),
     );
   });
 
@@ -296,9 +434,13 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode).toBe(2);
     const errors = result.json('tool-errors.json');
-    expect(errors.map(({ rule }) => rule).sort()).toEqual(['format-failed', 'ruff-failed']);
+    expect(errors.map(({ rule }) => rule).sort()).toEqual([
+      'format-failed',
+      'ruff-failed',
+      'rules-failed',
+    ]);
     expect(errors).toEqual(
-      Array(2).fill(
+      Array(3).fill(
         expect.objectContaining({
           tool: 'python',
           snapshot: 'base',
