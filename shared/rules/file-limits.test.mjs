@@ -118,6 +118,27 @@ describe('line length', () => {
     ]);
   });
 
+  it('stays fast on an unterminated quote followed by backslashes', () => {
+    const text = `const r = '${'\\'.repeat(40)} ${'x'.repeat(130)}\n`;
+    const started = performance.now();
+    expect(evaluate([source('src/a.ts', text)]).map(({ rule }) => rule)).toEqual([
+      'line-length-limit',
+    ]);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it('exempts only whole import and re-export statements', () => {
+    const code = `compute(${'b, '.repeat(40)}c)`;
+    const text = [
+      `import x from 'y'; ${code};`,
+      `export const z = ${code}; // a from 'y'`,
+      '',
+    ].join('\n');
+    expect(evaluate([source('src/a.ts', text)]).map(({ location }) => location.line)).toEqual([
+      1, 2,
+    ]);
+  });
+
   it('counts indentation', () => {
     expect(
       evaluate([source('src/a.ts', `${' '.repeat(20)}${'a'.repeat(110)};\n`)]).map(
@@ -141,7 +162,9 @@ describe('line length', () => {
 
 describe('files per folder', () => {
   const files = (folder, count, make = source) =>
-    Array.from({ length: count }, (_, index) => make(`${folder}/f${String(index)}.ts`));
+    Array.from({ length: count }, (_, index) =>
+      make(`${folder}/f${String(index)}${make === test ? '.test' : ''}.ts`),
+    );
 
   it('fails a folder with more than 6 source files directly in it, counting tests apart', () => {
     const findings = evaluate([
@@ -206,6 +229,13 @@ describe('files per folder', () => {
 });
 
 describe('checks and file reading', () => {
+  it('counts a file listed twice once', () => {
+    const repeated = [source('src/a.ts', lines(301)), source('src/a.ts', lines(301))];
+    expect(summary(evaluate(repeated))).toEqual([
+      { rule: 'file-lines-limit', path: 'src/a.ts', identity: 'file-lines:301' },
+    ]);
+  });
+
   it('runs only the checks a language leaves to nitpicker', () => {
     const findings = evaluate([source('src/a.ts', `${'a '.repeat(80)}\n`)], {
       checks: ['fileLines', 'folderFiles'],
@@ -269,6 +299,17 @@ describe('comparison against the base', () => {
     expect(newMessages(compare(folder(12), folder(13)))).toEqual([
       'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If this is intended, add {"rule":"folder-files-limit","paths":["src/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
+  });
+
+  it('holds an edited long line against the closest long line it could have replaced', () => {
+    const short = `run(${'a'.repeat(130)});`;
+    const long = `run(${'b'.repeat(200)});`;
+    const result = compare(
+      [source('src/a.ts', `${short}\n${long}\n`)],
+      [source('src/a.ts', `run(${'c'.repeat(190)});\n`)],
+    );
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ heldAtBase }) => heldAtBase)).toEqual([long.length]);
   });
 
   it('fails a new long line and a legacy one an edit makes longer, and holds the rest', () => {

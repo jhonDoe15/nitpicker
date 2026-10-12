@@ -68,7 +68,10 @@ function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directorie
   const result = { newFindings: [], heldFindings: [], matchedBase: new Set() };
   for (const headFinding of newFindings) {
     const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
-    const baseFinding = candidates?.[0];
+    const baseFinding =
+      candidates === undefined
+        ? undefined
+        : closestCandidate(candidates, headFinding.ratchet.value);
     if (baseFinding === undefined) {
       result.newFindings.push(headFinding);
       continue;
@@ -77,11 +80,19 @@ function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directorie
       result.newFindings.push(grewFinding(headFinding, baseFinding.ratchet.value));
       continue;
     }
-    candidates.shift();
+    candidates.splice(candidates.indexOf(baseFinding), 1);
     result.matchedBase.add(baseFinding);
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }
   return result;
+}
+
+function closestCandidate(candidates, value) {
+  const holding = candidates.filter((candidate) => candidate.ratchet.value >= value);
+  const pool = holding.length > 0 ? holding : candidates;
+  const pick = holding.length > 0 ? Math.min : Math.max;
+  const target = pick(...pool.map((candidate) => candidate.ratchet.value));
+  return pool.find((candidate) => candidate.ratchet.value === target);
 }
 
 function withGrowthAdvice({ findings, baseFindings, renames, directories }) {

@@ -28,8 +28,8 @@ export const FILE_LIMIT_CHECKS = ['fileLines', 'lineLength', 'folderFiles'];
 
 const TEST_DATA_FOLDER = /(?:^|\/)(?:__)?fixtures(?:__)?\//u;
 const IMPORT_LINES = [
-  /^import\s/u,
-  /^export\s.*\bfrom\s+['"]/u,
+  /^import\s[^;]*;?$/u,
+  /^export\s+(?:type\s+)?(?:\*|\{[^}]*\})(?:\s+as\s+[\w$]+)?\s+from\s+['"][^'"]*['"];?$/u,
   /^\}\s*from\s+['"]/u,
   /^package\s+[\w.]+;?$/u,
   /^from\s+\S+\s+import\s/u,
@@ -38,7 +38,7 @@ const IMPORT_LINES = [
 const URL = /\b[a-z][\w+.-]*:\/\/\S+/giu;
 const TEMPLATE_LITERAL = /`(?:\\.|[^`\\])*`/gu;
 const INTERPOLATION = /\$\{[^}]*\}/gu;
-const QUOTED_STRING = /(['"])(?:\\.|(?!\1).)*\1/gu;
+const QUOTED_STRING = /(['"])(?:\\.|(?!\1)[^\\])*\1/gu;
 
 /** Reads each `{ path, kind }` entry under `projectRoot` and evaluates the file limits. */
 export function collectFileLimitFindings(projectRoot, entries, options) {
@@ -61,7 +61,9 @@ export function evaluateFileLimits(files, options) {
     limits: { ...FILE_LIMIT_DEFAULTS, ...options.thresholds },
     isExcepted: exceptionMatcher(options.exceptions ?? []),
   };
-  const checked = files.filter((file) => file.kind !== 'test' || !TEST_DATA_FOLDER.test(file.path));
+  const checked = [...new Map(files.map((file) => [file.path, file])).values()].filter(
+    (file) => file.kind !== 'test' || !TEST_DATA_FOLDER.test(file.path),
+  );
   const checks = options.checks ?? FILE_LIMIT_CHECKS;
   return [
     ...(checks.includes('fileLines')
