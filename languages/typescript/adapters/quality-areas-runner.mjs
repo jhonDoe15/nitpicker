@@ -91,10 +91,7 @@ export async function runQualityArea(options) {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) return [];
-    if (
-      ['coupling', 'crap', 'mutation'].includes(options.kind) &&
-      !files.some(layout.isSourceFile)
-    )
+    if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
       return [];
     if (
       ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
