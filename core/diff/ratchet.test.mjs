@@ -323,6 +323,88 @@ describe('count ratchet on findings inside an edited function', () => {
   });
 });
 
+describe('growth advice on a finding that is new in a function with findings at base', () => {
+  const ADVICE = 'The base had {base}; keep to it.';
+
+  function throwFinding(identity, line, count, ratchet = {}) {
+    return {
+      tool: 'eslint',
+      rule: 'nitpicker/no-throw',
+      path: 'src/f.ts',
+      identity,
+      message: 'Do not throw.',
+      classification: 'enforceable',
+      symbol: 'f',
+      location: { line },
+      ratchet: {
+        key: 'count:noThrow',
+        value: count,
+        existingCodeOnly: true,
+        growthAdvice: ADVICE,
+        ...ratchet,
+      },
+    };
+  }
+
+  const inserted = (lines) => ({
+    changedLines: new Map([['src/f.ts', { added: false, ranges: lines, inserted: lines }]]),
+    isStrictRule: () => true,
+    mustMeetOnEditedLines: () => false,
+  });
+
+  it('appends the advice with the base count to a throw added on a new line', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 2), throwFinding('second', 9, 2)],
+      headFindings: [
+        throwFinding('first', 4, 3),
+        throwFinding('second', 9, 3),
+        throwFinding('added', 12, 3),
+      ],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'Do not throw. The base had 2; keep to it.',
+    ]);
+  });
+
+  it('appends the advice to an edited throw the function now has more of', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 1)],
+      headFindings: [throwFinding('first-edited', 4, 2), throwFinding('second', 6, 2)],
+      touchedCode: {
+        ...inserted([]),
+        changedLines: new Map([['src/f.ts', { added: false, ranges: [[4, 6]], inserted: [] }]]),
+      },
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      'Do not throw. The base had 1; keep to it.',
+      'Do not throw. The base had 1; keep to it.',
+    ]);
+  });
+
+  it('leaves the message alone when the base function had none of them', () => {
+    const result = compareFindings({
+      baseFindings: [],
+      headFindings: [throwFinding('added', 12, 1)],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual(['Do not throw.']);
+  });
+
+  it('leaves the message alone when the finding carries no advice', () => {
+    const result = compareFindings({
+      baseFindings: [throwFinding('first', 4, 1, { growthAdvice: undefined })],
+      headFindings: [throwFinding('added', 12, 1, { growthAdvice: undefined })],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual(['Do not throw.']);
+  });
+});
+
 describe('strict rules on an edited line of a legacy function', () => {
   function pushFinding(identity, line, count, rule = 'no-restricted-syntax') {
     return {
