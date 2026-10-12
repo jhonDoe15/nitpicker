@@ -613,19 +613,27 @@ function writeStrykerConfig({ options, sourceConfig, configPath, createdFiles })
   );
 }
 
-export function mutationSkipFor(errorMessage) {
+const SKIP_MESSAGES = {
+  head: {
+    typecheck:
+      'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+    tests: 'mutation skipped: tests fail (see coverage findings)',
+  },
+  base: {
+    typecheck:
+      'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+    tests:
+      'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+  },
+};
+
+export function mutationSkipFor(errorMessage, snapshot = 'head') {
+  const messages = SKIP_MESSAGES[snapshot];
   if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
-    return {
-      rule: TYPECHECK_FAILED_SKIPPED_RULE,
-      message:
-        'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
-    };
+    return { rule: TYPECHECK_FAILED_SKIPPED_RULE, message: messages.typecheck };
   }
   return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
-    ? {
-        rule: TESTS_FAILED_SKIPPED_RULE,
-        message: 'mutation skipped: tests fail (see coverage findings)',
-      }
+    ? { rule: TESTS_FAILED_SKIPPED_RULE, message: messages.tests }
     : undefined;
 }
 
@@ -639,7 +647,8 @@ function runStrykerOrExplainSkip(options, configPath) {
     });
     return undefined;
   } catch (error) {
-    const skip = error instanceof Error ? mutationSkipFor(error.message) : undefined;
+    const skip =
+      error instanceof Error ? mutationSkipFor(error.message, options.snapshot) : undefined;
     if (skip === undefined) {
       throw error;
     }

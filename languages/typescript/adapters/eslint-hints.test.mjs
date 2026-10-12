@@ -183,6 +183,18 @@ describe('eslintMessageWithHint', () => {
     );
   });
 
+  it('tells a void type argument to use undefined', () => {
+    expect(
+      eslintMessageWithHint({
+        ruleId: '@typescript-eslint/no-invalid-void-type',
+        text: 'void is only valid as a return type or generic type argument.',
+        relativePath: 'test/support/fake-upload-deps.ts',
+      }),
+    ).toBe(
+      'void is only valid as a return type or generic type argument. Use `undefined` instead of `void` here: `Promise.withResolvers<undefined>()` and `resolve(undefined)`.',
+    );
+  });
+
   describe('@typescript-eslint/switch-exhaustiveness-check', () => {
     const ruleId = '@typescript-eslint/switch-exhaustiveness-check';
 
@@ -207,7 +219,7 @@ describe('eslintMessageWithHint', () => {
 
   it('offers growth advice for nitpicker/no-throw only', () => {
     expect(growthAdviceFor('nitpicker/no-throw')).toBe(
-      'This function had {base} of these at base and the count may not grow: route the new failure through an existing throw statement, or return a union from a new helper function.',
+      'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
     );
     expect(growthAdviceFor('no-debugger')).toBeUndefined();
   });

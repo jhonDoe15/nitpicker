@@ -33,7 +33,7 @@ New enforceable findings: 2
 ## Getting started
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 npx nitpicker
 ```
 

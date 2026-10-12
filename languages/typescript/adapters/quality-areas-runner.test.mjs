@@ -183,6 +183,17 @@ describe('mutation testing that cannot start', () => {
     });
   });
 
+  it('names the base commit when the base snapshot cannot start mutation', () => {
+    const strykerMessage =
+      "Error: Typescript error(s) found in dry run compilation: error TS2688: Cannot find type definition file for 'node'.";
+
+    expect(mutationSkipFor(strykerMessage, 'base')).toEqual({
+      rule: 'typecheck-failed-skipped',
+      message:
+        'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+    });
+  });
+
   it('leaves any other Stryker failure to be reported as it is', () => {
     expect(mutationSkipFor('Error: Stryker crashed')).toBeUndefined();
   });
