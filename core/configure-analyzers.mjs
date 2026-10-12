@@ -33,6 +33,7 @@ function applyJavaConfig(analyzers, config) {
           thresholds: config.thresholds,
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
+          exceptions: config.exceptions,
         })
       : analyzer,
   );

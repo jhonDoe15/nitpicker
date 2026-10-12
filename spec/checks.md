@@ -90,23 +90,26 @@ over limit" and does not fail.
 
 <!-- generated:custom-rules begin (npm run gen:checks) -->
 
-| Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         |
-| --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
-| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     |
-| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     |
-| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     |
-| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     |
-| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     |
-| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     |
-| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     |
-| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     |
-| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     |
-| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     |
-| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     |
-| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
-| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
-| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     |
-| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced |
+| Rule                              | Check              | Default limit                                                                                                                                               | TypeScript | Java         |
+| --------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
+| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                                                                          | enforced   | enforced     |
+| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                                                                     | enforced   | enforced     |
+| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                                                               | enforced   | enforced     |
+| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                                                                      | enforced   | enforced     |
+| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit`                                              | enforced   | enforced     |
+| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                                                                            | enforced   | enforced     |
+| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                                                                    | enforced   | enforced     |
+| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                                                               | enforced   | enforced     |
+| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                                                               | enforced   | enforced     |
+| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                                                                   | enforced   | enforced     |
+| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                                                                | enforced   | enforced     |
+| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                                                                | enforced   | not enforced |
+| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                                                                | enforced   | not enforced |
+| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                                                                   | enforced   | enforced     |
+| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                                                                           | enforced   | not enforced |
+| `file-lines-limit`                | `structure`        | more than 300 lines in a source file or 500 in a test file; override with `thresholds.fileLines` and `thresholds.testFileLines`                             | enforced   | enforced     |
+| `line-length-limit`               | `structure`        | a line longer than 120 characters, except imports, URLs and string literal text; override with `thresholds.lineLength` (Java: Checkstyle's own line length) | enforced   | not enforced |
+| `folder-files-limit`              | `structure`        | more than 6 source files, or test files, directly in one folder; override with `thresholds.folderFiles`                                                     | enforced   | enforced     |
 
 <!-- generated:custom-rules end -->
 

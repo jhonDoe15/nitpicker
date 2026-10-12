@@ -35,6 +35,7 @@ import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
+import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
@@ -217,7 +218,7 @@ async function runStructure(options) {
     'languages/typescript/preset/structure/analyze.mjs',
   );
   const layout = readLayout();
-  return perSourceRoot(options, layout, (root) =>
+  const functionFindings = await perSourceRoot(options, layout, (root) =>
     normalizeStructure(
       withFunctionSourceHashes(
         analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout }),
@@ -226,6 +227,10 @@ async function runStructure(options) {
       options.analyzerName,
     ),
   );
+  return [
+    ...functionFindings,
+    ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+  ];
 }
 
 function runDuplicates(options) {
