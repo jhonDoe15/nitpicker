@@ -114,6 +114,17 @@ export const testFailureMessageCases = [
     allowed: 'exception for this rule in nitpicker.config.json',
   },
   testCase(
+    'loop in a test names it.each',
+    "it('x', () => { for (let index = 0; index < 3; index += 1) { run(index); } });",
+    'it.each',
+  ),
+  testCase('as in a test names narrowing', 'const name = lookup() as string;', 'Narrow the value'),
+  testCase(
+    '.then in a test names async/await',
+    "it('x', async () => { await run().then(check); });",
+    'Use async/await',
+  ),
+  testCase(
     'unpinned test tsconfig names types and lib',
     'writeFileSync(file, JSON.stringify({ compilerOptions: { strict: true } }));',
     "types: [] and lib: ['ES2022']",

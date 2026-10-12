@@ -83,9 +83,15 @@ function validate(value, node = schema, errors = [], at = '$') {
     checkObject(value, node, errors, at);
   }
   if (Array.isArray(value) && node.items !== undefined) {
-    value.forEach((item, index) => validate(item, node.items, errors, `${at}[${String(index)}]`));
+    validateItems(value, node.items, errors, at);
   }
   return errors;
+}
+
+function validateItems(items, node, errors, at) {
+  for (const [index, item] of items.entries()) {
+    validate(item, node, errors, `${at}[${String(index)}]`);
+  }
 }
 
 function checkType(value, node, errors, at) {

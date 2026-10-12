@@ -6,7 +6,7 @@ const jsonStringifyArgument =
 const nullMessage =
   'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.';
 
-export const escapeHatchSelectors = [
+export const typeAssertionSelectors = [
   {
     selector: "TSAsExpression:not([typeAnnotation.typeName.name='const'])",
     message:
@@ -17,6 +17,10 @@ export const escapeHatchSelectors = [
     message:
       'Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source.',
   },
+];
+
+export const escapeHatchSelectors = [
+  ...typeAssertionSelectors,
   {
     selector: 'TSAnyKeyword',
     message:

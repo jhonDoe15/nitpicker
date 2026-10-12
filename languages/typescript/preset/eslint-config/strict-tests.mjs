@@ -1,6 +1,8 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
+import { testControlFlowSelectors } from './strict-control-flow.mjs';
+import { typeAssertionSelectors } from './strict-escape-hatches.mjs';
 
 export const strictTestRules = {
   'nitpicker/no-git-repository-per-test': 'error',
@@ -11,6 +13,8 @@ export const strictTestRules = {
   'nitpicker/no-first-test-charged-setup': 'error',
   'nitpicker/test-tsconfig-pins-lib-and-types': 'error',
 };
+
+const testRestrictedSyntax = [...typeAssertionSelectors, ...testControlFlowSelectors];
 
 export const strictTestHelperRules = {
   'nitpicker/no-process-globals-outside-main-guard': 'error',
@@ -26,7 +30,10 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
       files: testAreaGlobsFor(layout),
       ignores: layout.excludedGlobs,
       plugins: { nitpicker: nitpickerRules },
-      rules: strictTestRules,
+      rules: {
+        ...strictTestRules,
+        'no-restricted-syntax': ['error', ...testRestrictedSyntax],
+      },
     },
     {
       files: testAreaGlobsFor(layout),
