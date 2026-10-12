@@ -66,14 +66,24 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
-  it('hands the Kotlin formatter to the runner and changes the hash', () => {
+  it('hands the Kotlin formatter and detekt config to the runner and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
-    const configured = configureJavaAnalyzer(analyzer, { kotlin: { formatter: 'ktfmt' } });
+    const configured = configureJavaAnalyzer(analyzer, {
+      kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
+    });
 
     const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
 
-    expect(parsed.policy).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktfmt' });
+    expect(parsed.policy).toMatchObject({
+      preset: 'kotlin',
+      kotlinFormatter: 'ktfmt',
+      kotlinDetektConfig: 'tools/rules.yml',
+    });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
+        .configurationHash,
+    ).not.toBe(analyzer.configurationHash);
   });
 });
 
@@ -99,18 +109,24 @@ describe('parseRunnerArguments', () => {
         '--preset',
         'kotlin',
         '--kotlin-formatter',
-        'ktlint',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
       ]).policy,
-    ).toMatchObject({ preset: 'kotlin', kotlinFormatter: 'ktlint' });
+    ).toMatchObject({
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
   });
 
   it('rejects an unknown preset or Kotlin formatter', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
-      '--preset must be java or kotlin',
+      '--preset must be one of: java, kotlin',
     );
     expect(() =>
       parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
-    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt');
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
   });
 });
 

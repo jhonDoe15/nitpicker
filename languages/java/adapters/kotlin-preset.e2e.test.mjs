@@ -86,9 +86,24 @@ public final class Danger {
 
 const BROKEN = 'package demo\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
 
-const MAGIC_NUMBER_OFF = `style:
+const MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET = `formatting:
+  active: true
+style:
   MagicNumber:
     active: false
+`;
+
+const GREETER_TEST_WITHOUT_JAVA = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class GreeterTest {
+    @Test
+    fun greetsByName() {
+        assertEquals("Hello, Ada!", Greeter().greet("Ada"))
+    }
+}
 `;
 
 const BAD_FINDINGS = [
@@ -96,12 +111,16 @@ const BAD_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Bad.kt',
 ];
 
+const BAD_KTLINT_RULES = ['ktlint.standard:no-wildcard-imports', 'ktlint.standard:op-spacing'];
+
 const LEGACY_FINDINGS = [
   'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
   'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
 ];
 
 let repository;
+let mixedRepository;
+let kotlinOnlyRepository;
 
 function git(...args) {
   return execFileSync('git', args, {
@@ -127,17 +146,35 @@ function writeAll(files) {
   }
 }
 
-function commitBranch(name, files) {
+function commitBranch(name, files, removed = []) {
   git('checkout', '-q', '-b', name, 'main');
   writeAll(files);
+  for (const relative of removed) {
+    rmSync(path.join(repository, relative));
+  }
   git('add', '-A');
   git('commit', '-q', '-m', name);
+}
+
+function initializeRepository() {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-'));
+  cpSync(path.resolve(import.meta.dirname, 'fixtures/kotlin-project'), root, { recursive: true });
+  repository = root;
+  writeAll({ '.gitignore': 'build/\n.gradle/\n.kotlin/\n' });
+  git('init', '-q', '-b', 'main');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'base with one legacy detekt finding');
+  return root;
 }
 
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
 const fromTool = (findings, tool) => summarize(findings.filter((finding) => finding.tool === tool));
+
+const ktlintOf = (findings) => findings.filter((finding) => finding.tool === 'ktlint');
+
+const ktlintRules = (findings) => [...new Set(ktlintOf(findings).map(({ rule }) => rule))].sort();
 
 const diffOf = (branch, policy = kotlinPolicy) => {
   git('checkout', '-q', branch);
@@ -146,14 +183,13 @@ const diffOf = (branch, policy = kotlinPolicy) => {
 
 describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   beforeAll(() => {
-    repository = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-'));
-    cpSync(path.resolve(import.meta.dirname, 'fixtures/kotlin-project'), repository, {
-      recursive: true,
-    });
-    writeAll({ '.gitignore': 'build/\n.gradle/\n.kotlin/\n' });
-    git('init', '-q', '-b', 'main');
+    kotlinOnlyRepository = initializeRepository();
+    rmSync(path.join(kotlinOnlyRepository, 'src/main/java'), { recursive: true });
+    writeAll({ 'src/test/kotlin/demo/GreeterTest.kt': GREETER_TEST_WITHOUT_JAVA });
     git('add', '-A');
-    git('commit', '-q', '-m', 'base with one legacy detekt finding');
+    git('commit', '-q', '-m', 'Kotlin only');
+    commitBranch('kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
+    mixedRepository = initializeRepository();
     commitBranch('clean', {
       [`${kotlinSources}/Farewell.kt`]: FAREWELL,
       'src/test/kotlin/demo/FarewellTest.kt': FAREWELL_TEST,
@@ -163,8 +199,9 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     commitBranch('java-in-kotlin-module', { 'src/main/java/demo/Danger.java': DANGER });
     commitBranch('detekt-config', {
       [`${kotlinSources}/Bad.kt`]: BAD,
-      'config/detekt/detekt.yml': MAGIC_NUMBER_OFF,
+      'config/detekt.yml': MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
     });
+    commitBranch('no-formatter', { [`${kotlinSources}/Bad.kt`]: BAD }, ['.editorconfig']);
     commitBranch('ktfmt', { [`${kotlinSources}/Bad.kt`]: BAD, [`${kotlinSources}/Meta.kt`]: META });
     commitBranch('ktfmt-named', {
       'build.gradle.kts': `${readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
@@ -173,7 +210,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   });
 
   afterAll(() => {
-    rmSync(repository, { recursive: true, force: true });
+    rmSync(mixedRepository, { recursive: true, force: true });
+    rmSync(kotlinOnlyRepository, { recursive: true, force: true });
   });
 
   it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
@@ -185,14 +223,24 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
   });
 
-  it('fails new detekt findings and an unformatted file (ktlint is the default) in Kotlin code', () => {
+  it('fails new detekt and ktlint findings (ktlint detected from .editorconfig) in Kotlin code', () => {
     const result = diffOf('violation');
 
     expect(result.failed).toBe(true);
-    expect(summarize(result.newEnforceable)).toEqual(
-      [...BAD_FINDINGS, 'ktlint format Bad.kt'].sort(),
-    );
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
+    expect(fromTool(result.unchangedFindings, 'ktlint')).toEqual([]);
+    expect(Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location.line))).toBe(
+      3,
+    );
+  });
+
+  it('does not lint generated sources registered from the build directory', () => {
+    const result = diffOf('clean');
+
+    expect(result.unchangedFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
+    expect(result.newFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
   });
 
   it('still gates Java sources of a Kotlin module with the Java tools', () => {
@@ -210,10 +258,17 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   it("runs detekt with the project's config laid over the defaults", () => {
     const result = diffOf('detekt-config');
 
-    expect(summarize(result.newEnforceable)).toEqual([
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',
-      'ktlint format Bad.kt',
     ]);
+    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
+  });
+
+  it('runs no format check for a project that names no formatter', () => {
+    const result = diffOf('no-formatter');
+
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(result.newFindings.filter(({ tool }) => ['ktlint', 'ktfmt'].includes(tool))).toEqual([]);
   });
 
   it('checks formatting with ktfmt when configured, accepting code in its style', () => {
@@ -252,5 +307,17 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
         message: expect.stringContaining('Broken.kt'),
       }),
     ]);
+  });
+
+  it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {
+    repository = kotlinOnlyRepository;
+    const result = diffOf('kotlin-only-violation');
+
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
+    expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
+    expect(result.newEnforceable.filter(({ tool }) => ['pmd', 'spotbugs'].includes(tool))).toEqual(
+      [],
+    );
   });
 });

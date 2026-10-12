@@ -17,9 +17,14 @@
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
-//   build/nitpicker/detekt.sarif       detekt, SARIF 2.1.0
-//   build/nitpicker/kotlin-format.txt  ktlint or ktfmt: one Kotlin file needing a reformat per line
-// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. PMD, SpotBugs, PIT and jdeps
+//   build/nitpicker/detekt.sarif  detekt, SARIF 2.1.0
+//   build/nitpicker/ktlint.sarif  ktlint, SARIF 2.1.0 (when the formatter is ktlint)
+//   build/nitpicker/ktfmt.txt     ktfmt: one Kotlin file needing a reformat per line (when it is ktfmt)
+// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. The Nitpicker side decides
+// the formatter, the ktfmt style and the detekt config and passes them as the properties
+// nitpicker.kotlin.formatter (ktlint, ktfmt or none), nitpicker.kotlin.ktfmtStyle (kotlinlang,
+// google or meta), nitpicker.kotlin.editorconfig (true when the project has an .editorconfig) and
+// nitpicker.kotlin.detektConfig (an absolute path). PMD, SpotBugs, PIT and jdeps
 // then only see the Java sources and classes; JaCoCo covers both languages.
 //
 // ArchUnit is not a Nitpicker-provided tool: the project's own ArchUnit tests (archunit-junit5 on
@@ -394,33 +399,20 @@ allprojects {
             plugins.withId('org.jetbrains.kotlin.jvm') {
                 def relative = { File file -> projectDir.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
                 def kotlinSourceDirs = {
-                    project.kotlin.sourceSets.getByName('main').kotlin.srcDirs.findAll { it.exists() }.sort()
+                    def generated = layout.buildDirectory.get().asFile.toPath()
+                    project.kotlin.sourceSets.getByName('main').kotlin.srcDirs.findAll {
+                        it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generated)
+                    }.sort()
                 }
                 def kotlinFiles = {
                     kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
                 }
                 def hasJavaSources = { !sourceSets.main.java.files.isEmpty() }
                 def hasJavaClasses = { analyzedClassDirs().any { it.exists() && it.list()?.length } }
-                def buildText = {
-                    (['build.gradle', 'build.gradle.kts', 'settings.gradle', 'settings.gradle.kts', 'gradle/libs.versions.toml']
-                        .collect { rootProject.file(it) } + ['build.gradle', 'build.gradle.kts'].collect { file(it) })
-                        .findAll { it.exists() }.collect { it.text }.join('\n').toLowerCase()
-                }
-                // The project's own formatter: the -Pnitpicker.kotlin.formatter override, else ktfmt when
-                // its build files name only ktfmt, else ktlint (also named by .editorconfig ktlint_ keys, and the default).
-                def kotlinFormatter = {
-                    def explicit = findProperty('nitpicker.kotlin.formatter')
-                    if (explicit) {
-                        return explicit.toString()
-                    }
-                    def editorconfig = rootProject.file('.editorconfig')
-                    def text = buildText()
-                    def usesKtlint = text.contains('ktlint') || (editorconfig.exists() && editorconfig.text.contains('ktlint_'))
-                    text.contains('ktfmt') && !usesKtlint ? 'ktfmt' : 'ktlint'
-                }
+                def kotlinFormatter = { findProperty('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
                 def writeFormatList = { List<String> files ->
                     reportDir.get().asFile.mkdirs()
-                    reportDir.get().file('kotlin-format.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
+                    reportDir.get().file('ktfmt.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
                 }
 
                 configurations {
@@ -438,9 +430,12 @@ allprojects {
                 tasks.named('nitpickerFormat') { onlyIf { hasJavaSources() } }
                 tasks.named('nitpickerSpotbugs') { onlyIf { hasJavaSources() && hasJavaClasses() } }
 
-                // detekt reports through SARIF. The project's config/detekt/detekt.yml (or detekt.yml) in
-                // the root project is laid over detekt's default config (--build-upon-default-config), so
+                // detekt reports through SARIF. The project's config (nitpicker.kotlin.detektConfig, chosen on
+                // the Nitpicker side) is laid over detekt's default config (--build-upon-default-config), so
                 // a rule it sets active: false stays off and one it omits runs with its default.
+                // languages/java/detekt/detekt-validation.yml turns config validation off: the project's file
+                // may configure rulesets of plugins that this detekt run does not load (formatting), and
+                // validation would end the run with exit code 3 on them.
                 // Exit code 2 means findings; anything else is a failure. Rules that need type
                 // resolution are not run (no classpath is passed).
                 tasks.register('nitpickerDetekt', JavaExec) {
@@ -450,17 +445,18 @@ allprojects {
                     ignoreExitValue = true
                     def report = reportDir.map { it.file('detekt.sarif') }
                     def log = new ByteArrayOutputStream()
+                    def validationOff = new File(initScriptDir, '../detekt/detekt-validation.yml').canonicalFile
                     onlyIf { !kotlinSourceDirs().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
-                        def config = [rootProject.file('config/detekt/detekt.yml'), rootProject.file('detekt.yml')].find { it.exists() }
+                        def projectConfig = findProperty('nitpicker.kotlin.detektConfig')
                         args(['--input', kotlinSourceDirs().join(','),
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', projectDir.absolutePath,
-                              '--build-upon-default-config'] +
-                            (config ? ['--config', config.absolutePath] : []))
+                              '--build-upon-default-config',
+                              '--config', ([projectConfig] + [validationOff.absolutePath]).findAll { it }.join(',')])
                     }
                     doLast {
                         def code = executionResult.get().exitValue
@@ -476,22 +472,20 @@ allprojects {
                     mainClass = 'com.pinterest.ktlint.Main'
                     ignoreExitValue = true
                     def log = new ByteArrayOutputStream()
-                    def lint = new File(temporaryDir, 'ktlint.txt')
+                    def report = reportDir.map { it.file('ktlint.sarif') }
                     onlyIf { kotlinFormatter() == 'ktlint' && !kotlinFiles().isEmpty() }
                     doFirst {
+                        reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
-                        lint.delete()
-                        args(['--relative', "--reporter=plain,output=${lint.absolutePath}".toString()] +
+                        report.get().asFile.delete()
+                        args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
                             kotlinSourceDirs().collect { "${relative(it)}/**/*.kt".toString() })
                     }
                     doLast {
-                        def files = lint.exists() ? lint.readLines().collect { (it =~ /^(.+?):\d+:\d+: /) }
-                            .findAll { it.find() }.collect { it.group(1) } : []
-                        if (executionResult.get().exitValue != 0 && files.isEmpty()) {
+                        if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {
                             throw new GradleException("ktlint failed: ${log.toString('UTF-8').trim()}")
                         }
-                        writeFormatList(files)
                     }
                 }
 
@@ -506,12 +500,10 @@ allprojects {
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
-                        def text = buildText()
-                        def style = text.contains('kotlinlangstyle') ? '--kotlinlang-style'
-                            : text.contains('googlestyle') ? '--google-style' : '--meta-style'
+                        def style = "--${findProperty('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +
-                            (rootProject.file('.editorconfig').exists() ? ['--enable-editorconfig'] : []) +
+                            (findProperty('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
                             kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())
                     }
@@ -535,8 +527,9 @@ allprojects {
                             'pmd.sarif'        : emptySarif,
                             'spotbugs.sarif'   : emptySarif,
                             'detekt.sarif'     : emptySarif,
+                            'ktlint.sarif'     : emptySarif,
                             'format.txt'       : '',
-                            'kotlin-format.txt': '',
+                            'ktfmt.txt'        : '',
                             'checkstyle.xml'   : "<checkstyle version=\"${pinned.checkstyle}\"></checkstyle>".toString(),
                         ].each { name, text ->
                             def report = new File(directory, name)

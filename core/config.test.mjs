@@ -27,15 +27,34 @@ describe('config file', () => {
   });
 
   describe('kotlin options', () => {
-    it('accepts a formatter with the kotlin preset', () => {
-      const config = { preset: 'kotlin', kotlin: { formatter: 'ktfmt' } };
+    it.each([
+      { formatter: 'ktfmt' },
+      { formatter: 'none' },
+      { detektConfig: 'tools/detekt-rules.yml' },
+      {},
+    ])('accepts %j with the kotlin preset', (kotlin) => {
+      const config = { preset: 'kotlin', kotlin };
       expect(validateConfig(config)).toEqual(config);
-      expect(validateConfig({ preset: 'kotlin', kotlin: {} })).toBeDefined();
     });
 
     it.each([
-      [{ preset: 'kotlin', kotlin: { formatter: 'prettier' } }, /must be one of: ktlint, ktfmt/],
+      [
+        { preset: 'kotlin', kotlin: { formatter: 'prettier' } },
+        /must be one of: ktlint, ktfmt, none/,
+      ],
       [{ preset: 'kotlin', kotlin: { style: 'google' } }, /unknown key "kotlin.style"/],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '/etc/detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '../detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '' } },
+        /"kotlin.detektConfig" must be a non-empty string/,
+      ],
       [{ preset: 'kotlin', kotlin: 'ktlint' }, /"kotlin" must be an object/],
       [
         { preset: 'java', kotlin: { formatter: 'ktlint' } },

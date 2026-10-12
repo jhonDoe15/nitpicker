@@ -10,10 +10,10 @@ import {
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
+import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java', 'kotlin'];
-const GRADLE_PRESETS = ['java', 'kotlin'];
+const SUPPORTED_PRESETS = ['typescript', ...GRADLE_PRESETS];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'tools'];
 const KEYS = [
   'base',
