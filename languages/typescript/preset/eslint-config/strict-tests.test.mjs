@@ -14,6 +14,15 @@ import strictTestsConfig, {
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const raisedTimeout = "it('slow', () => {}, 60_000);";
+const loopMessage =
+  'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
+const forEachMessage = 'Use a for...of loop instead of forEach.';
+const chainMessage =
+  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
+const asMessage =
+  'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
+const angleMessage =
+  'Do not assert with `<Type>value`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source.';
 const moduleLevelArgv = 'export const [root] = process.argv.slice(2);';
 
 function messages(code, filename, config = strictTestsConfig) {
@@ -45,6 +54,34 @@ describe('strict test rules', () => {
     ]);
     expect(messages(moduleLevelArgv, 'tests/helpers/cli.mjs')).toHaveLength(1);
     expect(messages(moduleLevelArgv, 'tests/cli.test.ts')).toEqual([]);
+  });
+
+  it.each([
+    ['for(;;)', 'for (let index = 0; index < 3; index += 1) { run(index); }', loopMessage],
+    ['for...in', 'for (const key in table) { run(key); }', loopMessage],
+    ['while', 'while (more()) { step(); }', loopMessage],
+    ['do...while', 'do { step(); } while (more());', loopMessage],
+    ['forEach', 'cases.forEach(run);', forEachMessage],
+    ['.then()', 'run().then(check);', chainMessage],
+    ['.catch()', 'run().catch(check);', chainMessage],
+    ['.finally()', 'run().finally(check);', chainMessage],
+    ['as', 'export const name = lookup() as string;', asMessage],
+    ['<Type>', 'export const name = <string>lookup();', angleMessage],
+  ])('ban %s in test files and name the allowed form', (_name, code, message) => {
+    for (const file of ['test/a.test.ts', 'src/a.spec.ts', 'tests/support/helpers.ts']) {
+      expect(messages(code, file)).toEqual([message]);
+    }
+  });
+
+  it('allow for...of, async/await and as const in test files', () => {
+    const allowed = [
+      'for (const item of items) { run(item); }',
+      "it('x', async () => { await run(); });",
+      "export const modes = ['a', 'b'] as const;",
+    ];
+    for (const code of allowed) {
+      expect(messages(code, 'test/a.test.ts')).toEqual([]);
+    }
   });
 
   it('follow the layout test roots', () => {

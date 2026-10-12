@@ -55,6 +55,27 @@ describe('environment detection', () => {
     expect(detectEnvironment(root)).toEqual({ kind: 'uv' });
   });
 
+  it('detects a member of a uv workspace by the lock file of the workspace root', () => {
+    const root = temporaryRoot();
+    touch(root, 'uv.lock');
+    touch(root, 'pyproject.toml');
+    writeFileSync(path.join(root, 'pyproject.toml'), '[tool.uv.workspace]\nmembers = ["app"]\n');
+    mkdirSync(path.join(root, 'app'));
+
+    expect(detectEnvironment(path.join(root, 'app'))).toEqual({ kind: 'uv' });
+  });
+
+  it('ignores the lock file of an enclosing directory that is not a uv workspace', () => {
+    const root = temporaryRoot();
+    touch(root, 'uv.lock');
+    touch(root, 'app/.venv/bin/python');
+
+    expect(detectEnvironment(path.join(root, 'app'))).toEqual({
+      kind: 'venv',
+      directory: path.join(root, 'app/.venv'),
+    });
+  });
+
   it.each(['uv', 'poetry', 'path'])('lets the setting name the %s environment', (name) => {
     const root = temporaryRoot();
     touch(root, 'uv.lock');
@@ -99,6 +120,9 @@ describe('opening an environment', () => {
     expect(() =>
       openEnvironment({ kind: 'venv', directory: path.join(root, 'nope') }, root),
     ).toThrow(`No Python environment at ${path.join(root, 'nope')}`);
+    expect(() =>
+      openEnvironment({ kind: 'venv', directory: path.join(root, 'nope') }, root),
+    ).toThrow('"python.environment"');
   });
 
   it('launches tools from the PATH, python as python3', () => {
@@ -130,13 +154,32 @@ describe('opening an environment', () => {
     });
   });
 
-  it('finds the uv environment of an enclosing workspace', () => {
+  it('uses the environment of the workspace root for a member', () => {
     const root = temporaryRoot();
     touch(root, '.venv/pyvenv.cfg');
-    mkdirSync(path.join(root, 'members/app'), { recursive: true });
+    touch(root, 'uv.lock');
+    writeFileSync(path.join(root, 'pyproject.toml'), '[tool.uv.workspace]\nmembers = ["app"]\n');
+    mkdirSync(path.join(root, 'app'));
     setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
 
-    expect(openEnvironment({ kind: 'uv' }, path.join(root, 'members/app')).description).toBe('uv');
+    const launcher = openEnvironment({ kind: 'uv' }, path.join(root, 'app'));
+
+    expect(launcher.launch('ruff', []).args.slice(0, 3)).toEqual([
+      'run',
+      '--project',
+      path.join(root, 'app'),
+    ]);
+  });
+
+  it('does not take an unrelated environment of a parent directory for the uv one', () => {
+    const root = temporaryRoot();
+    touch(root, '.venv/pyvenv.cfg');
+    mkdirSync(path.join(root, 'app'));
+    setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
+
+    expect(() => openEnvironment({ kind: 'uv' }, path.join(root, 'app'))).toThrow(
+      `uv has no environment at ${path.join(root, 'app/.venv')}`,
+    );
   });
 
   it('honours UV_PROJECT_ENVIRONMENT', () => {
@@ -154,7 +197,9 @@ describe('opening an environment', () => {
     const root = temporaryRoot();
     setEnvironment('UV_PROJECT_ENVIRONMENT', '');
 
-    expect(() => openEnvironment({ kind: 'uv' }, path.join(root, 'app'))).toThrow('run `uv sync`');
+    expect(() => openEnvironment({ kind: 'uv' }, path.join(root, 'app'))).toThrow(
+      /run `uv sync` first .*"python\.environment"/,
+    );
   });
 
   it('uses the environment poetry reports', () => {

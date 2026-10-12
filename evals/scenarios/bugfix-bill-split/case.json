@@ -1,0 +1,18 @@
+{
+  "id": "bugfix-bill-split",
+  "title": "Fix lost cents and the empty-party crash in a legacy bill splitter",
+  "categories": [
+    "bugfix"
+  ],
+  "agentTimeoutMinutes": 60,
+  "prompt": "Bug report for the billing feature (src/main/features/billing): splitting a bill loses or invents cents, and an empty party crashes the printer. Its public API is splitBill(totalCents, people) and formatShares(split, writer), both exported from its index.ts, and main(totalCents, people) in src/main/composition-root.ts, which prints a split to standard output. Keep their names, signatures and the output format of a successful split.\n\nSteps to reproduce.\n1. splitBill(1000, ['Ann', 'Ben', 'Cy']) returns three shares of 333 cents and totalCents 999. Expected: 334, 333 and 333, and totalCents 1000.\n2. splitBill(2000, ['Ann', 'Ben', 'Cy']) returns three shares of 667 cents and totalCents 2001, more than the bill. Expected: 667, 667 and 666, and totalCents 2000.\n3. main(1000, []) throws 'TypeError: Reduce of empty array with no initial value'. Expected: it writes the single line 'Nobody to split between' (followed by a newline) and nothing else.\n\nThe rule for the cents. Each person's share is the total divided by the number of people, rounded down to a whole cent. The cents left over (the total modulo the number of people) go one cent each to the first people, in the order the people were given: with 10 cents among four people the shares are 3, 3, 2, 2. A total smaller than the number of people therefore gives 1 cent to the first people and 0 to the rest. The shares always add up to the total, and the totalCents of the result is the total that was passed in. This holds for any total and any number of people the function accepts.\n\nThe failure result for an empty people list. Callers read shares and totalCents straight from the result, so a failure keeps those two fields and adds a third: for a valid total and an empty list, splitBill returns { shares: [], totalCents: <the total that was passed in>, failure: 'no-people' } and does not throw (today it returns totalCents 0, so the bill silently disappears). A successful split has no failure property at all. formatShares given a failure result writes only the line 'Nobody to split between\\n'. The other checks keep throwing with the same messages and in the same order as today, so an empty list with an invalid total still throws the total error.\n\nEverything else is not a bug and must behave exactly as before. Do not change test/billing.test.ts. Add regression tests for the cases above, and the edge cases around them, in test/billing-regression.test.ts. Run nitpicker-gate until it exits 0.",
+  "acceptance": {
+    "command": [
+      "npx",
+      "--no-install",
+      "vitest",
+      "run",
+      "test/billing.acceptance.test.ts"
+    ]
+  }
+}

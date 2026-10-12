@@ -139,14 +139,11 @@ public final class Bad {
 }
 `;
 
-// What Checkstyle's bundled google_checks.xml (the default) reports on Bad.java.
+// What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required).
 const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
 const CHECKSTYLE_ON_BAD = [
   'blocks.EmptyCatchBlockCheck',
   'indentation.IndentationCheck',
-  'javadoc.MissingJavadocMethodCheck',
-  'javadoc.MissingJavadocMethodCheck',
-  'javadoc.MissingJavadocTypeCheck',
   'regexp.RegexpSinglelineJavaCheck',
   'whitespace.EmptyLineSeparatorCheck',
 ];
@@ -297,14 +294,6 @@ const BRANCHY_ADDED = BRANCHY.replace(
 `,
 );
 
-// What the other analyzers add for a class with no test and no javadoc (e.g. Calc, Stamp): the
-// google_checks javadoc rules, and one `pit mutant-nocoverage` per mutant.
-const javadocOn = (file, { methods = 1, types = 1 } = {}) => [
-  ...Array(methods).fill(
-    `checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocMethodCheck ${file}`,
-  ),
-  ...Array(types).fill(`checkstyle ${CHECKSTYLE_PREFIX}javadoc.MissingJavadocTypeCheck ${file}`),
-];
 const repeated = (count, entry) => Array(count).fill(entry);
 
 let repository;
@@ -458,7 +447,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).toEqual([
         'archunit no_classes_use_legacy_date Stamp.java',
         'archunit no_classes_use_legacy_date Stamp.java',
-        ...javadocOn('Stamp.java', { methods: 2, types: 2 }),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(
@@ -478,7 +466,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...javadocOn('Complex.java'),
         'crap crap-score-limit Complex.java',
         ...repeated(9, 'jacoco changed-branch-coverage Complex.java'),
         ...repeated(28, 'pit mutant-nocoverage Complex.java'),
@@ -528,10 +515,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       const survivor = diffOf('survivor');
 
       expect(survivor.failed).toBe(true);
-      expect(summarize(survivor.newEnforceable)).toEqual([
-        ...javadocOn('Calc.java'),
-        'pit mutant-survived Calc.java',
-      ]);
+      expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toContain(
         'changed conditional boundary',
       );
@@ -577,7 +561,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...javadocOn('Branchy.java', { types: 0 }),
         'jacoco changed-branch-coverage Branchy.java',
         ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
       ]);

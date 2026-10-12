@@ -1,6 +1,6 @@
 {
   "path": ["src", "test", "tests"],
-  "format": ["typescript"],
+  "format": ["typescript", "tsx"],
   "mode": "mild",
   "reporters": ["console", "json"],
   "output": "reports/quality/duplicates",

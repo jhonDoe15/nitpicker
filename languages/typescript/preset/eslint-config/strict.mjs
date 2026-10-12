@@ -6,12 +6,12 @@ import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
-  escapeHatchSelectors,
+  escapeHatchSelectorsFor,
 } from './strict-escape-hatches.mjs';
 import {
-  declarationRules,
   declarationSelectorsFor,
   defaultExportSelectors,
+  typeDefinitionSelectors,
   typedDeclarationRules,
 } from './strict-declarations.mjs';
 import {
@@ -35,9 +35,13 @@ import {
 import { strictTestConfigFor } from './strict-tests.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
-  const everywhereSelectors = [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
+  const everywhereSelectors = [
+    ...escapeHatchSelectorsFor(options),
+    ...declarationSelectorsFor(options),
+  ];
   const productionSelectors = [
     ...everywhereSelectors,
+    ...typeDefinitionSelectors,
     ...defaultExportSelectors,
     ...controlFlowSelectors,
   ];
@@ -76,7 +80,6 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
       plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
       rules: {
         ...escapeHatchRules,
-        ...declarationRules,
         ...controlFlowRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.source],
         'nitpicker/no-self-recursion': 'error',
