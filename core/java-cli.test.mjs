@@ -397,13 +397,16 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'ktlint',
         rule: 'ktlint.standard:no-wildcard-imports',
         path: 'src/main/kotlin/demo/K.kt',
+        identity: 'fp:nitpicker/subject=Wildcard import',
         location: { line: 3 },
-        message: expect.stringContaining('ktlint_standard_no-wildcard-imports = disabled'),
-      }),
+        message:
+          'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -416,12 +419,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'ktfmt',
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
-        message: expect.stringContaining('kotlin.formatter'),
-      }),
+        identity: 'format',
+        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -537,11 +542,14 @@ describe('a root project without Nitpicker reports', () => {
     const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle, policy: { preset } });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: preset,
+        rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
         classification: 'tool-error',
-        message: expect.stringContaining(`the root project must apply the ${plugin} plugin`),
-      }),
+      },
     ]);
   });
 });

@@ -111,7 +111,19 @@ const BAD_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Bad.kt',
 ];
 
-const BAD_KTLINT_RULES = ['ktlint.standard:no-wildcard-imports', 'ktlint.standard:op-spacing'];
+const BAD_KTLINT_RULES = [
+  'ktlint.standard:blank-line-before-declaration',
+  'ktlint.standard:colon-spacing',
+  'ktlint.standard:comma-spacing',
+  'ktlint.standard:function-expression-body',
+  'ktlint.standard:function-return-type-spacing',
+  'ktlint.standard:function-signature',
+  'ktlint.standard:if-else-wrapping',
+  'ktlint.standard:no-wildcard-imports',
+  'ktlint.standard:op-spacing',
+  'ktlint.standard:parameter-list-spacing',
+  'ktlint.standard:statement-wrapping',
+];
 
 const LEGACY_FINDINGS = [
   'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
@@ -228,7 +240,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
     expect(result.failed).toBe(true);
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
-    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
+    expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(fromTool(result.unchangedFindings, 'ktlint')).toEqual([]);
     expect(Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location.line))).toBe(
@@ -261,7 +273,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',
     ]);
-    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
+    expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
   });
 
   it('runs no format check for a project that names no formatter', () => {
@@ -314,7 +326,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     const result = diffOf('kotlin-only-violation');
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
-    expect(ktlintRules(result.newEnforceable)).toEqual(expect.arrayContaining(BAD_KTLINT_RULES));
+    expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(result.newEnforceable.filter(({ tool }) => ['pmd', 'spotbugs'].includes(tool))).toEqual(
       [],
