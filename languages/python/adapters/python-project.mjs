@@ -1,18 +1,29 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-const FORMATTER_HINT_FILES = [
+const HINT_FILES = [
   'pyproject.toml',
   'ruff.toml',
   '.ruff.toml',
-  'requirements.txt',
-  'requirements-dev.txt',
-  'dev-requirements.txt',
-  '.pre-commit-config.yaml',
   'setup.cfg',
   'tox.ini',
+  'pytest.ini',
+  'Pipfile',
+  '.pre-commit-config.yaml',
 ];
-const TYPE_HINT_FILES = [...FORMATTER_HINT_FILES, 'mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
+const REQUIREMENT_DIRECTORY = 'requirements';
+const REQUIREMENT_FILE = /requirements.*\.(?:txt|in)$/;
+const BLACK_HINT = new RegExp(
+  [
+    String.raw`^\s*\[tool\.black\]`,
+    String.raw`^\s*(?:commands\s*=\s*)?black(?![\w.-])`,
+    String.raw`["']black(?![\w.-])`,
+    String.raw`psf/black(?:-pre-commit-mirror)?(?![\w-])`,
+    String.raw`id:\s*black(?:-jupyter)?\s*$`,
+  ].join('|'),
+  'm',
+);
+const TYPE_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
 const TYPE_CHECKER_HINTS = {
   mypy: {
     configured: /^\s*\[{1,2}(?:tool\.)?mypy[\].-]/m,
@@ -26,8 +37,14 @@ const TYPE_CHECKER_HINTS = {
   },
 };
 const CONFIGURED_WEIGHT = 2;
-const BLACK_HINT = /^\s*\[tool\.black\]|^\s*["']?black(?![\w-])|psf\/black(?![\w-])/m;
 const RUFF_FORMAT_HINT = /^\s*\[tool\.ruff\.format\]|ruff-format|^\s*\[format\]/m;
+const MINIMUM_MINOR = 8;
+const LOWER_BOUND = /^(>=|~=|==|\^|~|>)?\s*v?3\.(\d+)/;
+const REQUIRES_PYTHON = [
+  /^\s*requires-python\s*=\s*["']([^"']+)["']/m,
+  /^\s*python_requires\s*=\s*(.+)$/m,
+  /^\s*python\s*=\s*["']([^"']+)["']/m,
+];
 const NON_SOURCE_DIRECTORIES = new Set([
   'tests',
   'test',
@@ -42,23 +59,74 @@ const NON_SOURCE_DIRECTORIES = new Set([
   'site-packages',
 ]);
 
+function readFileEntries(projectRoot, names) {
+  return names
+    .filter((name) => isFile(path.join(projectRoot, name)))
+    .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
+}
+
+function readFiles(projectRoot, names) {
+  return readFileEntries(projectRoot, names).map(([, text]) => text);
+}
+
+function requirementsInDirectory(projectRoot) {
+  const directory = path.join(projectRoot, REQUIREMENT_DIRECTORY);
+  return isDirectory(directory)
+    ? readdirSync(directory)
+        .filter((name) => name.endsWith('.txt') || name.endsWith('.in'))
+        .map((name) => path.posix.join(REQUIREMENT_DIRECTORY, name))
+    : [];
+}
+
+function requirementFiles(projectRoot) {
+  return [
+    ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
+    ...requirementsInDirectory(projectRoot),
+  ];
+}
+
+export function readProjectHints(projectRoot) {
+  return readFiles(projectRoot, [...HINT_FILES, ...requirementFiles(projectRoot)]).join('\n');
+}
+
 export function detectFormatter(projectRoot, setting) {
   if (setting !== undefined) {
     return setting;
   }
-  const hints = FORMATTER_HINT_FILES.filter((file) => existsSync(path.join(projectRoot, file)))
-    .map((file) => readFileSync(path.join(projectRoot, file), 'utf8'))
-    .join('\n');
+  const hints = readProjectHints(projectRoot);
   return BLACK_HINT.test(hints) && !RUFF_FORMAT_HINT.test(hints) ? 'black' : 'ruff';
+}
+
+function lowestMinor(specifier) {
+  const alternatives = specifier.split('||').flatMap((alternative) => {
+    const bounds = alternative.split(',').flatMap((clause) => {
+      const bound = LOWER_BOUND.exec(clause.trim());
+      return bound === null ? [] : [Number(bound[2]) + (bound[1] === '>' ? 1 : 0)];
+    });
+    return bounds.length === 0 ? [] : [Math.max(...bounds)];
+  });
+  return alternatives.length === 0
+    ? MINIMUM_MINOR
+    : Math.max(MINIMUM_MINOR, Math.min(...alternatives));
+}
+
+export function detectTargetVersion(projectRoot) {
+  const hints = readFiles(projectRoot, ['pyproject.toml', 'setup.cfg']).join('\n');
+  const specifier = REQUIRES_PYTHON.map((pattern) => pattern.exec(hints)?.[1]).find(
+    (found) => found !== undefined,
+  );
+  return `py3${String(lowestMinor(specifier ?? ''))}`;
 }
 
 export function detectTypeChecker(projectRoot, setting) {
   if (setting !== undefined) {
     return setting;
   }
-  const texts = TYPE_HINT_FILES.filter((file) => existsSync(path.join(projectRoot, file))).map(
-    (file) => [file, readFileSync(path.join(projectRoot, file), 'utf8')],
-  );
+  const texts = readFileEntries(projectRoot, [
+    ...HINT_FILES,
+    ...requirementFiles(projectRoot),
+    ...TYPE_CONFIG_FILES,
+  ]);
   const scores = Object.entries(TYPE_CHECKER_HINTS).map(([checker, hints]) => [
     checker,
     typeCheckerScore(texts, hints),
@@ -103,6 +171,10 @@ export function importRoots(projectRoot, sourceRoots) {
     return existsSync(path.join(absolute, '__init__.py')) ? path.dirname(absolute) : absolute;
   });
   return [...new Set(roots)];
+}
+
+function isFile(file) {
+  return existsSync(file) && statSync(file).isFile();
 }
 
 function isDirectory(directory) {

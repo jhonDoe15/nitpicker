@@ -10,30 +10,34 @@ const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
-const SHARED_CONFIGURATION_FILES = [
-  'languages/java/adapters/java-policy.mjs',
-  'languages/java/adapters/java-reports.mjs',
-  'languages/java/adapters/java-runner.mjs',
-  'languages/java/ingest/common.mjs',
-  'languages/java/ingest/format-check.mjs',
-  'languages/java/ingest/sarif.mjs',
-  'shared/glob.mjs',
-  'shared/legacy-inventory.mjs',
-  'shared/rules/baseline-expansion.mjs',
-  'shared/rules/finding-helpers.mjs',
-];
+const IMPORT_PATTERN = /(?:from|import)\s+'(\.[^']+)'/g;
 
-function pythonConfigurationFiles() {
+function importedFiles(entry) {
+  const found = [entry];
+  for (const file of found) {
+    const imports = [...readFileSync(file, 'utf8').matchAll(IMPORT_PATTERN)].map(([, specifier]) =>
+      path.resolve(path.dirname(file), specifier),
+    );
+    found.push(...new Set(imports.filter((imported) => !found.includes(imported))));
+  }
+  return found;
+}
+
+function pythonResourceFiles() {
   return readdirSync(pythonRoot, { recursive: true })
     .filter((file) => !file.endsWith('.test.mjs') && !file.split(path.sep).includes('fixtures'))
     .filter((file) => path.extname(file) !== '')
-    .sort()
-    .map((file) => path.join('languages/python', file));
+    .map((file) => path.join(pythonRoot, file));
+}
+
+export function configurationFiles() {
+  const files = new Set([...pythonResourceFiles(), ...importedFiles(runnerPath)]);
+  return [...files].map((file) => path.relative(packageRoot, file)).sort();
 }
 
 function hashConfiguration(settings) {
   const hash = createHash('sha256').update(JSON.stringify(settings));
-  for (const relativePath of [...pythonConfigurationFiles(), ...SHARED_CONFIGURATION_FILES]) {
+  for (const relativePath of configurationFiles()) {
     hash.update(`\0${relativePath}\0`);
     hash.update(readFileSync(path.join(packageRoot, relativePath)));
   }

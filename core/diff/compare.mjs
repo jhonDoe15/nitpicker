@@ -25,7 +25,12 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     touchedCode,
   });
-  present.newFindings = ratcheted.newFindings;
+  present.newFindings = withGrowthAdvice({
+    findings: ratcheted.newFindings,
+    baseFindings,
+    renames: baseToHeadRenames,
+    directories: baseToHeadDirectories,
+  });
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
@@ -77,6 +82,28 @@ function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directorie
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }
   return result;
+}
+
+function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
+  const baseValues = new Map(
+    baseFindings
+      .filter((baseFinding) => baseFinding.ratchet !== undefined)
+      .map((baseFinding) => [
+        ratchetKey(baseFinding, renames, directories),
+        baseFinding.ratchet.value,
+      ]),
+  );
+  return findings.map((finding) => {
+    const advice = finding.ratchet?.growthAdvice;
+    const baseValue =
+      advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
+    return baseValue === undefined
+      ? finding
+      : {
+          ...finding,
+          message: `${finding.message} ${advice.replaceAll('{base}', String(baseValue))}`,
+        };
+  });
 }
 
 function groupBaseByRatchetKey(unmatchedBase, renames, directories) {

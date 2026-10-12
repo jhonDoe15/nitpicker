@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/harness.mjs';
-import strictConfig from './strict.mjs';
+import strictConfig, { restrictedSyntaxFor } from './strict.mjs';
 
 function messages(code, filename = 'src/fixture.ts') {
   return failureMessagesFor({ config: strictConfig, filename, code });
@@ -44,8 +44,34 @@ describe('strict declaration and control-flow rules', () => {
     ['early return', 'export function read(a) { if (a) { return 1; } return 2; }'],
     ['else without return', 'export function read(a) { if (a) { log(); } else { return 2; } }'],
     ['single ternary', 'export const value = a ? 1 : 2;'],
+    [
+      'an interface in a module augmentation',
+      "declare module 'csstype' { interface Properties { '--progress'?: number } }\nexport {};",
+    ],
+    [
+      'an interface in a global augmentation',
+      'declare global { interface Window { app: number } }\nexport {};',
+    ],
   ])('allows %s', (_name, code) => {
     expect(messages(code)).toEqual([]);
+  });
+
+  describe('the interface ban', () => {
+    const messageStartingWith = (prefix) =>
+      restrictedSyntaxFor().source.find(({ selector }) => selector.startsWith(prefix)).message;
+    const interfaceBan = messageStartingWith('TSInterfaceDeclaration');
+    const namespaceBan = messageStartingWith('TSModuleDeclaration');
+
+    it('bans an interface', () => {
+      expect(messages('export interface Shape { size: number }')).toEqual([interfaceBan]);
+    });
+
+    it.each([
+      ['a declared namespace', 'declare namespace Shapes { interface Shape { size: number } }'],
+      ['a module block', 'module Shapes { export interface Shape { size: number } }'],
+    ])('bans an interface in %s, which is not an augmentation', (_name, code) => {
+      expect(messages(code)).toEqual([namespaceBan, interfaceBan]);
+    });
   });
 
   it('allows a default export in a config file', () => {

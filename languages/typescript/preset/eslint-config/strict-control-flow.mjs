@@ -9,6 +9,14 @@ export const loopSelectors = [
   { selector: 'DoWhileStatement', message: loopMessage },
 ];
 
+const testLoopMessage =
+  'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
+
+const testLoopSelectors = loopSelectors.map(({ selector }) => ({
+  selector,
+  message: testLoopMessage,
+}));
+
 export const forEachSelectors = [
   {
     selector: "CallExpression[callee.property.name='forEach']",
@@ -25,6 +33,12 @@ export const promiseChainSelectors = [
 
 export const controlFlowSelectors = [
   ...loopSelectors,
+  ...forEachSelectors,
+  ...promiseChainSelectors,
+];
+
+export const testControlFlowSelectors = [
+  ...testLoopSelectors,
   ...forEachSelectors,
   ...promiseChainSelectors,
 ];

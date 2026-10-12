@@ -1,16 +1,25 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
-import { checkRules } from './python-ast-rules.mjs';
+import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
-import { execute, run } from './python-execute.mjs';
+import { checkRules } from './python-ast-rules.mjs';
+import { execute, failure, run } from './python-process.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
+  detectTargetVersion,
   detectTypeChecker,
   importRoots,
 } from './python-project.mjs';
 import { RUFF_CONFIG } from './python-ruff-config.mjs';
+import {
+  detectTestRunner,
+  NO_TESTS_EXIT,
+  testCommand,
+  testRunnerLabel,
+  testsRan,
+} from './python-test-runner.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
@@ -19,11 +28,21 @@ export const COVERAGE_REPORT = 'coverage.json';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
-const NO_TESTS_EXIT = 5;
-const PYTEST_VERSION_PROBE = ['python', '-c', 'import pytest; print(pytest.__version__)'];
+const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
+const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
+const PARSE_ERROR = {
+  black: /^error: cannot (?:format .+: cannot )?parse\b/i,
+  ruff: /^error: Failed to parse /,
+};
 
-export function createToolContext({ projectRoot, liveRoot, settings = {}, reportRoot }) {
+export function createToolContext({
+  projectRoot,
+  liveRoot,
+  settings = {},
+  reportRoot,
+  exclude = [],
+}) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
@@ -33,10 +52,13 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
     projectRoot,
     reportRoot,
     launcher,
+    exclude,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
+      formatterDetected: settings.formatter === undefined,
       typeChecker: detectTypeChecker(liveRoot, settings.typeChecker),
-      testRunner: settings.testRunner,
+      testRunner: detectTestRunner(projectRoot, settings.testRunner),
+      targetVersion: detectTargetVersion(projectRoot),
       sourceRoots,
     },
     env: {
@@ -48,9 +70,10 @@ export function createToolContext({ projectRoot, liveRoot, settings = {}, report
 }
 
 export function runPythonTools(context) {
+  const outcome = {};
   const failures = [lint, format, test, typeCheck, checkRules].flatMap((step) => {
     try {
-      step(context);
+      step(context, outcome);
       return [];
     } catch (error) {
       return [
@@ -65,7 +88,9 @@ export function runPythonTools(context) {
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
       formatter: context.project.formatter,
+      formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
+      testsRan: outcome.testsRan,
     }),
   );
   return failures;
@@ -79,8 +104,11 @@ export function lint(context) {
       'check',
       '--config',
       RUFF_CONFIG,
+      '--target-version',
+      context.project.targetVersion,
       '--ignore-noqa',
       '--no-cache',
+      ...ruffExclusions(context),
       '--output-format',
       'sarif',
       '--output-file',
@@ -91,10 +119,23 @@ export function lint(context) {
   );
 }
 
-const FORMAT_COMMANDS = {
-  black: ['black', '--check', '.'],
-  ruff: ['ruff', 'format', '--check', '--diff', '--no-cache', '.'],
-};
+function ruffExclusions({ exclude }) {
+  return exclude.flatMap((glob) => ['--extend-exclude', glob]);
+}
+
+function blackExclusions({ exclude }) {
+  if (exclude.length === 0) {
+    return [];
+  }
+  const patterns = exclude.map((glob) => `^/${globToRegExpSource(glob).slice(1, -1)}(?:/.*)?/?$`);
+  return ['--extend-exclude', patterns.join('|')];
+}
+
+function formatCommand({ project, ...context }) {
+  return project.formatter === 'black'
+    ? ['black', '--check', ...blackExclusions(context), '.']
+    : ['ruff', 'format', '--check', '--diff', '--no-cache', ...ruffExclusions(context), '.'];
+}
 
 export function unformattedPaths(formatter, { stdout, stderr }) {
   if (formatter === 'black') {
@@ -103,12 +144,22 @@ export function unformattedPaths(formatter, { stdout, stderr }) {
   return [...stdout.matchAll(/^--- (.+)\n\+\+\+ \1$/gm)].map((match) => match[1]);
 }
 
+export function onlyUnparsableFiles(formatter, { status, stdout, stderr }) {
+  if (status !== FORMAT_FAILURE_STATUS[formatter]) {
+    return false;
+  }
+  const errors = `${stdout}\n${stderr}`.split('\n').filter((line) => line.startsWith('error:'));
+  return errors.length > 0 && errors.every((line) => PARSE_ERROR[formatter].test(line));
+}
+
 function format(context) {
   const { formatter } = context.project;
-  const result = run(context, FORMAT_COMMANDS[formatter], {
-    accepted: [0, 1],
-    rule: 'format-failed',
-  });
+  const command = formatCommand(context);
+  const result = execute(context, command);
+  const tolerated = [0, 1].includes(result.status) || onlyUnparsableFiles(formatter, result);
+  if (result.error !== undefined || !tolerated) {
+    throw failure({ context, command, result, rule: 'format-failed' });
+  }
   const paths = unformattedPaths(formatter, result);
   if (result.status === 1 && paths.length === 0) {
     throw Object.assign(
@@ -121,37 +172,32 @@ function format(context) {
   writeFileSync(path.join(context.reportRoot, FORMAT_REPORT), paths.join('\n'));
 }
 
-function testCommand(context, runner) {
-  if (runner === 'pytest') {
-    return ['-m', 'pytest', '-q', '-p', 'no:cacheprovider'];
-  }
-  const directory = ['tests', 'test'].find((name) =>
-    existsSync(path.join(context.projectRoot, name)),
-  );
-  return ['-m', 'unittest', 'discover', ...(directory === undefined ? [] : ['-s', directory])];
+function coverageSources({ projectRoot, project }) {
+  return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
-function test(context) {
-  const runner = detectTestRunner(context);
+function test(context, outcome) {
+  const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  const sources = context.project.sourceRoots.map((root) => `    ${root}`).join('\n');
-  writeFileSync(config, `[run]\nbranch = True\nparallel = False\nsource =\n${sources}\n`);
-  run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context, runner)], {
+  const lines = sources.map((root) => `    ${root}`).join('\n');
+  writeFileSync(config, `[run]\nbranch = True\nparallel = False\nsource =\n${lines}\n`);
+  const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
   });
+  outcome.testsRan = testsRan(result);
+  writeCoverageReport(context, { config, measured: sources.length > 0 });
+}
+
+function writeCoverageReport(context, { config, measured }) {
+  const report = path.join(context.reportRoot, COVERAGE_REPORT);
+  if (!measured) {
+    writeFileSync(report, EMPTY_COVERAGE_REPORT);
+    return;
+  }
   run(
     context,
-    [
-      'coverage',
-      'json',
-      '--rcfile',
-      config,
-      '-o',
-      path.join(context.reportRoot, COVERAGE_REPORT),
-      '--fail-under=0',
-      '--ignore-errors',
-    ],
+    ['coverage', 'json', '--rcfile', config, '-o', report, '--fail-under=0', '--ignore-errors'],
     { rule: 'coverage-failed' },
   );
 }
@@ -162,22 +208,6 @@ function probeVersion(context, command) {
     return 'missing';
   }
   return VERSION_PATTERN.exec(result.stdout)?.[0] ?? 'unknown';
-}
-
-function testRunnerVersion(context) {
-  const { testRunner } = context.project;
-  if (testRunner === 'unittest') {
-    return 'unittest';
-  }
-  const version = probeVersion(context, PYTEST_VERSION_PROBE);
-  if (version === 'missing' && testRunner === undefined) {
-    return 'unittest';
-  }
-  return `pytest@${version}`;
-}
-
-export function detectTestRunner(context) {
-  return testRunnerVersion(context).split('@')[0];
 }
 
 function typeCheckerVersion(context) {
@@ -194,6 +224,6 @@ export function toolVersions(context) {
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
     typeCheckerVersion(context),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
-    testRunnerVersion(context),
+    testRunnerLabel(context),
   ].join(';');
 }

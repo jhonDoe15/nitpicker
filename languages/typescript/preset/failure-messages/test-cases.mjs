@@ -113,6 +113,38 @@ export const testFailureMessageCases = [
     banned: "it('x', () => { expect(render()).toContain('total: 3'); });",
     allowed: 'exception for this rule in nitpicker.config.json',
   },
+  {
+    name: 'partial matcher names toEqual with the whole value',
+    config: partialAssertionConfig,
+    filename: testFile,
+    banned: "it('x', () => { expect(send()).toMatchObject({ channel: 'email' }); });",
+    allowed: 'Pass the whole expected value to `toEqual`',
+  },
+  {
+    name: 'partial matcher names expect.any for varying fields',
+    config: partialAssertionConfig,
+    filename: testFile,
+    banned: "it('x', () => { expect(send()).toEqual({ id: expect.stringContaining('n-') }); });",
+    allowed: 'expect.any(Type)',
+  },
+  {
+    name: 'partial matcher names nitpicker.config.json',
+    config: partialAssertionConfig,
+    filename: testFile,
+    banned: "it('x', () => { expect(send()).toEqual(expect.objectContaining({ a: 1 })); });",
+    allowed: 'exception for this rule in nitpicker.config.json',
+  },
+  testCase(
+    'loop in a test names it.each',
+    "it('x', () => { for (let index = 0; index < 3; index += 1) { run(index); } });",
+    'it.each',
+  ),
+  testCase('as in a test names narrowing', 'const name = lookup() as string;', 'Narrow the value'),
+  testCase(
+    '.then in a test names async/await',
+    "it('x', async () => { await run().then(check); });",
+    'Use async/await',
+  ),
   testCase(
     'unpinned test tsconfig names types and lib',
     'writeFileSync(file, JSON.stringify({ compilerOptions: { strict: true } }));',

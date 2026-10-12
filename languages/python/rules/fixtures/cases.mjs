@@ -63,6 +63,13 @@ export const RULE_CASES = [
     mention: 'logging.getLogger',
   },
   {
+    name: 'try in a loop names a helper function',
+    fixture: 'try-in-loop',
+    tool: 'ruff',
+    rule: 'PERF203',
+    mention: 'helper function',
+  },
+  {
     name: 'mutable dataclass names frozen=True',
     fixture: 'frozen-dataclass',
     tool: 'python-rules',

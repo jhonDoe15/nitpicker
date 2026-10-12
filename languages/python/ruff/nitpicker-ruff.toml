@@ -20,7 +20,7 @@ select = [
   "S110",
   "S112",
 ]
-ignore = ["F405", "RUF100", "SIM105"]
+ignore = ["B008", "F405", "RUF001", "RUF002", "RUF003", "RUF012", "RUF100", "SIM105"]
 
 [lint.flake8-bandit]
 check-typed-exception = true
