@@ -3,8 +3,30 @@ import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
-const DEFAULT_COMPOSITION_ROOTS = new Set(['composition-root.ts', 'main.ts', 'server.ts']);
-const CONCRETE_FILE = /(?:client|pool|cache|store|scheduler|transport|adapter|service)\.[cm]?ts$/i;
+const COMPOSITION_ROOT_NAMES = ['composition-root', 'main', 'server'];
+const CONCRETE_NAME = '(?:client|pool|cache|store|scheduler|transport|adapter|service)';
+
+function defaultCompositionRoots(layout) {
+  return new Set(
+    COMPOSITION_ROOT_NAMES.flatMap((name) =>
+      layout.entryExtensions.map((extension) => `${name}.${extension}`),
+    ),
+  );
+}
+
+function concreteFilePattern(layout) {
+  return new RegExp(`${CONCRETE_NAME}\\.[cm]?${layout.javascript ? '[jt]s' : 'ts'}$`, 'i');
+}
+
+function declaredEntryPoints({ components, productionModules, root, layout }) {
+  const candidates = [...components].map((component) => [
+    component,
+    layout.entryExtensions
+      .map((extension) => `${root}/${component}/index.${extension}`)
+      .find((candidate) => productionModules.includes(candidate)),
+  ]);
+  return new Map(candidates.filter(([, entryPoint]) => entryPoint !== undefined));
+}
 
 function relativeToRoot(modulePath, sourceRoot) {
   return modulePath.slice(sourceRoot.length).replace(/^\//, '');
@@ -67,9 +89,9 @@ export function analyzeEntryPoints(
   graph,
   sourceRoot,
   {
-    foundationDirectories = DEFAULT_FOUNDATION_DIRECTORIES,
-    compositionRoots = DEFAULT_COMPOSITION_ROOTS,
     layout = defaultResolvedLayout,
+    foundationDirectories = DEFAULT_FOUNDATION_DIRECTORIES,
+    compositionRoots = defaultCompositionRoots(layout),
   } = {},
 ) {
   if (!Array.isArray(graph?.modules)) {
@@ -88,23 +110,21 @@ export function analyzeEntryPoints(
     )
       ? legacyRoot
       : requestedRoot;
-  const productionModules = graph.modules
-    .map((module) => normalizePath(module.source))
-    .filter(
-      (source) =>
-        source.startsWith(`${normalizedRoot}/`) &&
-        isProductionModule(source, normalizedRoot, layout),
-    );
+  const productionModules = sources.filter(
+    (source) =>
+      source.startsWith(`${normalizedRoot}/`) && isProductionModule(source, normalizedRoot, layout),
+  );
   const components = new Set(
     productionModules
       .map((source) => componentName(source, normalizedRoot))
       .filter((name) => name !== '(root)' && !foundationDirectories.has(name)),
   );
-  const entryPoints = new Map(
-    [...components]
-      .map((component) => [component, `${normalizedRoot}/${component}/index.ts`])
-      .filter(([, entryPoint]) => productionModules.includes(entryPoint)),
-  );
+  const entryPoints = declaredEntryPoints({
+    components,
+    productionModules,
+    root: normalizedRoot,
+    layout,
+  });
   const isExportReachable = exportReachability(graph, normalizedRoot);
 
   const throughEntryPoint = [];
@@ -148,7 +168,7 @@ export function analyzeEntryPoints(
       unexportedTargets.push({ ...finding, publicEntryPoint: entryPoint });
     }
 
-    if (CONCRETE_FILE.test(path.basename(edge.target))) {
+    if (concreteFilePattern(layout).test(path.basename(edge.target))) {
       concreteCrossBoundaryImports.push(finding);
     }
   }

@@ -1,12 +1,29 @@
+import { castTags, isJsdocBlock, parseJsdoc } from '../../../../javascript/preset/jsdoc.mjs';
+
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
+const JSDOC_EXCEPTION =
+  'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
 const toolDirective =
   /^\s*(?:eslint\b|prettier-ignore|istanbul\b|c8\b|v8\b|stryker\b|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
 
-function isDocComment(comment) {
-  return comment.type === 'Block' && comment.value.startsWith('*');
+function suppressionReport(comment) {
+  const suppression = typescriptSuppression.exec(comment.value);
+  if (suppression) {
+    return [{ messageId: 'typescriptSuppression', data: { directive: suppression[0] } }];
+  }
+  return eslintSuppression.test(comment.value) ? [{ messageId: 'eslintSuppression' }] : undefined;
+}
+
+function jsdocReports(comment, sourceCode) {
+  const { tags, problems } = parseJsdoc(comment.value);
+  const castsNextExpression = sourceCode.getTokenAfter(comment)?.value === '(';
+  return [
+    ...problems,
+    ...(castsNextExpression && castTags(tags).length > 0 ? [{ messageId: 'jsdocCast' }] : []),
+  ];
 }
 
 function declarationStartingAt(sourceCode, token) {
@@ -36,17 +53,21 @@ function documentsPublicApi(sourceCode, comment) {
   return exportDeclarations.has(node.type) || isExportedTypeMember(node);
 }
 
-function commentProblem(sourceCode, comment) {
-  if (comment.type === 'Shebang') return undefined;
-  const suppression = typescriptSuppression.exec(comment.value);
-  if (suppression) {
-    return { messageId: 'typescriptSuppression', data: { directive: suppression[0] } };
+function plainCommentReports(comment, sourceCode) {
+  if (toolDirective.test(comment.value)) return [];
+  if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
+  return documentsPublicApi(sourceCode, comment) ? [] : [{ messageId: 'internalDocComment' }];
+}
+
+function commentReports(comment, { jsdocTypes, sourceCode }) {
+  const suppression = suppressionReport(comment);
+  if (suppression !== undefined) {
+    return suppression;
   }
-  if (eslintSuppression.test(comment.value)) return { messageId: 'eslintSuppression' };
-  if (toolDirective.test(comment.value)) return undefined;
-  if (!isDocComment(comment)) return { messageId: 'comment' };
-  if (documentsPublicApi(sourceCode, comment)) return undefined;
-  return { messageId: 'internalDocComment' };
+  if (jsdocTypes && isJsdocBlock(comment)) {
+    return jsdocReports(comment, sourceCode);
+  }
+  return plainCommentReports(comment, sourceCode);
 }
 
 export const rule = {
@@ -56,7 +77,13 @@ export const rule = {
       description:
         'Allow only non-suppression tool directives as comments, plus doc comments on exported API',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: { jsdocTypes: { type: 'boolean' } },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       typescriptSuppression:
         'Fix the type error or narrow the value; TypeScript suppression comments ({{directive}}) are not allowed.',
@@ -64,16 +91,29 @@ export const rule = {
         'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
       comment:
         'Remove the comment and put the intent in code: a descriptive identifier, a named function, or a type. Only non-suppression tool directives may be comments.',
+      jsdocProse:
+        'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
+      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import). ${JSDOC_EXCEPTION}`,
+      jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
+      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type. ${JSDOC_EXCEPTION}`,
+      jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
+      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
       internalDocComment:
         'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },
   },
   create(context) {
+    const settings = {
+      jsdocTypes: context.options[0]?.jsdocTypes === true,
+      sourceCode: context.sourceCode,
+    };
     return {
       Program() {
         for (const comment of context.sourceCode.getAllComments()) {
-          const problem = commentProblem(context.sourceCode, comment);
-          if (problem) context.report({ loc: comment.loc, ...problem });
+          if (comment.type === 'Shebang') continue;
+          for (const report of commentReports(comment, settings)) {
+            context.report({ loc: comment.loc, ...report });
+          }
         }
       },
     };

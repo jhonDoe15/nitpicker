@@ -15,7 +15,7 @@ import {
 import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', ...GRADLE_PRESETS, 'python'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
