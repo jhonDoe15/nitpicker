@@ -176,7 +176,19 @@ describe('layout-aware tool configurations', () => {
       layoutTransformFor('tsconfig.stryker.json', defaultLayout)(shipped, target),
     );
     expect(strict.extends).toBe('./tsconfig.json');
-    expect(strict.compilerOptions).toMatchObject({
+    const {
+      skipLibCheck,
+      noImplicitReturns,
+      noFallthroughCasesInSwitch,
+      noUncheckedIndexedAccess,
+    } = strict.compilerOptions;
+    expect({
+      skipLibCheck,
+      strict: strict.compilerOptions.strict,
+      noImplicitReturns,
+      noFallthroughCasesInSwitch,
+      noUncheckedIndexedAccess,
+    }).toEqual({
       skipLibCheck: true,
       strict: true,
       noImplicitReturns: true,

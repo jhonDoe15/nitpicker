@@ -327,7 +327,7 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare(find(build, reported, 16), find(build, reported, 12));
 
     expect(result.newFindings).toEqual([]);
-    expect(result.unchangedFindings).toMatchObject([
+    expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
       { rule: 'sonarjs/cognitive-complexity', heldAtBase: 16 },
     ]);
   });
