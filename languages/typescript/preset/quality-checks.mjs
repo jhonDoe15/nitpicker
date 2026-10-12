@@ -312,7 +312,10 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: ['languages/typescript/preset/defaults/jscpd.json'],
+      configurationFiles: [
+        'languages/typescript/preset/defaults/jscpd.json',
+        'languages/typescript/preset/duplicates/normalize.mjs',
+      ],
     },
     {
       name: 'dead-code',
