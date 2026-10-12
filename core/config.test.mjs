@@ -66,6 +66,15 @@ describe('config file', () => {
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
     ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
+      'Checkstyle checks Java line length',
+    );
   });
 
   it.each([

@@ -31,16 +31,17 @@ describe('file length', () => {
       { rule: 'file-lines-limit', path: 'src/b.ts', identity: 'file-lines:301' },
       { rule: 'file-lines-limit', path: 'test/c.test.ts', identity: 'file-lines:501' },
     ]);
+    const hint =
+      'If this is intended, add {"rule":"file-lines-limit","paths":["src/b.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
     expect(findings[0].message).toBe(
-      'src/b.ts has 301 lines (limit 300). Split it into files by responsibility. If this is intended, add an exception for this rule in nitpicker.config.json.',
+      `File has 301 lines (limit 300). Split it into files by responsibility. ${hint}`,
     );
     expect(findings[0].ratchet).toEqual({
       key: 'file-lines',
       value: 301,
-      worseMessage:
-        'src/b.ts grew from {base} to 301 lines (limit 300). Put new code in a new file.',
+      worseMessage: `File grew from {base} to 301 lines (limit 300). Put new code in a new file. ${hint}`,
       heldMessage:
-        'src/b.ts: 301 lines (limit 300), allowed because base was {base}; any increase fails.',
+        'File: 301 lines (limit 300), allowed because base was {base}; any increase fails.',
     });
   });
 
@@ -73,7 +74,7 @@ describe('line length', () => {
     ]);
     expect(moved.identity).toBe(first.identity);
     expect(first.message).toBe(
-      `Line is ${String(long.length)} characters (limit 120). Break it up or extract a named value. If this is intended, add an exception for this rule in nitpicker.config.json.`,
+      `Line is ${String(long.length)} characters (limit 120). Break it up or extract a named value. If this is intended, add {"rule":"line-length-limit","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
     );
   });
 
@@ -89,7 +90,9 @@ describe('line length', () => {
   it('ignores lines a formatter cannot break: imports, URLs and string literal text', () => {
     const text = [
       `import { ${'a'.repeat(120)} } from './x';`,
+      `export { ${'a'.repeat(120)} } from './x';`,
       `} from './${'b'.repeat(120)}';`,
+      `from ${'p'.repeat(120)} import name`,
       `// see https://example.com/${'c'.repeat(120)}`,
       `  '${'d'.repeat(120)}',`,
       `  message: "${'e'.repeat(120)}",`,
@@ -100,11 +103,27 @@ describe('line length', () => {
     expect(evaluate([source('src/a.ts', text)])).toEqual([]);
   });
 
-  it('still fails a line whose code, not its strings, is too long', () => {
-    const text = `const x = 'a' + compute(${'b, '.repeat(40)}c) + 'd';\n`;
-    expect(evaluate([source('src/a.ts', text)]).map(({ rule }) => rule)).toEqual([
-      'line-length-limit',
+  it('still counts code around strings and URLs, inside interpolations and after import-like words', () => {
+    const code = `compute(${'b, '.repeat(40)}c)`;
+    const text = [
+      `const x = 'a' + ${code} + 'd';`,
+      `const y = ${code}; // see https://example.com`,
+      `const z = \`total: \${${code}}\`;`,
+      `import.meta.resolve(${code});`,
+      `package.build(${code});`,
+      '',
+    ].join('\n');
+    expect(evaluate([source('src/a.ts', text)]).map(({ location }) => location.line)).toEqual([
+      1, 2, 3, 4, 5,
     ]);
+  });
+
+  it('counts indentation', () => {
+    expect(
+      evaluate([source('src/a.ts', `${' '.repeat(20)}${'a'.repeat(110)};\n`)]).map(
+        ({ rule }) => rule,
+      ),
+    ).toEqual(['line-length-limit']);
   });
 
   it('takes the limit from thresholds and skips excepted files', () => {
@@ -134,12 +153,14 @@ describe('files per folder', () => {
     expect(summary(findings)).toEqual([
       { rule: 'folder-files-limit', path: 'src/feature', identity: 'folder-files:source:7' },
     ]);
+    const hint =
+      'If this is intended, add {"rule":"folder-files-limit","paths":["src/feature/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
     expect(findings[0].message).toBe(
-      'src/feature has 7 source files directly in it (limit 6). Group related files into subfolders. If this is intended, add an exception for this rule in nitpicker.config.json.',
+      `Folder has 7 source files directly in it (limit 6). Group related files into subfolders (packages in Java). ${hint}`,
     );
     expect(findings[0].ratchet.key).toBe('folder-files:source');
     expect(findings[0].ratchet.worseMessage).toBe(
-      'src/feature grew from {base} to 7 source files (limit 6). Put the new file in a subfolder.',
+      `Folder grew from {base} to 7 source files (limit 6). Put the new file in a subfolder. ${hint}`,
     );
   });
 
@@ -151,6 +172,26 @@ describe('files per folder', () => {
       { rule: 'folder-files-limit', path: 'test', identity: 'folder-files:test:3' },
       { rule: 'folder-files-limit', path: 'src', identity: 'folder-files:source:3' },
     ]);
+  });
+
+  it('accepts the folder itself as an exception path and suggests a glob for a root folder', () => {
+    expect(
+      evaluate(files('src/icons', 8), {
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons'] }],
+      }),
+    ).toEqual([]);
+    const [root] = evaluate(files('.', 7).map((file) => ({ ...file, path: file.path.slice(2) })));
+    expect(root.path).toBe('.');
+    expect(root.message).toContain('"paths":["*"]');
+  });
+
+  it('skips test data under fixtures folders', () => {
+    expect(
+      evaluate([
+        ...files('test/fixtures/project', 9, test),
+        ...files('test/__fixtures__', 9, test),
+      ]),
+    ).toEqual([]);
   });
 
   it('leaves excepted files out of the count', () => {
@@ -213,7 +254,7 @@ describe('comparison against the base', () => {
   it('fails a file over the limit that grows, naming the base size', () => {
     const result = compare([source('src/a.ts', lines(400))], [source('src/a.ts', lines(401))]);
     expect(newMessages(result)).toEqual([
-      'src/a.ts grew from 400 to 401 lines (limit 300). Put new code in a new file.',
+      'File grew from 400 to 401 lines (limit 300). Put new code in a new file. If this is intended, add {"rule":"file-lines-limit","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -226,21 +267,18 @@ describe('comparison against the base', () => {
     expect(compare(folder(12), folder(12)).newFindings).toEqual([]);
     expect(compare(folder(12), folder(11)).newFindings).toEqual([]);
     expect(newMessages(compare(folder(12), folder(13)))).toEqual([
-      'src grew from 12 to 13 source files (limit 6). Put the new file in a subfolder.',
+      'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If this is intended, add {"rule":"folder-files-limit","paths":["src/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
-  it('fails a long line the change writes and keeps one it leaves alone', () => {
+  it('fails a new long line and a legacy one an edit makes longer, and holds the rest', () => {
     const long = `run(${'a'.repeat(130)});`;
-    const edited = `run(${'b'.repeat(130)});`;
-    expect(
-      compare([source('src/a.ts', `${long}\n`)], [source('src/a.ts', `x\n${long}\n`)]).newFindings,
-    ).toEqual([]);
-    expect(
-      compare(
-        [source('src/a.ts', `${long}\n`)],
-        [source('src/a.ts', `${edited}\n`)],
-      ).newFindings.map(({ rule }) => rule),
-    ).toEqual(['line-length-limit']);
+    const base = [source('src/a.ts', `${long}\n`)];
+    const lineRules = (head) =>
+      compare(base, [source('src/a.ts', head)]).newFindings.map(({ rule }) => rule);
+    expect(lineRules(`x\n${long}\n`)).toEqual([]);
+    expect(lineRules(`run(${'b'.repeat(130)});\n`)).toEqual([]);
+    expect(lineRules(`run(${'b'.repeat(131)});\n`)).toEqual(['line-length-limit']);
+    expect(lineRules(`${long}\nrun(${'c'.repeat(130)});\n`)).toEqual(['line-length-limit']);
   });
 });

@@ -10,10 +10,9 @@ import {
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
+import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 
 const SUPPORTED_PRESETS = ['typescript', 'java'];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'tools'];
 const KEYS = [
   'base',
   'preset',
@@ -76,27 +75,8 @@ function validateScalars(config) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
   if (config.preset === 'java') {
-    validateJavaKeys(config);
+    validateJavaConfig(config);
   }
-}
-
-function validateJavaKeys(config) {
-  const unsupported = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) =>
-      config[key] !== undefined && !(key === 'exceptions' && liftsSharedRulesOnly(config[key])),
-  );
-  if (unsupported.length > 0) {
-    throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}, except exceptions for ${SHARED_EXCEPTION_RULES.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
-    );
-  }
-}
-
-function liftsSharedRulesOnly(exceptions) {
-  return (
-    Array.isArray(exceptions) &&
-    exceptions.every((entry) => SHARED_EXCEPTION_RULES.includes(entry?.rule))
-  );
 }
 
 function validateDisable(disable) {

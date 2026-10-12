@@ -5,11 +5,40 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { configError } from '../../../shared/config.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 const INVENTORY_TOOL = 'java';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'folderFiles'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'tools'];
+const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
+  (rule) => !JAVA_NATIVE_RULES.includes(rule),
+);
+
+export function validateJavaConfig(config) {
+  const unsupported = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) =>
+      config[key] !== undefined && !(key === 'exceptions' && liftsJavaRulesOnly(config[key])),
+  );
+  if (unsupported.length > 0) {
+    throw configError(
+      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}, except exceptions for ${JAVA_EXCEPTION_RULES.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
+    );
+  }
+  if (config.thresholds?.lineLength !== undefined) {
+    throw configError(
+      '"thresholds.lineLength" is not supported with "preset": "java": Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+    );
+  }
+}
+
+function liftsJavaRulesOnly(exceptions) {
+  return (
+    Array.isArray(exceptions) &&
+    exceptions.every((entry) => JAVA_EXCEPTION_RULES.includes(entry?.rule))
+  );
+}
 
 export function configureJavaAnalyzer(
   analyzer,
@@ -61,7 +90,7 @@ function javaFileLimits(thresholds, exceptions) {
       thresholds[key],
     ]),
   );
-  const lifted = exceptions.filter(({ rule }) => SHARED_EXCEPTION_RULES.includes(rule));
+  const lifted = exceptions.filter(({ rule }) => JAVA_EXCEPTION_RULES.includes(rule));
   return Object.keys(limits).length === 0 && lifted.length === 0
     ? undefined
     : { thresholds: limits, exceptions: lifted };
