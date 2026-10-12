@@ -15,7 +15,9 @@ applies to the lines you add.
   `no-unknown-in-domain` exception the project already has; without one, pass new helpers the
   typed values the legacy function already reads.
 - A legacy function that throws keeps its throw count: return the new failure as a union from a
-  new helper and throw it through an existing `throw` line. Keep the public function where it is.
+  new helper and throw its reason by editing an existing `throw` line in place
+  (`` throw new Error(`Line ${n}: ${entry.reason}`) ``). A `throw` on a new line counts as new even
+  when the count holds. Keep the public function where it is.
 - When a union gains a member that a legacy `switch` must handle and the function is over a limit,
   extract the switch into a new exhaustive function; never replace it with one call per member.
 - `--fix` turns a legacy `interface` into a `type`, which then counts as yours: make it readonly
