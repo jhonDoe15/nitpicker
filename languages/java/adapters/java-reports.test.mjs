@@ -298,7 +298,10 @@ describe('readJavaFindings: PIT', () => {
 });
 
 describe('readJavaFindings: Spring configuration', () => {
-  it('reads application files from the default and the manifest resource roots', () => {
+  const spring = (findings) =>
+    findings.filter(({ tool }) => tool === 'spring').map(({ rule, path: file }) => [rule, file]);
+
+  function withApplicationFiles() {
     const root = projectWithReports();
     mkdirSync(path.join(root, 'src/main/resources'), { recursive: true });
     mkdirSync(path.join(root, 'conf'), { recursive: true });
@@ -307,29 +310,46 @@ describe('readJavaFindings: Spring configuration', () => {
       'server.error.include-stacktrace=always\n',
     );
     writeFileSync(path.join(root, 'conf/application.yml'), 'app.password: hunter2\n');
+    return root;
+  }
 
-    const spring = (findings) =>
-      findings.filter(({ tool }) => tool === 'spring').map(({ rule, path: file }) => [rule, file]);
+  function writeManifest(root, manifest) {
+    writeFileSync(
+      path.join(root, 'build/nitpicker/manifest.json'),
+      JSON.stringify({ sourceRoots: ['src/main/java'], ...manifest }),
+    );
+  }
+
+  it('reads application files from the default and the manifest resource roots', () => {
+    const root = withApplicationFiles();
+    writeManifest(root, { spring: true });
 
     expect(spring(readJavaFindings(root).findings)).toEqual([
       ['error-details', 'src/main/resources/application.properties'],
     ]);
 
-    const manifest = path.join(root, 'build/nitpicker/manifest.json');
-    writeFileSync(
-      manifest,
-      JSON.stringify({ sourceRoots: ['src/main/java'], resourceRoots: ['conf'] }),
-    );
+    writeManifest(root, { spring: true, resourceRoots: ['conf'] });
 
     expect(spring(readJavaFindings(root).findings)).toEqual([
       ['literal-secret', 'conf/application.yml'],
     ]);
   });
 
-  it('adds nothing for projects without application files', () => {
-    const { findings } = readJavaFindings(projectWithReports());
+  it.each([{ spring: false }, {}, { spring: 'true' }, { spring: 1 }])(
+    'reads nothing unless the manifest says the project uses Spring (%j)',
+    (manifest) => {
+      const root = withApplicationFiles();
+      writeManifest(root, manifest);
 
-    expect(findings.filter(({ tool }) => tool === 'spring')).toEqual([]);
+      expect(spring(readJavaFindings(root).findings)).toEqual([]);
+    },
+  );
+
+  it('adds nothing for projects without application files', () => {
+    const root = projectWithReports();
+    writeManifest(root, { spring: true });
+
+    expect(spring(readJavaFindings(root).findings)).toEqual([]);
   });
 });
 

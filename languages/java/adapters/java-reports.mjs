@@ -61,10 +61,7 @@ export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
-      ...readSpringConfigFindings(projectRoot, {
-        sourceRoots: context.sourceRoots,
-        resourceRoots: manifest.resourceRoots,
-      }),
+      ...springFindings(context),
     ],
   };
 }
@@ -76,6 +73,12 @@ export function requireGradleReports(projectRoot, preset) {
       `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
     );
   }
+}
+
+function springFindings({ projectRoot, manifest, sourceRoots }) {
+  return manifest.spring === true
+    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    : [];
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {

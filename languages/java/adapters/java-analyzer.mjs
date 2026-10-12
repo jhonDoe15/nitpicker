@@ -8,7 +8,7 @@ const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
-const CONFIGURATION_FILES = [
+export const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/adapters/java-analyzer.mjs',
@@ -33,6 +33,7 @@ const CONFIGURATION_FILES = [
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/adapters/java-suppressions.mjs',
   'languages/java/adapters/spring-config-parser.mjs',
+  'languages/java/adapters/spring-secrets.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/crap.mjs',
