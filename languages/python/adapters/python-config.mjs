@@ -42,13 +42,7 @@ function validateSettings(settings) {
   if (!isPlainObject(settings)) {
     throw configError('"python" must be an object');
   }
-  for (const key of Object.keys(settings)) {
-    if (!SETTING_KEYS.includes(key)) {
-      throw configError(
-        `unknown key "${key}" in "python". Allowed keys: ${SETTING_KEYS.join(', ')}`,
-      );
-    }
-  }
+  validateSettingKeys(settings);
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
   validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
   validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
@@ -63,6 +57,16 @@ function validateSettings(settings) {
   }
   if (settings.exceptions !== undefined) {
     validateExceptions(settings.exceptions, 'python.exceptions');
+  }
+}
+
+function validateSettingKeys(settings) {
+  for (const key of Object.keys(settings)) {
+    if (!SETTING_KEYS.includes(key)) {
+      throw configError(
+        `unknown key "${key}" in "python". Allowed keys: ${SETTING_KEYS.join(', ')}`,
+      );
+    }
   }
 }
 
