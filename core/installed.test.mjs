@@ -272,6 +272,9 @@ suite('packed nitpicker in a separate consumer', () => {
           '@eslint/js',
           '@vitest/eslint-plugin',
           'eslint-plugin-functional',
+          'eslint-plugin-jsx-a11y-x',
+          'eslint-plugin-react-hooks',
+          'eslint-plugin-react-x',
           'typescript-eslint',
         ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
