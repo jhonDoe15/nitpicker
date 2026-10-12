@@ -302,13 +302,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
       ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
     ].join('|'),
-    message: eslintMessageWithHint({
-      ruleId,
-      text: messageText,
-      relativePath,
-      node: comment === undefined ? locatedNode : undefined,
-      sourceFile,
-    }),
+    message: hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }),
     location: { line, column },
     classification: 'enforceable',
   };
@@ -316,6 +310,16 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
     finding.symbol = symbol;
   }
   return { finding, plan: ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) };
+}
+
+function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
+  return eslintMessageWithHint({
+    ruleId,
+    text: messageText,
+    relativePath,
+    node: comment === undefined ? locatedNode : undefined,
+    sourceFile,
+  });
 }
 
 function reportedPositions(message, context, sourceFile) {

@@ -382,10 +382,17 @@ describe('renderConsoleSummary', () => {
       { color: false },
     );
 
-    expect(summary).toContain(
-      '  mutation (head): mutation skipped: the change does not type-check (see typescript-typecheck findings)\n',
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        '  mutation (head): mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
     );
-    expect(summary).not.toContain('initialization');
   });
 
   it('collapses repeated findings of one rule and message in one file into a single entry', () => {
@@ -555,10 +562,17 @@ describe('touched, still over limit', () => {
       color: false,
     });
 
-    expect(summary).toContain(
-      '  crap/crap-score-limit src/a.js:22 summarizeShipping: CRAP 10.00 (limit 9), allowed because base was 16.02; any increase fails.',
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  crap/crap-score-limit src/a.js:22 summarizeShipping: CRAP 10.00 (limit 9), allowed because base was 16.02; any increase fails.',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
     );
-    expect(summary).not.toContain('must be below');
   });
 
   it('falls back to the finding message for a held metric without a held message', () => {
@@ -573,8 +587,16 @@ describe('touched, still over limit', () => {
       color: false,
     });
 
-    expect(summary).toContain(
-      'Function has a complexity of 12. (allowed because base was 12; any increase fails)',
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  eslint/complexity src/a.js:12 Function has a complexity of 12. (allowed because base was 12; any increase fails)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
     );
   });
 
@@ -590,7 +612,17 @@ describe('touched, still over limit', () => {
       color: false,
     });
 
-    expect(summary).toContain('Unexpected any. (5 at base, 3 now; any increase fails)');
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 existing lint finding in edited code (not failing, no more than before):',
+        '  eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (5 at base, 3 now; any increase fails)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('adds nothing when no finding was held', () => {

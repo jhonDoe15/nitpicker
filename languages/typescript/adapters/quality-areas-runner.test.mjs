@@ -99,11 +99,12 @@ describe('structure limit messages', () => {
 describe('mutation testing that cannot start', () => {
   it('says the change does not type-check instead of repeating the Stryker initialization error', () => {
     const strykerMessage =
-      'Error: An error occurred during initialization of the "typescript" checker. Inner error: Error: Typescript error(s) found in dry run compilation: test/billing.test.ts(60,57): error TS2365: Operator \'+\' cannot be applied to types \'Share\' and \'number\'.';
+      "Error: An error occurred during initialization of the \"typescript\" checker. Inner error: Error: Typescript error(s) found in dry run compilation: test/billing.test.ts(60,57): error TS2365: Operator '+' cannot be applied to types 'Share' and 'number'.";
 
     expect(mutationSkipFor(strykerMessage)).toEqual({
       rule: 'typecheck-failed-skipped',
-      message: 'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+      message:
+        'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
     });
   });
 
