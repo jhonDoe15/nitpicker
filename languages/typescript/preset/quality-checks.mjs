@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
+import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -157,10 +157,8 @@ function entryPointsCheckFor(layout, exclusions) {
       'languages/typescript/preset/head-policy.mjs',
       'languages/typescript/preset/entry-points/analyze.mjs',
       'languages/typescript/preset/dependency-graph/cruise.mjs',
-      'languages/typescript/preset/dependency-graph/config.mjs',
+      ARCHITECTURE_CONFIG,
       POLICY_TYPESCRIPT_CONFIG,
-      'core/tooling/policy-links.mjs',
-      'core/tooling/temporary-files.mjs',
     ],
   };
 }
@@ -211,15 +209,13 @@ function typeAndArchitectureChecksFor(layout) {
       version: dependencyCruiserVersion,
       patterns: layout.graphRoots,
       exclusions: [ARCHITECTURE_EXCLUSION, ...layout.exclude],
-      configRelativePath: 'languages/typescript/preset/defaults/dependency-cruiser.config.mjs',
-      exclude: [ARCHITECTURE_EXCLUSION, layout.excludePattern]
-        .filter((pattern) => pattern !== undefined)
-        .join('|'),
+      configRelativePath: ARCHITECTURE_CONFIG,
+      exclude: ARCHITECTURE_EXCLUSION,
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
-        'languages/typescript/preset/defaults/dependency-cruiser.config.mjs',
+        ARCHITECTURE_CONFIG,
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
@@ -256,11 +252,9 @@ function standardsChecksFor(exclusions) {
 }
 
 const DEPENDENCY_GRAPH_FILES = [
-  'languages/typescript/preset/dependency-graph/config.mjs',
+  ARCHITECTURE_CONFIG,
   'languages/typescript/preset/dependency-graph/cruise.mjs',
   POLICY_TYPESCRIPT_CONFIG,
-  'core/tooling/policy-links.mjs',
-  'core/tooling/temporary-files.mjs',
 ];
 
 function graphChecksFor(exclusions) {
