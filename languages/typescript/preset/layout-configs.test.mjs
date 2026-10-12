@@ -168,6 +168,79 @@ describe('layout-aware tool configurations', () => {
     expect(layered.exclude).toContain('lib/legacy/**');
   });
 
+  describe('over a solution-style project tsconfig', () => {
+    const appConfig = `{
+      // Bundler mode
+      "compilerOptions": { "jsx": "react-jsx", "module": "ESNext", "moduleResolution": "bundler" },
+      "include": ["src"]
+    }`;
+    const nodeConfig =
+      '{ "compilerOptions": { "module": "ESNext" }, "include": ["vite.config.ts"] }';
+    const solution = (...paths) =>
+      JSON.stringify({ files: [], references: paths.map((reference) => ({ path: reference })) });
+
+    function layeredFor(files, name = 'tsconfig.quality.json') {
+      const projectRoot = temporaryProject(files);
+      const shipped = readFileSync(path.join(defaults, name), 'utf8');
+      const target = path.join(projectRoot, '.nitpicker-x.json');
+      const layered = layoutTransformFor(name, defaultLayout)(shipped, target);
+      writeFileSync(target, layered);
+      return { layered: JSON.parse(layered), target };
+    }
+
+    it('extends the referenced config that includes the source roots, so its compiler options apply', () => {
+      const { layered, target } = layeredFor({
+        'tsconfig.json': solution('./tsconfig.node.json', './tsconfig.app.json'),
+        'tsconfig.app.json': appConfig,
+        'tsconfig.node.json': nodeConfig,
+      });
+
+      expect(layered.extends).toBe('./tsconfig.app.json');
+      const parsed = ts.getParsedCommandLineOfConfigFile(
+        target,
+        {},
+        { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined },
+      );
+      expect(parsed.options.jsx).toBe(ts.JsxEmit.ReactJSX);
+    });
+
+    it('follows a reference to a directory, for the mutation tsconfig too', () => {
+      const projectRoot = temporaryProject({ 'tsconfig.json': solution('./app') });
+      mkdirSync(path.join(projectRoot, 'app'));
+      writeFileSync(path.join(projectRoot, 'app', 'tsconfig.json'), appConfig);
+      const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
+
+      const mutation = JSON.parse(
+        layoutTransformFor('tsconfig.stryker.json', defaultLayout)(
+          shipped,
+          path.join(projectRoot, '.nitpicker-x.json'),
+        ),
+      );
+
+      expect(mutation.extends).toBe('./app/tsconfig.json');
+    });
+
+    it.each([
+      [
+        'no reference includes a source root',
+        { 'tsconfig.json': solution('./tsconfig.node.json'), 'tsconfig.node.json': nodeConfig },
+      ],
+      ['the referenced file is missing', { 'tsconfig.json': solution('./tsconfig.app.json') }],
+      [
+        'the project config has compiler options of its own',
+        {
+          'tsconfig.json': JSON.stringify({
+            compilerOptions: { strict: true, types: [], lib: ['ES2022'] },
+            references: [{ path: './tsconfig.app.json' }],
+          }),
+          'tsconfig.app.json': appConfig,
+        },
+      ],
+    ])('keeps extending the project tsconfig when %s', (_name, files) => {
+      expect(layeredFor(files).layered.extends).toBe('./tsconfig.json');
+    });
+  });
+
   it('type-check mutants with the policy compiler options on top of the project tsconfig', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
     const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
