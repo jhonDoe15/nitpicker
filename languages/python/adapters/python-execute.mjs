@@ -4,7 +4,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
 const MESSAGE_TAIL_LENGTH = 3000;
 
-export function execute(context, command, { env = {} } = {}) {
+export function execute(context, command, { env = {}, timeout = TOOL_TIMEOUT_MS } = {}) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
   return spawnSync(launch.command, launch.args, {
@@ -12,13 +12,17 @@ export function execute(context, command, { env = {} } = {}) {
     env: { ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: TOOL_TIMEOUT_MS,
+    timeout,
   });
 }
 
-export function run(context, command, { accepted = [0], rule, env }) {
-  const result = execute(context, command, { env });
-  if (result.error !== undefined || !accepted.includes(result.status)) {
+function isAccepted(accepted, result) {
+  return typeof accepted === 'function' ? accepted(result) : accepted.includes(result.status);
+}
+
+export function run(context, command, { accepted = [0], rule, env, timeoutMs }) {
+  const result = execute(context, command, { env, timeout: timeoutMs });
+  if (result.error !== undefined || !isAccepted(accepted, result)) {
     throw Object.assign(new Error(describeFailure({ context, command, result })), { rule });
   }
   return result;
