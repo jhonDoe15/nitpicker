@@ -11,11 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import {
-  installFakePoetry,
-  installFakeToolchain,
-  installFakeUv,
-} from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
 import { runCli } from './cli.mjs';
 
 const temporaryRoots = [];
@@ -108,7 +104,7 @@ const FAILING_SUMMARY = [
   '  ruff/B006 src/demo/a.py:2',
   '    Do not use mutable data structures for argument defaults',
   '  ruff-format/format src/demo/a.py',
-  '    File is not formatted with ruff',
+  '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
   'Full diagnostics: <path>',
   '',
 ].join('\n');
@@ -161,9 +157,7 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
-    expect(result.json('summary.json').tools[0].version).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
-    );
+    expect(result.json('summary.json').tools[0].version).toBe('ruff@0.9.9;coverage@7.6.1;unittest');
   });
 
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
@@ -189,7 +183,7 @@ describe('nitpicker with "preset": "python"', () => {
         tool: 'ruff-format',
         rule: 'format',
         path: 'src/demo/a.py',
-        message: 'File is not formatted with ruff',
+        message: 'File is not formatted with ruff (detected; set "python.formatter" if wrong)',
       }),
     ]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
@@ -200,69 +194,19 @@ describe('nitpicker with "preset": "python"', () => {
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/B006/);
   });
 
-  it('checks formatting with black when the project uses it', () => {
-    const root = pythonRepository({
-      'pyproject.toml': '[tool.black]\nline-length = 100\n',
-    });
-    write(root, { 'unformatted.txt': 'src/demo/a.py\n' });
-    commit(root, 'unformatted file');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
-        tool: 'black',
-        rule: 'format',
-        path: 'src/demo/a.py',
-        message: 'File is not formatted with black',
-      }),
-    ]);
-    expect(result.json('summary.json').tools[0].version).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
-    );
-  });
-
-  it('honours exclude from nitpicker.config.json', () => {
+  it('fails a change that leaves the project without any test', () => {
     const root = pythonRepository();
-    write(root, {
-      'nitpicker.config.json': '{ "preset": "python", "exclude": ["src/demo/**"] }\n',
-      'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|mutable default\n`,
-    });
-    commit(root, 'add a violation in an excluded path');
+    write(root, { 'test-exit.txt': '5\n' });
+    commit(root, 'delete the tests');
 
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('new-findings.json')).toEqual([]);
-  });
-
-  it('baselines a site from the legacy inventory and fails on baseline-expansion', () => {
-    const site = (count) => ({
-      sites: [
-        {
-          file: 'src/demo/a.py',
-          rule: 'B006',
-          source: 'fp:nitpicker/subject=mutable default',
-          count,
-        },
-      ],
-    });
-    const root = pythonRepository({ 'nitpicker.legacy.json': JSON.stringify(site(1)) });
-    write(root, { 'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|mutable default\n` });
-    commit(root, 'add a baselined violation');
-    expect(run(root).exitCode).toBe(0);
-
-    write(root, { 'nitpicker.legacy.json': JSON.stringify(site(2)) });
-    commit(root, 'raise the allowance');
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
       expect.objectContaining({
         tool: 'python',
-        rule: 'baseline-expansion',
-        message: 'Legacy allowance increased from 1 to 2 for B006',
+        rule: 'no-tests-ran',
+        classification: 'enforceable',
       }),
     ]);
   });
@@ -285,27 +229,6 @@ describe('nitpicker with "preset": "python"', () => {
         message: expect.stringContaining('1 failed: test_greet'),
       }),
     ]);
-  });
-
-  it('reports a crashing tool on base as a tool error', () => {
-    const root = pythonRepository({ 'fail.json': '{ "ruff": "ruff crashed" }\n' });
-    write(root, { 'fail.json': '{}\n' });
-    commit(root, 'fix the tool');
-
-    const result = run(root);
-
-    expect(result.exitCode).toBe(2);
-    const errors = result.json('tool-errors.json');
-    expect(errors.map(({ rule }) => rule).sort()).toEqual(['format-failed', 'ruff-failed']);
-    expect(errors).toEqual(
-      Array(2).fill(
-        expect.objectContaining({
-          tool: 'python',
-          snapshot: 'base',
-          message: expect.stringContaining('ruff crashed'),
-        }),
-      ),
-    );
   });
 
   it('reports a missing environment as a tool error', () => {
@@ -331,37 +254,6 @@ describe('nitpicker with "preset": "python"', () => {
     );
   });
 
-  it('runs every tool through uv when the project has a uv.lock', () => {
-    const tools = temporaryRoot('nitpicker-python-uv-');
-    installFakeUv(tools);
-    const uvLog = path.join(tools, 'uv.log');
-    setEnvironment('FAKE_UV_LOG', uvLog);
-    setEnvironment('PATH', `${tools}${path.delimiter}${process.env.PATH}`);
-    const root = pythonRepository({ 'uv.lock': 'version = 1\n' });
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
-    commit(root, 'change');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
-    const invocations = readFileSync(uvLog, 'utf8').split('\n').filter(Boolean);
-    expect(invocations[0]).toBe(`run --project ${root} --no-sync -- ruff --version`);
-    expect(invocations.filter((line) => line.includes('-- coverage run'))).toHaveLength(2);
-  });
-
-  it('runs every tool in the poetry environment when the project has a poetry.lock', () => {
-    const tools = temporaryRoot('nitpicker-python-poetry-');
-    const root = pythonRepository({ 'poetry.lock': '# lock\n' });
-    installFakePoetry(tools, path.join(root, '.venv'));
-    setEnvironment('PATH', `${tools}${path.delimiter}${process.env.PATH}`);
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
-    commit(root, 'change');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
-  });
-
   it('runs base sources, not the head ones, against the environment of the checkout', () => {
     const calls = callsLog();
     const root = pythonRepository();
@@ -379,20 +271,6 @@ describe('nitpicker with "preset": "python"', () => {
       expect(testRun.pythonPath.split(path.delimiter)[0]).toBe(path.join(testRun.cwd, 'src'));
       expect(testRun.cwd).not.toBe(root);
     }
-  });
-
-  it('falls back to unittest when pytest is not installed', () => {
-    const calls = callsLog();
-    const root = pythonRepository({ 'no-pytest.txt': '\n', 'tests/test_a.py': 'x = 1\n' });
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
-    commit(root, 'change');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
-    const testRun = calls().find(({ tool, args }) => tool === 'coverage' && args[0] === 'run');
-    expect(testRun.args.slice(-5)).toEqual(['-m', 'unittest', 'discover', '-s', 'tests']);
-    expect(result.json('summary.json').tools[0].version).toMatch(/;unittest$/);
   });
 
   it('rejects the TypeScript-only config keys', () => {

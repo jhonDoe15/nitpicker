@@ -74,6 +74,39 @@ describe('analyzing a Python snapshot', () => {
     });
   });
 
+  it('says how to lift the rules that flag idiomatic code and when the formatter was guessed', () => {
+    const root = project({
+      'violations.txt': 'T201|src/demo/a.py|`print` found\nB006|src/demo/a.py|mutable\n',
+      'unformatted.txt': 'src/demo/a.py\n',
+    });
+
+    const messages = analyze(root).findings.map(({ rule, message }) => `${rule}: ${message}`);
+
+    expect(messages).toEqual([
+      'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
+      'B006: mutable',
+      'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
+    ]);
+    expect(analyze(root, { settings: { formatter: 'ruff' } }).findings.at(-1).message).toBe(
+      'File is not formatted with ruff',
+    );
+  });
+
+  it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
+    const root = project({ 'test-exit.txt': '5\n' });
+
+    expect(analyze(root).findings).toEqual([
+      {
+        tool: 'python',
+        rule: 'no-tests-ran',
+        path: '.',
+        identity: 'no-tests-ran',
+        message: 'No tests ran. Keep the project tests, or restore the ones this change removed.',
+        classification: 'enforceable',
+      },
+    ]);
+  });
+
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {
     const headRoot = project({
       'violations.txt': 'F401|src/demo/a.py|unused\nF401|gen/b.py|unused\n',
