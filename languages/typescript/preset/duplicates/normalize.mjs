@@ -3,10 +3,14 @@ import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { sourceRoot } from '../layout.mjs';
 
+const IDENTIFIER = String.raw`[\p{L}_$][\p{L}\p{N}_$]*`;
+const FUNCTION_DECLARATION = String.raw`\bfunction\s*\*?\s*${IDENTIFIER}\s*[<(]`;
+const FUNCTION_VALUE = String.raw`(?:async\s+)?(?:function\b|\([^()]*\)[^=;]*=>|${IDENTIFIER}\s*=>)`;
+const FUNCTION_BINDING = String.raw`\b(?:const|let)\s+${IDENTIFIER}\s*=\s*${FUNCTION_VALUE}`;
+const NAMED_FUNCTION = new RegExp(`${FUNCTION_DECLARATION}|${FUNCTION_BINDING}`, 'u');
+
 function definesNamedFunction(fragment) {
-  return /\bfunction\s*\*?\s*[\p{L}_$][\p{L}\p{N}_$]*\s*[<(]|\b(?:const|let)\s+[\p{L}_$][\p{L}\p{N}_$]*\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)[^=;]*=>|[\p{L}_$][\p{L}\p{N}_$]*\s*=>)/u.test(
-    fragment,
-  );
+  return NAMED_FUNCTION.test(fragment);
 }
 
 function isRepeatedTestData(clone, isTestFile) {
