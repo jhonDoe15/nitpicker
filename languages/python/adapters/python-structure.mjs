@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readStructureFindings } from '../../java/adapters/java-structure.mjs';
-import { run } from './python-process.mjs';
+import { run } from './python-execute.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 
 const METRICS_SCRIPT = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');

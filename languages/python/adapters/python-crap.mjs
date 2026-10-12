@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from '../ingest/crap.mjs';
-import { execute, run } from './python-process.mjs';
+import { execute, run } from './python-execute.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 
 export const LIZARD_REPORT = 'lizard.csv';
