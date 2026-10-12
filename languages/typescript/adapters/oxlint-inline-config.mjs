@@ -4,6 +4,8 @@ import ts from 'typescript';
 
 const LINE_DIRECTIVE =
   /^(?<space>\s*)(?<keyword>(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?)(?:\s|$)/u;
+const INVISIBLE_TO_OXLINT = '\uFEFF';
+const RULE_TOKEN = /[\w@/-]+/gu;
 const BLOCK_DIRECTIVE =
   /^(?<space>\s*)(?<keyword>(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?|eslint|eslint-env|globals?|exported)(?:\s|$)/u;
 
@@ -19,7 +21,9 @@ function commentRanges(sourceFile) {
   const text = sourceFile.text;
   const nodes = [sourceFile];
   for (const node of nodes) {
-    addRanges(ranges, ts.getLeadingCommentRanges(text, node.getFullStart()));
+    if (node.kind !== ts.SyntaxKind.JsxText) {
+      addRanges(ranges, ts.getLeadingCommentRanges(text, node.getFullStart()));
+    }
     addRanges(ranges, ts.getTrailingCommentRanges(text, node.getEnd()));
     nodes.push(...node.getChildren(sourceFile));
   }
@@ -37,9 +41,17 @@ function directiveAt(sourceFile, range) {
   const match = (isLine ? LINE_DIRECTIVE : BLOCK_DIRECTIVE).exec(body);
   if (match === null) return undefined;
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(range.pos);
+  const keywordStart = range.pos + 2 + match.groups.space.length;
+  const hasSpace = match.groups.space.length > 0;
+  const neutralizedAt = hasSpace ? keywordStart - 1 : keywordStart;
+  const neutralized = sourceFile.getLineAndCharacterOfPosition(neutralizedAt);
   return {
     comment,
-    keywordStart: range.pos + 2 + match.groups.space.length,
+    start: range.pos,
+    keywordEnd: keywordStart + match.groups.keyword.length,
+    neutralizedAt,
+    neutralizer: hasSpace ? INVISIBLE_TO_OXLINT : '_',
+    neutralizedLocation: `${String(neutralized.line + 1)}:${String(neutralized.character + 1)}`,
     isEslint: !match.groups.keyword.startsWith('oxlint'),
     line: line + 1,
     column: character + 1,
@@ -60,24 +72,43 @@ export function inlineConfigMessages(directives) {
 
 export function withoutDirectives(text, directives) {
   let result = text;
-  for (const { keywordStart } of directives) {
-    result = `${result.slice(0, keywordStart)}_${result.slice(keywordStart + 1)}`;
+  for (const { neutralizedAt, neutralizer } of directives) {
+    result = `${result.slice(0, neutralizedAt)}${neutralizer}${result.slice(neutralizedAt + 1)}`;
+  }
+  return result;
+}
+
+export function withRenamedRules(text, directives, renames) {
+  let result = text;
+  for (const directive of directives.filter(({ isEslint }) => isEslint).reverse()) {
+    const keywordEnd = directive.keywordEnd - directive.start;
+    const renamed = `${directive.comment.slice(0, keywordEnd)}${directive.comment
+      .slice(keywordEnd)
+      .replaceAll(RULE_TOKEN, (token) => renames.get(token) ?? token)}`;
+    result = `${result.slice(0, directive.start)}${renamed}${result.slice(directive.start + directive.comment.length)}`;
   }
   return result;
 }
 
 export function overlayFile({ stage, projectRoot, relativePath, content }) {
-  const segments = relativePath.split('/');
+  const filePath = path.join(
+    materializedDirectory({ stage, projectRoot, relativeDirectory: path.dirname(relativePath) }),
+    path.basename(relativePath),
+  );
+  unlinkSync(filePath);
+  writeFileSync(filePath, content);
+}
+
+export function materializedDirectory({ stage, projectRoot, relativeDirectory }) {
+  const segments = relativeDirectory.split('/').filter((segment) => segment !== '.');
   let stagePath = stage;
   let projectPath = projectRoot;
-  for (const segment of segments.slice(0, -1)) {
+  for (const segment of segments) {
     stagePath = path.join(stagePath, segment);
     projectPath = path.join(projectPath, segment);
     if (lstatSync(stagePath).isSymbolicLink()) materializeDirectory(stagePath, projectPath);
   }
-  const filePath = path.join(stagePath, segments.at(-1));
-  unlinkSync(filePath);
-  writeFileSync(filePath, content);
+  return stagePath;
 }
 
 function materializeDirectory(stagePath, projectPath) {
