@@ -37,7 +37,8 @@ If your change edits a function that existed before it, read
   copy a type another feature exports: import it, or derive it from a function you call
   (`Parameters<typeof runGreeting>[1]`). Declare the types your task defines in your feature.
 - Export only what another module imports; an exported type nobody imports fails dead-code.
-  Callers derive result types: `Awaited<ReturnType<typeof importContacts>>`.
+  Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
+  inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
 - `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
   if it isn't a dependency). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
@@ -87,14 +88,16 @@ If your change edits a function that existed before it, read
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it
   `Readonly<Date>`.
-- Count by a union as `Readonly<Record<Status, number>>` built from a literal with every member, so
-  a new member fails to compile. Group by key with `[...new Set(xs.map(key))]` and `filter`.
+- Count by a union as `Readonly<Record<Status, number>>` with one `reduce` from a literal with every
+  member (`xs.reduce((c, x) => ({ ...c, [x.status]: c[x.status] + 1 }), { paid: 0, ... })`), so a
+  new member fails to compile. Group by key with `[...new Set(xs.map(key))]` and `filter`.
 - Variants of one union share one array type (`readonly Share[]` in each).
 
 ## Errors
 
 - `domain/` returns expected failures as discriminated unions (`{ kind: 'empty-name' }`), never
-  throws them.
+  throws them. Success is a `kind` member too: never `T | Failure` narrowed with `typeof`, never
+  `Failure | undefined`.
 - A `catch` returns a failure result (carrying the caught error only if something reads it) or
   rethrows an `Error` subclass with `{ cause: error }`, which a test asserts. Keep the `try` around
   the call that throws:
