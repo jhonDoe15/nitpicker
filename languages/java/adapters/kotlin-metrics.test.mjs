@@ -250,7 +250,9 @@ describe('readKotlinCrapFindings', () => {
     const covered = crap({ ...FULL, lambda: lines(0, 1) }, { crapLimit: 2.1 });
 
     expect(covered.map(({ symbol }) => symbol)).toEqual(['Counter.wide']);
-    expect(covered[0].message).toContain('CRAP 2.15');
+    expect(covered[0].message).toBe(
+      'Counter.wide has CRAP 2.15; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function.',
+    );
   });
 
   it('leaves out inline functions: JaCoCo never sees their body run', () => {

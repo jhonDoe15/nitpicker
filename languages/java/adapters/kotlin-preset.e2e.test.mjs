@@ -296,6 +296,10 @@ function commitBranch(name, files, from = 'main') {
   git('commit', '-q', '-m', name);
 }
 
+function commitFromStructureBase(name, files) {
+  commitBranch(name, files, 'structure-base');
+}
+
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
@@ -345,28 +349,27 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
       [`${kotlinSources}/Complex.kt`]: classifier(9),
     });
-    const fromBase = (name, files) => commitBranch(name, files, 'structure-base');
-    fromBase('structure-new', {
+    commitFromStructureBase('structure-new', {
       [`${kotlinSources}/Wide.kt`]: WIDE_MOVED,
       [`${kotlinSources}/Deep.kt`]: DEEP,
       'src/test/kotlin/demo/DeepTest.kt': DEEP_TEST,
     });
-    fromBase('structure-grown', {
+    commitFromStructureBase('structure-grown', {
       [`${kotlinSources}/Wide.kt`]: WIDE_GROWN,
       'src/test/kotlin/demo/WideTest.kt': WIDE_GROWN_TEST,
     });
-    fromBase('legacy-edited', { [`${kotlinSources}/Complex.kt`]: classifier(9, 2) });
-    fromBase('legacy-worse', { [`${kotlinSources}/Complex.kt`]: classifier(10) });
-    fromBase('crap', {
+    commitFromStructureBase('legacy-edited', { [`${kotlinSources}/Complex.kt`]: classifier(9, 2) });
+    commitFromStructureBase('legacy-worse', { [`${kotlinSources}/Complex.kt`]: classifier(10) });
+    commitFromStructureBase('crap', {
       [`${kotlinSources}/Rank.kt`]: RANK,
       [`${kotlinSources}/Tiers.kt`]: TIERS,
       'src/test/kotlin/demo/TiersTest.kt': TIERS_TEST,
     });
-    fromBase('clone', {
+    commitFromStructureBase('clone', {
       [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
       [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
     });
-    fromBase('stability', STABILITY_FILES);
+    commitFromStructureBase('stability', STABILITY_FILES);
     commitBranch(
       'stability-edited',
       {
@@ -480,8 +483,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(rulesOf(result.newEnforceable, 'structure')).toEqual([
       'structure function-parameters-limit sum',
     ]);
-    expect(onlyTools(result.newEnforceable, 'structure')[0].message).toContain(
-      'sum grew from 4 to 5 parameters',
+    expect(onlyTools(result.newEnforceable, 'structure')[0].message).toBe(
+      'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
     );
   });
 
@@ -503,8 +506,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'crap crap-score-limit classify',
       'structure function-statements-limit classify',
     ]);
-    expect(onlyTools(result.newEnforceable, 'crap')[0].message).toContain(
-      'classify CRAP rose from 110 to 132',
+    expect(onlyTools(result.newEnforceable, 'crap')[0].message).toBe(
+      'classify CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
     );
   });
 
