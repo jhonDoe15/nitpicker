@@ -53,6 +53,7 @@ describe('npm package contents', () => {
     assertRuntimeFiles(files);
     expect(files.has('core/fix/run-fix.mjs')).toBe(true);
     expect(files.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
+    expect(files.has('languages/java/gradle/checkstyle-suppressions.xml')).toBe(true);
     expect(
       [...files].filter(
         (file) =>
