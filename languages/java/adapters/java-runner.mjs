@@ -45,28 +45,31 @@ function parseException(value) {
   return { rule: value.slice(0, separator), glob: value.slice(separator + 1) };
 }
 
-function readOptionValues(arguments_) {
-  const values = new Map();
-  const exclude = [];
-  const exceptions = [];
+function optionPairs(arguments_) {
+  const pairs = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const value = remaining.next().value;
     if (!RUNNER_OPTIONS.includes(name) || value === undefined) {
       throw new Error(USAGE);
     }
-    if (name === '--exclude') {
-      exclude.push(value);
-    } else if (name === '--exception') {
-      exceptions.push(parseException(value));
-    } else {
-      values.set(name, value);
-    }
+    pairs.push([name, value]);
   }
+  return pairs;
+}
+
+function readOptionValues(arguments_) {
+  const pairs = optionPairs(arguments_);
+  const values = new Map(pairs.filter(([name]) => !REPEATED_OPTIONS.includes(name)));
   if (!values.has('--project-root')) {
     throw new Error(USAGE);
   }
-  return { values, exclude, exceptions };
+  const repeated = (option) => pairs.filter(([name]) => name === option).map(([, value]) => value);
+  return {
+    values,
+    exclude: repeated('--exclude'),
+    exceptions: repeated('--exception').map(parseException),
+  };
 }
 
 export function parseRunnerArguments(arguments_) {
@@ -98,6 +101,8 @@ export function parseRunnerArguments(arguments_) {
     },
   };
 }
+
+const REPEATED_OPTIONS = ['--exclude', '--exception'];
 
 const RUNNER_OPTIONS = [
   '--project-root',
