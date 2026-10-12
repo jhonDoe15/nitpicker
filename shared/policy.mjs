@@ -90,6 +90,18 @@ export const GREW_MESSAGES = {
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
 };
 
+export const HELD_MESSAGES = {
+  lines:
+    '{name}: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+  statements:
+    '{name}: {value} statements (limit {limit}), allowed because base was {base}; any increase fails.',
+  maxControlNesting:
+    '{name}: control nesting {value} (limit {limit}), allowed because base was {base}; any increase fails.',
+  parameters:
+    '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
+  crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
+};
+
 const BOTH = { typescript: true, java: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false };
 

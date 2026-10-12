@@ -71,6 +71,10 @@
           "description": "Message to report instead of `message` when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
           "$ref": "#/$defs/nonEmptyString"
         },
+        "heldMessage": {
+          "description": "Message to report instead of `message` when the finding is held because its value did not exceed the base value; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "existingCodeOnly": {
           "description": "When true, a finding on a line the change added is never held by the ratchet or matched to the base by identity: the code it points at is new.",
           "type": "boolean"

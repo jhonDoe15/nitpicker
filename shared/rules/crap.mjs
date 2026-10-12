@@ -1,6 +1,7 @@
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
   GREW_MESSAGES,
+  HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
   renderMessage,
@@ -58,6 +59,12 @@ function withRatchet(finding, fn, limit) {
       worseMessage: renderMessage(GREW_MESSAGES.crap, {
         name: fn.name,
         crap,
+        limit,
+        base: '{base}',
+      }),
+      heldMessage: renderMessage(HELD_MESSAGES.crap, {
+        name: fn.name,
+        crap: fn.crap.toFixed(2),
         limit,
         base: '{base}',
       }),

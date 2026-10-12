@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES } from '../../shared/policy.mjs';
+import { FUNCTION_STRUCTURE_LIMITS, GREW_MESSAGES, HELD_MESSAGES } from '../../shared/policy.mjs';
 import { crapFindings } from '../../shared/rules/crap.mjs';
 import { evaluateStructure } from '../../shared/rules/structure.mjs';
 import { compareFindings } from './compare.mjs';
@@ -105,6 +105,38 @@ describe('the message of a function that got worse', () => {
     expect(messages(result)).toEqual([expected]);
   });
 
+  it.each([
+    [
+      'lines',
+      'computeInvoice: 68 lines (limit 50), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'statements',
+      'computeInvoice: 16 statements (limit 15), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'maxControlNesting',
+      'computeInvoice: control nesting 3 (limit 2), allowed because base was {base}; any increase fails.',
+    ],
+    [
+      'parameters',
+      'computeInvoice: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
+    ],
+  ])('carries the held note for %s on the held finding', (metric, expected) => {
+    const start = METRIC_START[metric];
+
+    const result = compare(
+      [computeInvoice(metric, start, 'before')],
+      [computeInvoice(metric, start, 'after')],
+    );
+
+    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([expected]);
+  });
+
+  it('has a held note for every limited metric', () => {
+    expect(Object.keys(HELD_MESSAGES).sort()).toEqual(Object.keys(GREW_MESSAGES).sort());
+  });
+
   it('has a message for every limited metric', () => {
     expect(Object.keys(METRIC_START).sort()).toEqual(Object.keys(FUNCTION_STRUCTURE_LIMITS).sort());
     expect(Object.keys(GREW_MESSAGES)).toEqual(
@@ -158,6 +190,17 @@ describe('CRAP limit on edited legacy functions', () => {
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
     expect(result.unchangedFindings).toMatchObject([{ rule: 'crap-score-limit', heldAtBase: 15 }]);
+  });
+
+  it('carries a held note that shows the score, the limit and the base', () => {
+    const result = crapComparison(
+      [crapFunction({ score: 16.02, hash: 'before' })],
+      [crapFunction({ score: 10, hash: 'after' })],
+    );
+
+    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([
+      'priceOf: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
+    ]);
   });
 
   it('keeps an edited function baselined when its score fell but is still over the limit', () => {
