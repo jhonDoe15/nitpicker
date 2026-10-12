@@ -173,18 +173,23 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.exitCode, result.text).toBe(1);
     expect(summaryOf(result)).toBe(FAILING_SUMMARY);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'ruff',
         rule: 'B006',
         path: 'src/demo/a.py',
+        identity: 'fp:nitpicker/subject=Do not use mutable data structures for argument defaults',
+        message: 'Do not use mutable data structures for argument defaults',
         classification: 'enforceable',
-      }),
-      expect.objectContaining({
+        location: { line: 2, column: 1 },
+      },
+      {
         tool: 'ruff-format',
         rule: 'format',
         path: 'src/demo/a.py',
+        identity: 'format',
         message: 'File is not formatted with ruff (detected; set "python.formatter" if wrong)',
-      }),
+        classification: 'enforceable',
+      },
     ]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
@@ -203,11 +208,14 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         rule: 'no-tests-ran',
+        path: '.',
+        identity: 'no-tests-ran',
+        message: 'No tests ran. Keep the project tests, or restore the ones this change removed.',
         classification: 'enforceable',
-      }),
+      },
     ]);
   });
 
@@ -222,12 +230,13 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.output.err).toBe('');
     expect(result.json('summary.json').overallStatus).toBe('tool-error');
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
         rule: 'tests-failed',
-        message: expect.stringContaining('1 failed: test_greet'),
-      }),
+        path: '.',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+      },
     ]);
   });
 
@@ -242,16 +251,11 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    const errors = result.json('tool-errors.json');
-    expect(errors.map(({ snapshot }) => snapshot).sort()).toEqual(['base', 'head']);
-    expect(errors).toEqual(
-      Array(2).fill(
-        expect.objectContaining({
-          tool: 'python',
-          message: expect.stringMatching(/^No Python environment at .*no-such-venv/),
-        }),
-      ),
-    );
+    const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment"`;
+    expect(result.json('tool-errors.json')).toEqual([
+      { tool: 'python', snapshot: 'base', message },
+      { tool: 'python', snapshot: 'head', message },
+    ]);
   });
 
   it('runs base sources, not the head ones, against the environment of the checkout', () => {

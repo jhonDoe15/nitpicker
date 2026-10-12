@@ -67,8 +67,12 @@ describe('analyzing a Python snapshot', () => {
       'coverage line-coverage src/demo/a.py',
       'coverage uncovered-function src/demo/a.py',
     ]);
-    expect(findings[0]).toMatchObject({
+    expect(findings[0]).toEqual({
+      tool: 'ruff',
+      rule: 'F401',
+      path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
+      message: '`os` imported but unused',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
@@ -135,11 +139,14 @@ describe('analyzing a Python snapshot', () => {
     });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         rule: 'baseline-expansion',
+        path: 'src/demo/a.py',
+        identity: expect.any(String),
         message: 'Legacy allowance increased from 1 to 2 for F401',
-      }),
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -161,8 +168,22 @@ describe('analyzing a Python snapshot', () => {
         message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
         classification: 'tool-error',
       },
-      expect.objectContaining({ rule: 'format-failed', identity: 'format-failed' }),
-      expect.objectContaining({ rule: 'tests-failed', identity: 'tests-failed' }),
+      {
+        tool: 'python',
+        rule: 'format-failed',
+        path: '.',
+        identity: 'format-failed',
+        message: 'ruff format exited 2 in the virtualenv environment:\nruff crashed',
+        classification: 'tool-error',
+      },
+      {
+        tool: 'python',
+        rule: 'tests-failed',
+        path: '.',
+        identity: 'tests-failed',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        classification: 'tool-error',
+      },
     ]);
   });
 
@@ -172,11 +193,14 @@ describe('analyzing a Python snapshot', () => {
     const { findings } = analyze(root, { settings: { environment: 'nowhere' } });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'python',
         rule: 'environment-failed',
+        path: '.',
+        identity: 'environment-failed',
+        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
         classification: 'tool-error',
-        message: expect.stringContaining('No Python environment'),
-      }),
+      },
     ]);
   });
 
@@ -186,12 +210,14 @@ describe('analyzing a Python snapshot', () => {
     const { findings } = analyze(root);
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         rule: 'python-failed',
+        path: '.',
+        identity: 'python-failed',
+        message: expect.any(String),
         classification: 'tool-error',
-        message: expect.stringContaining('JSON'),
-      }),
+      },
     ]);
   });
 
@@ -210,10 +236,11 @@ describe('analyzing a Python snapshot', () => {
 
 describe('runner arguments', () => {
   it('defaults the live root to the project and the settings to none', () => {
-    expect(parsePythonArguments(['--project-root', '/p'])).toMatchObject({
+    expect(parsePythonArguments(['--project-root', '/p'])).toEqual({
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
+      policy: { exclude: [], snapshot: 'head' },
     });
   });
 
@@ -231,7 +258,7 @@ describe('runner arguments', () => {
       'base',
     ]);
 
-    expect(parsed).toMatchObject({
+    expect(parsed).toEqual({
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },

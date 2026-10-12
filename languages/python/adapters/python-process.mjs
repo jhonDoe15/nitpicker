@@ -20,12 +20,12 @@ export function execute(context, command) {
 export function run(context, command, { accepted = [0], rule }) {
   const result = execute(context, command);
   if (result.error !== undefined || !accepted.includes(result.status)) {
-    throw failure(context, command, result, rule);
+    throw failure({ context, command, result, rule });
   }
   return result;
 }
 
-export function failure(context, command, result, rule) {
+export function failure({ context, command, result, rule }) {
   return Object.assign(new Error(describeFailure({ context, command, result })), { rule });
 }
 

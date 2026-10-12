@@ -182,21 +182,26 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');
 
-    expect(result.json('new-findings.json')).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          tool: 'coverage',
-          rule: 'line-coverage',
-          path: 'src/demo/bad.py',
-          classification: 'descriptive',
-        }),
-        expect.objectContaining({
-          tool: 'coverage',
-          rule: 'uncovered-function',
-          symbol: 'f',
-        }),
-      ]),
-    );
+    expect(result.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual([
+      {
+        tool: 'coverage',
+        rule: 'line-coverage',
+        path: 'src/demo/bad.py',
+        identity: 'line-coverage',
+        message: 'line-coverage 0% (0/3)',
+        classification: 'descriptive',
+        metric: { name: 'line-coverage', value: 0 },
+      },
+      {
+        tool: 'coverage',
+        rule: 'uncovered-function',
+        path: 'src/demo/bad.py',
+        identity: expect.any(String),
+        message: 'Function f is not covered',
+        classification: 'descriptive',
+        symbol: 'f',
+      },
+    ]);
   });
 
   it('reports failing tests on head as a tool error with exit 2, never a throw', () => {
@@ -204,12 +209,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
         rule: 'tests-failed',
-        message: expect.stringContaining('assert'),
-      }),
+        path: '.',
+        message: expect.stringMatching(
+          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 1 passed in [\d.]+s$/,
+        ),
+      },
     ]);
   });
 
@@ -218,11 +226,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
-        message: expect.stringMatching(/^No Python environment at .*nowhere/),
-      }),
+        message: `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
+      },
     ]);
   });
 
@@ -332,7 +340,16 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('resolved-findings.json')).toEqual([
-        expect.objectContaining({ tool: 'ruff', path: 'legacy/old.py' }),
+        {
+          tool: 'ruff',
+          rule: 'invalid-syntax',
+          path: 'legacy/old.py',
+          identity:
+            'fp:nitpicker/subject=Simple statements must be separated by newlines or semicolons',
+          message: 'Simple statements must be separated by newlines or semicolons',
+          classification: 'enforceable',
+          location: { line: 1, column: 7 },
+        },
       ]);
     });
 

@@ -172,7 +172,13 @@ describe('tool context', () => {
       PYTHONDONTWRITEBYTECODE: '1',
     });
     expect(context.launcher.launch('ruff', []).env.VIRTUAL_ENV).toBe(path.join(live, '.venv'));
-    expect(context.project).toMatchObject({ formatter: 'black', testRunner: 'unittest' });
+    expect(context.project).toEqual({
+      formatter: 'black',
+      formatterDetected: false,
+      testRunner: 'unittest',
+      targetVersion: 'py38',
+      sourceRoots: ['src'],
+    });
   });
 });
 
@@ -270,7 +276,10 @@ describe('running the tools', () => {
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
-      { rule: 'tests-failed', message: expect.stringContaining('1 failed: test_greet') },
+      {
+        rule: 'tests-failed',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+      },
     ]);
   });
 
@@ -297,9 +306,8 @@ describe('running the tools', () => {
     expect(runPythonTools(context)).toEqual([
       {
         rule: 'format-failed',
-        message: expect.stringContaining(
-          'ruff reported unformatted files but its output named none',
-        ),
+        message:
+          'ruff reported unformatted files but its output named none:\nsomething unexpected\n',
       },
     ]);
   });
@@ -335,7 +343,10 @@ describe('running the tools', () => {
     mkdirSync(path.join(reportRoot, 'format.txt'));
 
     expect(runPythonTools(context)).toEqual([
-      { rule: 'python-failed', message: expect.stringContaining('EISDIR') },
+      {
+        rule: 'python-failed',
+        message: `EISDIR: illegal operation on a directory, open '${path.join(reportRoot, 'format.txt')}'`,
+      },
     ]);
   });
 });
@@ -345,16 +356,34 @@ describe('lint and format arguments', () => {
     const calls = callsLog();
     const root = project({ 'pyproject.toml': '[project]\nrequires-python = ">=3.10"\n' });
 
-    runPythonTools(contextFor(root, {}, ['legacy/**']).context);
+    const { context, reportRoot } = contextFor(root, {}, ['legacy/**']);
+    runPythonTools(context);
 
-    const [lint] = calls('ruff', 'check');
-    expect(lint.args.slice(lint.args.indexOf('--target-version'))).toEqual(
-      expect.arrayContaining(['--target-version', 'py310', '--extend-exclude', 'legacy/**']),
-    );
-    expect(calls('ruff', 'format')[0].args).toEqual(
-      expect.arrayContaining(['--extend-exclude', 'legacy/**']),
-    );
-    expect(calls('ruff', 'format')[0].args).not.toContain('--target-version');
+    expect(calls('ruff', 'check')[0].args).toEqual([
+      'check',
+      '--config',
+      path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml'),
+      '--target-version',
+      'py310',
+      '--ignore-noqa',
+      '--no-cache',
+      '--extend-exclude',
+      'legacy/**',
+      '--output-format',
+      'sarif',
+      '--output-file',
+      path.join(reportRoot, 'ruff.sarif'),
+      '.',
+    ]);
+    expect(calls('ruff', 'format')[0].args).toEqual([
+      'format',
+      '--check',
+      '--diff',
+      '--no-cache',
+      '--extend-exclude',
+      'legacy/**',
+      '.',
+    ]);
   });
 
   it('gives black the excluded globs as one regular expression', () => {
@@ -385,7 +414,10 @@ describe('lint and format arguments', () => {
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
-      { rule: 'format-failed', message: expect.stringContaining('invalid config') },
+      {
+        rule: 'format-failed',
+        message: 'ruff format exited 2 in the virtualenv environment:\ninvalid config',
+      },
     ]);
   });
 });
@@ -432,7 +464,12 @@ describe('failure messages', () => {
     const root = project();
     const { context } = contextFor(root);
 
-    const error = failure(context, ['coverage', 'run'], { error: { code: 'ETIMEDOUT' } }, 'x');
+    const error = failure({
+      context,
+      command: ['coverage', 'run'],
+      result: { error: { code: 'ETIMEDOUT' } },
+      rule: 'x',
+    });
 
     expect(error.message).toBe(
       'coverage run timed out after 25 minutes in the virtualenv environment',

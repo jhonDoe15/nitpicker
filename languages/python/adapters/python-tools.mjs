@@ -154,7 +154,7 @@ function format(context) {
   const result = execute(context, command);
   const tolerated = [0, 1].includes(result.status) || onlyUnparsableFiles(formatter, result);
   if (result.error !== undefined || !tolerated) {
-    throw failure(context, command, result, 'format-failed');
+    throw failure({ context, command, result, rule: 'format-failed' });
   }
   const paths = unformattedPaths(formatter, result);
   if (result.status === 1 && paths.length === 0) {
