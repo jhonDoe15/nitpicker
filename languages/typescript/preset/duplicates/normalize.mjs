@@ -25,7 +25,7 @@ function isRepeatedTestData(clone, isTestFile) {
 export function normalizeDuplicates(
   report,
   analyzerName,
-  { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
+  { configuredPaths = [sourceRoot], isTestFile = (file) => readLayout().isTestFile(file) } = {},
 ) {
   const clones = jscpdClones(report, configuredPaths).filter(
     (clone) => !isRepeatedTestData(clone, isTestFile),

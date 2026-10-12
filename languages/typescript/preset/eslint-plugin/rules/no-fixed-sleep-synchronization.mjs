@@ -1,7 +1,7 @@
 import { readLayout } from '../../head-policy.mjs';
 import { importedCalleeName, moduleBindings } from './test-code-analysis.mjs';
 
-const { isTestFixture } = readLayout();
+const layout = readLayout();
 const TIMER_PROMISE_MODULES = new Set(['timers/promises', 'node:timers/promises']);
 
 function isSetTimeout(callee) {
@@ -73,7 +73,7 @@ export const rule = {
     },
   },
   create(context) {
-    if (isTestFixture(context.filename)) return {};
+    if (layout.isTestFixture(context.filename)) return {};
     let timerPromises = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {

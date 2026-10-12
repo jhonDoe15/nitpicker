@@ -74,6 +74,8 @@ function explicitPaths() {
     .flatMap((sourcePath) =>
       path.basename(sourcePath) === 'src'
         ? [sourcePath]
-        : layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
+        : layout
+            .projectCodeFiles(projectRoot, [sourcePath])
+            .filter((file) => layout.isSourceFile(file)),
     );
 }
