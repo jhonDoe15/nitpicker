@@ -163,10 +163,12 @@ function coverageLookup({ methods, sourceRoots, selectMethods, parsed }) {
 }
 
 function lowestCoverage(matches) {
-  const sum = (key) => ({
-    covered: matches.reduce((total, method) => total + method[key].covered, 0),
-    total: matches.reduce((total, method) => total + method[key].total, 0),
-  });
+  function sum(key) {
+    return {
+      covered: matches.reduce((total, method) => total + method[key].covered, 0),
+      total: matches.reduce((total, method) => total + method[key].total, 0),
+    };
+  }
   const percents = [sum('lines'), sum('branches')]
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
