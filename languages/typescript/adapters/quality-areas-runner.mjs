@@ -678,6 +678,11 @@ export function normalizeTestRuntime(report, analyzerName) {
   return evaluateTestRuntime(report, analyzerName);
 }
 
+const STRUCTURE_HINTS = {
+  lines:
+    'Nested functions count: move inner functions to module level, passing what they close over as one object.',
+};
+
 export function normalizeStructure(report, analyzerName) {
   return evaluateStructure(
     {
@@ -694,6 +699,7 @@ export function normalizeStructure(report, analyzerName) {
       })),
     },
     analyzerName,
+    { hints: STRUCTURE_HINTS },
   );
 }
 

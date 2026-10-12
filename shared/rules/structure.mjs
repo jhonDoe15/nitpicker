@@ -37,7 +37,7 @@ import {
 
 const METADATA_FIELDS = new Set(['file', 'name', 'sourceHash', 'start', 'end']);
 
-export function evaluateStructure(report, analyzerName) {
+export function evaluateStructure(report, analyzerName, { hints = {} } = {}) {
   const findings = summaryMetrics(analyzerName, report.summary, 'structure');
   for (const [kind, values] of Object.entries(report.distributions ?? {})) {
     for (const [percentile, value] of Object.entries(values ?? {})) {
@@ -52,17 +52,17 @@ export function evaluateStructure(report, analyzerName) {
       });
     }
   }
-  addEntries(findings, analyzerName, report.functions, 'function');
-  addEntries(findings, analyzerName, report.classes, 'class');
+  addEntries(findings, analyzerName, report.functions, 'function', hints);
+  addEntries(findings, analyzerName, report.classes, 'class', hints);
   return findings;
 }
 
-function addEntries(findings, analyzerName, entries = [], kind) {
+function addEntries(findings, analyzerName, entries = [], kind, hints) {
   const occurrences = new Map();
   for (const entry of entries) {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     if (kind === 'function') {
-      addLimitViolations(findings, analyzerName, entry, occurrence);
+      addLimitViolations(findings, analyzerName, entry, occurrence, hints);
     }
     for (const [metricName, value] of Object.entries(entry)) {
       if (METADATA_FIELDS.has(metricName)) {
@@ -84,12 +84,17 @@ function addEntries(findings, analyzerName, entries = [], kind) {
 }
 
 function structureMessage(metricName) {
-  return metricName === 'maxControlNesting'
-    ? MESSAGES.functionControlNesting
-    : MESSAGES.functionStructure;
+  if (metricName === 'maxControlNesting') {
+    return MESSAGES.functionControlNesting;
+  }
+  return metricName === 'statements' ? MESSAGES.functionStatements : MESSAGES.functionStructure;
 }
 
-function addLimitViolations(findings, analyzerName, entry, occurrence) {
+function withHint(message, hint) {
+  return hint === undefined ? message : `${message}. ${hint}`;
+}
+
+function addLimitViolations(findings, analyzerName, entry, occurrence, hints) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
   for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
@@ -101,12 +106,15 @@ function addLimitViolations(findings, analyzerName, entry, occurrence) {
       rule: ruleId,
       path: entry.file,
       identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
-      message: renderMessage(structureMessage(metricName), {
-        name: entry.name,
-        value: entry[metricName],
-        metric: metricName,
-        limit,
-      }),
+      message: withHint(
+        renderMessage(structureMessage(metricName), {
+          name: entry.name,
+          value: entry[metricName],
+          metric: metricName,
+          limit,
+        }),
+        hints[metricName],
+      ),
       classification: 'enforceable',
       symbol: entry.name,
       ratchet: {

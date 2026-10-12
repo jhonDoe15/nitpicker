@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { parseArguments, runQualityArea } from './quality-areas-runner.mjs';
+import { normalizeStructure, parseArguments, runQualityArea } from './quality-areas-runner.mjs';
 
 const temporaryRoots = [];
 
@@ -60,6 +60,33 @@ describe('crap runner without a coverage report', () => {
         rule: 'tests-failed-skipped',
         classification: 'tool-error',
       }),
+    ]);
+  });
+});
+
+describe('structure limit messages', () => {
+  function violations(metrics) {
+    return normalizeStructure(
+      {
+        functions: [
+          { source: 'src/a.ts', function: 'big', start: 1, end: 90, sourceHash: 'h', ...metrics },
+        ],
+      },
+      'structure',
+    )
+      .filter(({ classification }) => classification === 'enforceable')
+      .map(({ message }) => message);
+  }
+
+  it('tells the author nested functions count and where to move them', () => {
+    expect(violations({ lines: 60 })).toEqual([
+      'big has 60 lines; limit is 50. Nested functions count: move inner functions to module level, passing what they close over as one object.',
+    ]);
+  });
+
+  it('tells the author how to split a function with too many statements', () => {
+    expect(violations({ statements: 16 })).toEqual([
+      'big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
     ]);
   });
 });
