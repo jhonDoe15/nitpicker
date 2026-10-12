@@ -9,6 +9,9 @@
 //   test-exit.txt        exit status of `coverage run` (default 0); its output says the tests failed
 //   coverage-data.json   written as the coverage.py JSON report (default: no files)
 //   no-pytest.txt        `python -c "import pytest"` fails
+//   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
+//                        (default: no functions)
+//   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
 // PYTHONPATH.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -97,11 +100,26 @@ function coverage() {
 }
 
 function python() {
+  if (args[0]?.endsWith('.py')) {
+    const data = existsSync('structure-data.json')
+      ? readFileSync('structure-data.json', 'utf8')
+      : '[]';
+    writeFileSync(args[1], data);
+    return;
+  }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
   process.stdout.write('8.3.1\n');
 }
 
-const tools = { ruff, black, coverage, python };
+function lizard() {
+  if (args[0] === '--version') {
+    process.stdout.write('1.24.1\n');
+  } else if (existsSync('lizard-data.csv')) {
+    process.stdout.write(readFileSync('lizard-data.csv', 'utf8'));
+  }
+}
+
+const tools = { ruff, black, coverage, python, lizard };
 tools[tool]();

@@ -34,7 +34,11 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
     if (failures.length > 0) {
       return failures.map(toolError);
     }
-    const { findings } = readPythonFindings({ projectRoot, reportRoot });
+    const { findings } = readPythonFindings({
+      projectRoot,
+      reportRoot,
+      crapLimit: policy.crapLimit,
+    });
     return applyJavaPolicy(findings, { ...policy, inventoryTool: PYTHON_ANALYZER_NAME });
   } finally {
     rmSync(reportRoot, { recursive: true, force: true });

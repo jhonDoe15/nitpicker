@@ -8,10 +8,16 @@ export function calculateCrap(complexity, coveragePercent) {
 }
 
 export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  const tool = options.tool ?? 'crap';
-  const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const sourceRoots = options.sourceRoots ?? [''];
   const methods = jacocoMethods(jacocoXml);
+  return ingestCrapRows(lizardCsv, options, (fn, filePath) => ({
+    coverage: coverageFor(fn, filePath, methods, sourceRoots),
+  }));
+}
+
+export function ingestCrapRows(lizardCsv, options, resolve) {
+  const tool = options.tool ?? 'crap';
+  const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const unique = createIdentityCounter();
   const functions = [];
 
@@ -20,15 +26,15 @@ export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
     if (filePath === undefined) {
       continue;
     }
-    const coverage = coverageFor(fn, filePath, methods, sourceRoots);
-    const key = unique(`function:${fn.longName}`);
+    const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined
         ? undefined
         : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
     functions.push({
       path: filePath,
-      name: fn.longName,
+      name,
       identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
       ratchetKey: `${key}:crap`,
       line: fn.start,
