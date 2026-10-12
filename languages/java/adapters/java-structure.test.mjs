@@ -121,7 +121,7 @@ describe('Java file limits', () => {
 
   function writeClasses(folder, count, text = 'class A {}\n') {
     mkdirSync(path.join(projectRoot, folder), { recursive: true });
-    for (let index = 0; index < count; index += 1) {
+    for (const index of Array.from({ length: count }, (_, position) => position)) {
       writeFileSync(path.join(projectRoot, folder, `C${String(index)}.java`), text);
     }
   }
