@@ -1,19 +1,32 @@
-import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  linkSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
 
 export const SHARED_BUILD_DIRECTORY_ENVIRONMENT = 'NITPICKER_SHARED_BUILD_DIRECTORY';
 
+const EMPTY_LOCK_GRACE_MS = 5000;
 const POLL_STEP_MS = 25;
 const MAX_POLL_INTERVAL_MS = 250;
 const POLL_ATTEMPTS = Array.from({ length: 3000 }, (_, attempt) => attempt);
 
+export class TransientBuildError extends Error {}
+
 export function withSharedBuildDirectory(operation) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-shared-'));
+  const directory = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-shared-')));
   try {
     return operation({ [SHARED_BUILD_DIRECTORY_ENVIRONMENT]: directory });
   } finally {
     rmSync(directory, { recursive: true, force: true });
+    untrackTemporaryPath(directory);
   }
 }
 
@@ -65,16 +78,25 @@ function readSettled({ result, failure }) {
   return message === undefined ? undefined : { failure: message };
 }
 
-function buildLocked({ result, failure, lock }, build) {
+function buildLocked(files, build) {
+  try {
+    const settled = readSettled(files);
+    return settled === undefined ? buildAndRecord(files, build) : unwrap(settled);
+  } finally {
+    rmSync(files.lock, { force: true });
+  }
+}
+
+function buildAndRecord({ result, failure }, build) {
   try {
     const text = build();
     writeAtomically(result, text);
     return text;
   } catch (error) {
-    writeAtomically(failure, error instanceof Error ? error.message : String(error));
+    if (!(error instanceof TransientBuildError)) {
+      writeAtomically(failure, error instanceof Error ? error.message : String(error));
+    }
     throw error;
-  } finally {
-    rmSync(lock, { force: true });
   }
 }
 
@@ -86,15 +108,61 @@ function acquireLock(lock) {
     if (error?.code !== 'EEXIST') {
       throw error;
     }
-    removeIfAbandoned(lock);
+    discardIfAbandoned(lock);
     return false;
   }
 }
 
-function removeIfAbandoned(lock) {
-  const owner = readIfPresent(lock);
-  if (owner !== undefined && owner.length > 0 && !isRunning(Number(owner))) {
-    rmSync(lock, { force: true });
+function discardIfAbandoned(lock) {
+  if (!isAbandoned(lock)) {
+    return;
+  }
+  const claimed = `${lock}.${String(process.pid)}.stale`;
+  try {
+    renameSync(lock, claimed);
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+  if (isAbandoned(claimed)) {
+    rmSync(claimed, { force: true });
+  } else {
+    restoreLock(claimed, lock);
+  }
+}
+
+function restoreLock(claimed, lock) {
+  try {
+    linkSync(claimed, lock);
+  } catch (error) {
+    if (error?.code !== 'EEXIST') {
+      throw error;
+    }
+  }
+  rmSync(claimed, { force: true });
+}
+
+function isAbandoned(file) {
+  const owner = readIfPresent(file);
+  if (owner === undefined) {
+    return false;
+  }
+  if (owner.length === 0) {
+    return ageMilliseconds(file) > EMPTY_LOCK_GRACE_MS;
+  }
+  return !isRunning(Number(owner));
+}
+
+function ageMilliseconds(file) {
+  try {
+    return Date.now() - statSync(file).mtimeMs;
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return 0;
+    }
+    throw error;
   }
 }
 

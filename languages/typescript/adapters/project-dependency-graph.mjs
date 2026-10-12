@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { statSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildOnce } from '../../../core/tooling/build-once.mjs';
+import { buildOnce, TransientBuildError } from '../../../core/tooling/build-once.mjs';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import { resolveTool } from '../../../core/tooling/tool-resolution.mjs';
@@ -82,16 +82,34 @@ function runCruise(cruise) {
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
     });
-    if (result.error !== undefined) {
-      throw result.error;
-    }
-    if (![0, 1].includes(result.status)) {
-      const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-      throw new Error(`dependency-cruiser exited with ${String(result.status)}: ${detail}`);
-    }
+    assertCruised(result);
     return result.stdout;
   } finally {
     wrapper.remove();
+  }
+}
+
+function assertCruised(result) {
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (typeof result.signal === 'string') {
+    throw new TransientBuildError(`dependency-cruiser was terminated by ${result.signal}`);
+  }
+  if (
+    ![0, 1].includes(result.status) ||
+    (result.status === 1 && parseJson(result.stdout).error !== undefined)
+  ) {
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`dependency-cruiser exited with ${String(result.status)}: ${detail}`);
+  }
+}
+
+function parseJson(text) {
+  try {
+    return { value: JSON.parse(text) };
+  } catch (error) {
+    return { error };
   }
 }
 
