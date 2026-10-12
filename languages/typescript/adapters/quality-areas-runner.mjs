@@ -16,7 +16,6 @@ import { parsePositiveNumber } from '../preset/quality-checks.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
-import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import {
   addMetric,
   hash,
@@ -29,13 +28,13 @@ import {
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
-import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
-import { sourceRoot, existingRoots } from '../preset/layout.mjs';
+import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
+import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
@@ -696,32 +695,6 @@ export function normalizeStructure(report, analyzerName) {
     analyzerName,
     { hints: STRUCTURE_HINTS },
   );
-}
-
-function definesNamedFunction(fragment) {
-  return /\bfunction\s*\*?\s*[\p{L}_$][\p{L}\p{N}_$]*\s*[<(]|\b(?:const|let)\s+[\p{L}_$][\p{L}\p{N}_$]*\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)[^=;]*=>|[\p{L}_$][\p{L}\p{N}_$]*\s*=>)/u.test(
-    fragment,
-  );
-}
-
-function isRepeatedTestData(clone, isTestFile) {
-  return (
-    clone.fragment !== undefined &&
-    isTestFile(clone.first.file) &&
-    isTestFile(clone.second.file) &&
-    !definesNamedFunction(clone.fragment)
-  );
-}
-
-export function normalizeDuplicates(
-  report,
-  analyzerName,
-  { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
-) {
-  const clones = jscpdClones(report, configuredPaths).filter(
-    (clone) => !isRepeatedTestData(clone, isTestFile),
-  );
-  return evaluateDuplicates(clones, analyzerName);
 }
 
 export function normalizeDeadCode(report, analyzerName) {
