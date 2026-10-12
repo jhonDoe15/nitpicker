@@ -142,10 +142,10 @@ describe('javascript prettier patterns', () => {
       '*.{ts,mts,cts,js,mjs,cjs,json}',
     ]);
     expect(prettierPatterns(resolveLayout())).toEqual([
-      'src/**/*.{ts,mts,mjs,json,yaml,yml}',
-      'test/**/*.{ts,mts,mjs,json}',
-      'tests/**/*.{ts,mts,mjs,json}',
-      '*.{ts,mts,mjs,json}',
+      'src/**/*.{ts,tsx,mts,mjs,json,yaml,yml}',
+      'test/**/*.{ts,tsx,mts,mjs,json}',
+      'tests/**/*.{ts,tsx,mts,mjs,json}',
+      '*.{ts,tsx,mts,mjs,json}',
     ]);
   });
 
