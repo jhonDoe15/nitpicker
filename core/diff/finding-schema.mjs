@@ -94,6 +94,8 @@ function parseMetric(value, context) {
   };
 }
 
+const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
     throw new TypeError(`${context} must be an object`);
@@ -102,14 +104,10 @@ function parseRatchet(value, context) {
     throw new TypeError(`${context}.value must be a finite number`);
   }
   const ratchet = { key: requiredString(value.key, `${context}.key`), value: value.value };
-  if (value.worseMessage !== undefined) {
-    ratchet.worseMessage = requiredString(value.worseMessage, `${context}.worseMessage`);
-  }
-  if (value.growthAdvice !== undefined) {
-    ratchet.growthAdvice = requiredString(value.growthAdvice, `${context}.growthAdvice`);
-  }
-  if (value.heldMessage !== undefined) {
-    ratchet.heldMessage = requiredString(value.heldMessage, `${context}.heldMessage`);
+  for (const name of RATCHET_TEXT_FIELDS) {
+    if (value[name] !== undefined) {
+      ratchet[name] = requiredString(value[name], `${context}.${name}`);
+    }
   }
   if (value.existingCodeOnly !== undefined) {
     if (typeof value.existingCodeOnly !== 'boolean') {

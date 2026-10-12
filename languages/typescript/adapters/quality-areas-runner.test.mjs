@@ -126,13 +126,11 @@ describe('coverage runner invoked as a script', () => {
 
     expect(stderr).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(originalExitCode);
-    expect(JSON.parse(stdout.mock.calls[0][0]).findings).toEqual([
-      expect.objectContaining({
-        rule: 'tests-failed',
-        classification: 'tool-error',
-        message: expect.stringContaining('returns two'),
-      }),
+    const { findings } = JSON.parse(stdout.mock.calls[0][0]);
+    expect(findings.map(({ rule, classification }) => ({ rule, classification }))).toEqual([
+      { rule: 'tests-failed', classification: 'tool-error' },
     ]);
+    expect(findings[0].message).toMatch(/returns two/u);
   });
 });
 
@@ -190,6 +188,22 @@ describe('mutation testing that cannot start', () => {
   });
 });
 
+function strictFlags({
+  skipLibCheck,
+  strict,
+  noImplicitReturns,
+  noFallthroughCasesInSwitch,
+  noUncheckedIndexedAccess,
+}) {
+  return {
+    skipLibCheck,
+    strict,
+    noImplicitReturns,
+    noFallthroughCasesInSwitch,
+    noUncheckedIndexedAccess,
+  };
+}
+
 describe('mutation type-check config', () => {
   const projectTsconfig = `${JSON.stringify({
     compilerOptions: {
@@ -218,7 +232,7 @@ describe('mutation type-check config', () => {
       'src/first.ts': 'export const first = (rows: string[]): string | undefined => rows[0];\n',
     });
 
-    expect(stryker(projectRoot).compilerOptions).toMatchObject({
+    expect(strictFlags(stryker(projectRoot).compilerOptions)).toEqual({
       skipLibCheck: true,
       strict: true,
       noImplicitReturns: true,
