@@ -14,7 +14,8 @@ If your change edits a function that existed before it, read
 ## Finish with the gate
 
 1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
-   The gate type-checks for you.
+   The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
+   `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
    configs (don't format with plain `prettier`), then checks your change against the merge base. It
