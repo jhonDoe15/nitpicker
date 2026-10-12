@@ -9,7 +9,7 @@ For a short introduction, see the [README](../README.md).
 Add nitpicker as a dev dependency, together with the peers it needs from your project:
 
 ```sh
-npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript
+npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 ```
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a single-package npm project (the
@@ -169,7 +169,7 @@ is visible in review.
 | `exceptions`      | object[]                   | TypeScript only. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
 | `analyzers`       | object[]                   | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `legacyInventory` | string                     | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Both presets; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) and [Java preset](#java-preset).                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `tools`           | object                     | TypeScript only. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `tools`           | object                     | TypeScript only. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -225,6 +225,11 @@ new and touched code must comply.
   `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
+- **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
+  per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
+  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
+  `toEqual`/`toStrictEqual`: assert the whole value.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -276,7 +281,10 @@ own tools do:
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots.
-- **Mutation testing** type-checks mutants with the project's `tsconfig.json` as it is.
+- **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
+  `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
+  flags are only added when the project already type-checks with them; otherwise mutants are checked
+  with the project's `tsconfig.json` as it is.
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
   aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and

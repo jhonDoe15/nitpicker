@@ -1060,6 +1060,8 @@ describe('complete quality-area analyzer catalog', () => {
           value: 9.5,
           worseMessage:
             'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests.',
+          heldMessage:
+            'value: CRAP 9.50 (limit 9), allowed because base was {base}; any increase fails.',
         },
       },
     ]);

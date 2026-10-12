@@ -1,10 +1,11 @@
+import { text } from 'node:stream/consumers';
 import { readFileSync } from 'node:fs';
 import * as prettier from 'prettier';
 import { prettierPrecedence } from '../../languages/typescript/preset/head-policy.mjs';
 import { layeredPrettierOptions } from '../../languages/typescript/adapters/prettier-layers.mjs';
 
 try {
-  const input = JSON.parse(readFileSync(0, 'utf8'));
+  const input = JSON.parse(await text(process.stdin));
   const policyOptions = JSON.parse(readFileSync(process.argv[2], 'utf8'));
   const precedence = prettierPrecedence();
   const results = await Promise.all(
