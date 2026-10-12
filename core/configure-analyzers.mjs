@@ -34,6 +34,7 @@ function applyJavaConfig(analyzers, config) {
           kotlin: config.kotlin,
           thresholds: config.thresholds,
           exclude: config.exclude,
+          exceptions: config.exceptions,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
         })
       : analyzer,

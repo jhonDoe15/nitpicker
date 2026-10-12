@@ -91,6 +91,39 @@ describe('config file', () => {
     });
   });
 
+  describe('kotlin exceptions', () => {
+    const exception = {
+      rule: 'detekt.style.ForbiddenImport',
+      paths: ['src/main/kotlin/app/Main.kt'],
+      reason: 'The entry point blocks on its coroutine.',
+    };
+
+    it('accepts an exception for a one-way rule with the TypeScript shape', () => {
+      expect(validateConfig({ preset: 'kotlin', exceptions: [exception] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [exception],
+      });
+    });
+
+    it('names the rules that can be lifted when the rule is another detekt rule', () => {
+      const other = { ...exception, rule: 'detekt.style.MagicNumber' };
+
+      expect(() => validateConfig({ preset: 'kotlin', exceptions: [other] })).toThrow(
+        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenImport.*config\/detekt\/detekt\.yml/,
+      );
+    });
+
+    it.each([
+      [{ preset: 'kotlin', exceptions: {} }, /"exceptions" must be an array/],
+      [{ preset: 'kotlin', exceptions: ['x'] }, /"exceptions\[0\]" must be an object/],
+      [{ preset: 'kotlin', exceptions: [{ ...exception, rule: '' }] }, /non-empty rule id/],
+      [{ preset: 'kotlin', exceptions: [{ ...exception, reason: ' ' }] }, /reason" is required/],
+      [{ preset: 'kotlin', exceptions: [{ ...exception, paths: [] }] }, /at least one path glob/],
+    ])('validates the shape of %j', (config, message) => {
+      expect(() => validateConfig(config)).toThrow(message);
+    });
+  });
+
   it('shares thresholds, exclude and legacyInventory between presets', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
@@ -107,11 +140,13 @@ describe('config file', () => {
     );
   });
 
-  it.each(
-    ['java', 'kotlin'].flatMap((preset) =>
-      ['layout', 'exceptions', 'react'].map((key) => [preset, key]),
-    ),
-  )('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
+  it.each([
+    ['java', 'layout'],
+    ['java', 'exceptions'],
+    ['java', 'react'],
+    ['kotlin', 'layout'],
+    ['kotlin', 'react'],
+  ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
     expect(() => validateConfig({ preset, [key]: {} })).toThrow(
       `"${key}" is not supported with "preset": "${preset}"`,
     );

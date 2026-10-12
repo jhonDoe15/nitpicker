@@ -1,0 +1,40 @@
+# Nitpicker's detekt rules for the Kotlin preset (detekt 1.23.8). Laid over detekt's defaults and over the
+# project's own detekt config, so a project cannot switch these rules off in detekt.yml: lift them per
+# path with "exceptions" in nitpicker.config.json. The rule list is languages/java/adapters/kotlin-rules.mjs.
+# Rules here that need type resolution run because the detekt task passes the module's classpath.
+
+potential-bugs:
+  UnsafeCallOnNullableType:
+    active: true
+    excludes: []
+  CastNullableToNonNullableType:
+    active: true
+
+coroutines:
+  GlobalCoroutineUsage:
+    active: true
+
+style:
+  ForbiddenMethodCall:
+    active: true
+    methods:
+      - value: 'kotlin.run'
+        reason: 'Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.'
+      - value: 'kotlin.with'
+        reason: 'Use `apply` to configure an object (`StringBuilder().apply { ... }`), or call the members on the receiver.'
+      - value: 'kotlin.also'
+        reason: 'Use `apply` to configure an object, or write a plain statement after it.'
+  ForbiddenImport:
+    active: true
+    imports:
+      - 'kotlinx.coroutines.runBlocking'
+  UnnecessaryLet:
+    active: true
+  UnnecessaryApply:
+    active: true
+  UseLet:
+    active: true
+  UseDataClass:
+    active: true
+  DataClassShouldBeImmutable:
+    active: true

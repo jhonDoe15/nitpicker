@@ -3,7 +3,8 @@
 // In the project directory (cwd): a file `GRADLE_FAIL` makes the run fail with its text, and each
 // line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
 // `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
-// src/main/kotlin/demo/K.kt and each line of `kotlin-format.txt` a file the formatter would change.
+// src/main/kotlin/demo/K.kt (rule `detekt.style.MagicNumber`, or the part before ` :: ` in the line)
+// and each line of `kotlin-format.txt` a file the formatter would change.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -37,10 +38,10 @@ if (kotlin) {
     'build/nitpicker/detekt.sarif',
     sarif(
       'detekt',
-      lines('detekt.txt').map((text, index) => ({
-        ruleId: 'detekt.style.MagicNumber',
+      lines('detekt.txt').map((line, index) => ({
+        ruleId: line.includes(' :: ') ? line.split(' :: ')[0] : 'detekt.style.MagicNumber',
         level: 'warning',
-        message: { text },
+        message: { text: line.includes(' :: ') ? line.split(' :: ')[1] : line },
         locations: [
           {
             physicalLocation: {

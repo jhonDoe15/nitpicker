@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
+import { addOneWayHint } from './kotlin-rules.mjs';
+import { readSuppressionFindings } from './kotlin-suppressions.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -19,13 +21,17 @@ export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
   return kotlin ? [...new Set([...sourceRoots, ...manifest.kotlinSourceRoots])] : sourceRoots;
 }
 
-export function readKotlinFindings({ reportRoot, manifest }) {
-  return [...detektFindings(reportRoot), ...formatFindings(reportRoot, manifest.kotlinFormatter)];
+export function readKotlinFindings({ reportRoot, manifest, projectRoot }) {
+  return [
+    ...detektFindings(reportRoot),
+    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
+    ...formatFindings(reportRoot, manifest.kotlinFormatter),
+  ];
 }
 
 function detektFindings(reportRoot) {
   const log = JSON.parse(readFileSync(path.join(reportRoot, DETEKT_REPORT), 'utf8'));
-  return ingestSarif(identifiedBySubject(log), { tool: DETEKT_TOOL }).findings;
+  return ingestSarif(identifiedBySubject(log), { tool: DETEKT_TOOL }).findings.map(addOneWayHint);
 }
 
 function identifiedBySubject(log) {

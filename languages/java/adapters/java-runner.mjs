@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -33,12 +34,21 @@ export function analyzeJavaSnapshot(
 
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt]';
+
+function parseException(value) {
+  const separator = value.indexOf(EXCEPTION_SEPARATOR);
+  if (separator <= 0 || separator === value.length - 1) {
+    throw new Error(USAGE);
+  }
+  return { rule: value.slice(0, separator), glob: value.slice(separator + 1) };
+}
 
 function readOptionValues(arguments_) {
   const values = new Map();
   const exclude = [];
+  const exceptions = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const value = remaining.next().value;
@@ -47,6 +57,8 @@ function readOptionValues(arguments_) {
     }
     if (name === '--exclude') {
       exclude.push(value);
+    } else if (name === '--exception') {
+      exceptions.push(parseException(value));
     } else {
       values.set(name, value);
     }
@@ -54,11 +66,11 @@ function readOptionValues(arguments_) {
   if (!values.has('--project-root')) {
     throw new Error(USAGE);
   }
-  return { values, exclude };
+  return { values, exclude, exceptions };
 }
 
 export function parseRunnerArguments(arguments_) {
-  const { values, exclude } = readOptionValues(arguments_);
+  const { values, exclude, exceptions } = readOptionValues(arguments_);
   const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');
@@ -76,6 +88,7 @@ export function parseRunnerArguments(arguments_) {
     policy: {
       crapLimit,
       exclude,
+      exceptions,
       legacyInventory: values.get('--legacy-inventory'),
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
@@ -93,6 +106,7 @@ const RUNNER_OPTIONS = [
   '--baseline-root',
   '--crap-limit',
   '--exclude',
+  '--exception',
   '--legacy-inventory',
   '--preset',
   '--kotlin-formatter',

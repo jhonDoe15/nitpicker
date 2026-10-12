@@ -172,6 +172,60 @@ describe('readJavaFindings with the kotlin preset', () => {
     ]);
   });
 
+  it('ends the message of a one-way rule with the allowed form and the exception route, keeping the identity', () => {
+    const root = projectWithKotlinReports();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/detekt.sarif'),
+      JSON.stringify({
+        runs: [
+          {
+            tool: { driver: { name: 'detekt' } },
+            results: [
+              {
+                ruleId: 'detekt.potential-bugs.UnsafeCallOnNullableType',
+                level: 'warning',
+                message: { text: 'Calling !! on a nullable type will throw.' },
+                locations: [
+                  {
+                    physicalLocation: {
+                      artifactLocation: { uri: bad },
+                      region: { startLine: 3 },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const [finding] = kotlinFindings(root, 'detekt');
+
+    expect(finding.identity).toBe('fp:nitpicker/subject=Calling !! on a nullable type will throw.');
+    expect(finding.message).toMatch(
+      /^Calling !! on a nullable type will throw\. Handle null with `value \?: return`.*checkNotNull\(value\).*"exceptions" entry for rule detekt\.potential-bugs\.UnsafeCallOnNullableType in nitpicker\.config\.json\.$/,
+    );
+  });
+
+  it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
+    const root = projectWithKotlinReports();
+    writeFileSync(
+      path.join(root, bad),
+      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "MagicNumber")\nfun f(text: String?) = text!!.length\n`,
+    );
+
+    expect(
+      kotlinFindings(root, 'detekt').filter(({ rule }) => rule === 'inline-suppression'),
+    ).toEqual([
+      expect.objectContaining({
+        path: bad,
+        identity: 'suppress:UnsafeCallOnNullableType',
+        classification: 'enforceable',
+      }),
+    ]);
+  });
+
   it('reports a file the formatter wants changed, named after the formatter in use', () => {
     const ktlint = kotlinFindings(projectWithKotlinReports(), 'ktlint');
     const ktfmt = kotlinFindings(
