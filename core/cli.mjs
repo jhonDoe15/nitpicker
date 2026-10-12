@@ -352,7 +352,7 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 }
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
-  const { options, environment, currentProjectRoot, stdout } = cli;
+  const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   stdout.write(
     renderConsoleSummary(report, {

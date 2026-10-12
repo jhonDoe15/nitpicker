@@ -123,15 +123,16 @@ function functionNameNode(declaration) {
   return parent !== undefined && ts.isVariableDeclaration(parent) ? parent.name : undefined;
 }
 
-const HAS_INITIALIZED_TYPE = (node) =>
-  ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node);
+function hasInitializedType(node) {
+  return ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node);
+}
 
 function flaggedPart(declaration, sourceFile) {
   const typeNode = declaration.type;
   if (typeNode !== undefined) {
-    return describeTypePart(mutablePart(typeNode, { sourceFile, trail: [], depth: 0 }), sourceFile);
+    return describeTypePart(mutablePart(typeNode, sourceFile), sourceFile);
   }
-  if (!HAS_INITIALIZED_TYPE(declaration) || declaration.initializer === undefined) {
+  if (!hasInitializedType(declaration) || declaration.initializer === undefined) {
     return undefined;
   }
   const kind = kindOfExpression(declaration.initializer);
@@ -180,111 +181,103 @@ const TYPE_NAME_KINDS = new Map([
 
 const MAX_ALIAS_DEPTH = 4;
 
-function mutablePart(typeNode, context) {
-  const { depth } = context;
-  if (depth > MAX_ALIAS_DEPTH) {
-    return undefined;
-  }
-  const node = ts.isParenthesizedTypeNode(typeNode) ? typeNode.type : typeNode;
-  if (ts.isTypeOperatorNode(node)) {
-    return mutablePart(
-      node.operator === ts.SyntaxKind.ReadonlyKeyword ? elementOf(node.type) : node.type,
-      context,
-    );
-  }
-  if (
-    ts.isArrayTypeNode(node) ||
-    (ts.isTypeReferenceNode(node) && isMutableReference(node, context))
-  ) {
-    return { trail: context.trail, typeNode: node };
-  }
-  if (ts.isTypeReferenceNode(node)) {
-    return partOfReference(node, context);
-  }
-  if (ts.isTypeLiteralNode(node)) {
-    return partOfMembers(node.members, context);
-  }
-  if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
-    return firstDefined(node.types, (member) => mutablePart(member, context));
+function mutablePart(typeNode, sourceFile) {
+  const pending = [{ node: typeNode, trail: [], depth: 0, notReadonly: false }];
+  for (const item of pending) {
+    if (item.depth > MAX_ALIAS_DEPTH) {
+      continue;
+    }
+    const node = ts.isParenthesizedTypeNode(item.node) ? item.node.type : item.node;
+    if (item.notReadonly || isMutableType(node, sourceFile)) {
+      return { trail: item.trail, typeNode: node, notReadonly: item.notReadonly };
+    }
+    pending.push(...childrenOf(node, item, sourceFile));
   }
   return undefined;
+}
+
+function isMutableType(node, sourceFile) {
+  if (ts.isArrayTypeNode(node)) {
+    return true;
+  }
+  if (!ts.isTypeReferenceNode(node)) {
+    return false;
+  }
+  const name = node.typeName.getText(sourceFile);
+  return MUTABLE_CLASSES.has(name) || TYPE_NAME_KINDS.has(name);
+}
+
+function childrenOf(node, item, sourceFile) {
+  const same = { trail: item.trail, depth: item.depth, notReadonly: false };
+  if (ts.isTypeOperatorNode(node)) {
+    const operand =
+      node.operator === ts.SyntaxKind.ReadonlyKeyword ? elementOf(node.type) : node.type;
+    return [{ ...same, node: operand }];
+  }
+  if (ts.isTypeReferenceNode(node)) {
+    return childrenOfReference(node, item, sourceFile);
+  }
+  if (ts.isTypeLiteralNode(node)) {
+    return membersAsItems(node.members, item, sourceFile);
+  }
+  if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
+    return node.types.map((member) => ({ ...same, node: member }));
+  }
+  return [];
 }
 
 function elementOf(typeNode) {
   return ts.isArrayTypeNode(typeNode) ? typeNode.elementType : typeNode;
 }
 
-function referenceName(node, context) {
-  return node.typeName.getText(context.sourceFile);
-}
-
-function isMutableReference(node, context) {
-  const name = referenceName(node, context);
-  return MUTABLE_CLASSES.has(name) || TYPE_NAME_KINDS.has(name);
-}
-
-function partOfReference(node, context) {
-  const name = referenceName(node, context);
-  const next = { ...context, depth: context.depth + 1 };
+function childrenOfReference(node, item, sourceFile) {
+  const name = node.typeName.getText(sourceFile);
+  const deeper = { trail: item.trail, depth: item.depth + 1, notReadonly: false };
   if (READONLY_WRAPPERS.has(name)) {
-    return firstDefined(node.typeArguments ?? [], (argument) =>
-      isMutableClassReference(argument, context) ? undefined : mutablePart(argument, next),
-    );
+    return (node.typeArguments ?? [])
+      .filter((argument) => argument.getText(sourceFile) !== 'Date')
+      .map((argument) => ({ ...deeper, node: argument }));
   }
-  const declaration = context.sourceFile.statements.find(
+  const declaration = sourceFile.statements.find(
     (statement) =>
       (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) &&
       statement.name.text === name,
   );
   if (declaration === undefined) {
-    return undefined;
+    return [];
   }
   return ts.isTypeAliasDeclaration(declaration)
-    ? mutablePart(declaration.type, next)
-    : partOfMembers(declaration.members, next);
+    ? [{ ...deeper, node: declaration.type }]
+    : membersAsItems(declaration.members, { ...item, depth: item.depth + 1 }, sourceFile);
 }
 
-function isMutableClassReference(node, context) {
-  return ts.isTypeReferenceNode(node) && referenceName(node, context) === 'Date';
-}
-
-function partOfMembers(members, context) {
-  return firstDefined(members, (member) => {
-    if (!ts.isPropertySignature(member) || member.type === undefined) {
-      return undefined;
-    }
-    const trail = [...context.trail, member.name.getText(context.sourceFile)];
-    const isReadonly = member.modifiers?.some(
-      (modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword,
-    );
-    return isReadonly === true
-      ? mutablePart(member.type, { ...context, trail })
-      : { trail, typeNode: member.type, notReadonly: true };
-  });
-}
-
-function firstDefined(items, project) {
-  for (const item of items) {
-    const result = project(item);
-    if (result !== undefined) {
-      return result;
-    }
-  }
-  return undefined;
+function membersAsItems(members, item, sourceFile) {
+  return members
+    .filter((member) => ts.isPropertySignature(member) && member.type !== undefined)
+    .map((member) => ({
+      node: member.type,
+      trail: [...item.trail, member.name.getText(sourceFile)],
+      depth: item.depth,
+      notReadonly: !member.modifiers?.some(
+        (modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword,
+      ),
+    }));
 }
 
 function unwrapExpression(expression) {
-  let current = expression;
-  while (
-    ts.isParenthesizedExpression(current) ||
-    ts.isAsExpression(current) ||
-    ts.isSatisfiesExpression(current) ||
-    ts.isNonNullExpression(current) ||
-    ts.isAwaitExpression(current)
-  ) {
-    current = current.expression;
+  const chain = [expression];
+  for (const current of chain) {
+    if (
+      ts.isParenthesizedExpression(current) ||
+      ts.isAsExpression(current) ||
+      ts.isSatisfiesExpression(current) ||
+      ts.isNonNullExpression(current) ||
+      ts.isAwaitExpression(current)
+    ) {
+      chain.push(current.expression);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 function kindOfExpression(expression) {
@@ -321,9 +314,12 @@ function kindOfCall(call) {
 }
 
 function rootIdentifier(expression) {
-  let current = expression;
-  while (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
-    current = current.expression;
+  const chain = [expression];
+  for (const current of chain) {
+    if (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
+      chain.push(current.expression);
+    }
   }
-  return ts.isIdentifier(current) ? current.text : undefined;
+  const root = chain.at(-1);
+  return ts.isIdentifier(root) ? root.text : undefined;
 }
