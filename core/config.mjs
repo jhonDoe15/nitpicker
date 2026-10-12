@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
@@ -14,7 +15,7 @@ import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
 const SUPPORTED_PRESETS = ['typescript', ...GRADLE_PRESETS];
-const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'tools'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
   'preset',
@@ -23,6 +24,7 @@ const KEYS = [
   'exclude',
   'layout',
   'exceptions',
+  'react',
   'analyzers',
   'legacyInventory',
   'tools',
@@ -31,6 +33,7 @@ const KEYS = [
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
+const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
@@ -58,6 +61,7 @@ export function validateConfig(config) {
   validateKeys(config);
   validateScalars(config);
   validateDisable(config.disable);
+  validateReact(config.react);
   validateOptional(config);
   return config;
 }
@@ -227,6 +231,26 @@ function validateExceptions(exceptions) {
         `"${label}.reason" is required: say why the rule is lifted for these paths`,
       );
     }
+  }
+}
+
+function validateReact(react) {
+  if (react === undefined) {
+    return;
+  }
+  if (!isPlainObject(react)) {
+    throw configError('"react" must be an object');
+  }
+  for (const key of Object.keys(react)) {
+    if (!REACT_KEYS.includes(key)) {
+      throw configError(`unknown react key "${key}". Allowed react keys: ${REACT_KEYS.join(', ')}`);
+    }
+  }
+  if (react.enabled !== undefined && typeof react.enabled !== 'boolean') {
+    throw configError('"react.enabled" must be true or false');
+  }
+  if (react.styling !== undefined && !stylingApproaches.includes(react.styling)) {
+    throw configError(`"react.styling" must be one of: ${stylingApproaches.join(', ')}`);
   }
 }
 

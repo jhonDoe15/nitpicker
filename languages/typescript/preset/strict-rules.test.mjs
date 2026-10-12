@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
+import { reactRuleIds } from './eslint-config/react-rules.mjs';
 import { strictPresetConfig } from './eslint-config/strict.mjs';
 import { defaultResolvedLayout } from './layout.mjs';
 import { isStrictRule, strictEslintRuleIds } from './strict-rules.mjs';
@@ -18,6 +19,13 @@ describe('strict rule ids', () => {
   it('recognises every ESLint and boundary rule of the preset', () => {
     for (const rule of [...strictEslintRuleIds, ...strictBoundaryRules.map(({ name }) => name)]) {
       expect(isStrictRule(rule)).toBe(true);
+    }
+  });
+
+  it('recognises every React rule as strict without listing it among the always-on rules', () => {
+    for (const rule of reactRuleIds) {
+      expect(isStrictRule(rule), rule).toBe(true);
+      expect(strictEslintRuleIds, rule).not.toContain(rule);
     }
   });
 });
