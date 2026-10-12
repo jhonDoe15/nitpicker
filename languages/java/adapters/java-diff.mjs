@@ -10,6 +10,7 @@ import {
 } from '../../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
+import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
@@ -55,6 +56,9 @@ export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   runJavaDuplicates(projectRoot);
   const preset = options.policy?.preset ?? 'java';
+  if (preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot);
+  }
   const { findings } = parseAnalyzerReport(
     readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
     preset,

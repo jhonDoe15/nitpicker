@@ -34,14 +34,14 @@ function packageOf(className) {
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
-export function analyzeJavaCoupling({ classes, edges, fileOf }) {
-  const modules = [...new Set(classes.map(outerClass))].sort();
+export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass }) {
+  const modules = [...new Set(classes.map(moduleOf))].sort();
   const moduleSet = new Set(modules);
   const edgeKeys = new Set();
   const moduleEdges = [];
   for (const edge of edges) {
-    const source = outerClass(edge.source);
-    const target = outerClass(edge.target);
+    const source = moduleOf(edge.source);
+    const target = moduleOf(edge.target);
     const key = `${source}\0${target}`;
     if (source !== target && moduleSet.has(source) && moduleSet.has(target) && !edgeKeys.has(key)) {
       edgeKeys.add(key);
@@ -74,7 +74,7 @@ export function analyzeJavaCoupling({ classes, edges, fileOf }) {
   };
 }
 
-export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
+export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin }) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
   if (!existsSync(jdeps) || !existsSync(classList)) {
@@ -82,6 +82,10 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
   }
   const classes = readFileSync(classList, 'utf8').split(/\r?\n/).filter(Boolean);
   function fileOf(className) {
+    const known = kotlin?.fileOf.get(className);
+    if (known !== undefined) {
+      return known;
+    }
     const relative = `${className.replaceAll('.', '/')}.java`;
     const candidates = sourceRoots.map((root) => `${root}/${relative}`);
     return (
@@ -94,6 +98,10 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
     classes,
     edges: parseJdeps(readFileSync(jdeps, 'utf8')),
     fileOf,
+    moduleOf: (className) => {
+      const outer = outerClass(className);
+      return kotlin?.moduleOf.get(outer) ?? outer;
+    },
   });
   return evaluateCoupling(report, COUPLING_TOOL);
 }

@@ -3,7 +3,8 @@
 // In the project directory (cwd): a file `GRADLE_FAIL` makes the run fail with its text, and each
 // line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
 // `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
-// src/main/kotlin/demo/K.kt and each line of `kotlin-format.txt` a file the formatter would change.
+// src/main/kotlin/demo/K.kt, each line of `kotlin-format.txt` a file the formatter would change, and
+// a file `kotlin-metrics.json` is the Kotlin metrics report as it is.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -53,6 +54,9 @@ if (kotlin) {
     ),
   );
   writeFileSync('build/nitpicker/kotlin-format.txt', lines('kotlin-format.txt').join('\n'));
+  if (existsSync('kotlin-metrics.json')) {
+    writeFileSync('build/nitpicker/kotlin-metrics.json', readFileSync('kotlin-metrics.json'));
+  }
 }
 writeFileSync(
   'build/nitpicker/pmd.sarif',

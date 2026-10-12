@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java'];
+export const LANGUAGES = ['typescript', 'java', 'kotlin'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -90,8 +90,9 @@ export const GREW_MESSAGES = {
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
 };
 
-const BOTH = { typescript: true, java: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false };
+const BOTH = { typescript: true, java: true, kotlin: false };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, kotlin: false };
+const WITH_KOTLIN = { ...BOTH, kotlin: true };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -102,37 +103,37 @@ export const RULES = [
     id: RULE_IDS.functionLines,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.lines.limit)} lines`,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.functionStatements,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.statements.limit)} statements`,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.functionControlNesting,
     check: 'structure',
     limit: `control nesting deeper than ${String(FUNCTION_STRUCTURE_LIMITS.maxControlNesting.limit)}`,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.functionParameters,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.parameters.limit)} parameters`,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
     limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.changedBranchCoverage,
@@ -156,13 +157,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.noProductionRuntime,
@@ -180,7 +181,7 @@ export const RULES = [
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: BOTH,
+    enforcedBy: WITH_KOTLIN,
   },
   {
     id: RULE_IDS.publicAlternativeBypass,

@@ -2,6 +2,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
+import { readKotlinDuplicateFindings } from './kotlin-duplicates.mjs';
+import {
+  readKotlinCrapFindings,
+  readKotlinMetrics,
+  readKotlinStructureFindings,
+} from './kotlin-metrics.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -19,8 +25,21 @@ export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
   return kotlin ? [...new Set([...sourceRoots, ...manifest.kotlinSourceRoots])] : sourceRoots;
 }
 
-export function readKotlinFindings({ reportRoot, manifest }) {
-  return [...detektFindings(reportRoot), ...formatFindings(reportRoot, manifest.kotlinFormatter)];
+export function readKotlinFindings(context, crapLimit) {
+  const { reportRoot, manifest, projectRoot, jacoco } = context;
+  const metrics = readKotlinMetrics(reportRoot);
+  return [
+    ...detektFindings(reportRoot),
+    ...formatFindings(reportRoot, manifest.kotlinFormatter),
+    ...readKotlinStructureFindings(metrics, projectRoot),
+    ...readKotlinCrapFindings(metrics, {
+      projectRoot,
+      jacoco,
+      sourceRoots: jacocoSourceRoots(context),
+      crapLimit,
+    }),
+    ...readKotlinDuplicateFindings(reportRoot),
+  ];
 }
 
 function detektFindings(reportRoot) {
