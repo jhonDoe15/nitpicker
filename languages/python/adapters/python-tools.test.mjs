@@ -187,7 +187,7 @@ describe('running the tools', () => {
     ['coverage run', ['tests-failed']],
     ['coverage json', ['coverage-failed']],
     ['mypy', ['types-failed']],
-    ['python', ['rules-failed']],
+    ['python', ['rules-failed', 'structure-failed']],
   ])('names the failing step: %s is %s', (call, rules) => {
     const root = project({ 'fail.json': JSON.stringify({ [call]: 'it blew up' }) });
     const { context } = contextFor(root);
