@@ -412,7 +412,7 @@ resolved plus a new finding, as in the TypeScript check.
 - Custom PMD rules: the default ruleset is `category/java/errorprone.xml` plus
   `category/java/bestpractices.xml`; a consumer can place `config/pmd/ruleset.xml` in the root
   project. A `layout`-style config key for this is still open (slice 2 did not add one).
-- Kotlin or Groovy sources, Maven.
+- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
 
 ## Tests
 

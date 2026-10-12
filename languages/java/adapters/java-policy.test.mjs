@@ -65,6 +65,32 @@ describe('configureJavaAnalyzer', () => {
     ).not.toBe(configured.configurationHash);
     expect(configured.legacyInventory).toBe('legacy.json');
   });
+
+  it('hands the Kotlin formatter and detekt config to the runner and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const configured = configureJavaAnalyzer(analyzer, {
+      kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'ktfmt',
+      kotlinDetektConfig: 'tools/rules.yml',
+    });
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
+        .configurationHash,
+    ).not.toBe(analyzer.configurationHash);
+  });
 });
 
 describe('parseRunnerArguments', () => {
@@ -75,6 +101,51 @@ describe('parseRunnerArguments', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--crap-limit', '0'])).toThrow(
       /positive number/,
     );
+  });
+
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
+    });
+    expect(
+      parseRunnerArguments([
+        '--project-root',
+        '/p',
+        '--preset',
+        'kotlin',
+        '--kotlin-formatter',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
+      ]).policy,
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
+  });
+
+  it('rejects an unknown preset or Kotlin formatter', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+      '--preset must be one of: java, kotlin',
+    );
+    expect(() =>
+      parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
   });
 });
 
@@ -117,6 +188,11 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
+    expect(
+      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+        ({ tool, rule }) => [tool, rule],
+      ),
+    ).toEqual([['kotlin', 'baseline-expansion']]);
   });
 
   it('names the tool of a baseline-expansion after the language that asks', () => {
