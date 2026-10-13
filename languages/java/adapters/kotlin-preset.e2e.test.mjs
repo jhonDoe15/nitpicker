@@ -412,12 +412,11 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(fromTool(result.newEnforceable, 'jacoco')).toEqual([
       'jacoco changed-branch-coverage Label.kt',
     ]);
-    expect(result.newEnforceable.find(({ tool }) => tool === 'jacoco')).toEqual(
-      expect.objectContaining({
-        message: 'Branch coverage is 50.00%; minimum is 95%',
-        location: { line: 4 },
-      }),
-    );
+    expect(
+      result.newEnforceable
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ message, location }) => ({ message, location })),
+    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(
