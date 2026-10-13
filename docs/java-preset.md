@@ -164,8 +164,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
-    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+    `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
+    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
+    is Checkstyle's; `thresholds.lineLength` is a config error.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -173,8 +175,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` and ESLint `exceptions` configure TypeScript source roots and rules; they have no Java
+    meaning and stay a config error with `"preset": "java"` instead of being ignored. `exceptions`
+    for `file-lines-limit` and `folder-files-limit` are accepted.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -281,8 +284,8 @@ identity when the value changes: editing such a line counts as a resolved plus a
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
   `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild`, ignoring `build`, `generated`,
-  `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
+  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
+  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
   `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
@@ -412,7 +415,7 @@ resolved plus a new finding, as in the TypeScript check.
 - Custom PMD rules: the default ruleset is `category/java/errorprone.xml` plus
   `category/java/bestpractices.xml`; a consumer can place `config/pmd/ruleset.xml` in the root
   project. A `layout`-style config key for this is still open (slice 2 did not add one).
-- Kotlin or Groovy sources, Maven.
+- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
 
 ## Tests
 

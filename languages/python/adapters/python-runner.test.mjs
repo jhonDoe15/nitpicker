@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -47,8 +55,16 @@ const coverageReport = JSON.stringify({
   },
 });
 
+const withoutCoupling = ({ findings }) => findings.filter(({ tool }) => tool !== 'coupling');
+
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
+
+const analyzeMutation = (root, extra = {}) => analyze(root, { part: 'mutation', ...extra });
+
+function enforceable(findings) {
+  return findings.filter(({ classification }) => classification !== 'descriptive');
+}
 
 describe('analyzing a Python snapshot', () => {
   it('turns the ruff, format and coverage reports into findings', () => {
@@ -60,7 +76,11 @@ describe('analyzing a Python snapshot', () => {
 
     const { findings } = analyze(root);
 
-    expect(findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)).toEqual([
+    expect(
+      findings
+        .filter(({ tool }) => tool !== 'coupling')
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+    ).toEqual([
       'ruff F401 src/demo/a.py',
       'ruff B006 src/demo/a.py',
       'ruff-format format src/demo/a.py',
@@ -72,34 +92,32 @@ describe('analyzing a Python snapshot', () => {
       rule: 'F401',
       path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
-      message: '`os` imported but unused',
+      message:
+        '`os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
   });
 
-  it('says how to lift the rules that flag idiomatic code and when the formatter was guessed', () => {
-    const root = project({
-      'violations.txt': 'T201|src/demo/a.py|`print` found\nB006|src/demo/a.py|mutable\n',
-      'unformatted.txt': 'src/demo/a.py\n',
-    });
+  it('says when the formatter was guessed', () => {
+    const root = project({ 'unformatted.txt': 'src/demo/a.py\n' });
 
-    const messages = analyze(root).findings.map(({ rule, message }) => `${rule}: ${message}`);
+    const messages = enforceable(analyze(root).findings).map(
+      ({ rule, message }) => `${rule}: ${message}`,
+    );
 
     expect(messages).toEqual([
-      'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
-      'B006: mutable',
       'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
     ]);
-    expect(analyze(root, { settings: { formatter: 'ruff' } }).findings.at(-1).message).toBe(
-      'File is not formatted with ruff',
-    );
+    expect(
+      enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
+    ).toBe('File is not formatted with ruff');
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
     const root = project({ 'test-exit.txt': '5\n' });
 
-    expect(analyze(root).findings).toEqual([
+    expect(enforceable(analyze(root).findings)).toEqual([
       {
         tool: 'python',
         rule: 'no-tests-ran',
@@ -107,6 +125,133 @@ describe('analyzing a Python snapshot', () => {
         identity: 'no-tests-ran',
         message: 'No tests ran. Keep the project tests, or restore the ones this change removed.',
         classification: 'enforceable',
+      },
+    ]);
+  });
+
+  it('reads type errors and the one-way rules, each message naming the allowed form', () => {
+    const root = project({
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'type-errors.txt':
+        'src/demo/a.py:3: error: Incompatible return value type (got "int", expected "str")  [return-value]\nsrc/demo/a.py:3: note: ignored\n',
+      'rules.json': JSON.stringify([
+        { rule: 'frozen-dataclass', path: 'src/demo/a.py', subject: 'Order', line: 5 },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ tool, rule, identity }) => `${tool} ${rule} ${identity}`)).toEqual([
+      'ruff T201 fp:nitpicker/subject=`print` found',
+      'mypy return-value Incompatible return value type (got "int", expected "str")',
+      'python-rules frozen-dataclass Order',
+    ]);
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+    ]);
+  });
+
+  it('lifts a rule for the paths of a python exception and nothing else', () => {
+    const root = project({
+      'violations.txt': 'T201|scripts/run.py|`print` found\nT201|src/demo/a.py|`print` found\n',
+    });
+    const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
+
+    const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
+
+    expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
+  });
+
+  it('turns the mutmut run into mutant findings in the mutation part and cleans the snapshot unless it is the base', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const files = {
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+      'src/demo/a.py': 'def f():\n    return 1\n',
+    };
+    const head = project(files);
+    const base = project(files);
+
+    const { findings } = analyzeMutation(head);
+    const baseFindings = analyzeMutation(base, { policy: { snapshot: 'base' } }).findings;
+
+    expect(findings).toEqual([
+      {
+        tool: 'mutmut',
+        rule: 'mutant-survived',
+        path: 'src/demo/a.py',
+        identity: 'f|1→2#1',
+        symbol: 'f',
+        message:
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        classification: 'enforceable',
+        location: { line: 2 },
+      },
+      {
+        tool: 'mutmut',
+        rule: 'mutation-summary',
+        path: '.',
+        identity: 'status:Survived',
+        message: 'Survived mutants',
+        classification: 'descriptive',
+        metric: { name: 'Survived', value: 1 },
+      },
+    ]);
+    expect(baseFindings).toEqual(findings);
+    expect(existsSync(path.join(head, 'mutants'))).toBe(false);
+    expect(existsSync(path.join(base, 'mutants'))).toBe(true);
+  });
+
+  it('leaves mutation testing to the mutation part, so lint and tests never wait for or fail with mutmut', () => {
+    const root = project({ 'no-mutmut.txt': '', 'violations.txt': 'F401|src/demo/a.py|unused\n' });
+
+    const lintFindings = analyze(root).findings.filter(({ tool }) => tool === 'ruff');
+    expect(lintFindings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual(['ruff F401']);
+    expect(analyzeMutation(root).findings).toEqual([
+      {
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message:
+          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('drops the mutants of excluded paths', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const root = project({
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+    });
+
+    const { findings } = analyzeMutation(root, { policy: { exclude: ['src/demo/**'] } });
+
+    expect(findings.map(({ rule }) => rule)).toEqual(['mutation-summary']);
+  });
+
+  it('maps an unexpected failure of the mutation part to a mutation-failed tool error', () => {
+    const root = project({
+      'mutants-data.json': '{"src/demo/a.py": {"exitCodes": {"k": 0}, "mutated": ""}}',
+    });
+
+    expect(analyzeMutation(root).findings).toEqual([
+      {
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message:
+          'mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
+        classification: 'tool-error',
       },
     ]);
   });
@@ -138,7 +283,7 @@ describe('analyzing a Python snapshot', () => {
       },
     });
 
-    expect(findings).toEqual([
+    expect(findings.filter(({ classification }) => classification !== 'descriptive')).toEqual([
       {
         tool: 'python',
         rule: 'baseline-expansion',
@@ -182,6 +327,14 @@ describe('analyzing a Python snapshot', () => {
         path: '.',
         identity: 'tests-failed',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        classification: 'tool-error',
+      },
+      {
+        tool: 'python',
+        rule: 'rules-failed',
+        path: '.',
+        identity: 'rules-failed',
+        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
         classification: 'tool-error',
       },
     ]);
@@ -237,10 +390,11 @@ describe('analyzing a Python snapshot', () => {
 describe('runner arguments', () => {
   it('defaults the live root to the project and the settings to none', () => {
     expect(parsePythonArguments(['--project-root', '/p'])).toEqual({
+      part: 'python',
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
-      policy: { exclude: [], snapshot: 'head' },
+      policy: { exclude: [], exceptions: [], snapshot: 'head' },
     });
   });
 
@@ -252,6 +406,8 @@ describe('runner arguments', () => {
       '/live',
       '--python-settings',
       '{"formatter":"black"}',
+      '--part',
+      'mutation',
       '--exclude',
       'gen/**',
       '--snapshot',
@@ -259,11 +415,18 @@ describe('runner arguments', () => {
     ]);
 
     expect(parsed).toEqual({
+      part: 'mutation',
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], snapshot: 'base' },
+      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
     });
+  });
+
+  it('rejects a part it does not know', () => {
+    expect(() => parsePythonArguments(['--project-root', '/p', '--part', 'lint'])).toThrow(
+      '--part must be one of: python, mutation',
+    );
   });
 
   it('rejects unknown options', () => {

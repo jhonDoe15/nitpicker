@@ -1,6 +1,12 @@
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {
+  JAVASCRIPT_COMPILER_OPTIONS,
+  JAVASCRIPT_JSCPD_FORMAT,
+  JAVASCRIPT_KNIP_ENTRIES,
+  JAVASCRIPT_KNIP_PROJECT,
+} from '../../javascript/preset/javascript-preset.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
@@ -30,19 +36,38 @@ export function isCustomLayout(layout) {
   );
 }
 
-export function layoutTsconfig(base, layout) {
-  return {
-    ...base,
-    include: expandLayoutRoots(base.include, layout),
-    exclude: [...base.exclude, ...layout.exclude],
+function tsconfigRewrite(javascriptOptions) {
+  return function rewriteTsconfig(base, layout) {
+    return {
+      ...base,
+      ...(layout.javascript
+        ? { compilerOptions: { ...base.compilerOptions, ...javascriptOptions } }
+        : {}),
+      include: expandLayoutRoots(base.include, layout),
+      exclude: [...base.exclude, ...layout.exclude],
+    };
   };
 }
 
+export const layoutTsconfig = tsconfigRewrite({ ...JAVASCRIPT_COMPILER_OPTIONS, noEmit: true });
+
+const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS);
+
 export function layoutKnipConfig(base, layout) {
+  const javascript = layout.javascript === true;
   return {
     ...base,
-    entry: [...expandLayoutRoots(base.entry, layout), ...(layout.entryPoints ?? [])],
-    project: expandLayoutRoots(base.project, layout),
+    entry: [
+      ...expandLayoutRoots(
+        javascript ? [...base.entry, ...JAVASCRIPT_KNIP_ENTRIES] : base.entry,
+        layout,
+      ),
+      ...(layout.entryPoints ?? []),
+    ],
+    project: expandLayoutRoots(
+      javascript ? [...base.project, ...JAVASCRIPT_KNIP_PROJECT] : base.project,
+      layout,
+    ),
     ignore: [...expandLayoutRoots(base.ignore, layout), ...layout.exclude],
   };
 }
@@ -50,13 +75,14 @@ export function layoutKnipConfig(base, layout) {
 export function layoutJscpdConfig(base, layout) {
   return {
     ...base,
+    ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
     path: expandLayoutRoots(base.path, layout),
     ignore: [...base.ignore, ...layout.exclude],
   };
 }
 
 export function jsonTransform(rewrite, layout) {
-  if (!isCustomLayout(layout)) {
+  if (!isCustomLayout(layout) && layout.javascript !== true) {
     return undefined;
   }
   return (text) => `${JSON.stringify(rewrite(JSON.parse(text), layout), null, 2)}\n`;
@@ -64,7 +90,7 @@ export function jsonTransform(rewrite, layout) {
 
 const REWRITES = new Map([
   ['tsconfig.quality.json', layoutTsconfig],
-  [STRYKER_TSCONFIG, layoutTsconfig],
+  [STRYKER_TSCONFIG, layoutStrykerTsconfig],
   ['knip.json', layoutKnipConfig],
   ['jscpd.json', layoutJscpdConfig],
 ]);
@@ -81,11 +107,12 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
   const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
   return (text, targetPath) => {
     const projectDirectory = path.dirname(targetPath);
-    if (existsSync(path.join(projectDirectory, PROJECT_TSCONFIG))) {
-      const extended = projectBaseTsconfig(projectDirectory, layout);
+    const projectConfig = projectConfigName(projectDirectory, layout);
+    if (projectConfig !== undefined) {
+      const extended = projectBaseTsconfig(projectDirectory, layout, projectConfig);
       const layered =
         name === STRYKER_TSCONFIG
-          ? projectLayeredMutationTsconfig(extended, strictMutants)
+          ? projectLayeredMutationTsconfig(extended, { strictMutants, layout })
           : projectLayeredTsconfig(extended, JSON.parse(text), layout);
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
@@ -105,11 +132,21 @@ function withoutMutantStrictness(text) {
 }
 
 const PROJECT_TSCONFIG = 'tsconfig.json';
+const PROJECT_JSCONFIG = 'jsconfig.json';
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
   'noUncheckedIndexedAccess',
 ]);
+
+function projectConfigName(directory, layout) {
+  if (existsSync(path.join(directory, PROJECT_TSCONFIG))) {
+    return PROJECT_TSCONFIG;
+  }
+  return layout.javascript && existsSync(path.join(directory, PROJECT_JSCONFIG))
+    ? PROJECT_JSCONFIG
+    : undefined;
+}
 
 const POLICY_COMPILER_OPTIONS = {
   strict: true,
@@ -156,9 +193,9 @@ function isSolutionTsconfig(config) {
   );
 }
 
-function projectBaseTsconfig(projectDirectory, layout) {
-  const project = readJsonc(path.join(projectDirectory, PROJECT_TSCONFIG));
-  const projectBase = `./${PROJECT_TSCONFIG}`;
+function projectBaseTsconfig(projectDirectory, layout, projectConfig) {
+  const project = readJsonc(path.join(projectDirectory, projectConfig));
+  const projectBase = `./${projectConfig}`;
   if (!isSolutionTsconfig(project)) {
     return projectBase;
   }
@@ -170,18 +207,27 @@ function projectBaseTsconfig(projectDirectory, layout) {
     : `./${path.relative(projectDirectory, sourceConfig).split(path.sep).join('/')}`;
 }
 
-function projectLayeredMutationTsconfig(extended, strictMutants) {
+function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   return {
     extends: extended,
-    compilerOptions: { skipLibCheck: true, ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}) },
+    compilerOptions: {
+      skipLibCheck: true,
+      ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
+      ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
+    },
   };
 }
 
 function projectLayeredTsconfig(extended, base, layout) {
+  const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
   return {
     extends: extended,
-    compilerOptions: { ...NO_EMIT_ANALYSIS_OPTIONS, ...POLICY_COMPILER_OPTIONS },
+    compilerOptions: {
+      ...NO_EMIT_ANALYSIS_OPTIONS,
+      ...POLICY_COMPILER_OPTIONS,
+      ...javascriptOptions,
+    },
     include: layered.include,
     exclude: layered.exclude,
   };

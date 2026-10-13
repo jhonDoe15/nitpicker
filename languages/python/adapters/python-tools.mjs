@@ -1,32 +1,49 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { scanImports } from './python-coupling.mjs';
+import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
-import { execute, failure, run } from './python-process.mjs';
+import { checkRules } from './python-ast-rules.mjs';
+import { crap } from './python-crap.mjs';
+import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
+import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
+import { execute, failure, probeVersion, run } from './python-process.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
+  detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
+import { RUFF_CONFIG } from './python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
+  pytestLabel,
   testCommand,
   testRunnerLabel,
   testsRan,
 } from './python-test-runner.mjs';
+import { resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { structure } from './python-structure.mjs';
 
-const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const COVERAGE_REPORT = 'coverage.json';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
+const UNTESTABLE_LINES = [
+  String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
+  String.raw`^\s*if __name__ == .__main__.:`,
+  String.raw`^\s*@(typing\.)?overload\b`,
+  String.raw`^\s*raise NotImplementedError\b`,
+];
+const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
-const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
@@ -39,6 +56,8 @@ export function createToolContext({
   settings = {},
   reportRoot,
   exclude = [],
+  snapshot = 'head',
+  baselineRoot,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -48,13 +67,17 @@ export function createToolContext({
   return {
     projectRoot,
     reportRoot,
+    snapshot,
+    baselineRoot,
     launcher,
     exclude,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,
+      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
       testRunner: detectTestRunner(projectRoot, settings.testRunner),
       targetVersion: detectTargetVersion(projectRoot),
+      importLinter: settings.importLinter,
       sourceRoots,
     },
     env: {
@@ -67,7 +90,23 @@ export function createToolContext({
 
 export function runPythonTools(context) {
   const outcome = {};
-  const failures = [lint, format, test].flatMap((step) => {
+  const steps = [
+    lint,
+    format,
+    test,
+    typeCheck,
+    checkRules,
+    structure,
+    crap,
+    runDuplicates,
+    (stepContext) => {
+      scanImports(stepContext, run);
+    },
+    (stepContext) => {
+      runImportLinter(stepContext, run);
+    },
+  ];
+  const failures = steps.flatMap((step) => {
     try {
       step(context, outcome);
       return [];
@@ -92,7 +131,7 @@ export function runPythonTools(context) {
   return failures;
 }
 
-function lint(context) {
+export function lint(context) {
   run(
     context,
     [
@@ -172,11 +211,28 @@ function coverageSources({ projectRoot, project }) {
   return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
+function indented(entries) {
+  return entries.map((entry) => `    ${entry}`).join('\n');
+}
+
+function coverageConfig(sources) {
+  return [
+    '[run]',
+    'branch = True',
+    'parallel = False',
+    `source =\n${indented(sources)}`,
+    `omit =\n${indented(TEST_FILES)}`,
+    '[report]',
+    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
+    'partial_branches =',
+    '',
+  ].join('\n');
+}
+
 function test(context, outcome) {
   const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  const lines = sources.map((root) => `    ${root}`).join('\n');
-  writeFileSync(config, `[run]\nbranch = True\nparallel = False\nsource =\n${lines}\n`);
+  writeFileSync(config, coverageConfig(sources));
   const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,
@@ -198,12 +254,29 @@ function writeCoverageReport(context, { config, measured }) {
   );
 }
 
-function probeVersion(context, command) {
-  const result = execute(context, command);
-  if (result.error !== undefined || result.status !== 0) {
-    return 'missing';
+function typeCheckerVersion(context) {
+  const checker = resolveTypeChecker(context);
+  return checker === undefined
+    ? 'types@missing'
+    : `${checker}@${probeVersion(context, [checker, '--version'])}`;
+}
+
+const IMPORT_LINTER_METADATA = [
+  'python',
+  '-I',
+  '-c',
+  'import importlib.metadata as m; print(m.version("import-linter"))',
+];
+
+function importLinterVersion(context) {
+  const { importLinter } = context.project;
+  if (!importLinterEnabled(context.projectRoot, importLinter)) {
+    return [];
   }
-  return VERSION_PATTERN.exec(result.stdout)?.[0] ?? 'unknown';
+  const installed = probeVersion(context, IMPORT_LINTER_METADATA);
+  const version =
+    installed === 'missing' ? probeVersion(context, ['lint-imports', '--version']) : installed;
+  return [`import-linter@${version}`];
 }
 
 export function toolVersions(context) {
@@ -211,7 +284,14 @@ export function toolVersions(context) {
   return [
     `ruff@${probeVersion(context, ['ruff', '--version'])}`,
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
+    typeCheckerVersion(context),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerLabel(context),
+    `jscpd@${jscpdVersion()}`,
+    ...importLinterVersion(context),
   ].join(';');
+}
+
+export function mutationVersions(context) {
+  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
 }

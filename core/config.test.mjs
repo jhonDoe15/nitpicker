@@ -18,11 +18,12 @@ describe('config file', () => {
     ).toBeDefined();
   });
 
-  it('accepts the java and python presets and rejects other presets', () => {
+  it('accepts the java, kotlin and python presets and rejects other presets', () => {
     expect(validateConfig({ preset: 'java' })).toEqual({ preset: 'java' });
+    expect(validateConfig({ preset: 'kotlin' })).toEqual({ preset: 'kotlin' });
     expect(validateConfig({ preset: 'python' })).toEqual({ preset: 'python' });
-    expect(() => validateConfig({ preset: 'kotlin' })).toThrow(
-      '"preset" must be one of: typescript, java, python',
+    expect(() => validateConfig({ preset: 'cobol' })).toThrow(
+      '"preset" must be one of: typescript, javascript, java, kotlin, python',
     );
   });
 
@@ -41,7 +42,24 @@ describe('config file', () => {
     ]);
   });
 
-  it('shares thresholds, exclude and legacyInventory with the python preset', () => {
+  it('lists each python exception separately in the config overrides', () => {
+    const exception = { rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' };
+
+    expect(
+      describeConfigOverrides({
+        python: { typeChecker: 'mypy', exceptions: [exception, { ...exception, rule: 'B006' }] },
+      }),
+    ).toEqual([
+      'python: {"typeChecker":"mypy"}',
+      `exception: ${JSON.stringify(exception)}`,
+      `exception: ${JSON.stringify({ ...exception, rule: 'B006' })}`,
+    ]);
+    expect(describeConfigOverrides({ python: { exceptions: [exception] } })).toEqual([
+      `exception: ${JSON.stringify(exception)}`,
+    ]);
+  });
+
+  it('shares thresholds, exclude, legacyInventory and file-limit exceptions with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
       exclude: ['generated/**'],
@@ -54,9 +72,107 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
       '"layout" is not supported with "preset": "python"',
     );
-    expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
-      '"exceptions" is not supported with "preset": "python"',
-    );
+    const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
+    expect(validateConfig({ preset: 'python', exceptions })).toEqual({
+      preset: 'python',
+      exceptions,
+    });
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
+  });
+
+  describe('kotlin options', () => {
+    it.each([
+      { formatter: 'ktfmt' },
+      { formatter: 'none' },
+      { detektConfig: 'tools/detekt-rules.yml' },
+      {},
+    ])('accepts %j with the kotlin preset', (kotlin) => {
+      const config = { preset: 'kotlin', kotlin };
+      expect(validateConfig(config)).toEqual(config);
+    });
+
+    it.each([
+      [
+        { preset: 'kotlin', kotlin: { formatter: 'prettier' } },
+        /must be one of: ktlint, ktfmt, none/,
+      ],
+      [{ preset: 'kotlin', kotlin: { style: 'google' } }, /unknown key "kotlin.style"/],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '/etc/detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '../detekt.yml' } },
+        /"kotlin.detektConfig" must be a path inside the project/,
+      ],
+      [
+        { preset: 'kotlin', kotlin: { detektConfig: '' } },
+        /"kotlin.detektConfig" must be a non-empty string/,
+      ],
+      [{ preset: 'kotlin', kotlin: 'ktlint' }, /"kotlin" must be an object/],
+      [
+        { preset: 'java', kotlin: { formatter: 'ktlint' } },
+        /only supported with "preset": "kotlin"/,
+      ],
+      [{ kotlin: { formatter: 'ktlint' } }, /only supported with "preset": "kotlin"/],
+    ])('rejects %j', (config, message) => {
+      expect(() => validateConfig(config)).toThrow(message);
+    });
+  });
+
+  it('accepts the javascript preset with the TypeScript-pipeline keys', () => {
+    const config = {
+      preset: 'javascript',
+      layout: { sourceRoots: ['lib'] },
+      exceptions: [{ rule: 'nitpicker/no-throw', paths: ['lib/**'], reason: 'A reviewed reason.' }],
+      tools: { prettier: { precedence: ['project'] } },
+    };
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  describe('kotlin exceptions', () => {
+    const exception = {
+      rule: 'detekt.style.ForbiddenMethodCall',
+      paths: ['src/main/kotlin/app/Main.kt'],
+      reason: 'The entry point blocks on its coroutine.',
+    };
+
+    it('accepts an exception for a one-way rule with the TypeScript shape', () => {
+      expect(validateConfig({ preset: 'kotlin', exceptions: [exception] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [exception],
+      });
+    });
+
+    it('accepts an exception for a file limit and leaves line length to detekt', () => {
+      const fileLimit = { ...exception, rule: 'folder-files-limit' };
+      expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [fileLimit],
+      });
+      expect(() =>
+        validateConfig({
+          preset: 'kotlin',
+          exceptions: [{ ...exception, rule: 'line-length-limit' }],
+        }),
+      ).toThrow(/is not a rule with exceptions/u);
+      expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
+        'detekt checks Kotlin line length',
+      );
+    });
+
+    it('names the rules that can be lifted when the rule is another detekt rule', () => {
+      const other = { ...exception, rule: 'detekt.style.MagicNumber' };
+
+      expect(() => validateConfig({ preset: 'kotlin', exceptions: [other] })).toThrow(
+        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenMethodCall.*config\/detekt\/detekt\.yml/,
+      );
+    });
   });
 
   it('shares thresholds, exclude and legacyInventory between presets', () => {
@@ -75,17 +191,49 @@ describe('config file', () => {
     );
   });
 
-  it.each(['layout', 'exceptions', 'react'])(
-    'rejects %s with the java preset instead of ignoring it',
-    (key) => {
-      expect(() => validateConfig({ preset: 'java', [key]: {} })).toThrow(
-        `"${key}" is not supported with "preset": "java"`,
-      );
-    },
-  );
+  it.each([
+    ['java', 'layout'],
+    ['java', 'exceptions'],
+    ['java', 'react'],
+    ['kotlin', 'layout'],
+    ['kotlin', 'react'],
+  ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
+    expect(() => validateConfig({ preset, [key]: {} })).toThrow(
+      `"${key}" is not supported with "preset": "${preset}"`,
+    );
+  });
+
+  it('lets the java preset lift the shared file limits, and only those', () => {
+    const exceptions = [
+      {
+        rule: 'folder-files-limit',
+        paths: ['src/main/java/icons/**'],
+        reason: 'One class per icon',
+      },
+    ];
+    const config = { preset: 'java', thresholds: { fileLines: 400, folderFiles: 12 }, exceptions };
+    expect(validateConfig(config)).toEqual(config);
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
+      'Checkstyle checks Java line length',
+    );
+  });
 
   it.each([
     [[], /must be a JSON object/],
+    [{ thresholds: { folderFiles: 2.5 } }, /"thresholds.folderFiles" must be a whole number/],
+    [{ thresholds: { lineLength: 0 } }, /"thresholds.lineLength" must be a positive number/],
     [{ disable: 'knip' }, /"disable" must be an array/],
     [{ disable: ['a', 'a'] }, /duplicates/],
     [{ thresholds: { crapLimit: 0 } }, /positive number/],

@@ -21,3 +21,20 @@ function hintedDescriptor(descriptor, hint) {
     ? descriptor
     : { ...descriptor, message: `${descriptor.message}${hint}` };
 }
+
+function omit(object, keys) {
+  return Object.fromEntries(Object.entries(object).filter(([key]) => !keys.includes(key)));
+}
+
+export function withoutFixes(rule) {
+  return {
+    ...rule,
+    meta: omit(rule.meta, ['fixable', 'hasSuggestions']),
+    create: (context) =>
+      rule.create(
+        Object.create(context, {
+          report: { value: (descriptor) => context.report(omit(descriptor, ['fix', 'suggest'])) },
+        }),
+      ),
+  };
+}

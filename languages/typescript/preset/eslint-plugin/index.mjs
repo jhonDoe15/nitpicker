@@ -8,6 +8,7 @@ import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composit
 import { rule as noHandwrittenBoundaryGuard } from './rules/no-handwritten-boundary-guard.mjs';
 import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
+import { rule as cognitiveComplexity } from './rules/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/no-comments.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
@@ -35,6 +36,7 @@ import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-
 import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -57,6 +59,7 @@ export const nitpickerRules = {
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
+    'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,
     'no-production-console': noProductionConsole,
     'no-self-recursion': noSelfRecursion,
@@ -80,5 +83,6 @@ export const nitpickerRules = {
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
+    'react-test-no-implementation-details': reactTestNoImplementationDetails,
   },
 };
