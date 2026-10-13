@@ -7,10 +7,10 @@ const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
-  return readStructureFindings(reportRoot, projectRoot, methodText);
+  return readStructureFindings(reportRoot, projectRoot, { textOf: methodText });
 }
 
-export function readStructureFindings(reportRoot, projectRoot, textOf, hints) {
+export function readStructureFindings(reportRoot, projectRoot, { textOf, hints }) {
   const report = path.join(reportRoot, STRUCTURE_REPORT);
   if (!existsSync(report)) {
     return [];

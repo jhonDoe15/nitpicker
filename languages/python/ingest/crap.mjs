@@ -71,11 +71,16 @@ function describeLines(data) {
   };
 }
 
-function coverageFromLines(lines, fn, nested) {
-  const own = (line) =>
+function ownsLine(fn, nested, line) {
+  return (
     line > fn.start &&
     line <= fn.end &&
-    !nested.some((inner) => line > inner.start && line <= inner.end);
+    !nested.some((inner) => line > inner.start && line <= inner.end)
+  );
+}
+
+function coverageFromLines(lines, fn, nested) {
+  const own = (line) => ownsLine(fn, nested, line);
   const covered = lines.executed.filter(own).length;
   const missed = lines.missing.filter(own).length;
   const executedBranches = lines.executedBranches.filter(([from]) => own(from)).length;
@@ -104,9 +109,14 @@ function namedLike(candidates, fn) {
   return candidates.filter(({ name }) => name === fn.name || name.endsWith(`.${fn.name}`));
 }
 
+function distanceFrom(fn, { first }) {
+  return Math.abs((first ?? fn.start) - fn.start);
+}
+
 function nearestName(candidates, fn) {
-  const distance = ({ first }) => Math.abs((first ?? fn.start) - fn.start);
-  return namedLike(candidates, fn).sort((left, right) => distance(left) - distance(right))[0]?.name;
+  return namedLike(candidates, fn).sort(
+    (left, right) => distanceFrom(fn, left) - distanceFrom(fn, right),
+  )[0]?.name;
 }
 
 function matchFunction(candidates, fn) {
