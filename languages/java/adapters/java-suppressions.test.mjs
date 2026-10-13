@@ -131,6 +131,63 @@ describe('fileFindings', () => {
   });
 });
 
+describe('fileFindings for SpotBugs', () => {
+  const SPOTBUGS_MESSAGE =
+    'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  const found = (findings) =>
+    findings.map(
+      (finding) =>
+        `${finding.tool} ${String(finding.location.line)}${finding.message.slice(finding.tool === 'pmd' ? MESSAGE.length : SPOTBUGS_MESSAGE.length)}`,
+    );
+
+  it('reports every @SuppressFBWarnings, without the justification, and not inside comments or strings', () => {
+    const source = [
+      'import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;',
+      'class A {',
+      '  @SuppressFBWarnings(value = {"EI_EXPOSE_REP", "NP_NULL"}, justification = "it is fine")',
+      '  int[] a() { return x; }',
+      '  @SuppressFBWarnings void b() {}',
+      '  @edu.umd.cs.findbugs.annotations.SuppressFBWarnings("X") void c() {}',
+      '  @SuppressWarnings("PMD") void d() {}',
+      '  /* @SuppressFBWarnings */ String e = "@SuppressFBWarnings";',
+      '}',
+    ].join('\n');
+
+    const findings = fileFindings(source, 'src/main/java/A.java');
+
+    expect(found(findings)).toEqual([
+      'spotbugs 3 Found: "EI_EXPOSE_REP", "NP_NULL".',
+      'spotbugs 5 Found: a suppression of every bug pattern.',
+      'spotbugs 6 Found: "X".',
+      'pmd 7 Found: "PMD".',
+    ]);
+    expect(findings[0]).toEqual({
+      tool: 'spotbugs',
+      rule: 'InlineSuppression',
+      path: 'src/main/java/A.java',
+      identity: expect.stringMatching(/^InlineSuppression:\w+$/),
+      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL".`,
+      classification: 'enforceable',
+      location: { line: 3 },
+    });
+  });
+
+  it("reads @SuppressWarnings as SpotBugs' own when the file imports it", () => {
+    const source = [
+      'import edu.umd.cs.findbugs.annotations.SuppressWarnings;',
+      'class B {',
+      '  @SuppressWarnings("NP") void a() {}',
+      '  @edu.umd.cs.findbugs.annotations.SuppressWarnings void b() {}',
+      '}',
+    ].join('\n');
+
+    expect(found(fileFindings(source, 'B.java'))).toEqual([
+      'spotbugs 3 Found: "NP".',
+      'spotbugs 4 Found: a suppression of every bug pattern.',
+    ]);
+  });
+});
+
 describe('fileFindings identities', () => {
   it('keeps identities when lines shift and tells repeated suppressions apart', () => {
     const source =
