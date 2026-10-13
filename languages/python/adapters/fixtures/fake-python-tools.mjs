@@ -12,6 +12,9 @@
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
 //   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
+//   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
+//                        (default: no functions)
+//   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
 //   no-mutmut.txt        the mutmut version probe fails
 //   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
@@ -164,11 +167,26 @@ function python() {
     process.stdout.write('2.5\n');
     return;
   }
+  if (args[0]?.endsWith('.py')) {
+    const data = existsSync('structure-data.json')
+      ? readFileSync('structure-data.json', 'utf8')
+      : '[]';
+    writeFileSync(args[1], data);
+    return;
+  }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
   const flag = (file) => (existsSync(file) ? 1 : 0);
   process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
+}
+
+function lizard() {
+  if (args[0] === '--version') {
+    process.stdout.write('1.24.1\n');
+  } else if (existsSync('lizard-data.csv')) {
+    process.stdout.write(readFileSync('lizard-data.csv', 'utf8'));
+  }
 }
 
 const MUTMUT_MESSAGES = {
@@ -210,5 +228,5 @@ function mutmut() {
   process.exit(status);
 }
 
-const tools = { ruff, black, coverage, python, mutmut, 'lint-imports': lintImports };
+const tools = { ruff, black, coverage, python, lizard, mutmut, 'lint-imports': lintImports };
 tools[tool]();

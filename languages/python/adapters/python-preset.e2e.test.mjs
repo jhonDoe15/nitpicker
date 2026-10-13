@@ -96,6 +96,79 @@ const PRICING_TEST =
 const PRICING_FULL_TEST =
   'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n    assert discount(101) == 96\n    assert discount(100) == 100\n';
 
+const SAME_NAME_SOURCES = {
+  'src/demo/account.py':
+    'from functools import singledispatch\n\n\nclass Account:\n    def __init__(self):\n        self._balance = 0\n\n    @property\n    def balance(self):\n        return self._balance\n\n    @balance.setter\n    def balance(self, value):\n        self._balance = value\n\n\n@singledispatch\ndef show(value):\n    return str(value)\n\n\n@show.register\ndef _(value: int):\n    return f"int {value}"\n\n\n@show.register\ndef _(value: str):\n    return value\n',
+  'tests/test_account.py':
+    'from demo.account import Account, show\n\n\ndef test_balance():\n    account = Account()\n    account.balance = 5\n    assert account.balance == 5\n\n\ndef test_show():\n    assert show(1) == "int 1"\n    assert show("a") == "a"\n    assert show(1.5) == "1.5"\n',
+};
+
+const SAMPLE_SOURCE = [
+  'import functools',
+  '',
+  '',
+  'class Service:',
+  '    def method(self, a, b, c):',
+  '        return a',
+  '',
+  '    @staticmethod',
+  '    def static(a, b, c, d):',
+  '        return a',
+  '',
+  '    @classmethod',
+  '    def build(cls, a):',
+  '        def inner(x):',
+  '            if x:',
+  '                return 1',
+  '            return 2',
+  '',
+  '        return inner(a)',
+  '',
+  '    @functools.cache',
+  '    async def fetch(self, *args, key=None, **kwargs):',
+  '        """Docstring is not a statement."""',
+  '        try:',
+  '            await self.method(1, 2, 3)',
+  '        except ValueError:',
+  '            pass',
+  '        finally:',
+  '            key = 1',
+  '        with open("f") as handle:',
+  '            return lambda q: q if handle else key',
+  '',
+  '',
+  'def chain(x):',
+  '    if x == 1:',
+  '        return 1',
+  '    elif x == 2:',
+  '        return 2',
+  '    elif x == 3:',
+  '        return 3',
+  '    return 0',
+  '',
+  '',
+  'def loops(items):',
+  '    for item in items:',
+  '        while item:',
+  '            item -= 1',
+  '            if item:',
+  '                break',
+  '    match items:',
+  '        case []:',
+  '            return 0',
+  '        case _:',
+  '            return 1',
+  '',
+  '',
+  'def positional(a, /, b, *, c):',
+  '    pass',
+  '',
+].join('\n');
+
+const NO_MUTATION = {
+  'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+};
+
 const roots = [];
 
 function repository() {
@@ -193,7 +266,6 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'coupling/module-coupling',
       'coverage/line-coverage',
       'coverage/uncovered-function',
-      'mutmut/mutation-summary',
       'mutmut/mutant-nocoverage',
       'ruff/F401',
       'ruff-format/format',
@@ -304,6 +376,168 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       { tool: 'mutation', snapshot: 'head', message },
       { tool: 'python', snapshot: 'head', message },
     ]);
+  });
+
+  describe('function structure and CRAP', () => {
+    beforeAll(() => {
+      commitBranch(project, 'nested-and-wide', {
+        ...NO_MUTATION,
+        'src/demo/nested.py':
+          'def classify(rows, skip, stop, default):\n    for row in rows:\n        for cell in row:\n            if cell:\n                return cell\n    return None\n',
+        'tests/test_nested.py':
+          'from demo.nested import classify\n\n\ndef test_classify():\n    assert classify([[0, 5]], 0, 0, 0) == 5\n    assert classify([[0]], 0, 0, 0) is None\n',
+      });
+      commitBranch(project, 'legacy-edited', {
+        ...NO_MUTATION,
+        'src/demo/wide.py': 'def wide(a, b, c, d):\n    return a + b + c + d + 1\n',
+      });
+      commitBranch(project, 'legacy-grown', {
+        ...NO_MUTATION,
+        'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
+      });
+      commitBranch(project, 'untested-complex', {
+        ...NO_MUTATION,
+        ...SAME_NAME_SOURCES,
+        'src/demo/branchy.py':
+          'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
+      });
+    });
+
+    const enforceable = (result) =>
+      result
+        .json('new-findings.json')
+        .filter(
+          ({ classification, tool }) =>
+            classification === 'enforceable' && ['structure', 'crap'].includes(tool),
+        );
+
+    it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
+      const result = gate(project, 'nested-and-wide');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(
+        enforceable(result).map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
+      ).toEqual([
+        'structure function-control-nesting-limit classify',
+        'structure function-parameters-limit classify',
+      ]);
+    });
+
+    it('keeps a touched legacy function that is still over the limit, and fails it when it grows', () => {
+      expect(gate(project, 'legacy-edited').exitCode).toBe(0);
+
+      const grown = gate(project, 'legacy-grown');
+
+      expect(grown.exitCode, grown.text).toBe(1);
+      expect(enforceable(grown)).toEqual([
+        {
+          tool: 'structure',
+          rule: 'function-parameters-limit',
+          path: 'src/demo/wide.py',
+          symbol: 'wide',
+          identity: expect.any(String),
+          message:
+            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          classification: 'enforceable',
+          location: { line: 1 },
+          ratchet: {
+            key: 'function:wide:occurrence:1:parameters',
+            value: 5,
+            worseMessage:
+              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            heldMessage:
+              'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+          },
+        },
+      ]);
+    });
+
+    it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
+      const result = gate(project, 'untested-complex');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(enforceable(result)).toEqual([
+        {
+          tool: 'crap',
+          rule: 'crap-score-limit',
+          path: 'src/demo/branchy.py',
+          symbol: 'pick',
+          identity: expect.any(String),
+          message:
+            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+          classification: 'enforceable',
+          location: { line: 1 },
+          ratchet: {
+            key: 'function:pick:crap',
+            value: 20,
+            worseMessage:
+              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests.',
+            heldMessage:
+              'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
+          },
+        },
+      ]);
+    });
+  });
+
+  describe('the structure metrics script', () => {
+    const script = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');
+
+    function metricsOf(files) {
+      const directory = repository();
+      write(directory, files);
+      const listing = path.join(directory, 'listing.txt');
+      writeFileSync(listing, Object.keys(files).join('\n'));
+      const output = path.join(directory, 'metrics.json');
+      command(directory, 'python3', [script, output, directory, listing]);
+      return JSON.parse(readFileSync(output, 'utf8'));
+    }
+
+    it('counts lines, statements, control nesting and parameters the way the shared limits mean them', () => {
+      const metrics = metricsOf({ 'sample.py': SAMPLE_SOURCE });
+
+      expect(
+        metrics.map((entry) => [
+          entry.name,
+          entry.start,
+          entry.end,
+          entry.lines,
+          entry.statements,
+          entry.maxControlNesting,
+          entry.parameters,
+        ]),
+      ).toEqual([
+        ['Service.method', 5, 6, 2, 1, 0, 3],
+        ['Service.static', 8, 10, 3, 1, 0, 4],
+        ['Service.build', 12, 19, 8, 2, 0, 1],
+        ['Service.build.inner', 14, 17, 4, 3, 1, 1],
+        ['Service.fetch', 21, 31, 10, 6, 1, 3],
+        ['chain', 34, 41, 8, 7, 3, 1],
+        ['loops', 44, 54, 11, 8, 3, 1],
+        ['positional', 57, 58, 2, 1, 0, 3],
+      ]);
+      expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
+    });
+
+    it('skips a file that does not parse, or that is too deep for the parser', () => {
+      const metrics = metricsOf({
+        'broken.py': 'def (:\n',
+        'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
+        'ok.py': 'def f():\n    return 1\n',
+      });
+
+      expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
+    });
+
+    it('does not count the docstring as a line, so documenting a long function does not grow it', () => {
+      const body = ['    a = 1', '    return a'];
+      const lines = (...head) =>
+        metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0].lines;
+
+      expect(lines()).toBe(3);
+      expect(lines('    """Doc."""')).toBe(3);
+      expect(lines('    """Doc.', '', '    More.', '    """')).toBe(3);
+    });
   });
 
   describe('a unittest project formatted with black, using tools from the PATH', () => {
