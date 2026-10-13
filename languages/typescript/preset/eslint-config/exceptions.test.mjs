@@ -40,7 +40,7 @@ describe('strict rule exceptions', () => {
     const silentCatch = 'nitpicker/no-silent-catch';
     const config = applyMatchingRuleExceptions(errorsConfig, [
       { rule: silentCatch, paths: ['src/legacy/**'], reason: 'Legacy rewrite' },
-      { rule: 'sonarjs/cognitive-complexity', paths: ['src/legacy/**'], reason: 'Lint only' },
+      { rule: 'max-statements', paths: ['src/legacy/**'], reason: 'Lint only' },
     ]);
     await expect(ruleSeverity(config, 'src/legacy/old.ts', silentCatch)).resolves.toBe(0);
     await expect(ruleSeverity(config, 'src/fresh/new.ts', silentCatch)).resolves.toBe(2);
