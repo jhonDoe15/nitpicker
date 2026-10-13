@@ -37,7 +37,6 @@ export function readKotlinFindings(context, crapLimit) {
     ...readKotlinCrapFindings(metrics, {
       projectRoot,
       jacoco,
-      sourceRoots: jacocoSourceRoots(context),
       crapLimit,
     }),
     ...readKotlinDuplicateFindings(reportRoot),

@@ -3,7 +3,7 @@
 // single-file source mode with the Kotlin compiler on the class path, which parses (never
 // compiles) the sources with the compiler's own PSI parser:
 //
-//   java -cp <kotlin-compiler-embeddable and dependencies> KotlinMetrics.java <output.json> <projectDir> <sourceRoot>...
+//   java -Dnitpicker.kotlinCompiler=<version> -cp <kotlin-compiler-embeddable and dependencies> KotlinMetrics.java <output.json> <projectDir> <sourceRoot>...
 //
 // Output: {"functions": [...], "files": [...]}. Every function with a body is one entry:
 //   lines              last line - first line + 1 (annotations and modifiers included, KDoc and comments not)
@@ -15,12 +15,16 @@
 //                      &&, || and ?: (the CRAP input; what lizard counts for Java)
 //   inline             true for an inline function or accessor: its body is copied into the callers, so
 //                      JaCoCo never sees it run and its coverage (hence its CRAP score) cannot be measured
-// A unit is a named function, a property accessor with a body or a secondary constructor with a block body. Members of
-// nested, local and anonymous classes and objects are units of their own and do not count towards the
-// enclosing function; lambdas and local functions count towards it.
-// Files under build, generated, target and out directories are skipped, as jscpd ignores them.
-// Every file also lists the JVM names of its top-level classes and, when it declares top-level
-// functions or properties, of its file facade (the coupling step maps classes back to files with it).
+// A unit is a named function, a property accessor with a body, a secondary constructor with a block
+// body, or a property whose initializer is a lambda or an anonymous function or whose delegate takes a
+// lambda (by lazy { }); a property unit is named after the property. Members of nested, local and
+// anonymous classes and objects are units of their own and do not count towards the enclosing function;
+// lambdas and local functions count towards it.
+// Every file also lists its package and the JVM names of its top-level classes and, when it declares
+// top-level functions or properties, of its file facade (the coupling step maps classes back to files
+// with it, and the CRAP step finds the JaCoCo class of a file by package and file name). Of a
+// @JvmMultifileClass facade, each file lists its own part (Facade__FileKt) and the first file the facade.
+// A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -35,7 +39,9 @@ import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment;
 import org.jetbrains.kotlin.com.intellij.openapi.Disposable;
 import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.com.intellij.psi.PsiErrorElement;
 import org.jetbrains.kotlin.com.intellij.psi.PsiFileFactory;
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.config.CommonConfigurationKeys;
 import org.jetbrains.kotlin.config.CompilerConfiguration;
 import org.jetbrains.kotlin.com.intellij.lang.ASTNode;
@@ -52,14 +58,13 @@ public final class KotlinMetrics {
       Path root = projectDir.resolve(args[i]);
       if (Files.isDirectory(root)) {
         try (Stream<Path> walk = Files.walk(root)) {
-          walk.filter(p -> p.toString().endsWith(".kt") && !generated(projectDir, p))
-              .sorted()
-              .forEach(files::add);
+          walk.filter(p -> p.toString().endsWith(".kt")).sorted().forEach(files::add);
         }
       }
     }
     List<String> entries = new ArrayList<>();
     List<String> fileEntries = new ArrayList<>();
+    Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
       CompilerConfiguration configuration = new CompilerConfiguration();
@@ -73,13 +78,25 @@ public final class KotlinMetrics {
       for (Path file : files.stream().distinct().collect(Collectors.toList())) {
         String relative =
             projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
-        String text =
-            Files.readString(file, StandardCharsets.UTF_8).replace("\r\n", "\n").replace('\r', '\n');
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        if (text.startsWith("\uFEFF")) {
+          text = text.substring(1);
+        }
+        text = text.replace("\r\n", "\n").replace('\r', '\n');
         KtFile ktFile =
             (KtFile)
                 factory.createFileFromText(file.getFileName().toString(), KotlinLanguage.INSTANCE, text);
+        PsiErrorElement error = PsiTreeUtil.findChildOfType(ktFile, PsiErrorElement.class);
+        if (error != null) {
+          int line = text.substring(0, Math.min(error.getTextOffset(), text.length())).split("\n", -1).length;
+          System.err.println(
+              relative + ":" + line + ": " + error.getErrorDescription() + ". The sources compile, so the pinned"
+                  + " Kotlin compiler " + System.getProperty("nitpicker.kotlinCompiler", "(unknown)")
+                  + " is too old to read them: bump kotlinCompiler in nitpicker.init.gradle.");
+          System.exit(1);
+        }
         new Collector(ktFile, text, relative, entries).collect();
-        fileEntries.add(describe(ktFile, relative));
+        fileEntries.add(describe(ktFile, relative, claimedFacades));
       }
     } finally {
       Disposer.dispose(disposable);
@@ -90,13 +107,7 @@ public final class KotlinMetrics {
         StandardCharsets.UTF_8);
   }
 
-  /** Files under build, generated, target or out directories, as jscpd ignores them. */
-  private static boolean generated(Path projectDir, Path file) {
-    String relative = "/" + projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
-    return Stream.of("/build/", "/generated/", "/target/", "/out/").anyMatch(relative::contains);
-  }
-
-  private static String describe(KtFile file, String relative) {
+  private static String describe(KtFile file, String relative, Set<String> claimedFacades) {
     String packageName = file.getPackageFqName().asString();
     String prefix = packageName.isEmpty() ? "" : packageName + ".";
     List<String> classes = new ArrayList<>();
@@ -116,10 +127,22 @@ public final class KotlinMetrics {
       if (facadeName == null) {
         facadeName = facadeOf(file.getName());
       }
-      classes.add(prefix + facadeName);
+      if (multifile(file)) {
+        classes.add(prefix + facadeName + "__" + facadeOf(file.getName()));
+      }
+      if (!multifile(file) || claimedFacades.add(prefix + facadeName)) {
+        classes.add(prefix + facadeName);
+      }
     }
-    return "{\"file\":" + quote(relative) + ",\"classes\":["
+    return "{\"file\":" + quote(relative) + ",\"package\":" + quote(packageName) + ",\"classes\":["
         + classes.stream().map(KotlinMetrics::quote).collect(Collectors.joining(",")) + "]}";
+  }
+
+  private static boolean multifile(KtFile file) {
+    return file.getAnnotationEntries().stream()
+        .anyMatch(
+            entry ->
+                entry.getShortName() != null && "JvmMultifileClass".equals(entry.getShortName().asString()));
   }
 
   private static String jvmName(KtFile file) {
@@ -205,8 +228,33 @@ public final class KotlinMetrics {
           nestedClasses(accessor.getBodyExpression(), owner);
         }
       }
+      KtFunction unit = unitOf(property);
+      if (unit != null && unit.getBodyExpression() != null) {
+        report(property, join(owner, property.getName()), unit.getBodyExpression(), unit.getValueParameters().size(), false);
+      }
       nestedClasses(property.getInitializer(), owner);
       nestedClasses(property.getDelegateExpression(), owner);
+    }
+
+    private static KtFunction unitOf(KtProperty property) {
+      KtExpression initializer =
+          property.getInitializer() == null ? null : KtPsiUtil.safeDeparenthesize(property.getInitializer());
+      if (initializer instanceof KtLambdaExpression) {
+        return ((KtLambdaExpression) initializer).getFunctionLiteral();
+      }
+      if (initializer instanceof KtNamedFunction && ((KtNamedFunction) initializer).getName() == null) {
+        return (KtNamedFunction) initializer;
+      }
+      KtExpression delegate = property.getDelegateExpression();
+      if (delegate instanceof KtCallExpression) {
+        KtLambdaExpression lambda = null;
+        for (KtValueArgument argument : ((KtCallExpression) delegate).getValueArguments()) {
+          KtExpression expression = argument.getArgumentExpression();
+          lambda = expression instanceof KtLambdaExpression ? (KtLambdaExpression) expression : lambda;
+        }
+        return lambda == null ? null : lambda.getFunctionLiteral();
+      }
+      return null;
     }
 
     private void klass(KtClassOrObject klass, String owner) {
@@ -245,6 +293,10 @@ public final class KotlinMetrics {
     }
 
     private void report(KtDeclarationWithBody declaration, String name, KtExpression body) {
+      report(declaration, name, body, declaration.getValueParameters().size(), inline(declaration));
+    }
+
+    private void report(PsiElement declaration, String name, KtExpression body, int parameters, boolean inline) {
       int start = significant(declaration.getNode(), true);
       int end = significant(declaration.getNode(), false);
       int startLine = lineOf(start);
@@ -263,9 +315,9 @@ public final class KotlinMetrics {
               + ",\"lines\":" + (endLine - startLine + 1)
               + ",\"statements\":" + metrics.statements
               + ",\"maxControlNesting\":" + metrics.maxNesting
-              + ",\"parameters\":" + declaration.getValueParameters().size()
+              + ",\"parameters\":" + parameters
               + ",\"complexity\":" + metrics.complexity
-              + ",\"inline\":" + inline(declaration)
+              + ",\"inline\":" + inline
               + "}");
     }
 

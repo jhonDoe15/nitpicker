@@ -431,6 +431,17 @@ allprojects {
                     nitpickerKtfmt("com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies") { transitive = false }
                 }
 
+                // A version the project forces on org.jetbrains.kotlin (an eachDependency rule, Spring's
+                // dependency management) must not reach the metrics compiler: the program is written against
+                // the pinned one. The pin is applied just before resolution, after every project rule.
+                configurations.nitpickerKotlinCompiler.incoming.beforeResolve {
+                    configurations.nitpickerKotlinCompiler.resolutionStrategy.eachDependency { details ->
+                        if (details.requested.group == 'org.jetbrains.kotlin') {
+                            details.useVersion(pinned.kotlinCompiler)
+                        }
+                    }
+                }
+
                 tasks.named('nitpickerPmd') { onlyIf { hasJavaSources() } }
                 tasks.named('nitpickerFormat') { onlyIf { hasJavaSources() } }
                 tasks.named('nitpickerSpotbugs') { onlyIf { hasJavaSources() && hasJavaClasses() } }
@@ -529,6 +540,7 @@ allprojects {
                 // drops extension functions and lets a lambda arrow swallow the functions that follow it.
                 tasks.register('nitpickerKotlinMetrics') {
                     group = 'nitpicker'
+                    dependsOn tasks.named('classes')
                     def metricsSource = new File(initScriptDir, 'KotlinMetrics.java')
                     doLast {
                         reportDir.get().asFile.mkdirs()
@@ -539,7 +551,8 @@ allprojects {
                             return
                         }
                         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true', '-cp',
+                        def process = new ProcessBuilder([java, '-Djava.awt.headless=true',
+                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
                                 configurations.nitpickerKotlinCompiler.asPath, metricsSource.absolutePath,
                                 output.absolutePath, projectDir.absolutePath] + roots)
                             .directory(projectDir).redirectErrorStream(true).start()

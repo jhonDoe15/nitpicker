@@ -53,7 +53,13 @@ const METRICS = {
     entry({ name: 'Counter.doubled.get', start: 12, end: 12 }),
     entry({ name: 'Counter.wide', start: 14, end: 17, complexity: 2, parameters: 4 }),
   ],
-  files: [{ file: 'src/main/kotlin/demo/Tiers.kt', classes: ['demo.TiersKt', 'demo.Counter'] }],
+  files: [
+    {
+      file: 'src/main/kotlin/demo/Tiers.kt',
+      package: 'demo',
+      classes: ['demo.TiersKt', 'demo.Counter'],
+    },
+  ],
 };
 
 function entry({ name, start, end, complexity = 1, statements = 1, nesting = 0, parameters = 0 }) {
@@ -107,7 +113,6 @@ function crap(counters, extra = {}) {
   return readKotlinCrapFindings(readKotlinMetrics(reportRoot), {
     projectRoot: root,
     jacoco: jacoco(counters),
-    sourceRoots: ['src/main/kotlin'],
     ...extra,
   });
 }
@@ -177,9 +182,11 @@ describe('readKotlinStructureFindings', () => {
         { functions: [entry({ name: 'Counter.wide', start, end, parameters: 4 })], files: [] },
         root,
       )[0].identity;
+    const before = identityAt(14, 17);
+    writeFileSync(path.join(root, 'src/main/kotlin/demo/Tiers.kt'), `\n\n${SOURCE}`);
 
-    expect(identityAt(14, 17)).toBe(identityAt(14, 17));
-    expect(identityAt(14, 17)).not.toBe(identityAt(14, 16));
+    expect(identityAt(16, 19)).toBe(before);
+    expect(identityAt(16, 18)).not.toBe(before);
   });
 });
 
@@ -284,7 +291,6 @@ describe('readKotlinCrapFindings', () => {
     const findings = readKotlinCrapFindings(inline, {
       projectRoot: root,
       jacoco: '<report name="demo"></report>',
-      sourceRoots: ['src/main/kotlin'],
     });
 
     expect(findings.map(({ symbol }) => symbol)).toEqual(['Counter.doubled.get', 'Counter.wide']);
@@ -296,7 +302,6 @@ describe('readKotlinCrapFindings', () => {
     const findings = readKotlinCrapFindings(readKotlinMetrics(reportRoot), {
       projectRoot: root,
       jacoco: '<report name="demo"></report>',
-      sourceRoots: ['src/main/kotlin'],
     });
 
     expect(findings.map(({ rule, symbol }) => `${rule} ${symbol}`)).toEqual([
@@ -305,6 +310,53 @@ describe('readKotlinCrapFindings', () => {
       'crap-coverage-unknown Counter.wide',
     ]);
     expect(findings.every(({ classification }) => classification === 'enforceable')).toBe(true);
+    expect(findings[0].message).toBe(
+      'tier has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+    );
+  });
+
+  it('finds the coverage of a file whose directory is not its package', () => {
+    const { root } = project();
+    mkdirSync(path.join(root, 'src/main/kotlin'), { recursive: true });
+    writeFileSync(path.join(root, 'src/main/kotlin/Flat.kt'), 'package demo\n\nfun flat() = 1\n');
+    const flat = {
+      functions: [
+        { ...entry({ name: 'flat', start: 3, end: 3 }), file: 'src/main/kotlin/Flat.kt' },
+      ],
+      files: [{ file: 'src/main/kotlin/Flat.kt', package: 'demo', classes: ['demo.FlatKt'] }],
+    };
+    const report = (counters) => `<report name="demo"><package name="demo">
+  <class name="demo/FlatKt" sourcefilename="Flat.kt">
+    <method name="flat" desc="()I" line="3">${counters}</method>
+  </class>
+</package></report>`;
+    const run = (counters) =>
+      readKotlinCrapFindings(flat, { projectRoot: root, jacoco: report(counters), crapLimit: 2 });
+
+    expect(run(lines(1, 0))).toEqual([]);
+    expect(run(lines(0, 1)).map(({ rule, symbol }) => `${rule} ${symbol}`)).toEqual([
+      'crap-score-limit flat',
+    ]);
+  });
+
+  it('finds the coverage of a file in the root package', () => {
+    const { root } = project();
+    writeFileSync(path.join(root, 'src/main/kotlin/Root.kt'), 'fun root() = 1\n');
+    const rootPackage = {
+      functions: [
+        { ...entry({ name: 'root', start: 1, end: 1 }), file: 'src/main/kotlin/Root.kt' },
+      ],
+      files: [{ file: 'src/main/kotlin/Root.kt', package: '', classes: ['RootKt'] }],
+    };
+    const jacocoReport = `<report name="demo"><package name="">
+  <class name="RootKt" sourcefilename="Root.kt">
+    <method name="root" desc="()I" line="1">${lines(1, 0)}</method>
+  </class>
+</package></report>`;
+
+    expect(
+      readKotlinCrapFindings(rootPackage, { projectRoot: root, jacoco: jacocoReport }),
+    ).toEqual([]);
   });
 
   it('keeps the identity of an over-limit function when it only moves, and ratchets its score', () => {
@@ -313,7 +365,6 @@ describe('readKotlinCrapFindings', () => {
       readKotlinCrapFindings(metrics, {
         projectRoot: root,
         jacoco: jacoco({ ...FULL, tier: lines(0, 5) }, shift),
-        sourceRoots: ['src/main/kotlin'],
         crapLimit: 2,
       }).find(({ symbol }) => symbol === 'tier');
     const base = run(readKotlinMetrics(reportRoot));
