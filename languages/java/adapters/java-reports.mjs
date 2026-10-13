@@ -12,6 +12,7 @@ import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -51,8 +52,12 @@ export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
       ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, { projectRoot, sourceRoots: context.sourceRoots }),
-      ...(kotlin ? readKotlinFindings(context) : []),
+      ...readCouplingFindings(reportRoot, {
+        projectRoot,
+        sourceRoots: context.sourceRoots,
+        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+      }),
+      ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ],
   };
 }

@@ -2,6 +2,12 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
+import { readKotlinDuplicateFindings } from './kotlin-duplicates.mjs';
+import {
+  readKotlinCrapFindings,
+  readKotlinMetrics,
+  readKotlinStructureFindings,
+} from './kotlin-metrics.mjs';
 import { addOneWayHint } from './kotlin-rules.mjs';
 import { readSuppressionFindings } from './kotlin-suppressions.mjs';
 
@@ -68,11 +74,20 @@ export function reportOnlyKotlinMutants(findings) {
   );
 }
 
-export function readKotlinFindings({ reportRoot, manifest, projectRoot }) {
+export function readKotlinFindings(context, crapLimit) {
+  const { reportRoot, manifest, projectRoot, jacoco } = context;
+  const metrics = readKotlinMetrics(reportRoot);
   return [
     ...detektFindings(reportRoot),
     ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
+    ...readKotlinStructureFindings(metrics, projectRoot),
+    ...readKotlinCrapFindings(metrics, {
+      projectRoot,
+      jacoco,
+      crapLimit,
+    }),
+    ...readKotlinDuplicateFindings(reportRoot),
   ];
 }
 

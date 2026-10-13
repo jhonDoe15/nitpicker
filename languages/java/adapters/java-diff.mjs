@@ -10,6 +10,7 @@ import {
 } from '../../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
+import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
@@ -65,6 +66,9 @@ export function collectJavaFindings(projectRoot, options = {}) {
   runJavaPreset(projectRoot, options);
   requireGradleReports(projectRoot, preset);
   runJavaDuplicates(projectRoot);
+  if (preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot);
+  }
   const { findings } = parseAnalyzerReport(
     readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
     preset,
