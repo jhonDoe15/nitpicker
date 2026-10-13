@@ -467,6 +467,8 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
+      'tests/test_bulk.py':
+        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    empty = type("Line", (), {"price": 0, "quantity": 1})\n    assert bulk.bulk_total([line, empty], 5) == 1\n    assert bulk.bulk_total([empty], 5) == 0\n',
     });
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
