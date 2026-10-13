@@ -151,16 +151,22 @@ describe('running mutmut', () => {
     expect(calls).toEqual([
       {
         command: ['mutmut', 'run'],
-        options: expect.objectContaining({ rule: 'mutation-failed', timeoutMs: 60 * 60 * 1000 }),
+        options: {
+          accepted: expect.any(Function),
+          rule: 'mutation-failed',
+          timeoutMs: 60 * 60 * 1000,
+        },
         stale: false,
       },
     ]);
     const data = JSON.parse(read(context.reportRoot, 'mutation.json'));
     expect(data.files).toEqual([
-      expect.objectContaining({
+      {
         path: 'src/m.py',
         exitCodes: { 'm.x_f__mutmut_1': 0, 'm.x_f__mutmut_2': null },
-      }),
+        mutated: 'def x_f__mutmut_orig():\n    return 1\n',
+        original: 'def f():\n    return 1\n',
+      },
     ]);
     expect(existsSync(path.join(context.projectRoot, 'mutants'))).toBe(false);
   });

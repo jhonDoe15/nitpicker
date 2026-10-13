@@ -243,15 +243,17 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.json('new-findings.json')).toEqual([
-        expect.objectContaining({
+        {
           tool: 'mutmut',
           rule: 'mutant-survived',
           path: 'src/demo/a.py',
-          symbol: 'value',
-          classification: 'enforceable',
           identity: 'value|1→3#1',
+          message:
+            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          classification: 'enforceable',
+          symbol: 'value',
           location: { line: 5 },
-        }),
+        },
       ]);
     });
 
@@ -264,7 +266,16 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.json('new-findings.json')).toEqual([
-        expect.objectContaining({ rule: 'mutant-nocoverage', classification: 'enforceable' }),
+        {
+          tool: 'mutmut',
+          rule: 'mutant-nocoverage',
+          path: 'src/demo/a.py',
+          identity: 'value|1→3#1',
+          message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+          classification: 'enforceable',
+          symbol: 'value',
+          location: { line: 5 },
+        },
       ]);
     });
 
@@ -288,7 +299,16 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('new-findings.json')).toEqual([
-        expect.objectContaining({ rule: 'mutant-timeout', classification: 'descriptive' }),
+        {
+          tool: 'mutmut',
+          rule: 'mutant-timeout',
+          path: 'src/demo/a.py',
+          identity: 'value|1→2#1',
+          message: 'Timeout number',
+          classification: 'descriptive',
+          symbol: 'value',
+          location: { line: 5 },
+        },
       ]);
     });
 
@@ -322,12 +342,13 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.json('tool-errors.json')).toEqual([
-        expect.objectContaining({
+        {
           tool: 'python',
           snapshot: 'head',
           rule: 'mutation-failed',
-          message: expect.stringContaining('Failed to run clean test'),
-        }),
+          path: '.',
+          message: 'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
+        },
       ]);
     });
   });

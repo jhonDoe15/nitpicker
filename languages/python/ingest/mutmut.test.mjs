@@ -65,12 +65,16 @@ describe('mutmut run data ingester', () => {
       new Set(['Cart.label', 'fetch', 'never_called']),
     );
     expect(uncovered.every(({ classification }) => classification === 'enforceable')).toBe(true);
-    expect(uncovered.find(({ identity }) => identity === 'fetch|1→2#1')).toEqual(
-      expect.objectContaining({
-        message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
-        location: { line: 39 },
-      }),
-    );
+    expect(uncovered.find(({ identity }) => identity === 'fetch|1→2#1')).toEqual({
+      tool: 'mutmut',
+      rule: 'mutant-nocoverage',
+      path: 'src/shop/pricing.py',
+      identity: 'fetch|1→2#1',
+      message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+      classification: 'enforceable',
+      symbol: 'fetch',
+      location: { line: 39 },
+    });
   });
 
   it('does not report killed mutants', () => {
@@ -160,12 +164,26 @@ describe('mutmut run data ingester', () => {
     });
 
     expect(ingest([file])).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'mutmut',
         rule: 'mutant-timeout',
-        classification: 'descriptive',
+        path: 'src/m.py',
+        identity: 'f|+→-#1',
         message: 'Timeout operator',
-      }),
-      expect.objectContaining({ rule: 'mutant-compileerror', classification: 'descriptive' }),
+        classification: 'descriptive',
+        symbol: 'f',
+        location: { line: 2 },
+      },
+      {
+        tool: 'mutmut',
+        rule: 'mutant-compileerror',
+        path: 'src/m.py',
+        identity: 'f|+→*#1',
+        message: 'CompileError operator',
+        classification: 'descriptive',
+        symbol: 'f',
+        location: { line: 2 },
+      },
     ]);
   });
 
@@ -173,10 +191,16 @@ describe('mutmut run data ingester', () => {
     const file = { ...fileOf({ codes: [0] }), mutated: 'def other():\n    pass\n' };
 
     expect(ingest([file])).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'mutmut',
+        rule: 'mutant-survived',
+        path: 'src/m.py',
         identity: 'f|?→?#1',
-        message: expect.stringContaining('Survived mutation: no test fails when this code changes'),
-      }),
+        message:
+          'Survived mutation: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        classification: 'enforceable',
+        symbol: 'f',
+      },
     ]);
     expect(ingest([file])[0]).not.toHaveProperty('location');
   });
