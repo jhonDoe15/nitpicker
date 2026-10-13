@@ -509,7 +509,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
         rule: 'duplicate-clone',
         file: 'src/shop/domain/bulk.py',
         message:
-          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places.',
+          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py to "exclude" in nitpicker.config.json.',
       },
     ]);
   });
@@ -523,7 +523,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     ).toEqual([
       {
         rule: 'stability-direction',
-        file: '.',
+        file: 'src/shop/domain/__init__.py',
         identity: 'package-edge:shop.domain->shop.web',
       },
       {
