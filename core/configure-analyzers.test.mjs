@@ -33,10 +33,22 @@ describe('configureAnalyzers', () => {
     );
 
     expect(configured.map(({ name }) => name)).toEqual(['python', 'mutation']);
-    for (const analyzer of configured) {
-      expect(analyzer.createInvocation(context).args).toEqual(
-        expect.arrayContaining(['--exclude', 'gen/**', '--snapshot', 'base']),
-      );
+    for (const [index, part] of ['python', 'mutation'].entries()) {
+      expect(configured[index].createInvocation(context).args).toEqual([
+        expect.stringMatching(/python-runner\.mjs$/),
+        '--part',
+        part,
+        '--project-root',
+        '/p',
+        '--live-root',
+        '/p',
+        '--exclude',
+        'gen/**',
+        '--snapshot',
+        'base',
+        '--legacy-inventory',
+        'nitpicker.legacy.json',
+      ]);
     }
   });
 

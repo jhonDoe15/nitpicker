@@ -175,7 +175,8 @@ describe('analyzing a Python snapshot', () => {
         rule: 'mutation-failed',
         path: '.',
         identity: 'mutation-failed',
-        message: expect.stringContaining('mutmut was not found in the virtualenv environment'),
+        message:
+          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
         classification: 'tool-error',
       },
     ]);
@@ -196,14 +197,20 @@ describe('analyzing a Python snapshot', () => {
   });
 
   it('maps an unexpected failure of the mutation part to a mutation-failed tool error', () => {
-    const root = project({ 'mutants-data.json': '{"src/demo/a.py": {"exitCodes": {"k": 0}}}' });
+    const root = project({
+      'mutants-data.json': '{"src/demo/a.py": {"exitCodes": {"k": 0}, "mutated": ""}}',
+    });
 
     expect(analyzeMutation(root).findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'mutation',
         rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message:
+          'mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
         classification: 'tool-error',
-      }),
+      },
     ]);
   });
 
