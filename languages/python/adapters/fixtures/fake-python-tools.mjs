@@ -15,6 +15,9 @@
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
 //   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
+//   import-scan.json     printed by the import scan script (default: no imports)
+//   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
+//                        exit status is 1 when the text says BROKEN
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
 // PYTHONPATH.
 import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -114,7 +117,29 @@ function coverage() {
   }
 }
 
+function lintImports() {
+  if (args[0] === '--version') {
+    process.stdout.write('lint-imports, version 2.5\n');
+    return;
+  }
+  const report = existsSync('lint-imports.txt')
+    ? readFileSync('lint-imports.txt', 'utf8')
+    : 'Contracts: 0 kept, 0 broken.\n';
+  process.stdout.write(report);
+  process.exit(report.includes(' BROKEN') ? 1 : 0);
+}
+
 function python() {
+  if (args.some((argument) => argument.endsWith('import-scan.py'))) {
+    process.stdout.write(
+      existsSync('import-scan.json') ? readFileSync('import-scan.json', 'utf8') : '{}',
+    );
+    return;
+  }
+  if (args.some((argument) => argument.includes('"import-linter"'))) {
+    process.stdout.write('2.5\n');
+    return;
+  }
   if (args[0]?.endsWith('.py')) {
     const data = existsSync('structure-data.json')
       ? readFileSync('structure-data.json', 'utf8')
@@ -137,5 +162,5 @@ function lizard() {
   }
 }
 
-const tools = { ruff, black, coverage, python, lizard };
+const tools = { ruff, black, coverage, python, lizard, 'lint-imports': lintImports };
 tools[tool]();

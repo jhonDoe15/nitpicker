@@ -1,12 +1,15 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readDuplicateFindings } from './python-duplicates.mjs';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { readCouplingFindings } from './python-coupling.mjs';
 import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
+import { readImportLinterFindings } from './python-import-linter.mjs';
 import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 
@@ -37,6 +40,9 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
         crapLimit,
       }),
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+      ...readDuplicateFindings(reportRoot),
+      ...readCouplingFindings(reportRoot),
+      ...readImportLinterFindings(reportRoot),
     ],
   };
 }
