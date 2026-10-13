@@ -160,11 +160,11 @@ describe('Java file limits', () => {
 
     const findings = readJavaFileLimitFindings(projectRoot, {
       manifest,
-      fileLimits: {
+      policy: {
         thresholds: { fileLines: 2, folderFiles: 2 },
-        exceptions: [{ rule: 'folder-files-limit', paths: ['src/test/java/**'] }],
+        exceptions: [{ rule: 'folder-files-limit', glob: 'src/test/java/**' }],
+        exclude: ['src/main/java/gen/**'],
       },
-      exclude: ['src/main/java/gen/**'],
     });
 
     expect(summary(findings).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
@@ -172,6 +172,39 @@ describe('Java file limits', () => {
       [RULE_IDS.fileLines, 'src/main/java/demo/C1.java'],
       [RULE_IDS.fileLines, 'src/main/java/demo/C2.java'],
       [RULE_IDS.folderFiles, 'src/main/java/demo'],
+    ]);
+  });
+
+  it('checks Kotlin and Java files of a Kotlin project, line length included', () => {
+    const kotlinManifest = {
+      ...manifest,
+      kotlinSourceRoots: ['src/main/kotlin', 'src/main/java'],
+      kotlinTestSourceRoots: ['src/test/kotlin'],
+    };
+    writeClasses('src/main/java/demo', 3);
+    mkdirSync(path.join(projectRoot, 'src/main/kotlin/demo'), { recursive: true });
+    mkdirSync(path.join(projectRoot, 'src/test/kotlin/demo'), { recursive: true });
+    for (const name of ['A', 'B', 'C', 'D']) {
+      writeFileSync(path.join(projectRoot, `src/main/kotlin/demo/${name}.kt`), 'class A\n');
+      writeFileSync(path.join(projectRoot, `src/test/kotlin/demo/${name}Test.kt`), 'class T\n');
+    }
+    writeFileSync(
+      path.join(projectRoot, 'src/main/kotlin/demo/Wide.kt'),
+      `val wide = ${'1 + '.repeat(40)}1\n`,
+    );
+    writeFileSync(path.join(projectRoot, 'build.gradle.kts'), 'plugins {}\n');
+
+    expect(
+      summary(
+        readJavaFileLimitFindings(projectRoot, {
+          manifest: kotlinManifest,
+          kotlin: true,
+          policy: { thresholds: { folderFiles: 4 } },
+        }),
+      ).map(([rule, findingPath, identity]) => [rule, findingPath, identity]),
+    ).toEqual([
+      [RULE_IDS.lineLength, 'src/main/kotlin/demo/Wide.kt', expect.stringMatching(/^line:/u)],
+      [RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5'],
     ]);
   });
 

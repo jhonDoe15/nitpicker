@@ -23,6 +23,8 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'folderFiles',
 ]);
 
+const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
+
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
 }
@@ -72,5 +74,37 @@ export function validateProjectRelativePath(value, name) {
   const normalized = value.replaceAll('\\', '/');
   if (path.isAbsolute(value) || /^[A-Za-z]:/.test(value) || normalized.split('/').includes('..')) {
     throw configError(`"${name}" must be a path inside the project`);
+  }
+}
+
+export function validateExceptions(exceptions, name = 'exceptions') {
+  if (!Array.isArray(exceptions)) {
+    throw configError(`"${name}" must be an array`);
+  }
+  for (const [index, entry] of exceptions.entries()) {
+    validateException(entry, `${name}[${String(index)}]`);
+  }
+}
+
+function validateException(entry, label) {
+  if (!isPlainObject(entry)) {
+    throw configError(`"${label}" must be an object`);
+  }
+  for (const key of Object.keys(entry)) {
+    if (!EXCEPTION_KEYS.includes(key)) {
+      throw configError(
+        `unknown key "${key}" in "${label}". Allowed keys: ${EXCEPTION_KEYS.join(', ')}`,
+      );
+    }
+  }
+  if (!isNonEmptyString(entry.rule)) {
+    throw configError(`"${label}.rule" must be a non-empty rule id`);
+  }
+  validateStringArray(entry.paths, `${label}.paths`);
+  if (entry.paths.length === 0) {
+    throw configError(`"${label}.paths" needs at least one path glob`);
+  }
+  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+    throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
   }
 }

@@ -1,0 +1,10 @@
+4,2,12,1,4,"m.inner@6-9@m.py","m.py","m.inner","m.inner( z )",6,9
+3,2,22,3,7,"m@5-11@m.py","m.py","m","m( self , x , y = 1 )",5,11
+2,3,18,1,2,"p@14-15@m.py","m.py","p","p( self )",14,15
+2,1,7,1,2,"decorated@18-19@m.py","m.py","decorated","decorated( self )",18,19
+2,1,7,1,2,"unused@21-22@m.py","m.py","unused","unused( self )",21,22
+3,3,24,2,3,"top@25-27@m.py","m.py","top","top( a , b )",25,27
+2,1,7,1,2,"top@30-31@m.py","m.py","top","top( a )",30,31
+4,2,14,2,4,"go@2-5@never.py","never.py","go","go( self , a )",2,5
+2,1,6,0,2,"coro@8-9@never.py","never.py","coro","coro( )",8,9
+1,1,5,0,2,"stub@12-13@never.py","never.py","stub","stub( )",12,13

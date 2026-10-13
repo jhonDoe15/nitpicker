@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseFinding } from '../../core/diff/finding-schema.mjs';
+import { directoryMoves } from '../../core/diff/renames.mjs';
 import { collectFileLimitFindings, evaluateFileLimits } from './file-limits.mjs';
 
 const lines = (count, text = 'x') => `${Array.from({ length: count }, () => text).join('\n')}\n`;
@@ -321,5 +322,54 @@ describe('comparison against the base', () => {
     expect(lineRules(`run(${'b'.repeat(130)});\n`)).toEqual([]);
     expect(lineRules(`run(${'b'.repeat(131)});\n`)).toEqual(['line-length-limit']);
     expect(lineRules(`${long}\nrun(${'c'.repeat(130)});\n`)).toEqual(['line-length-limit']);
+  });
+
+  describe('when the change moves files', () => {
+    const inFolder = (folder, from, to) =>
+      Array.from({ length: to - from }, (_, index) =>
+        source(`${folder}/f${String(from + index)}.ts`),
+      );
+    const renamed = (from, to, count) =>
+      Array.from({ length: count }, (_, index) => [
+        `${from}/f${String(index)}.ts`,
+        `${to}/f${String(index)}.ts`,
+      ]);
+    const compareMoved = (base, head, renames) =>
+      compareFindings({
+        baseFindings: evaluate(base).map((finding) => parseFinding(finding)),
+        headFindings: evaluate(head).map((finding) => parseFinding(finding)),
+        baseToHeadRenames: new Map(renames),
+        baseToHeadDirectories: directoryMoves(renames),
+      });
+
+    it('follows a folder over the limit to its new path and fails it there only when it grows', () => {
+      const renames = renamed('src/old', 'src/new', 12);
+      const base = inFolder('src/old', 0, 12);
+      expect(compareMoved(base, inFolder('src/new', 0, 12), renames).newFindings).toEqual([]);
+      expect(compareMoved(base, inFolder('src/new', 0, 11), renames).newFindings).toEqual([]);
+      expect(newMessages(compareMoved(base, inFolder('src/new', 0, 13), renames))).toEqual([
+        'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If this is intended, add {"rule":"folder-files-limit","paths":["src/new/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ]);
+    });
+
+    it('keeps holding a folder at its own path when only some of its files move out', () => {
+      const renames = renamed('src/old', 'src/new', 2);
+      const head = [...inFolder('src/old', 2, 12), ...inFolder('src/new', 0, 2)];
+      expect(compareMoved(inFolder('src/old', 0, 12), head, renames).newFindings).toEqual([]);
+    });
+
+    it('still fails a folder the moved files push over the limit', () => {
+      const renames = renamed('src/old', 'src/new', 2);
+      const head = [
+        ...inFolder('src/old', 2, 12),
+        ...inFolder('src/new', 0, 2),
+        ...inFolder('src/new', 20, 25),
+      ];
+      expect(
+        compareMoved(inFolder('src/old', 0, 12), head, renames).newFindings.map(
+          ({ path: folder }) => folder,
+        ),
+      ).toEqual(['src/new']);
+    });
   });
 });

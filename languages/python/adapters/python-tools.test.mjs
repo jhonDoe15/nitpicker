@@ -2,10 +2,12 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import { failure } from './python-process.mjs';
 import {
   createToolContext,
+  mutationVersions,
   onlyUnparsableFiles,
   runPythonTools,
   toolVersions,
@@ -19,6 +21,30 @@ function temporaryRoot() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-tools-')));
   roots.push(root);
   return root;
+}
+
+function coverageRc(...sources) {
+  return [
+    '[run]',
+    'branch = True',
+    'parallel = False',
+    'source =',
+    ...sources.map((source) => `    ${source}`),
+    'omit =',
+    '    test_*.py',
+    '    *_test.py',
+    '    conftest.py',
+    '    */tests/*',
+    '    */test/*',
+    '[report]',
+    'exclude_lines =',
+    String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
+    String.raw`    ^\s*if __name__ == .__main__.:`,
+    String.raw`    ^\s*@(typing\.)?overload\b`,
+    String.raw`    ^\s*raise NotImplementedError\b`,
+    'partial_branches =',
+    '',
+  ].join('\n');
 }
 
 function setEnvironment(name, value) {
@@ -151,6 +177,7 @@ describe('tool context', () => {
       formatterDetected: true,
       testRunner: 'unittest',
       targetVersion: 'py38',
+      typeCheckers: [],
       sourceRoots: ['src'],
     });
   });
@@ -175,6 +202,7 @@ describe('tool context', () => {
     expect(context.project).toEqual({
       formatter: 'black',
       formatterDetected: false,
+      typeCheckers: [],
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
@@ -195,15 +223,18 @@ describe('running the tools', () => {
     expect(JSON.parse(readReport(reportRoot, 'ruff.sarif')).runs[0].results).toHaveLength(1);
     expect(readReport(reportRoot, 'format.txt')).toBe('src/demo/a.py');
     expect(readReport(reportRoot, 'coverage.json')).toBe('{"files":{}}');
+    expect(JSON.parse(readReport(reportRoot, 'type-check.json'))).toEqual({
+      checker: 'mypy',
+      output: '',
+    });
+    expect(readReport(reportRoot, 'rules.json')).toBe('[]');
     expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
       formatter: 'ruff',
       formatterDetected: true,
       sourceRoots: ['src'],
       testsRan: true,
     });
-    expect(readReport(reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n',
-    );
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });
 
   it('checks formatting with black when the project uses it', () => {
@@ -218,14 +249,22 @@ describe('running the tools', () => {
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
 
+  it('measures branches without honoring pragmas, the project config or test files', () => {
+    const { context, reportRoot } = contextFor(
+      project({ 'pyproject.toml': '[tool.coverage.run]\n' }),
+    );
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+  });
+
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
     const root = project({ 'lib/a.py': '' });
     const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
     runPythonTools(both.context);
-    expect(readReport(both.reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n    lib\n',
-    );
+    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc('src', 'lib'));
 
     const none = contextFor(root, { sourceRoots: ['missing'] });
     expect(runPythonTools(none.context)).toEqual([]);
@@ -233,22 +272,51 @@ describe('running the tools', () => {
     expect(calls('coverage', 'json')).toHaveLength(1);
   });
 
-  it.each([
-    ['ruff check', 'ruff-failed'],
-    ['ruff format', 'format-failed'],
-    ['coverage run', 'tests-failed'],
-    ['coverage json', 'coverage-failed'],
-  ])('names the failing step: %s is %s', (call, rule) => {
-    const root = project({ 'fail.json': JSON.stringify({ [call]: 'it blew up' }) });
+  it('names each failing step with its command and output', () => {
+    const calls = ['ruff format', 'coverage run', 'mypy', 'python'];
+    const structureScript = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');
+    const root = project({
+      'fail.json': JSON.stringify(
+        Object.fromEntries(calls.map((call) => [call, `${call} blew up`])),
+      ),
+    });
+    const { context } = contextFor(root);
+
+    const failures = runPythonTools(context);
+
+    expect(failures).toEqual(
+      [
+        ['format-failed', 'ruff format', 'ruff format'],
+        ['tests-failed', 'coverage run', 'coverage run'],
+        ['types-failed', 'mypy', 'mypy'],
+        ['rules-failed', 'python', 'python'],
+        ['structure-failed', `python ${structureScript}`, 'python'],
+      ].map(([rule, command, call]) => ({
+        rule,
+        message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
+      })),
+    );
+  });
+
+  it('names a failing coverage report', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'coverage json': 'it blew up' }) });
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
       {
-        rule,
-        message: expect.stringMatching(
-          new RegExp(`^${call} exited 2 in the virtualenv environment:\\nit blew up$`),
-        ),
+        rule: 'coverage-failed',
+        message: 'coverage json exited 2 in the virtualenv environment:\nit blew up',
       },
+    ]);
+  });
+
+  it('fails the lint step and the rules step when ruff itself fails', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'ruff check': 'it blew up' }) });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context).map(({ rule }) => rule)).toEqual([
+      'ruff-failed',
+      'rules-failed',
     ]);
   });
 
@@ -260,6 +328,7 @@ describe('running the tools', () => {
       'ruff-failed',
       'format-failed',
       'tests-failed',
+      'rules-failed',
     ]);
   });
 
@@ -312,6 +381,65 @@ describe('running the tools', () => {
     ]);
   });
 
+  it('writes the duplicate, import and import-linter reports', () => {
+    const clone = [
+      'def order_total(lines, discount):',
+      '    total = 0',
+      '    for line in lines:',
+      '        if line.price > 0 and line.quantity > 0:',
+      '            total += line.price * line.quantity',
+      '        else:',
+      '            total -= discount',
+      '    return total',
+      '',
+    ].join('\n');
+    const root = project({
+      'src/demo/__init__.py': '',
+      'src/demo/a.py': clone,
+      'src/demo/b.py': clone,
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'import-scan.json': '{"src/demo/a.py":[]}',
+      'lint-imports.txt': 'Contracts: 1 kept, 0 broken.\n',
+    });
+    const { context, reportRoot } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(JSON.parse(readReport(reportRoot, 'duplicates.json')).runs).toHaveLength(1);
+    expect(JSON.parse(readReport(reportRoot, 'imports.json'))).toEqual({
+      modules: [
+        { file: 'src/demo/__init__.py', module: 'demo', isPackage: true },
+        { file: 'src/demo/a.py', module: 'demo.a', isPackage: false },
+        { file: 'src/demo/b.py', module: 'demo.b', isPackage: false },
+      ],
+      imports: { 'src/demo/a.py': [] },
+    });
+    expect(readReport(reportRoot, 'import-linter.txt')).toBe('Contracts: 1 kept, 0 broken.\n');
+  });
+
+  it('does not run import-linter for a project without contracts', () => {
+    const root = project({ 'lint-imports.txt': 'Contracts: 0 kept, 1 broken.\n' });
+    const { context, reportRoot } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(() => readReport(reportRoot, 'import-linter.txt')).toThrow();
+  });
+
+  it.each([
+    ['python', 'coupling-failed'],
+    ['lint-imports', 'import-linter-failed'],
+  ])('names the failing step: %s is %s', (tool, rule) => {
+    const root = project({
+      'src/demo/a.py': '',
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'fail.json': JSON.stringify({ [tool]: 'it blew up' }),
+    });
+    const { context } = contextFor(root, { testRunner: 'unittest' });
+
+    expect(runPythonTools(context).map((failure) => failure.rule)).toContain(rule);
+  });
+
   it('says where a missing tool should be installed', () => {
     const root = project({}, { tools: ['black', 'coverage', 'python'] });
     setEnvironment('PATH', temporaryRoot());
@@ -322,6 +450,22 @@ describe('running the tools', () => {
       message:
         'ruff was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
     });
+  });
+
+  it('tells how to turn the contracts off when lint-imports is not installed', () => {
+    const root = project(
+      { '.importlinter': '[importlinter]\nroot_package = demo\n', 'conftest.py': '' },
+      { tools: ['ruff', 'coverage', 'mypy', 'python'] },
+    );
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'import-linter-failed',
+        message:
+          'lint-imports was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it, or turn the contracts off with "python": { "importLinter": false }',
+      },
+    ]);
   });
 
   it('reports a tool that cannot run for another reason', () => {
@@ -481,20 +625,59 @@ describe('tool versions', () => {
   it('lists the versions of the tools in use', () => {
     const root = project({ 'conftest.py': '' });
 
-    expect(toolVersions(contextFor(root).context)).toBe('ruff@0.9.9;coverage@7.6.1;pytest@8.3.1');
-    expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+    const jscpd = `jscpd@${jscpdVersion()}`;
+
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
-    expect(toolVersions(contextFor(project()).context)).toBe('ruff@0.9.9;coverage@7.6.1;unittest');
+    expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
+      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(project()).context)).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
+    );
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
+  });
+
+  it('adds import-linter to the versions when the project has contracts', () => {
+    const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
+
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
+    );
+    expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
+      'import-linter',
+    );
+  });
+
+  it('reads the import-linter version from the installed package, which old versions can only give that way', () => {
+    const calls = callsLog();
+    const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
+
+    toolVersions(contextFor(root).context);
+
+    expect(calls('python', '-I').map((call) => call.args.at(-1))).toEqual([
+      'import importlib.metadata as m; print(m.version("import-linter"))',
+    ]);
+    expect(calls('lint-imports', '--version')).toEqual([]);
   });
 
   it('marks tools that are missing', () => {
-    const root = project({ 'no-pytest.txt': '' }, { tools: ['python'] });
+    const root = project({ 'no-pytest.txt': '', 'no-mutmut.txt': '' }, { tools: ['python'] });
     setEnvironment('PATH', temporaryRoot());
 
+    const jscpd = `jscpd@${jscpdVersion()}`;
+
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      'ruff@missing;coverage@missing;pytest@missing',
+      `ruff@missing;types@missing;coverage@missing;pytest@missing;${jscpd}`,
     );
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@missing;types@missing;coverage@missing;unittest;${jscpd}`,
+    );
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@missing;pytest@missing');
   });
 
   it('marks a version it cannot read', () => {

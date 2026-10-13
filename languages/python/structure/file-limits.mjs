@@ -40,14 +40,17 @@ function pythonFiles(projectRoot) {
   return files;
 }
 
-export function pythonFileLimitFindings(projectRoot, { fileLimits = {}, exclude = [] }) {
+export function pythonFileLimitFindings(
+  projectRoot,
+  { fileLimits, exclude = [], exceptions = [] },
+) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const entries = pythonFiles(projectRoot)
     .filter((file) => !excluders.some((matcher) => matcher.test(file)))
     .map((file) => ({ path: file, kind: TEST_FILE.test(file) ? 'test' : 'source' }));
   return collectFileLimitFindings(projectRoot, entries, {
     analyzerName: 'structure',
-    thresholds: fileLimits.thresholds,
-    exceptions: fileLimits.exceptions,
+    thresholds: fileLimits,
+    exceptions,
   });
 }

@@ -23,6 +23,20 @@ const BLACK_HINT = new RegExp(
   ].join('|'),
   'm',
 );
+const TYPE_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
+const TYPE_CHECKER_HINTS = {
+  mypy: {
+    configured: /^\s*\[{1,2}\s*(?:tool\.)?mypy[\].\s-]/m,
+    configFiles: ['mypy.ini', '.mypy.ini'],
+    declared: /(?:^\s*|["'])mypy(?![\w.-])|mirrors-mypy/m,
+  },
+  pyright: {
+    configured: /^\s*\[\s*tool\.pyright\s*\]/m,
+    configFiles: ['pyrightconfig.json'],
+    declared: /(?:^\s*|["'])pyright(?![\w.-])|pyright-python/m,
+  },
+};
+const CONFIGURED_WEIGHT = 2;
 const RUFF_FORMAT_HINT = /^\s*\[tool\.ruff\.format\]|ruff-format|^\s*\[format\]/m;
 const MINIMUM_MINOR = 8;
 const LOWER_BOUND = /^(>=|~=|==|\^|~|>)?\s*v?3\.(\d+)/;
@@ -31,24 +45,28 @@ const REQUIRES_PYTHON = [
   /^\s*python_requires\s*=\s*(.+)$/m,
   /^\s*python\s*=\s*["']([^"']+)["']/m,
 ];
-const NON_SOURCE_DIRECTORIES = new Set([
+export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
+export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
+export const NON_SOURCE_DIRECTORIES = new Set([
   'tests',
   'test',
-  'docs',
-  'doc',
-  'examples',
-  'scripts',
+  ...DOCUMENTATION_DIRECTORIES,
   'build',
   'dist',
+  'env',
   'venv',
-  'node_modules',
-  'site-packages',
+  ...INSTALLED_DIRECTORIES,
 ]);
+export const NON_SOURCE_FILES = new Set(['conftest.py']);
 
-function readFiles(projectRoot, names) {
+function readFileEntries(projectRoot, names) {
   return names
     .filter((name) => isFile(path.join(projectRoot, name)))
-    .map((name) => readFileSync(path.join(projectRoot, name), 'utf8'));
+    .map((name) => [name, readFileSync(path.join(projectRoot, name), 'utf8')]);
+}
+
+function readFiles(projectRoot, names) {
+  return readFileEntries(projectRoot, names).map(([, text]) => text);
 }
 
 function requirementsInDirectory(projectRoot) {
@@ -98,6 +116,31 @@ export function detectTargetVersion(projectRoot) {
     (found) => found !== undefined,
   );
   return `py3${String(lowestMinor(specifier ?? ''))}`;
+}
+
+export function detectTypeCheckers(projectRoot, setting) {
+  if (setting !== undefined) {
+    return [setting];
+  }
+  const texts = readFileEntries(projectRoot, [
+    ...HINT_FILES,
+    ...requirementFiles(projectRoot),
+    ...TYPE_CONFIG_FILES,
+  ]);
+  const scores = Object.entries(TYPE_CHECKER_HINTS).map(([checker, hints]) => [
+    checker,
+    typeCheckerScore(texts, hints),
+  ]);
+  const best = Math.max(...scores.map(([, score]) => score));
+  return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
+}
+
+function typeCheckerScore(texts, { configured, configFiles, declared }) {
+  const hasConfig = texts.some(
+    ([file, text]) => configFiles.includes(file) || configured.test(text),
+  );
+  const isDeclared = texts.some(([, text]) => declared.test(text));
+  return (hasConfig ? CONFIGURED_WEIGHT : 0) + (isDeclared ? 1 : 0);
 }
 
 export function detectSourceRoots(projectRoot, setting) {

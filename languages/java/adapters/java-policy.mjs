@@ -9,7 +9,7 @@ import { configError, liftsOnlyRules } from '../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
-const INVENTORY_TOOL = 'java';
+export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
@@ -18,32 +18,40 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
 
 export function validateJavaConfig(config) {
   const unsupported = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) =>
-      config[key] !== undefined &&
-      !(key === 'exceptions' && liftsOnlyRules(config[key], JAVA_EXCEPTION_RULES)),
+    (key) => config[key] !== undefined && !isLiftedKey(config, key),
   );
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}, except exceptions for ${JAVA_EXCEPTION_RULES.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${TYPESCRIPT_ONLY_KEYS.join(', ')}, except exceptions for ${JAVA_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
-  if (config.thresholds?.lineLength !== undefined) {
+  if (config.preset === 'java' && config.thresholds?.lineLength !== undefined) {
     throw configError(
       '"thresholds.lineLength" is not supported with "preset": "java": Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
     );
   }
 }
 
+function isLiftedKey(config, key) {
+  return (
+    key === 'exceptions' &&
+    (config.preset === 'kotlin' || liftsOnlyRules(config.exceptions, JAVA_EXCEPTION_RULES))
+  );
+}
+
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], legacyInventory, exceptions = [] },
+  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
 ) {
-  const fileLimits = javaFileLimits(thresholds, exceptions);
+  const fileLimits = fileLimitThresholds(thresholds);
   if (
+    fileLimits === undefined &&
     thresholds.crapLimit === undefined &&
     exclude.length === 0 &&
+    exceptions.length === 0 &&
     legacyInventory === undefined &&
-    fileLimits === undefined
+    kotlin.formatter === undefined &&
+    kotlin.detektConfig === undefined
   ) {
     return analyzer;
   }
@@ -51,6 +59,11 @@ export function configureJavaAnalyzer(
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
+    ...exceptions.flatMap(({ rule, paths }) =>
+      paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
+    ),
+    ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
   ];
   const configured = {
     ...analyzer,
@@ -77,17 +90,11 @@ export function configureJavaAnalyzer(
     : withLegacyInventory(configured, legacyInventory);
 }
 
-function javaFileLimits(thresholds, exceptions) {
-  const limits = Object.fromEntries(
-    FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined).map((key) => [
-      key,
-      thresholds[key],
-    ]),
-  );
-  const lifted = exceptions.filter(({ rule }) => SHARED_EXCEPTION_RULES.includes(rule));
-  return Object.keys(limits).length === 0 && lifted.length === 0
+function fileLimitThresholds(thresholds) {
+  const limits = FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined);
+  return limits.length === 0
     ? undefined
-    : { thresholds: limits, exceptions: lifted };
+    : Object.fromEntries(limits.map((key) => [key, thresholds[key]]));
 }
 
 function hashWithArguments(configurationHash, adapterArguments) {
@@ -103,16 +110,21 @@ export function applyJavaPolicy(
   findings,
   {
     exclude = [],
+    exceptions = [],
     legacyInventory,
     policyRoot,
     baselineRoot,
     snapshot = 'head',
-    inventoryTool = INVENTORY_TOOL,
+    preset = 'java',
+    inventoryTool = preset,
   } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
+  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
-    (finding) => !excluders.some((matcher) => matcher.test(finding.path)),
+    (finding) =>
+      !excluders.some((matcher) => matcher.test(finding.path)) &&
+      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;

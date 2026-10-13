@@ -20,11 +20,28 @@ function reactCase([name, banned, allowed, styling = 'class-names']) {
   return { name: `react: ${name}`, config: reactConfigs[styling], filename, banned, allowed };
 }
 
+const testFilename = 'test/ui/panel.test.tsx';
+const testingLibraryImport = [
+  "import { render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import userEvent from '@testing-library/user-event';",
+  '',
+].join('\n');
+
+function reactTestCase([name, banned, allowed]) {
+  return {
+    name: `react test: ${name}`,
+    config: reactConfigs['class-names'],
+    filename: testFilename,
+    banned: `${testingLibraryImport}${banned}`,
+    allowed,
+  };
+}
+
 function panel(body) {
   return `export function Panel({ a }) { ${body} return <div />; }`;
 }
 
-export const reactFailureMessageCases = [
+const reactSyntaxCases = [
   [
     'class component names function components',
     "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
@@ -140,3 +157,62 @@ export const reactFailureMessageCases = [
     'nitpicker.config.json',
   ],
 ].map(reactCase);
+
+const reactTestCases = [
+  ['test id query names the accessible role', "screen.getByTestId('save');", 'screen.getByRole'],
+  [
+    'test id query names the config exception',
+    "screen.getByTestId('save');",
+    'nitpicker.config.json',
+  ],
+  [
+    'container query names the accessible role',
+    "const { container } = render(<Panel />); container.querySelector('.save');",
+    'screen.getByRole',
+  ],
+  [
+    'container query names the config exception',
+    "const { container } = render(<Panel />); container.querySelector('.save');",
+    'nitpicker.config.json',
+  ],
+  ['fireEvent names userEvent', "fireEvent.click(screen.getByRole('button'));", 'await user.click'],
+  [
+    'fireEvent names the config exception',
+    "fireEvent.click(screen.getByRole('button'));",
+    'nitpicker.config.json',
+  ],
+  [
+    'unawaited userEvent names await',
+    "userEvent.click(screen.getByRole('button'));",
+    'await user.<event>',
+  ],
+  [
+    'unawaited userEvent names the user-event v13 exception',
+    "userEvent.click(screen.getByRole('button'));",
+    'user-event v13',
+  ],
+  [
+    'unawaited findBy query names await',
+    "const button = screen.findByRole('button');",
+    'await screen.findByRole',
+  ],
+  ['unawaited waitFor names await', 'waitFor(() => expect(ok()).toBe(true));', 'await waitFor'],
+  [
+    'node access names toHaveFocus',
+    'expect(document.activeElement).toBe(button);',
+    '`toHaveFocus()`',
+  ],
+  [
+    'component state names what the user sees',
+    'expect(wrapper.state()).toEqual({});',
+    'what the user sees',
+  ],
+  [
+    'component state names the config exception',
+    'expect(wrapper.state()).toEqual({});',
+    'nitpicker.config.json',
+  ],
+  ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
+].map(reactTestCase);
+
+export const reactFailureMessageCases = [...reactSyntaxCases, ...reactTestCases];
