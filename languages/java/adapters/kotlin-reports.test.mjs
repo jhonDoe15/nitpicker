@@ -392,9 +392,10 @@ describe('readJavaFindings with the kotlin preset', () => {
     const { findings } = readJavaFindings(root, { preset: 'kotlin' });
 
     expect(
-      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
-    ).toContainEqual(['branch-source-not-found', 'demo/other/Bad.kt', 'descriptive']);
-    expect(findings.some((finding) => finding.rule === 'changed-branch-coverage')).toBe(false);
+      findings
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([['branch-source-not-found', 'demo/other/Bad.kt', 'descriptive']]);
   });
 
   it('reports mutants of Kotlin classes without failing and keeps Java mutants enforceable', () => {
