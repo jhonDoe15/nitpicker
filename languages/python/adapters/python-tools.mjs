@@ -7,6 +7,7 @@ import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
 import { checkRules } from './python-ast-rules.mjs';
+import { crap } from './python-crap.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './python-process.mjs';
@@ -27,6 +28,7 @@ import {
   testsRan,
 } from './python-test-runner.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { structure } from './python-structure.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
@@ -94,6 +96,8 @@ export function runPythonTools(context) {
     test,
     typeCheck,
     checkRules,
+    structure,
+    crap,
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);

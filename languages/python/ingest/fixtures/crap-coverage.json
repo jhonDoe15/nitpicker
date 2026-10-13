@@ -1,0 +1,157 @@
+{
+  "meta": {
+    "format": 3,
+    "version": "7.16.2",
+    "timestamp": "2026-10-11T23:54:22.008967",
+    "branch_coverage": true,
+    "show_contexts": false
+  },
+  "files": {
+    "m.py": {
+      "executed_lines": [1, 4, 5, 6, 7, 8, 11, 13, 14, 15, 17, 18, 19, 21, 25, 30, 31],
+      "summary": {
+        "covered_lines": 17,
+        "num_statements": 21,
+        "covered_branches": 1,
+        "num_branches": 2
+      },
+      "missing_lines": [9, 22, 26, 27],
+      "functions": {
+        "A.m": {
+          "executed_lines": [6, 11],
+          "summary": {
+            "covered_lines": 2,
+            "num_statements": 2,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 5
+        },
+        "A.m.inner": {
+          "executed_lines": [7, 8],
+          "summary": {
+            "covered_lines": 2,
+            "num_statements": 3,
+            "covered_branches": 1,
+            "num_branches": 2
+          },
+          "missing_lines": [9],
+          "start_line": 6
+        },
+        "A.p": {
+          "executed_lines": [15],
+          "summary": {
+            "covered_lines": 1,
+            "num_statements": 1,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 14
+        },
+        "A.decorated": {
+          "executed_lines": [19],
+          "summary": {
+            "covered_lines": 1,
+            "num_statements": 1,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 18
+        },
+        "A.unused": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 1,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [22],
+          "start_line": 21
+        },
+        "top": {
+          "executed_lines": [31],
+          "summary": {
+            "covered_lines": 1,
+            "num_statements": 1,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 30
+        },
+        "": {
+          "executed_lines": [1, 4, 5, 13, 14, 17, 18, 21, 25, 30],
+          "summary": {
+            "covered_lines": 10,
+            "num_statements": 10,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 1
+        }
+      }
+    },
+    "never.py": {
+      "executed_lines": [],
+      "summary": {
+        "covered_lines": 0,
+        "num_statements": 8,
+        "covered_branches": 0,
+        "num_branches": 2
+      },
+      "missing_lines": [1, 2, 3, 4, 5, 8, 9, 12],
+      "functions": {
+        "B.go": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 3,
+            "covered_branches": 0,
+            "num_branches": 2
+          },
+          "missing_lines": [3, 4, 5],
+          "start_line": 2
+        },
+        "coro": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 1,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [9],
+          "start_line": 8
+        },
+        "stub": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 0,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [],
+          "start_line": 12
+        },
+        "": {
+          "executed_lines": [],
+          "summary": {
+            "covered_lines": 0,
+            "num_statements": 4,
+            "covered_branches": 0,
+            "num_branches": 0
+          },
+          "missing_lines": [1, 2, 8, 12],
+          "start_line": 1
+        }
+      }
+    }
+  },
+  "totals": {}
+}

@@ -274,6 +274,7 @@ describe('running the tools', () => {
 
   it('names each failing step with its command and output', () => {
     const calls = ['ruff format', 'coverage run', 'mypy', 'python'];
+    const structureScript = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');
     const root = project({
       'fail.json': JSON.stringify(
         Object.fromEntries(calls.map((call) => [call, `${call} blew up`])),
@@ -285,13 +286,14 @@ describe('running the tools', () => {
 
     expect(failures).toEqual(
       [
-        ['format-failed', 'ruff format'],
-        ['tests-failed', 'coverage run'],
-        ['types-failed', 'mypy'],
-        ['rules-failed', 'python'],
-      ].map(([rule, call]) => ({
+        ['format-failed', 'ruff format', 'ruff format'],
+        ['tests-failed', 'coverage run', 'coverage run'],
+        ['types-failed', 'mypy', 'mypy'],
+        ['rules-failed', 'python', 'python'],
+        ['structure-failed', `python ${structureScript}`, 'python'],
+      ].map(([rule, command, call]) => ({
         rule,
-        message: `${call} exited 2 in the virtualenv environment:\n${call} blew up`,
+        message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
       })),
     );
   });

@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
+import { PINNED_VERSIONS_SOURCE } from './python-crap.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
@@ -34,7 +35,11 @@ function pythonResourceFiles() {
 }
 
 export function configurationFiles() {
-  const files = new Set([...pythonResourceFiles(), ...importedFiles(runnerPath)]);
+  const files = new Set([
+    ...pythonResourceFiles(),
+    ...importedFiles(runnerPath),
+    PINNED_VERSIONS_SOURCE,
+  ]);
   return [...files].map((file) => path.relative(packageRoot, file)).sort();
 }
 
@@ -86,6 +91,8 @@ export function createPythonAnalyzer(settings = {}) {
       'coverage',
       'mypy',
       'pyright',
+      'structure',
+      'crap',
       RULES_TOOL,
       'coverage-py',
       'duplicates',
