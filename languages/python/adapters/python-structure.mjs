@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readStructureFindings } from '../../java/adapters/java-structure.mjs';
 import { run } from './python-process.mjs';
@@ -7,7 +8,7 @@ const METRICS_SCRIPT = path.resolve(import.meta.dirname, '../metrics/structure_m
 export const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_HINTS = {
   maxControlNesting:
-    'An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+    'An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
 };
 
 export function structure(context) {
@@ -30,4 +31,9 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
     textOf: functionText,
     hints: STRUCTURE_HINTS,
   });
+}
+
+export function readPythonFunctions(reportRoot) {
+  const report = path.join(reportRoot, STRUCTURE_REPORT);
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : [];
 }

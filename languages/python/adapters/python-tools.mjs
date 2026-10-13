@@ -7,7 +7,6 @@ import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
 import { checkRules } from './python-ast-rules.mjs';
-import { crap } from './python-crap.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './python-process.mjs';
@@ -97,7 +96,6 @@ export function runPythonTools(context) {
     typeCheck,
     checkRules,
     structure,
-    crap,
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);

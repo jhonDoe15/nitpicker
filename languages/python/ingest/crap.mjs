@@ -1,9 +1,21 @@
-import { ingestCrapRows, parseLizardCsv } from '../../java/ingest/crap.mjs';
+import { ingestCrapRows } from '../../java/ingest/crap.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 
-export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
+function scoredFunctions(entries) {
+  return entries
+    .filter((entry) => entry.bodyStart > entry.definition)
+    .map((entry) => ({
+      ccn: entry.complexity,
+      file: entry.file,
+      name: entry.name,
+      start: entry.definition,
+      end: entry.end,
+    }));
+}
+
+export function ingestPythonCrap(functions, coverageJson, options = {}) {
   const files = coverageFiles(coverageJson, options.roots ?? [undefined]);
-  const parsed = parseLizardCsv(lizardCsv);
+  const parsed = scoredFunctions(functions);
   const rows = parsed.map((row) => ({
     ...row,
     path: normalizeReportPath(row.file, options.root),
@@ -15,14 +27,14 @@ export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
     }
     const found = matchFunction(data.functions, fn);
     if (found !== undefined) {
-      return { coverage: found.percent, name: found.name };
+      return { coverage: found.percent, name: fn.name };
     }
     const nested = rows.filter(
       (row) => row.path === filePath && row.start > fn.start && row.end <= fn.end,
     );
     return {
       coverage: coverageFromLines(data.lines, fn, nested),
-      name: nearestName(data.functions, fn) ?? fn.name,
+      name: fn.name,
     };
   });
 }
@@ -114,17 +126,7 @@ function coveragePercent(summary) {
 }
 
 function namedLike(candidates, fn) {
-  return candidates.filter(({ name }) => name === fn.name || name.endsWith(`.${fn.name}`));
-}
-
-function distanceFrom(fn, { first }) {
-  return Math.abs((first ?? fn.start) - fn.start);
-}
-
-function nearestName(candidates, fn) {
-  return namedLike(candidates, fn).sort(
-    (left, right) => distanceFrom(fn, left) - distanceFrom(fn, right),
-  )[0]?.name;
+  return candidates.filter(({ name }) => name === fn.name);
 }
 
 function matchFunction(candidates, fn) {
