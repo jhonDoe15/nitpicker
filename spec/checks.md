@@ -2,7 +2,9 @@
 
 Every check category in the TypeScript preset, derived from `languages/typescript/preset/quality-checks.mjs`
 and the adapters in `languages/typescript/adapters/`. Findings follow
-[`findings.schema.json`](findings.schema.json).
+[`findings.schema.json`](findings.schema.json). The `javascript` preset runs the same checks on `.js`, `.mjs`
+and `.cjs` files (and on `.ts`, `.mts` and `.cts` files while a project migrates), so this catalog applies to
+it unchanged.
 
 How classification works:
 
@@ -90,23 +92,23 @@ over limit" and does not fail.
 
 <!-- generated:custom-rules begin (npm run gen:checks) -->
 
-| Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         |
-| --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ |
-| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     |
-| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     |
-| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     |
-| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     |
-| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     |
-| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     |
-| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     |
-| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     |
-| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     |
-| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     |
-| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     |
-| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
-| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced |
-| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     |
-| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced |
+| Rule                              | Check              | Default limit                                                                                                  | TypeScript | Java         | Python       | Kotlin       |
+| --------------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------- | ---------- | ------------ | ------------ | ------------ |
+| `function-lines-limit`            | `structure`        | more than 50 lines                                                                                             | enforced   | enforced     | enforced     | enforced     |
+| `function-statements-limit`       | `structure`        | more than 15 statements                                                                                        | enforced   | enforced     | enforced     | enforced     |
+| `function-control-nesting-limit`  | `structure`        | control nesting deeper than 2                                                                                  | enforced   | enforced     | enforced     | enforced     |
+| `function-parameters-limit`       | `structure`        | more than 3 parameters                                                                                         | enforced   | enforced     | enforced     | enforced     |
+| `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     | enforced     | enforced     |
+| `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     | enforced     | enforced     |
+| `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     | enforced     | enforced     |
+| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     | enforced     | not enforced |
+| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     | enforced     | not enforced |
+| `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     | enforced     | enforced     |
+| `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     | enforced     | enforced     |
+| `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced | not enforced |
+| `type-only-production-dependency` | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced | not enforced |
+| `baseline-expansion`              | `coding-standards` | raising a legacy baseline allowance fails                                                                      | enforced   | enforced     | enforced     | enforced     |
+| `public-alternative-bypass`       | `entry-points`     | none: importing around a public entry point fails                                                              | enforced   | not enforced | not enforced | not enforced |
 
 <!-- generated:custom-rules end -->
 

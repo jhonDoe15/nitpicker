@@ -65,6 +65,58 @@ describe('configureJavaAnalyzer', () => {
     ).not.toBe(configured.configurationHash);
     expect(configured.legacyInventory).toBe('legacy.json');
   });
+
+  it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const exceptions = [
+      {
+        rule: 'detekt.style.ForbiddenMethodCall',
+        paths: ['a/Main.kt', 'b/**'],
+        reason: 'Entry point.',
+      },
+      { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'], reason: 'Mapped by a framework.' },
+    ];
+    const configured = configureJavaAnalyzer(analyzer, { exceptions });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
+      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'b/**' },
+      { rule: 'detekt.style.UseDataClass', glob: 'c/*.kt' },
+    ]);
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { exceptions: [exceptions[0]] }).configurationHash,
+    ).not.toBe(configured.configurationHash);
+  });
+
+  it('hands the Kotlin formatter and detekt config to the runner and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const configured = configureJavaAnalyzer(analyzer, {
+      kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'ktfmt',
+      kotlinDetektConfig: 'tools/rules.yml',
+    });
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
+        .configurationHash,
+    ).not.toBe(analyzer.configurationHash);
+  });
 });
 
 describe('parseRunnerArguments', () => {
@@ -76,6 +128,68 @@ describe('parseRunnerArguments', () => {
       /positive number/,
     );
   });
+
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
+    });
+    expect(
+      parseRunnerArguments([
+        '--project-root',
+        '/p',
+        '--preset',
+        'kotlin',
+        '--kotlin-formatter',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
+      ]).policy,
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
+  });
+
+  it.each(['nocolon', ':glob/**', 'rule:'])(
+    'rejects the exception %s without a rule or a glob',
+    (value) => {
+      expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+        /Usage/,
+      );
+    },
+  );
+
+  it('keeps a colon inside the glob', () => {
+    expect(
+      parseRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy.exceptions,
+    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+  });
+
+  it('rejects an unknown preset or Kotlin formatter', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+      '--preset must be one of: java, kotlin',
+    );
+    expect(() =>
+      parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
+  });
 });
 
 describe('applyJavaPolicy', () => {
@@ -84,6 +198,21 @@ describe('applyJavaPolicy', () => {
 
     expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
     expect(applyJavaPolicy(findings, {})).toEqual(findings);
+  });
+
+  it('drops only the findings of the excepted rule under the excepted globs', () => {
+    const at = (file, rule) => ({ ...finding(file), rule });
+    const findings = [
+      at('src/Main.kt', 'detekt.style.ForbiddenMethodCall'),
+      at('src/Other.kt', 'detekt.style.ForbiddenMethodCall'),
+      at('src/Main.kt', 'detekt.style.UseDataClass'),
+    ];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
+      }),
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
@@ -117,5 +246,30 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
+    expect(
+      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+        ({ tool, rule }) => [tool, rule],
+      ),
+    ).toEqual([['kotlin', 'baseline-expansion']]);
+  });
+
+  it('names the tool of a baseline-expansion after the language that asks', () => {
+    const options = {
+      legacyInventory: 'nitpicker.legacy.json',
+      policyRoot: inventoryRoot([allow('a.py', 3)]),
+      baselineRoot: inventoryRoot([allow('a.py', 1)]),
+      snapshot: 'head',
+    };
+
+    expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
+      {
+        tool: 'python',
+        rule: 'baseline-expansion',
+        path: 'a.py',
+        identity: expect.any(String),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
+        classification: 'enforceable',
+      },
+    ]);
   });
 });

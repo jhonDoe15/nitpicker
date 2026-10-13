@@ -390,6 +390,10 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
       code: "const { execute } = await import('../feature.js'); execute();",
     },
     {
+      filename: '/repo/tests/greet.test.cjs',
+      code: "const { greet } = require('../src/main/greet.cjs'); greet();",
+    },
+    {
       filename: '/repo/preset/test-runtime/fixtures/positive/tests/unit/fixture.test.ts',
       code: "import { describe } from 'vitest'; describe('fixture', () => {});",
       options: [{ exemptPattern: String.raw`/tests/contract/|/preset/.*/fixtures/` }],
@@ -403,6 +407,11 @@ ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime,
     {
       filename: '/repo/src/main/feature/__tests__/feature.test.ts',
       code: "import type { Feature } from '../feature.js'; const value: Feature | undefined = undefined;",
+      errors: [{ messageId: 'missingRuntime' }],
+    },
+    {
+      filename: '/repo/tests/greet.test.cjs',
+      code: "const path = require('node:path'); path.join('a');",
       errors: [{ messageId: 'missingRuntime' }],
     },
     {

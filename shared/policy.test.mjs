@@ -61,7 +61,9 @@ describe('shared policy', () => {
     const ids = RULES.map((rule) => rule.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const rule of RULES) {
-      expect(Object.keys(rule.enforcedBy).sort()).toEqual([...LANGUAGES].sort());
+      expect(Object.keys(rule.enforcedBy).sort(), `${rule.id} names every language`).toEqual(
+        [...LANGUAGES].sort(),
+      );
     }
   });
 });
