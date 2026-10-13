@@ -47,8 +47,8 @@ describe('every message names the allowed form', () => {
     expect(message.toLowerCase()).toContain(testCase.mention.toLowerCase());
   });
 
-  it.each(RULE_CASES.filter(({ rule }) => rule !== 'no-inline-suppression'))(
-    'tells how to add an exception for $rule',
+  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception !== false))(
+    'tells how to add an exception for $tool $rule',
     (testCase) => {
       expect(withHint(sample(testCase)).message).toMatch(
         new RegExp(`${exceptionSentence(testCase.rule)}$`),
@@ -56,11 +56,34 @@ describe('every message names the allowed form', () => {
     },
   );
 
-  it('sends a suppression comment to the exception of the rule it suppressed', () => {
+  it('sends a suppression comment to the exception of no-inline-suppression itself', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
 
     expect(message).toBe(
-      'The base message. Fix the cause instead: `# type: ignore`, `# noqa` and `# pyright: ignore` are banned. If the code is legitimate, add a "python.exceptions" entry for the rule it suppressed.',
+      'The base message. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+    );
+  });
+
+  it.each([
+    ['mypy', 'import-not-found'],
+    ['mypy', 'import-untyped'],
+    ['pyright', 'reportMissingImports'],
+    ['pyright', 'reportMissingModuleSource'],
+  ])('sends the missing import %s %s to installing the package', (tool, rule) => {
+    expect(withHint(sample({ tool, rule })).message).toBe(
+      `The base message. Install the package, or its \`types-\` stubs, in the project environment. ${exceptionSentence(rule)}`,
+    );
+  });
+
+  it('sends an unused ignore comment to deleting it', () => {
+    expect(withHint(sample({ tool: 'mypy', rule: 'unused-ignore' })).message).toBe(
+      'The base message. Delete the comment.',
+    );
+  });
+
+  it('keeps the type error boilerplate short', () => {
+    expect(withHint(sample({ tool: 'mypy', rule: 'return-value' })).message).toBe(
+      `The base message. Fix the type; inline ignores are banned. ${exceptionSentence('return-value')}`,
     );
   });
 });
@@ -104,13 +127,22 @@ describe('hints', () => {
     expect(hintFor(sample({ tool: 'pyright', rule: 'reportAnything' }))).toBeDefined();
   });
 
-  it('leave findings of other tools untouched', () => {
+  it('leave findings of other tools and descriptive findings untouched', () => {
     const coverage = sample({ tool: 'coverage', rule: 'line-coverage' });
+    const note = { ...sample({ tool: 'ruff', rule: 'F401' }), classification: 'descriptive' };
 
-    expect(applyRuleHints([coverage, sample({ tool: 'ruff', rule: 'F401' })])).toEqual([
-      coverage,
-      sample({ tool: 'ruff', rule: 'F401' }),
-    ]);
+    expect(applyRuleHints([coverage, note])).toEqual([coverage, note]);
+  });
+
+  it.each([
+    ['ruff', 'F401'],
+    ['ruff', 'SIM102'],
+    ['ruff', 'invalid-syntax'],
+  ])('end a %s %s finding without an allowed form with the exception route', (tool, rule) => {
+    expect(hintFor(sample({ tool, rule }))).toBeUndefined();
+    expect(withHint(sample({ tool, rule })).message).toBe(
+      `The base message. ${exceptionSentence(rule)}`,
+    );
   });
 
   it('keep every other field of the finding', () => {

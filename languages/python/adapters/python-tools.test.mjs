@@ -151,7 +151,7 @@ describe('tool context', () => {
       formatterDetected: true,
       testRunner: 'unittest',
       targetVersion: 'py38',
-      typeChecker: undefined,
+      typeCheckers: [],
       sourceRoots: ['src'],
     });
   });
@@ -176,6 +176,7 @@ describe('tool context', () => {
     expect(context.project).toEqual({
       formatter: 'black',
       formatterDetected: false,
+      typeCheckers: [],
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
@@ -239,22 +240,40 @@ describe('running the tools', () => {
     expect(calls('coverage', 'json')).toHaveLength(1);
   });
 
-  it.each([
-    ['ruff format', ['format-failed']],
-    ['coverage run', ['tests-failed']],
-    ['coverage json', ['coverage-failed']],
-    ['mypy', ['types-failed']],
-    ['python', ['rules-failed']],
-  ])('names the failing step: %s is %s', (call, rules) => {
-    const root = project({ 'fail.json': JSON.stringify({ [call]: 'it blew up' }) });
+  it('names each failing step with its command and output', () => {
+    const calls = ['ruff format', 'coverage run', 'mypy', 'python'];
+    const root = project({
+      'fail.json': JSON.stringify(
+        Object.fromEntries(calls.map((call) => [call, `${call} blew up`])),
+      ),
+    });
     const { context } = contextFor(root);
 
     const failures = runPythonTools(context);
 
-    expect(failures.map(({ rule }) => rule)).toEqual(rules);
-    expect(failures[0].message).toMatch(
-      new RegExp(`^${call} exited 2 in the virtualenv environment:\\nit blew up$`),
+    expect(failures).toEqual(
+      [
+        ['format-failed', 'ruff format'],
+        ['tests-failed', 'coverage run'],
+        ['types-failed', 'mypy'],
+        ['rules-failed', 'python'],
+      ].map(([rule, call]) => ({
+        rule,
+        message: `${call} exited 2 in the virtualenv environment:\n${call} blew up`,
+      })),
     );
+  });
+
+  it('names a failing coverage report', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'coverage json': 'it blew up' }) });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'coverage-failed',
+        message: 'coverage json exited 2 in the virtualenv environment:\nit blew up',
+      },
+    ]);
   });
 
   it('fails the lint step and the rules step when ruff itself fails', () => {

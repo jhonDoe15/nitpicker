@@ -68,6 +68,22 @@ describe('mypy text report', () => {
     expect(after[0].identity).toBe(before[0].identity);
   });
 
+  it('keeps the identity of a redefinition when the code above it moves', () => {
+    const before = 'a.py:9: error: Name "dup" already defined on line 5  [no-redef]\n';
+    const after = 'a.py:14: error: Name "dup" already defined on line 10  [no-redef]\n';
+
+    expect(ingestMypy(after, { roots })).toEqual([
+      expect.objectContaining({
+        identity: 'Name "dup" already defined',
+        message: 'Name "dup" already defined on line 10',
+        location: { line: 14 },
+      }),
+    ]);
+    expect(ingestMypy(after, { roots })[0].identity).toBe(
+      ingestMypy(before, { roots })[0].identity,
+    );
+  });
+
   it('ignores notes, summaries and files outside the project', () => {
     const text = [
       'a.py:1: note: See docs',
@@ -116,6 +132,27 @@ describe('pyright JSON report', () => {
         .filter(({ rule }) => rule === 'reportUnknownParameterType')
         .map(({ identity }) => identity),
     ).toEqual(['Return type is unknown', 'Type of parameter "value" is unknown']);
+  });
+
+  it('keeps the identity of a message that names another line when the code above moves', () => {
+    const report = (line) =>
+      JSON.stringify({
+        generalDiagnostics: [
+          {
+            file: '/work/project/a.py',
+            severity: 'error',
+            message: `"dup" is obscured by a declaration from line ${String(line)}`,
+            rule: 'reportRedeclaration',
+          },
+        ],
+      });
+
+    expect(ingestPyright(report(10), { roots })[0].identity).toBe(
+      ingestPyright(report(5), { roots })[0].identity,
+    );
+    expect(ingestPyright(report(10), { roots })[0].identity).toBe(
+      '"dup" is obscured by a declaration',
+    );
   });
 
   it('skips a package banner printed before the JSON', () => {

@@ -331,7 +331,7 @@ describe TypeScript and stay a config error.
 The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
 instead of string constants) and the strict type check name the allowed form in every failure
-message. Inline `# type: ignore`, `# noqa` and `# pyright: ignore` are findings themselves. Code
+message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy or pyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
 that is legitimately outside a rule is lifted with `python.exceptions`, the Python counterpart of
 `exceptions` and of the same shape (`rule`, `paths`, `reason`, all required):
 

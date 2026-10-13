@@ -6,6 +6,7 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../shared/config.mjs';
+import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];
@@ -60,6 +61,18 @@ function validateSettings(settings) {
   }
   if (settings.exceptions !== undefined) {
     validateExceptions(settings.exceptions, 'python.exceptions');
+    validateRuleIds(settings.exceptions);
+  }
+}
+
+function validateRuleIds(exceptions) {
+  for (const [index, { rule }] of exceptions.entries()) {
+    const problem = ruleIdProblem(rule);
+    if (problem !== undefined) {
+      throw configError(
+        `"python.exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
+      );
+    }
   }
 }
 

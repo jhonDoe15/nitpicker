@@ -26,14 +26,14 @@ const BLACK_HINT = new RegExp(
 const TYPE_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
 const TYPE_CHECKER_HINTS = {
   mypy: {
-    configured: /^\s*\[{1,2}(?:tool\.)?mypy[\].-]/m,
+    configured: /^\s*\[{1,2}\s*(?:tool\.)?mypy[\].\s-]/m,
     configFiles: ['mypy.ini', '.mypy.ini'],
-    declared: /^\s*["']?mypy(?![\w-])|mirrors-mypy/m,
+    declared: /(?:^\s*|["'])mypy(?![\w.-])|mirrors-mypy/m,
   },
   pyright: {
-    configured: /^\s*\[tool\.pyright\]/m,
+    configured: /^\s*\[\s*tool\.pyright\s*\]/m,
     configFiles: ['pyrightconfig.json'],
-    declared: /^\s*["']?pyright(?![\w-])|pyright-python/m,
+    declared: /(?:^\s*|["'])pyright(?![\w.-])|pyright-python/m,
   },
 };
 const CONFIGURED_WEIGHT = 2;
@@ -118,9 +118,9 @@ export function detectTargetVersion(projectRoot) {
   return `py3${String(lowestMinor(specifier ?? ''))}`;
 }
 
-export function detectTypeChecker(projectRoot, setting) {
+export function detectTypeCheckers(projectRoot, setting) {
   if (setting !== undefined) {
-    return setting;
+    return [setting];
   }
   const texts = readFileEntries(projectRoot, [
     ...HINT_FILES,
@@ -132,7 +132,7 @@ export function detectTypeChecker(projectRoot, setting) {
     typeCheckerScore(texts, hints),
   ]);
   const best = Math.max(...scores.map(([, score]) => score));
-  return best === 0 ? undefined : scores.find(([, score]) => score === best)[0];
+  return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
 }
 
 function typeCheckerScore(texts, { configured, configFiles, declared }) {

@@ -6,6 +6,7 @@ import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
@@ -40,7 +41,7 @@ export function ruffFindings(log, { roots, projectRoot }) {
     roots,
     sourceRoots: [],
     projectRoot,
-    identityKey: (result) => result.message?.text,
+    identityKey: (result) => withoutLineNumbers(result.message?.text ?? ''),
   });
   return ingestSarif(prepared, { tool: 'ruff' }).findings;
 }

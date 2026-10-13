@@ -31,6 +31,29 @@ describe('python config validation', () => {
     }).not.toThrow();
   });
 
+  it.each([
+    'T201',
+    'T20',
+    'PTH',
+    'PTH118',
+    'UP031',
+    'F',
+    'F401',
+    'frozen-dataclass',
+    'no-inline-suppression',
+    'stub-beside-source',
+    'arg-type',
+    'import-not-found',
+    'reportReturnType',
+  ])('accepts the exception rule %s', (rule) => {
+    expect(() => {
+      validate({
+        preset: 'python',
+        python: { exceptions: [{ rule, paths: ['src/**'], reason: 'r' }] },
+      });
+    }).not.toThrow();
+  });
+
   it('ignores configs of other presets', () => {
     expect(() => {
       validate({});
@@ -79,6 +102,31 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: '  ' }] },
       '"python.exceptions[0].reason" is required: say why the rule is lifted for these paths',
+    ],
+    [
+      { exceptions: [{ rule: 'T210', paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].rule" names no rule nitpicker reports: "T210"; use the id printed in the finding',
+    ],
+    [
+      { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "E501"',
+    ],
+    [
+      { exceptions: [{ rule: 'B008', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "B008"',
+    ],
+    [
+      {
+        exceptions: [
+          { rule: 'T201', paths: ['a'], reason: 'r' },
+          { rule: 'Frozen', paths: ['a'], reason: 'r' },
+        ],
+      },
+      '"python.exceptions[1].rule" names no rule nitpicker reports: "Frozen"',
+    ],
+    [
+      { exceptions: [{ rule: 'frozen-dataclas', paths: ['a'], reason: 'r' }] },
+      '"frozen-dataclas"; did you mean "frozen-dataclass"?',
     ],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
     [{ environment: '../outside' }, '"python.environment" must be a path inside the project'],

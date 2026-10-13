@@ -29,7 +29,26 @@ describe('python exceptions', () => {
     expect(applyPythonExceptions(findings, exceptions)).toEqual([findings[0]]);
   });
 
-  it('needs the rule to be the same, not a prefix of it', () => {
-    expect(applyPythonExceptions(findings, [exception('PTH', ['**'])])).toEqual(findings);
+  it('lets a ruff prefix cover the codes under it', () => {
+    expect(applyPythonExceptions(findings, [exception('PTH', ['**'])])).toEqual([
+      findings[0],
+      findings[1],
+    ]);
+    expect(applyPythonExceptions(findings, [exception('T', ['**'])])).toEqual([findings[2]]);
+  });
+
+  it('needs the other tools to name the rule exactly', () => {
+    const mypy = { tool: 'mypy', rule: 'arg-type', path: 'src/a.py', identity: 'x' };
+    const rules = {
+      tool: 'python-rules',
+      rule: 'frozen-dataclass',
+      path: 'src/a.py',
+      identity: 'y',
+    };
+
+    expect(applyPythonExceptions([mypy, rules], [exception('arg', ['**'])])).toEqual([mypy, rules]);
+    expect(applyPythonExceptions([mypy, rules], [exception('frozen-dataclass', ['**'])])).toEqual([
+      mypy,
+    ]);
   });
 });

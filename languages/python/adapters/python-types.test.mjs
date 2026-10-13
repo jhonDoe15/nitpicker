@@ -54,6 +54,18 @@ describe('choosing the type checker', () => {
     expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
   });
 
+  it('asks the environment when the project mentions both, and takes the one installed', () => {
+    const tied = { 'pyrightconfig.json': '{}', 'mypy.ini': '[mypy]\n' };
+    const both = fakes.project(tied);
+    const pyrightOnly = fakes.project(tied, { tools: ['pyright', 'python'] });
+    const neither = fakes.project(tied, { tools: ['python'] });
+    setEnvironment('PATH', fakes.temporaryRoot());
+
+    expect(resolveTypeChecker(fakes.contextFor(both).context)).toBe('mypy');
+    expect(resolveTypeChecker(fakes.contextFor(pyrightOnly).context)).toBe('pyright');
+    expect(resolveTypeChecker(fakes.contextFor(neither).context)).toBeUndefined();
+  });
+
   it('finds none when neither is installed', () => {
     const root = fakes.project({}, { tools: ['python'] });
     setEnvironment('PATH', fakes.temporaryRoot());
@@ -78,6 +90,10 @@ describe('running mypy', () => {
     });
     const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
     expect(call.args).toEqual([
+      '--config-file',
+      path.join(reportRoot, 'mypy.ini'),
+      '--python-executable',
+      path.join(root, '.venv/bin/python'),
       '--strict',
       '--explicit-package-bases',
       '--show-error-codes',
@@ -103,6 +119,48 @@ describe('running mypy', () => {
 
     const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
     expect(call.mypyPath).toBe(`${path.join(root, 'src')}${path.delimiter}/existing`);
+  });
+
+  it('checks with a generated config that keeps the environment and drops what skips checking', () => {
+    const logFile = logged();
+    const root = fakes.project({
+      'pyproject.toml': [
+        '[tool.mypy]',
+        'ignore_errors = true',
+        'disable_error_code = ["arg-type"]',
+        'exclude = ["src/demo"]',
+        'plugins = ["pydantic.mypy"]',
+        'python_version = "3.11"',
+        '',
+        '[[tool.mypy.overrides]]',
+        'module = "yaml"',
+        'ignore_missing_imports = true',
+        'ignore_errors = true',
+        '',
+      ].join('\n'),
+    });
+    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**']);
+
+    typeCheck(context);
+
+    const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--strict'));
+    expect(call.args.slice(0, 2)).toEqual([
+      '--config-file',
+      path.join(reportRoot, 'pyproject.toml'),
+    ]);
+    expect(readFileSync(path.join(reportRoot, 'pyproject.toml'), 'utf8')).toBe(
+      [
+        '[tool.mypy]',
+        'plugins = [ "pydantic.mypy" ]',
+        'python_version = "3.11"',
+        'exclude = "^(?:(?:src/gen/.*)(?:/.*)?/?)$"',
+        '',
+        '[[tool.mypy.overrides]]',
+        'module = [ "yaml" ]',
+        'ignore_missing_imports = true',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('names the checker and the way out when none is installed', () => {
@@ -163,6 +221,8 @@ describe('running pyright', () => {
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
+      ignore: [],
+      exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
       include: [path.relative(reportRoot, path.join(root, 'src'))],
       extraPaths: [path.join(root, 'src')],
     });
@@ -182,6 +242,25 @@ describe('running pyright', () => {
     expect(configOf(without)).not.toHaveProperty('extends');
   });
 
+  it('replaces the project ignore and exclude with the nitpicker exclude', () => {
+    const root = fakes.project({
+      'pyproject.toml': '[ tool.pyright ]\nignore = ["src"]\nexclude = ["src"]\n',
+    });
+    const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**', '**/*_pb2.py']);
+
+    expect(pyrightConfig(context)).toMatchObject({
+      extends: path.join(root, 'pyproject.toml'),
+      ignore: [],
+      exclude: [
+        '**/node_modules',
+        '**/__pycache__',
+        '**/.*',
+        path.relative(reportRoot, path.join(root, 'src/gen/**')),
+        path.relative(reportRoot, path.join(root, '**/*_pb2.py')),
+      ],
+    });
+  });
+
   it('checks every source root, resolving packages from their parent', () => {
     const root = fakes.project({ 'pkg/__init__.py': '' });
     const { context, reportRoot } = fakes.contextFor(root, { sourceRoots: ['pkg', 'src'] });
@@ -189,6 +268,8 @@ describe('running pyright', () => {
     expect(pyrightConfig(context)).toEqual({
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
+      ignore: [],
+      exclude: ['**/node_modules', '**/__pycache__', '**/.*'],
       include: [
         path.relative(reportRoot, path.join(root, 'pkg')),
         path.relative(reportRoot, path.join(root, 'src')),
