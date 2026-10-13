@@ -202,8 +202,8 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
 
 function metricRules() {
   return {
-    'sonarjs/cognitive-complexity': {
-      pattern: /Cognitive Complexity from (\d+) to/u,
+    'nitpicker/cognitive-complexity': {
+      pattern: /cognitive complexity of (\d+);/u,
       label: 'cognitive complexity',
     },
     complexity: { pattern: /complexity of (\d+)\./u, label: 'complexity' },
