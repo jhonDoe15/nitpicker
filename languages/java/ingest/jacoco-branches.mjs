@@ -1,6 +1,11 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
-import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
+import {
+  childrenNamed,
+  hashIdentity,
+  normalizeReportPath,
+  parseXml,
+} from '../../../shared/ingest/common.mjs';
 import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches.mjs';
 
 export function ingestJacocoBranches(xml, options = {}) {

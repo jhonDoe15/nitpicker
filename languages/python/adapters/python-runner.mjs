@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
 import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
 import {
   trackTemporaryPath,
@@ -37,6 +37,7 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
     settings,
     reportRoot,
     exclude: policy?.exclude,
+    duplicateSkippedFolders: policy?.duplicateSkippedFolders,
     snapshot: policy?.snapshot,
     baselineRoot: policy?.baselineRoot,
   });
@@ -54,7 +55,7 @@ function withReportRoot(step) {
 
 function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
-    applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
+    applyFindingPolicy(mutationFindings(toolContext(options, reportRoot)), {
       exclude: options.policy?.exclude,
     }),
   );
@@ -73,7 +74,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       reportRoot,
       crapLimit: policy.crapLimit,
     });
-    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+    return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,
       inventoryTool: PYTHON_ANALYZER_NAME,
     });

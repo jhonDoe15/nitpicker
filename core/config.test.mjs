@@ -196,6 +196,54 @@ describe('config file', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
+  it('accepts the folders the duplicate scan skips, for every preset', () => {
+    const duplicates = { skippedFolders: ['dist', 'generated'] };
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(validateConfig({ preset, duplicates })).toEqual({ preset, duplicates });
+    }
+    expect(validateConfig({ duplicates: { skippedFolders: [] } })).toEqual({
+      duplicates: { skippedFolders: [] },
+    });
+    expect(validateConfig({ duplicates: {} })).toEqual({ duplicates: {} });
+    expect(describeConfigOverrides({ duplicates })).toEqual([
+      'duplicates: {"skippedFolders":["dist","generated"]}',
+    ]);
+  });
+
+  it.each([
+    [{ duplicates: [] }, '"duplicates" must be an object'],
+    [
+      { duplicates: { folders: [] } },
+      'unknown duplicates key "folders". Allowed duplicates keys: skippedFolders',
+    ],
+    [
+      { duplicates: { skippedFolders: 'build' } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: [''] } },
+      '"duplicates.skippedFolders" must be an array of non-empty strings',
+    ],
+    [
+      { duplicates: { skippedFolders: ['src/build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: src/build',
+    ],
+    [
+      { duplicates: { skippedFolders: ['**/build/**'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: **/build/**',
+    ],
+    [
+      { duplicates: { skippedFolders: ['..'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: ..',
+    ],
+    [
+      { duplicates: { skippedFolders: ['dist', 'dist'] } },
+      '"duplicates.skippedFolders" must not contain duplicates',
+    ],
+  ])('rejects the duplicates setting %j', (config, message) => {
+    expect(() => validateConfig(config)).toThrow(message);
+  });
+
   it('describes overrides in a stable key order', () => {
     expect(describeConfigOverrides({ thresholds: { crapLimit: 12 }, base: 'main' })).toEqual([
       'base: "main"',

@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readDuplicateFindings } from './python-duplicates.mjs';
-import { prepareSarif } from '../../java/adapters/java-reports.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
-import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
-import { ingestSarif } from '../../java/ingest/sarif.mjs';
+import { prepareSarif } from '../../../shared/ingest/prepare-sarif.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
+import { ingestFormatCheck } from '../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../shared/ingest/sarif.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';

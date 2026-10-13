@@ -1,6 +1,6 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { scanImports } from './python-coupling.mjs';
 import { runDuplicates } from './python-duplicates.mjs';
@@ -56,6 +56,7 @@ export function createToolContext({
   settings = {},
   reportRoot,
   exclude = [],
+  duplicateSkippedFolders,
   snapshot = 'head',
   baselineRoot,
 }) {
@@ -71,6 +72,7 @@ export function createToolContext({
     baselineRoot,
     launcher,
     exclude,
+    duplicateSkippedFolders,
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,

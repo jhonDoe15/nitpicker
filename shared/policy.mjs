@@ -60,6 +60,12 @@ export const TOUCHED_CODE_RULES = [
   { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
 ];
 
+export function isTouchedCodeRule(rule, finding) {
+  return TOUCHED_CODE_RULES.some(
+    (entry) => entry.rule === rule && entry.tools.includes(finding?.tool),
+  );
+}
+
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',

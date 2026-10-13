@@ -391,6 +391,29 @@ describe('layout-aware tool configurations', () => {
     expect(jscpd.ignore).toContain('lib/legacy/**');
   });
 
+  it('replace the skipped folders of the duplicate scan with the ones the project lists', () => {
+    const base = readDefault('jscpd.json');
+    const kept = [
+      '**/node_modules/**',
+      '**/*.d.ts',
+      '**/coverage/**',
+      '**/reports/**',
+      '**/.stryker-tmp/**',
+    ];
+    const layout = resolveLayout(undefined, ['legacy/**'], { duplicateSkippedFolders: ['dist'] });
+
+    expect(layoutJscpdConfig(base, layout).ignore).toEqual([...kept, '**/dist/**', 'legacy/**']);
+    expect(
+      layoutJscpdConfig(base, resolveLayout(undefined, [], { duplicateSkippedFolders: [] })).ignore,
+    ).toEqual(kept);
+  });
+
+  it('count a duplicate folder list as a custom layout', () => {
+    expect(isCustomLayout(resolveLayout(undefined, [], { duplicateSkippedFolders: [] }))).toBe(
+      true,
+    );
+  });
+
   it('add the configured entry points to the knip entries', () => {
     const layout = { ...customLayout, entryPoints: ['lib/tools/*-runner.mjs'] };
 

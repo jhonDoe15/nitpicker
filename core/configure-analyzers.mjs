@@ -40,6 +40,7 @@ function applyJavaConfig(analyzers, config) {
     names.includes(analyzer.name)
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
+          duplicates: config.duplicates,
           thresholds: config.thresholds,
           exclude: config.exclude,
           exceptions: config.exceptions,

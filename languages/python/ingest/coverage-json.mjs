@@ -2,7 +2,7 @@ import {
   coverageMetricFinding,
   normalizeReportPath,
   uncoveredFinding,
-} from '../../java/ingest/common.mjs';
+} from '../../../shared/ingest/common.mjs';
 
 export function ingestCoverageJson(text, options = {}) {
   const tool = options.tool ?? 'coverage';

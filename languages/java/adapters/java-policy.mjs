@@ -1,17 +1,11 @@
 import { createHash } from 'node:crypto';
-import { globToRegExp } from '../../../shared/glob.mjs';
-import {
-  applyInventoryToFindings,
-  readOptionalInventory,
-  withLegacyInventory,
-} from '../../../shared/legacy-inventory.mjs';
-import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
+  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {}, duplicates = {} },
 ) {
   if (
     thresholds.crapLimit === undefined &&
@@ -19,7 +13,8 @@ export function configureJavaAnalyzer(
     exceptions.length === 0 &&
     legacyInventory === undefined &&
     kotlin.formatter === undefined &&
-    kotlin.detektConfig === undefined
+    kotlin.detektConfig === undefined &&
+    duplicates.skippedFolders === undefined
   ) {
     return analyzer;
   }
@@ -31,6 +26,9 @@ export function configureJavaAnalyzer(
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
+    ...(duplicates.skippedFolders === undefined
+      ? []
+      : ['--duplicate-skipped-folders', JSON.stringify(duplicates.skippedFolders)]),
   ];
   const configured = {
     ...analyzer,
@@ -64,39 +62,4 @@ function hashWithArguments(configurationHash, adapterArguments) {
         .update(configurationHash)
         .update(JSON.stringify(adapterArguments))
         .digest('hex');
-}
-
-export function applyJavaPolicy(
-  findings,
-  {
-    exclude = [],
-    exceptions = [],
-    legacyInventory,
-    policyRoot,
-    baselineRoot,
-    snapshot = 'head',
-    preset = 'java',
-    inventoryTool = preset,
-  } = {},
-) {
-  const excluders = exclude.map((glob) => globToRegExp(glob));
-  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
-  const kept = findings.filter(
-    (finding) =>
-      !excluders.some((matcher) => matcher.test(finding.path)) &&
-      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
-  );
-  if (legacyInventory === undefined || policyRoot === undefined) {
-    return kept;
-  }
-  const headInventory = readOptionalInventory(policyRoot, legacyInventory);
-  const baselined = applyInventoryToFindings(kept, headInventory.sites);
-  if (snapshot !== 'head' || baselineRoot === undefined) {
-    return baselined;
-  }
-  const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
-  return [
-    ...baselined,
-    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, inventoryTool),
-  ];
 }

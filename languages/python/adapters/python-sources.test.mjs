@@ -139,6 +139,35 @@ describe('listing production modules', () => {
     ]);
   });
 
+  it('replaces the skipped folders of the duplicate scan with the project list', () => {
+    expect(nonProductionGlobs(['src'], ['dist', 'tests'])).toEqual([
+      '**/__pycache__/**',
+      '**/venv/**',
+      '**/node_modules/**',
+      '**/site-packages/**',
+      '**/dist/**',
+      '**/tests/**',
+      '**/.git/**',
+      '**/.venv/**',
+      '**/.tox/**',
+      '**/.nox/**',
+      '**/.eggs/**',
+      '**/.mypy_cache/**',
+      '**/.ruff_cache/**',
+      '**/.pytest_cache/**',
+      '**/test_*.py',
+      '**/*_test.py',
+      '**/conftest.py',
+    ]);
+    expect(nonProductionGlobs(['.'], []).slice(-4)).toEqual([
+      'docs/**',
+      'doc/**',
+      'examples/**',
+      'scripts/**',
+    ]);
+    expect(nonProductionGlobs(['src'], [])).not.toContain('**/build/**');
+  });
+
   it('gives the duplicate scan the same exclusions', () => {
     expect(NON_PRODUCTION_GLOBS).toEqual([
       '**/__pycache__/**',

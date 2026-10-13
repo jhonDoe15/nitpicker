@@ -1,6 +1,10 @@
 import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { sourceLines } from '../../java/adapters/java-structure.mjs';
+import {
+  PYTHON_SKIPPED_FOLDERS,
+  skippedFolderGlobs,
+} from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import { sourceLines } from '../../../shared/ingest/structure-report.mjs';
 import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
@@ -70,17 +74,8 @@ export function functionText(sources, projectRoot, { file, start, end }) {
   return lines.map((line) => line.slice(indent)).join('\n');
 }
 
-const EXCLUDED_DIRECTORIES = [
-  '__pycache__',
-  'venv',
-  'node_modules',
-  'site-packages',
-  'build',
-  'dist',
-  'tests',
-  'test',
-  'migrations',
-];
+const DEPENDENCY_DIRECTORIES = ['__pycache__', 'venv', 'node_modules', 'site-packages'];
+const EXCLUDED_DIRECTORIES = [...DEPENDENCY_DIRECTORIES, ...PYTHON_SKIPPED_FOLDERS];
 const HIDDEN_PREFIX = '.';
 const COMMON_HIDDEN_DIRECTORIES = [
   '.git',
@@ -94,17 +89,29 @@ const COMMON_HIDDEN_DIRECTORIES = [
 ];
 const TEST_FILE = /^(?:test_.+|.+_test|conftest)\.py$/;
 
-export const NON_PRODUCTION_GLOBS = [
-  ...[...EXCLUDED_DIRECTORIES, ...COMMON_HIDDEN_DIRECTORIES].map((name) => `**/${name}/**`),
-  '**/test_*.py',
-  '**/*_test.py',
-  '**/conftest.py',
-];
+const TEST_FILE_GLOBS = ['**/test_*.py', '**/*_test.py', '**/conftest.py'];
 
-export function nonProductionGlobs(sourceRoots) {
+function productionGlobs(skippedFolders) {
+  return [
+    ...skippedFolderGlobs([
+      ...DEPENDENCY_DIRECTORIES,
+      ...skippedFolders,
+      ...COMMON_HIDDEN_DIRECTORIES,
+    ]),
+    ...TEST_FILE_GLOBS,
+  ];
+}
+
+export const NON_PRODUCTION_GLOBS = productionGlobs(PYTHON_SKIPPED_FOLDERS);
+
+export function nonProductionGlobs(sourceRoots, skippedFolders = PYTHON_SKIPPED_FOLDERS) {
+  const globs =
+    skippedFolders === PYTHON_SKIPPED_FOLDERS
+      ? NON_PRODUCTION_GLOBS
+      : productionGlobs(skippedFolders);
   return sourceRoots.includes('.')
-    ? [...NON_PRODUCTION_GLOBS, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
-    : NON_PRODUCTION_GLOBS;
+    ? [...globs, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
+    : globs;
 }
 
 export function existingSourceRoots(projectRoot, sourceRoots) {

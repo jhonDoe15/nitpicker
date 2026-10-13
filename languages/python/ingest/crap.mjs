@@ -1,5 +1,5 @@
-import { ingestCrapRows, parseLizardCsv } from '../../java/ingest/crap.mjs';
-import { normalizeReportPath } from '../../java/ingest/common.mjs';
+import { ingestCrapRows, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 
 export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
   const files = coverageFiles(coverageJson, options.roots ?? [undefined]);

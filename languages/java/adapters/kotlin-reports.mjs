@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck } from '../ingest/format-check.mjs';
-import { ingestSarif } from '../ingest/sarif.mjs';
+import { ingestFormatCheck } from '../../../shared/ingest/format-check.mjs';
+import { ingestSarif } from '../../../shared/ingest/sarif.mjs';
 import { readKotlinDuplicateFindings } from './kotlin-duplicates.mjs';
 import {
   readKotlinCrapFindings,

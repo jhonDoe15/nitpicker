@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from './java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -17,7 +17,6 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
-  'languages/java/adapters/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
   'languages/java/adapters/kotlin-metrics.mjs',
@@ -32,7 +31,15 @@ const CONFIGURATION_FILES = [
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/crap.mjs',
-  'languages/java/adapters/touched-rules.mjs',
+  'core/tooling/jscpd/import-only.mjs',
+  'core/tooling/jscpd/import-only/jvm-imports.mjs',
+  'core/tooling/jscpd/import-only/python-imports.mjs',
+  'core/tooling/jscpd/import-only/script-imports.mjs',
+  'core/tooling/jscpd/jscpd-clones.mjs',
+  'core/tooling/jscpd/run-jscpd.mjs',
+  'core/tooling/jscpd/skipped-folders.mjs',
+  'shared/finding-policy.mjs',
+  'shared/rules/duplicates.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
   'shared/policy.mjs',
@@ -40,15 +47,18 @@ const CONFIGURATION_FILES = [
   'shared/rules/coupling.mjs',
   'shared/rules/finding-helpers.mjs',
   'languages/java/ingest/checkstyle.mjs',
-  'languages/java/ingest/common.mjs',
+  'shared/ingest/common.mjs',
+  'shared/ingest/prepare-sarif.mjs',
+  'shared/ingest/structure-report.mjs',
   'languages/java/ingest/archunit.mjs',
   'languages/java/ingest/crap.mjs',
-  'languages/java/ingest/format-check.mjs',
+  'shared/ingest/lizard-crap.mjs',
+  'shared/ingest/format-check.mjs',
   'languages/java/ingest/jacoco.mjs',
   'languages/java/ingest/jacoco-branches.mjs',
   'languages/java/ingest/kotlin-branches.mjs',
   'languages/java/ingest/pit.mjs',
-  'languages/java/ingest/sarif.mjs',
+  'shared/ingest/sarif.mjs',
 ];
 
 export function readPinnedVersions(initScript = INIT_SCRIPT) {

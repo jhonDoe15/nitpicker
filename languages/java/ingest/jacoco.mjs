@@ -4,7 +4,7 @@ import {
   normalizeReportPath,
   parseXml,
   uncoveredFinding,
-} from './common.mjs';
+} from '../../../shared/ingest/common.mjs';
 
 export function ingestJacoco(xml, options = {}) {
   const report = parseXml(xml);

@@ -190,12 +190,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                      | Report                     | Ingester                                                            | Classification                                          | Identity                                                                                                            |
-| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                 | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                      | Report                     | Ingester                                                    | Classification                                          | Identity                                                                                                            |
+| ----------------------------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -254,7 +254,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (`pip install lizard==1.24.1`). On the CLI path that becomes the usual `java/gradle-failure`
   `tool-error`; nothing is skipped and no CRAP is guessed. Not done on purpose: auto-installing
   with pip, a bundled copy, a virtualenv managed by nitpicker.
-- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins lizard's functions with the JaCoCo
+- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`; the lizard CSV reading and the CRAP rows are in `shared/ingest/lizard-crap.mjs`) joins lizard's functions with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a lizard function when the
   file, the method name (`<init>` is the class name) and the line match: the method's first line
   lies in the function's line range. This also joins methods of anonymous classes. Lambdas and
@@ -279,10 +279,10 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
-  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
+  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in `core/tooling/jscpd/run-jscpd.mjs`, shared with Python) (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
   per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
+  (a project's `.jscpd.json` is not read), ignoring the folders named `build`, `generated`, `target` and `out` at any depth (the config key `duplicates.skippedFolders` replaces this list; it reaches the runner as `--duplicate-skipped-folders`). Clones made only of `package` and `import` lines (the clone may end on the line where the following declaration starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
   `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
@@ -308,7 +308,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
   maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
   the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
-  this rule when the finding comes from `jacoco` (`languages/java/adapters/touched-rules.mjs`), so an
+  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mjs`), so an
   uncovered branch whose head line lies in a changed range, or in an added file, is new even if
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
@@ -353,16 +353,16 @@ resolved plus a new finding, as in the TypeScript check.
   (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
-- **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `shared/ingest/structure-report.mjs` (shared with Python) hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
-- **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
+- **Tests.** `shared/ingest/structure-report.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
 

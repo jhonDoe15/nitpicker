@@ -27,6 +27,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
+  'core/tooling/jscpd/skipped-folders.mjs',
   'languages/typescript/preset/defaults',
   'languages/javascript/preset/javascript-preset.mjs',
   'languages/javascript/preset/jsdoc.mjs',

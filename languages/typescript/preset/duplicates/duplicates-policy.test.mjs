@@ -92,6 +92,30 @@ describe('duplicate-code report', () => {
     expect(report.duplicates).toEqual([]);
   });
 
+  it('analyses the folders the project takes off the skipped list', () => {
+    const ignore = layoutJscpdConfig(
+      JSON.parse(readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8')),
+      resolveLayout(undefined, [], { duplicateSkippedFolders: ['dist'] }),
+    ).ignore;
+    const { result, report } = analyzeFixture('excluded', ['--ignore', ignore.join(',')]);
+
+    expect(result.status, result.stderr || result.stdout).toBe(0);
+    expect(
+      report.duplicates.map(({ firstFile, secondFile }) =>
+        [firstFile, secondFile].map(({ name }) => path.basename(name)).sort(),
+      ),
+    ).toEqual([['fifth.ts', 'fourth.ts']]);
+  });
+
+  it('finds no clone when an exclude takes out either file of the pair', () => {
+    for (const excluded of ['first.ts', 'second.ts']) {
+      const { result, report } = analyzeFixture('clones', ['--ignore', `**/${excluded}`]);
+
+      expect(result.status, result.stderr || result.stdout).toBe(0);
+      expect(report.duplicates).toEqual([]);
+    }
+  });
+
   it('keeps analyzer configuration failures visible', () => {
     const result = spawnSync(
       jscpd,

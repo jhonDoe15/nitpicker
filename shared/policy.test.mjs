@@ -10,6 +10,7 @@ import {
   LANGUAGES,
   MESSAGES,
   MINIMUM_BRANCH_COVERAGE,
+  isTouchedCodeRule,
   RULES,
   RULE_IDS,
   mutantRuleId,
@@ -28,6 +29,16 @@ describe('shared policy', () => {
         Object.entries(FUNCTION_STRUCTURE_LIMITS).map(([metric, { limit }]) => [metric, limit]),
       ),
     ).toEqual({ lines: 50, statements: 15, maxControlNesting: 2, parameters: 3 });
+  });
+
+  it('holds the changed-branch rule to the touched-code standard only for the coverage tools', () => {
+    const rule = RULE_IDS.changedBranchCoverage;
+
+    expect(isTouchedCodeRule(rule, { tool: 'jacoco' })).toBe(true);
+    expect(isTouchedCodeRule(rule, { tool: 'coverage-py' })).toBe(true);
+    expect(isTouchedCodeRule(rule, { tool: 'coverage' })).toBe(false);
+    expect(isTouchedCodeRule(rule, undefined)).toBe(false);
+    expect(isTouchedCodeRule('format', { tool: 'jacoco' })).toBe(false);
   });
 
   it('names mutant rules after the status', () => {
