@@ -190,6 +190,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coverage/line-coverage',
       'coverage/uncovered-function',
+      'mutmut/mutation-summary',
       'mutmut/mutant-nocoverage',
       'ruff/F401',
       'ruff-format/format',
@@ -202,7 +203,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'survivors');
 
     expect(result.exitCode, result.text).toBe(1);
-    const mutants = result.json('new-findings.json').filter(({ tool }) => tool === 'mutmut');
+    const mutants = result
+      .json('new-findings.json')
+      .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
     expect(new Set(mutants.map(({ rule }) => rule))).toEqual(
       new Set(['mutant-survived', 'mutant-nocoverage']),
     );
@@ -226,7 +229,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'killed');
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('new-findings.json').filter(({ tool }) => tool === 'mutmut')).toEqual([]);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary'),
+    ).toEqual([]);
   });
 
   it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
@@ -287,13 +294,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'broken-environment');
 
     expect(result.exitCode, result.text).toBe(2);
-    expect(result.json('tool-errors.json')).toEqual([
-      {
-        tool: 'python',
-        snapshot: 'head',
-        message: `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
-      },
-    ]);
+    const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`;
+    expect(result.json('tool-errors.json')).toHaveLength(2);
+    expect(result.json('tool-errors.json')).toEqual(
+      expect.arrayContaining([
+        { tool: 'python', snapshot: 'head', message },
+        { tool: 'mutation', snapshot: 'head', message },
+      ]),
+    );
   });
 
   describe('a unittest project formatted with black, using tools from the PATH', () => {
