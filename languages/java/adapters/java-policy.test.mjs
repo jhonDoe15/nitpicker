@@ -2,7 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer, JAVA_TOOLS } from './java-analyzer.mjs';
+import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
@@ -26,6 +27,14 @@ const finding = (file, identity = 'id') => ({
   classification: 'enforceable',
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
+
+const context = () => ({
+  projectRoot: '/p',
+  toolRoot: '/t',
+  snapshot: 'head',
+  projectPolicyRoot: tmpdir(),
+  baselineRoot: tmpdir(),
+});
 
 describe('configureJavaAnalyzer', () => {
   const context = {
@@ -121,6 +130,36 @@ describe('configureJavaAnalyzer', () => {
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
     expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+  });
+});
+
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+    ]);
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
   });
 });
 
