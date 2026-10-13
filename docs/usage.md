@@ -235,7 +235,7 @@ its `paths` on both snapshots. The inventory has the same format as
 the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
 baselined, and raising a `count` (or adding a site) on head over the base fails as
-`baseline-expansion`. `layout` and `tools` describe TypeScript source roots and tool configs, have
+`baseline-expansion`. `layout`, `react` and `tools` describe TypeScript source roots, React and tool configs, have
 no Java meaning, and stay a config error with this preset. Details:
 [java-preset.md](java-preset.md).
 
