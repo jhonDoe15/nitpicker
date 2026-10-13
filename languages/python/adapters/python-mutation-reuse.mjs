@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { dependentFiles, importGraph } from './python-imports.mjs';
+import { collectImports, importEdges } from './python-coupling.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
+import { run } from './python-process.mjs';
 
 const TEST_FILE = /(?:^|\/)(?:test_[^/]*|[^/]*_test|conftest)\.py$/u;
 const TEST_DIRECTORY = /(?:^|\/)tests?\//u;
@@ -54,17 +55,39 @@ function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
   );
 }
 
-function staleSources(context, changes) {
-  if (changes.length === 0) {
-    return new Set();
+function importersOf(changedFiles, { modules, imports }) {
+  const moduleOfFile = new Map(modules.map(({ file, module }) => [file, module]));
+  const fileOfModule = new Map(modules.map(({ file, module }) => [module, file]));
+  const importers = new Map();
+  for (const { source, target } of importEdges(modules, imports)) {
+    importers.set(target, [...(importers.get(target) ?? []), source]);
   }
-  const graph = importGraph(context);
-  return graph === undefined
-    ? undefined
-    : dependentFiles(
-        graph,
-        changes.map(({ file, prefix }) => file.slice(prefix.length)),
-      );
+  const affected = new Set(changedFiles.map((file) => moduleOfFile.get(file)));
+  for (const module of affected) {
+    for (const importer of importers.get(module) ?? []) {
+      affected.add(importer);
+    }
+  }
+  return new Set([...affected].map((module) => fileOfModule.get(module)));
+}
+
+function isStaleSource(context, changes) {
+  if (changes.length === 0) {
+    return () => false;
+  }
+  let scanned;
+  try {
+    scanned = collectImports(context, run);
+  } catch {
+    return undefined;
+  }
+  const known = new Set(scanned.modules.map(({ file }) => file));
+  const changed = changes.map(({ file, prefix }) => file.slice(prefix.length));
+  if (!changed.every((file) => known.has(file))) {
+    return undefined;
+  }
+  const affected = importersOf(changed, scanned);
+  return (file) => !known.has(file) || affected.has(file);
 }
 
 export function seedMutantsFromBase(context) {
@@ -82,11 +105,11 @@ export function seedMutantsFromBase(context) {
   ) {
     return false;
   }
-  const stale = staleSources(context, changes);
-  if (stale === undefined) {
+  const isStale = isStaleSource(context, changes);
+  if (isStale === undefined) {
     return false;
   }
-  for (const file of metaFiles(baseMutants).filter((candidate) => !stale.has(candidate))) {
+  for (const file of metaFiles(baseMutants).filter((candidate) => !isStale(candidate))) {
     const target = path.join(projectRoot, MUTANTS_DIRECTORY, `${file}${META_SUFFIX}`);
     mkdirSync(path.dirname(target), { recursive: true });
     cpSync(path.join(baseMutants, `${file}${META_SUFFIX}`), target);

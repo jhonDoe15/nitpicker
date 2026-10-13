@@ -60,6 +60,10 @@ const analyze = (root, extra = {}) =>
 
 const analyzeMutation = (root, extra = {}) => analyze(root, { part: 'mutation', ...extra });
 
+function enforceable(findings) {
+  return findings.filter(({ classification }) => classification !== 'descriptive');
+}
+
 describe('analyzing a Python snapshot', () => {
   it('turns the ruff, format and coverage reports into findings', () => {
     const root = project({
@@ -70,7 +74,11 @@ describe('analyzing a Python snapshot', () => {
 
     const { findings } = analyze(root);
 
-    expect(findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)).toEqual([
+    expect(
+      findings
+        .filter(({ tool }) => tool !== 'coupling')
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+    ).toEqual([
       'ruff F401 src/demo/a.py',
       'ruff B006 src/demo/a.py',
       'ruff-format format src/demo/a.py',
@@ -94,22 +102,24 @@ describe('analyzing a Python snapshot', () => {
       'unformatted.txt': 'src/demo/a.py\n',
     });
 
-    const messages = analyze(root).findings.map(({ rule, message }) => `${rule}: ${message}`);
+    const messages = enforceable(analyze(root).findings).map(
+      ({ rule, message }) => `${rule}: ${message}`,
+    );
 
     expect(messages).toEqual([
       'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
       'B006: mutable',
       'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
     ]);
-    expect(analyze(root, { settings: { formatter: 'ruff' } }).findings.at(-1).message).toBe(
-      'File is not formatted with ruff',
-    );
+    expect(
+      enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
+    ).toBe('File is not formatted with ruff');
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
     const root = project({ 'test-exit.txt': '5\n' });
 
-    expect(analyze(root).findings).toEqual([
+    expect(enforceable(analyze(root).findings)).toEqual([
       {
         tool: 'python',
         rule: 'no-tests-ran',
@@ -166,9 +176,8 @@ describe('analyzing a Python snapshot', () => {
   it('leaves mutation testing to the mutation part, so lint and tests never wait for or fail with mutmut', () => {
     const root = project({ 'no-mutmut.txt': '', 'violations.txt': 'F401|src/demo/a.py|unused\n' });
 
-    expect(analyze(root).findings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
-      'ruff F401',
-    ]);
+    const lintFindings = analyze(root).findings.filter(({ tool }) => tool === 'ruff');
+    expect(lintFindings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual(['ruff F401']);
     expect(analyzeMutation(root).findings).toEqual([
       {
         tool: 'mutation',
@@ -241,7 +250,7 @@ describe('analyzing a Python snapshot', () => {
       },
     });
 
-    expect(findings).toEqual([
+    expect(findings.filter(({ classification }) => classification !== 'descriptive')).toEqual([
       {
         tool: 'python',
         rule: 'baseline-expansion',

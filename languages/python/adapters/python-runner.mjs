@@ -41,15 +41,26 @@ function toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot) {
   });
 }
 
+function withReportRoot(step) {
+  const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-')));
+  try {
+    return step(reportRoot);
+  } finally {
+    rmSync(reportRoot, { recursive: true, force: true });
+    untrackTemporaryPath(reportRoot);
+  }
+}
+
 function collectMutationFindings(options) {
-  return applyJavaPolicy(mutationFindings(toolContext(options)), {
-    exclude: options.policy?.exclude,
-  });
+  return withReportRoot((reportRoot) =>
+    applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
+      exclude: options.policy?.exclude,
+    }),
+  );
 }
 
 function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
-  const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-')));
-  try {
+  return withReportRoot((reportRoot) => {
     const failures = runPythonTools(
       toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot),
     );
@@ -58,10 +69,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
     }
     const { findings } = readPythonFindings({ projectRoot, reportRoot });
     return applyJavaPolicy(findings, { ...policy, inventoryTool: PYTHON_ANALYZER_NAME });
-  } finally {
-    rmSync(reportRoot, { recursive: true, force: true });
-    untrackTemporaryPath(reportRoot);
-  }
+  });
 }
 
 export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options }) {

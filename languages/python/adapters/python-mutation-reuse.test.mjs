@@ -106,6 +106,7 @@ function seed(setup, overrides = {}) {
     project: { sourceRoots: ['src'] },
     launcher,
     env: {},
+    reportRoot: temporaryRoot(),
     ...setup,
     ...overrides,
   });
