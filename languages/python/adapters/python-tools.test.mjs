@@ -294,11 +294,11 @@ describe('running the tools', () => {
       expect(runPythonTools(context)).toEqual([]);
 
       expect(JSON.parse(readReport(reportRoot, 'mutation.json')).files).toEqual([
-        expect.objectContaining({
+        {
           path: 'src/demo/a.py',
           exitCodes: { 'demo.a.x_value__mutmut_1': 0 },
           mutated: MUTATED,
-        }),
+        },
       ]);
       expect(existsSync(path.join(root, 'mutants'))).toBe(false);
       expect(readReport(root, 'pyproject.toml')).toBe(
@@ -319,15 +319,29 @@ describe('running the tools', () => {
         .filter(Boolean)
         .map((line) => JSON.parse(line))
         .filter(({ tool }) => tool !== 'python');
-      expect(calls.at(-2)).toEqual(
-        expect.objectContaining({
-          tool: 'mutmut',
-          args: ['run'],
-          cwd: root,
-          pythonPath: path.join(root, 'src'),
-        }),
-      );
+      expect(calls.at(-2)).toEqual({
+        tool: 'mutmut',
+        args: ['run'],
+        cwd: root,
+        pythonPath: path.join(root, 'src'),
+      });
       expect(calls.slice(0, -2).map(({ tool }) => tool)).not.toContain('mutmut');
+    });
+
+    it('does not run when the test run found no tests', () => {
+      const log = path.join(temporaryRoot(), 'calls.jsonl');
+      setEnvironment('FAKE_PYTHON_LOG', log);
+      const root = project({ 'test-exit.txt': '5\n' });
+      const { context } = contextFor(root);
+
+      expect(runPythonTools(context)).toEqual([]);
+
+      expect(
+        readFileSync(log, 'utf8')
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => JSON.parse(line).tool),
+      ).not.toContain('mutmut');
     });
 
     it('keeps mutants/ of a base snapshot for the head run', () => {

@@ -209,13 +209,17 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(new Set(mutants.map(({ path: file }) => file))).toEqual(
       new Set(['src/demo/pricing.py']),
     );
-    expect(mutants.find(({ rule }) => rule === 'mutant-survived')).toEqual(
-      expect.objectContaining({
-        classification: 'enforceable',
-        symbol: 'discount',
-        location: expect.objectContaining({ line: expect.any(Number) }),
-      }),
-    );
+    expect(mutants.find(({ rule }) => rule === 'mutant-survived')).toEqual({
+      tool: 'mutmut',
+      rule: 'mutant-survived',
+      path: 'src/demo/pricing.py',
+      identity: 'discount|-→+#1',
+      message:
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      classification: 'enforceable',
+      symbol: 'discount',
+      location: { line: 2 },
+    });
   });
 
   it('passes new code whose mutants are all killed', () => {
@@ -273,7 +277,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         rule: 'tests-failed',
         path: '.',
         message: expect.stringMatching(
-          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 1 passed in [\d.]+s$/,
+          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 2 passed in [\d.]+s$/,
         ),
       },
     ]);
@@ -358,7 +362,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         'nitpicker.config.json': '{ "preset": "python" }\n',
         '.gitignore': '.venv/\n__pycache__/\n',
         'pyproject.toml':
-          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n',
+          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n\n[tool.mutmut]\nsource_paths = ["pkg"]\npytest_add_cli_args = ["-n", "0"]\n',
         'pkg/__init__.py': '',
         'pkg/shape.py': 'def area(side):\n    return side * side\n',
         'tests/test_shape.py':
@@ -376,6 +380,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         '--python',
         '.venv',
         'coverage',
+        'mutmut',
         'pytest',
         'pytest-cov',
         'pytest-xdist',

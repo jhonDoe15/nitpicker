@@ -96,7 +96,7 @@ function mutation(context) {
 export function runPythonTools(context) {
   const outcome = {};
   const failures = [lint, format, test].flatMap((step) => attempt(context, outcome, step));
-  if (!failures.some(({ rule }) => rule === TESTS_FAILED_RULE)) {
+  if (outcome.testsRan !== false && !failures.some(({ rule }) => rule === TESTS_FAILED_RULE)) {
     failures.push(...attempt(context, outcome, mutation));
   }
   writeFileSync(
