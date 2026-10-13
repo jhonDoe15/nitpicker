@@ -110,6 +110,29 @@ describe('config file', () => {
     expect(validateConfig(config)).toEqual(config);
   });
 
+  describe('kotlin exceptions', () => {
+    const exception = {
+      rule: 'detekt.style.ForbiddenMethodCall',
+      paths: ['src/main/kotlin/app/Main.kt'],
+      reason: 'The entry point blocks on its coroutine.',
+    };
+
+    it('accepts an exception for a one-way rule with the TypeScript shape', () => {
+      expect(validateConfig({ preset: 'kotlin', exceptions: [exception] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [exception],
+      });
+    });
+
+    it('names the rules that can be lifted when the rule is another detekt rule', () => {
+      const other = { ...exception, rule: 'detekt.style.MagicNumber' };
+
+      expect(() => validateConfig({ preset: 'kotlin', exceptions: [other] })).toThrow(
+        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenMethodCall.*config\/detekt\/detekt\.yml/,
+      );
+    });
+  });
+
   it('shares thresholds, exclude and legacyInventory between presets', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
@@ -126,11 +149,13 @@ describe('config file', () => {
     );
   });
 
-  it.each(
-    ['java', 'kotlin'].flatMap((preset) =>
-      ['layout', 'exceptions', 'react'].map((key) => [preset, key]),
-    ),
-  )('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
+  it.each([
+    ['java', 'layout'],
+    ['java', 'exceptions'],
+    ['java', 'react'],
+    ['kotlin', 'layout'],
+    ['kotlin', 'react'],
+  ])('rejects the %s preset with %s instead of ignoring it', (preset, key) => {
     expect(() => validateConfig({ preset, [key]: {} })).toThrow(
       `"${key}" is not supported with "preset": "${preset}"`,
     );

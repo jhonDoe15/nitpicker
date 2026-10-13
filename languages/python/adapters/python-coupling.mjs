@@ -11,7 +11,7 @@ const SCAN_SCRIPT = path.join(import.meta.dirname, 'import-scan.py');
 const SCAN_REQUEST = 'import-scan-request.json';
 const ROOT_PACKAGE = '(root)';
 
-export function scanImports(context, run) {
+export function collectImports(context, run) {
   const { projectRoot, reportRoot } = context;
   const modules = listProductionModules(projectRoot, context.project.sourceRoots);
   let imports = {};
@@ -26,7 +26,14 @@ export function scanImports(context, run) {
     });
     imports = JSON.parse(result.stdout);
   }
-  writeFileSync(path.join(reportRoot, IMPORTS_REPORT), JSON.stringify({ modules, imports }));
+  return { modules, imports };
+}
+
+export function scanImports(context, run) {
+  writeFileSync(
+    path.join(context.reportRoot, IMPORTS_REPORT),
+    JSON.stringify(collectImports(context, run)),
+  );
 }
 
 function parentOf(name) {

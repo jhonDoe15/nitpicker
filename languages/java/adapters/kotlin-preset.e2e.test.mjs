@@ -5,6 +5,13 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from './java-diff.mjs';
 import { analyzeJavaSnapshot } from './java-runner.mjs';
+import {
+  expectedMessage,
+  fixturePath,
+  fixtureSource,
+  kotlinRuleCases,
+} from './fixtures/kotlin-rules/cases.mjs';
+import { addOneWayHint, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs
 // Java 21, Gradle, lizard (see java-preset.e2e.test.mjs) and network access to Maven Central and
@@ -130,6 +137,57 @@ const LEGACY_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
 ];
 
+const ruleFixtures = (variant) =>
+  Object.fromEntries(
+    kotlinRuleCases.map((testCase) => [
+      fixturePath(testCase, variant),
+      fixtureSource(testCase, variant),
+    ]),
+  );
+
+const detektFindingsOf = (findings, testCase) =>
+  findings.filter(
+    ({ tool, path: file }) => tool === 'detekt' && file.includes(`/demo/${testCase.id}/`),
+  );
+
+const HOSTILE_DETEKT_CONFIG = `formatting:
+  active: true
+  Indentation:
+    active: true
+compose:
+  active: true
+style:
+  active: false
+  excludes: ['**/*.kt']
+  ForbiddenMethodCall:
+    active: false
+    severity: info
+    excludes: ['**/*.kt']
+    methods:
+      - 'kotlin.io.println'
+coroutines:
+  active: false
+potential-bugs:
+  active: false
+  UnsafeCallOnNullableType:
+    severity: info
+  CastNullableToNonNullableType:
+    excludes: ['**/*.kt']
+`;
+
+const EXTRA_SOURCES = {
+  'Wildcard.kt':
+    'package demo.extras\n\nimport kotlinx.coroutines.*\n\nfun waitWildcard(): Int = runBlocking { 1 }\n',
+  'Qualified.kt':
+    'package demo.extras\n\nfun waitQualified(): Int = kotlinx.coroutines.runBlocking { 1 }\n',
+  'Holder.kt': 'package demo.extras\n\nclass Holder(var count: Int)\n',
+  'convention.gradle.kts': 'println("a script next to the sources")\n',
+  'Hidden.kt':
+    '@file:Suppress("ktlint:standard:indent")\n\npackage demo.extras\n\nval pattern = "**/*.kt"\nval maybe: String? = "a"\n\n@get:Suppress("UnsafeCallOnNullableType")\nval size: Int get() = maybe!!.length\n\n/** end */\n',
+  'Compiler.kt':
+    'package demo.extras\n\n@Suppress("UNCHECKED_CAST", "unused")\nfun cast(value: Any): List<String> = value as List<String>\n',
+};
+
 let repository;
 let mixedRepository;
 let kotlinOnlyRepository;
@@ -219,6 +277,18 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'build.gradle.kts': `${readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
     });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch('one-way-banned', ruleFixtures('banned'));
+    commitBranch('one-way-allowed', ruleFixtures('allowed'));
+    commitBranch('one-way-hostile-config', {
+      ...ruleFixtures('banned'),
+      'config/detekt/detekt.yml': HOSTILE_DETEKT_CONFIG,
+      ...Object.fromEntries(
+        Object.entries(EXTRA_SOURCES).map(([name, text]) => [
+          `src/main/kotlin/demo/extras/${name}`,
+          text,
+        ]),
+      ),
+    });
   });
 
   afterAll(() => {
@@ -304,6 +374,132 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
     expect(formatters.has('ktfmt')).toBe(true);
     expect(formatters.has('ktlint')).toBe(false);
+  });
+
+  describe('one-way rules', () => {
+    const results = new Map();
+    const diffOnce = (branch) => {
+      if (!results.has(branch)) {
+        results.set(branch, diffOf(branch));
+      }
+      return results.get(branch);
+    };
+
+    it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
+      'fails the banned form %s with a message that names the allowed form',
+      (_id, testCase) => {
+        const result = diffOnce('one-way-banned');
+        const found = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+
+        expect(found.length, summarize(result.newEnforceable).join('\n')).toBeGreaterThan(0);
+        for (const finding of found) {
+          expect(finding.message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
+        }
+      },
+    );
+
+    it('reports the detekt message each case records and the hint that the gate adds', () => {
+      const result = diffOnce('one-way-banned');
+
+      for (const testCase of kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE)) {
+        const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+        const recorded = addOneWayHint({
+          tool: 'detekt',
+          rule: testCase.rule,
+          message: expectedMessage(testCase, 'banned'),
+        });
+
+        expect(finding.message).toBe(recorded.message);
+      }
+    });
+
+    it('lets the allowed form of every case through detekt', () => {
+      const result = diffOnce('one-way-allowed');
+
+      expect(fromTool(result.newEnforceable, 'detekt')).toEqual([]);
+    });
+
+    it('does not report the suppressed finding twice: the suppression is the finding', () => {
+      const result = diffOnce('one-way-banned');
+      const suppression = kotlinRuleCases.find(({ rule }) => rule === SUPPRESSION_RULE);
+
+      expect(detektFindingsOf(result.newEnforceable, suppression).map(({ rule }) => rule)).toEqual([
+        SUPPRESSION_RULE,
+      ]);
+    });
+
+    it('keeps every one-way rule on when the project config switches rulesets off, lowers severities or excludes paths, and still runs with plugin rulesets', () => {
+      const result = diffOnce('one-way-hostile-config');
+      const missing = kotlinRuleCases
+        .filter(({ rule }) => rule !== SUPPRESSION_RULE)
+        .filter(
+          (testCase) =>
+            !detektFindingsOf(result.newEnforceable, testCase).some(
+              ({ rule }) => rule === testCase.rule,
+            ),
+        )
+        .map(({ id }) => id);
+
+      expect(missing).toEqual([]);
+    });
+
+    it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
+      const extras = diffOnce('one-way-hostile-config').newEnforceable.filter(({ path: file }) =>
+        file.includes('/demo/extras/'),
+      );
+
+      expect(
+        extras
+          .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
+          .map(({ path: file }) => path.basename(file))
+          .sort(),
+      ).toEqual(['Qualified.kt', 'Wildcard.kt']);
+      expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+    });
+
+    it('does not analyze a Kotlin script among the sources', () => {
+      const result = diffOnce('one-way-hostile-config');
+
+      expect(result.newFindings.some(({ path: file }) => file.endsWith('.kts'))).toBe(false);
+      expect(result.newFindings.some(({ rule }) => rule === 'gradle-failure')).toBe(false);
+    });
+
+    it('reports the suppressions that hide a detekt or ktlint rule, however they are written, and leaves compiler warnings alone', () => {
+      const result = diffOnce('one-way-hostile-config');
+
+      const suppressions = result.newEnforceable
+        .filter(({ rule, path: file }) => rule === SUPPRESSION_RULE && file.includes('/extras/'))
+        .map(({ path: file, identity }) => `${path.basename(file)} ${identity}`);
+
+      expect(suppressions.toSorted()).toEqual([
+        'Hidden.kt suppress:UnsafeCallOnNullableType',
+        'Hidden.kt suppress:ktlint:standard:indent',
+      ]);
+    });
+
+    it('lifts a rule for the paths of an exception in nitpicker.config.json only', () => {
+      git('checkout', '-q', 'one-way-banned');
+      const exception = (testCase) => ({
+        rule: testCase.rule,
+        glob: fixturePath(testCase, 'banned'),
+      });
+      const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
+        kotlinRuleCases.find((testCase) => testCase.id === id),
+      );
+      const result = runJavaDiff({
+        repositoryRoot: repository,
+        requestedBaseRef: 'main',
+        gradle,
+        policy: { ...kotlinPolicy, exceptions: [exception(scopeRun)] },
+      });
+
+      expect(detektFindingsOf(result.newEnforceable, scopeRun)).toEqual([]);
+      expect(detektFindingsOf(result.newEnforceable, scopeWith)).toHaveLength(1);
+    });
   });
 
   it('reports a Gradle failure as a tool error instead of throwing', () => {
