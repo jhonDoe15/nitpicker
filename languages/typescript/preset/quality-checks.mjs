@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
+import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
 import { resolveLayout } from './layout.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
@@ -337,17 +338,7 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: [
-        'languages/typescript/preset/defaults/jscpd.json',
-        'languages/typescript/preset/duplicates/normalize.mjs',
-        'languages/typescript/preset/tool-configs.mjs',
-        'core/tooling/jscpd/import-only.mjs',
-        'core/tooling/jscpd/jscpd-clones.mjs',
-        'shared/rules/duplicates.mjs',
-        'core/tooling/jscpd/import-only/script-imports.mjs',
-        'core/tooling/jscpd/skipped-folders.mjs',
-        JAVASCRIPT_PRESET_FILE,
-      ],
+      configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
     {
       name: 'dead-code',

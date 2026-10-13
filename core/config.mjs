@@ -22,10 +22,20 @@ import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
 const OPTIONAL_VALIDATORS = [
   ['thresholds', validateThresholds],
-  ['exclude', (exclude) => validateStringArray(exclude, 'exclude')],
+  [
+    'exclude',
+    (exclude) => {
+      validateStringArray(exclude, 'exclude');
+    },
+  ],
   ['layout', validateLayout],
   ['exceptions', validateExceptions],
-  ['legacyInventory', (inventory) => validateProjectRelativePath(inventory, 'legacyInventory')],
+  [
+    'legacyInventory',
+    (inventory) => {
+      validateProjectRelativePath(inventory, 'legacyInventory');
+    },
+  ],
   ['duplicates', validateDuplicates],
   ['analyzers', validateCustomAnalyzers],
   ['tools', validateTools],
