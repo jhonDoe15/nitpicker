@@ -86,6 +86,8 @@ const enforceable = (result) =>
       .filter(({ classification }) => classification === 'enforceable'),
   );
 
+const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
+
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
@@ -173,6 +175,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'src/demo/rules.py': ONE_WAY_VIOLATIONS,
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
+        disable: ['mutation'],
         python: {
           exceptions: [
             { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
@@ -277,7 +280,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'type-error');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
+    expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
     expect(result.text).toMatch(/Fix the type; inline ignores are banned/);
   });
 
@@ -285,7 +288,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'one-way');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual([
+    expect(withoutMutants(enforceable(result))).toEqual([
       'python-rules frozen-dataclass rules.py',
       'python-rules no-inline-suppression rules.py',
       'ruff PTH118 rules.py',
@@ -300,9 +303,10 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'excepted');
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(enforceable(result)).toEqual([]);
+    expect(withoutMutants(enforceable(result))).toEqual([]);
     expect(result.json('summary.json').configOverrides).toEqual([
       'preset: "python"',
+      'disable: ["mutation"]',
       'exception: {"rule":"PTH118","paths":["src/demo/rules.py"],"reason":"fixture"}',
       'exception: {"rule":"frozen-dataclass","paths":["src/demo/*.py"],"reason":"fixture"}',
       'exception: {"rule":"no-inline-suppression","paths":["src/**"],"reason":"fixture"}',
@@ -316,28 +320,28 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.json('summary.json').tools[0].version).toMatch(
       /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
-    expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
+    expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
   });
 
   it('keeps checking when the project config switches mypy off for the file', () => {
     const result = gate(project, 'weakened-mypy');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
+    expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
   });
 
   it('keeps checking when the project config ignores or excludes the file in pyright', () => {
     const result = gate(project, 'weakened-pyright');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
+    expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
   });
 
   it('fails code hidden from the checkers with @no_type_check', () => {
     const result = gate(project, 'hidden-from-types');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual(['python-rules no-type-check hidden.py']);
+    expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
 
