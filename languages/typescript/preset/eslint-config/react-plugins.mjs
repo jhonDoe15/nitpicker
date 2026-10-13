@@ -1,11 +1,15 @@
 import accessibility from 'eslint-plugin-jsx-a11y-x';
 import hooks from 'eslint-plugin-react-hooks';
 import reactX from 'eslint-plugin-react-x';
-import { accessibilityRuleNames } from './react-rules.mjs';
-import { withHint } from './rule-hints.mjs';
-
-const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
-const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
+import testingLibrary from 'eslint-plugin-testing-library';
+import { inReactTestFilesOnly } from '../eslint-plugin/rules/react-test-files.mjs';
+import {
+  accessibilityRuleNames,
+  EXCEPTION_HINT,
+  GENERAL_HINT,
+  testingLibraryHints,
+} from './react-rules.mjs';
+import { withHint, withoutFixes } from './rule-hints.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
@@ -48,3 +52,17 @@ export const accessibilityRuleOptions = Object.fromEntries(
     ];
   }),
 );
+
+function testingLibraryRule(name, hint) {
+  const rule = withoutFixes(withHint(testingLibrary.rules[name], hint));
+  return { ...rule, create: inReactTestFilesOnly(rule.create) };
+}
+
+export const testingLibraryPlugin = {
+  rules: Object.fromEntries(
+    Object.entries(testingLibraryHints).map(([name, hint]) => [
+      name,
+      testingLibraryRule(name, hint),
+    ]),
+  ),
+};

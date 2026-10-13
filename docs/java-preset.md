@@ -281,8 +281,8 @@ identity when the value changes: editing such a line counts as a resolved plus a
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
   `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild`, ignoring `build`, `generated`,
-  `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
+  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
+  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
   `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name

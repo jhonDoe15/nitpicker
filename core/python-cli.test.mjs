@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { jscpdVersion } from '../languages/java/adapters/java-duplicates.mjs';
 import { runCli } from './cli.mjs';
 
 const temporaryRoots = [];
@@ -113,6 +114,41 @@ function summaryOf({ output }) {
   return output.out.replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
 }
 
+const CLONE_SOURCE = [
+  'def order_total(lines, discount):',
+  '    total = 0',
+  '    for line in lines:',
+  '        if line.price > 0 and line.quantity > 0:',
+  '            total += line.price * line.quantity',
+  '        else:',
+  '            total -= discount',
+  '    if total < 0 and discount > 0:',
+  '        total = 0',
+  '    return total',
+  '',
+].join('\n');
+
+const BROKEN_CONTRACT = [
+  'Layers BROKEN',
+  '',
+  'Contracts: 0 kept, 1 broken.',
+  '',
+  'Broken contracts',
+  '----------------',
+  '',
+  'Layers',
+  '------',
+  '',
+  'demo is not allowed to import demo.b:',
+  '',
+  '- demo.a -> demo.b (l.4)',
+  '',
+].join('\n');
+
+function newFindings(result, rule) {
+  return result.json('new-findings.json').filter((finding) => finding.rule === rule);
+}
+
 function run(root, extra = []) {
   const output = { out: '', err: '' };
   const reports = path.join(temporaryRoot('nitpicker-python-out-'), 'reports');
@@ -157,7 +193,9 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
-    expect(result.json('summary.json').tools[0].version).toBe('ruff@0.9.9;coverage@7.6.1;unittest');
+    expect(result.json('summary.json').tools[0].version).toBe(
+      `ruff@0.9.9;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
+    );
   });
 
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
@@ -290,6 +328,134 @@ describe('nitpicker with "preset": "python"', () => {
     );
   });
 
+  it('fails on a new duplicate and keeps a moved legacy duplicate baselined', () => {
+    const root = pythonRepository({ 'src/demo/a.py': CLONE_SOURCE });
+    write(root, { 'src/demo/b.py': CLONE_SOURCE });
+    commit(root, 'copy a module');
+
+    const failed = run(root);
+
+    expect(failed.exitCode, failed.text).toBe(1);
+    expect(newFindings(failed, 'duplicate-clone')).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/demo/a.py',
+        identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
+        message:
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py to "exclude" in nitpicker.config.json.',
+        classification: 'enforceable',
+        location: { line: 1 },
+      },
+    ]);
+
+    const legacy = pythonRepository({
+      'src/demo/a.py': CLONE_SOURCE,
+      'src/demo/b.py': CLONE_SOURCE,
+    });
+    write(legacy, { 'src/demo/a.py': `import os\n\n\n${CLONE_SOURCE}` });
+    commit(legacy, 'move the legacy duplicate');
+
+    expect(run(legacy).exitCode).toBe(0);
+  });
+
+  it('fails when a new import makes a stable package depend on a less stable one', () => {
+    const modules = Object.fromEntries(
+      [
+        'base/__init__',
+        'base/core',
+        'feature/__init__',
+        'feature/a',
+        'feature/b',
+        'other/__init__',
+        'other/o',
+      ].map((name) => [`src/${name}.py`, '']),
+    );
+    const scan = (imports) => `${JSON.stringify(imports)}\n`;
+    const from = (module, ...names) => ({ level: 0, module, names });
+    const feature = {
+      'src/feature/a.py': [from('base', 'core')],
+      'src/feature/b.py': [from('base', 'core')],
+      'src/other/o.py': [from('feature', 'a')],
+    };
+    const root = pythonRepository({ ...modules, 'import-scan.json': scan(feature) });
+    expect(run(root).exitCode).toBe(0);
+    write(root, {
+      'import-scan.json': scan({ ...feature, 'src/base/core.py': [from('other', 'o')] }),
+    });
+    commit(root, 'depend on the volatile package');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(newFindings(result, 'stability-direction')).toEqual([
+      {
+        tool: 'coupling',
+        rule: 'stability-direction',
+        path: 'src/base/__init__.py',
+        identity: 'package-edge:base->other',
+        message:
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
+    ]);
+  });
+
+  it('fails on a new broken import-linter contract when the project has contracts', () => {
+    const root = pythonRepository({
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'lint-imports.txt': 'Contracts: 1 kept, 0 broken.\n',
+    });
+    write(root, { 'lint-imports.txt': BROKEN_CONTRACT });
+    commit(root, 'break the contract');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(newFindings(result, 'contract-broken')).toEqual([
+      {
+        tool: 'import-linter',
+        rule: 'contract-broken',
+        path: 'src/demo/a.py',
+        identity: 'contract:Layers:demo.a -> demo.b',
+        message:
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        classification: 'enforceable',
+        location: { line: 4 },
+      },
+    ]);
+  });
+
+  it('skips import-linter when the config turns it off', () => {
+    const root = pythonRepository({
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
+    });
+    write(root, { 'lint-imports.txt': BROKEN_CONTRACT });
+    commit(root, 'break the contract');
+
+    expect(run(root).exitCode).toBe(0);
+  });
+
+  it('reports an import-linter run that checked nothing as a tool error', () => {
+    const root = pythonRepository({ '.importlinter': '[importlinter]\nroot_package = demo\n' });
+    write(root, { 'lint-imports.txt': 'Could not find .importlinter.\n' });
+    commit(root, 'make the tool fail');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json')).toEqual([
+      {
+        tool: 'python',
+        snapshot: 'head',
+        rule: 'import-linter-failed',
+        path: '.',
+        message: 'lint-imports could not check the contracts:\nCould not find .importlinter.',
+      },
+    ]);
+  });
+
   it('gates a snapshot with --all', () => {
     const root = pythonRepository();
     const reports = path.join(temporaryRoot('nitpicker-python-snapshot-'), 'reports');
@@ -313,14 +479,28 @@ describe('nitpicker with "preset": "python"', () => {
         'Nitpicker quality snapshot',
         'Status: violations',
         'Enforceable findings: 1',
-        'Descriptive findings: 0',
+        'Descriptive findings: 12',
         'Tool errors: 0',
         '',
         'Per-tool counts:',
-        'python: total=1 enforceable=1 descriptive=0',
+        'python: total=13 enforceable=1 descriptive=12',
         '',
         'Enforceable findings:',
         'ruff/F401 src/demo/a.py:1 `os` imported but unused',
+        '',
+        'Descriptive findings:',
+        'coupling/coupling . dependencies summary',
+        'coupling/coupling . modules summary',
+        'coupling/coupling . packages summary',
+        'coupling/package-coupling . connectedComponents for package demo',
+        'coupling/package-coupling . fanIn for package demo',
+        'coupling/package-coupling . fanOut for package demo',
+        'coupling/package-coupling . internalEdges for package demo',
+        'coupling/package-coupling . largestComponentShare for package demo',
+        'coupling/package-coupling . modules for package demo',
+        'coupling/module-coupling src/demo/a.py fanIn for src/demo/a.py',
+        'coupling/module-coupling src/demo/a.py fanOut for src/demo/a.py',
+        'coupling/module-coupling src/demo/a.py totalCoupling for src/demo/a.py',
         '',
       ].join('\n'),
     );

@@ -46,3 +46,28 @@ export const reactRuleIds = [
   'react-x/no-class-component',
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
+
+export const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
+export const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
+
+export const testingLibraryHints = {
+  'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,
+  'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.${GENERAL_HINT}`,
+  'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
+  'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and \`toHaveFocus()\` for focus.${GENERAL_HINT}`,
+  'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
+  'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
+};
+
+const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
+  (name) => `testing-library/${name}`,
+);
+
+export const reactTestRuleIds = [
+  'nitpicker/react-test-no-implementation-details',
+  ...testingLibraryRuleIds,
+];
+
+export const reactNativeTestingPackage = '@testing-library/react-native';
+
+export const testingLibrarySettings = { 'testing-library/utils-module': 'test-utils' };
