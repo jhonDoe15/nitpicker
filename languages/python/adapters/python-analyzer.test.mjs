@@ -40,6 +40,7 @@ describe('Python analyzer', () => {
       'mypy',
       'pyright',
       'python-rules',
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',

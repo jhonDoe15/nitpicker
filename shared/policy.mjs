@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java', 'python'];
+export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -55,7 +55,10 @@ export function mutantRuleId(status) {
  * if the base had it. `tools` limits a rule to findings from those tools (the TypeScript check of
  * the same name keys its identity on branch source instead).
  */
-export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] }];
+export const TOUCHED_CODE_RULES = [
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
+];
 
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
@@ -68,6 +71,8 @@ export const MESSAGES = {
     '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
   crapCoverageUnknown:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+  crapCoverageUnknownPlain:
+    '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
 };
 
@@ -107,6 +112,7 @@ export const HELD_MESSAGES = {
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
+const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -117,90 +123,90 @@ export const RULES = [
     id: RULE_IDS.functionLines,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.lines.limit)} lines`,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.functionStatements,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.statements.limit)} statements`,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.functionControlNesting,
     check: 'structure',
     limit: `control nesting deeper than ${String(FUNCTION_STRUCTURE_LIMITS.maxControlNesting.limit)}`,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.functionParameters,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.parameters.limit)} parameters`,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
     limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(ALL, false),
   },
   {
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: ALL,
+    enforcedBy: withKotlin(ALL, false),
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: ALL,
+    enforcedBy: withKotlin(ALL, false),
   },
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: ALL,
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: ALL,
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',
     limit: 'a test must exercise production runtime code',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   {
     id: RULE_IDS.typeOnlyProductionDependency,
     check: 'test-runtime',
     limit: 'a test must exercise production runtime code',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   {
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: BOTH,
+    enforcedBy: withKotlin(BOTH, true),
   },
   {
     id: RULE_IDS.publicAlternativeBypass,
     check: 'entry-points',
     limit: 'none: importing around a public entry point fails',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
 ];

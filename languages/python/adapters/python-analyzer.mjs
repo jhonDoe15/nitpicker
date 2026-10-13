@@ -87,6 +87,7 @@ export function createPythonAnalyzer(settings = {}) {
       'mypy',
       'pyright',
       RULES_TOOL,
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',

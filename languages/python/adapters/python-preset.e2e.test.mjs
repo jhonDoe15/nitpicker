@@ -754,6 +754,8 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
+      'tests/test_bulk.py':
+        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    empty = type("Line", (), {"price": 0, "quantity": 1})\n    assert bulk.bulk_total([line, empty], 5) == 1\n    assert bulk.bulk_total([empty], 5) == 0\n',
     });
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
@@ -833,5 +835,134 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 
     expect(newRules(result)).toEqual(['coupling stability-direction']);
     expect(result.json('summary.json').tools[0].version).not.toContain('import-linter');
+  });
+});
+
+const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
+const BRANCH_CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
+const signsTest = (...assertions) =>
+  `from demo import signs\n\n\n${assertions
+    .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
+    .join('\n\n')}`;
+const PRAGMAS = [
+  'import sys',
+  '',
+  '',
+  'def hidden(x):  # pragma: no cover',
+  '    if x:',
+  '        return 1',
+  '    return 2',
+  '',
+  '',
+  'if __name__ == "__main__":',
+  '    sys.exit(hidden(1))',
+  '',
+].join('\n');
+const SIGN_POSITIVE = ['sign_positive', 'signs.sign(5) == 1'];
+const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
+const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
+const CLAMP_HIGH = ['clamp_high', 'signs.clamp(50) == 10'];
+
+describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
+  let project;
+
+  const branchFindings = (result) =>
+    result
+      .json('new-findings.json')
+      .filter(({ rule }) => rule === 'changed-branch-coverage')
+      .map(({ path: file, location }) => `${file}:${String(location.line)}`);
+
+  beforeAll(() => {
+    project = repository();
+    cpSync(fixture, project, { recursive: true });
+    write(project, {
+      'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+      'src/demo/signs.py': SIGNS,
+      'tests/test_signs.py': signsTest(SIGN_POSITIVE),
+    });
+    git(project, 'init', '-q', '-b', 'main');
+    git(project, 'add', '-A');
+    git(project, 'commit', '-q', '-m', 'base with an untested branch in sign');
+    command(project, 'uv', ['venv', '-q', '.venv']);
+    command(project, 'uv', [
+      'pip',
+      'install',
+      '-q',
+      '--python',
+      '.venv',
+      '-e',
+      '.',
+      'coverage',
+      'pytest',
+    ]);
+    commitBranch(project, 'shifted', { 'src/demo/signs.py': `"""Signs."""\n\n\n${SIGNS}` });
+    commitBranch(project, 'edited', {
+      'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
+    });
+    commitBranch(project, 'edited-and-tested', {
+      'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
+      'tests/test_signs.py': signsTest(SIGN_POSITIVE, SIGN_NEGATIVE),
+    });
+    commitBranch(project, 'new-untested', {
+      'src/demo/signs.py': `${SIGNS}\n\n${BRANCH_CLAMP}`,
+      'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW),
+    });
+    commitBranch(project, 'pragmas', {
+      'src/demo/pragmas.py': PRAGMAS,
+      'tests/test_pragmas.py':
+        'from demo import pragmas\n\n\ndef test_imported():\n    assert pragmas.hidden\n',
+    });
+    commitBranch(project, 'new-tested', {
+      'src/demo/signs.py': `${SIGNS}\n\n${BRANCH_CLAMP}`,
+      'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW, CLAMP_HIGH),
+    });
+  });
+
+  afterAll(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps an old uncovered branch baselined when its line moves', () => {
+    const result = gate(project, 'shifted');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(branchFindings(result)).toEqual([]);
+  });
+
+  it('fails an uncovered branch whose line was edited', () => {
+    const result = gate(project, 'edited');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(branchFindings(result)).toEqual(['src/demo/signs.py:2']);
+    expect(result.text).toMatch(
+      /Branch coverage is 50\.00%; minimum is 95%\. Not taken: the branch to line 3/,
+    );
+  });
+
+  it('passes an edited branch once a test takes both outcomes', () => {
+    const result = gate(project, 'edited-and-tested');
+
+    expect(result.exitCode, result.text).toBe(0);
+  });
+
+  it('fails a new branch no test takes, and leaves the old gap alone', () => {
+    const result = gate(project, 'new-untested');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(branchFindings(result)).toEqual(['src/demo/signs.py:8']);
+  });
+
+  it('honors no pragma, but leaves the main guard alone', () => {
+    const result = gate(project, 'pragmas');
+
+    expect(branchFindings(result)).toEqual(['src/demo/pragmas.py:5']);
+  });
+
+  it('passes a new branch whose outcomes are both tested', () => {
+    const result = gate(project, 'new-tested');
+
+    expect(result.exitCode, result.text).toBe(0);
   });
 });
