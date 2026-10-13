@@ -12,6 +12,10 @@ import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expan
 export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
+const NATIVE_LINE_LENGTH = {
+  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+  kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
+};
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),
 );
@@ -21,13 +25,16 @@ export function validateJavaConfig(config) {
     (key) => config[key] !== undefined && !isLiftedKey(config, key),
   );
   if (unsupported.length > 0) {
+    const preset = config.preset;
+    const notSupported = TYPESCRIPT_ONLY_KEYS.join(', ');
+    const liftable = JAVA_EXCEPTION_RULES.join(', ');
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${TYPESCRIPT_ONLY_KEYS.join(', ')}, except exceptions for ${JAVA_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout and ESLint rules, which the ${preset} preset does not have. Not supported with ${preset}: ${notSupported}, except exceptions for ${liftable}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
-  if (config.preset === 'java' && config.thresholds?.lineLength !== undefined) {
+  if (config.thresholds?.lineLength !== undefined) {
     throw configError(
-      '"thresholds.lineLength" is not supported with "preset": "java": Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+      `"thresholds.lineLength" is not supported with "preset": "${config.preset}": ${NATIVE_LINE_LENGTH[config.preset]}`,
     );
   }
 }

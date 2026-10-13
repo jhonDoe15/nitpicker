@@ -1,9 +1,10 @@
 // File limits: lines per file, characters per line and code files per folder, from neutral inputs.
 //
 // Input, produced by a language adapter from its own layout: `CodeFile[]`
-//   CodeFile = { path: string, kind: 'source' | 'test', text: string }   // project-relative path
+//   CodeFile = { path: string, kind: 'source' | 'test', text: string, countsInFolder?: boolean }
 // `path` lists only the code files of the language (never config or assets), so a folder is counted
-// only for the code it holds. Source and test files are counted separately per folder, and test files
+// only for the code it holds (a file with `countsInFolder: false`, such as a package marker, is
+// checked but not counted). Source and test files are counted separately per folder, and test files
 // under a `fixtures` (or `__fixtures__`) folder are test data, not checked.
 //
 // Every finding carries a ratchet, so code already over a limit on the base fails only when it gets
@@ -158,7 +159,7 @@ function countedLength(text) {
 
 function folderFindings(files, context) {
   const counts = new Map();
-  for (const file of files) {
+  for (const file of files.filter(({ countsInFolder }) => countsInFolder !== false)) {
     const folder = path.posix.dirname(file.path);
     if (!context.isExcepted(RULE_IDS.folderFiles, file.path, folder)) {
       const key = `${folder}\0${file.kind}`;

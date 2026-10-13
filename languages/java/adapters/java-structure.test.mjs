@@ -175,7 +175,7 @@ describe('Java file limits', () => {
     ]);
   });
 
-  it('checks Kotlin and Java files of a Kotlin project, line length included', () => {
+  it('checks Kotlin and Java files of a Kotlin project and leaves line length to detekt', () => {
     const kotlinManifest = {
       ...manifest,
       kotlinSourceRoots: ['src/main/kotlin', 'src/main/java'],
@@ -202,10 +202,21 @@ describe('Java file limits', () => {
           policy: { thresholds: { folderFiles: 4 } },
         }),
       ).map(([rule, findingPath, identity]) => [rule, findingPath, identity]),
-    ).toEqual([
-      [RULE_IDS.lineLength, 'src/main/kotlin/demo/Wide.kt', expect.stringMatching(/^line:/u)],
-      [RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5'],
-    ]);
+    ).toEqual([[RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5']]);
+  });
+
+  it('skips generated roots under build/ and roots outside the project', () => {
+    writeClasses('build/generated/src', 7);
+    writeClasses('src/main/java/demo', 2);
+
+    expect(
+      readJavaFileLimitFindings(projectRoot, {
+        manifest: {
+          sourceRoots: ['build/generated/src', 'src/main/java', '..'],
+          testSourceRoots: [],
+        },
+      }),
+    ).toEqual([]);
   });
 
   it('skips source roots that do not exist', () => {

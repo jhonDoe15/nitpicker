@@ -6,6 +6,8 @@ import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs'
 const SKIPPED_DIRECTORIES = new Set([
   '__pycache__',
   'venv',
+  'env',
+  'migrations',
   'node_modules',
   'site-packages',
   'build',
@@ -47,7 +49,11 @@ export function pythonFileLimitFindings(
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const entries = pythonFiles(projectRoot)
     .filter((file) => !excluders.some((matcher) => matcher.test(file)))
-    .map((file) => ({ path: file, kind: TEST_FILE.test(file) ? 'test' : 'source' }));
+    .map((file) => ({
+      path: file,
+      kind: TEST_FILE.test(file) ? 'test' : 'source',
+      countsInFolder: path.posix.basename(file) !== '__init__.py',
+    }));
   return collectFileLimitFindings(projectRoot, entries, {
     analyzerName: 'structure',
     thresholds: fileLimits,

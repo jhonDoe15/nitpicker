@@ -45,6 +45,9 @@ describe('Python file limits', () => {
       'venv/lib/a.py',
       'venv/lib/b.py',
       'venv/lib/c.py',
+      'env/lib/a.py',
+      'env/lib/b.py',
+      'env/lib/c.py',
       'src/app/__pycache__/a.py',
       'src/app/__pycache__/b.py',
       'src/app/__pycache__/c.py',
@@ -53,6 +56,12 @@ describe('Python file limits', () => {
     expect(findingsWith({ fileLimits: limits })).toEqual([
       ['folder-files-limit', 'tests', 'folder-files:test:3'],
     ]);
+  });
+
+  it('leaves package markers out of the folder count', () => {
+    write(['pkg/__init__.py', 'pkg/a.py', 'pkg/b.py']);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([]);
   });
 
   it('checks file and line length with the test-file limit for tests', () => {

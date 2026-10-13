@@ -4,7 +4,6 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../core/diff/compare.mjs';
 import { parseFinding } from '../../core/diff/finding-schema.mjs';
-import { directoryMoves } from '../../core/diff/renames.mjs';
 import { collectFileLimitFindings, evaluateFileLimits } from './file-limits.mjs';
 
 const lines = (count, text = 'x') => `${Array.from({ length: count }, () => text).join('\n')}\n`;
@@ -339,7 +338,6 @@ describe('comparison against the base', () => {
         baseFindings: evaluate(base).map((finding) => parseFinding(finding)),
         headFindings: evaluate(head).map((finding) => parseFinding(finding)),
         baseToHeadRenames: new Map(renames),
-        baseToHeadDirectories: directoryMoves(renames),
       });
 
     it('follows a folder over the limit to its new path and fails it there only when it grows', () => {
@@ -356,6 +354,39 @@ describe('comparison against the base', () => {
       const renames = renamed('src/old', 'src/new', 2);
       const head = [...inFolder('src/old', 2, 12), ...inFolder('src/new', 0, 2)];
       expect(compareMoved(inFolder('src/old', 0, 12), head, renames).newFindings).toEqual([]);
+    });
+
+    it('fails a new folder over the limit that only a few of the files moved to', () => {
+      const renames = renamed('src/old', 'src/new', 2);
+      const head = [
+        ...inFolder('src/old', 2, 8),
+        ...inFolder('src/new', 0, 2),
+        ...inFolder('src/new', 20, 26),
+      ];
+      const result = compareMoved(inFolder('src/old', 0, 8), head, renames);
+      expect(result.newFindings.map(({ path: folder }) => folder)).toEqual(['src/new']);
+    });
+
+    it('does not move a subfolder along with its parent unless its own files moved', () => {
+      const renames = renamed('src/a', 'src/b', 1);
+      const base = [source('src/a/f0.ts'), ...inFolder('src/a/sub', 0, 8)];
+      const head = [
+        source('src/b/f0.ts'),
+        ...inFolder('src/a/sub', 0, 3),
+        ...inFolder('src/b/sub', 10, 18),
+      ];
+      expect(
+        compareMoved(base, head, renames).newFindings.map(({ path: folder }) => folder),
+      ).toEqual(['src/b/sub']);
+    });
+
+    it('follows files moved from the project root into a folder', () => {
+      const renames = Array.from({ length: 8 }, (_, index) => [
+        `f${String(index)}.ts`,
+        `src/f${String(index)}.ts`,
+      ]);
+      const base = Array.from({ length: 8 }, (_, index) => source(`f${String(index)}.ts`));
+      expect(compareMoved(base, inFolder('src', 0, 8), renames).newFindings).toEqual([]);
     });
 
     it('still fails a folder the moved files push over the limit', () => {

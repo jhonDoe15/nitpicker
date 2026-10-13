@@ -1,6 +1,6 @@
 import { comparisonKey } from './fingerprint.mjs';
 import { normalizeGitPath } from './git.mjs';
-import { mapDirectory } from './renames.mjs';
+import { folderMoves, mainDestination } from './renames.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -71,12 +71,13 @@ function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directorie
     groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, renames, directories)),
     { touchedCode, matchedBase: new Set() },
   );
+  const moves = folderMoves(renames);
   const movedFolders = groupBaseByRatchetKey(
     unmatchedBase.filter(
       (baseFinding) =>
         baseFinding.ratchet?.pathIsFolder === true && !atSamePath.matchedBase.has(baseFinding),
     ),
-    (finding) => movedFolderKey(finding, directories),
+    (finding) => movedFolderKey(finding, moves),
   );
   const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
     touchedCode,
@@ -112,9 +113,13 @@ function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) 
   return result;
 }
 
-function movedFolderKey(finding, directories) {
-  const folder = normalizeGitPath(finding.path);
-  return ratchetKey({ ...finding, path: mapDirectory(folder, directories) }, new Map(), new Map());
+function movedFolderKey(finding, moves) {
+  const destinations = moves.get(normalizeGitPath(finding.path));
+  const destination = mainDestination(destinations);
+  const movedFiles = destination === undefined ? 0 : destinations.get(destination);
+  return movedFiles * 2 > finding.ratchet.value
+    ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
+    : undefined;
 }
 
 function closestCandidate(candidates, value) {
@@ -152,7 +157,9 @@ function groupBaseByRatchetKey(unmatchedBase, keyOf) {
   for (const baseFinding of unmatchedBase) {
     if (baseFinding.ratchet !== undefined) {
       const key = keyOf(baseFinding);
-      baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
+      if (key !== undefined) {
+        baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
+      }
     }
   }
   return baseByRatchet;

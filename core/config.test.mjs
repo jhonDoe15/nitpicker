@@ -149,12 +149,21 @@ describe('config file', () => {
       });
     });
 
-    it('accepts an exception for a file limit', () => {
-      const fileLimit = { ...exception, rule: 'line-length-limit' };
+    it('accepts an exception for a file limit and leaves line length to detekt', () => {
+      const fileLimit = { ...exception, rule: 'folder-files-limit' };
       expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
         preset: 'kotlin',
         exceptions: [fileLimit],
       });
+      expect(() =>
+        validateConfig({
+          preset: 'kotlin',
+          exceptions: [{ ...exception, rule: 'line-length-limit' }],
+        }),
+      ).toThrow(/is not a rule with exceptions/u);
+      expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
+        'detekt checks Kotlin line length',
+      );
     });
 
     it('names the rules that can be lifted when the rule is another detekt rule', () => {

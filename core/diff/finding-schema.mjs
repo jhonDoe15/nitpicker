@@ -110,13 +110,11 @@ function parseRatchet(value, context) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);
     }
   }
-  for (const name of RATCHET_FLAGS) {
-    if (value[name] !== undefined) {
-      if (typeof value[name] !== 'boolean') {
-        throw new TypeError(`${context}.${name} must be a boolean`);
-      }
-      ratchet[name] = value[name];
+  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
+    if (typeof value[name] !== 'boolean') {
+      throw new TypeError(`${context}.${name} must be a boolean`);
     }
+    ratchet[name] = value[name];
   }
   return ratchet;
 }
