@@ -8,6 +8,7 @@ import {
   configError,
   isNonEmptyString,
   isPlainObject,
+  validateDuplicates,
   validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
@@ -29,6 +30,7 @@ const KEYS = [
   'react',
   'analyzers',
   'legacyInventory',
+  'duplicates',
   'python',
   'tools',
   'kotlin',
@@ -127,6 +129,9 @@ function validateOptional(config) {
   }
   if (config.legacyInventory !== undefined) {
     validateProjectRelativePath(config.legacyInventory, 'legacyInventory');
+  }
+  if (config.duplicates !== undefined) {
+    validateDuplicates(config.duplicates);
   }
   if (config.analyzers !== undefined) {
     validateCustomAnalyzers(config.analyzers);

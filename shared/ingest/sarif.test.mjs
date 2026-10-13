@@ -1,10 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../core/diff/finding-schema.mjs';
 import { ingestSarif, ingestSarifText, normalizeUri } from './sarif.mjs';
 
-const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
+const fixture = (name) =>
+  readFileSync(
+    path.resolve(import.meta.dirname, '../../languages/java/ingest/fixtures', name),
+    'utf8',
+  );
 const options = { root: '/work/repo' };
 const FINDING_KEYS = new Set([
   'tool',

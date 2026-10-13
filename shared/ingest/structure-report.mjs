@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { hash } from '../../../shared/rules/finding-helpers.mjs';
-import { evaluateStructure } from '../../../shared/rules/structure.mjs';
+import { hash } from '../rules/finding-helpers.mjs';
+import { evaluateStructure } from '../rules/structure.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';

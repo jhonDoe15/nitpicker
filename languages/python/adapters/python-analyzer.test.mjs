@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import {
   configurationFiles,
@@ -70,7 +70,7 @@ describe('Python analyzer', () => {
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/python-test-runner.mjs',
       'languages/python/ingest/coverage-json.mjs',
-      'languages/java/ingest/sarif.mjs',
+      'shared/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
       'languages/java/gradle/nitpicker.init.gradle',

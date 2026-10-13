@@ -1,4 +1,8 @@
-import { coverageMetricFinding, normalizeReportPath, uncoveredFinding } from './common.mjs';
+import {
+  coverageMetricFinding,
+  normalizeReportPath,
+  uncoveredFinding,
+} from '../../../shared/ingest/common.mjs';
 
 export function ingestLcov(text, options = {}) {
   const tool = options.tool ?? 'lcov';

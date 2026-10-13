@@ -29,7 +29,8 @@ import {
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
-import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
+import { withoutImportOnlyClones } from '../../../core/tooling/jscpd/import-only.mjs';
+import { jscpdClones } from '../../../core/tooling/jscpd/jscpd-clones.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
@@ -713,8 +714,9 @@ export function normalizeDuplicates(
   analyzerName,
   { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
 ) {
-  const clones = jscpdClones(report, configuredPaths).filter(
-    (clone) => !isRepeatedTestData(clone, isTestFile),
+  const clones = withoutImportOnlyClones(
+    jscpdClones(report, configuredPaths).filter((clone) => !isRepeatedTestData(clone, isTestFile)),
+    'typescript',
   );
   return evaluateDuplicates(clones, analyzerName);
 }

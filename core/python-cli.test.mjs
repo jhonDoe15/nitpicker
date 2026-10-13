@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
-import { jscpdVersion } from '../languages/java/adapters/java-duplicates.mjs';
+import { jscpdVersion } from './tooling/jscpd/run-jscpd.mjs';
 import { runCli } from './cli.mjs';
 
 const temporaryRoots = [];
@@ -788,7 +788,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py to "exclude" in nitpicker.config.json.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py or src/demo/b.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },

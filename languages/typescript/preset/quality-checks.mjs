@@ -344,6 +344,11 @@ function repositoryChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/jscpd.json',
         'languages/typescript/preset/tool-configs.mjs',
+        'core/tooling/jscpd/import-only.mjs',
+        'core/tooling/jscpd/jscpd-clones.mjs',
+        'shared/rules/duplicates.mjs',
+        'core/tooling/jscpd/import-only/script-imports.mjs',
+        'core/tooling/jscpd/skipped-folders.mjs',
         JAVASCRIPT_PRESET_FILE,
       ],
     },

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
-import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
+import { configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -119,6 +119,40 @@ describe('configureJavaAnalyzer', () => {
   });
 });
 
+describe('the duplicate folder list', () => {
+  const context = {
+    projectRoot: '/p',
+    toolRoot: '/t',
+    snapshot: 'head',
+    projectPolicyRoot: tmpdir(),
+    baselineRoot: tmpdir(),
+  };
+
+  it('reaches the runner, also when it is empty, and changes the hash', () => {
+    const analyzer = createJavaAnalyzer();
+    const listed = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: ['target'] } });
+    const empty = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: [] } });
+    const policyOf = (configured) =>
+      parseRunnerArguments(configured.createInvocation(context).args.slice(1)).policy;
+
+    expect(policyOf(listed).duplicateSkippedFolders).toEqual(['target']);
+    expect(policyOf(empty).duplicateSkippedFolders).toEqual([]);
+    expect(new Set([analyzer, listed, empty].map((entry) => entry.configurationHash)).size).toBe(3);
+    expect(configureJavaAnalyzer(analyzer, { duplicates: {} })).toBe(analyzer);
+  });
+
+  it('is left unset without the option and rejected when it is not a list of names', () => {
+    expect(
+      parseRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
+    ).toBeUndefined();
+    for (const value of ['"build"', '[1]', '{}']) {
+      expect(() =>
+        parseRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+      ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
+    }
+  });
+});
+
 describe('parseRunnerArguments', () => {
   it('rejects unknown options, missing values and a bad CRAP limit', () => {
     expect(() => parseRunnerArguments(['--project-root'])).toThrow(/Usage/);
@@ -189,87 +223,5 @@ describe('parseRunnerArguments', () => {
     expect(() =>
       parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
     ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
-  });
-});
-
-describe('applyJavaPolicy', () => {
-  it('drops findings under excluded globs only', () => {
-    const findings = [finding('src/main/java/gen/A.java'), finding('src/main/java/app/B.java')];
-
-    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
-    expect(applyJavaPolicy(findings, {})).toEqual(findings);
-  });
-
-  it('drops only the findings of the excepted rule under the excepted globs', () => {
-    const at = (file, rule) => ({ ...finding(file), rule });
-    const findings = [
-      at('src/Main.kt', 'detekt.style.ForbiddenMethodCall'),
-      at('src/Other.kt', 'detekt.style.ForbiddenMethodCall'),
-      at('src/Main.kt', 'detekt.style.UseDataClass'),
-    ];
-
-    expect(
-      applyJavaPolicy(findings, {
-        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
-      }),
-    ).toEqual([findings[1], findings[2]]);
-  });
-
-  it('baselines inventory sites on both snapshots, using the head inventory', () => {
-    const headRoot = inventoryRoot([allow('a.java', 1)]);
-    const findings = [finding('a.java'), finding('a.java'), finding('b.java')];
-
-    expect(
-      applyJavaPolicy(findings, {
-        legacyInventory: 'nitpicker.legacy.json',
-        policyRoot: headRoot,
-        snapshot: 'base',
-      }),
-    ).toEqual([findings[1], findings[2]]);
-  });
-
-  it('reports baseline-expansion on head when the allowance rose over base', () => {
-    const headRoot = inventoryRoot([allow('a.java', 3)]);
-    const baseRoot = inventoryRoot([allow('a.java', 1)]);
-    const options = {
-      legacyInventory: 'nitpicker.legacy.json',
-      policyRoot: headRoot,
-      baselineRoot: baseRoot,
-    };
-
-    expect(applyJavaPolicy([], { ...options, snapshot: 'head' })).toEqual([
-      expect.objectContaining({
-        tool: 'java',
-        rule: 'baseline-expansion',
-        path: 'a.java',
-        classification: 'enforceable',
-      }),
-    ]);
-    expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
-    expect(
-      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
-        ({ tool, rule }) => [tool, rule],
-      ),
-    ).toEqual([['kotlin', 'baseline-expansion']]);
-  });
-
-  it('names the tool of a baseline-expansion after the language that asks', () => {
-    const options = {
-      legacyInventory: 'nitpicker.legacy.json',
-      policyRoot: inventoryRoot([allow('a.py', 3)]),
-      baselineRoot: inventoryRoot([allow('a.py', 1)]),
-      snapshot: 'head',
-    };
-
-    expect(applyJavaPolicy([], { ...options, inventoryTool: 'python' })).toEqual([
-      {
-        tool: 'python',
-        rule: 'baseline-expansion',
-        path: 'a.py',
-        identity: expect.any(String),
-        message: 'Legacy allowance increased from 1 to 3 for Rule',
-        classification: 'enforceable',
-      },
-    ]);
   });
 });

@@ -65,7 +65,11 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
-export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
+export function resolveLayout(
+  layout = {},
+  exclude = [],
+  { javascript = false, duplicateSkippedFolders } = {},
+) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
   const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
@@ -90,6 +94,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     testRoots,
     exclude,
     excludedGlobs,
+    duplicateSkippedFolders,
     sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
     testGlobs: [
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
@@ -165,7 +170,10 @@ export function existingRoots(projectRoot, roots) {
 }
 
 export function resolveLayoutFor(policy = {}) {
-  return resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) });
+  return resolveLayout(policy.layout, policy.exclude, {
+    javascript: isJavascriptPolicy(policy),
+    duplicateSkippedFolders: policy.duplicates?.skippedFolders,
+  });
 }
 
 const defaults = resolveLayout();

@@ -7,6 +7,10 @@ import {
   JAVASCRIPT_KNIP_ENTRIES,
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
+import {
+  SCRIPT_SKIPPED_FOLDERS,
+  withSkippedFolders,
+} from '../../../core/tooling/jscpd/skipped-folders.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
@@ -32,7 +36,8 @@ export function isCustomLayout(layout) {
     JSON.stringify([layout.sourceRoots, layout.testRoots]) !==
       JSON.stringify([[DEFAULT_SOURCE_ROOT], [...DEFAULT_TEST_ROOTS]]) ||
     layout.exclude.length > 0 ||
-    (layout.entryPoints ?? []).length > 0
+    (layout.entryPoints ?? []).length > 0 ||
+    layout.duplicateSkippedFolders !== undefined
   );
 }
 
@@ -77,7 +82,10 @@ export function layoutJscpdConfig(base, layout) {
     ...base,
     ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
     path: expandLayoutRoots(base.path, layout),
-    ignore: [...base.ignore, ...layout.exclude],
+    ignore: [
+      ...withSkippedFolders(base.ignore, SCRIPT_SKIPPED_FOLDERS, layout.duplicateSkippedFolders),
+      ...layout.exclude,
+    ],
   };
 }
 

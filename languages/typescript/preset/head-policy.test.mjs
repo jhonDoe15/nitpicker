@@ -65,6 +65,7 @@ describe('head policy reader', () => {
       thresholds: {},
       react: {},
       tools: {},
+      duplicates: {},
     });
   });
 
@@ -82,6 +83,7 @@ describe('head policy reader', () => {
         thresholds: { crapLimit: 12 },
         react: {},
         tools: {},
+        duplicates: {},
       });
     });
   });
@@ -200,6 +202,7 @@ describe('head policy delivery', () => {
         thresholds: { crapLimit: 12 },
         react: {},
         tools: {},
+        duplicates: {},
       });
     }
   });
@@ -222,3 +225,27 @@ const gitFixtureEnvironment = {
 function git(cwd, arguments_) {
   return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
 }
+
+describe('head policy duplicates key', () => {
+  it('is left out of the policy until the config sets it and read back as an empty object', () => {
+    expect(resolveHeadPolicy({})).not.toHaveProperty('duplicates');
+    withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({});
+      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toBeUndefined();
+    });
+  });
+
+  it('carries the skipped folders to the readers of the policy file and the layout', () => {
+    const policy = resolveHeadPolicy({ duplicates: { skippedFolders: ['dist'] } });
+
+    expect(policy.duplicates).toEqual({ skippedFolders: ['dist'] });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({
+        skippedFolders: ['dist'],
+      });
+      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toEqual([
+        'dist',
+      ]);
+    });
+  });
+});

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ingestCrapFunctions } from '../ingest/crap.mjs';
 import { MESSAGES } from '../../../shared/policy.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
-import { methodText, structureFindings } from './java-structure.mjs';
+import { methodText, structureFindings } from '../../../shared/ingest/structure-report.mjs';
 
 const METRICS_REPORT = 'kotlin-metrics.json';
 const DEFAULT_ARGUMENTS_SUFFIX = '$default';

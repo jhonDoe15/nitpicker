@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readStructureFindings } from '../../java/adapters/java-structure.mjs';
+import { readStructureFindings } from '../../../shared/ingest/structure-report.mjs';
 import { run } from './python-process.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 

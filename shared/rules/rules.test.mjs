@@ -3,7 +3,7 @@ import { evaluateBaselineExpansions } from './baseline-expansion.mjs';
 import { branchCoverageFindings } from './branch-coverage.mjs';
 import { computeCoupling, evaluateCoupling } from './coupling.mjs';
 import { crapFindings } from './crap.mjs';
-import { evaluateDuplicates } from './duplicates.mjs';
+import { clonePartnerPath, evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
 import { evaluateTestRuntime } from './test-runtime.mjs';
@@ -169,11 +169,11 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
       [
         'a.java',
-        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
       [
         'a.java',
-        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places.',
+        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
       ],
     ]);
     expect(failures[0].identity).toMatch(
@@ -378,5 +378,44 @@ describe('coupling metrics on a neutral dependency graph', () => {
       packages: [],
       stabilityDirection: [],
     });
+  });
+});
+
+describe('clonePartnerPath', () => {
+  it('names the other file of the pair for a clone and its size metrics', () => {
+    const findings = evaluateDuplicates(
+      [
+        {
+          first: { file: 'b|c:d.java', line: 8 },
+          second: { file: 'a.java', line: 3 },
+          fragment: 'x',
+          lines: 6,
+          tokens: 60,
+        },
+      ],
+      'duplicates',
+    );
+
+    expect(findings.map((finding) => [finding.path, clonePartnerPath(finding)])).toEqual([
+      ['a.java', 'b|c:d.java'],
+      ['a.java', 'b|c:d.java'],
+      ['a.java', 'b|c:d.java'],
+    ]);
+  });
+
+  it('has no partner for other findings', () => {
+    expect(
+      clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'something' }),
+    ).toBeUndefined();
+    expect(
+      clonePartnerPath({
+        rule: 'other',
+        path: 'a.java',
+        identity: 'pair:a.java|b.java:fragment:x',
+      }),
+    ).toBeUndefined();
+    expect(
+      clonePartnerPath({ rule: 'duplicate-clone', path: 'a.java', identity: 'pair:a.java|b.java' }),
+    ).toBeUndefined();
   });
 });

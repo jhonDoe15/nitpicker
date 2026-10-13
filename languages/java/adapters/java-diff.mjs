@@ -11,10 +11,10 @@ import {
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
-import { applyJavaPolicy } from './java-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
 import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
-import { isJavaTouchedRule } from './touched-rules.mjs';
+import { isTouchedCodeRule } from '../../../shared/policy.mjs';
 
 export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -65,15 +65,16 @@ export function collectJavaFindings(projectRoot, options = {}) {
   const preset = options.policy?.preset ?? 'java';
   runJavaPreset(projectRoot, options);
   requireGradleReports(projectRoot, preset);
-  runJavaDuplicates(projectRoot);
+  const skippedFolders = options.policy?.duplicateSkippedFolders;
+  runJavaDuplicates(projectRoot, { skippedFolders });
   if (preset === 'kotlin') {
-    runKotlinDuplicates(projectRoot);
+    runKotlinDuplicates(projectRoot, skippedFolders);
   }
   const { findings } = parseAnalyzerReport(
     readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
     preset,
   );
-  return applyJavaPolicy(findings, options.policy);
+  return applyFindingPolicy(findings, options.policy);
 }
 
 export function runJavaDiff({
@@ -110,7 +111,7 @@ export function runJavaDiff({
       headSha: comparison.headSha,
       projectRelativePath,
     }),
-    isStrictRule: isJavaTouchedRule,
+    isStrictRule: isTouchedCodeRule,
   };
   const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
   const newEnforceable = result.newFindings.filter(

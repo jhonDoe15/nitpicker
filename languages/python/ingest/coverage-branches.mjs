@@ -1,6 +1,6 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
-import { hashIdentity, normalizeReportPath } from '../../java/ingest/common.mjs';
+import { hashIdentity, normalizeReportPath } from '../../../shared/ingest/common.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
 const EXCEPTION_ROUTE = 'To exempt a file, add it to exclude in nitpicker.config.json.';

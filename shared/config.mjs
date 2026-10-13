@@ -47,6 +47,39 @@ export function validateThresholds(thresholds) {
   }
 }
 
+const DUPLICATES_KEYS = ['skippedFolders'];
+
+export function validateDuplicates(duplicates) {
+  if (!isPlainObject(duplicates)) {
+    throw configError('"duplicates" must be an object');
+  }
+  for (const key of Object.keys(duplicates)) {
+    if (!DUPLICATES_KEYS.includes(key)) {
+      throw configError(
+        `unknown duplicates key "${key}". Allowed duplicates keys: ${DUPLICATES_KEYS.join(', ')}`,
+      );
+    }
+  }
+  if (duplicates.skippedFolders !== undefined) {
+    validateSkippedFolders(duplicates.skippedFolders);
+  }
+}
+
+function validateSkippedFolders(folders) {
+  validateStringArray(folders, 'duplicates.skippedFolders');
+  const invalid = folders.find(
+    (name) => !/^[^/\\*?{}[\]]+$/.test(name) || ['.', '..'].includes(name),
+  );
+  if (invalid !== undefined) {
+    throw configError(
+      `"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: ${invalid}`,
+    );
+  }
+  if (new Set(folders).size !== folders.length) {
+    throw configError('"duplicates.skippedFolders" must not contain duplicates');
+  }
+}
+
 export function validateProjectRelativePath(value, name) {
   if (!isNonEmptyString(value)) {
     throw configError(`"${name}" must be a non-empty string`);

@@ -1,4 +1,4 @@
-import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
+import { isTouchedCodeRule } from '../../../shared/policy.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react-rules.mjs';
 
@@ -45,7 +45,7 @@ const strictRuleIds = new Set([
 ]);
 
 export function isStrictRule(rule, finding) {
-  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isJavaTouchedRule(rule, finding);
+  return strictRuleIds.has(rule) || rule === PRETTIER_RULE || isTouchedCodeRule(rule, finding);
 }
 
 export function mustMeetOnEditedLines(rule) {

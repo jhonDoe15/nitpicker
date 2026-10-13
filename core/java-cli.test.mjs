@@ -783,7 +783,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity:
           'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:36d1c9baac959e2d7350e29b:occurrence:1',
         message:
-          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places.',
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Left.kt or src/main/kotlin/demo/Right.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },

@@ -1,5 +1,5 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
-import { decodeEntities } from './common.mjs';
+import { decodeEntities } from '../../../shared/ingest/common.mjs';
 
 const STATUS_NAMES = {
   KILLED: 'Killed',

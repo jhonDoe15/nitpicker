@@ -8,17 +8,52 @@
 //     lines?: number, tokens?: number,            // size of the clone
 //   }
 // The two sides are ordered by path, so the same pair gives the same finding either way round.
+// `clonePartnerPath` reads the other file of the pair back from the identity, so an `exclude` or
+// exception that matches either file of the pair applies.
 // Identity is the file pair, a hash of the fragment and the n-th occurrence of that pair, never a
 // line number. Each clone is one enforceable `duplicate-clone` plus descriptive size metrics.
 
 import { RULE_IDS } from '../policy.mjs';
 import { addMetric, hash, nextOccurrence, positiveInteger } from './finding-helpers.mjs';
 
-function duplicateMessage(other, lines) {
+function duplicateMessage(sides, lines) {
+  const [first, other] = sides;
   const place =
     positiveInteger(other.line) === undefined ? other.file : `${other.file}:${String(other.line)}`;
   const size = positiveInteger(lines) === undefined ? '' : ` (${String(lines)} lines)`;
-  return `This code repeats ${place}${size}. Keep one copy and call it from both places.`;
+  return `This code repeats ${place}${size}. Keep one copy and call it from both places. If the repetition is intended, add ${first.file} or ${other.file} to "exclude" in nitpicker.config.json.`;
+}
+
+function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {
+  const metrics = [];
+  for (const metricName of ['lines', 'tokens']) {
+    addMetric(metrics, {
+      analyzerName,
+      rule: 'duplicate-clone-size',
+      path: sides[0].file,
+      identity: `pair:${pair}:occurrence:${String(occurrence)}:${metricName}`,
+      message: `Duplicate with ${sides[1].file}`,
+      metricName,
+      value: clone[metricName],
+      line: sides[0].line,
+    });
+  }
+  return metrics;
+}
+
+const PAIR_END = /:(?:fragment|occurrence):/;
+
+export function clonePartnerPath(finding) {
+  const prefix = `pair:${finding.path}|`;
+  if (
+    !['duplicate-clone', 'duplicate-clone-size'].includes(finding.rule) ||
+    !finding.identity.startsWith(prefix)
+  ) {
+    return undefined;
+  }
+  const rest = finding.identity.slice(prefix.length);
+  const end = rest.search(PAIR_END);
+  return end < 0 ? undefined : rest.slice(0, end);
 }
 
 export function evaluateDuplicates(clones, analyzerName) {
@@ -30,29 +65,20 @@ export function evaluateDuplicates(clones, analyzerName) {
     );
     const pair = sides.map((side) => side.file).join('|');
     const occurrence = nextOccurrence(occurrences, sides.map((side) => side.file).join('\0'));
-    findings.push({
-      tool: analyzerName,
-      rule: RULE_IDS.duplicateClone,
-      path: sides[0].file,
-      identity: `pair:${pair}:fragment:${hash(clone.fragment ?? '')}:occurrence:${String(occurrence)}`,
-      message: duplicateMessage(sides[1], clone.lines),
-      classification: 'enforceable',
-      ...(positiveInteger(sides[0].line) === undefined
-        ? {}
-        : { location: { line: sides[0].line } }),
-    });
-    for (const metricName of ['lines', 'tokens']) {
-      addMetric(findings, {
-        analyzerName,
-        rule: 'duplicate-clone-size',
+    findings.push(
+      {
+        tool: analyzerName,
+        rule: RULE_IDS.duplicateClone,
         path: sides[0].file,
-        identity: `pair:${pair}:occurrence:${String(occurrence)}:${metricName}`,
-        message: `Duplicate with ${sides[1].file}`,
-        metricName,
-        value: clone[metricName],
-        line: sides[0].line,
-      });
-    }
+        identity: `pair:${pair}:fragment:${hash(clone.fragment ?? '')}:occurrence:${String(occurrence)}`,
+        message: duplicateMessage(sides, clone.lines),
+        classification: 'enforceable',
+        ...(positiveInteger(sides[0].line) === undefined
+          ? {}
+          : { location: { line: sides[0].line } }),
+      },
+      ...cloneMetrics({ analyzerName, sides, clone, pair, occurrence }),
+    );
   }
   return findings;
 }
