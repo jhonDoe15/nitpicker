@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer, JAVA_TOOLS } from './java-analyzer.mjs';
+import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
 import { toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
@@ -28,16 +29,15 @@ const finding = (file, identity = 'id') => ({
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
-const context = {
+const context = () => ({
   projectRoot: '/p',
   toolRoot: '/t',
   snapshot: 'head',
   projectPolicyRoot: tmpdir(),
   baselineRoot: tmpdir(),
-};
+});
 
 describe('configureJavaAnalyzer', () => {
-
   it('leaves the analyzer untouched without any shared config', () => {
     const analyzer = createJavaAnalyzer();
     expect(configureJavaAnalyzer(analyzer, {})).toBe(analyzer);
@@ -51,7 +51,7 @@ describe('configureJavaAnalyzer', () => {
       legacyInventory: 'legacy.json',
     });
 
-    const { args } = configured.createInvocation(context);
+    const { args } = configured.createInvocation(context());
     const parsed = parseRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
@@ -80,7 +80,7 @@ describe('configureJavaAnalyzer', () => {
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
       { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
@@ -99,7 +99,7 @@ describe('configureJavaAnalyzer', () => {
       kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy).toEqual({
       crapLimit: undefined,
@@ -112,7 +112,6 @@ describe('configureJavaAnalyzer', () => {
       preset: 'kotlin',
       kotlinFormatter: 'ktfmt',
       kotlinDetektConfig: 'tools/rules.yml',
-      toolPrecedence: {},
     });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
@@ -147,7 +146,7 @@ describe('project tool configs', () => {
     const configured = configureJavaAnalyzer(analyzer, { tools });
     const root = projectWith({ 'config/pmd/ruleset.xml': '<ruleset/>' });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
     const before = configured.resolveConfigurationHash(root);
     writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
 
@@ -201,6 +200,36 @@ describe('project tool configs', () => {
   });
 });
 
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+    ]);
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
+  });
+});
+
 describe('parseRunnerArguments', () => {
   it('rejects unknown options, missing values and a bad CRAP limit', () => {
     expect(() => parseRunnerArguments(['--project-root'])).toThrow(/Usage/);
@@ -223,7 +252,6 @@ describe('parseRunnerArguments', () => {
       preset: undefined,
       kotlinFormatter: undefined,
       kotlinDetektConfig: undefined,
-      toolPrecedence: {},
     });
     expect(
       parseRunnerArguments([
@@ -247,7 +275,6 @@ describe('parseRunnerArguments', () => {
       preset: 'kotlin',
       kotlinFormatter: 'none',
       kotlinDetektConfig: 'detekt.yaml',
-      toolPrecedence: {},
     });
   });
 

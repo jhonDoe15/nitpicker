@@ -37,7 +37,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -95,6 +95,7 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
+      fileLimits: parseFileLimits(values.get('--file-limits')),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -110,11 +111,14 @@ export function parseRunnerArguments(arguments_) {
 }
 
 function toolPrecedence(values) {
-  return Object.fromEntries(
-    [...PROJECT_TOOL_CONFIGS.keys()]
-      .filter((tool) => values.has(`--${tool}-precedence`))
-      .map((tool) => [tool, values.get(`--${tool}-precedence`).split(',')]),
+  const chosen = [...PROJECT_TOOL_CONFIGS.keys()].filter((tool) =>
+    values.has(`--${tool}-precedence`),
   );
+  return chosen.length === 0
+    ? undefined
+    : Object.fromEntries(
+        chosen.map((tool) => [tool, values.get(`--${tool}-precedence`).split(',')]),
+      );
 }
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
@@ -133,7 +137,19 @@ const RUNNER_OPTIONS = [
   '--kotlin-detekt-config',
   '--pmd-precedence',
   '--checkstyle-precedence',
+  '--file-limits',
 ];
+
+function parseFileLimits(text) {
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = JSON.parse(text);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('--file-limits must be a JSON object');
+  }
+  return parsed;
+}
 
 function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);

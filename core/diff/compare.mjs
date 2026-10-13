@@ -1,4 +1,6 @@
 import { comparisonKey } from './fingerprint.mjs';
+import { normalizeGitPath } from './git.mjs';
+import { folderMoves, mainDestination } from './renames.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -64,24 +66,68 @@ function classify(headFinding, baseFinding, touchedCode) {
 }
 
 function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
-  const baseByRatchet = groupBaseByRatchetKey(unmatchedBase, renames, directories);
-  const result = { newFindings: [], heldFindings: [], matchedBase: new Set() };
-  for (const headFinding of newFindings) {
+  const atSamePath = holdAgainst(
+    newFindings,
+    groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, renames, directories)),
+    { touchedCode, matchedBase: new Set() },
+  );
+  const moves = folderMoves(renames);
+  const movedFolders = groupBaseByRatchetKey(
+    unmatchedBase.filter(
+      (baseFinding) =>
+        baseFinding.ratchet?.pathIsFolder === true && !atSamePath.matchedBase.has(baseFinding),
+    ),
+    (finding) => movedFolderKey(finding, moves),
+  );
+  const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
+    touchedCode,
+    matchedBase: atSamePath.matchedBase,
+  });
+  return {
+    newFindings: [...atSamePath.grew, ...atMovedPath.grew, ...atMovedPath.unmatched],
+    heldFindings: [...atSamePath.heldFindings, ...atMovedPath.heldFindings],
+    matchedBase: atMovedPath.matchedBase,
+  };
+}
+
+function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) {
+  const result = { unmatched: [], grew: [], heldFindings: [], matchedBase };
+  for (const headFinding of headFindings) {
     const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
-    const baseFinding = candidates?.[0];
+    const baseFinding =
+      candidates === undefined || candidates.length === 0
+        ? undefined
+        : closestCandidate(candidates, headFinding.ratchet.value);
     if (baseFinding === undefined) {
-      result.newFindings.push(headFinding);
+      result.unmatched.push(headFinding);
       continue;
     }
     if (headFinding.ratchet.value > baseFinding.ratchet.value) {
-      result.newFindings.push(grewFinding(headFinding, baseFinding.ratchet.value));
+      result.grew.push(grewFinding(headFinding, baseFinding.ratchet.value));
       continue;
     }
-    candidates.shift();
+    candidates.splice(candidates.indexOf(baseFinding), 1);
     result.matchedBase.add(baseFinding);
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }
   return result;
+}
+
+function movedFolderKey(finding, moves) {
+  const destinations = moves.get(normalizeGitPath(finding.path));
+  const destination = mainDestination(destinations);
+  const movedFiles = destination === undefined ? 0 : destinations.get(destination);
+  return movedFiles * 2 > finding.ratchet.value
+    ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
+    : undefined;
+}
+
+function closestCandidate(candidates, value) {
+  const holding = candidates.filter((candidate) => candidate.ratchet.value >= value);
+  const pool = holding.length > 0 ? holding : candidates;
+  const pick = holding.length > 0 ? Math.min : Math.max;
+  const target = pick(...pool.map((candidate) => candidate.ratchet.value));
+  return pool.find((candidate) => candidate.ratchet.value === target);
 }
 
 function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
@@ -106,13 +152,14 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
   });
 }
 
-function groupBaseByRatchetKey(unmatchedBase, renames, directories) {
+function groupBaseByRatchetKey(unmatchedBase, keyOf) {
   const baseByRatchet = new Map();
-  for (const baseFinding of unmatchedBase) {
-    if (baseFinding.ratchet !== undefined) {
-      const key = ratchetKey(baseFinding, renames, directories);
-      baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
-    }
+  const keyed = unmatchedBase
+    .filter((baseFinding) => baseFinding.ratchet !== undefined)
+    .map((baseFinding) => [keyOf(baseFinding), baseFinding])
+    .filter(([key]) => key !== undefined);
+  for (const [key, baseFinding] of keyed) {
+    baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
   }
   return baseByRatchet;
 }

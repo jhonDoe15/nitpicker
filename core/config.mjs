@@ -8,14 +8,16 @@ import {
   configError,
   isNonEmptyString,
   isPlainObject,
+  liftsOnlyRules,
   validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
 import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_TOOLS } from '../languages/java/adapters/java-analyzer.mjs';
+import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
+import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
 const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -90,39 +92,15 @@ function validateScalars(config) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
   if (GRADLE_PRESETS.includes(config.preset)) {
-    validateJavaKeys(config);
+    validateJavaConfig(config);
   }
   validateKotlinOptions(config);
-  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
-}
-
-function validateJavaKeys(config) {
-  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) => !['exceptions', 'tools'].includes(key),
+  validatePythonConfig(
+    config,
+    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
+      : TYPESCRIPT_ONLY_KEYS,
   );
-  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
-  if (unsupported.length > 0) {
-    throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and React rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
-    );
-  }
-  if (config.preset === 'java' && Array.isArray(config.exceptions)) {
-    for (const [index, entry] of config.exceptions.entries()) {
-      validateJavaExceptionRule(entry?.rule, `exceptions[${String(index)}].rule`);
-    }
-  }
-}
-
-function validateJavaExceptionRule(rule, label) {
-  if (!isNonEmptyString(rule)) {
-    return;
-  }
-  const [tool] = rule.split('/');
-  if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
-    throw configError(
-      `"${label}" must name a finding as it is printed, "<tool>/<rule>", for example "pmd/SpringConstructorInjection". Tools: ${JAVA_TOOLS.join(', ')}`,
-    );
-  }
 }
 
 function validateDisable(disable) {

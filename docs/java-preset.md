@@ -164,8 +164,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
-    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+    `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
+    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
+    is Checkstyle's; `thresholds.lineLength` is a config error.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -175,8 +177,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     (a new site counts as 0 before).
   - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
     finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
-    the tools the Java analyzer reports. Matching findings are dropped on both snapshots. Each
-    exception is listed in the report and changes the configuration hash.
+    the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
+    `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
+    in the report and changes the configuration hash.
   - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
