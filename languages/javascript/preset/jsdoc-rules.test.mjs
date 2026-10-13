@@ -48,6 +48,13 @@ tester.run('no-comments with JSDoc types', noComments, {
     { code: 'const value = 1;', options: jsdocTypes },
   ],
   invalid: [
+    ...['/** istanbul ignore next */', '// c8 ignore next', '/* Stryker disable all */'].map(
+      (comment) => ({
+        code: `${comment}\nexport function add(a, b) { return a + b; }`,
+        options: jsdocTypes,
+        errors: [{ messageId: 'coverageSuppression' }],
+      }),
+    ),
     {
       code: '/** Adds two numbers. */\nexport function add(a, b) { return a + b; }',
       options: jsdocTypes,

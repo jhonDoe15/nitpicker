@@ -827,9 +827,20 @@ ruleTester.run('no-comments', noComments, {
       ['/* v8 ignore next */', 'v8 ignore'],
       ['// Stryker disable next-line all', 'Stryker disable'],
       ['// stryker restore all', 'stryker restore'],
+      ['/* istanbul  ignore\tnext */', 'istanbul ignore'],
+      ['/** istanbul ignore next */', 'istanbul ignore'],
+      ['/**\n * c8 ignore next\n */', 'c8 ignore'],
     ].map(([comment, directive]) => ({
       code: `${comment}\nexport const a = 1;`,
       errors: [{ messageId: 'coverageSuppression', data: { directive } }],
     })),
+    {
+      code: 'export type T = {\n  /** v8 ignore next */\n  a: number;\n};',
+      errors: [{ messageId: 'coverageSuppression', data: { directive: 'v8 ignore' } }],
+    },
+    {
+      code: 'export const a = 1; // istanbul ignore next',
+      errors: [{ messageId: 'coverageSuppression', data: { directive: 'istanbul ignore' } }],
+    },
   ],
 });

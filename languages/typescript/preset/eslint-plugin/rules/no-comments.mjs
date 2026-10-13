@@ -2,7 +2,7 @@ import { castTags, isJsdocBlock, parseJsdoc } from '../../../../javascript/prese
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
-const coverageSuppression = /^\s*(?:(?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
+const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const JSDOC_EXCEPTION =
@@ -17,7 +17,9 @@ function suppressionReport(comment) {
   }
   const coverage = coverageSuppression.exec(comment.value);
   if (coverage) {
-    return [{ messageId: 'coverageSuppression', data: { directive: coverage[0].trim() } }];
+    return [
+      { messageId: 'coverageSuppression', data: { directive: coverage[1].replace(/\s+/g, ' ') } },
+    ];
   }
   return eslintSuppression.test(comment.value) ? [{ messageId: 'eslintSuppression' }] : undefined;
 }

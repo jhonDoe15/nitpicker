@@ -50,6 +50,11 @@ export const failureMessageCases = [
       'fix the type error',
     ],
     [
+      'coverage ignore comment names testing the code',
+      '/* istanbul ignore next */\nconst value = 1;',
+      'Test this code instead',
+    ],
+    [
       'eslint-disable names the config exception',
       '// eslint-disable-next-line no-console\nconst value = 1;',
       'nitpicker config file',
