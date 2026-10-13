@@ -663,18 +663,19 @@ describe('nitpicker with "preset": "python"', () => {
   });
 
   describe('function structure and CRAP', () => {
-    const metric = (name, parameters) => ({
+    const metric = (name, parameters, complexity = 1) => ({
       file: 'src/demo/a.py',
       name,
       start: 4,
+      definition: 4,
+      bodyStart: 5,
       end: 5,
       lines: 2,
       statements: 1,
       maxControlNesting: 0,
       parameters,
+      complexity,
     });
-    const lizardRow = (name, ccn) =>
-      `2,${ccn},9,0,2,"${name}@4-5@src/demo/a.py","src/demo/a.py","${name}","${name}( )",4,5\n`;
     const coverageOf = (...names) =>
       JSON.stringify({
         files: {
@@ -705,21 +706,23 @@ describe('nitpicker with "preset": "python"', () => {
 
     it('gates new structure and CRAP findings, and holds a touched legacy function at its limit unless it grows', () => {
       const root = pythonRepository({
-        'structure-data.json': JSON.stringify([metric('value', 4)]),
+        'structure-data.json': JSON.stringify([metric('value', 4, 5)]),
       });
       write(root, {
         'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
-        'structure-data.json': JSON.stringify([metric('value', 4), metric('fresh', 4)]),
-        'lizard-data.csv': lizardRow('value', 5) + lizardRow('ghost', 1),
-        'coverage-data.json': coverageOf('value'),
+        'structure-data.json': JSON.stringify([
+          metric('value', 4, 5),
+          metric('fresh', 4),
+          metric('ghost', 0),
+        ]),
+        'coverage-data.json': coverageOf('value', 'fresh'),
       });
       commit(root, 'add new functions, touch the legacy one');
       const added = run(root);
 
       write(root, {
         'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
-        'structure-data.json': JSON.stringify([metric('value', 5)]),
-        'lizard-data.csv': lizardRow('value', 5),
+        'structure-data.json': JSON.stringify([metric('value', 5, 5)]),
       });
       commit(root, 'raise the CRAP limit, grow the legacy function');
       const grown = run(root);

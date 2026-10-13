@@ -14,9 +14,9 @@ import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './python-ast-rules.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
-import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
+import { readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
-import { readPythonStructureFindings } from './python-structure.mjs';
+import { readPythonFunctions, readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
@@ -45,7 +45,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...readPythonCrapFindings({
-        lizard: readReport(reportRoot, LIZARD_REPORT),
+        functions: readPythonFunctions(reportRoot),
         coverage,
         projectRoot,
         roots,
