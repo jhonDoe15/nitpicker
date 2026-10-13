@@ -1,6 +1,6 @@
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
-import { reactRuleIds } from './eslint-config/react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from './eslint-config/react-rules.mjs';
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
@@ -40,6 +40,7 @@ const PRETTIER_RULE = 'prettier/prettier';
 const strictRuleIds = new Set([
   ...strictEslintRuleIds,
   ...reactRuleIds,
+  ...reactTestRuleIds,
   ...strictBoundaryRules.map(({ name }) => name),
 ]);
 

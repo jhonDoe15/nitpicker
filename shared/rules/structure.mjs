@@ -91,7 +91,10 @@ function structureMessage(metricName) {
 }
 
 function withHint(message, hint) {
-  return hint === undefined ? message : `${message}. ${hint}`;
+  if (hint === undefined) {
+    return message;
+  }
+  return message.endsWith('.') ? `${message} ${hint}` : `${message}. ${hint}`;
 }
 
 function addLimitViolations(findings, analyzerName, entry, occurrence, hints) {

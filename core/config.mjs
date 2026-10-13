@@ -1,18 +1,22 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { validatePythonConfig } from '../languages/python/adapters/python-config.mjs';
 import { stylingApproaches } from '../languages/typescript/preset/eslint-config/react-rules.mjs';
 import {
   CONFIG_FILE_NAME,
   configError,
   isNonEmptyString,
   isPlainObject,
+  validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
+import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
+import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'java'];
+const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
@@ -25,11 +29,12 @@ const KEYS = [
   'react',
   'analyzers',
   'legacyInventory',
+  'python',
   'tools',
+  'kotlin',
 ];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
-const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
@@ -78,16 +83,21 @@ function validateScalars(config) {
   if (config.preset !== undefined && !SUPPORTED_PRESETS.includes(config.preset)) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
-  if (config.preset === 'java') {
+  if (GRADLE_PRESETS.includes(config.preset)) {
     validateJavaKeys(config);
   }
+  validateKotlinOptions(config);
+  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
 }
 
 function validateJavaKeys(config) {
-  const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) => !(config.preset === 'kotlin' && key === 'exceptions'),
+  );
+  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the Java preset does not have. Not supported with java: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by both presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
 }
@@ -169,10 +179,25 @@ function validatePrecedence(precedence, name) {
 
 export function describeConfigOverrides(config) {
   return KEYS.filter((key) => config[key] !== undefined).flatMap((key) =>
-    key === 'exceptions'
-      ? config.exceptions.map((entry) => `exception: ${JSON.stringify(entry)}`)
-      : [`${key}: ${JSON.stringify(config[key])}`],
+    key === 'python' ? describePythonOverrides(config.python) : describeOverride(config, key),
   );
+}
+
+function describeOverride(config, key) {
+  return key === 'exceptions'
+    ? config.exceptions.map(describeException)
+    : [`${key}: ${JSON.stringify(config[key])}`];
+}
+
+function describeException(entry) {
+  return `exception: ${JSON.stringify(entry)}`;
+}
+
+function describePythonOverrides({ exceptions = [], ...settings }) {
+  return [
+    ...(Object.keys(settings).length === 0 ? [] : [`python: ${JSON.stringify(settings)}`]),
+    ...exceptions.map(describeException),
+  ];
 }
 
 export function applyDisable(analyzers, config) {
@@ -197,37 +222,6 @@ export function applyDisable(analyzers, config) {
     }
   }
   return remaining;
-}
-
-function validateExceptions(exceptions) {
-  if (!Array.isArray(exceptions)) {
-    throw configError('"exceptions" must be an array');
-  }
-  for (const [index, entry] of exceptions.entries()) {
-    const label = `exceptions[${String(index)}]`;
-    if (!isPlainObject(entry)) {
-      throw configError(`"${label}" must be an object`);
-    }
-    for (const key of Object.keys(entry)) {
-      if (!EXCEPTION_KEYS.includes(key)) {
-        throw configError(
-          `unknown key "${key}" in "${label}". Allowed keys: ${EXCEPTION_KEYS.join(', ')}`,
-        );
-      }
-    }
-    if (!isNonEmptyString(entry.rule)) {
-      throw configError(`"${label}.rule" must be a non-empty rule id`);
-    }
-    validateStringArray(entry.paths, `${label}.paths`);
-    if (entry.paths.length === 0) {
-      throw configError(`"${label}.paths" needs at least one path glob`);
-    }
-    if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
-      throw configError(
-        `"${label}.reason" is required: say why the rule is lifted for these paths`,
-      );
-    }
-  }
 }
 
 function validateReact(react) {

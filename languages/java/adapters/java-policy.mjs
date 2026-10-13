@@ -7,18 +7,30 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
-const INVENTORY_TOOL = 'java';
+export const EXCEPTION_SEPARATOR = ':';
 
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], legacyInventory },
+  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
 ) {
-  if (thresholds.crapLimit === undefined && exclude.length === 0 && legacyInventory === undefined) {
+  if (
+    thresholds.crapLimit === undefined &&
+    exclude.length === 0 &&
+    exceptions.length === 0 &&
+    legacyInventory === undefined &&
+    kotlin.formatter === undefined &&
+    kotlin.detektConfig === undefined
+  ) {
     return analyzer;
   }
   const adapterArguments = [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
+    ...exceptions.flatMap(({ rule, paths }) =>
+      paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
+    ),
+    ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
   ];
   const configured = {
     ...analyzer,
@@ -56,11 +68,23 @@ function hashWithArguments(configurationHash, adapterArguments) {
 
 export function applyJavaPolicy(
   findings,
-  { exclude = [], legacyInventory, policyRoot, baselineRoot, snapshot = 'head' } = {},
+  {
+    exclude = [],
+    exceptions = [],
+    legacyInventory,
+    policyRoot,
+    baselineRoot,
+    snapshot = 'head',
+    preset = 'java',
+    inventoryTool = preset,
+  } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
+  const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
-    (finding) => !excluders.some((matcher) => matcher.test(finding.path)),
+    (finding) =>
+      !excluders.some((matcher) => matcher.test(finding.path)) &&
+      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;
@@ -73,6 +97,6 @@ export function applyJavaPolicy(
   const baseInventory = readOptionalInventory(baselineRoot, legacyInventory);
   return [
     ...baselined,
-    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, INVENTORY_TOOL),
+    ...evaluateBaselineExpansions(baseInventory.sites, headInventory.sites, inventoryTool),
   ];
 }
