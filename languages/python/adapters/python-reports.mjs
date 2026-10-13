@@ -9,7 +9,9 @@ import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
+import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
+import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
@@ -26,14 +28,23 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
-export function readPythonFindings({ projectRoot, reportRoot }) {
+export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   return {
     findings: [
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
-      ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
+      ...ingestCoverageJson(coverage, { roots }).findings,
+      ...readPythonStructureFindings(reportRoot, projectRoot),
+      ...readPythonCrapFindings({
+        lizard: readReport(reportRoot, LIZARD_REPORT),
+        coverage,
+        projectRoot,
+        roots,
+        crapLimit,
+      }),
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
       ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
         roots,

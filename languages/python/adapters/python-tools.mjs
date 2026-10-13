@@ -6,6 +6,7 @@ import { scanImports } from './python-coupling.mjs';
 import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { crap } from './python-crap.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './python-process.mjs';
@@ -23,6 +24,7 @@ import {
   testRunnerLabel,
   testsRan,
 } from './python-test-runner.mjs';
+import { structure } from './python-structure.mjs';
 
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
 export const RUFF_REPORT = 'ruff.sarif';
@@ -88,6 +90,8 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    structure,
+    crap,
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);

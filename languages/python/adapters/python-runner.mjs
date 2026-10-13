@@ -67,7 +67,11 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
     if (failures.length > 0) {
       return failures.map((failure) => toolError(failure));
     }
-    const { findings } = readPythonFindings({ projectRoot, reportRoot });
+    const { findings } = readPythonFindings({
+      projectRoot,
+      reportRoot,
+      crapLimit: policy.crapLimit,
+    });
     return applyJavaPolicy(findings, { ...policy, inventoryTool: PYTHON_ANALYZER_NAME });
   });
 }

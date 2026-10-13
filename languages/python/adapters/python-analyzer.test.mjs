@@ -37,6 +37,8 @@ describe('Python analyzer', () => {
       'ruff-format',
       'black',
       'coverage',
+      'structure',
+      'crap',
       'coverage-py',
       'duplicates',
       'coupling',
@@ -58,7 +60,7 @@ describe('Python analyzer', () => {
     expect(analyzer.version).toBe('unresolved');
   });
 
-  it('hashes the ruff config, the adapters and every file the runner imports, not the tests', () => {
+  it('hashes the ruff config, the adapters, the lizard pin and every file the runner imports, not the tests', () => {
     const files = configurationFiles();
 
     const required = [
@@ -68,6 +70,7 @@ describe('Python analyzer', () => {
       'languages/java/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
+      'languages/java/gradle/nitpicker.init.gradle',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
     expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
