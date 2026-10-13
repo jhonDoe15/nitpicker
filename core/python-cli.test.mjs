@@ -355,12 +355,15 @@ describe('nitpicker with "preset": "python"', () => {
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.json('new-findings.json').map(({ rule }) => rule)).toEqual(['B006']);
-      expect(
-        result.json('tool-errors.json').map(({ tool, snapshot }) => `${tool} ${snapshot}`),
-      ).toEqual(['mutation base', 'mutation head']);
-      expect(result.json('tool-errors.json')[0].message).toContain(
-        'add "mutation" to "disable" in nitpicker.config.json',
-      );
+      const missing = (snapshot) => ({
+        tool: 'mutation',
+        snapshot,
+        rule: 'mutation-failed',
+        path: '.',
+        message:
+          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+      });
+      expect(result.json('tool-errors.json')).toEqual([missing('base'), missing('head')]);
     });
 
     it('does not run mutmut when mutation is disabled', () => {
@@ -445,12 +448,13 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode).toBe(2);
     const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment"`;
-    expect(result.json('tool-errors.json')).toHaveLength(4);
-    expect(result.json('tool-errors.json')).toEqual(
-      expect.arrayContaining(
-        ['python', 'mutation'].flatMap((tool) =>
-          ['base', 'head'].map((snapshot) => ({ tool, snapshot, message })),
-        ),
+    expect(
+      result
+        .json('tool-errors.json')
+        .sort((a, b) => `${a.tool} ${a.snapshot}`.localeCompare(`${b.tool} ${b.snapshot}`)),
+    ).toEqual(
+      ['mutation', 'python'].flatMap((tool) =>
+        ['base', 'head'].map((snapshot) => ({ tool, snapshot, message })),
       ),
     );
   });

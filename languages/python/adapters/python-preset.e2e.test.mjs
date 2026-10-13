@@ -295,13 +295,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(2);
     const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`;
-    expect(result.json('tool-errors.json')).toHaveLength(2);
-    expect(result.json('tool-errors.json')).toEqual(
-      expect.arrayContaining([
-        { tool: 'python', snapshot: 'head', message },
-        { tool: 'mutation', snapshot: 'head', message },
-      ]),
-    );
+    expect(
+      result.json('tool-errors.json').sort((left, right) => left.tool.localeCompare(right.tool)),
+    ).toEqual([
+      { tool: 'mutation', snapshot: 'head', message },
+      { tool: 'python', snapshot: 'head', message },
+    ]);
   });
 
   describe('a unittest project formatted with black, using tools from the PATH', () => {
@@ -499,7 +498,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       const survivors = result
         .json('new-findings.json')
         .filter(({ rule }) => rule === 'mutant-survived');
-      expect(new Set(survivors.map(({ path: file }) => file))).toContain('calc/core.py');
+      expect(survivors.map(({ path: file, identity }) => `${file} ${identity}`).sort()).toEqual(
+        [
+          'calc/core.py g|>→>=#1',
+          'calc/core.py g|3→4#1',
+          'calc/helper.py f|+→-#1',
+          'calc/helper.py f|1→2#1',
+          'calc/helper.py f|3→4#1',
+        ].sort(),
+      );
     });
   });
 

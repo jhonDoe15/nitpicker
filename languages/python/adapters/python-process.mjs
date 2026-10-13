@@ -6,12 +6,12 @@ const MILLISECONDS_PER_MINUTE = 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
 export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 
-export function execute(context, command, timeout = TOOL_TIMEOUT_MS, extraEnv = {}) {
+export function execute(context, command, { timeout = TOOL_TIMEOUT_MS, env = {} } = {}) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
   return spawnSync(launch.command, launch.args, {
     cwd: context.projectRoot,
-    env: { ...process.env, ...launch.env, ...context.env, ...extraEnv },
+    env: { ...process.env, ...launch.env, ...context.env, ...env },
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout,
@@ -23,7 +23,7 @@ function isAccepted(accepted, result) {
 }
 
 export function run(context, command, { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, env }) {
-  const result = execute(context, command, timeoutMs, env);
+  const result = execute(context, command, { timeout: timeoutMs, env });
   if (result.error !== undefined || !isAccepted(accepted, result)) {
     throw failure({ context, command, result, rule, timeoutMs });
   }

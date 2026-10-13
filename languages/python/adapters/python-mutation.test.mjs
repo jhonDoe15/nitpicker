@@ -183,12 +183,17 @@ describe('running mutmut', () => {
     const findings = mutationFindings(contextFor(root));
 
     expect(findings.filter(({ rule }) => rule === 'mutant-survived')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'mutmut',
+        rule: 'mutant-survived',
         path: 'src/demo/a.py',
         identity: 'value|1→2#1',
+        message:
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
-      }),
+        symbol: 'value',
+        location: { line: 2 },
+      },
     ]);
     expect(summaries(findings)).toEqual(['status:Survived=1', 'status:Killed=1']);
     expect(existsSync(path.join(root, 'mutants'))).toBe(false);
