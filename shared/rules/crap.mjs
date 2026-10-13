@@ -18,7 +18,10 @@ import { positiveInteger } from './finding-helpers.mjs';
 // over the limit on the base and was edited fails only when its score rose (see the ratchet in
 // core/diff/compare.mjs); without it, every edit of an over-limit function is a new finding.
 
-export function crapFindings(functions, { tool, limit = DEFAULT_CRAP_SCORE_LIMIT }) {
+export function crapFindings(
+  functions,
+  { tool, limit = DEFAULT_CRAP_SCORE_LIMIT, unknownMessage = MESSAGES.crapCoverageUnknown },
+) {
   const findings = [];
   for (const fn of functions) {
     const unknown = typeof fn.crap !== 'number' || !Number.isFinite(fn.crap);
@@ -31,7 +34,7 @@ export function crapFindings(functions, { tool, limit = DEFAULT_CRAP_SCORE_LIMIT
       path: fn.path,
       identity: fn.identity,
       message: unknown
-        ? renderMessage(MESSAGES.crapCoverageUnknown, { name: fn.name })
+        ? renderMessage(unknownMessage, { name: fn.name })
         : renderMessage(MESSAGES.crapScoreLimit, {
             name: fn.name,
             crap: fn.crap.toFixed(2),

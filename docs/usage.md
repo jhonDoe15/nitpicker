@@ -242,8 +242,9 @@ have no Java meaning, and stay a config error with this preset. Details:
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
 Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
-neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources, and
-JaCoCo coverage for both. The project's detekt config is found in the usual places or set with
+neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
+JaCoCo coverage for both, and the structure limits, CRAP, duplicates and package stability checks
+on Kotlin code. The project's detekt config is found in the usual places or set with
 `"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
 requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
@@ -381,7 +382,13 @@ that is legitimately outside a rule is lifted with `python.exceptions`, the Pyth
 }
 ```
 
-`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
+`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
+run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
+arms are judged, an untested `except` handler is not. The project's own coverage configuration is
+ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
+measurement): nitpicker's rcfile measures branches, skips test files and excludes only
+`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
+A file that cannot be tested is lifted with `exclude`. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
 ## The strict preset
 
