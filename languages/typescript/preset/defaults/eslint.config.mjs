@@ -11,7 +11,7 @@ import {
   applyJavascriptDialect,
   javascriptRuleEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
-import { reactRuleIds } from '../eslint-config/react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
@@ -127,7 +127,9 @@ const presetConfig = tseslint.config(
 
 const applicableExceptions = react
   ? policy.exceptions
-  : policy.exceptions.filter(({ rule }) => !reactRuleIds.includes(rule));
+  : policy.exceptions.filter(
+      ({ rule }) => !reactRuleIds.includes(rule) && !reactTestRuleIds.includes(rule),
+    );
 
 export default applyRuleExceptions(
   applyJavascriptDialect(
