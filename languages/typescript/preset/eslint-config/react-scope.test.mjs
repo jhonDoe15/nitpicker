@@ -314,10 +314,10 @@ describe('the React scope config', () => {
     const rules = lintFixture({
       config,
       filename: 'test/ui/a.test.tsx',
-      code: `${importLine} screen.getByTestId('a'); wrapper.state();`,
+      code: `${importLine} wrapper.state();`,
     }).map(({ ruleId }) => ruleId);
 
-    expect(rules).toContain('nitpicker/react-test-no-implementation-details');
+    expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
   });
 
   it('reaches container queries made through a project test-utils wrapper', async () => {
