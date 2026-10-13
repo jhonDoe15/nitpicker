@@ -259,8 +259,8 @@ export const RULES = [
   {
     id: RULE_IDS.lineLength,
     check: 'structure',
-    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length)`,
-    enforcedBy: withKotlin({ ...ALL, java: false }, true),
+    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length; Kotlin: detekt's)`,
+    enforcedBy: withKotlin({ ...ALL, java: false }, false),
   },
   {
     id: RULE_IDS.folderFiles,

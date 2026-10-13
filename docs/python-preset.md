@@ -342,9 +342,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 ## Slice 3: structure limits and CRAP
 
 - **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
-  file outside dot, virtualenv, build and `__pycache__` folders: 300 lines per module, 500 per test
+  file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
   module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
-  120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder. A
+  120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
 - **Rules.** The shared structure rule (`shared/rules/structure.mjs`) and CRAP rule

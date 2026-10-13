@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
-import { collectFileLimitFindings, FILE_LIMIT_CHECKS } from '../../../shared/rules/file-limits.mjs';
+import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 
@@ -48,28 +48,34 @@ export function methodText(sources, projectRoot, { file, start, end }) {
 const SOURCE_ROOT_KEYS = { source: 'sourceRoots', test: 'testSourceRoots' };
 const KOTLIN_ROOT_KEYS = { source: 'kotlinSourceRoots', test: 'kotlinTestSourceRoots' };
 
+const OUTSIDE_SOURCES = /^(?:$|\.\.(?:\/|$)|build(?:\/|$))/u;
+
 function rootsOf(manifest, kind, kotlin) {
   return [
     ...(manifest[SOURCE_ROOT_KEYS[kind]] ?? []),
     ...(kotlin ? (manifest[KOTLIN_ROOT_KEYS[kind]] ?? []) : []),
-  ];
+  ].filter((root) => !OUTSIDE_SOURCES.test(root));
 }
 
 export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
   const excluders = (policy.exclude ?? []).map((glob) => globToRegExp(glob));
   const entries = [
-    ...codeFiles(projectRoot, rootsOf(manifest, 'source', kotlin), 'source', kotlin),
-    ...codeFiles(projectRoot, rootsOf(manifest, 'test', kotlin), 'test', kotlin),
+    ...codeFiles(projectRoot, {
+      roots: rootsOf(manifest, 'source', kotlin),
+      kind: 'source',
+      kotlin,
+    }),
+    ...codeFiles(projectRoot, { roots: rootsOf(manifest, 'test', kotlin), kind: 'test', kotlin }),
   ].filter((entry) => !excluders.some((matcher) => matcher.test(entry.path)));
   return collectFileLimitFindings(projectRoot, entries, {
     analyzerName: STRUCTURE_TOOL,
     thresholds: policy.thresholds,
     exceptions: policy.exceptions,
-    checks: kotlin ? FILE_LIMIT_CHECKS : ['fileLines', 'folderFiles'],
+    checks: ['fileLines', 'folderFiles'],
   });
 }
 
-function codeFiles(projectRoot, roots, kind, kotlin) {
+function codeFiles(projectRoot, { roots, kind, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
   return [...new Set(roots)]
     .filter((root) => existsSync(path.join(projectRoot, root)))
