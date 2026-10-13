@@ -27,6 +27,14 @@ const finding = (file, identity = 'id') => ({
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
+const context = () => ({
+  projectRoot: '/p',
+  toolRoot: '/t',
+  snapshot: 'head',
+  projectPolicyRoot: tmpdir(),
+  baselineRoot: tmpdir(),
+});
+
 describe('configureJavaAnalyzer', () => {
   const context = {
     projectRoot: '/p',
@@ -116,6 +124,36 @@ describe('configureJavaAnalyzer', () => {
       configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
         .configurationHash,
     ).not.toBe(analyzer.configurationHash);
+  });
+});
+
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+    ]);
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
   });
 });
 
