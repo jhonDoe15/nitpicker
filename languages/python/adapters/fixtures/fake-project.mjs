@@ -24,10 +24,16 @@ export function createFakeProjects() {
     return root;
   }
 
-  function contextFor(root, settings = {}) {
+  function contextFor(root, settings = {}, exclude = []) {
     const reportRoot = temporaryRoot();
     return {
-      context: createToolContext({ projectRoot: root, liveRoot: root, settings, reportRoot }),
+      context: createToolContext({
+        projectRoot: root,
+        liveRoot: root,
+        settings,
+        reportRoot,
+        exclude,
+      }),
       reportRoot,
     };
   }

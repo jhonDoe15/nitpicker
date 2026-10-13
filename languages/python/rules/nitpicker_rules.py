@@ -1,6 +1,7 @@
 import ast
 import io
 import json
+import os
 import re
 import sys
 import tokenize
@@ -10,6 +11,7 @@ BOUNDARY_DIRECTORY = "adapters"
 PYDANTIC_ROOTS = {"pydantic", "pydantic_settings"}
 MIN_CLASS_CONSTANTS = 2
 MIN_MODULE_CONSTANTS = 3
+TYPE_CHECKING_NAMES = {"typing.TYPE_CHECKING", "typing_extensions.TYPE_CHECKING"}
 CONSTANT_NAME = re.compile(r"[A-Z][A-Z0-9_]*")
 SUPPRESSION = re.compile(
     r"#\s*(?:type:\s*ignore"
@@ -17,6 +19,7 @@ SUPPRESSION = re.compile(
     r"|(?:ruff|flake8):\s*noqa"
     r"|pyright:\s*(?:ignore|basic|standard|off)\b"
     r"|pyright:\s*report\w+\s*=\s*(?:false|none|warning|information)"
+    r"|fmt:\s*(?:off|skip)\b"
     r"|mypy:\s*(?!strict\b)\S)",
     re.IGNORECASE,
 )
@@ -37,13 +40,33 @@ def is_boundary_path(path):
     return BOUNDARY_DIRECTORY in path.split("/")[:-1]
 
 
-def decorator_name(decorator):
-    target = decorator.func if isinstance(decorator, ast.Call) else decorator
-    if isinstance(target, ast.Name):
-        return target.id
-    if isinstance(target, ast.Attribute):
-        return target.attr
+def import_aliases(tree):
+    names, modules = {}, {}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            for alias in node.names:
+                names[alias.asname or alias.name] = f"{node.module}.{alias.name}"
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    modules[alias.asname] = alias.name
+    return names, modules
+
+
+def dotted_name(node, aliases):
+    names, modules = aliases
+    if isinstance(node, ast.Name):
+        return names.get(node.id) or modules.get(node.id) or node.id
+    if isinstance(node, ast.Attribute):
+        base = dotted_name(node.value, aliases)
+        return f"{base}.{node.attr}" if base else None
     return None
+
+
+def decorator_name(decorator, aliases):
+    target = decorator.func if isinstance(decorator, ast.Call) else decorator
+    name = dotted_name(target, aliases)
+    return name.rsplit(".", 1)[-1] if name else None
 
 
 def is_frozen(decorator):
@@ -55,8 +78,8 @@ def is_frozen(decorator):
     )
 
 
-def string_constant_names(body):
-    names = []
+def string_constants(body):
+    constants = []
     for statement in body:
         if isinstance(statement, ast.Assign) and len(statement.targets) == 1:
             target, value = statement.targets[0], statement.value
@@ -70,18 +93,40 @@ def string_constant_names(body):
             and isinstance(value, ast.Constant)
             and isinstance(value.value, str)
         ):
-            names.append(target.id)
-    return names
+            constants.append((target.id, value.value))
+    return constants
+
+
+def common_prefix(names):
+    prefix = os.path.commonprefix(names)
+    return prefix[: prefix.rfind("_") + 1]
+
+
+def normalized(text):
+    return text.lower().replace("-", "_").replace(" ", "_")
+
+
+def is_enum_like(name, value, prefix):
+    return normalized(value) in (normalized(name), normalized(name[len(prefix) :]))
+
+
+def is_enum_group(constants, prefix):
+    return all(is_enum_like(name, value, prefix) for name, value in constants)
 
 
 def is_plain_class(node):
-    bases = [base for base in node.bases if not (isinstance(base, ast.Name) and base.id == "object")]
+    bases = [
+        base
+        for base in node.bases
+        if not (isinstance(base, ast.Name) and base.id == "object")
+    ]
     return not bases and not node.keywords and not node.decorator_list
 
 
 class Collector(ast.NodeVisitor):
-    def __init__(self, path):
+    def __init__(self, path, aliases):
         self.path = path
+        self.aliases = aliases
         self.scope = []
         self.findings = []
         self.tests = is_test_path(path)
@@ -94,8 +139,31 @@ class Collector(ast.NodeVisitor):
 
     def visit_scope(self, node):
         self.scope.append(node.name)
+        self.check_no_type_check(node)
         self.generic_visit(node)
         self.scope.pop()
+
+    def check_no_type_check(self, node):
+        if any(
+            decorator_name(decorator, self.aliases) == "no_type_check"
+            for decorator in node.decorator_list
+        ):
+            self.add("no-type-check", ".".join(self.scope), node)
+
+    def is_type_checking(self, node):
+        return dotted_name(node, self.aliases) in TYPE_CHECKING_NAMES or (
+            isinstance(node, ast.Name) and node.id == "TYPE_CHECKING"
+        )
+
+    def visit_If(self, node):
+        if any(
+            isinstance(part, ast.UnaryOp)
+            and isinstance(part.op, ast.Not)
+            and self.is_type_checking(part.operand)
+            for part in ast.walk(node.test)
+        ):
+            self.add("not-type-checking", "if not TYPE_CHECKING", node)
+        self.generic_visit(node)
 
     visit_FunctionDef = visit_scope
     visit_AsyncFunctionDef = visit_scope
@@ -103,15 +171,26 @@ class Collector(ast.NodeVisitor):
     def visit_ClassDef(self, node):
         self.scope.append(node.name)
         subject = ".".join(self.scope)
+        self.check_no_type_check(node)
         self.check_dataclass(node, subject)
-        if is_plain_class(node) and len(string_constant_names(node.body)) >= MIN_CLASS_CONSTANTS:
-            self.add("enum-string-constants", subject, node)
+        self.check_class_constants(node, subject)
         self.generic_visit(node)
         self.scope.pop()
 
+    def check_class_constants(self, node, subject):
+        constants = string_constants(node.body)
+        if (
+            is_plain_class(node)
+            and len(constants) >= MIN_CLASS_CONSTANTS
+            and is_enum_group(constants, common_prefix([name for name, _ in constants]))
+        ):
+            self.add("enum-string-constants", subject, node)
+
     def check_dataclass(self, node, subject):
         for decorator in node.decorator_list:
-            if decorator_name(decorator) == "dataclass" and not is_frozen(decorator):
+            if decorator_name(decorator, self.aliases) == "dataclass" and not is_frozen(
+                decorator
+            ):
                 if not self.tests:
                     self.add("frozen-dataclass", subject, node)
 
@@ -131,12 +210,18 @@ class Collector(ast.NodeVisitor):
     def check_module_constants(self, tree):
         groups = {}
         for statement in tree.body:
-            for name in string_constant_names([statement]):
+            for name, value in string_constants([statement]):
                 if "_" in name:
-                    groups.setdefault(name.split("_", 1)[0], []).append(statement)
+                    groups.setdefault(name.split("_", 1)[0], []).append(
+                        (statement, name, value)
+                    )
         for prefix in sorted(groups):
-            if len(groups[prefix]) >= MIN_MODULE_CONSTANTS:
-                self.add("enum-string-constants", prefix + "_*", groups[prefix][0])
+            members = groups[prefix]
+            constants = [(name, value) for _, name, value in members]
+            if len(members) >= MIN_MODULE_CONSTANTS and is_enum_group(
+                constants, prefix + "_"
+            ):
+                self.add("enum-string-constants", prefix + "_*", members[0][0])
 
 
 def suppression_findings(path, text):
@@ -158,17 +243,32 @@ def suppression_findings(path, text):
     return findings
 
 
+def stub_findings(path):
+    stub = path[: -len(".py")] + ".pyi" if path.endswith(".py") else None
+    if stub is None or not os.path.isfile(stub):
+        return []
+    return [
+        {
+            "rule": "stub-beside-source",
+            "path": path,
+            "subject": os.path.basename(stub),
+            "line": 1,
+        }
+    ]
+
+
 def check_file(path):
+    stubs = stub_findings(path)
     try:
         with tokenize.open(path) as handle:
             text = handle.read()
         tree = ast.parse(text)
     except (OSError, SyntaxError, UnicodeDecodeError, ValueError):
-        return []
-    collector = Collector(path)
+        return stubs
+    collector = Collector(path, import_aliases(tree))
     collector.visit(tree)
     collector.check_module_constants(tree)
-    return collector.findings + suppression_findings(path, text)
+    return stubs + collector.findings + suppression_findings(path, text)
 
 
 def main(arguments):
@@ -178,7 +278,9 @@ def main(arguments):
     findings = []
     for path in paths:
         findings.extend(check_file(path))
-    findings.sort(key=lambda item: (item["path"], item["line"], item["rule"], item["subject"]))
+    findings.sort(
+        key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
+    )
     with open(out_file, "w", encoding="utf-8") as handle:
         json.dump(findings, handle)
 

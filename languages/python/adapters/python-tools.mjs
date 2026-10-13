@@ -9,7 +9,7 @@ import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
-  detectTypeChecker,
+  detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
 import { RUFF_CONFIG } from './python-ruff-config.mjs';
@@ -56,7 +56,7 @@ export function createToolContext({
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,
-      typeChecker: detectTypeChecker(liveRoot, settings.typeChecker),
+      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
       testRunner: detectTestRunner(projectRoot, settings.testRunner),
       targetVersion: detectTargetVersion(projectRoot),
       sourceRoots,

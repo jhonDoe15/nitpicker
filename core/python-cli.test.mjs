@@ -225,7 +225,7 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'mypy/return-value',
         'Incompatible return value type (got "int", expected "str")',
-        'Incompatible return value type (got "int", expected "str"). Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
       ],
       [
         'python-rules/frozen-dataclass',
@@ -235,7 +235,7 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Fix the cause instead: `# type: ignore`, `# noqa` and `# pyright: ignore` are banned. If the code is legitimate, add a "python.exceptions" entry for the rule it suppressed.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
       ],
     ]);
   });
@@ -313,7 +313,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'Bad',
         message:
-          'Bad. Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for reportReturnType in nitpicker.config.json.',
+          'Bad. Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for reportReturnType in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -467,7 +467,7 @@ describe('nitpicker with "preset": "python"', () => {
         'python: total=1 enforceable=1 descriptive=0',
         '',
         'Enforceable findings:',
-        'ruff/F401 src/demo/a.py:1 `os` imported but unused',
+        'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
         '',
       ].join('\n'),
     );

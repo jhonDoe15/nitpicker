@@ -1,5 +1,11 @@
 import { createIdentityCounter } from '../../java/ingest/common.mjs';
 
+const LINE_REFERENCE = /\s+(?:on|from) line \d+/g;
+
+export function withoutLineNumbers(subject) {
+  return subject.replace(LINE_REFERENCE, '');
+}
+
 export function createIdentities() {
   const counters = new Map();
   return ({ path, rule, subject }) => {
@@ -7,6 +13,6 @@ export function createIdentities() {
     if (!counters.has(key)) {
       counters.set(key, createIdentityCounter());
     }
-    return counters.get(key)(subject);
+    return counters.get(key)(withoutLineNumbers(subject));
   };
 }

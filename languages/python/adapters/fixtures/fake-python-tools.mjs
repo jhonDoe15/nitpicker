@@ -18,6 +18,7 @@
 //   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
 //                        absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
+// `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
 // PYTHONPATH and MYPYPATH.
 import { appendFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -44,7 +45,8 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
 
 const failures = existsSync('fail.json') ? JSON.parse(readFileSync('fail.json', 'utf8')) : {};
 const failure = failures[`${tool} ${args[0]}`] ?? failures[tool];
-if (failure !== undefined && !args.includes('--version')) {
+const probesExecutable = tool === 'python' && args[1]?.includes('sys.executable');
+if (failure !== undefined && !args.includes('--version') && !probesExecutable) {
   process.stderr.write(`${failure}\n`);
   process.exit(2);
 }
@@ -167,6 +169,10 @@ function python() {
   if (args[0] === '-I') {
     const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
     writeFileSync(args[3], report);
+    return;
+  }
+  if (args[1]?.includes('sys.executable')) {
+    process.stdout.write(`${process.env.VIRTUAL_ENV ?? '/usr'}/bin/python\n`);
     return;
   }
   if (existsSync('no-pytest.txt')) {

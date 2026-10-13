@@ -138,10 +138,11 @@ ESLint rules and stay a config error with this preset; the Python equivalent of 
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
-`[tool.pyright]` table. Failing that, whichever it declares as a dependency (a requirements line, a
-pyproject entry, the `mirrors-mypy` or `pyright-python` hook). Declaring both, or neither, falls
-back to mypy and then pyright, whichever runs in the environment; `python.typeChecker` overrides all
-of it. The choice is read from the checkout you run `nitpicker` in, so base and head use the same
+`[tool.pyright]` table (`[ tool.pyright ]` too). Failing that, whichever it declares as a
+dependency (a requirements line, a quoted entry anywhere in a pyproject dependency array, the
+`mirrors-mypy` or `pyright-python` hook). When both score the same, or neither does, nitpicker
+runs `mypy --version` and then `pyright --version` in the environment and takes the first that
+runs; `python.typeChecker` overrides all of it. The choice is read from the checkout you run `nitpicker` in, so base and head use the same
 checker; a change that switches checker makes every finding of the new one new.
 
 Existing violations are baselined with the legacy inventory, where `source` is the finding's
@@ -157,8 +158,10 @@ in the table below are findings themselves. The way out is `python.exceptions` i
 shape: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
-snapshot alike, and every exception is listed in the report's config overrides. Rule ids match
-exactly: `PTH` does not lift `PTH118`. Prefer fixing the code; an exception is for code that is
+snapshot alike, and every exception is listed in the report's config overrides. The id is checked
+when the config loads: a ruff code (or a prefix such as `PTH`, which covers every `PTH` code), a
+`python-rules` id, a mypy error code or a pyright `report*` rule; a typo such as `T210` is a config
+error, not a silent no-op. Prefer fixing the code; an exception is for code that is
 legitimately outside the rule, such as a command line entry point that prints or a module that
 must keep a mutable dataclass.
 
@@ -192,19 +195,22 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence, except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
 - **Type checking.** `mypy --strict` or `pyright` with `typeCheckingMode: strict`, on the source
   roots. Strict is not configurable: a project that cannot pass yet baselines its existing errors
-  (they only count when new). The project's own mypy or pyright configuration still applies
-  (plugins, `mypy_path`, per-module overrides, `pythonVersion`, excludes): mypy reads it from the
-  working directory, and pyright gets a generated config that `extends` it, adds the strict mode,
-  the source roots and `enableTypeIgnoreComments: false`. Tests are not type-checked unless a
-  source root contains them. Findings are one per diagnostic: tool `mypy` or `pyright`, rule the
-  error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text, never a
-  line, with `#n` for repeats in one file. Only the first line of a pyright message is used, since
+  (they only count when new), and a project's config cannot switch the check off. Only its
+  environment settings apply. For mypy that is `plugins`, `mypy_path`, `python_version`, the
+  namespace and typeshed options and, per module, `ignore_missing_imports` and `follow_imports`;
+  `ignore_errors`, `disable_error_code`, `exclude` and every flag that weakens strict are dropped.
+  Pyright gets a generated config that `extends` the project's (for `extraPaths`, `pythonVersion`
+  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, the source
+  roots and nitpicker's `exclude` in place of the project's. Mypy also gets the environment's
+  interpreter (`--python-executable`), so packages installed there resolve. Tests are not
+  type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy` or `pyright`, rule the
+  error code (`arg-type`) or rule name (`reportArgumentType`), identity the message text without `on line N` / `from line N` references (ruff messages such as F811 too), with `#n` for repeats in one file. Only the first line of a pyright message is used, since
   the detail lines vary with surrounding code. A checker that exits other than 0 or 1 is a
   `types-failed` tool error. The checker runs in the project's environment like pytest, so it must
   be installed there (or on the `PATH`).
@@ -218,18 +224,19 @@ through the real tools.
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
   Files that do not parse are left to ruff's syntax errors.
 
-| Allowed form                                    | Banned form                                              | Rule                                  |
-| ----------------------------------------------- | -------------------------------------------------------- | ------------------------------------- |
-| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                  | ruff `PTH*`                           |
-| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list | ruff `UP031`, `UP032`, `FLY002`       |
-| `None` default, value built in the function     | a mutable default argument                               | ruff `B006`                           |
-| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`, `except X: pass`    | ruff `E722`, `BLE001`, `S110`, `S112` |
-| explicit imports                                | `from module import *`                                   | ruff `F403`                           |
-| `logging`                                       | `print`, `pprint`                                        | ruff `T201`, `T203`                   |
-| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests        | `frozen-dataclass`                    |
-| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere    | `pydantic-boundary`                   |
-| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`    | `enum-string-constants`               |
-| fixing the cause                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...     | `no-inline-suppression`               |
+| Allowed form                                    | Banned form                                              | Rule                                                       |
+| ----------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                  | ruff `PTH*`                                                |
+| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function     | a mutable default argument                               | ruff `B006`                                                |
+| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`, `except X: pass`    | ruff `E722`, `BLE001`, `S110`, `S112`                      |
+| explicit imports                                | `from module import *`                                   | ruff `F403`                                                |
+| `logging`                                       | `print`, `pprint`                                        | ruff `T201`, `T203`                                        |
+| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests        | `frozen-dataclass`                                         |
+| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere    | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`    | `enum-string-constants`                                    |
+| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...     | `no-inline-suppression`                                    |
+| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
 Details that are decisions rather than the table:
 
@@ -241,14 +248,24 @@ Details that are decisions rather than the table:
   `api/`) adds a `python.exceptions` entry for `pydantic-boundary` with those paths.
 - `enum-string-constants` flags a class with no bases or decorators whose body assigns at least two
   `UPPER_CASE` names to string literals, and module-level `UPPER_CASE` string constants where at
-  least three share the prefix before the first underscore (`STATUS_ACTIVE`, `STATUS_CLOSED`, ...).
-  Subjects are the class name or `PREFIX_*`, so identities survive edits above them.
+  least three share the prefix before the first underscore (`STATUS_ACTIVE`, `STATUS_CLOSED`, ...),
+  but only when the group is enum-like: each value equals its name, or the name after the shared
+  prefix, ignoring case (`ACTIVE = "active"`). Configuration (`DB_HOST = "localhost"`,
+  `class Defaults: HOST = "localhost"`) is not flagged. Subjects are the class name or `PREFIX_*`,
+  so identities survive edits above them. The hint offers `enum.StrEnum` on Python 3.11 and later
+  and `class X(str, enum.Enum)` before.
 - `no-inline-suppression` reads real comments only (the tokenizer, not string contents). It bans
   `# type: ignore`, `# noqa`, `# ruff: noqa`, `# flake8: noqa`, `# pyright: ignore`, the
   `# pyright: basic|standard|off` modes and `# pyright: reportX=false|none|warning|information`,
-  and any `# mypy:` directive except `strict`. `# pyright: strict` is allowed. Mypy has no switch
+  `# fmt: off` and `# fmt: skip`, and any `# mypy:` directive except `strict`. The message says
+  to remove the comment and fix the code; when it must stay, the way out is a `python.exceptions`
+  entry for `no-inline-suppression` itself with the path. `# pyright: strict` is allowed. Mypy has no switch
   that ignores `# type: ignore` comments, so there the comment still silences the checker; the
   rule reports it all the same, and pyright is run with `enableTypeIgnoreComments: false`.
+- `no-type-check`, `not-type-checking` and `stub-beside-source` close the other ways to hide code
+  from the checkers: `@no_type_check` on a function or class, an `if not TYPE_CHECKING:` branch,
+  and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
+  `typing.cast` is allowed.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ## Slice 1: tools, reports and identities

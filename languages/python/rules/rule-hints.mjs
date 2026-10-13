@@ -1,11 +1,12 @@
 export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright'];
+const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
 const HANDLE_EXCEPTION =
   'Catch the specific exception and handle it, log it with `logger.exception(...)` or re-raise it; `contextlib.suppress(SpecificError)` ignores one expected error.';
-const FIX_TYPE =
-  'Fix the type: correct the annotation or narrow the value with a check. Inline ignores are banned.';
+const FIX_TYPE = 'Fix the type; inline ignores are banned.';
+const INSTALL_PACKAGE = 'Install the package, or its `types-` stubs, in the project environment.';
 
 export const RULE_HINTS = [
   {
@@ -55,16 +56,43 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['enum-string-constants'],
     describe: (subject) => `${subject} are string constants that belong in one enum`,
-    allowed: 'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"`.',
+    allowed:
+      'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['no-type-check'],
+    describe: (subject) => `\`${subject}\` is excluded from type checking by \`@no_type_check\``,
+    allowed: 'Remove the decorator and annotate the code so the checker can verify it.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['not-type-checking'],
+    describe: (subject) => `\`${subject}\` hides code from the type checkers`,
+    allowed:
+      'Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['stub-beside-source'],
+    describe: (subject) => `\`${subject}\` sits beside its source and replaces it for the checkers`,
+    allowed: 'Delete the `.pyi` file and annotate the `.py` file itself.',
   },
   {
     tool: RULES_TOOL,
     rules: ['no-inline-suppression'],
     describe: (subject) => `Inline suppression \`# ${subject}\``,
     allowed:
-      'Fix the cause instead: `# type: ignore`, `# noqa` and `# pyright: ignore` are banned. If the code is legitimate, add a "python.exceptions" entry for the rule it suppressed.',
+      'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
     exception: false,
   },
+  { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
+  {
+    tool: 'pyright',
+    rules: ['reportMissingImports', 'reportMissingModuleSource'],
+    allowed: INSTALL_PACKAGE,
+  },
+  { tool: 'mypy', rules: ['unused-ignore'], allowed: 'Delete the comment.', exception: false },
   ...TYPE_CHECK_TOOLS.map((tool) => ({ tool, rules: undefined, allowed: FIX_TYPE })),
 ];
 
@@ -94,15 +122,28 @@ export function describeRuleFinding(rule, subject) {
   );
 }
 
+export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
+  ({ rules }) => rules,
+);
+
+function canBeLifted(finding) {
+  return (
+    HINTED_TOOLS.includes(finding.tool) &&
+    finding.classification === 'enforceable' &&
+    typeof finding.rule === 'string' &&
+    finding.rule !== ''
+  );
+}
+
 export function withHint(finding) {
   const hint = hintFor(finding);
-  if (hint === undefined) {
+  if (hint === undefined && !canBeLifted(finding)) {
     return finding;
   }
   const sentences = [
     `${finding.message.replace(/\.$/, '')}.`,
-    hint.allowed,
-    ...(hint.exception === false ? [] : [exceptionSentence(finding.rule)]),
+    ...(hint === undefined ? [] : [hint.allowed]),
+    ...(hint?.exception === false ? [] : [exceptionSentence(finding.rule)]),
   ];
   return { ...finding, message: sentences.join(' ') };
 }

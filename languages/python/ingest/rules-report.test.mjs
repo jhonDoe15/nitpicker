@@ -29,12 +29,18 @@ describe('rules script report', () => {
       entry({ rule: 'pydantic-boundary', subject: 'pydantic' }),
       entry({ rule: 'enum-string-constants', subject: 'STATUS_*' }),
       entry({ rule: 'no-inline-suppression', subject: 'noqa: F401' }),
+      entry({ rule: 'no-type-check', subject: 'Parser.parse' }),
+      entry({ rule: 'not-type-checking', subject: 'if not TYPE_CHECKING' }),
+      entry({ rule: 'stub-beside-source', subject: 'mod.pyi' }),
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
       'pydantic is imported outside an adapters/ package',
       'STATUS_* are string constants that belong in one enum',
       'Inline suppression `# noqa: F401`',
+      '`Parser.parse` is excluded from type checking by `@no_type_check`',
+      '`if not TYPE_CHECKING` hides code from the type checkers',
+      '`mod.pyi` sits beside its source and replaces it for the checkers',
     ]);
   });
 

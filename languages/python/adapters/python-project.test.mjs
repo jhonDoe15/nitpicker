@@ -6,7 +6,7 @@ import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
-  detectTypeChecker,
+  detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
 
@@ -52,6 +52,14 @@ describe('type checker detection', () => {
       'mypy',
     ],
     ['a [tool.pyright] table', { 'pyproject.toml': '[tool.pyright]\n' }, 'pyright'],
+    ['a [tool.pyright] table with spaces', { 'pyproject.toml': '[ tool.pyright ]\n' }, 'pyright'],
+    ['a [tool.mypy] table with spaces', { 'pyproject.toml': '[ tool.mypy ]\n' }, 'mypy'],
+    [
+      'a dependency inside an array',
+      { 'pyproject.toml': 'dev = ["pyright>=1.1", "pytest"]\n' },
+      'pyright',
+    ],
+    ['a dependency after others', { 'pyproject.toml': 'dev = ["pytest", "mypy"]\n' }, 'mypy'],
     ['pyrightconfig.json', { 'pyrightconfig.json': '{}' }, 'pyright'],
     ['a requirements line', { 'requirements.txt': 'pyright>=1.1\n' }, 'pyright'],
     [
@@ -65,21 +73,27 @@ describe('type checker detection', () => {
       'pyright',
     ],
   ])('finds the checker from %s', (_name, files, expected) => {
-    expect(detectTypeChecker(project(files), undefined)).toBe(expected);
+    expect(detectTypeCheckers(project(files), undefined)).toEqual([expected]);
   });
 
   it.each([
     ['nothing', {}],
-    ['other tools only', { 'requirements.txt': 'pytest\nmypyc-extras\npyright-helper\n' }],
+    [
+      'other tools only',
+      {
+        'requirements.txt': 'pytest\nmypyc-extras\npyright-helper\n',
+        'pyproject.toml': 'dev = ["mypy-extensions", "basedpyright", "mypy.ini"]\n',
+      },
+    ],
     ['a mention in a word', { 'pyproject.toml': 'description = "all about mypy"\n' }],
   ])('finds none from %s', (_name, files) => {
-    expect(detectTypeChecker(project(files), undefined)).toBeUndefined();
+    expect(detectTypeCheckers(project(files), undefined)).toEqual([]);
   });
 
   it('prefers the checker with a configuration over one that is only a dependency', () => {
     const files = { 'requirements.txt': 'mypy\n', 'pyrightconfig.json': '{}' };
 
-    expect(detectTypeChecker(project(files), undefined)).toBe('pyright');
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['pyright']);
   });
 
   it('prefers a configured checker that is also a dependency', () => {
@@ -88,17 +102,19 @@ describe('type checker detection', () => {
       'requirements.txt': 'pyright\n',
     };
 
-    expect(detectTypeChecker(project(files), undefined)).toBe('pyright');
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['pyright']);
   });
 
-  it('takes mypy when both are equally present', () => {
-    const files = { 'pyproject.toml': '[tool.pyright]\n[tool.mypy]\n' };
-
-    expect(detectTypeChecker(project(files), undefined)).toBe('mypy');
+  it.each([
+    ['both configured', { 'pyproject.toml': '[tool.pyright]\n[tool.mypy]\n' }],
+    ['both declared in one array', { 'pyproject.toml': 'dev = ["pyright", "mypy"]\n' }],
+    ['both in a requirements file', { 'requirements.txt': 'pyright\nmypy\n' }],
+  ])('lists both, mypy first, when %s', (_name, files) => {
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['mypy', 'pyright']);
   });
 
   it('takes the setting over any detection', () => {
-    expect(detectTypeChecker(project({ 'mypy.ini': '' }), 'pyright')).toBe('pyright');
+    expect(detectTypeCheckers(project({ 'mypy.ini': '' }), 'pyright')).toEqual(['pyright']);
   });
 });
 
