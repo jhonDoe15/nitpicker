@@ -663,7 +663,7 @@ describe('nitpicker with "preset": "python"', () => {
   });
 
   describe('function structure and CRAP', () => {
-    const metric = (name, parameters, complexity = 1) => ({
+    const fn = (name, parameters, complexity = 1) => ({
       file: 'src/demo/a.py',
       name,
       start: 4,
@@ -706,15 +706,11 @@ describe('nitpicker with "preset": "python"', () => {
 
     it('gates new structure and CRAP findings, and holds a touched legacy function at its limit unless it grows', () => {
       const root = pythonRepository({
-        'structure-data.json': JSON.stringify([metric('value', 4, 5)]),
+        'structure-data.json': JSON.stringify([fn('value', 4, 5)]),
       });
       write(root, {
         'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
-        'structure-data.json': JSON.stringify([
-          metric('value', 4, 5),
-          metric('fresh', 4),
-          metric('ghost', 0),
-        ]),
+        'structure-data.json': JSON.stringify([fn('value', 4, 5), fn('fresh', 4), fn('ghost', 0)]),
         'coverage-data.json': coverageOf('value', 'fresh'),
       });
       commit(root, 'add new functions, touch the legacy one');
@@ -722,7 +718,7 @@ describe('nitpicker with "preset": "python"', () => {
 
       write(root, {
         'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
-        'structure-data.json': JSON.stringify([metric('value', 5, 5)]),
+        'structure-data.json': JSON.stringify([fn('value', 5, 5)]),
       });
       commit(root, 'raise the CRAP limit, grow the legacy function');
       const grown = run(root);
