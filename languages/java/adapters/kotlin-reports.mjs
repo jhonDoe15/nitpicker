@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
@@ -8,6 +8,7 @@ const DETEKT_REPORT = 'detekt.sarif';
 const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
 const KTLINT_PREFIX = 'ktlint.';
+const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
@@ -19,6 +20,42 @@ export function requireKotlinManifest(manifest) {
 
 export function jacocoSourceRoots({ sourceRoots, manifest, kotlin }) {
   return kotlin ? [...new Set([...sourceRoots, ...manifest.kotlinSourceRoots])] : sourceRoots;
+}
+
+export function sourceLocator(projectRoot, sourceRoots) {
+  let kotlinFiles;
+  return (packageDirectory, fileName) => {
+    const direct = sourceRoots
+      .map((sourceRoot) => [sourceRoot, packageDirectory, fileName].filter(Boolean).join('/'))
+      .find((candidate) => existsSync(path.join(projectRoot, candidate)));
+    if (direct !== undefined || !fileName.endsWith('.kt')) {
+      return direct;
+    }
+    kotlinFiles ??= declaredKotlinFiles(projectRoot, sourceRoots);
+    const packageName = packageDirectory.replaceAll('/', '.');
+    return kotlinFiles.find(
+      (file) => file.packageName === packageName && file.path.endsWith(`/${fileName}`),
+    )?.path;
+  };
+}
+
+function declaredKotlinFiles(projectRoot, sourceRoots) {
+  return sourceRoots.flatMap((sourceRoot) => {
+    const directory = path.join(projectRoot, sourceRoot);
+    if (!existsSync(directory)) {
+      return [];
+    }
+    return readdirSync(directory, { recursive: true })
+      .filter((entry) => entry.endsWith('.kt'))
+      .map((entry) => {
+        const relative = `${sourceRoot}/${entry.replaceAll('\\', '/')}`;
+        return { path: relative, packageName: declaredPackage(path.join(projectRoot, relative)) };
+      });
+  });
+}
+
+function declaredPackage(file) {
+  return PACKAGE_DECLARATION.exec(readFileSync(file, 'utf8'))?.[1].replaceAll('`', '') ?? '';
 }
 
 export function reportOnlyKotlinMutants(findings) {

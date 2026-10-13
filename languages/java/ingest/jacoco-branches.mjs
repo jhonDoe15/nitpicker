@@ -1,7 +1,7 @@
 import { MINIMUM_BRANCH_COVERAGE } from '../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { childrenNamed, hashIdentity, normalizeReportPath, parseXml } from './common.mjs';
-import { hasBranchingSyntax } from './kotlin-branches.mjs';
+import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches.mjs';
 
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
@@ -20,18 +20,44 @@ export function ingestJacocoBranches(xml, options = {}) {
 }
 
 function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
-  const filePath = normalizeReportPath(
-    [options.sourceRoot, pkg.attrs.name, sourcefile.attrs.name].filter(Boolean).join('/'),
-  );
+  const filePath = locateSource(pkg.attrs.name, sourcefile.attrs.name, options);
   const text = filePath === undefined ? undefined : options.sourceText?.(filePath);
   if (text === undefined) {
-    return [];
+    return unresolvedKotlinFinding(sourcefile, pkg, tool);
   }
   return fileFindings(
     sourcefile,
     { path: filePath, lines: text.split(/\r?\n/) },
     { tool, minimum },
   );
+}
+
+function locateSource(packageName, fileName, options) {
+  if (options.locate !== undefined) {
+    return options.locate(packageName, fileName);
+  }
+  return normalizeReportPath([options.sourceRoot, packageName, fileName].filter(Boolean).join('/'));
+}
+
+function unresolvedKotlinFinding(sourcefile, pkg, tool) {
+  const name = sourcefile.attrs.name;
+  const missed = childrenNamed(sourcefile, 'line').reduce(
+    (sum, line) => sum + (Number.parseInt(line.attrs.mb, 10) || 0),
+    0,
+  );
+  if (!name.endsWith('.kt') || missed === 0 || /^kotlinx?(\/|$)/.test(pkg.attrs.name)) {
+    return [];
+  }
+  return [
+    {
+      tool,
+      rule: 'branch-source-not-found',
+      path: normalizeReportPath(`${pkg.attrs.name}/${name}`) ?? name,
+      identity: 'branch-source-not-found',
+      message: `Source file not found, so its ${String(missed)} missed branches are not checked. Put it under a Kotlin source root and declare its package`,
+      classification: 'descriptive',
+    },
+  ];
 }
 
 function fileFindings(sourcefile, file, { tool, minimum }) {
@@ -54,13 +80,20 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
   if (!(total > 0) || !Number.isInteger(lineNumber) || !source) {
     return undefined;
   }
-  if (filePath.endsWith('.kt') && !hasBranchingSyntax(source)) {
+  const kotlin = filePath.endsWith('.kt');
+  if (kotlin && isCompilerGeneratedBranchLine(source)) {
     return undefined;
   }
+  const suspension = kotlin ? suspensionCall(source) : undefined;
   return {
     path: filePath,
     key: hashIdentity('branch-source', [source]),
     percent: (covered / total) * 100,
     line: lineNumber,
+    ...(suspension === undefined ? {} : { arms: [suspensionArm(suspension)] }),
   };
+}
+
+function suspensionArm(call) {
+  return `${call} suspending (move the call to its own line if no branch of yours is untested)`;
 }
