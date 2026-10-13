@@ -2,13 +2,19 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   MAIN_PROPERTIES,
   finding,
-  read,
+  project,
   removeProjects,
   resource,
   secretFinding,
+  sourceRoots,
 } from '../fixtures/spring-config-projects.mjs';
+import { readSpringConfigFindings } from './java-spring.mjs';
 
 afterEach(removeProjects);
+
+function read(files, options) {
+  return readSpringConfigFindings(project(files, options), { sourceRoots });
+}
 
 describe('risky-startup-flags', () => {
   const flags = [
