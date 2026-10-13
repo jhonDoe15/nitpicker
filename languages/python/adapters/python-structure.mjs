@@ -26,5 +26,8 @@ export function structure(context) {
 }
 
 export function readPythonStructureFindings(reportRoot, projectRoot) {
-  return readStructureFindings(reportRoot, projectRoot, functionText, STRUCTURE_HINTS);
+  return readStructureFindings(reportRoot, projectRoot, {
+    textOf: functionText,
+    hints: STRUCTURE_HINTS,
+  });
 }
