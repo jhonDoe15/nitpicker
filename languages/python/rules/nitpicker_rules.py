@@ -25,6 +25,32 @@ SUPPRESSION = re.compile(
 )
 
 
+def is_constant(node):
+    return isinstance(node, ast.Constant) or (
+        isinstance(node, ast.UnaryOp)
+        and isinstance(node.op, (ast.USub, ast.UAdd))
+        and isinstance(node.operand, ast.Constant)
+    )
+
+
+def is_inert(statement):
+    if isinstance(statement, ast.Return):
+        return statement.value is None or is_constant(statement.value)
+    if isinstance(statement, ast.Expr):
+        return isinstance(statement.value, ast.Constant)
+    return isinstance(statement, (ast.Pass, ast.Continue))
+
+
+def type_text(node):
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        return f"{type_text(node.value)}.{node.attr}"
+    if isinstance(node, ast.Tuple):
+        return "(" + ", ".join(type_text(element) for element in node.elts) + ")"
+    return "expression"
+
+
 def is_test_path(path):
     parts = path.split("/")
     name = parts[-1]
@@ -163,6 +189,12 @@ class Collector(ast.NodeVisitor):
             for part in ast.walk(node.test)
         ):
             self.add("not-type-checking", "if not TYPE_CHECKING", node)
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node):
+        if all(is_inert(statement) for statement in node.body):
+            caught = type_text(node.type) if node.type else ""
+            self.add("swallowed-exception", f"except {caught}".strip(), node)
         self.generic_visit(node)
 
     visit_FunctionDef = visit_scope

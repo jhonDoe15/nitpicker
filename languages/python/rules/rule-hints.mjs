@@ -1,5 +1,5 @@
 export const RULES_TOOL = 'python-rules';
-const TYPE_CHECK_TOOLS = ['mypy', 'pyright'];
+const TYPE_CHECK_TOOLS = ['mypy', 'pyright', 'basedpyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
@@ -26,7 +26,7 @@ export const RULE_HINTS = [
     allowed:
       'Default to `None` and create the value inside the function, or use an immutable default such as a tuple.',
   },
-  { tool: 'ruff', rules: ['E722', 'BLE001', 'S110', 'S112'], allowed: HANDLE_EXCEPTION },
+  { tool: 'ruff', rules: ['E722', 'BLE001'], allowed: HANDLE_EXCEPTION },
   {
     tool: 'ruff',
     rules: ['F403'],
@@ -37,6 +37,13 @@ export const RULE_HINTS = [
     tool: 'ruff',
     rules: ['PERF203'],
     allowed: 'Move the `try` out of the loop, or handle each item in a helper function.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['swallowed-exception'],
+    describe: (subject) => `\`${subject}\` swallows the error`,
+    allowed:
+      'Log it with `logger.exception(...)`, re-raise it or use it; `contextlib.suppress(SpecificError)` ignores one expected error.',
   },
   {
     tool: RULES_TOOL,
@@ -87,11 +94,11 @@ export const RULE_HINTS = [
     exception: false,
   },
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
-  {
-    tool: 'pyright',
+  ...['pyright', 'basedpyright'].map((tool) => ({
+    tool,
     rules: ['reportMissingImports', 'reportMissingModuleSource'],
     allowed: INSTALL_PACKAGE,
-  },
+  })),
   { tool: 'mypy', rules: ['unused-ignore'], allowed: 'Delete the comment.', exception: false },
   ...TYPE_CHECK_TOOLS.map((tool) => ({ tool, rules: undefined, allowed: FIX_TYPE })),
 ];

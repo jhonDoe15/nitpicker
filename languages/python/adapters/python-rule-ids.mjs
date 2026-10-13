@@ -52,5 +52,5 @@ export function ruleIdProblem(rule) {
   }
   return MYPY_CODE.test(rule)
     ? undefined
-    : 'use the id printed in the finding: a ruff code or prefix the preset selects, a python-rules id, a mypy error code or a pyright report rule';
+    : 'use the id printed in the finding: a ruff code or prefix the preset selects, a python-rules id, a mypy error code or a pyright or basedpyright report rule';
 }

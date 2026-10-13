@@ -25,7 +25,7 @@ describe('python config validation', () => {
       validate({
         preset: 'python',
         python: {
-          typeChecker: 'pyright',
+          typeChecker: 'basedpyright',
           exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
         },
       });
@@ -43,9 +43,13 @@ describe('python config validation', () => {
     'frozen-dataclass',
     'no-inline-suppression',
     'stub-beside-source',
+    'swallowed-exception',
     'arg-type',
     'import-not-found',
     'reportReturnType',
+    'reportAny',
+    'reportImplicitOverride',
+    'reportUnusedCallResult',
   ])('accepts the exception rule %s', (rule) => {
     expect(() => {
       validate({
@@ -85,7 +89,7 @@ describe('python config validation', () => {
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
     [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
-    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright'],
+    [{ typeChecker: 'pytype' }, '"python.typeChecker" must be one of: mypy, pyright, basedpyright'],
     [{ exceptions: {} }, '"python.exceptions" must be an array'],
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
@@ -115,6 +119,10 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'B008', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "B008"',
+    ],
+    [
+      { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "S110"',
     ],
     [
       {

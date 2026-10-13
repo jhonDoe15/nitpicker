@@ -9,6 +9,7 @@ import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
 import { applyRuleHints } from '../rule-hints.mjs';
 
 const fixtures = import.meta.dirname;
+const TYPE_CHECKERS = ['mypy', 'pyright', 'basedpyright'];
 const read = (reportRoot, name) => readFileSync(path.join(reportRoot, name), 'utf8');
 
 const COLLECTORS = {
@@ -34,7 +35,7 @@ export function findingsFor({ fixture, tool }, side) {
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   try {
     cpSync(path.join(fixtures, fixture, side), projectRoot, { recursive: true });
-    const isTypeChecker = tool === 'mypy' || tool === 'pyright';
+    const isTypeChecker = TYPE_CHECKERS.includes(tool);
     const context = createToolContext({
       projectRoot,
       liveRoot: projectRoot,

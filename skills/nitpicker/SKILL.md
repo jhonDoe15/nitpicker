@@ -152,7 +152,7 @@ Applies when `react` is in `package.json`.
 For `"preset": "python"`. The finishing steps above apply, except: run the project's tests, then
 `npx nitpicker` without `--fix` (it fixes TypeScript only), and the exit codes mean the same.
 
-- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
+- Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
   around code, or a `.pyi` beside its `.py`.
@@ -160,7 +160,8 @@ For `"preset": "python"`. The finishing steps above apply, except: run the proje
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Errors: a `try` inside a loop is flagged (PERF203): move it out or extract the body into a function. Catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. No bare `except:`, `except Exception:` or `except X: pass`; one expected error that is
+  re-raise. No bare `except:`, `except Exception:`, or a handler that only does `pass`, `...`, `continue` or
+  `return None` (or another constant): log it, re-raise it or use the error; one expected error that is
   deliberately ignored is `with contextlib.suppress(SpecificError):`.
 - Imports: name what you use. No `from module import *`.
 - Output: `logger = logging.getLogger(__name__)` and `logger.info(...)`. No `print`.

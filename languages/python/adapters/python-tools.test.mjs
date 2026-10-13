@@ -636,6 +636,9 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
       `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
+    expect(toolVersions(contextFor(root, { typeChecker: 'basedpyright' }).context)).toBe(
+      `ruff@0.9.9;basedpyright@1.40.2;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+    );
     expect(toolVersions(contextFor(project()).context)).toBe(
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
     );

@@ -23,7 +23,12 @@ const BLACK_HINT = new RegExp(
   ].join('|'),
   'm',
 );
-const TYPE_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
+const TYPE_CONFIG_FILES = [
+  'mypy.ini',
+  '.mypy.ini',
+  'pyrightconfig.json',
+  'basedpyrightconfig.json',
+];
 const TYPE_CHECKER_HINTS = {
   mypy: {
     configured: /^\s*\[{1,2}\s*(?:tool\.)?mypy[\].\s-]/m,
@@ -34,6 +39,11 @@ const TYPE_CHECKER_HINTS = {
     configured: /^\s*\[\s*tool\.pyright\s*\]/m,
     configFiles: ['pyrightconfig.json'],
     declared: /(?:^\s*|["'])pyright(?![\w.-])|pyright-python/m,
+  },
+  basedpyright: {
+    configured: /^\s*\[\s*tool\.basedpyright\s*\]/m,
+    configFiles: ['basedpyrightconfig.json'],
+    declared: /(?:^\s*|["'])basedpyright(?![\w.-])|basedpyright-pre-commit/m,
   },
 };
 const CONFIGURED_WEIGHT = 2;
@@ -127,18 +137,19 @@ export function detectTypeCheckers(projectRoot, setting) {
     ...requirementFiles(projectRoot),
     ...TYPE_CONFIG_FILES,
   ]);
+  const basedpyright = typeCheckerScore(texts, TYPE_CHECKER_HINTS.basedpyright);
   const scores = Object.entries(TYPE_CHECKER_HINTS).map(([checker, hints]) => [
     checker,
-    typeCheckerScore(texts, hints),
+    typeCheckerScore(texts, hints, checker === 'pyright' && basedpyright > 0),
   ]);
   const best = Math.max(...scores.map(([, score]) => score));
   return best === 0 ? [] : scores.filter(([, score]) => score === best).map(([checker]) => checker);
 }
 
-function typeCheckerScore(texts, { configured, configFiles, declared }) {
-  const hasConfig = texts.some(
-    ([file, text]) => configFiles.includes(file) || configured.test(text),
-  );
+function typeCheckerScore(texts, { configured, configFiles, declared }, sharesConfig = false) {
+  const hasConfig =
+    !sharesConfig &&
+    texts.some(([file, text]) => configFiles.includes(file) || configured.test(text));
   const isDeclared = texts.some(([, text]) => declared.test(text));
   return (hasConfig ? CONFIGURED_WEIGHT : 0) + (isDeclared ? 1 : 0);
 }
