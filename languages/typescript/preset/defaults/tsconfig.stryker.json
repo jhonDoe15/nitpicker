@@ -15,7 +15,14 @@
     "strict": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*", "test/**/*", "tests/**/*", "stryker.vitest.config.ts"],
+  "include": [
+    "src/**/*",
+    "test/**/*",
+    "tests/**/*",
+    "__tests__/**/*",
+    "e2e/**/*",
+    "stryker.vitest.config.ts"
+  ],
   "exclude": [
     "**/dist/**",
     "**/build/**",

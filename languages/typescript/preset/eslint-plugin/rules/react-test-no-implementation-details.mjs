@@ -1,4 +1,4 @@
-import { inReactTestFilesOnly } from './react-test-files.mjs';
+import { inReactTestFilesOnly, isRequireOfReact, reactBindingNames } from './react-test-files.mjs';
 
 const instanceMethods = new Set([
   'instance',
@@ -18,7 +18,7 @@ const fiberProperties = new Set([
   'memoizedProps',
 ]);
 const fiberKeyPrefix = '__react';
-const reactObjects = new Set(['React', 'react']);
+const globalReactNames = ['React', 'react'];
 const hookNamePattern = /^use[A-Z]/;
 
 function staticName(node) {
@@ -36,10 +36,11 @@ function isFiberName(name) {
   return name !== undefined && (fiberProperties.has(name) || name.startsWith(fiberKeyPrefix));
 }
 
-function spiedHook(node) {
+function spiedHook(node, reactNames) {
   const [target, hook] = node.arguments;
   const spies = node.callee.type === 'MemberExpression' && memberName(node.callee) === 'spyOn';
-  const onReact = target?.type === 'Identifier' && reactObjects.has(target.name);
+  const onReact =
+    (target?.type === 'Identifier' && reactNames.has(target.name)) || isRequireOfReact(target);
   const name = hook === undefined ? undefined : staticName(hook);
   return spies && onReact && hookNamePattern.test(name ?? '') ? name : undefined;
 }
@@ -57,10 +58,11 @@ export const rule = {
       fiberInternals:
         'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       hookSpy:
-        'Do not spy on the React hook `{{ name }}`. Use `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+        'Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create: inReactTestFilesOnly((context) => {
+    const reactNames = new Set([...globalReactNames, ...reactBindingNames(context.sourceCode.ast)]);
     return {
       CallExpression(node) {
         const callee = node.callee;
@@ -68,7 +70,7 @@ export const rule = {
         if (method !== undefined && instanceMethods.has(method)) {
           context.report({ node, messageId: 'componentInternals', data: { name: `${method}()` } });
         }
-        const hook = spiedHook(node);
+        const hook = spiedHook(node, reactNames);
         if (hook !== undefined) {
           context.report({ node, messageId: 'hookSpy', data: { name: hook } });
         }

@@ -56,6 +56,7 @@ export const testingLibraryHints = {
   'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
   'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and \`toHaveFocus()\` for focus.${GENERAL_HINT}`,
   'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
+  'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.${GENERAL_HINT}`,
   'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
 };
 

@@ -324,6 +324,11 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         "import { test } from '@playwright/test'; test('a', async ({ page }) => { page.instance(); });",
         "import { createStore } from 'redux-like'; createStore().setState({});",
         "import { reactive } from 'vue'; reactive().state();",
+        "import * as Hooks from 'preact/hooks'; vi.spyOn(Hooks, 'useState');",
+        "const Hooks = require('preact/hooks'); vi.spyOn(Hooks, 'useState');",
+        "import * as ReactNamespace from 'react'; vi.spyOn(ReactNamespace, 'createElement');",
+        "import { useState } from 'react'; vi.spyOn(Hooks, 'useState');",
+        "vi.spyOn(require('preact'), 'useState');",
       ].map((code) => ({ filename: testFilename, code })),
     ),
   invalid: [
@@ -363,6 +368,10 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
       errors: [{ messageId: 'hookSpy', data: { name: 'useState' } }],
     },
     {
+      code: "vi.spyOn(require('react'), 'useState');",
+      errors: [{ messageId: 'hookSpy', data: { name: 'useState' } }],
+    },
+    {
       code: 'vi.spyOn(React, "useState"); wrapper.state();',
       errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
     },
@@ -388,6 +397,20 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         filename: testFilename,
         code: `${importLine} wrapper.instance();`,
         errors: [componentInternalsError('instance()')],
+      })),
+    )
+    .concat(
+      [
+        ["import * as R from 'react';", 'R', 'useState'],
+        ["import MyReact from 'react';", 'MyReact', 'useReducer'],
+        ["import * as R from 'react';", 'R', 'useLayoutEffect'],
+        ["import R = require('react');", 'R', 'useEffect'],
+        ["const R = require('react');", 'R', 'useContext'],
+        ["import React, * as Namespace from 'react';", 'Namespace', 'useMemo'],
+      ].map(([importLine, target, hook]) => ({
+        filename: testFilename,
+        code: `${importLine} jest.spyOn(${target}, '${hook}');`,
+        errors: [{ messageId: 'hookSpy', data: { name: hook } }],
       })),
     ),
 });

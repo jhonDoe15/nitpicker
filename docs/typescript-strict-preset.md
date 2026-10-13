@@ -273,23 +273,33 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
   (`onClick={async () => ...}`), which is the normal React form.
-- **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
-  source roots, and `__tests__` directories). They need no particular test runner (Vitest or
+- **Component tests** (test files only: the test roots, which default to `test`, `tests`,
+  `__tests__` and `e2e` at the repo root, `*.test.*` and `*.spec.*` files under the source roots,
+  and `__tests__` directories under them). They need no particular test runner (Vitest or
   Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
   or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
   module, so Playwright and domain tests in the same roots are left alone. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
-  or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
+  or `toHaveFocus()` for focus. Query through `screen`, not through queries destructured from
+  `render(...)` (`testing-library/prefer-screen-queries`, in Testing Library's own React
+  recommendations); `within(element)` scopes a query to part of the page. Drive the component with `userEvent`, not `fireEvent`
   (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
   `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
   a project on user-event v13, whose calls are synchronous, needs an exception for
   `await-async-events`. Do not test implementation details
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
-  `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A project with
+  `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
+  `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
+  default, namespace or `require` binding of `react`); Testing Library's guiding principle is to
+  test the way the software is used, so assert what the user sees, or test a custom hook with
+  `renderHook`. An element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Snapshot-only tests are allowed.** No rule bans a test whose only assertion is
+  `toMatchSnapshot()` or `toMatchInlineSnapshot()`. A snapshot can pin a rendered structure
+  deliberately, and there is no general recommendation against it nor a weird pattern with a
+  standard alternative. The bans above still apply inside such a test.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
@@ -332,7 +342,10 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders; a missing one is
+  ignored). Type checking, duplicate detection, dead-code analysis and the test-file lint scopes cover all
+  four, but the quality test run never runs `e2e` (end-to-end runners such as Playwright start those tests
+  themselves). The roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
   the module-load-effects check does not apply to them, since running at load is what a script does.
 

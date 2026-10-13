@@ -19,6 +19,8 @@
     "src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
+    "__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
+    "e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}",
     "*.config.{ts,mts,mjs}"
   ],
   "ignore": [

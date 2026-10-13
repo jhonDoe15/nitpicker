@@ -7,9 +7,10 @@ import {
   JAVASCRIPT_KNIP_ENTRIES,
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
+import { testRoots } from './layout.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
-const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
+const DEFAULT_TEST_ROOTS = new Set(testRoots);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
 
 export function expandLayoutRoots(entries, layout) {

@@ -213,6 +213,28 @@ const reactTestCases = [
     'nitpicker.config.json',
   ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
+  ['hook spy names what the user sees', "vi.spyOn(React, 'useState');", 'what the user sees'],
+  ['hook spy names the config exception', "vi.spyOn(React, 'useState');", 'nitpicker.config.json'],
+  [
+    'hook spy on a namespace import names renderHook',
+    "import * as R from 'react'; jest.spyOn(R, 'useEffect');",
+    '`renderHook`',
+  ],
+  [
+    'destructured query names screen',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'screen.getByRole',
+  ],
+  [
+    'destructured query names within',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'within(element)',
+  ],
+  [
+    'destructured query names the config exception',
+    "const { getByRole } = render(<Panel />); getByRole('button');",
+    'nitpicker.config.json',
+  ],
 ].map(reactTestCase);
 
 export const reactFailureMessageCases = [...reactSyntaxCases, ...reactTestCases];
