@@ -236,10 +236,12 @@ describe('nitpicker with "preset": "java"', () => {
       ]);
     });
 
-    it('passes once an exception names the method or the path, and fails for another method', () => {
-      expect(change(configWith(entry('sum'))).exitCode).toBe(0);
-      expect(change(configWith(entry(undefined))).exitCode).toBe(0);
-      expect(change(configWith(entry('product'))).exitCode).toBe(1);
+    it.each([
+      ['the method', 'sum', 0],
+      ['the path', undefined, 0],
+      ['another method', 'product', 1],
+    ])('lifts the finding by %s only as far as the entry reaches', (_, functionName, exitCode) => {
+      expect(change(configWith(entry(functionName))).exitCode).toBe(exitCode);
     });
 
     it('rejects an exception for a rule outside structure, CRAP and coverage', () => {

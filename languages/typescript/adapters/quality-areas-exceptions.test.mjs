@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mjs';
-import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
+import { applyFunctionRuleExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import {
   normalizeCoverage,
   normalizeCrap,
@@ -137,7 +137,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
     expect(findings.map(({ message }) => message)).toEqual([
       'risky has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/main/a.ts"],"function":"risky","reason":"why"}.',
     ]);
-    expect(applyFindingExceptions(findings, [entry])).toEqual([]);
+    expect(applyFunctionRuleExceptions(findings, [entry])).toEqual([]);
   });
 
   it('names the enclosing named function of an uncovered branch and lifts it by that name', () => {
@@ -150,8 +150,10 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
         'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/a.ts"],"function":"risky","reason":"why"}.',
       ],
     ]);
-    expect(applyFindingExceptions(findings, [entry])).toEqual([]);
-    expect(applyFindingExceptions(findings, [{ ...entry, function: 'safe' }])).toEqual(findings);
+    expect(applyFunctionRuleExceptions(findings, [entry])).toEqual([]);
+    expect(applyFunctionRuleExceptions(findings, [{ ...entry, function: 'safe' }])).toEqual(
+      findings,
+    );
   });
 
   it('points a branch outside every named function at exclude', () => {

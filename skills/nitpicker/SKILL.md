@@ -30,7 +30,7 @@ If your change edits a function that existed before it, read
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
-4. Never suppress: no `eslint-disable`, `@ts-ignore`, config `exclude`/`disable`, legacy entries,
+4. Never suppress: no `eslint-disable`, `@ts-ignore`, config `exclude`/`disable`/`exceptions`, legacy entries,
    or weakened tests. If a finding seems wrong, stop and ask.
 
 ## Layout
