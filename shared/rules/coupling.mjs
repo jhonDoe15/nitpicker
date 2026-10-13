@@ -243,3 +243,50 @@ export function computeCoupling({ modules, edges, packageOf, runtime = false }) 
 
   return { modules: moduleMetrics, packages, stabilityDirection };
 }
+
+function byName(left, right) {
+  if (left.name < right.name) {
+    return -1;
+  }
+  return left.name > right.name ? 1 : 0;
+}
+
+/**
+ * The `CouplingReport` for a module graph: drops self, repeated and external edges, then adds the
+ * summary, per-module and per-package metrics and the stability-direction violations.
+ * `fileOf(module)` gives the project-relative path a module's metrics are reported against.
+ */
+export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
+  const moduleSet = new Set(modules);
+  const edgeKeys = new Set();
+  const moduleEdges = [];
+  for (const { source, target } of edges) {
+    const key = `${source}\0${target}`;
+    if (source !== target && moduleSet.has(source) && moduleSet.has(target) && !edgeKeys.has(key)) {
+      edgeKeys.add(key);
+      moduleEdges.push({ source, target });
+    }
+  }
+  const metrics = computeCoupling({ modules, edges: moduleEdges, packageOf });
+  const packages = metrics.packages.sort(byName);
+  return {
+    summary: {
+      modules: modules.length,
+      dependencies: moduleEdges.length,
+      packages: packages.length,
+    },
+    modules: metrics.modules.map(({ module, fanIn, fanOut, totalCoupling, instability }) => ({
+      file: fileOf(module),
+      fanIn,
+      fanOut,
+      totalCoupling,
+      instability,
+    })),
+    packages,
+    stabilityDirection: metrics.stabilityDirection.map(({ source, target, delta }) => ({
+      source,
+      target,
+      delta,
+    })),
+  };
+}

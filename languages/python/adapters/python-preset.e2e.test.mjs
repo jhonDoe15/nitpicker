@@ -143,7 +143,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
   });
@@ -170,6 +170,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     ).toEqual(['ruff F401 bad.py', 'ruff-format format bad.py']);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
+      'coupling/module-coupling',
+      'coupling/module-coupling',
+      'coupling/module-coupling',
       'coverage/line-coverage',
       'coverage/uncovered-function',
       'ruff/F401',
@@ -264,7 +267,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('summary.json').tools[0].version).toMatch(
-        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest$/,
+        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest;jscpd@[\d.]+$/,
       );
     });
 
@@ -395,6 +398,153 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(1);
     });
+  });
+});
+
+const ORDER_TOTAL = [
+  'def order_total(lines, discount):',
+  '    total = 0',
+  '    for line in lines:',
+  '        if line.price > 0 and line.quantity > 0:',
+  '            total += line.price * line.quantity',
+  '        else:',
+  '            total -= discount',
+  '    if total < 0 and discount > 0:',
+  '        total = 0',
+  '    return total',
+  '',
+].join('\n');
+const LAYERED_FILES = {
+  'nitpicker.config.json': '{ "preset": "python" }\n',
+  '.gitignore': '.venv/\n__pycache__/\n',
+  '.importlinter':
+    '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
+  'src/shop/__init__.py': '',
+  'src/shop/domain/__init__.py': '',
+  'src/shop/domain/pricing.py': `def price_with_tax(amount, rate):\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
+  'src/shop/infra/__init__.py': '',
+  'src/shop/infra/store.py':
+    'from shop.domain import pricing\n\n\ndef total(amounts):\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
+  'src/shop/web/__init__.py': '',
+  'src/shop/web/views.py':
+    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts):\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
+  'tests/test_shop.py':
+    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    assert pricing.order_total([line, line], 0) == 12\n',
+};
+
+describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end to end', () => {
+  let project;
+
+  const enforceable = (result) =>
+    result
+      .json('new-findings.json')
+      .filter(({ classification }) => classification === 'enforceable')
+      .sort((left, right) =>
+        `${left.tool}${left.identity}`.localeCompare(`${right.tool}${right.identity}`),
+      );
+
+  const newRules = (result) => enforceable(result).map(({ tool, rule }) => `${tool} ${rule}`);
+
+  beforeAll(() => {
+    project = repository();
+    write(project, LAYERED_FILES);
+    git(project, 'init', '-q', '-b', 'main');
+    git(project, 'add', '-A');
+    git(project, 'commit', '-q', '-m', 'layered base');
+    command(project, 'uv', ['venv', '-q', '.venv']);
+    command(project, 'uv', [
+      'pip',
+      'install',
+      '-q',
+      '--python',
+      '.venv',
+      'coverage',
+      'pytest',
+      'import-linter',
+    ]);
+    commitBranch(project, 'clean', {
+      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts):\n    return len(amounts)\n`,
+    });
+    commitBranch(project, 'copy', {
+      'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
+    });
+    commitBranch(project, 'upward-import', {
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+    });
+    commitBranch(project, 'contracts-off', {
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+      'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
+    });
+  });
+
+  afterAll(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('passes a change that keeps the layering and adds no copy', () => {
+    const result = gate(project, 'clean');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.json('summary.json').tools[0].version).toMatch(
+      /;jscpd@[\d.]+;import-linter@[\d.]+$/,
+    );
+  });
+
+  it('fails a copied function as a duplicate against the original', () => {
+    const result = gate(project, 'copy');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      enforceable(result).map(({ tool, rule, path: file, message }) => ({
+        tool,
+        rule,
+        file,
+        message,
+      })),
+    ).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        file: 'src/shop/domain/bulk.py',
+        message:
+          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py to "exclude" in nitpicker.config.json.',
+      },
+    ]);
+  });
+
+  it('fails a stable package importing an unstable one and the contract it breaks', () => {
+    const result = gate(project, 'upward-import');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      enforceable(result).map(({ rule, path: file, identity }) => ({ rule, file, identity })),
+    ).toEqual([
+      {
+        rule: 'stability-direction',
+        file: 'src/shop/domain/__init__.py',
+        identity: 'package-edge:shop.domain->shop.web',
+      },
+      {
+        rule: 'contract-broken',
+        file: 'src/shop/domain/pricing.py',
+        identity: 'contract:Domain is pure:shop.domain.pricing -> shop.web.views',
+      },
+      {
+        rule: 'contract-broken',
+        file: 'src/shop/domain/pricing.py',
+        identity:
+          'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
+      },
+    ]);
+  });
+
+  it('does not run the contracts when the config turns import-linter off', () => {
+    const result = gate(project, 'contracts-off');
+
+    expect(newRules(result)).toEqual(['coupling stability-direction']);
+    expect(result.json('summary.json').tools[0].version).not.toContain('import-linter');
   });
 });
 

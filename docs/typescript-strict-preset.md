@@ -223,8 +223,8 @@ The React scope turns on when `react` is in the analyzed project's `dependencies
 `devDependencies` (a peer dependency alone does not count), or when `nitpicker.config.json` sets
 `"react": { "enabled": true }`; `"enabled": false` turns it off whatever `package.json` says. A
 project without React gets none of the rules below and no change to the rules above. The scope covers
-production source under the source roots (every extension the preset lints, `.jsx` included), not
-tests. Each rule names the allowed form in its message and, where it can flag legitimate code, says
+production source under the source roots (every extension the preset lints, `.jsx` included); the test rules at the
+end of this list cover test files. Each rule names the allowed form in its message and, where it can flag legitimate code, says
 to add an exception for the rule in `nitpicker.config.json`. An exception that names a React rule is skipped while the scope is
 off (a PR that adds or removes React keeps linting on both sides); a misspelled rule is still an error.
 
@@ -273,9 +273,26 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
   (`onClick={async () => ...}`), which is the normal React form.
+- **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
+  source roots, and `__tests__` directories). They need no particular test runner (Vitest or
+  Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
+  or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
+  module, so Playwright and domain tests in the same roots are left alone. Query by accessible
+  role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
+  `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
+  or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
+  (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
+  `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
+  a project on user-event v13, whose calls are synchronous, needs an exception for
+  `await-async-events`. Do not test implementation details
+  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
+  test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
+  `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
+  element with no role or accessible name needs an exception. A project with
+  `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
-The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react) and
-`eslint-plugin-jsx-a11y-x`. `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
+The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
+`eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
 
 ## How it is enforced
