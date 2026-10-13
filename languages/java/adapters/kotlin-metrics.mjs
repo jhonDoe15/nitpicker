@@ -70,6 +70,7 @@ export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit
       longName: entry.name,
       start: entry.start,
       end: entry.end,
+      lineScoped: entry.initializer === true,
     }));
   return ingestCrapFunctions(functions, jacoco, {
     jacocoKeys: jacocoKeys(metrics),
