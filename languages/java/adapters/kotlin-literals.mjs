@@ -2,9 +2,13 @@ const MARK = '\u0001';
 const CHARACTER_LITERAL = /'(?:\\(?:u[0-9a-fA-F]{4}|.)|[^'\\\n])'/y;
 const EVERY_CHARACTER = /[^]/g;
 
-const startsWith = (state, index, text) => state.source.startsWith(text, index);
+function startsWith(state, index, text) {
+  return state.source.startsWith(text, index);
+}
 
-const insideTemplate = (state) => state.stack.some(({ template }) => template);
+function insideTemplate(state) {
+  return state.stack.some(({ template }) => template);
+}
 
 function emit(state, text) {
   if (!insideTemplate(state)) {
