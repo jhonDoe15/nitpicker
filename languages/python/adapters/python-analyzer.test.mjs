@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import {
   configurationFiles,
+  createMutationAnalyzer,
   createPythonAnalyzer,
+  createPythonAnalyzers,
+  MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
 } from './python-analyzer.mjs';
 
@@ -28,9 +31,20 @@ describe('Python analyzer', () => {
     const analyzer = createPythonAnalyzer();
 
     expect(analyzer.name).toBe(PYTHON_ANALYZER_NAME);
-    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage', 'mutmut']);
+    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage']);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(90 * 60 * 1000);
+    expect(analyzer.version).toBe('unresolved');
+  });
+
+  it('has mutation testing as an analyzer of its own that runs after the others and can be disabled', () => {
+    const analyzer = createMutationAnalyzer();
+
+    expect(createPythonAnalyzers().map(({ name }) => name)).toEqual(['python', 'mutation']);
+    expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
+    expect(analyzer.reportedTools).toEqual(['mutmut']);
+    expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
+    expect(analyzer.timeoutMs).toBe(70 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
   });
 
@@ -49,7 +63,7 @@ describe('Python analyzer', () => {
     expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
   });
 
-  it('runs the runner with the snapshot, the live checkout and the settings', () => {
+  it('runs the runner for the part it is, with the snapshot, the live checkout and the settings', () => {
     const settings = { formatter: 'black', sourceRoots: ['lib'] };
 
     expect(
@@ -62,6 +76,8 @@ describe('Python analyzer', () => {
       command: process.execPath,
       args: [
         expect.stringMatching(/python-runner\.mjs$/),
+        '--part',
+        'python',
         '--project-root',
         '/snapshot',
         '--live-root',
@@ -71,6 +87,15 @@ describe('Python analyzer', () => {
       ],
       cwd: '/tool',
     });
+    expect(
+      createMutationAnalyzer(settings)
+        .createInvocation({
+          projectRoot: '/snapshot',
+          liveProjectRoot: '/live',
+          toolRoot: '/tool',
+        })
+        .args.slice(1, 3),
+    ).toEqual(['--part', 'mutation']);
   });
 
   it('leaves the settings out when there are none', () => {
@@ -82,6 +107,8 @@ describe('Python analyzer', () => {
 
     expect(args).toEqual([
       expect.stringMatching(/python-runner\.mjs$/),
+      '--part',
+      'python',
       '--project-root',
       '/snapshot',
       '--live-root',
@@ -98,6 +125,7 @@ describe('Python analyzer', () => {
     expect(createPythonAnalyzer({ formatter: 'ruff' }).configurationHash).not.toBe(
       createPythonAnalyzer({ formatter: 'black' }).configurationHash,
     );
+    expect(createMutationAnalyzer().configurationHash).not.toBe(hash);
   });
 
   it('resolves the versions of the tools in the live checkout environment', () => {
@@ -105,11 +133,12 @@ describe('Python analyzer', () => {
     installFakeToolchain(path.join(live, '.venv/bin'));
 
     expect(createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
+      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
     );
     expect(
       createPythonAnalyzer({ formatter: 'black', testRunner: 'pytest' }).resolveVersion(live),
-    ).toBe('ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0');
+    ).toBe('ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1');
+    expect(createMutationAnalyzer().resolveVersion(live)).toBe('mutmut@3.8.0;pytest@8.3.1');
   });
 
   it('reports a missing environment when resolving the version', () => {

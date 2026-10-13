@@ -79,7 +79,7 @@ describe('mutmut run data', () => {
       const root = project({ 'mutants/src/a.py.meta': text, 'mutants/src/a.py': '' });
 
       expect(() => collectRunData({ projectRoot: root })).toThrow(
-        'mutmut wrote src/a.py.meta without exit_code_by_key: this mutmut version is not supported (tested with mutmut 3.8)',
+        'mutmut wrote src/a.py.meta without exit_code_by_key: this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
       );
     },
   );

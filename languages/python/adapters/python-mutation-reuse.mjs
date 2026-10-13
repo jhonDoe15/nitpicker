@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { dependentFiles, importGraph } from './python-imports.mjs';
 import { META_SUFFIX, MUTANTS_DIRECTORY, metaFiles } from './python-mutation-data.mjs';
 
 const TEST_FILE = /(?:^|\/)(?:test_[^/]*|[^/]*_test|conftest)\.py$/u;
@@ -53,7 +54,21 @@ function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
   );
 }
 
-export function seedMutantsFromBase({ snapshot, baselineRoot, projectRoot, sourceRoots }) {
+function staleSources(context, changes) {
+  if (changes.length === 0) {
+    return new Set();
+  }
+  const graph = importGraph(context);
+  return graph === undefined
+    ? undefined
+    : dependentFiles(
+        graph,
+        changes.map(({ file, prefix }) => file.slice(prefix.length)),
+      );
+}
+
+export function seedMutantsFromBase(context) {
+  const { snapshot, baselineRoot, projectRoot, project } = context;
   if (snapshot !== 'head' || baselineRoot === undefined) {
     return false;
   }
@@ -63,11 +78,15 @@ export function seedMutantsFromBase({ snapshot, baselineRoot, projectRoot, sourc
     : undefined;
   if (
     changes === undefined ||
-    !changes.every((change) => isMutatedSourceChange(change, sourceRoots))
+    !changes.every((change) => isMutatedSourceChange(change, project.sourceRoots))
   ) {
     return false;
   }
-  for (const file of metaFiles(baseMutants)) {
+  const stale = staleSources(context, changes);
+  if (stale === undefined) {
+    return false;
+  }
+  for (const file of metaFiles(baseMutants).filter((candidate) => !stale.has(candidate))) {
     const target = path.join(projectRoot, MUTANTS_DIRECTORY, `${file}${META_SUFFIX}`);
     mkdirSync(path.dirname(target), { recursive: true });
     cpSync(path.join(baseMutants, `${file}${META_SUFFIX}`), target);

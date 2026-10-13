@@ -3,8 +3,8 @@ import path from 'node:path';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
-import { runMutation } from './python-mutation.mjs';
-import { execute, failure, run } from './python-process.mjs';
+import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
+import { execute, failure, probeVersion, run } from './python-process.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
@@ -14,6 +14,7 @@ import {
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
+  pytestLabel,
   testCommand,
   testRunnerLabel,
   testsRan,
@@ -27,12 +28,6 @@ export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
-const MUTMUT_VERSION_PROBE = [
-  'python',
-  '-c',
-  'import importlib.metadata; print(importlib.metadata.version("mutmut"))',
-];
-const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
@@ -89,16 +84,9 @@ function attempt(context, outcome, step) {
   }
 }
 
-function mutation(context) {
-  runMutation(context, run);
-}
-
 export function runPythonTools(context) {
   const outcome = {};
   const failures = [lint, format, test].flatMap((step) => attempt(context, outcome, step));
-  if (outcome.testsRan !== false && !failures.some(({ rule }) => rule === TESTS_FAILED_RULE)) {
-    failures.push(...attempt(context, outcome, mutation));
-  }
   writeFileSync(
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
@@ -217,14 +205,6 @@ function writeCoverageReport(context, { config, measured }) {
   );
 }
 
-function probeVersion(context, command) {
-  const result = execute(context, command);
-  if (result.error !== undefined || result.status !== 0) {
-    return 'missing';
-  }
-  return VERSION_PATTERN.exec(result.stdout)?.[0] ?? 'unknown';
-}
-
 export function toolVersions(context) {
   const { formatter } = context.project;
   return [
@@ -232,6 +212,9 @@ export function toolVersions(context) {
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerLabel(context),
-    `mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`,
   ].join(';');
+}
+
+export function mutationVersions(context) {
+  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
 }

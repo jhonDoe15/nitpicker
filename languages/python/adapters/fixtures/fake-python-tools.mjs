@@ -13,10 +13,13 @@
 //   no-pytest.txt        `python -c "import pytest"` fails
 //   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
 //   no-mutmut.txt        the mutmut version probe fails
+//   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
+//   import-graph.json    { "<source path>": ["<imported source path>"] }: what the import scan prints
 //   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
 //                        `mutmut run` leaves in mutants/ (default: an empty mutants/)
 //   mutmut-exit.txt      exit status of `mutmut run` (default 0); 1 says no mutant is covered, any
 //                        other status says the clean test run failed
+//   mutmut-output.txt    what `mutmut run` prints instead of those messages
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
 // PYTHONPATH.
 import {
@@ -38,7 +41,13 @@ const valueOf = (flag) => args[args.indexOf(flag) + 1];
 if (process.env.FAKE_PYTHON_LOG !== undefined) {
   appendFileSync(
     process.env.FAKE_PYTHON_LOG,
-    `${JSON.stringify({ tool, args, cwd, pythonPath: process.env.PYTHONPATH ?? '' })}\n`,
+    `${JSON.stringify({
+      tool,
+      args,
+      cwd,
+      pythonPath: process.env.PYTHONPATH ?? '',
+      pytestAddopts: process.env.PYTEST_ADDOPTS,
+    })}\n`,
   );
 }
 
@@ -123,12 +132,26 @@ function coverage() {
   }
 }
 
+function importGraph() {
+  const graph = existsSync('import-graph.json')
+    ? JSON.parse(readFileSync('import-graph.json', 'utf8'))
+    : {};
+  const absolute = (file) => path.join(cwd, file);
+  return Object.fromEntries(
+    Object.entries(graph).map(([file, imported]) => [absolute(file), imported.map(absolute)]),
+  );
+}
+
 function python() {
   if (args.join(' ').includes('"mutmut"')) {
     if (existsSync('no-mutmut.txt')) {
       process.exit(1);
     }
-    process.stdout.write('3.8.0\n');
+    process.stdout.write(`${lines('mutmut-version.txt')[0] ?? '3.8.0'}\n`);
+    return;
+  }
+  if (args.join(' ').includes('ast.parse')) {
+    process.stdout.write(`${JSON.stringify(importGraph())}\n`);
     return;
   }
   if (existsSync('no-pytest.txt')) {
@@ -139,6 +162,7 @@ function python() {
 }
 
 const MUTMUT_MESSAGES = {
+  0: '',
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
 };
 
@@ -169,7 +193,9 @@ function mutmut() {
   }
   const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
   process.stdout.write(
-    MUTMUT_MESSAGES[status] ?? (status === 0 ? '' : 'Failed to run clean test\n'),
+    existsSync('mutmut-output.txt')
+      ? readFileSync('mutmut-output.txt', 'utf8')
+      : (MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
   );
   process.exit(status);
 }

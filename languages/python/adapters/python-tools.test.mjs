@@ -14,6 +14,7 @@ import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import { failure } from './python-process.mjs';
 import {
   createToolContext,
+  mutationVersions,
   onlyUnparsableFiles,
   runPythonTools,
   toolVersions,
@@ -279,149 +280,6 @@ describe('running the tools', () => {
     expect(JSON.parse(readReport(context.reportRoot, 'manifest.json')).testsRan).toBe(false);
   });
 
-  describe('mutation testing', () => {
-    const MUTATED =
-      'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n';
-    const mutantsData = (exitCodes) =>
-      JSON.stringify({
-        'src/demo/a.py': { exitCodes: { 'demo.a.x_value__mutmut_1': exitCodes }, mutated: MUTATED },
-      });
-
-    it('writes what mutmut left in mutants/ and cleans the head snapshot', () => {
-      const root = project({ 'mutants-data.json': mutantsData(0) });
-      const { context, reportRoot } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([]);
-
-      expect(JSON.parse(readReport(reportRoot, 'mutation.json')).files).toEqual([
-        {
-          path: 'src/demo/a.py',
-          exitCodes: { 'demo.a.x_value__mutmut_1': 0 },
-          mutated: MUTATED,
-        },
-      ]);
-      expect(existsSync(path.join(root, 'mutants'))).toBe(false);
-      expect(readReport(root, 'pyproject.toml')).toBe(
-        '\n[tool.mutmut]\nsource_paths = ["src"]\ndo_not_mutate = ["tests/*","test/*","*/tests/*","*/test/*","test_*.py","*/test_*.py","*_test.py","conftest.py","*/conftest.py"]\n',
-      );
-    });
-
-    it('runs after every other step, from the snapshot, with the snapshot sources first on PYTHONPATH', () => {
-      const log = path.join(temporaryRoot(), 'calls.jsonl');
-      setEnvironment('FAKE_PYTHON_LOG', log);
-      const root = project();
-      const { context } = contextFor(root);
-
-      runPythonTools(context);
-
-      const calls = readFileSync(log, 'utf8')
-        .split('\n')
-        .filter(Boolean)
-        .map((line) => JSON.parse(line))
-        .filter(({ tool }) => tool !== 'python');
-      expect(calls.at(-2)).toEqual({
-        tool: 'mutmut',
-        args: ['run'],
-        cwd: root,
-        pythonPath: path.join(root, 'src'),
-      });
-      expect(calls.slice(0, -2).map(({ tool }) => tool)).not.toContain('mutmut');
-    });
-
-    it('does not run when the test run found no tests', () => {
-      const log = path.join(temporaryRoot(), 'calls.jsonl');
-      setEnvironment('FAKE_PYTHON_LOG', log);
-      const root = project({ 'test-exit.txt': '5\n' });
-      const { context } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([]);
-
-      expect(
-        readFileSync(log, 'utf8')
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => JSON.parse(line).tool),
-      ).not.toContain('mutmut');
-    });
-
-    it('keeps mutants/ of a base snapshot for the head run', () => {
-      const root = project({ 'mutants-data.json': mutantsData(0) });
-      const reportRoot = temporaryRoot();
-      const context = createToolContext({
-        projectRoot: root,
-        liveRoot: root,
-        reportRoot,
-        snapshot: 'base',
-      });
-
-      runPythonTools(context);
-
-      expect(existsSync(path.join(root, 'mutants/src/demo/a.py.meta'))).toBe(true);
-    });
-
-    it('does not run when the tests fail', () => {
-      const log = path.join(temporaryRoot(), 'calls.jsonl');
-      setEnvironment('FAKE_PYTHON_LOG', log);
-      const root = project({ 'test-exit.txt': '1\n' });
-      const { context, reportRoot } = contextFor(root);
-
-      expect(runPythonTools(context).map(({ rule }) => rule)).toEqual(['tests-failed']);
-
-      expect(readFileSync(log, 'utf8')).not.toContain('mutmut');
-      expect(existsSync(path.join(reportRoot, 'mutation.json'))).toBe(false);
-    });
-
-    it('reports a mutmut run that fails as a mutation failure with its output', () => {
-      const root = project({ 'mutants-data.json': mutantsData(0), 'mutmut-exit.txt': '2\n' });
-      const { context } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([
-        {
-          rule: 'mutation-failed',
-          message: 'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
-        },
-      ]);
-    });
-
-    it('counts every mutant as uncovered when mutmut finds no test for any of them', () => {
-      const root = project({ 'mutants-data.json': mutantsData(null), 'mutmut-exit.txt': '1\n' });
-      const { context, reportRoot } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([]);
-
-      expect(JSON.parse(readReport(reportRoot, 'mutation.json')).files[0].exitCodes).toEqual({
-        'demo.a.x_value__mutmut_1': 33,
-      });
-    });
-
-    it('says where mutmut should be installed', () => {
-      const root = project({}, { tools: ['ruff', 'black', 'coverage', 'python'] });
-      setEnvironment('PATH', temporaryRoot());
-      const { context } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([
-        {
-          rule: 'mutation-failed',
-          message:
-            'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
-        },
-      ]);
-    });
-
-    it('reports a mutmut that left no mutants directory', () => {
-      const root = project();
-      writeFileSync(path.join(root, '.venv/bin/mutmut'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-      const { context } = contextFor(root);
-
-      expect(runPythonTools(context)).toEqual([
-        {
-          rule: 'python-failed',
-          message: 'mutmut finished without writing a mutants directory',
-        },
-      ]);
-    });
-  });
-
   it('reports a failing test run with its output', () => {
     const root = project({ 'test-exit.txt': '1\n' });
     const { context } = contextFor(root);
@@ -632,15 +490,12 @@ describe('tool versions', () => {
   it('lists the versions of the tools in use', () => {
     const root = project({ 'conftest.py': '' });
 
-    expect(toolVersions(contextFor(root).context)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
-    );
+    expect(toolVersions(contextFor(root).context)).toBe('ruff@0.9.9;coverage@7.6.1;pytest@8.3.1');
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;mutmut@3.8.0',
+      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
     );
-    expect(toolVersions(contextFor(project()).context)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;unittest;mutmut@3.8.0',
-    );
+    expect(toolVersions(contextFor(project()).context)).toBe('ruff@0.9.9;coverage@7.6.1;unittest');
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
   });
 
   it('marks tools that are missing', () => {
@@ -648,11 +503,10 @@ describe('tool versions', () => {
     setEnvironment('PATH', temporaryRoot());
 
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      'ruff@missing;coverage@missing;pytest@missing;mutmut@missing',
+      'ruff@missing;coverage@missing;pytest@missing',
     );
-    expect(toolVersions(contextFor(root).context)).toBe(
-      'ruff@missing;coverage@missing;unittest;mutmut@missing',
-    );
+    expect(toolVersions(contextFor(root).context)).toBe('ruff@missing;coverage@missing;unittest');
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@missing;pytest@missing');
   });
 
   it('marks a version it cannot read', () => {

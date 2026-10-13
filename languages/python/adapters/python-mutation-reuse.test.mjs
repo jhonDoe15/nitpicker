@@ -38,6 +38,10 @@ function temporaryRoot() {
 const BASE_FILES = {
   'src/a.py': 'def f():\n    return 1\n',
   'src/pkg/b.py': 'def g():\n    return 1\n',
+  'src/pkg/c.py': 'from . import b\n\n\ndef h():\n    return b.g()\n',
+  'src/helper.py': 'def f(x):\n    return x + 2\n',
+  'src/core.py': 'from helper import f\n\n\ndef g(x):\n    return 1 if f(x) > 3 else 0\n',
+  'src/top.py': 'import core\n\n\ndef run():\n    return core.g(1)\n',
   'tests/test_a.py': 'def test_f():\n    pass\n',
   'uv.lock': 'lock\n',
 };
@@ -81,6 +85,10 @@ function scenario({ prefix = '', changes, rootChanges = {}, removed = [], baseMu
     write(baselineRoot, {
       'mutants/src/a.py.meta': '{"exit_code_by_key": {"a.x_f__mutmut_1": 0}}',
       'mutants/src/pkg/b.py.meta': '{"exit_code_by_key": {}}',
+      'mutants/src/pkg/c.py.meta': '{"exit_code_by_key": {}}',
+      'mutants/src/helper.py.meta': '{"exit_code_by_key": {}}',
+      'mutants/src/core.py.meta': '{"exit_code_by_key": {}}',
+      'mutants/src/top.py.meta': '{"exit_code_by_key": {}}',
       'mutants/src/a.py': 'generated',
       'mutants/mutmut-stats.json': '{}',
       'mutants/tests/test_a.py': 'copied test',
@@ -89,10 +97,15 @@ function scenario({ prefix = '', changes, rootChanges = {}, removed = [], baseMu
   return { baselineRoot, projectRoot: path.join(head, prefix) };
 }
 
+const launcherOf = (command) => ({ launch: (tool, args) => ({ command, args, env: {} }) });
+const launcher = launcherOf('python3');
+
 function seed(setup, overrides = {}) {
   return seedMutantsFromBase({
     snapshot: 'head',
-    sourceRoots: ['src'],
+    project: { sourceRoots: ['src'] },
+    launcher,
+    env: {},
     ...setup,
     ...overrides,
   });
@@ -103,6 +116,20 @@ function seeded(projectRoot) {
   return existsSync(directory) ? readdirSync(directory, { recursive: true }).sort() : [];
 }
 
+const MODULES = ['a', 'core', 'helper', 'pkg/b', 'pkg/c', 'top'];
+
+function resultsOf(modules) {
+  const directories = modules.some((name) => name.startsWith('pkg/')) ? ['src/pkg'] : [];
+  return [
+    'src',
+    ...directories,
+    ...modules.map((name) => path.join('src', `${name}.py.meta`)),
+  ].sort();
+}
+
+const ALL_RESULTS = resultsOf(MODULES);
+const RESULTS_EXCEPT_A = resultsOf(MODULES.filter((name) => name !== 'a'));
+
 describe('reusing the base mutation results on head', () => {
   it('copies only the result files of the base when just mutated sources changed', () => {
     const setup = scenario({
@@ -111,18 +138,14 @@ describe('reusing the base mutation results on head', () => {
 
     expect(seed(setup)).toBe(true);
 
-    expect(seeded(setup.projectRoot)).toEqual([
-      'src',
-      path.join('src', 'a.py.meta'),
-      path.join('src', 'pkg'),
-      path.join('src', 'pkg', 'b.py.meta'),
-    ]);
+    expect(seeded(setup.projectRoot)).toEqual(RESULTS_EXCEPT_A);
   });
 
   it('reuses the results when nothing changed', () => {
     const setup = scenario({ changes: {} });
 
     expect(seed(setup)).toBe(true);
+    expect(seeded(setup.projectRoot)).toEqual(ALL_RESULTS);
   });
 
   it('works in a project below the repository root', () => {
@@ -132,7 +155,7 @@ describe('reusing the base mutation results on head', () => {
     });
 
     expect(seed(setup)).toBe(true);
-    expect(seeded(setup.projectRoot)).toContain(path.join('src', 'a.py.meta'));
+    expect(seeded(setup.projectRoot)).toEqual(RESULTS_EXCEPT_A);
   });
 
   it('runs every mutant when the change reaches outside the project', () => {
@@ -173,12 +196,49 @@ describe('reusing the base mutation results on head', () => {
     expect(seed(renamed)).toBe(false);
   });
 
+  it.each([
+    [
+      'imports it',
+      'src/helper.py',
+      'def f(x):\n    return x + 3 if x >= 2 else x + 1\n',
+      ['core', 'helper', 'top'],
+    ],
+    ['imports it through another module', 'src/core.py', 'x = 1\n', ['core', 'top']],
+    ['imports it with a relative import', 'src/pkg/b.py', 'x = 1\n', ['pkg/b', 'pkg/c']],
+  ])(
+    'runs every mutant of a changed module and of the modules that import it (%s)',
+    (_, changed, text, stale) => {
+      const setup = scenario({ changes: { [changed]: text } });
+
+      expect(seed(setup)).toBe(true);
+
+      expect(seeded(setup.projectRoot)).toEqual(
+        resultsOf(MODULES.filter((name) => !stale.includes(name))),
+      );
+    },
+  );
+
+  it('reuses the modules that nothing changed imports, and the ones that import nothing', () => {
+    const setup = scenario({ changes: { 'src/top.py': 'x = 1\n' } });
+
+    expect(seed(setup)).toBe(true);
+
+    expect(seeded(setup.projectRoot)).toEqual(resultsOf(MODULES.filter((name) => name !== 'top')));
+  });
+
+  it('runs every mutant when the imports cannot be read', () => {
+    const setup = scenario({ changes: { 'src/helper.py': 'x = 1\n' } });
+
+    expect(seed(setup, { launcher: launcherOf('false') })).toBe(false);
+    expect(seeded(setup.projectRoot)).toEqual([]);
+  });
+
   it('treats a source root of . as all Python files', () => {
     const setup = scenario({ changes: { 'tests/test_a.py': 'x = 1\n', 'src/a.py': 'y = 1\n' } });
     const lenient = scenario({ changes: { 'tools/run.py': 'x = 1\n' } });
 
-    expect(seed(setup, { sourceRoots: ['.'] })).toBe(false);
-    expect(seed(lenient, { sourceRoots: ['.'] })).toBe(true);
+    expect(seed(setup, { project: { sourceRoots: ['.'] } })).toBe(false);
+    expect(seed(lenient, { project: { sourceRoots: ['.'] } })).toBe(true);
   });
 
   it('does nothing on base, without a base directory, or when the base left no results', () => {
