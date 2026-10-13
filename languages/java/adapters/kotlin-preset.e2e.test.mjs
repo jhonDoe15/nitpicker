@@ -91,6 +91,129 @@ public final class Danger {
 }
 `;
 
+const LABEL = `package demo
+
+class Label {
+    fun larger(first: Int, second: Int): String = if (first > second) "first" else "second"
+}
+`;
+
+const LABEL_ONE_SIDED_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class LabelTest {
+    @Test
+    fun saysSecond() {
+        assertEquals("second", Label().larger(1, 2))
+    }
+}
+`;
+
+const SPREAD = `package demo
+
+class Spread {
+    fun one(): Int = 1
+
+    fun length(text: String?, flag: Boolean): Int {
+        val value = text
+            ?: return 0
+        if (
+            flag
+        ) {
+            return value.length
+        }
+        return -value.length
+    }
+}
+`;
+
+const SPREAD_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class SpreadTest {
+    @Test
+    fun countsOne() {
+        assertEquals(1, Spread().one())
+    }
+}
+`;
+
+const OFFSET = `package demo.offset
+
+class Offset {
+    fun sign(value: Int): Int = if (value > 0) 1 else -1
+}
+`;
+
+const GENERATED = `package demo
+
+enum class Level { LOW, HIGH }
+
+sealed interface Token
+
+data class Word(val text: String) : Token
+
+data object Stop : Token
+
+class Generated {
+    lateinit var tag: String
+
+    fun describe(level: Level): String =
+        when (level) {
+            Level.LOW -> "low"
+            Level.HIGH -> "high"
+        }
+
+    fun kind(token: Token): String =
+        when (token) {
+            is Word -> token.text
+            Stop -> "stop"
+        }
+
+    fun shout(text: String, suffix: String = "!"): String = text.uppercase() + suffix
+
+    fun forced(text: String?): Int = text!!.length
+
+    fun tagged(): String = tag
+
+    fun counted(): List<Int> =
+        sequence {
+            yield(1)
+            yield(2)
+        }.toList()
+}
+`;
+
+const GENERATED_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
+class GeneratedTest {
+    private val generated = Generated()
+
+    @Test
+    fun coversEveryBranchTheAuthorWrote() {
+        assertEquals("low", generated.describe(Level.LOW))
+        assertEquals("high", generated.describe(Level.HIGH))
+        assertEquals("hi", generated.kind(Word("hi")))
+        assertEquals("stop", generated.kind(Stop))
+        assertEquals("A!", generated.shout("a"))
+        assertEquals("A?", generated.shout("a", "?"))
+        assertEquals(2, generated.forced("ab"))
+        assertFailsWith<NullPointerException> { generated.forced(null) }
+        generated.tag = "t"
+        assertEquals("t", generated.tagged())
+        assertEquals(listOf(1, 2), generated.counted())
+    }
+}
+`;
+
 const BROKEN = 'package demo\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
 
 const MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET = `formatting:
@@ -113,10 +236,14 @@ class GreeterTest {
 }
 `;
 
-const BAD_FINDINGS = [
+const BAD_DETEKT_FINDINGS = [
   ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
   'detekt detekt.style.UnusedPrivateProperty Bad.kt',
 ];
+
+const BAD_BRANCH_FINDINGS = ['jacoco changed-branch-coverage Bad.kt'];
+
+const BAD_FINDINGS = [...BAD_DETEKT_FINDINGS, ...BAD_BRANCH_FINDINGS];
 
 const BAD_KTLINT_RULES = [
   'ktlint.standard:blank-line-before-declaration',
@@ -519,6 +646,19 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     commitBranch('ktfmt-named', {
       'build.gradle.kts': `${readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
     });
+    commitBranch('one-sided-branch', {
+      [`${kotlinSources}/Label.kt`]: LABEL,
+      'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,
+    });
+    commitBranch('multiline-branch', {
+      [`${kotlinSources}/Spread.kt`]: SPREAD,
+      'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
+      'src/main/kotlin/Offset.kt': OFFSET,
+    });
+    commitBranch('generated-branches', {
+      [`${kotlinSources}/Generated.kt`]: GENERATED,
+      'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
+    });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
     commitBranch('structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
@@ -582,7 +722,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     const result = diffOf('violation');
 
     expect(result.failed).toBe(true);
-    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
+    expect(fromTool(result.newEnforceable, 'jacoco')).toEqual(BAD_BRANCH_FINDINGS);
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(fromTool(result.unchangedFindings, 'ktlint')).toEqual([]);
@@ -616,13 +757,14 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',
     ]);
+    expect(fromTool(result.newEnforceable, 'jacoco')).toEqual(BAD_BRANCH_FINDINGS);
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
   });
 
   it('runs no format check for a project that names no formatter', () => {
     const result = diffOf('no-formatter');
 
-    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
     expect(result.newFindings.filter(({ tool }) => ['ktlint', 'ktfmt'].includes(tool))).toEqual([]);
   });
 
@@ -647,6 +789,52 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
     expect(formatters.has('ktfmt')).toBe(true);
     expect(formatters.has('ktlint')).toBe(false);
+  });
+
+  it('fails a changed Kotlin branch that no test takes and only reports its mutants', () => {
+    const result = diffOf('one-sided-branch');
+
+    expect(result.failed).toBe(true);
+    expect(fromTool(result.newEnforceable, 'jacoco')).toEqual([
+      'jacoco changed-branch-coverage Label.kt',
+    ]);
+    expect(
+      result.newEnforceable
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ message, location }) => ({ message, location })),
+    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
+    expect(
+      result.newFindings.filter(
+        ({ tool, rule, path: file }) =>
+          tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
+      ),
+    ).not.toEqual([]);
+  });
+
+  it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
+    const result = diffOf('multiline-branch');
+
+    expect(result.failed).toBe(true);
+    expect(
+      result.newEnforceable
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`)
+        .sort(),
+    ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
+  });
+
+  it('does not ask for coverage of branches the Kotlin compiler generated', () => {
+    git('checkout', '-q', 'generated-branches');
+    const findings = collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
+    const report = readFileSync(path.join(repository, 'build/nitpicker/jacoco.xml'), 'utf8');
+    const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
+    const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
+      ([, line]) => Number(line),
+    );
+
+    expect(missedLines.length).toBeGreaterThan(0);
+    expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
 
   describe('one-way rules', () => {
@@ -866,7 +1054,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     repository = kotlinOnlyRepository;
     const result = diffOf('kotlin-only-violation');
 
-    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_FINDINGS].sort());
+    expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(result.newEnforceable.filter(({ tool }) => ['pmd', 'spotbugs'].includes(tool))).toEqual(
