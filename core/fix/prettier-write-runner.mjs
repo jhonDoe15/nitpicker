@@ -1,3 +1,4 @@
+import { text } from 'node:stream/consumers';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as prettier from 'prettier';
@@ -8,7 +9,7 @@ import {
 } from '../../languages/typescript/adapters/prettier-layers.mjs';
 
 try {
-  const input = JSON.parse(readFileSync(0, 'utf8'));
+  const input = JSON.parse(await text(process.stdin));
   const policyOptions = JSON.parse(readFileSync(process.argv[2], 'utf8'));
   const layers = {
     precedence: prettierPrecedence(),

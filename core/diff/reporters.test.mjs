@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  absoluteTextReportPath,
   renderConsoleSummary,
   renderJunitReport,
   renderSarifReport,
@@ -164,34 +165,25 @@ function expectWellFormedXml(xml) {
   const body = xml.replace(/^<\?xml[^>]*\?>\s*/u, '');
   const stack = [];
   let roots = 0;
-  let cursor = 0;
-  const tag =
-    /<(\/?)([A-Za-z_][\w.-]*)((?:\s+[\w:.-]+="[^"<&]*(?:&(?:amp|lt|gt|quot|apos);[^"<&]*)*")*)\s*(\/?)>/uy;
-  while (cursor < body.length) {
-    if (body[cursor] === '<') {
-      tag.lastIndex = cursor;
-      const match = tag.exec(body);
-      expect(match, `malformed tag at offset ${String(cursor)}`).not.toBeNull();
-      const [whole, closing, name, , selfClosing] = match;
-      if (closing === '/') {
-        expect(stack.pop()).toBe(name);
-      } else {
-        if (stack.length === 0) {
-          roots += 1;
-        }
-        if (selfClosing === '') {
-          stack.push(name);
-        }
-      }
-      cursor += whole.length;
-    } else {
-      const next = body.indexOf('<', cursor);
-      const text = body.slice(cursor, next === -1 ? body.length : next);
+  const token =
+    /<(\/?)([A-Za-z_][\w.-]*)((?:\s+[\w:.-]+="[^"<&]*(?:&(?:amp|lt|gt|quot|apos);[^"<&]*)*")*)\s*(\/?)>|([^<]+)|(<)/gu;
+  for (const match of body.matchAll(token)) {
+    const [, closing, name, , selfClosing, text, malformed] = match;
+    expect(malformed, `malformed tag at offset ${String(match.index)}`).toBeUndefined();
+    if (name === undefined) {
       expect(text.replaceAll(/&(?:amp|lt|gt|quot|apos);/gu, '')).not.toMatch(/[&>]/u);
       if (stack.length === 0) {
         expect(text.trim()).toBe('');
       }
-      cursor += text.length;
+    } else if (closing === '/') {
+      expect(stack.pop()).toBe(name);
+    } else {
+      if (stack.length === 0) {
+        roots += 1;
+      }
+      if (selfClosing === '') {
+        stack.push(name);
+      }
     }
   }
   expect(stack).toEqual([]);
@@ -255,6 +247,21 @@ describe('writeDiffReports', () => {
   });
 });
 
+describe('absoluteTextReportPath', () => {
+  it('returns the report file inside an absolute output root', () => {
+    expect(absoluteTextReportPath(path.join(path.sep, 'work', 'out'))).toBe(
+      path.join(path.sep, 'work', 'out', 'report.txt'),
+    );
+  });
+
+  it('resolves a relative output root so the printed path works from any directory', () => {
+    const resolved = absoluteTextReportPath(path.join('..', 'control', 'reports'));
+
+    expect(path.isAbsolute(resolved)).toBe(true);
+    expect(resolved).toBe(path.resolve('..', 'control', 'reports', 'report.txt'));
+  });
+});
+
 describe('renderConsoleSummary', () => {
   const stackTrace = '  at run (stryker.js:1)\n'.repeat(50);
   const crash = (snapshot) => ({
@@ -298,7 +305,7 @@ describe('renderConsoleSummary', () => {
           testsFailed(
             'mutation',
             'tests-failed-skipped',
-            'Mutation testing did not run because the project tests fail.',
+            'mutation skipped: tests fail (see coverage findings)',
           ),
         ],
       },
@@ -329,7 +336,7 @@ describe('renderConsoleSummary', () => {
             tool: 'mutation',
             snapshot: 'head',
             rule: 'tests-failed-skipped',
-            message: 'Mutation testing did not run because the project tests fail.',
+            message: 'mutation skipped: tests fail (see coverage findings)',
           },
         ],
       },
@@ -342,7 +349,37 @@ describe('renderConsoleSummary', () => {
         'Quality gate summary',
         'No new enforceable violations, but the run is incomplete:',
         '✖ 1 tool error',
-        '  mutation (head): Mutation testing did not run because the project tests fail.',
+        '  mutation (head): mutation skipped: tests fail (see coverage findings)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('shows a mutation run skipped by a type error as one line', () => {
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [],
+        toolErrors: [
+          {
+            tool: 'mutation',
+            snapshot: 'head',
+            rule: 'typecheck-failed-skipped',
+            message:
+              'mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+          },
+        ],
+      },
+      { color: false },
+    );
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        '  mutation (head): mutation skipped: the change does not type-check (see typescript-typecheck findings)',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -390,7 +427,13 @@ describe('touched, still over limit', () => {
     message: 'computeInvoice has 68 lines; limit is 50',
     location: { line: 3 },
     heldAtBase: 68,
-    ratchet: { key: 'k', value: 68, worseMessage: 'grew from {base}' },
+    ratchet: {
+      key: 'k',
+      value: 68,
+      worseMessage: 'grew from {base}',
+      heldMessage:
+        'computeInvoice: 68 lines (limit 50), allowed because base was {base}; any increase fails.',
+    },
   });
   const untouched = finding({ rule: 'no-console', identity: 'unchanged:1' });
   const heldLint = finding({
@@ -421,7 +464,7 @@ describe('touched, still over limit', () => {
         'eslint: base=0 head=1 new=1 resolved=0 unchanged=0 changed-metrics=undefined elapsed=0.040s',
         '',
         'Touched, still over limit (not failing):',
-        'structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        'structure/function-lines-limit src/a.js:3 computeInvoice: 68 lines (limit 50), allowed because base was 68; any increase fails.',
         '',
       ].join('\n'),
     );
@@ -436,7 +479,7 @@ describe('touched, still over limit', () => {
         'Quality gate summary',
         '✓ No new enforceable violations',
         'Note: 1 touched function still over a limit (not failing, not worse than before):',
-        '  structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        '  structure/function-lines-limit src/a.js:3 computeInvoice: 68 lines (limit 50), allowed because base was 68; any increase fails.',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -467,10 +510,10 @@ describe('touched, still over limit', () => {
         'eslint: base=0 head=1 new=1 resolved=0 unchanged=0 changed-metrics=undefined elapsed=0.040s',
         '',
         'Touched, still over limit (not failing):',
-        'structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        'structure/function-lines-limit src/a.js:3 computeInvoice: 68 lines (limit 50), allowed because base was 68; any increase fails.',
         '',
         'Existing lint findings in edited code (not failing):',
-        'eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (the base had 2 of these in this function, now no more)',
+        'eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (2 at base and now; any increase fails)',
         '',
       ].join('\n'),
     );
@@ -480,9 +523,93 @@ describe('touched, still over limit', () => {
         'Quality gate summary',
         '✓ No new enforceable violations',
         'Note: 1 touched function still over a limit (not failing, not worse than before):',
-        '  structure/function-lines-limit src/a.js:3 computeInvoice has 68 lines; limit is 50 (was 68 at base, not worse)',
+        '  structure/function-lines-limit src/a.js:3 computeInvoice: 68 lines (limit 50), allowed because base was 68; any increase fails.',
         'Note: 1 existing lint finding in edited code (not failing, no more than before):',
-        '  eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (the base had 2 of these in this function, now no more)',
+        '  eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (2 at base and now; any increase fails)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('words a held function metric without contradicting its limit', () => {
+    const heldCrap = finding({
+      tool: 'crap',
+      rule: 'crap-score-limit',
+      message:
+        'summarizeShipping has CRAP 10.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+      location: { line: 22 },
+      heldAtBase: 16.02,
+      ratchet: {
+        key: 'k',
+        value: 10,
+        worseMessage: 'rose',
+        heldMessage:
+          'summarizeShipping: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
+      },
+    });
+
+    const summary = renderConsoleSummary(report({ unchangedFindings: [heldCrap] }), {
+      color: false,
+    });
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  crap/crap-score-limit src/a.js:22 summarizeShipping: CRAP 10.00 (limit 9), allowed because base was 16.02; any increase fails.',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('falls back to the finding message for a held metric without a held message', () => {
+    const unmessaged = finding({
+      rule: 'complexity',
+      message: 'Function has a complexity of 12.',
+      heldAtBase: 12,
+      ratchet: { key: 'k', value: 12, worseMessage: 'grew from {base}' },
+    });
+
+    const summary = renderConsoleSummary(report({ unchangedFindings: [unmessaged] }), {
+      color: false,
+    });
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 touched function still over a limit (not failing, not worse than before):',
+        '  eslint/complexity src/a.js:12 Function has a complexity of 12. (allowed because base was 12; any increase fails)',
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('says how many of a held lint finding there are now when fewer than at base', () => {
+    const fewer = finding({
+      rule: '@typescript-eslint/no-explicit-any',
+      message: 'Unexpected any.',
+      heldAtBase: 5,
+      ratchet: { key: 'count:any', value: 3, existingCodeOnly: true },
+    });
+
+    const summary = renderConsoleSummary(report({ unchangedFindings: [fewer] }), {
+      color: false,
+    });
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Note: 1 existing lint finding in edited code (not failing, no more than before):',
+        '  eslint/@typescript-eslint/no-explicit-any src/a.js:12 Unexpected any. (5 at base, 3 now; any increase fails)',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),

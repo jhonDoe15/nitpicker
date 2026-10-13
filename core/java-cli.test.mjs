@@ -388,11 +388,30 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ).toEqual(['detekt/detekt.style.MagicNumber']);
   });
 
-  it.each([
-    [undefined, 'ktlint'],
-    ['ktfmt', 'ktfmt'],
-  ])('fails on a newly unformatted file with the formatter %s', (formatter, tool) => {
-    const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
+  it('fails on a newly violated ktlint rule of a project that uses ktlint, naming rule and exception', () => {
+    const root = kotlinRepository({ '.editorconfig': 'ktlint_code_style = ktlint_official\n' });
+    write(root, { 'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n' });
+    commit(root, 'add a wildcard import');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(result.json('new-findings.json')).toEqual([
+      {
+        tool: 'ktlint',
+        rule: 'ktlint.standard:no-wildcard-imports',
+        path: 'src/main/kotlin/demo/K.kt',
+        identity: 'fp:nitpicker/subject=Wildcard import',
+        location: { line: 3 },
+        message:
+          'Wildcard import. Lift this rule: ktlint_standard_no-wildcard-imports = disabled in .editorconfig. Not your formatter: set kotlin.formatter',
+        classification: 'enforceable',
+      },
+    ]);
+  });
+
+  it('fails on a newly unformatted file with the configured ktfmt and names kotlin.formatter', () => {
+    const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig('ktfmt') });
     write(root, { 'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n' });
     commit(root, 'misformat a file');
 
@@ -400,12 +419,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({
-        tool,
+      {
+        tool: 'ktfmt',
         rule: 'format',
         path: 'src/main/kotlin/demo/K.kt',
-        message: `File is not formatted with ${tool}`,
-      }),
+        identity: 'format',
+        message: 'File is not formatted with ktfmt. Not your formatter: set kotlin.formatter',
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -498,6 +519,22 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
+  it.each([undefined, 'none'])(
+    'runs no format check for a project without a detected formatter (kotlin.formatter %s)',
+    (formatter) => {
+      const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
+      write(root, {
+        'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n',
+        'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n',
+      });
+      commit(root, 'violate every formatter');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    },
+  );
+
   it('reports a raised legacy allowance under the kotlin analyzer', () => {
     const inventory = (count) =>
       `${JSON.stringify({
@@ -518,7 +555,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(result.json('new-findings.json')).toEqual([
-      expect.objectContaining({ tool: 'kotlin', rule: 'baseline-expansion' }),
+      {
+        tool: 'kotlin',
+        rule: 'baseline-expansion',
+        path: 'src/main/kotlin/demo/K.kt',
+        identity: 'site:fbe5622ec73235ebeafafa81',
+        message: 'Legacy allowance increased from 1 to 2 for detekt.style.MagicNumber',
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -560,9 +604,21 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual(
-      expect.arrayContaining(['detekt', 'ktlint', 'ktfmt', 'jacoco', 'pmd']),
-    );
+    expect(analyzer.reportedTools).toEqual([
+      'pmd',
+      'spotbugs',
+      'google-java-format',
+      'jacoco',
+      'checkstyle',
+      'crap',
+      'duplicates',
+      'pit',
+      'structure',
+      'coupling',
+      'detekt',
+      'ktlint',
+      'ktfmt',
+    ]);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');
@@ -578,7 +634,37 @@ describe('Kotlin analyzer', () => {
     });
 
     expect(findings).toEqual([
-      expect.objectContaining({ tool: 'kotlin', classification: 'tool-error' }),
+      {
+        tool: 'kotlin',
+        rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `Java preset failed in ${root}: detekt crashed`,
+        classification: 'tool-error',
+      },
+    ]);
+  });
+});
+
+describe('a root project without Nitpicker reports', () => {
+  it.each([
+    ['kotlin', 'org.jetbrains.kotlin.jvm'],
+    ['java', 'java'],
+  ])('is a tool error naming the plugin for the %s preset', (preset, plugin) => {
+    const root = temporaryRoot('nitpicker-no-reports-');
+    write(root, { NO_REPORTS: '' });
+
+    const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle, policy: { preset } });
+
+    expect(findings).toEqual([
+      {
+        tool: preset,
+        rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
+        classification: 'tool-error',
+      },
     ]);
   });
 });
@@ -600,12 +686,14 @@ describe('Java analyzer', () => {
     const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle });
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'java',
         rule: 'gradle-failure',
+        path: '.',
+        identity: 'gradle-failure',
+        message: `Java preset failed in ${root}: tool crashed`,
         classification: 'tool-error',
-        message: expect.stringContaining('tool crashed'),
-      }),
+      },
     ]);
   });
 });

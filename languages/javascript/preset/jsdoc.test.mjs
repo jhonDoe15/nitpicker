@@ -37,6 +37,8 @@ describe('parseJsdoc tags', () => {
         ' * @return {void}',
         ' * @type {Map<string, number>}',
         ' * @satisfies {Row}',
+        ' * @extends {Base<string>}',
+        ' * @augments {Base<number>}',
         ' * @this {Row}',
         ' * @callback Handler',
         ' * @template {object} T',
@@ -57,6 +59,8 @@ describe('parseJsdoc tags', () => {
       { tag: 'return', type: 'void' },
       { tag: 'type', type: 'Map<string, number>' },
       { tag: 'satisfies', type: 'Row' },
+      { tag: 'extends', type: 'Base<string>' },
+      { tag: 'augments', type: 'Base<number>' },
       { tag: 'this', type: 'Row' },
       { tag: 'callback', name: 'Handler' },
       { tag: 'template', type: 'object', name: 'T' },
@@ -93,14 +97,11 @@ describe('parseJsdoc problems', () => {
     ]);
   });
 
-  it('reports an unsupported tag with the allowed tag list', () => {
-    const { problems } = parseJsdoc('* @enum {string}');
-    expect(problems).toHaveLength(1);
-    expect(problems[0].messageId).toBe('jsdocUnsupportedTag');
-    expect(problems[0].data.tag).toBe('enum');
-    expect(problems[0].data.allowed).toBe(
-      '@param, @property, @prop, @typedef, @returns, @return, @type, @satisfies, @this, @callback, @template, @import, @overload',
-    );
+  it('reports an unsupported tag by name', () => {
+    expect(parseJsdoc('* @enum {string}').problems).toEqual([
+      { messageId: 'jsdocUnsupportedTag', data: { tag: 'enum' } },
+    ]);
+    expect(messageIds('* @throws {Error}')).toEqual(['jsdocUnsupportedTag']);
   });
 
   it('reports a tag without its type as malformed with its usage', () => {
@@ -133,6 +134,32 @@ describe('parseJsdoc problems', () => {
   it('reports null inside a type', () => {
     expect(messageIds('* @returns {string | null}')).toEqual(['jsdocNullType']);
     expect(messageIds('* @param {Map<string, null>} value')).toEqual(['jsdocNullType']);
+  });
+
+  it('reports the nullable shorthands like null and a bare ? like any', () => {
+    for (const type of [
+      '?string',
+      'string?',
+      'Array<?string>',
+      '{ a: ?string }',
+      'string? | number',
+    ]) {
+      expect(messageIds(`* @param {${type}} value`), type).toEqual(['jsdocNullType']);
+    }
+    expect(messageIds('* @param {?} value')).toEqual(['jsdocAnyType']);
+    expect(messageIds('* @returns {Promise<?>}')).toEqual(['jsdocAnyType']);
+  });
+
+  it('accepts optional members, optional tuple elements and conditional types', () => {
+    for (const type of [
+      '{ a?: string }',
+      '(a?: number) => void',
+      '[string, number?]',
+      'T extends string ? 1 : 2',
+      "'?' | '?x'",
+    ]) {
+      expect(messageIds(`* @param {${type}} value`), type).toEqual([]);
+    }
   });
 
   it('reports each distinct problem once', () => {
@@ -196,9 +223,20 @@ describe('unknownMemberTags', () => {
     expect(selected('* @param {unknown} reason')).toEqual(['param']);
   });
 
+  it('selects unknown inside an object type or function parameter of any type tag', () => {
+    expect(selected('* @returns {{ readonly a: unknown }}')).toEqual(['returns']);
+    expect(selected('* @return {Promise<{ a: unknown }>}')).toEqual(['return']);
+    expect(selected('* @type {{ a: Array<unknown> }}')).toEqual(['type']);
+    expect(selected('* @typedef {Readonly<{ readonly a: unknown }>} Wrapped')).toEqual(['typedef']);
+    expect(selected('* @returns {(value: unknown) => void}')).toEqual(['returns']);
+  });
+
   it('ignores return types, plain types and unknown used only as a key', () => {
     expect(selected('* @returns {unknown}')).toEqual([]);
+    expect(selected('* @returns {Promise<unknown>}')).toEqual([]);
     expect(selected('* @type {unknown}')).toEqual([]);
+    expect(selected('* @template {unknown} T')).toEqual([]);
+    expect(selected('* @returns {{ unknown: string }}')).toEqual([]);
     expect(selected('* @param {{ unknown: string }} value')).toEqual([]);
     expect(selected('* @param {Known} value')).toEqual([]);
     expect(selected('* @param {unknownish} value')).toEqual([]);
