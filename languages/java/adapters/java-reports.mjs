@@ -17,6 +17,7 @@ import {
   readKotlinFindings,
   reportOnlyKotlinMutants,
   requireKotlinManifest,
+  sourceLocator,
 } from './kotlin-reports.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
@@ -112,12 +113,11 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
         .filter((name) => name.endsWith('.xml'))
         .sort()
     : [];
-  const classRoots = [...sourceRoots, ...(manifest.testSourceRoots ?? [])];
+  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
   return archunitReports.flatMap(
     (name) =>
       ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
-        resolvePath: (className, fileName) =>
-          sourceFileOf(projectRoot, classRoots, className, fileName),
+        resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
       }).findings,
   );
 }
@@ -140,36 +140,28 @@ function pitFindings(context) {
   if (!existsSync(pitReport)) {
     return [];
   }
-  const sourceRoots = jacocoSourceRoots(context);
+  const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
-    resolvePath: (className, sourceFile) =>
-      sourceFileOf(projectRoot, sourceRoots, className, sourceFile),
+    resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
 
 function branchFindings(context, jacoco) {
   const { projectRoot } = context;
-  return jacocoSourceRoots(context).flatMap(
-    (sourceRoot) =>
-      ingestJacocoBranches(jacoco, {
-        sourceRoot,
-        sourceText: (file) => {
-          const absolute = path.join(projectRoot, file);
-          return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
-        },
-      }).findings,
-  );
+  return ingestJacocoBranches(jacoco, {
+    locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
+    sourceText: (file) => {
+      const absolute = path.join(projectRoot, file);
+      return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+    },
+  }).findings;
 }
 
-function sourceFileOf(projectRoot, sourceRoots, className, fileName) {
+function sourceFileOf(locate, className, fileName) {
   const parts = className.split('.');
   const simple = parts.pop().split('$')[0];
-  const directory = parts.join('/');
-  const relative = `${directory === '' ? '' : `${directory}/`}${fileName ?? `${simple}.java`}`;
-  return sourceRoots
-    .map((sourceRoot) => `${sourceRoot}/${relative}`)
-    .find((candidate) => existsSync(path.join(projectRoot, candidate)));
+  return locate(parts.join('/'), fileName ?? `${simple}.java`);
 }
 
 function projectRoots(projectRoot) {
