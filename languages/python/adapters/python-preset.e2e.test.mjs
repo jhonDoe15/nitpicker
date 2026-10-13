@@ -404,6 +404,20 @@ const signsTest = (...assertions) =>
   `from demo import signs\n\n\n${assertions
     .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
     .join('\n\n')}`;
+const PRAGMAS = [
+  'import sys',
+  '',
+  '',
+  'def hidden(x):  # pragma: no cover',
+  '    if x:',
+  '        return 1',
+  '    return 2',
+  '',
+  '',
+  'if __name__ == "__main__":',
+  '    sys.exit(hidden(1))',
+  '',
+].join('\n');
 const SIGN_POSITIVE = ['sign_positive', 'signs.sign(5) == 1'];
 const SIGN_NEGATIVE = ['sign_negative', 'signs.sign(-5) == -1'];
 const CLAMP_LOW = ['clamp_low', 'signs.clamp(1) == 1'];
@@ -452,6 +466,11 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
       'src/demo/signs.py': `${SIGNS}\n\n${CLAMP}`,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW),
     });
+    commitBranch(project, 'pragmas', {
+      'src/demo/pragmas.py': PRAGMAS,
+      'tests/test_pragmas.py':
+        'from demo import pragmas\n\n\ndef test_imported():\n    assert pragmas.hidden\n',
+    });
     commitBranch(project, 'new-tested', {
       'src/demo/signs.py': `${SIGNS}\n\n${CLAMP}`,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW, CLAMP_HIGH),
@@ -492,6 +511,12 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(branchFindings(result)).toEqual(['src/demo/signs.py:8']);
+  });
+
+  it('honors no pragma, but leaves the main guard alone', () => {
+    const result = gate(project, 'pragmas');
+
+    expect(branchFindings(result)).toEqual(['src/demo/pragmas.py:5']);
   });
 
   it('passes a new branch whose outcomes are both tested', () => {

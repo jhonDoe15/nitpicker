@@ -134,7 +134,8 @@ for its place are `T201` (`print` in a command-line tool or a notebook), `PERF20
 loop that must handle each item) and `F401` (an `__init__.py` that re-exports): `exclude` the
 path, for example `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff
 configuration (`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and
-coverage, so the result means the same on every project; there is no override key for them.
+coverage, so the result means the same on every project; there is no override key for them (the
+coverage settings that are dropped are listed under the test step below).
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
@@ -182,9 +183,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
-  that exist in the snapshot. The project's `.coveragerc` is not used, so a project that measures
-  subprocesses or uses a coverage plugin needs more than this slice. `# pragma: no cover` keeps
-  its coverage.py meaning for now. Exit status 5 (no tests collected) is accepted; any other
+  that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
+  `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that cannot be
+  tested (see Exceptions under slice 4). The project's own coverage configuration (`.coveragerc`, `setup.cfg`,
+  `tox.ini`, `[tool.coverage]`) is not read, so its `exclude_lines`, `exclude_also`,
+  `partial_branches`, `omit`, plugins and subprocess measurement are all dropped and the gate
+  measures every project the same way. Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
@@ -223,27 +227,38 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   an added file, is new even if the base had it. An uncovered branch on an unchanged line stays
   baselined and does not fail.
 - **Identity.** `branch-source:<16 hex>`, a hash of the line's source text (trimmed, whitespace
-  collapsed), with `#2`, `#3` for identical lines in one file, in order. No line number, so
-  inserting code above keeps the finding baselined and a renamed file follows the rename map.
+  collapsed), with `#2`, `#3` for identical lines in one enclosing scope, in order. The scope is the
+  chain of `def` / `class` names found from the line's indentation (`Class.method`, empty at module
+  level), so a new identical line in another function does not renumber a legacy gap. No line
+  number, so inserting code above keeps the finding baselined and a renamed file follows the rename
+  map. Moving a gap into another function, or renaming its function, makes a new identity, which
+  matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen.` It names where the untaken outcomes lead; those line numbers are
-  only in the message, never in the identity.
+or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.` It
+  names where the untaken outcomes lead; those line numbers are only in the message, never in the
+  identity.
 - **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
-  `match` cases, `try`/`finally`) is judged on all of them together. coverage.py does not track
-  conditional expressions or `and`/`or` operands, only jumps between lines, so those are not
-  reported. Reformatting a line counts as changing it. A file without readable source text is
-  skipped. `# pragma: no branch` and `# pragma: no cover` keep their coverage.py meaning (see
-  slice 1). Coverage comes from the tests of the snapshot being analyzed, so adding or removing a
+  `match` cases) is judged on all of them together. coverage.py does not track conditional
+  expressions or `and`/`or` operands, nor the arms of `try`/`except`/`else`/`finally`, only jumps
+  between lines, so those are not reported: an untested `except` handler is not gated by this rule.
+  Reformatting a line counts as changing it. A file without readable source text is skipped.
+  Coverage comes from the tests of the snapshot being analyzed, so adding or removing a
   test changes which branches are covered on head.
-- **Exceptions.** A branch that legitimately cannot be tested is lifted with `exclude` in
-  `nitpicker.config.json` (a path glob); inline
-  disables are not honored.
+- **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
+  `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
+  coverage settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
+  and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
+  `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
+  only this rule's. Test files are not measured, so a `.` source root does not gate them.
 - **Tests.** `languages/python/ingest/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
-  five cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
-  new untested branch fails while the old gap stays baselined, new tested branch passes).
+  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
+  branch passes).
 
 ## Slices
 

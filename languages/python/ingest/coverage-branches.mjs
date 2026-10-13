@@ -2,6 +2,9 @@ import { MINIMUM_BRANCH_COVERAGE } from '../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { hashIdentity, normalizeReportPath } from '../../java/ingest/common.mjs';
 
+const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
+const EXCEPTION_ROUTE = 'To exempt a file, add it to exclude in nitpicker.config.json.';
+
 export function ingestCoverageBranches(text, options = {}) {
   const report = JSON.parse(text);
   if (typeof report?.files !== 'object' || report.files === null) {
@@ -32,7 +35,7 @@ function fileFindings(data, { path, lines, tool, minimum }) {
     branches.push({
       path,
       line,
-      key: hashIdentity('branch-source', [source]),
+      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
       arms: outcomes.missed.map(describeArm),
     });
@@ -41,7 +44,24 @@ function fileFindings(data, { path, lines, tool, minimum }) {
     tool,
     minimum,
     identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
-  });
+  }).map((finding) => ({ ...finding, message: `${finding.message} ${EXCEPTION_ROUTE}` }));
+}
+
+function indentOf(text) {
+  return text.length - text.trimStart().length;
+}
+
+function enclosingScope(lines, index) {
+  const names = [];
+  let indent = indentOf(lines[index]);
+  for (let at = index - 1; at >= 0 && indent > 0; at -= 1) {
+    const name = SCOPE_START.exec(lines[at].trimStart())?.[1];
+    if (name !== undefined && indentOf(lines[at]) < indent) {
+      names.unshift(name);
+      indent = indentOf(lines[at]);
+    }
+  }
+  return names.join('.');
 }
 
 function outcomesByLine(data) {
