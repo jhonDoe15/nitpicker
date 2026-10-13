@@ -10,8 +10,13 @@
 //   statements         every statement below the body except blocks
 //   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
 //   parameters         declared parameters
+//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch, ?:, &&, ||
+//                      and every case label but default (each `case`, also an arrow case and one with several constants)
+//   signature          Owner.method(parameter types), the identity of the method in the CRAP check
+//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo leaves out of its report
 // Members of nested classes (anonymous, local or member) are reported as methods of their own and
-// do not count towards the enclosing method; lambda bodies count towards the enclosing method.
+// do not count towards the enclosing method; lambda bodies count towards the enclosing method (in complexity
+// too, like lizard counted them).
 
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
@@ -20,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
+import javax.lang.model.element.Modifier;
 import javax.tools.*;
 
 public final class StructureMetrics {
@@ -133,6 +139,8 @@ public final class StructureMetrics {
       long endLine = lines.getLineNumber(Math.max(start, end - 1));
       Body body = new Body();
       body.scan(tree.getBody(), 0);
+      Complexity complexity = new Complexity();
+      complexity.scan(tree.getBody(), null);
       String name =
           tree.getName().contentEquals("<init>")
               ? owner.substring(owner.lastIndexOf('.') + 1)
@@ -146,6 +154,9 @@ public final class StructureMetrics {
               + ",\"statements\":" + body.statements
               + ",\"maxControlNesting\":" + body.maxNesting
               + ",\"parameters\":" + tree.getParameters().size()
+              + ",\"complexity\":" + (1 + complexity.branches)
+              + ",\"signature\":" + quote(signature(owner, name, tree))
+              + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")
               + "}");
     }
   }
@@ -190,6 +201,60 @@ public final class StructureMetrics {
       scan(tree.getFinallyBlock(), depth);
       return null;
     }
+  }
+
+  /** Decision points of one body, lambdas included and nested classes left out. */
+  private static final class Complexity extends TreeScanner<Void, Void> {
+    int branches = 0;
+
+    @Override
+    public Void scan(Tree tree, Void ignored) {
+      if (tree == null || tree instanceof ClassTree) {
+        return null;
+      }
+      if (isBranch(tree)) {
+        branches += 1;
+      }
+      return super.scan(tree, ignored);
+    }
+  }
+
+  private static boolean isBranch(Tree tree) {
+    return switch (tree.getKind()) {
+      case IF, FOR_LOOP, ENHANCED_FOR_LOOP, WHILE_LOOP, DO_WHILE_LOOP, CATCH, CONDITIONAL_EXPRESSION,
+          CONDITIONAL_AND, CONDITIONAL_OR -> true;
+      case CASE -> !isDefaultOnly((CaseTree) tree);
+      default -> false;
+    };
+  }
+
+  private static boolean isDefaultOnly(CaseTree tree) {
+    List<? extends CaseLabelTree> labels = tree.getLabels();
+    return labels.size() == 1 && labels.get(0).getKind() == Tree.Kind.DEFAULT_CASE_LABEL;
+  }
+
+  private static String signature(String owner, String name, MethodTree tree) {
+    String types =
+        tree.getParameters().stream()
+            .map(parameter -> parameter.getType().toString())
+            .collect(Collectors.joining(", "));
+    return owner + "." + name + "(" + types + ")";
+  }
+
+  /** JaCoCo filters `private Name() {}` (also with an explicit `super();`) from its report. */
+  private static boolean isPrivateEmptyConstructor(MethodTree tree) {
+    List<? extends StatementTree> statements = tree.getBody().getStatements();
+    return tree.getName().contentEquals("<init>")
+        && tree.getModifiers().getFlags().contains(Modifier.PRIVATE)
+        && tree.getParameters().isEmpty()
+        && statements.stream().allMatch(StructureMetrics::isSuperCall);
+  }
+
+  private static boolean isSuperCall(StatementTree statement) {
+    return statement instanceof ExpressionStatementTree call
+        && call.getExpression() instanceof MethodInvocationTree invocation
+        && invocation.getMethodSelect().toString().equals("super")
+        && invocation.getArguments().isEmpty();
   }
 
   private static boolean isControl(Tree tree) {
