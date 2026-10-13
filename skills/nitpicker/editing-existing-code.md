@@ -7,6 +7,8 @@ applies to the lines you add.
   function and put the new code there. To make room, extract the smallest existing block into a
   function; extracted code is new code and must meet every rule. Don't rewrite or move legacy code
   the task doesn't need.
+- A file or folder already over its limit must not grow either: put the new code in a new file,
+  and a new file in a subfolder.
 - An edited legacy line may keep a violation its function already had, as long as the function
   doesn't get more of it: change `lines.push(a)` to `lines.push(a, ...extra)` rather than adding a
   second push.

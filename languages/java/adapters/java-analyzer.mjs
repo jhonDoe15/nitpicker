@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
@@ -33,6 +34,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-suppressions.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
+  'shared/rules/file-limits.mjs',
   'shared/rules/crap.mjs',
   'languages/java/adapters/touched-rules.mjs',
   'shared/glob.mjs',
@@ -74,19 +76,6 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-export const JAVA_TOOLS = [
-  'pmd',
-  'spotbugs',
-  'archunit',
-  'google-java-format',
-  'jacoco',
-  'checkstyle',
-  'crap',
-  'duplicates',
-  'pit',
-  'structure',
-  'coupling',
-];
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {

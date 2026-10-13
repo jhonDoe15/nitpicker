@@ -7,6 +7,9 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
+import { configError } from '../../../shared/config.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
@@ -14,6 +17,50 @@ export const PROJECT_TOOL_CONFIGS = new Map([
   ['pmd', 'config/pmd/ruleset.xml'],
   ['checkstyle', 'config/checkstyle/checkstyle.xml'],
 ]);
+const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
+const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
+const NATIVE_LINE_LENGTH = {
+  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+  kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
+};
+const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
+  (rule) => !JAVA_NATIVE_RULES.includes(rule),
+);
+
+export function validateJavaConfig(config) {
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) => !['exceptions', 'tools'].includes(key),
+  );
+  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
+  if (unsupported.length > 0) {
+    const preset = config.preset;
+    throw configError(
+      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout and React rules, which the ${preset} preset does not have. Not supported with ${preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+    );
+  }
+  if (config.preset === 'java' && Array.isArray(config.exceptions)) {
+    for (const [index, entry] of config.exceptions.entries()) {
+      validateJavaExceptionRule(entry?.rule, `exceptions[${String(index)}].rule`);
+    }
+  }
+  if (config.thresholds?.lineLength !== undefined) {
+    throw configError(
+      `"thresholds.lineLength" is not supported with "preset": "${config.preset}": ${NATIVE_LINE_LENGTH[config.preset]}`,
+    );
+  }
+}
+
+function validateJavaExceptionRule(rule, label) {
+  if (typeof rule !== 'string' || rule === '' || JAVA_EXCEPTION_RULES.includes(rule)) {
+    return;
+  }
+  const [tool] = rule.split('/');
+  if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
+    throw configError(
+      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
+    );
+  }
+}
 
 export function configureJavaAnalyzer(
   analyzer,
@@ -22,7 +69,9 @@ export function configureJavaAnalyzer(
   const toolArguments = [...PROJECT_TOOL_CONFIGS.keys()]
     .filter((tool) => tools[tool] !== undefined)
     .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]);
+  const fileLimits = fileLimitThresholds(thresholds);
   if (
+    fileLimits === undefined &&
     thresholds.crapLimit === undefined &&
     exclude.length === 0 &&
     exceptions.length === 0 &&
@@ -36,6 +85,7 @@ export function configureJavaAnalyzer(
   const adapterArguments = [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
+    ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
@@ -93,6 +143,13 @@ function hashWithProjectConfigs(configurationHash, policyRoot, projectConfigs) {
     hash.update(`${file}\0`).update(existsSync(absolute) ? readFileSync(absolute) : '');
   }
   return hash.digest('hex');
+}
+
+function fileLimitThresholds(thresholds) {
+  const limits = FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined);
+  return limits.length === 0
+    ? undefined
+    : Object.fromEntries(limits.map((key) => [key, thresholds[key]]));
 }
 
 function hashWithArguments(configurationHash, adapterArguments) {

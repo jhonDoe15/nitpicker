@@ -59,7 +59,7 @@ describe('config file', () => {
     ]);
   });
 
-  it('shares thresholds, exclude and legacyInventory with the python preset', () => {
+  it('shares thresholds, exclude, legacyInventory and file-limit exceptions with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
       exclude: ['generated/**'],
@@ -72,9 +72,17 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
       '"layout" is not supported with "preset": "python"',
     );
-    expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
-      '"exceptions" is not supported with "preset": "python"',
-    );
+    const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
+    expect(validateConfig({ preset: 'python', exceptions })).toEqual({
+      preset: 'python',
+      exceptions,
+    });
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
   });
 
   describe('kotlin options', () => {
@@ -141,6 +149,23 @@ describe('config file', () => {
       });
     });
 
+    it('accepts an exception for a file limit and leaves line length to detekt', () => {
+      const fileLimit = { ...exception, rule: 'folder-files-limit' };
+      expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [fileLimit],
+      });
+      expect(() =>
+        validateConfig({
+          preset: 'kotlin',
+          exceptions: [{ ...exception, rule: 'line-length-limit' }],
+        }),
+      ).toThrow(/is not a rule with exceptions/u);
+      expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
+        'detekt checks Kotlin line length',
+      );
+    });
+
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
@@ -194,8 +219,37 @@ describe('config file', () => {
     );
   });
 
+  it('lets the java preset lift the shared file limits, but not line length or ESLint rules', () => {
+    const exceptions = [
+      {
+        rule: 'folder-files-limit',
+        paths: ['src/main/java/icons/**'],
+        reason: 'One class per icon',
+      },
+    ];
+    const config = { preset: 'java', thresholds: { fileLines: 400, folderFiles: 12 }, exceptions };
+    expect(validateConfig(config)).toEqual(config);
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
+      }),
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
+      'Checkstyle checks Java line length',
+    );
+  });
+
   it.each([
     [[], /must be a JSON object/],
+    [{ thresholds: { folderFiles: 2.5 } }, /"thresholds.folderFiles" must be a whole number/],
+    [{ thresholds: { lineLength: 0 } }, /"thresholds.lineLength" must be a positive number/],
     [{ disable: 'knip' }, /"disable" must be an array/],
     [{ disable: ['a', 'a'] }, /duplicates/],
     [{ thresholds: { crapLimit: 0 } }, /positive number/],
