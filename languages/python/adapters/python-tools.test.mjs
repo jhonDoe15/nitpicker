@@ -422,7 +422,7 @@ describe('running the tools', () => {
   it('tells how to turn the contracts off when lint-imports is not installed', () => {
     const root = project(
       { '.importlinter': '[importlinter]\nroot_package = demo\n', 'conftest.py': '' },
-      { tools: ['ruff', 'coverage', 'python'] },
+      { tools: ['ruff', 'coverage', 'mypy', 'python'] },
     );
     const { context } = contextFor(root);
 
@@ -598,7 +598,7 @@ describe('tool versions', () => {
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      `ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
     expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
       `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
