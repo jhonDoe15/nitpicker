@@ -91,11 +91,15 @@ describe('javascript layout', () => {
       'src/**/__tests__/**/*.{ts,mts,cts,js,mjs,cjs}',
       'test/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
       'tests/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      '__tests__/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
+      'e2e/unit/**/*.{ts,mts,cts,js,mjs,cjs}',
     ]);
     expect(resolveLayout({}, []).unitTestGlobs).toEqual([
       'src/**/__tests__/**/*.ts',
       'test/unit/**/*.ts',
       'tests/unit/**/*.ts',
+      '__tests__/unit/**/*.ts',
+      'e2e/unit/**/*.ts',
     ]);
   });
 
@@ -144,12 +148,16 @@ describe('javascript prettier patterns', () => {
       'src/**/*.{ts,mts,cts,js,mjs,cjs,json,yaml,yml}',
       'test/**/*.{ts,mts,cts,js,mjs,cjs,json}',
       'tests/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      '__tests__/**/*.{ts,mts,cts,js,mjs,cjs,json}',
+      'e2e/**/*.{ts,mts,cts,js,mjs,cjs,json}',
       '*.{ts,mts,cts,js,mjs,cjs,json}',
     ]);
     expect(prettierPatterns(resolveLayout())).toEqual([
       'src/**/*.{ts,tsx,mts,mjs,json,yaml,yml}',
       'test/**/*.{ts,tsx,mts,mjs,json}',
       'tests/**/*.{ts,tsx,mts,mjs,json}',
+      '__tests__/**/*.{ts,tsx,mts,mjs,json}',
+      'e2e/**/*.{ts,tsx,mts,mjs,json}',
       '*.{ts,tsx,mts,mjs,json}',
     ]);
   });

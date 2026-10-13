@@ -80,8 +80,8 @@ describe('resolveLayout', () => {
   it('keeps the default layout identical to the previous fixed roots', () => {
     const layout = resolveLayout();
     expect(layout.sourceRoots).toEqual(['src']);
-    expect(layout.testRoots).toEqual(['test', 'tests']);
-    expect(layout.graphIncludeOnly).toBe('^(src|test|tests)(?:/|$)');
+    expect(layout.testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
+    expect(layout.graphIncludeOnly).toBe('^(src|test|tests|__tests__|e2e)(?:/|$)');
   });
 });
 
@@ -521,6 +521,25 @@ describe('package-owned child configs', () => {
       'tests/**/*.test.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     );
     expect(coverage.test.coverage.include).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
+  });
+
+  it('the copied vitest configs run __tests__ and never run the e2e root', async () => {
+    const extensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
+    const defaults = await resolveVitestConfig('defaults/vitest.quality.config.ts', undefined);
+    const listed = await resolveVitestConfig('defaults/vitest.quality.config.ts', {
+      layout: { testRoots: ['spec', 'e2e'] },
+    });
+
+    expect(defaults.test.projects[1].test.include).toEqual(
+      ['test', 'tests', '__tests__'].flatMap((root) => [
+        `${root}/**/*.test.${extensions}`,
+        `${root}/**/*.spec.${extensions}`,
+      ]),
+    );
+    expect(listed.test.projects[1].test.include).toEqual([
+      `spec/**/*.test.${extensions}`,
+      `spec/**/*.spec.${extensions}`,
+    ]);
   });
 
   it('the copied vitest configs layer nitpicker roots and coverage on the project config', async () => {
