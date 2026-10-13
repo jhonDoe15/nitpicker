@@ -454,8 +454,10 @@ name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Co
 Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
 `SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
-method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` and
-`SpringDataNoFlush` skip a loop that also calls `EntityManager.clear()`, the JPA batch idiom.
+method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
+`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks, lambdas and method
+references (`forEach(repository::save)`) alike. It and `SpringDataNoFlush` skip a loop that also
+calls `EntityManager.clear()`, the JPA batch idiom.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test

@@ -49,6 +49,7 @@ public class OrderService {
       products.save(product); // violation: SpringDataNoSaveInLoop
     }
     incoming.forEach(product -> entityManager.persist(product)); // violation: SpringDataNoSaveInLoop
+    incoming.forEach(products::save); // violation: SpringDataNoSaveInLoop
     products.saveAll(incoming);
     products.flush(); // violation: SpringDataNoFlush
     recalculate(); // violation: SpringProxySelfCall

@@ -452,6 +452,10 @@
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
   [ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement][not(.//MethodCall[@MethodName = 'clear'][*[1][pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
    or ancestor::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]]]
+|
+//MethodCall[@MethodName = ('forEach', 'map', 'peek', 'forEachOrdered')]/ArgumentList
+  /MethodReference[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
+  [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]]
 ]]></value></property></properties>
   </rule>
 
