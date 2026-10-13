@@ -1,3 +1,5 @@
+import { inReactTestFilesOnly } from './react-test-files.mjs';
+
 const instanceMethods = new Set([
   'instance',
   'getInstance',
@@ -51,14 +53,14 @@ export const rule = {
     schema: [],
     messages: {
       componentInternals:
-        'Do not read or change component state or instances in a test ({{ name }}). Assert what the user sees (`screen.getByRole(...)`, visible text) and drive the component through `userEvent`. If this test cannot avoid the internals, add an exception for this rule in nitpicker.config.json.',
+        'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       fiberInternals:
-        'Do not read React internals in a test ({{ name }}). Assert what the user sees (`screen.getByRole(...)`, visible text). If this test cannot avoid the internals, add an exception for this rule in nitpicker.config.json.',
+        'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       hookSpy:
-        'Do not spy on the React hook `{{ name }}` in a test. Render the component and assert what the user sees; test a custom hook through `renderHook` and its result. If this spy is unavoidable, add an exception for this rule in nitpicker.config.json.',
+        'Do not spy on the React hook `{{ name }}`. Use `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
     },
   },
-  create(context) {
+  create: inReactTestFilesOnly((context) => {
     return {
       CallExpression(node) {
         const callee = node.callee;
@@ -78,5 +80,5 @@ export const rule = {
         }
       },
     };
-  },
+  }),
 };

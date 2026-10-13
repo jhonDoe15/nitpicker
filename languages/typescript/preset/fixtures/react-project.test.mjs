@@ -86,10 +86,18 @@ function messageOf(findings, rule) {
 
 describe('the react-project fixture', () => {
   it(
-    'flags each banned form with its rule and passes the allowed file',
+    'flags each banned form with its rule, passes the allowed file and leaves tests without React alone',
     () => {
       const { exitCode, findings } = lintFindings(commitProject({}));
 
+      expect(testRulesByFile(findings)).toEqual({
+        'container-query.test': ['testing-library/no-node-access'],
+        'fire-event.test': ['testing-library/prefer-user-event'],
+        'internals.test': ['nitpicker/react-test-no-implementation-details'],
+        'test-id.test': ['testing-library/no-test-id-queries'],
+        'unawaited-event.test': ['testing-library/await-async-events'],
+        'wrapper-container.test': ['testing-library/no-node-access'],
+      });
       expect(rulesByFile(findings)).toEqual({
         'class-component': ['react-x/no-class-component'],
         'conditional-hook': ['react-hooks/rules-of-hooks'],
@@ -127,31 +135,6 @@ describe('the react-project fixture', () => {
         allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
         'class-component': ['no-restricted-syntax'],
       });
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
-
-  it(
-    'flags each test written against the user experience and passes the one that is not',
-    () => {
-      const { findings } = lintFindings(commitProject({}));
-
-      expect(testRulesByFile(findings)).toEqual({
-        'container-query.test': ['testing-library/no-node-access'],
-        'fire-event.test': ['testing-library/prefer-user-event'],
-        'internals.test': ['nitpicker/react-test-no-implementation-details'],
-        'test-id.test': ['testing-library/no-test-id-queries'],
-      });
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
-
-  it(
-    'applies no React test rule to a project that does not depend on react',
-    () => {
-      const { findings } = lintFindings(commitProject({ manifest: { private: true } }));
-
-      expect(testRulesByFile(findings)).toEqual({});
     },
     FIXTURE_TIMEOUT_MS,
   );

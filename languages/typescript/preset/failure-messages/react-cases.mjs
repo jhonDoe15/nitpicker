@@ -21,8 +21,11 @@ function reactCase([name, banned, allowed, styling = 'class-names']) {
 }
 
 const testFilename = 'test/ui/panel.test.tsx';
-const testingLibraryImport =
-  "import { render, screen, fireEvent } from '@testing-library/react';\n";
+const testingLibraryImport = [
+  "import { render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import userEvent from '@testing-library/user-event';",
+  '',
+].join('\n');
 
 function reactTestCase([name, banned, allowed]) {
   return {
@@ -172,7 +175,7 @@ const reactTestCases = [
     "const { container } = render(<Panel />); container.querySelector('.save');",
     'nitpicker.config.json',
   ],
-  ['fireEvent names userEvent', "fireEvent.click(screen.getByRole('button'));", '`userEvent`'],
+  ['fireEvent names userEvent', "fireEvent.click(screen.getByRole('button'));", 'await user.click'],
   [
     'fireEvent names the config exception',
     "fireEvent.click(screen.getByRole('button'));",
@@ -181,7 +184,23 @@ const reactTestCases = [
   [
     'unawaited userEvent names await',
     "userEvent.click(screen.getByRole('button'));",
-    'await userEvent',
+    'await user.<event>',
+  ],
+  [
+    'unawaited userEvent names the user-event v13 exception',
+    "userEvent.click(screen.getByRole('button'));",
+    'user-event v13',
+  ],
+  [
+    'unawaited findBy query names await',
+    "const button = screen.findByRole('button');",
+    'await screen.findByRole',
+  ],
+  ['unawaited waitFor names await', 'waitFor(() => expect(ok()).toBe(true));', 'await waitFor'],
+  [
+    'node access names toHaveFocus',
+    'expect(document.activeElement).toBe(button);',
+    '`toHaveFocus()`',
   ],
   [
     'component state names what the user sees',
