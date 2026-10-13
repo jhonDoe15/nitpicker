@@ -248,7 +248,7 @@ describe('tool precedence', () => {
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "eslint". Supported tools: prettier',
+      '"tools" names unknown tool "eslint". Supported tools with this preset: prettier',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -261,12 +261,34 @@ describe('tool precedence', () => {
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
   });
 
-  it('is a TypeScript-only key and shows up as a config override', () => {
+  it('shows up as a config override', () => {
     const tools = { prettier: { precedence: ['project', 'nitpicker'] } };
-    expect(() => validateConfig({ preset: 'java', tools })).toThrow(
-      '"tools" is not supported with "preset": "java"',
-    );
     expect(describeConfigOverrides({ tools })).toEqual([`tools: ${JSON.stringify(tools)}`]);
+  });
+
+  it.each(['java', 'kotlin'])(
+    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    (preset) => {
+      const tools = {
+        pmd: { precedence: ['project', 'nitpicker'] },
+        checkstyle: { precedence: ['project'] },
+      };
+      expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(() =>
+        validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
+      ).toThrow(
+        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+      );
+      expect(() =>
+        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
+      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
+    },
+  );
+
+  it('keeps PMD and Checkstyle out of the TypeScript and Python presets', () => {
+    const tools = { pmd: { precedence: ['project'] } };
+    expect(() => validateConfig({ tools })).toThrow('"tools" names unknown tool "pmd"');
+    expect(() => validateConfig({ preset: 'python', tools })).toThrow('"tools"');
   });
 });
 

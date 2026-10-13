@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import {
   applyInventoryToFindings,
@@ -8,18 +10,26 @@ import {
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
+export const PROJECT_TOOL_CONFIGS = new Map([
+  ['pmd', 'config/pmd/ruleset.xml'],
+  ['checkstyle', 'config/checkstyle/checkstyle.xml'],
+]);
 
 export function configureJavaAnalyzer(
   analyzer,
-  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
+  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {}, tools = {} },
 ) {
+  const toolArguments = [...PROJECT_TOOL_CONFIGS.keys()]
+    .filter((tool) => tools[tool] !== undefined)
+    .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]);
   if (
     thresholds.crapLimit === undefined &&
     exclude.length === 0 &&
     exceptions.length === 0 &&
     legacyInventory === undefined &&
     kotlin.formatter === undefined &&
-    kotlin.detektConfig === undefined
+    kotlin.detektConfig === undefined &&
+    toolArguments.length === 0
   ) {
     return analyzer;
   }
@@ -31,10 +41,21 @@ export function configureJavaAnalyzer(
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
+    ...toolArguments,
   ];
+  const configurationHash = hashWithArguments(analyzer.configurationHash, adapterArguments);
+  const projectConfigs = [...PROJECT_TOOL_CONFIGS]
+    .filter(([tool]) => tools[tool]?.precedence.includes('project'))
+    .map(([, file]) => file);
   const configured = {
     ...analyzer,
-    configurationHash: hashWithArguments(analyzer.configurationHash, adapterArguments),
+    configurationHash,
+    ...(projectConfigs.length === 0
+      ? {}
+      : {
+          resolveConfigurationHash: (policyRoot) =>
+            hashWithProjectConfigs(configurationHash, policyRoot, projectConfigs),
+        }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
       return {
@@ -63,6 +84,15 @@ function isLifted(finding, lifted) {
     ({ rule, matcher }) =>
       (rule === finding.rule || rule === printedRule) && matcher.test(finding.path),
   );
+}
+
+function hashWithProjectConfigs(configurationHash, policyRoot, projectConfigs) {
+  const hash = createHash('sha256').update(configurationHash);
+  for (const file of projectConfigs) {
+    const absolute = path.join(policyRoot, file);
+    hash.update(`${file}\0`).update(existsSync(absolute) ? readFileSync(absolute) : '');
+  }
+  return hash.digest('hex');
 }
 
 function hashWithArguments(configurationHash, adapterArguments) {

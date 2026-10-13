@@ -228,8 +228,7 @@ Notes on the glue in `java-reports.mjs`:
   map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` (main sources
   only). `ignoreFailures` is on and the XML report is written to `build/nitpicker/checkstyle.xml`;
   the HTML report is off.
-- **Configuration.** The consumer's `config/checkstyle/checkstyle.xml` in the root project wins
-  (like `config/pmd/ruleset.xml`). Without one, the preset uses `google_checks.xml` from the pinned
+- **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Javadoc that is
@@ -410,7 +409,8 @@ resolved plus a new finding, as in the TypeScript check.
 
 A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
 Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/gradle/spring-ruleset.xml),
-added to its PMD run, next to the PMD categories or the project's own `config/pmd/ruleset.xml`. Every
+added to its PMD run, next to the PMD categories (and the project's own `config/pmd/ruleset.xml` when
+`tools.pmd.precedence` lists `"project"` too). Every
 project's PMD run now gets the compile classpath and the main classes as its auxiliary classpath
 (`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and supertype names exactly;
 `nitpickerPmd` therefore compiles the main classes first. The manifest records `spring` and the
@@ -445,8 +445,14 @@ SpotBugs has no switch to ignore its annotations, so the same scan reports every
 `spotbugs/EI_EXPOSE_REP`. Checkstyle's bundled `google_checks.xml` honors
 `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`, `CHECKSTYLE.SUPPRESS` comments;
 nitpicker writes a copy without those filters (and without the optional xpath suppression file
-the bundled config would read from the working directory), so they suppress nothing. A project's own
-`config/checkstyle/checkstyle.xml` is still used as is.
+the bundled config would read from the working directory), so they suppress nothing.
+
+**Project configs are an explicit opt-in.** A project's `config/pmd/ruleset.xml` or
+`config/checkstyle/checkstyle.xml` used to replace nitpicker's rules silently. Now they are read only
+when `nitpicker.config.json` names them in `tools`, for example
+`{ "tools": { "pmd": { "precedence": ["project", "nitpicker"] }, "checkstyle": { "precedence": ["project"] } } }`;
+see [Your project's tool configs](usage.md#your-projects-tool-configs). A project config chosen
+this way is used as written, including its own suppression filters.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
@@ -485,9 +491,6 @@ accept.
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
-- Custom PMD rules: the default ruleset is `category/java/errorprone.xml` plus
-  `category/java/bestpractices.xml`; a consumer can place `config/pmd/ruleset.xml` in the root
-  project. A `layout`-style config key for this is still open (slice 2 did not add one).
 - Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
 
 ## Tests

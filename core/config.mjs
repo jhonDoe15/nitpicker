@@ -39,6 +39,11 @@ const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
+const GRADLE_TOOL_SETTING_KEYS = new Map([
+  ['pmd', ['precedence']],
+  ['checkstyle', ['precedence']],
+]);
+const SINGLE_CONFIG_TOOLS = ['checkstyle'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 export function loadConfig(projectRoot) {
@@ -92,11 +97,13 @@ function validateScalars(config) {
 }
 
 function validateJavaKeys(config) {
-  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) => !['exceptions', 'tools'].includes(key),
+  );
   const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and tools, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and React rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
   if (config.preset === 'java' && Array.isArray(config.exceptions)) {
@@ -148,24 +155,27 @@ function validateOptional(config) {
     validateCustomAnalyzers(config.analyzers);
   }
   if (config.tools !== undefined) {
-    validateTools(config.tools);
+    validateTools(
+      config.tools,
+      GRADLE_PRESETS.includes(config.preset) ? GRADLE_TOOL_SETTING_KEYS : TOOL_SETTING_KEYS,
+    );
   }
 }
 
-function validateTools(tools) {
+function validateTools(tools, toolSettingKeys) {
   if (!isPlainObject(tools)) {
     throw configError('"tools" must be an object keyed by tool name');
   }
   for (const [name, settings] of Object.entries(tools)) {
-    validateToolSettings(name, settings);
+    validateToolSettings(name, settings, toolSettingKeys);
   }
 }
 
-function validateToolSettings(name, settings) {
-  const allowedKeys = TOOL_SETTING_KEYS.get(name);
+function validateToolSettings(name, settings, toolSettingKeys) {
+  const allowedKeys = toolSettingKeys.get(name);
   if (allowedKeys === undefined) {
     throw configError(
-      `"tools" names unknown tool "${name}". Supported tools: ${[...TOOL_SETTING_KEYS.keys()].join(', ')}`,
+      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
     );
   }
   if (!isPlainObject(settings)) {
@@ -178,6 +188,11 @@ function validateToolSettings(name, settings) {
     );
   }
   validatePrecedence(settings.precedence, name);
+  if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
+    throw configError(
+      `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
+    );
+  }
 }
 
 function validatePrecedence(precedence, name) {
