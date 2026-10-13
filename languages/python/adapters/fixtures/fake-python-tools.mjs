@@ -18,6 +18,9 @@
 //   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
 //                        absolute (exit 1 when it has diagnostics)
 //   rules.json           written by the nitpicker rules script (default: no findings)
+//   import-scan.json     printed by the import scan script (default: no imports)
+//   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
+//                        exit status is 1 when the text says BROKEN
 // `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
 // PYTHONPATH and MYPYPATH.
@@ -165,6 +168,18 @@ function pyright() {
   process.exit(absolute.length === 0 ? 0 : 1);
 }
 
+function lintImports() {
+  if (args[0] === '--version') {
+    process.stdout.write('lint-imports, version 2.5\n');
+    return;
+  }
+  const report = existsSync('lint-imports.txt')
+    ? readFileSync('lint-imports.txt', 'utf8')
+    : 'Contracts: 0 kept, 0 broken.\n';
+  process.stdout.write(report);
+  process.exit(report.includes(' BROKEN') ? 1 : 0);
+}
+
 function python() {
   if (args[0] === '-I') {
     const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
@@ -175,6 +190,16 @@ function python() {
     process.stdout.write(`${process.env.VIRTUAL_ENV ?? '/usr'}/bin/python\n`);
     return;
   }
+  if (args.some((argument) => argument.endsWith('import-scan.py'))) {
+    process.stdout.write(
+      existsSync('import-scan.json') ? readFileSync('import-scan.json', 'utf8') : '{}',
+    );
+    return;
+  }
+  if (args.some((argument) => argument.includes('"import-linter"'))) {
+    process.stdout.write('2.5\n');
+    return;
+  }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
@@ -182,5 +207,5 @@ function python() {
   process.stdout.write(`8.3.1 ${flag('pytest-cov.txt')} ${flag('xdist.txt')}\n`);
 }
 
-const tools = { ruff, black, coverage, mypy, pyright, python };
+const tools = { ruff, black, coverage, mypy, pyright, python, 'lint-imports': lintImports };
 tools[tool]();

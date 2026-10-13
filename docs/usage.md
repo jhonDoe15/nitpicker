@@ -188,8 +188,9 @@ The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-modu
 A TypeScript project with `react` in `dependencies` or `devDependencies` gets a React rule scope on
 top of the strict preset: function components only, the rules of hooks and exhaustive dependencies,
 no state derived from props or state in an effect, no data fetching in an effect, no array index as a
-`key`, one styling approach and the `jsx-a11y` accessibility rules. Detection reads the package.json
-of each tree being analyzed (base and head), so adopting React is judged by the code that adds it.
+`key`, one styling approach, the `jsx-a11y` accessibility rules and Testing Library rules for
+component tests (query by role, `userEvent` over `fireEvent`, no implementation details). Detection
+reads the package.json of each tree being analyzed (base and head), so adopting React is judged by the code that adds it.
 Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
 `false` to turn it off. `react.styling` picks the approach: `class-names` flags inline `style`
 objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `style` objects,
@@ -324,9 +325,13 @@ Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds` (`cra
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
-`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it), `typeChecker` (`"mypy"` or `"pyright"`) and
-`sourceRoots` (default `src`, else the top-level packages). `layout` and the top-level `exceptions`
-describe TypeScript and stay a config error.
+`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
+`typeChecker` (`"mypy"` or `"pyright"`), `importLinter` (`true` or `false`; by default the import-linter
+contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
+packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
+(`coupling/stability-direction`) and broken import-linter contracts (`import-linter/contract-broken`);
+their messages name the file to add to `exclude` when the repetition or dependency is intended.
+`layout` and the top-level `exceptions` describe TypeScript and stay a config error.
 
 The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums

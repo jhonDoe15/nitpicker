@@ -1,7 +1,7 @@
 # Python preset
 
-Status: slices 1 and 2 (tickets PY1 and PY2) implemented; later slices are planned below. The scope
-is a proposal pending owner review.
+Status: slices 1, 2 and 5 (tickets PY1, PY2 and PY5) implemented; the others are planned below. The
+scope is a proposal pending owner review.
 
 The Python preset runs the same differential gate as the TypeScript and Java presets on a Python
 project: run the tools on the merge base and on head, turn each report into findings
@@ -25,6 +25,9 @@ node languages/python/adapters/python-runner.mjs   (one process per snapshot: ba
   -> coverage run --branch -m pytest | unittest    -> coverage.json  (coverage.py JSON report)
   -> mypy --strict | pyright (strict)              -> type-check.json
   -> python -I nitpicker_rules.py                  -> rules.json     (the small AST checks)
+  -> jscpd --format python (all source roots at once) -> duplicates.json
+  -> python import-scan.py (stdlib ast)            -> imports.json    (modules and their imports)
+  -> lint-imports (only with an import-linter config) -> import-linter.txt
   -> readPythonFindings                             (languages/python/adapters/python-reports.mjs)
   -> compareFindings(base, head, renames)           (core)
 ```
@@ -115,6 +118,7 @@ ESLint rules and stay a config error with this preset; the Python equivalent of 
     "formatter": "black",
     "testRunner": "pytest",
     "typeChecker": "mypy",
+    "importLinter": false,
     "sourceRoots": ["src"],
     "exceptions": [
       {
@@ -127,14 +131,15 @@ ESLint rules and stay a config error with this preset; the Python equivalent of 
 }
 ```
 
-| Key           | Values                                 | Default                                                                              |
-| ------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| `environment` | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
-| `formatter`   | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`  | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker` | `mypy`, `pyright`                      | detected from the project, see below                                                 |
-| `sourceRoots` | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `exceptions`  | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
+| Key            | Values                                 | Default                                                                              |
+| -------------- | -------------------------------------- | ------------------------------------------------------------------------------------ |
+| `environment`  | `uv`, `poetry`, `path`, or a directory | detected, see above                                                                  |
+| `formatter`    | `ruff`, `black`                        | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
+| `testRunner`   | `pytest`, `unittest`                   | `pytest` if the project uses it (see below), else `unittest`                         |
+| `typeChecker`  | `mypy`, `pyright`                      | detected from the project, see below                                                 |
+| `importLinter` | `true`, `false`                        | run when the project has an import-linter config (see slice 5), else not             |
+| `sourceRoots`  | non-empty array of project directories | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
+| `exceptions`   | array of `{ rule, paths, reason }`     | none; see [Exceptions](#exceptions)                                                  |
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
@@ -313,14 +318,90 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
   tool `python` and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
   tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and
-  `rules-failed` (slice 2), `environment-failed` and `python-failed` for anything unexpected. An environment that cannot be found at all (no
+  `rules-failed` (slice 2), `environment-failed`, `duplicates-failed`, `coupling-failed`,
+  `import-linter-failed` (slice 5) and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain `python` tool error for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java.
-- **Not included in slice 1.** Type checking and the one-way rules are slice 2 (above); structure
-  limits, CRAP, changed-branch coverage, duplicates, coupling and mutation testing are the later
-  slices. Multi-project
+- **Not included.** Structure limits, CRAP, changed-branch coverage and mutation testing are the
+  next slices (type checking and the one-way rules are slice 2, above). Multi-project
   repositories are analyzed one project root at a time. Windows is untested.
+
+## Slice 5: duplicates, coupling and import contracts
+
+All three read only the production sources under `python.sourceRoots`. A file is not production
+code when it is `test_*.py`, `*_test.py` or `conftest.py`, or sits under a directory named `tests`,
+`test`, `migrations`, `build`, `dist`, `venv`, `site-packages`, `node_modules`, `__pycache__` or a
+hidden one such as `.venv`; the same list feeds jscpd's `--ignore`, the import scan and the module
+list. When the source root is `.` (a flat project without packages, or `python.sourceRoots`
+saying so), the top-level `docs`, `doc`, `examples` and `scripts` directories are skipped too, as
+the source root detection already does.
+
+- **Duplicates.** jscpd (nitpicker's own pinned copy, `jscpd@x.y.z` in the analyzer version) runs
+  once over all existing source roots with `--format python --mode mild` and a nitpicker-owned
+  config (`jscpd-config.json` in the report directory: 50 tokens, 5 lines, no threshold), so a
+  `.jscpd.json` of the project neither changes the result nor fails the run, and clones between
+  sibling packages (`billing/` and `shipping/`) are found. The report goes through the same
+  `runJscpd` and `evaluateDuplicates` the Java preset uses, so the findings are identical in shape:
+  `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size` (descriptive `lines` and
+  `tokens`), tool name `duplicates`. Identity is the sorted file pair, a hash of the cloned text and
+  the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
+  baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
+  (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
+  file of the pair, and its message tells to add that file to `exclude` when the repetition is
+  intended. A source root of `.` is supported.
+- **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
+  standard library only) parses every production file with `ast` and prints each file's `import`
+  and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
+  blocks. Everything else is JavaScript (`python-coupling.mjs`) so it is unit-tested without Python:
+  a module is a `.py` file named relative to its import root (`a/b.py` is `a.b`, `a/__init__.py` is
+  `a`), a package is the module's containing package (a package's `__init__` belongs to the package
+  itself, a top-level module to `(root)`), relative imports are resolved against the importing
+  module, and an import is an edge to the longest module the sources define (`import a.b.c.Thing`
+  links `a.b.c`; `from a import b` links `a.b` when that is a module, else `a`). Imports of anything
+  outside the sources (the standard library, third-party packages) are not edges. The graph goes to
+  the shared `buildCouplingReport`, which the Java preset now uses too, and then `evaluateCoupling`:
+  report-only `coupling`, `module-coupling`, `package-coupling`, `stability-direction-metric`, and
+  the enforceable `stability-direction` (`<package> depends on less stable package <package>`),
+  tool name `coupling`, identity `package-edge:<source>-><target>`. Its path is the source
+  package's `__init__.py` (the package's first file when it has none), and the message says to
+  depend on an abstraction in a more stable package, or to add that file to `exclude` when the
+  inversion is intended. An edge can appear without anyone touching it, because package
+  instability moves when other packages change. As in Java, packages are flat
+  (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
+  that does not parse with the interpreter is left out of the graph (ruff already reports syntax
+  errors), so one legacy Python 2 file does not break the gate.
+- **grimp or an `ast` scan?** An `ast` scan, shipped with nitpicker. grimp must be installed into
+  the project's environment, which nitpicker never modifies, needs the root packages to be
+  importable (editable installs and `PYTHONPATH` become part of the contract), and would add a
+  Rust dependency only to produce what a few dozen lines of `ast` already give: module-to-module import
+  edges. What grimp adds (external packages, import chains, squashed packages) is import-linter's
+  job, and import-linter, which brings grimp, runs when the project uses it.
+- **import-linter.** When the snapshot has an import-linter config (`.importlinter`, or a
+  `[importlinter]` section in `setup.cfg` or `tox.ini`, or `[tool.importlinter]` in
+  `pyproject.toml`), `lint-imports --no-cache` runs in the project's environment, with the
+  snapshot's sources on `PYTHONPATH` as for the other tools. The project's `import-linter` version
+  (read from the installed package metadata, since `--version` only exists from 2.11) is part of
+  the analyzer version. `python.importLinter` overrides the detection (`false` never runs it,
+  `true` always does). import-linter 1.12 or newer is supported (the first with `--no-cache`); the
+  startup logo is not suppressed because `--no-logo` only exists from 2.14, and the parser skips
+  it. It has no machine-readable output, so the text report is parsed
+  (`languages/python/ingest/import-linter.mjs`, tested on real output of the forbidden, layers,
+  independence, protected and acyclic contracts): every import chain in the `Broken contracts`
+  section is one enforceable `contract-broken` finding, tool `import-linter`, on the file of the
+  chain's first module with the line of its first import, identity
+  `contract:<name>:<module> -> <module> -> ...` (no line numbers, so a legacy broken contract stays
+  baselined when lines move). A hop prints either `(l.1, 2, 3)` or `(l.1, l.2, l.3)` depending on the
+  version; both are read. Items of contract types that do not print import chains (acyclic
+  siblings) are reported by their text, and a broken contract with nothing readable is one finding
+  for the contract; these have path `.`, so their message says only to remove the import. Findings
+  on a file say how to except it: `exclude` in `nitpicker.config.json`. A run that checked no
+  contract (missing config file, `lint-imports` not installed in the environment, which the
+  message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
+  error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
+- **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
+  `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
+  shared policy entry.
 
 ## Slices
 
@@ -328,14 +409,14 @@ Each slice is one PR, adds one concern, and changes the Python adapters, ingeste
 and this document. Slice 1 also made the config validation, the preset wiring in `core/` and the
 exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one language.
 
-| #   | Ticket                                                    | Slice                        | Tool and report                                                          | Findings                                                                                         | Status  |
-| --- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | ------- |
-| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py         | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                    | done    |
-| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way     | type errors; one-way rules with their failure messages; the Python skill                         | this PR |
-| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | function metrics (lizard or ast) joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown` | planned |
-| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git             | `changed-branch-coverage`                                                                        | planned |
-| PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability               | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`                                 | planned |
-| PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | a Python mutation tool (mutmut or cosmic-ray), per docs/mutation-testing | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                              | planned |
+| #   | Ticket                                                    | Slice                        | Tool and report                                                          | Findings                                                                                          | Status  |
+| --- | --------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------- |
+| PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py         | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done    |
+| PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way     | type errors; one-way rules with their failure messages; the Python skill                          | done    |
+| PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | function metrics (lizard or ast) joined with the coverage report         | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | planned |
+| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git             | `changed-branch-coverage`                                                                         | planned |
+| PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability               | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done    |
+| PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | a Python mutation tool (mutmut or cosmic-ray), per docs/mutation-testing | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | planned |
 
 Slice order follows what each one needs: PY2 to PY6 all reuse PY1's environment detection and
 snapshot handling, PY3 and PY4 reuse its coverage report, and PY6 is last because it is the
@@ -380,3 +461,15 @@ rules each slice adds are listed in [`spec/checks.md`](../spec/checks.md) (gener
   the one-way rules and `python.exceptions` end to end.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
+- Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
+  (import resolution, packages, stability direction, the scan step with a fake interpreter),
+  `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
+  (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
+  output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
+  `core/python-cli.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
+  interpreter prints. The e2e file has a layered `shop` project (a copy fails as a duplicate; a
+  domain package importing the web package fails as `stability-direction` and as two broken
+  import-linter chains; `importLinter: false` skips the contracts; a clean change passes) and needs
+  `import-linter` from PyPI.
+- `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
+  import scan, are in the npm package.
