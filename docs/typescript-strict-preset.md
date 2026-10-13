@@ -108,14 +108,17 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `===` and `!==` only (`eqeqeq`).
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
-- `type`, never `interface`. No `enum` (use unions of string literals) and no `namespace`.
+- `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
+  can only merge interfaces. No `enum` (use unions of string literals) and no `namespace`.
 - Classes only for `Error` subclasses.
 - Named exports only; config files are exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
-- No comments. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
+- No comments, except doc comments (`/** ... */`) on exported declarations and the members of
+  exported types. They are allowed there, never required; the Java preset follows the same rule for
+  Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions.
 
@@ -187,7 +190,18 @@ alone.
   `toContainEqual(...)`, also through `.resolves`/`.rejects` and `expect.soft`. A fragment passes
   even when the rest of the output is wrong. Assert the whole output with `toEqual` or `toBe`. A
   negated assertion (`.not.toContain`) is allowed, and so is `toContain` with a non-text argument.
-  Output too large or unordered to pin needs an exception in the config file.
+  The same holds for `toMatchObject` and for `toEqual`/`toStrictEqual` given `expect.objectContaining`,
+  `expect.stringContaining` or `expect.arrayContaining`, even nested inside an object or array
+  literal: pass the whole expected value, using `expect.any(Type)` for a field that varies. Asymmetric
+  matchers inside `toHaveBeenCalledWith` are not reported. Output too large or unordered to pin
+  needs an exception in the config file.
+- `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
+  `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
+  case), `forEach`, `.then()`/`.catch()`/`.finally()` chains, `as` (except `as const`) and
+  `<Type>value`. `any` and non-null `!` are already reported in test files by
+  typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
+  strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
+  `no-restricted-syntax` lifts all the syntax bans for those paths.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
@@ -209,8 +223,10 @@ The React scope turns on when `react` is in the analyzed project's `dependencies
 `devDependencies` (a peer dependency alone does not count), or when `nitpicker.config.json` sets
 `"react": { "enabled": true }`; `"enabled": false` turns it off whatever `package.json` says. A
 project without React gets none of the rules below and no change to the rules above. The scope covers
-production source (`.ts` and `.tsx`), not tests. Each rule names the allowed form in its message and,
-where it can flag legitimate code, says to add an exception for the rule in `nitpicker.config.json`.
+production source under the source roots (every extension the preset lints, `.jsx` included), not
+tests. Each rule names the allowed form in its message and, where it can flag legitimate code, says
+to add an exception for the rule in `nitpicker.config.json`. An exception that names a React rule is skipped while the scope is
+off (a PR that adds or removes React keeps linting on both sides); a misspelled rule is still an error.
 
 - **Function components only** (`react-x/no-class-component`). Class components are flagged; error
   boundaries, which React only supports as classes, are allowed. The "classes only for `Error`
@@ -222,24 +238,39 @@ where it can flag legitimate code, says to add an exception for the rule in `nit
 - **No derived state in effects** (`nitpicker/react-no-effect-derived-state`). A state setter called
   in the body of a `useEffect` or `useLayoutEffect` callback, whose dependency array is not `[]`, is
   flagged: compute the value during render (`useMemo` when it is costly) or reset state with a `key`.
-  Setters called from a nested callback (a subscription, an event handler, after an `await`) are not
-  flagged, and neither is `[]` (the mounted-flag pattern). Measuring the DOM in `useLayoutEffect` is
-  the usual legitimate exception.
-- **No data fetching in effects** (`nitpicker/react-no-effect-data-fetching`). `fetch`, `axios`,
-  `ky` and `XMLHttpRequest` calls anywhere inside an effect callback are flagged: use a data-fetching
-  library (TanStack Query `useQuery`, SWR) or the framework (a route loader, a Server Component).
-  A function declared outside the effect and only called inside it is not followed.
+  The hooks are resolved through their `react` import (`import { useEffect as onEffect }` and
+  `import * as R from 'react'` count; a hook of the same name from another module does not), and
+  the setter can be `const [x, setX] = useState()` or `useState()[1]` kept in a variable. A function
+  declared in the effect body and called there synchronously counts as the body. Setters called from
+  other nested callbacks (a subscription, an event handler, `.then`, after an `await`) are not
+  flagged, and neither is `[]` (the mounted-flag pattern) or a function declared outside the effect.
+  Subscribing to an external store (`matchMedia`) is better written with `useSyncExternalStore`;
+  measuring the DOM in `useLayoutEffect` is the usual legitimate exception.
+- **No data fetching in effects** (`nitpicker/react-no-effect-data-fetching`). `fetch` (also
+  `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest` anywhere inside an
+  effect callback are flagged: use a data-fetching library (TanStack Query `useQuery`, SWR
+  `useSWR`) or the framework (a route loader, a Server Component). The check is by name: wrappers
+  (`api.get`, `got`, `$.ajax`), aliased imports (`import http from 'axios'`) and a function declared
+  outside the effect and only called inside it are not followed.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item.
 - **One styling approach** (`nitpicker/react-single-styling-approach`), chosen with
-  `react.styling`: `class-names` (default: `className` with CSS Modules, plain stylesheets or
-  utility classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js`
-  (styled-components, Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style`
-  objects are flagged) or `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries
-  are flagged). A `style` object whose keys are all CSS custom properties (`'--progress': percent`)
-  is allowed, as is a `style` value that is not an object literal (`style={style}`), so a runtime
-  value reaches class-based CSS; type the custom properties once with a `csstype` module
-  augmentation. This is the default because inline `style` objects are the usual agent slop.
+  `react.styling`: `class-names` (`className` with CSS Modules, plain stylesheets or utility
+  classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,
+  Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style` objects are flagged) or
+  `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged). Unset,
+  the approach is `css-in-js` when `package.json` lists one of those libraries, else `class-names`.
+  A `style` object is flagged when it is written inline, bound to a `const` in the same file,
+  or reached through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props and `style` inside
+  spread props are not checked. A `style` object whose keys are all CSS custom properties
+  (`'--progress': percent`) is allowed, as is a `style` value that is not an object literal
+  (`style={style}`), so a runtime value reaches class-based CSS. Type the custom property once,
+  in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
+  (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
+  because inline `style` objects are the usual agent slop.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+- **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
+  argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
+  `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
   (`onClick={async () => ...}`), which is the normal React form.
 
@@ -267,7 +298,11 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   above and `docs/internals.md`. Its rules are strict rules too (`react-rules.mjs` lists them).
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
-  so the differential gate holds touched test code to them.
+  so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
+  (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
+  control-flow selectors of `strict-control-flow.mjs`, whose loop message also names `it.each`.
+  `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
+  detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
@@ -380,6 +415,9 @@ replaced), it is not promoted: it stays baselined while the function has no more
 than on the base, and fails once the count rises. Lines the change added, and every line of a new
 file, stay fully strict. Formatting is the exception: `prettier/prettier` is strict on every edited
 line (`mustMeetOnEditedLines` in `strict-rules.mjs`).
+A finding that fails in a function whose base already had findings of the same rule and kind can carry
+`ratchet.growthAdvice`; the report appends it to the message with `{base}` replaced by the base count.
+`nitpicker/no-throw` uses it to say a new failure can go through an existing throw statement.
 
 Prettier findings use the same promotion: the formatter reports one finding per differing region
 (identity from the region's own text, `location.line` to `location.endLine` in the head file), and

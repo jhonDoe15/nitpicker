@@ -1,3 +1,4 @@
+import path from 'node:path';
 import {
   configError,
   isPlainObject,
@@ -42,11 +43,22 @@ function validateSettings(settings) {
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
   validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
-    validateProjectRelativePath(settings.environment, 'python.environment');
+    validateEnvironmentDirectory(settings.environment);
   }
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);
   }
+}
+
+function validateEnvironmentDirectory(directory) {
+  if (isAbsolutePath(directory)) {
+    return;
+  }
+  validateProjectRelativePath(directory, 'python.environment');
+}
+
+function isAbsolutePath(value) {
+  return typeof value === 'string' && (path.isAbsolute(value) || /^[A-Za-z]:[\\/]/.test(value));
 }
 
 function validateSourceRoots(sourceRoots) {

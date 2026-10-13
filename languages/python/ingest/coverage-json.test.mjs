@@ -27,14 +27,15 @@ describe('coverage.py JSON ingester', () => {
         classification: 'descriptive',
         metric: { name: 'line-coverage', value: 81.82 },
       },
-      expect.objectContaining({
+      {
         tool: 'coverage',
         rule: 'uncovered-function',
         path: 'src/demo/shapes.py',
+        identity: 'cov:aa82bb4527c08dc0',
         symbol: 'unused_helper',
         message: 'Function unused_helper is not covered',
         classification: 'descriptive',
-      }),
+      },
     ]);
   });
 
@@ -61,7 +62,15 @@ describe('coverage.py JSON ingester', () => {
     );
 
     expect(findings.filter(({ rule }) => rule === 'uncovered-function')).toEqual([
-      expect.objectContaining({ symbol: 'Klass.never', path: 'a.py' }),
+      {
+        tool: 'coverage',
+        rule: 'uncovered-function',
+        path: 'a.py',
+        identity: 'cov:46a445e93ab5d3c0',
+        symbol: 'Klass.never',
+        message: 'Function Klass.never is not covered',
+        classification: 'descriptive',
+      },
     ]);
   });
 
