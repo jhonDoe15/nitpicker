@@ -44,8 +44,12 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
-- **Mutation testing** in a comparison mutates only the source lines the change adds or edits, on
-  the head side, so every surviving mutant it reports is new. `--all` mutates every source file.
+- **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
+  adds or edits on the head side, so every surviving mutant it reports is new. Python's mutmut
+  works per function, not per line: head reuses the base results for the modules the change did
+  not edit and that import no edited module, and runs every other mutant (all of them when a test
+  or any other file changed). Only mutants that are new on head fail, whichever way the results
+  were obtained. `--all` mutates every source file.
 
 The base ref is the first match of:
 
@@ -181,7 +185,8 @@ These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
 `entry-points`, `prettier-format`, `typescript-typecheck`, `dependency-architecture`,
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
-`crap` and `mutation`.
+`crap` and `mutation`. The Java and Kotlin presets have one analyzer each, and the Python preset has
+two, `python` and `mutation`.
 
 ### React
 
@@ -316,20 +321,33 @@ format check (ruff format or black, whichever the project uses) and the test sui
 coverage.py run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
-environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
-(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, or a plain one when the
-environment is missing; exit 2
-when there are no new findings), never thrown.
+environment, failing tests, a crashing tool), the failure is reported as a tool error of the
+analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
+`coverage-failed` or a plain one when the environment is missing, and `mutation` for
+`mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
+format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
+error.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage` and, for pytest projects, `pytest`; `ruff` (or `black`) may come
+install step) and needs `coverage` and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
-Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds` (`crapLimit` has no effect before the CRAP slice), `exclude` (findings
+Mutation testing is the `mutation` analyzer and runs mutmut 3.x after the `python` analyzer: a new
+surviving or uncovered mutant fails (`mutant-survived`, `mutant-nocoverage`), there is no score
+gate, and mutants that survived on the base stay baselined. `"disable": ["mutation"]` turns it off
+(`python` cannot be disabled alone, because `mutation` depends on it), and it is also what to do
+when mutmut cannot be installed. A project's own `[tool.mutmut]` is used as it is; without one
+nitpicker mutates the source roots, skipping test files and the `exclude` globs. A mutant that no
+test can tell from the original (an equivalent mutant) is lifted in `[tool.mutmut]` with
+`do_not_mutate`, or by listing the path in `exclude`, which drops its findings. mutmut needs
+`fork`, so on native Windows the analyzer is skipped with a note: run nitpicker in WSL. Add
+`mutants/` to your ignore file. See [python-preset.md](python-preset.md).
+
+Config keys with this preset: `base`, `disable` (`python` and `mutation` are the analyzer names), `analyzers`, `thresholds` (`crapLimit` has no effect before the CRAP slice), `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
