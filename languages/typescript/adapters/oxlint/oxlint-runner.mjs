@@ -27,8 +27,8 @@ import {
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../core/tooling/temporary-files.mjs';
-import { resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+} from '../../../../core/tooling/temporary-files.mjs';
+import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import {
   messageIdResolver,
   nativeRuleIndex,

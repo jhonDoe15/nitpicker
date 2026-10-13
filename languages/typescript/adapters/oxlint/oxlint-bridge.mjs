@@ -4,7 +4,7 @@ import { ESLint } from 'eslint';
 
 export const CORE_RULES_NAMESPACE = '';
 
-const wrapperPath = path.join(import.meta.dirname, 'eslint-config-wrapper.mjs');
+const wrapperPath = path.join(import.meta.dirname, '..', 'eslint-config-wrapper.mjs');
 
 export async function bridgedPlugin({ namespace, alias, ruleNames, projectRoot, sampleFile }) {
   const rules =

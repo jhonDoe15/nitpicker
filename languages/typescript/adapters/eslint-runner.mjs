@@ -17,7 +17,7 @@ import {
 } from '../../../core/tooling/policy-links.mjs';
 import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
 import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
-import { lintWithOxlint } from './oxlint-runner.mjs';
+import { lintWithOxlint } from './oxlint/oxlint-runner.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
