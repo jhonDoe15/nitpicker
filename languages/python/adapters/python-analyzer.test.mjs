@@ -39,6 +39,7 @@ describe('Python analyzer', () => {
       'coverage',
       'structure',
       'crap',
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',
