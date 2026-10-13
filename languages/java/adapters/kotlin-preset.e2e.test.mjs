@@ -490,6 +490,44 @@ class CombineTest {
 }
 `;
 
+const BOOTER = `package demo
+
+class Booter(value: Int) {
+    var total = 0
+
+    init {
+        for (step in 0..value) {
+            if (step > 1) {
+                while (total < step) {
+                    total += 1
+                }
+            }
+        }
+    }
+
+    val label = value.let { number ->
+        var result = 0
+${Array.from({ length: 9 }, (_, index) => `        if (number > ${index * 10}) {\n            result += ${index + 1}\n        }`).join('\n')}
+        result
+    }
+
+    fun current(): Int = total
+}
+`;
+
+const BOOTER_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class BooterTest {
+    @Test
+    fun boots() {
+        assertEquals(2, Booter(2).current())
+    }
+}
+`;
+
 const PIPELINE = `package demo.build
 
 fun pipeline(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a + b + c + d + e
@@ -523,6 +561,10 @@ style:
     excludes: ['**/*.kt']
     methods:
       - 'kotlin.io.println'
+      - value: 'kotlin.run'
+        reason: 'The project allows run.'
+      - value: 'java.lang.Thread.sleep'
+        reason: 'Use a scheduler or a test clock instead of sleeping.'
 coroutines:
   active: false
 potential-bugs:
@@ -533,12 +575,39 @@ potential-bugs:
     excludes: ['**/*.kt']
 `;
 
+const JDK_PROBE = `
+tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
+    doLast {
+        val args = (this as JavaExec).args.orEmpty()
+        val out = layout.buildDirectory.get().asFile
+        out.resolve("jdk-home.txt").writeText(args[args.indexOf("--jdk-home") + 1])
+        out.resolve("gradle-jvm-home.txt").writeText(System.getProperty("java.home"))
+    }
+}
+`;
+
+const TOOLCHAIN_PROBE = `
+kotlin {
+    jvmToolchain(21)
+}
+
+tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
+    doLast {
+        layout.buildDirectory.get().asFile.resolve("toolchain-home.txt").writeText(
+            javaToolchains.launcherFor(java.toolchain).get().metadata.installationPath.asFile.absolutePath,
+        )
+    }
+}
+`;
+
 const EXTRA_SOURCES = {
   'Wildcard.kt':
     'package demo.extras\n\nimport kotlinx.coroutines.*\n\nfun waitWildcard(): Int = runBlocking { 1 }\n',
   'Qualified.kt':
     'package demo.extras\n\nfun waitQualified(): Int = kotlinx.coroutines.runBlocking { 1 }\n',
   'Holder.kt': 'package demo.extras\n\nclass Holder(var count: Int)\n',
+  'Printer.kt': 'package demo.extras\n\nfun show(): Unit = println("shown")\n',
+  'Sleeper.kt': 'package demo.extras\n\nfun nap(): Unit = Thread.sleep(1)\n',
   'convention.gradle.kts': 'println("a script next to the sources")\n',
   'Hidden.kt':
     '@file:Suppress("ktlint:standard:indent")\n\npackage demo.extras\n\nval pattern = "**/*.kt"\nval maybe: String? = "a"\n\n@get:Suppress("UnsafeCallOnNullableType")\nval size: Int get() = maybe!!.length\n\n/** end */\n',
@@ -685,10 +754,17 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/main/kotlin/Flatten.kt': FLATTEN,
       'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
       [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
+      [`${kotlinSources}/Booter.kt`]: BOOTER,
+      'src/test/kotlin/demo/BooterTest.kt': BOOTER_TEST,
       [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
       [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
       ...stabilityFiles('2'),
       'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
+    });
+    const buildScript = readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8');
+    commitBranch('jdk-plain', { 'build.gradle.kts': `${buildScript}${JDK_PROBE}` });
+    commitBranch('jdk-toolchain', {
+      'build.gradle.kts': `${buildScript}${JDK_PROBE}${TOOLCHAIN_PROBE}`,
     });
     commitBranch('one-way-banned', ruleFixtures('banned'));
     commitBranch('one-way-allowed', ruleFixtures('allowed'));
@@ -918,8 +994,21 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
           .map(({ path: file }) => path.basename(file))
           .sort(),
-      ).toEqual(['Qualified.kt', 'Wildcard.kt']);
+      ).toEqual(['Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
       expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+    });
+
+    it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {
+      const result = diffOnce('one-way-hostile-config');
+      const forbidden = result.newEnforceable.filter(
+        ({ rule, path: file }) =>
+          rule === 'detekt.style.ForbiddenMethodCall' &&
+          (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
+      );
+
+      expect(
+        forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
+      ).toEqual([]);
     });
 
     it('does not analyze a Kotlin script among the sources', () => {
@@ -963,6 +1052,23 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     });
   });
 
+  it('resolves detekt types against the JDK that runs Gradle when the project declares no toolchain, and against its toolchain JDK when it does', () => {
+    const jdkOf = (branch) => {
+      git('checkout', '-q', branch);
+      collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
+      const read = (name) => readFileSync(path.join(repository, 'build', name), 'utf8');
+      return { detekt: read('jdk-home.txt'), gradle: read('gradle-jvm-home.txt') };
+    };
+
+    const plain = jdkOf('jdk-plain');
+    const toolchain = jdkOf('jdk-toolchain');
+
+    expect(plain.detekt).toBe(plain.gradle);
+    expect(toolchain.detekt).toBe(
+      readFileSync(path.join(repository, 'build/toolchain-home.txt'), 'utf8'),
+    );
+  });
+
   it('reports a Gradle failure as a tool error instead of throwing', () => {
     git('checkout', '-q', 'broken');
 
@@ -993,17 +1099,21 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       ).message;
 
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit Booter.<init#1>',
+      'crap crap-score-limit Booter.label',
       'crap crap-score-limit Left.total',
       'crap crap-score-limit Right.total',
       'crap crap-score-limit classify2',
       'crap crap-score-limit flatten',
       'crap crap-score-limit rank',
+      'structure function-control-nesting-limit Booter.<init#1>',
       'structure function-control-nesting-limit depth',
       'structure function-lines-limit Left.total',
       'structure function-lines-limit Right.total',
       'structure function-parameters-limit combine',
       'structure function-parameters-limit pipeline',
       'structure function-parameters-limit product',
+      'structure function-statements-limit Booter.label',
       'structure function-statements-limit Left.total',
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',

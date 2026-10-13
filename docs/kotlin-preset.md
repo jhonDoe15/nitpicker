@@ -93,7 +93,9 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   (`languages/java/detekt/detekt-validation.yml`): a config may configure rulesets of detekt plugins,
   for example `formatting:` of detekt-formatting, that the CLI run does not load, and validation
   would end the run on them. The price is that a misspelled key is not reported.
-- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run:
+- **Type resolution.** The task passes `--classpath` and `--jdk-home`, so rules that need types run.
+  `--jdk-home` is the JDK of the project's Gradle Java toolchain (`java.toolchain`, `kotlin { jvmToolchain(17) }`)
+  when it declares one, otherwise the JDK that runs Gradle. The classpath is
   the module's compile classpath, its compiled Java classes, and the Kotlin standard library that
   detekt itself embeds (2.0.21, pinned as `detektKotlin`), in place of the project's own. detekt 1.23
   cannot read the metadata of a newer standard library, and then no call to it resolves, so
@@ -149,9 +151,15 @@ and rules it sets `active: true`, `excludes: []` and `includes: []`, and for eac
 `severity: warning`, so a project cannot switch these rules off, lower them to `info` (which the
 gate reads as descriptive) or skip paths in `detekt.yml`; paths are lifted only by `exceptions`. A
 test keeps the rule keys of the file equal to the rules the gate knows. Other rules and keys in the
-project's config work as before, with one limit: a list the file sets replaces the project's, so a
-project's own `ForbiddenMethodCall.methods` entries are ignored while the preset is on (detekt does
-not merge lists, and nitpicker does not read the project's file). The one narrowing that stays with
+project's config work as before. The one list the preset sets, `ForbiddenMethodCall.methods`, is
+merged: detekt replaces a list instead of merging it, so Nitpicker reads the project's detekt file
+and the effective list is the preset's four calls followed by the project's own entries (strings or
+`value`/`reason` entries; a call both list keeps the preset's reason). A project can add forbidden
+calls, for example `java.lang.Thread.sleep`, but never drop one of ours; a malformed entry, a
+`methods` key that is not a list or a file that does not parse adds nothing. Findings for a
+project's own entry have the rule `detekt.style.ForbiddenMethodCall` as well, so they are one-way
+and an exception lifts them the same way. `ForbiddenImport` is not set by the preset, so a project's
+own `ForbiddenImport.imports` works as it does in detekt. The one narrowing that stays with
 the project is detekt's own `excludeAnnotatedClasses` for `UseDataClass`, for example
 `excludeAnnotatedClasses: ['Entity']` for JPA entities, whose equality must not become value equality.
 `UseDataClass` has `allowVars: true`, because `DataClassShouldBeImmutable` bans the `var` in a data
@@ -199,8 +207,6 @@ not a rule with `exceptions`.
   is why `let` is not limited to `?.let` (detekt cannot tell the two apart), `takeIf`, `takeUnless`,
   `lateinit` and unstructured `CoroutineScope(...)` are not covered. `GlobalScope` imported under
   another name (`import kotlinx.coroutines.GlobalScope as G`) is not seen by detekt's rule.
-- Detekt does not merge lists: the project's `ForbiddenMethodCall.methods` is replaced by the
-  preset's, see [Owned by Nitpicker](#one-way-rules).
 - Type resolution reports less where a library is built with a newer Kotlin than detekt's (above);
   `!!` on a value of such a type is not seen.
 
@@ -403,7 +409,7 @@ there are no inline disables.
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again. lizard cannot be the source: it has no statement count
+pin means running `npm run test:kotlin` again; the `kotlin-metrics` GitHub Actions workflow does it for a change of `KotlinMetrics.java`, of its fixture test or of the pin, and for no other change. lizard cannot be the source: it has no statement count
 or control nesting, and its Kotlin reader (1.24.1) misreads ordinary Kotlin. It drops extension
 functions (`fun String.shout() = ...`), ends an expression-bodied function at the next `fun`, and
 turns the `->` of a lambda into an anonymous function that swallows the declarations after it. A
@@ -420,17 +426,21 @@ complexity per function from lizard would be attributed to the wrong lines.
 | complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                    |
 
 A unit is a function with a body, a property accessor with a body, a secondary constructor with a
-block body, or a property whose initializer is a lambda or an anonymous function or whose delegate
-takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`, `val v by lazy { ... }`),
+block body, an `init` block with statements, or a property whose initializer is a lambda or an
+anonymous function or whose delegate takes a lambda (`val handler = { x -> ... }`,
+`val f = fun(x: Int) { ... }`, `val v by lazy { ... }`, `val o by Delegates.observable(0) { ... }`),
 the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
-named after the property. Lambdas and local functions inside a function count towards the function
-that contains them; members of nested, local and anonymous classes and objects are units of their
-own. Init blocks, other property initializers (`val x = run { ... }`), primary constructors and
-functions without a body (abstract, interface, `expect`) are not units, as initializer blocks are
-not in the Java preset. Names are `function` (top level), `Class.function`,
+named after the property. Any other property initializer is a unit when it holds a block (a lambda
+such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
+(`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
+block is a unit named after its class and numbered in source order, `Class.<init#1>` (an empty
+block takes a number but is not a unit). Lambdas and local functions inside a function count towards
+the function that contains them; members of nested, local and anonymous classes and objects are
+units of their own. Primary constructors and functions without a body (abstract, interface,
+`expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
-for a lambda property, `Class.Class` for a secondary constructor and `<anonymous>` for an object
-expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
+for a property unit, `Class.<init#1>` for an `init` block, `Class.Class` for a secondary
+constructor and `<anonymous>` for an object expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
 (generated code under the build directory is already left out), so a package named `build`, `out`
 or `target` is measured like any other.
 
@@ -459,6 +469,11 @@ of a class declared in the function). So the getter `getDoubled` belongs to `val
 the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
 lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
+An `init` block and a property initializer that is not a lambda or delegate lambda run inside the
+class constructor or the static initializer, whose JaCoCo method starts on the class line, outside
+the unit. Their coverage is therefore read from the source lines of the unit in JaCoCo's per-file
+line data (covered lines, covered branches), minus the lines of a unit nested in them; the lower of
+the two percentages is used as everywhere else.
 A `@JvmStatic` companion function, which compiles to the function and a static method that delegates
 to it on the same line, is counted once, through the method that holds the code. The score of a
 function whose range holds no instrumented method is unknown, which is a finding
@@ -600,8 +615,6 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
   project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
   management) does not reach that compiler: the pin is applied last.
 - `inline` functions are not measured by CRAP (see [CRAP](#crap)); their structure limits still apply.
-- `init` blocks and other property initializers (`val x = run { ... }`) are not units: logic moved
-  into one is not measured.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
 - detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](#detekt)), so its
   results can differ from a project's own detekt run, and a library built with a newer Kotlin stays

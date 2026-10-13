@@ -89,6 +89,65 @@ class Holder(private val start: Int) {
 }
 `;
 
+const INITIALIZERS = `package demo.init
+
+import kotlin.properties.Delegates
+
+class Boot(private val seed: Int) {
+    init {
+    }
+
+    init {
+        println("one")
+        check(seed > 0)
+    }
+
+    val plain = seed + 1
+
+    val label = if (seed > 1) "big" else "small"
+
+    val table = mapOf(1 to "a").map { (k, v) -> "$k$v" }
+
+    val chosen = when (seed) {
+        0 -> "zero"
+        1 -> "one"
+        else -> "many"
+    }
+
+    val observed by Delegates.observable(0) { _, old, new ->
+        println("$old $new")
+    }
+
+    val handler = object : Runnable {
+        override fun run() {
+            println("run")
+        }
+
+        init {
+            println("anonymous")
+        }
+    }
+
+    companion object {
+        val registry = HashMap<String, Int>().apply { put("a", 1) }
+
+        init {
+            registry["b"] = 2
+        }
+    }
+}
+
+object Single {
+    init {
+        println("single")
+    }
+}
+
+val top = listOf(1, 2).map { it * 2 }
+
+val simple = 3
+`;
+
 const FLAT = 'package demo.flat\n\nfun flat() = 1\n';
 const BOM = '﻿package demo.bom\n\nfun bom() = 1\n';
 const ROOT_PACKAGE = 'fun root() = 1\n';
@@ -190,18 +249,43 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
     expect(
       metrics.functions.map(
-        ({ name, start, end, statements, parameters, complexity, inline }) =>
-          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}`,
+        ({ name, start, end, statements, parameters, complexity, inline, initializer }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}${initializer ? ' initializer' : ''}`,
       ),
     ).toEqual([
       'plain 3-8 s3 p2 c5',
       'Int.double 10-10 s1 p0 c1',
       'twice 12-15 s2 p1 c1 inline',
       'Holder.Holder 18-20 s1 p0 c1',
+      'Holder.<init#1> 22-24 s1 p0 c1 initializer',
       'Holder.doubled.get 27-27 s1 p0 c1',
       'Holder.combine 29-31 s3 p4 c2',
       'Holder.cached 33-36 s2 p0 c1',
       'Holder.anonymous 38-40 s1 p1 c1',
+      'Holder.eager 42-45 s3 p0 c1 initializer',
+    ]);
+  });
+
+  it('measures init blocks and property initializers that hold a block or branch, and leaves out the straight-line ones', () => {
+    const { metrics } = measure(writeSources('initializers', { 'src/Init.kt': INITIALIZERS }));
+
+    expect(
+      metrics.functions.map(
+        ({ name, start, end, statements, parameters, complexity, initializer }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${initializer ? ' initializer' : ''}`,
+      ),
+    ).toEqual([
+      'Boot.<init#2> 9-12 s2 p0 c1 initializer',
+      'Boot.label 16-16 s1 p0 c2 initializer',
+      'Boot.table 18-18 s2 p0 c1 initializer',
+      'Boot.chosen 20-24 s1 p0 c3 initializer',
+      'Boot.observed 26-28 s1 p3 c1',
+      'Boot.<anonymous>.run 31-33 s1 p0 c1',
+      'Boot.<anonymous>.<init#1> 35-37 s1 p0 c1 initializer',
+      'Boot.Companion.registry 41-41 s2 p0 c1 initializer',
+      'Boot.Companion.<init#1> 43-45 s1 p0 c1 initializer',
+      'Single.<init#1> 50-52 s1 p0 c1 initializer',
+      'top 55-55 s2 p0 c1 initializer',
     ]);
   });
 
