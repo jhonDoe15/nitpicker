@@ -1,6 +1,6 @@
 ---
 name: nitpicker-typescript
-description: Use before writing or changing TypeScript or React code in a project that has nitpicker installed with the typescript preset, so the code follows its one allowed style and passes `npx nitpicker` on the first run.
+description: Use before writing or changing TypeScript or React code in a project that has nitpicker installed with the typescript preset (the default), so the code follows its one allowed style and passes `npx nitpicker` on the first run.
 ---
 
 # nitpicker for TypeScript
@@ -72,6 +72,8 @@ If your change edits a function that existed before it, read
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
+  extract a function.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.

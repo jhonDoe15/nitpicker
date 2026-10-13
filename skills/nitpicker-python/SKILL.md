@@ -33,9 +33,13 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: a `try` inside a loop is flagged (PERF203): move it out or extract the body into a function. Catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. No bare `except:`, `except Exception:` or `except X: pass`; one expected error that is
-  deliberately ignored is `with contextlib.suppress(SpecificError):`.
+- Errors: catch the specific exception and handle it, log it with `logger.exception(...)`, or
+  re-raise. A new exception raised inside `except` keeps the cause: `raise ParseError(text) from err`
+  (or `from None`). No bare `except:`, `except Exception:` or `except X: pass`;
+  one expected error that is deliberately ignored is `with contextlib.suppress(SpecificError):`.
+- A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
+- Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
+  local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
 - Output: `logger = logging.getLogger(__name__)` and `logger.info(...)`. No `print`.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. Pydantic only in
@@ -54,6 +58,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
   past 3 parameters, pass a frozen dataclass. Complex code needs tests: the CRAP score of a
   function must stay below 9.
+- Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
+  early, look the value up in a dict, or move a branch into a helper.
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function. A
+  package must not depend on a less stable one (`stability-direction`).
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
