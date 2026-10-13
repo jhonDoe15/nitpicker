@@ -831,6 +831,7 @@ describe('Kotlin analyzer', () => {
     expect(analyzer.reportedTools).toEqual([
       'pmd',
       'spotbugs',
+      'archunit',
       'google-java-format',
       'jacoco',
       'checkstyle',
