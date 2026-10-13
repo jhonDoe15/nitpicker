@@ -101,8 +101,8 @@ over limit" and does not fail.
 | `crap-score-limit`                | `crap`             | CRAP score at or above 9; override with `QUALITY_CRAP_SCORE_LIMIT` (positive number) or `thresholds.crapLimit` | enforced   | enforced     | not enforced | not enforced |
 | `crap-coverage-unknown`           | `crap`             | function with unknown coverage and no CRAP score                                                               | enforced   | enforced     | not enforced | not enforced |
 | `changed-branch-coverage`         | `coverage`         | a changed branch with coverage below 95%                                                                       | enforced   | enforced     | not enforced | enforced     |
-| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     | not enforced | not enforced |
-| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     | not enforced | not enforced |
+| `mutant-survived`                 | `mutation`         | no score gate (`thresholds.break` is `null`); each new surviving mutant fails                                  | enforced   | enforced     | enforced     | not enforced |
+| `mutant-nocoverage`               | `mutation`         | no score gate (`thresholds.break` is `null`); each new uncovered mutant fails                                  | enforced   | enforced     | enforced     | not enforced |
 | `duplicate-clone`                 | `duplicates`       | jscpd in `mild` mode; any new clone fails                                                                      | enforced   | enforced     | enforced     | not enforced |
 | `stability-direction`             | `coupling`         | a package depending on a less stable package                                                                   | enforced   | enforced     | enforced     | not enforced |
 | `no-production-runtime`           | `test-runtime`     | a test must exercise production runtime code                                                                   | enforced   | not enforced | not enforced | not enforced |
@@ -120,7 +120,3 @@ Notes:
   `structure` and `duplicates` 1 minute.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.
-- Kotlin runs PIT and reports its mutants, but as descriptive findings that never fail (plain PIT
-  on Kotlin bytecode reports mostly compiler-generated mutants), so `mutant-survived` and
-  `mutant-nocoverage` are "not enforced" for Kotlin. Numbers and the decision:
-  [kotlin-preset.md](../docs/kotlin-preset.md).

@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { environmentError } from './python-environment.mjs';
-import { execute } from './python-process.mjs';
+import { execute, VERSION_PATTERN } from './python-process.mjs';
 import { readProjectHints } from './python-project.mjs';
 
 export const NO_TESTS_EXIT = 5;
@@ -16,7 +16,6 @@ const PYTEST_PROBE = [
   '-c',
   'import importlib.util as u, pytest; print(pytest.__version__, int(u.find_spec("pytest_cov") is not None), int(u.find_spec("xdist") is not None))',
 ];
-const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 const probes = new WeakMap();
 
 function existingTestFiles(projectRoot) {
@@ -71,11 +70,19 @@ function probePytest(context) {
   return probes.get(context);
 }
 
+export function pytestLabel(context) {
+  return `pytest@${probePytest(context)?.version ?? 'missing'}`;
+}
+
 export function testRunnerLabel(context) {
   const { testRunner } = context.project;
-  return testRunner === 'pytest'
-    ? `pytest@${probePytest(context)?.version ?? 'missing'}`
-    : testRunner;
+  return testRunner === 'pytest' ? pytestLabel(context) : testRunner;
+}
+
+export function singleProcessPytestEnvironment(context) {
+  return probePytest(context)?.xdist
+    ? { PYTEST_ADDOPTS: [process.env.PYTEST_ADDOPTS, '-n0'].filter(Boolean).join(' ') }
+    : {};
 }
 
 function pytestCommand(context) {
