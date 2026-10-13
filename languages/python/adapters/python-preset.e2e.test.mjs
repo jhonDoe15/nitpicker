@@ -696,7 +696,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 });
 
 const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
-const CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
+const BRANCH_CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
 const signsTest = (...assertions) =>
   `from demo import signs\n\n\n${assertions
     .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
@@ -760,7 +760,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, SIGN_NEGATIVE),
     });
     commitBranch(project, 'new-untested', {
-      'src/demo/signs.py': `${SIGNS}\n\n${CLAMP}`,
+      'src/demo/signs.py': `${SIGNS}\n\n${BRANCH_CLAMP}`,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW),
     });
     commitBranch(project, 'pragmas', {
@@ -769,7 +769,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
         'from demo import pragmas\n\n\ndef test_imported():\n    assert pragmas.hidden\n',
     });
     commitBranch(project, 'new-tested', {
-      'src/demo/signs.py': `${SIGNS}\n\n${CLAMP}`,
+      'src/demo/signs.py': `${SIGNS}\n\n${BRANCH_CLAMP}`,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, CLAMP_LOW, CLAMP_HIGH),
     });
   });
