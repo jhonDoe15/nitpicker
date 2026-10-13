@@ -55,8 +55,13 @@ describe('repo-root test folders', () => {
 
   it('lists both folders as default test roots and selects their code files', () => {
     expect(testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
-    expect(testGlobs).toContain('__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(testGlobs).toContain('e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+    expect(testGlobs).toEqual([
+      'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'src/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
   });
 
   it('does not treat a nested e2e or __tests__ folder outside a root as a test folder', () => {
