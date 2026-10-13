@@ -2,17 +2,22 @@ import { castTags, isJsdocBlock, parseJsdoc } from '../../../../javascript/prese
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
+const coverageSuppression = /^\s*(?:(?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const JSDOC_EXCEPTION =
   'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
 const toolDirective =
-  /^\s*(?:eslint\b|prettier-ignore|istanbul\b|c8\b|v8\b|stryker\b|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
+  /^\s*(?:eslint\b|prettier-ignore|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
 
 function suppressionReport(comment) {
   const suppression = typescriptSuppression.exec(comment.value);
   if (suppression) {
     return [{ messageId: 'typescriptSuppression', data: { directive: suppression[0] } }];
+  }
+  const coverage = coverageSuppression.exec(comment.value);
+  if (coverage) {
+    return [{ messageId: 'coverageSuppression', data: { directive: coverage[0].trim() } }];
   }
   return eslintSuppression.test(comment.value) ? [{ messageId: 'eslintSuppression' }] : undefined;
 }
@@ -89,6 +94,8 @@ export const rule = {
         'Fix the type error or narrow the value; TypeScript suppression comments ({{directive}}) are not allowed.',
       eslintSuppression:
         'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
+      coverageSuppression:
+        'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. If it truly cannot be tested, add an exception for nitpicker/no-comments in nitpicker.config.json.',
       comment:
         'Remove the comment and put the intent in code: a descriptive identifier, a named function, or a type. Only non-suppression tool directives may be comments.',
       jsdocProse:

@@ -821,5 +821,15 @@ ruleTester.run('no-comments', noComments, {
       code: '/** @ts-ignore */\nexport const a = 1;',
       errors: [{ messageId: 'typescriptSuppression' }],
     },
+    ...[
+      ['/* istanbul ignore next */', 'istanbul ignore'],
+      ['/* c8 ignore start */', 'c8 ignore'],
+      ['/* v8 ignore next */', 'v8 ignore'],
+      ['// Stryker disable next-line all', 'Stryker disable'],
+      ['// stryker restore all', 'stryker restore'],
+    ].map(([comment, directive]) => ({
+      code: `${comment}\nexport const a = 1;`,
+      errors: [{ messageId: 'coverageSuppression', data: { directive } }],
+    })),
   ],
 });
