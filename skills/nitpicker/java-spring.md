@@ -19,6 +19,10 @@ SKILL.md don't apply; this page does.
 A method that existed before your change and is already over a size limit may be edited but must
 not grow: put the new code in a new method and call it.
 
+Tests get the same PMD, Checkstyle and formatting rules as main code. Catch the specific exceptions
+you handle, never `Exception`, `RuntimeException`, `NullPointerException` or `Throwable`; in a test,
+use `assertThrows` instead of a try/catch.
+
 ## Spring: write it this way
 
 Beans and configuration:
