@@ -10,7 +10,7 @@ import {
 export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
-const defaultTestRoots = ['test', 'tests'];
+const defaultTestRoots = ['test', 'tests', '__tests__', 'e2e'];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
 const javascriptProjectExtensionNames = [

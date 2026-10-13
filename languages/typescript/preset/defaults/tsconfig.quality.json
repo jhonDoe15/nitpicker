@@ -16,7 +16,7 @@
     "strict": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*", "test/**/*", "tests/**/*", "vitest*.ts"],
+  "include": ["src/**/*", "test/**/*", "tests/**/*", "__tests__/**/*", "e2e/**/*", "vitest*.ts"],
   "exclude": [
     "**/dist/**",
     "**/build/**",

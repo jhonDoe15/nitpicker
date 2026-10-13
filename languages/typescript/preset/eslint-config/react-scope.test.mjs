@@ -249,7 +249,13 @@ describe('the React scope config', () => {
       const config = await calculatedConfig(entries, file);
       expect(config.rules['react-hooks/rules-of-hooks'], file).toBeDefined();
     }
-    for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'test/panel.tsx',
+      '__tests__/panel.tsx',
+      'e2e/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+    ]) {
       const config = await calculatedConfig(entries, file);
       expect(config?.rules?.['react-hooks/rules-of-hooks'], file).toBeUndefined();
     }
@@ -263,6 +269,8 @@ describe('the React scope config', () => {
       'src/ui/panel.spec.jsx',
       'test/panel.tsx',
       'tests/ui/panel.tsx',
+      '__tests__/ui/panel.tsx',
+      'e2e/ui/panel.tsx',
       'src/ui/__tests__/panel.tsx',
     ]) {
       const config = await calculatedConfig(entries, file);
@@ -318,6 +326,32 @@ describe('the React scope config', () => {
     }).map(({ ruleId }) => ruleId);
 
     expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
+  });
+
+  it.each([
+    ['a destructured query', "const { getByRole } = render(<A />); getByRole('button');", 1],
+    ['a query on the render result', "render(<A />).getByRole('button');", 1],
+    [
+      'a query through a project test-utils wrapper',
+      "import { renderWithProviders } from '../utils/test-utils'; const { getByRole } = renderWithProviders(<A />); getByRole('button');",
+      1,
+    ],
+    ['a screen query', "render(<A />); screen.getByRole('button');", 0],
+    ['a within query', "render(<A />); within(screen.getByRole('list')).getByRole('listitem');", 0],
+    ['an unrelated render result use', 'const { rerender } = render(<A />); rerender(<A />);', 0],
+  ])('prefers screen queries: %s', async (_name, code, count) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    const rules = lintFixture({
+      config,
+      filename: 'test/ui/a.test.tsx',
+      code: `import { render, screen, within } from '@testing-library/react'; ${code}`,
+    }).filter(({ ruleId }) => ruleId === 'testing-library/prefer-screen-queries');
+
+    expect(rules).toHaveLength(count);
   });
 
   it('reaches container queries made through a project test-utils wrapper', async () => {

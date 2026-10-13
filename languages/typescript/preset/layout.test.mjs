@@ -41,6 +41,37 @@ describe('common layout', () => {
   });
 });
 
+describe('repo-root test folders', () => {
+  it.each([
+    '__tests__/panel.test.tsx',
+    '__tests__/ui/panel.tsx',
+    'e2e/checkout.spec.ts',
+    'e2e/support/page.ts',
+    'src/ui/__tests__/panel.tsx',
+  ])('treats %s as a test file, not source', (file) => {
+    expect(isTestFile(file)).toBe(true);
+    expect(isSourceFile(file)).toBe(false);
+  });
+
+  it('lists both folders as default test roots and selects their code files', () => {
+    expect(testRoots).toEqual(['test', 'tests', '__tests__', 'e2e']);
+    expect(testGlobs).toContain('__tests__/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+    expect(testGlobs).toContain('e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+  });
+
+  it('does not treat a nested e2e or __tests__ folder outside a root as a test folder', () => {
+    expect(isTestFile('lib/e2e/helper.ts')).toBe(false);
+    expect(isTestFile('docs/e2e/example.ts')).toBe(false);
+  });
+
+  it('keeps a configured test root list as given', () => {
+    const layout = resolveLayout({ testRoots: ['spec'] });
+
+    expect(layout.isTestFile('e2e/checkout.spec.ts')).toBe(false);
+    expect(layout.isTestFile('spec/panel.ts')).toBe(true);
+  });
+});
+
 describe('layout.excludedGlobs', () => {
   it('replaces the built-in excluded globs and keeps the config exclude globs', () => {
     const layout = resolveLayout({ excludedGlobs: ['**/vendor/**'] }, ['legacy/**']);
