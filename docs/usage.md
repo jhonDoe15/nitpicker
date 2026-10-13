@@ -179,7 +179,7 @@ is visible in review.
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `tools`           | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier` with the TypeScript and JavaScript presets, `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -236,7 +236,7 @@ the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, wher
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
 baselined, and raising a `count` (or adding a site) on head over the base fails as
 `baseline-expansion`. `layout`, `react` and `tools` describe TypeScript source roots, React and tool configs, have
-no Java meaning, and stay a config error with this preset. Details:
+no Java meaning, and stay a config error with this preset. `tools` takes `pmd` and `checkstyle`; see [Your project's tool configs](#your-projects-tool-configs). Details:
 [java-preset.md](java-preset.md).
 
 ## Kotlin preset
@@ -505,6 +505,13 @@ and the project's `.prettierignore` applies too. The version is still the one ni
 project's config is read from the head checkout and applies to both sides of the comparison, so
 editing it never turns unchanged code into new findings; `--fix` formats with the same merged
 config. The setting is listed under "Config overrides" in the report.
+
+With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
+`checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head
+checkout, and naming `"project"` without the file is a tool error. PMD runs both rule sets when both
+layers are listed, so the order makes no difference; nitpicker's Spring rules run whenever
+`"nitpicker"` is listed. Checkstyle runs one config, so its `precedence` is `["nitpicker"]` or
+`["project"]`. Without a `tools` entry these files are not used.
 
 ## Adopting nitpicker on existing code
 

@@ -96,9 +96,10 @@ allprojects {
             }
         }
         jacoco { toolVersion = pinned.jacoco }
-        // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
-        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format), with
-        // Javadoc allowed but not required, the same doc comment rule as the TypeScript preset.
+        // Violations are findings, not a build failure. nitpicker's config is Checkstyle's bundled
+        // google_checks.xml (matches google-java-format), with Javadoc allowed but not required, the
+        // same doc comment rule as the TypeScript preset. The project's own config is used only when
+        // nitpicker.config.json opts in with "tools": { "checkstyle": { "precedence": ["project"] } }.
         // The bundled config's inline suppression filters (@SuppressWarnings("checkstyle:..."),
         // CHECKSTYLE.OFF/SUPPRESS comments) and its optional xpath suppression file are removed:
         // exceptions go in nitpicker.config.json, where review sees them.
@@ -110,9 +111,9 @@ allprojects {
             toolVersion = pinned.checkstyle
             ignoreFailures = true
             maxWarnings = Integer.MAX_VALUE
-            def consumerConfig = rootProject.file('config/checkstyle/checkstyle.xml')
-            if (consumerConfig.exists()) {
-                configFile = consumerConfig
+            def projectCheckstyleConfig = findProperty('nitpicker.checkstyle.projectConfig')
+            if (projectCheckstyleConfig) {
+                configFile = file(projectCheckstyleConfig)
             } else {
                 def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
                 def bundledConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
@@ -166,9 +167,12 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
-            def rulesetFile = rootProject.file('config/pmd/ruleset.xml')
-            def ruleset = rulesetFile.exists() ? rulesetFile.absolutePath
-                : 'category/java/errorprone.xml,category/java/bestpractices.xml'
+            // nitpicker's rule sets, plus or instead of the project's own when nitpicker.config.json
+            // opts in with "tools": { "pmd": { "precedence": [...] } }.
+            def nitpickerRulesets = findProperty('nitpicker.pmd.nitpickerConfig') != 'false'
+            def projectRuleset = findProperty('nitpicker.pmd.projectConfig')
+            def ruleset = ((nitpickerRulesets ? ['category/java/errorprone.xml', 'category/java/bestpractices.xml'] : [])
+                + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the compile classpath and the main classes, so rules can match
@@ -177,7 +181,7 @@ allprojects {
                 auxClasspath.text = (sourceSets.main.compileClasspath.files
                     + sourceSets.main.output.classesDirs.files).findAll { it.exists() }
                     .collect { it.absolutePath }.join('\n')
-                def rulesets = usesSpring()
+                def rulesets = nitpickerRulesets && usesSpring()
                     ? "${ruleset},${new File(initScriptDir, 'spring-ruleset.xml').absolutePath}"
                     : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',

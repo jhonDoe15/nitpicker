@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
-import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
+import { EXCEPTION_SEPARATOR, PROJECT_TOOL_CONFIGS } from './java-policy.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -37,7 +37,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>]';
+  ' [--kotlin-detekt-config <path>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -104,8 +104,17 @@ export function parseRunnerArguments(arguments_) {
       preset,
       kotlinFormatter,
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
+      toolPrecedence: toolPrecedence(values),
     },
   };
+}
+
+function toolPrecedence(values) {
+  return Object.fromEntries(
+    [...PROJECT_TOOL_CONFIGS.keys()]
+      .filter((tool) => values.has(`--${tool}-precedence`))
+      .map((tool) => [tool, values.get(`--${tool}-precedence`).split(',')]),
+  );
 }
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
@@ -122,6 +131,8 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--kotlin-detekt-config',
+  '--pmd-precedence',
+  '--checkstyle-precedence',
 ];
 
 function realpathOptional(directory) {
