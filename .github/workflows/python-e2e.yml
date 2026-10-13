@@ -4,17 +4,25 @@ on:
   push:
     branches: [main]
     paths:
+      - 'core/**'
+      - 'shared/**'
       - 'languages/python/**'
-      - 'shared/rules/**'
-      - 'shared/policy.mjs'
-      - '.github/python-e2e-requirements.txt'
+      - 'languages/java/ingest/**'
+      - 'languages/java/adapters/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/python-e2e-constraints.txt'
       - '.github/workflows/python-e2e.yml'
   pull_request:
     paths:
+      - 'core/**'
+      - 'shared/**'
       - 'languages/python/**'
-      - 'shared/rules/**'
-      - 'shared/policy.mjs'
-      - '.github/python-e2e-requirements.txt'
+      - 'languages/java/ingest/**'
+      - 'languages/java/adapters/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/python-e2e-constraints.txt'
       - '.github/workflows/python-e2e.yml'
 
 concurrency:
@@ -27,10 +35,11 @@ jobs:
     # The suite installs pytest, mutmut and import-linter into throwaway environments and runs mutation
     # testing; it takes 10 to 25 minutes.
     timeout-minutes: 45
+    env:
+      # The suite's own `uv pip install` calls resolve to these versions too.
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/python-e2e-constraints.txt
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -40,10 +49,9 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-          cache-dependency-path: .github/python-e2e-requirements.txt
+          cache-dependency-path: .github/python-e2e-constraints.txt
       # The suite finds ruff, black, mypy, pyright, coverage, pytest and uv on the PATH and builds the
-      # environments of its sample projects with uv. lizard is not needed: the complexity comes from
-      # Python's own ast module.
-      - run: pip install -r .github/python-e2e-requirements.txt
+      # environments of its sample projects with uv.
+      - run: pip install -c .github/python-e2e-constraints.txt black coverage mypy pyright pytest ruff uv
       - run: npm ci
       - run: npm run test:python

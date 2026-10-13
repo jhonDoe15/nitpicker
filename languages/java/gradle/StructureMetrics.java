@@ -8,7 +8,8 @@
 // Metrics follow the TypeScript structure analyzer so both languages enforce the same limits:
 //   lines              last line - first line + 1 (annotations and modifiers included, Javadoc not)
 //   statements         every statement below the body except blocks
-//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
+//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch; an else if
+//                      continues the chain of its if, an if inside an else block nests one deeper
 //   parameters         declared parameters
 // Members of nested classes (anonymous, local or member) are reported as methods of their own and
 // do not count towards the enclosing method; lambda bodies count towards the enclosing method.
@@ -166,6 +167,20 @@ public final class StructureMetrics {
       int next = isControl(tree) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       return super.scan(tree, next);
+    }
+
+    // An `else if` continues the chain of its `if` and opens no level of its own, as in the TypeScript analyzer.
+    @Override
+    public Void visitIf(IfTree tree, Integer depth) {
+      scan(tree.getCondition(), depth);
+      scan(tree.getThenStatement(), depth);
+      Tree other = tree.getElseStatement();
+      if (other instanceof IfTree chained) {
+        statements += 1;
+        return visitIf(chained, depth);
+      }
+      scan(other, depth);
+      return null;
     }
 
     // A `for` header's initializers and updates, a `catch` parameter and a `try` resource are javac statements or

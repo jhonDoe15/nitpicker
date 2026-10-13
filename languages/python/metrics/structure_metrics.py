@@ -105,11 +105,15 @@ def complexity(function):
     return total
 
 
-def is_static(function):
+def has_decorator(function, name):
     return any(
-        getattr(decorator, "id", getattr(decorator, "attr", None)) == "staticmethod"
+        getattr(decorator, "id", getattr(decorator, "attr", None)) == name
         for decorator in function.decorator_list
     )
+
+
+def is_static(function):
+    return has_decorator(function, "staticmethod")
 
 
 def parameter_count(function, owner):
@@ -139,15 +143,20 @@ def function_entry(function, owners):
         "maxControlNesting": deepest,
         "parameters": parameter_count(function, owners[-1] if owners else None),
         "complexity": complexity(function),
+        "overload": has_decorator(function, "overload"),
     }
 
 
-def function_entries(node, owners):
-    for child in blocks_of(node):
-        if isinstance(child, FUNCTIONS):
-            yield function_entry(child, owners)
-        inner = (*owners, child) if isinstance(child, SCOPES) else owners
-        yield from function_entries(child, inner)
+def function_entries(module):
+    entries = []
+    pending = [(child, ()) for child in reversed(blocks_of(module))]
+    while pending:
+        node, owners = pending.pop()
+        if isinstance(node, FUNCTIONS):
+            entries.append(function_entry(node, owners))
+        inner = (*owners, node) if isinstance(node, SCOPES) else owners
+        pending.extend((child, inner) for child in reversed(blocks_of(node)))
+    return entries
 
 
 def file_entries(project, relative):
@@ -157,7 +166,7 @@ def file_entries(project, relative):
         module = ast.parse(source, relative)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return []
-    return [dict(entry, file=relative) for entry in function_entries(module, ())]
+    return [dict(entry, file=relative) for entry in function_entries(module)]
 
 
 def main(arguments):

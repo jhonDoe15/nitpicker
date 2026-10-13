@@ -65,26 +65,31 @@ function isControlNode(node) {
   );
 }
 
+function isElseIf(node, parent) {
+  return ts.isIfStatement(node) && ts.isIfStatement(parent) && parent.elseStatement === node;
+}
+
 function functionBodyMetrics(functionNode) {
   let statements = 0;
   let maxControlNesting = 0;
 
-  function visit(node, depth) {
+  function visit(node, depth, parent) {
     if (node !== functionNode && isFunctionNode(node)) {
       return;
     }
     if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) {
       statements += 1;
     }
-    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
+    const opensLevel = node !== functionNode && isControlNode(node) && !isElseIf(node, parent);
+    const nextDepth = opensLevel ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
     ts.forEachChild(node, (child) => {
-      visit(child, nextDepth);
+      visit(child, nextDepth, node);
     });
   }
 
   if (functionNode.body !== undefined) {
-    visit(functionNode.body, 0);
+    visit(functionNode.body, 0, functionNode);
   }
   return { statements, maxControlNesting };
 }

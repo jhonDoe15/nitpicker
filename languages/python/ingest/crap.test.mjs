@@ -131,7 +131,7 @@ describe('ingestPythonCrap', () => {
     }
   });
 
-  it('does not match coverage of lines outside the range of the function', () => {
+  it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {
     const shifted = functionEntries().map(({ start, definition, bodyStart, end, ...rest }) => ({
       ...rest,
       start: start + 40,
@@ -140,9 +140,7 @@ describe('ingestPythonCrap', () => {
       end: end + 40,
     }));
 
-    expect(new Set(ingest({}, shifted).map((finding) => finding.rule))).toEqual(
-      new Set(['crap-coverage-unknown']),
-    );
+    expect(ingest({ limit: 4 }, shifted)).toEqual([]);
   });
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
@@ -218,15 +216,57 @@ describe('ingestPythonCrap', () => {
     expect(ingestPythonCrap(functions, coverage, { limit: 2 }).findings).toEqual([]);
   });
 
-  it('leaves coverage unknown for a function whose range holds no statement of the file', () => {
-    const functions = [entry('m.py', 'A.x', [6, 7])];
+  it('counts a function whose range holds no statement of a reported file as covered', () => {
+    const functions = [entry('m.py', 'A.x', [6, 7], 4)];
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
     });
 
-    expect(ingestPythonCrap(functions, coverage, {}).findings.map(({ rule }) => rule)).toEqual([
-      'crap-coverage-unknown',
-    ]);
+    expect(ingestPythonCrap(functions, coverage, { limit: 5 }).findings).toEqual([]);
+    expect(ingestPythonCrap(functions, coverage, { limit: 4 }).findings).toHaveLength(1);
+  });
+
+  it('does not score an overload stub, whatever the shape of its signature', () => {
+    const stub = { ...entry('m.py', 'A.get', [6, 9], 3), overload: true };
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
+    });
+
+    expect(ingestPythonCrap([stub], coverage, { limit: 1 }).findings).toEqual([]);
+  });
+
+  it('scores a branchy getter from its own lines when the setter that shares its name has none', () => {
+    const functions = [entry('m.py', 'A.x', [6, 10], 5), entry('m.py', 'A.x', [12, 13])];
+    const coverage = JSON.stringify({
+      files: {
+        'm.py': {
+          executed_lines: [5, 6, 11, 12],
+          missing_lines: [7, 8, 9, 10],
+          executed_branches: [],
+          missing_branches: [
+            [7, 8],
+            [7, 9],
+          ],
+          functions: {
+            'A.x': {
+              executed_lines: [],
+              missing_lines: [],
+              summary: {
+                covered_lines: 0,
+                num_statements: 0,
+                covered_branches: 0,
+                num_branches: 0,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const findings = ingestPythonCrap(functions, coverage, { limit: 9 }).findings;
+
+    expect(findings.map(({ symbol, location }) => [symbol, location.line])).toEqual([['A.x', 6]]);
+    expect(findings[0].message).toMatch(/CRAP 30\.00/);
   });
 
   it('does not score a function whose body starts on its def line', () => {
