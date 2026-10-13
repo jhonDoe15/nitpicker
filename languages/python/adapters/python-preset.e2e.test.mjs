@@ -286,7 +286,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
+      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
   });
@@ -533,11 +533,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 });
 
 const ORDER_TOTAL = [
-  'def order_total(lines, discount):',
+  'def order_total(lines: list[tuple[int, int]], discount: int) -> int:',
   '    total = 0',
   '    for line in lines:',
-  '        if line.price > 0 and line.quantity > 0:',
-  '            total += line.price * line.quantity',
+  '        if line[0] > 0 and line[1] > 0:',
+  '            total += line[0] * line[1]',
   '        else:',
   '            total -= discount',
   '    if total < 0 and discount > 0:',
@@ -552,15 +552,15 @@ const LAYERED_FILES = {
     '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
   'src/shop/__init__.py': '',
   'src/shop/domain/__init__.py': '',
-  'src/shop/domain/pricing.py': `def price_with_tax(amount, rate):\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
+  'src/shop/domain/pricing.py': `def price_with_tax(amount: float, rate: float) -> float:\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
   'src/shop/infra/__init__.py': '',
   'src/shop/infra/store.py':
-    'from shop.domain import pricing\n\n\ndef total(amounts):\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
+    'from shop.domain import pricing\n\n\ndef total(amounts: list[float]) -> float:\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
   'src/shop/web/__init__.py': '',
   'src/shop/web/views.py':
-    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts):\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
+    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts: list[float]) -> str:\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
   'tests/test_shop.py':
-    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    assert pricing.order_total([line, line], 0) == 12\n',
+    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    assert pricing.order_total([(2, 3), (2, 3)], 0) == 12\n',
 };
 
 describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end to end', () => {
@@ -594,16 +594,16 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
       'import-linter',
     ]);
     commitBranch(project, 'clean', {
-      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts):\n    return len(amounts)\n`,
+      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts: list[float]) -> int:\n    return len(amounts)\n`,
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
     });
     commitBranch(project, 'upward-import', {
-      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
     });
     commitBranch(project, 'contracts-off', {
-      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
       'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
     });
   });
