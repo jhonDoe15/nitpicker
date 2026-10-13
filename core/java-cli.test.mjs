@@ -840,6 +840,7 @@ describe('Kotlin analyzer', () => {
       'pit',
       'structure',
       'coupling',
+      'spring',
       'detekt',
       'ktlint',
       'ktfmt',
