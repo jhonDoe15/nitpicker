@@ -6,11 +6,11 @@ import {
   normalizeCoupling,
   normalizeCrap,
   normalizeDeadCode,
-  normalizeDuplicates,
   normalizeMutation,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
+import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
 

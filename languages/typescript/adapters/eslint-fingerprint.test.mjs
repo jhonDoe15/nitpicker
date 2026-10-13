@@ -282,7 +282,7 @@ describe('a new throw in a legacy function', () => {
 
 describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
-    `Refactor this function to reduce its Cognitive Complexity from ${String(amount)} to the 15 allowed.`;
+    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions. If it must stay this way, add an exception for this rule in nitpicker.config.json.`;
 
   const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
   const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
@@ -296,8 +296,8 @@ describe('a complexity finding fails only when the number rises', () => {
     return findingFor({
       code: build(body),
       reported,
-      ruleId: 'sonarjs/cognitive-complexity',
-      messageId: 'refactorFunction',
+      ruleId: 'nitpicker/cognitive-complexity',
+      messageId: 'tooComplex',
       message: complexity(amount),
     });
   }
@@ -328,7 +328,7 @@ describe('a complexity finding fails only when the number rises', () => {
 
     expect(result.newFindings).toEqual([]);
     expect(result.unchangedFindings.map(({ rule, heldAtBase }) => ({ rule, heldAtBase }))).toEqual([
-      { rule: 'sonarjs/cognitive-complexity', heldAtBase: 16 },
+      { rule: 'nitpicker/cognitive-complexity', heldAtBase: 16 },
     ]);
   });
 
