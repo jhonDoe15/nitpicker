@@ -135,7 +135,11 @@ describe('nitpicker-detekt.yml', () => {
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
       for (const rule of Object.values(rules)) {
-        expect(rule).toMatchObject({ ...pinned, severity: 'warning' });
+        const { active, excludes, includes, severity } = rule;
+        expect({ active, excludes, includes, severity }).toEqual({
+          ...pinned,
+          severity: 'warning',
+        });
       }
     }
   });
