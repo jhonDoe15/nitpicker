@@ -91,9 +91,7 @@ function validateScalars(config) {
 }
 
 function validateJavaKeys(config) {
-  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) => !(config.preset === 'kotlin' && key === 'exceptions'),
-  );
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');
   const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readStructureFindings } from '../../java/adapters/java-structure.mjs';
+import { PYTHON_EXCEPTION_KEY } from './python-exceptions.mjs';
 import { run } from './python-process.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 
@@ -29,5 +30,6 @@ export function readPythonStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot, {
     textOf: functionText,
     hints: STRUCTURE_HINTS,
+    exceptionKey: PYTHON_EXCEPTION_KEY,
   });
 }

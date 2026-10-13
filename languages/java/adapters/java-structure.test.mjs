@@ -61,22 +61,27 @@ describe('Java structure findings', () => {
         tool,
       ]),
     ).toEqual([
-      [RULE_IDS.functionLines, 'Big.big has 51 lines; limit is 50', 'enforceable', 'structure'],
+      [
+        RULE_IDS.functionLines,
+        'Big.big has 51 lines; limit is 50. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"why"}.',
+        'enforceable',
+        'structure',
+      ],
       [
         RULE_IDS.functionStatements,
-        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-statements-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"why"}.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionControlNesting,
-        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting.',
+        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"why"}.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionParameters,
-        'Big.big has 4 parameters; limit is 3',
+        'Big.big has 4 parameters; limit is 3. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"why"}.',
         'enforceable',
         'structure',
       ],

@@ -173,8 +173,19 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `exceptions` accepts the structure, CRAP and changed-branch coverage rules only
+    (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+    `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`,
+    `changed-branch-coverage`): `{ "rule", "paths", "function"?, "reason" }`, where `function`
+    names one method (`Big.run` or `run`, parameter lists ignored) and is required for
+    `changed-branch-coverage`. A branch is attributed to the narrowest method of
+    `structure.json` that holds its line, so the name in the entry is the one the structure
+    findings print. Any other rule is a config error naming these; a PMD, SpotBugs or Checkstyle
+    finding is lifted with `exclude`. The entries reach the runner as `--exception <json>`, one per
+    entry, and change the analyzer's configuration hash. Every size, CRAP and coverage message ends
+    with the entry that accepts it.
+  - `layout` configures TypeScript source roots and has no Java meaning; it stays a config error with
+    `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -334,7 +345,8 @@ resolved plus a new finding, as in the TypeScript check.
   over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
   (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
   `function-parameters-limit`) and the same messages (`{name} has {value} {metric}; limit is
-{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript. `shared/policy.mjs` marks the four rules as enforced for Java; the
+{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript, followed by the `exceptions` entry that accepts the method (`To accept it, add an
+entry to "exceptions" in nitpicker.config.json: {...}`). `shared/policy.mjs` marks the four rules as enforced for Java; the
   catalog in `spec/checks.md` is generated from it.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file

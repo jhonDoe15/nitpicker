@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { applyJavaPolicy } from './java-policy.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 
 const temporaryRoots = [];
@@ -532,6 +533,45 @@ describe('readJavaFindings with the kotlin preset', () => {
       ['duplicates', 'duplicate-clone', bad],
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+
+  it('lifts the structure, CRAP and branch findings of a Kotlin function with exceptions that name it', () => {
+    const root = projectWithKotlinReports();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/kotlin-metrics.json'),
+      JSON.stringify({
+        functions: [
+          {
+            file: bad,
+            name: 'Bad.compute',
+            start: 6,
+            end: 10,
+            lines: 5,
+            statements: 3,
+            maxControlNesting: 1,
+            parameters: 4,
+            complexity: 3,
+          },
+        ],
+        files: [{ file: bad, package: 'demo', classes: ['demo.Bad'] }],
+      }),
+    );
+    const { findings } = readJavaFindings(root, { preset: 'kotlin' });
+    const rules = ['function-parameters-limit', 'crap-score-limit', 'changed-branch-coverage'];
+    const inBad = (finding) => rules.includes(finding.rule) && finding.path === bad;
+    const entry = (rule) => ({ rule, paths: [bad], function: 'compute' });
+
+    expect(findings.filter(inBad).map(({ rule, symbol }) => [rule, symbol])).toEqual([
+      ['changed-branch-coverage', 'Bad.compute'],
+      ['function-parameters-limit', 'Bad.compute'],
+      ['crap-score-limit', 'Bad.compute'],
+    ]);
+    expect(applyJavaPolicy(findings, { exceptions: rules.map(entry) }).filter(inBad)).toEqual([]);
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ ...entry('changed-branch-coverage'), function: 'other' }],
+      }).filter(inBad),
+    ).toHaveLength(3);
   });
 
   it('reads no Kotlin metrics or clones from a report without them, as the java preset does', () => {

@@ -150,6 +150,77 @@ describe('config file', () => {
     });
   });
 
+  describe('java exceptions', () => {
+    const exception = {
+      rule: 'function-lines-limit',
+      paths: ['src/main/java/app/Big.java'],
+      function: 'Big.run',
+      reason: 'A reviewed reason.',
+    };
+
+    it('accepts an exception for a structure, CRAP or coverage rule', () => {
+      const coverage = { ...exception, rule: 'changed-branch-coverage' };
+
+      expect(validateConfig({ preset: 'java', exceptions: [exception, coverage] })).toEqual({
+        preset: 'java',
+        exceptions: [exception, coverage],
+      });
+    });
+
+    it('names the rules that can be lifted when the rule is another one', () => {
+      const other = { ...exception, rule: 'pmd.SomeRule' };
+
+      expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
+        '"exceptions[0].rule" is "pmd.SomeRule", which is not a rule with exceptions. Rules with exceptions for the java preset: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage',
+      );
+    });
+  });
+
+  describe('function exceptions', () => {
+    const coverage = {
+      rule: 'changed-branch-coverage',
+      paths: ['src/a.ts'],
+      function: 'save',
+      reason: 'Defensive branch that cannot happen.',
+    };
+
+    it.each(['typescript', 'javascript', 'java', 'kotlin'])(
+      'accepts a coverage exception with a function in the %s preset',
+      (preset) => {
+        expect(validateConfig({ preset, exceptions: [coverage] })).toEqual({
+          preset,
+          exceptions: [coverage],
+        });
+      },
+    );
+
+    it('requires the function for changed-branch-coverage', () => {
+      expect(() => validateConfig({ exceptions: [{ ...coverage, function: undefined }] })).toThrow(
+        '"exceptions[0].function" is required for changed-branch-coverage: name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"',
+      );
+    });
+
+    it('rejects a function on a rule that is not scoped to functions, or an empty one', () => {
+      expect(() =>
+        validateConfig({ exceptions: [{ ...coverage, rule: 'nitpicker/no-throw' }] }),
+      ).toThrow(
+        '"exceptions[0].function" is only supported for these rules: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage',
+      );
+      expect(() => validateConfig({ exceptions: [{ ...coverage, function: '' }] })).toThrow(
+        '"exceptions[0].function" must be a non-empty function name',
+      );
+    });
+
+    it('allows a structure exception with or without a function', () => {
+      const lines = { ...coverage, rule: 'function-lines-limit' };
+      const whole = { ...lines, function: undefined };
+
+      expect(validateConfig({ exceptions: [lines, whole] })).toEqual({
+        exceptions: [lines, whole],
+      });
+    });
+  });
+
   it('shares thresholds, exclude and legacyInventory between presets', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
@@ -168,7 +239,6 @@ describe('config file', () => {
 
   it.each([
     ['java', 'layout'],
-    ['java', 'exceptions'],
     ['java', 'react'],
     ['kotlin', 'layout'],
     ['kotlin', 'react'],

@@ -1,9 +1,11 @@
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
+  DEFAULT_EXCEPTION_KEY,
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
+  exceptionRoute,
   renderMessage,
 } from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
@@ -20,7 +22,12 @@ import { positiveInteger } from './finding-helpers.mjs';
 
 export function crapFindings(
   functions,
-  { tool, limit = DEFAULT_CRAP_SCORE_LIMIT, unknownMessage = MESSAGES.crapCoverageUnknown },
+  {
+    tool,
+    limit = DEFAULT_CRAP_SCORE_LIMIT,
+    unknownMessage = MESSAGES.crapCoverageUnknown,
+    exceptionKey = DEFAULT_EXCEPTION_KEY,
+  },
 ) {
   const findings = [];
   for (const fn of functions) {
@@ -28,43 +35,47 @@ export function crapFindings(
     if (!unknown && fn.crap < limit) {
       continue;
     }
+    const rule = unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit;
+    const route = exceptionRoute({ rule, path: fn.path, name: fn.name, key: exceptionKey });
     const finding = {
       tool,
-      rule: unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit,
+      rule,
       path: fn.path,
       identity: fn.identity,
-      message: unknown
-        ? renderMessage(unknownMessage, { name: fn.name })
-        : renderMessage(MESSAGES.crapScoreLimit, {
-            name: fn.name,
-            crap: fn.crap.toFixed(2),
-            limit,
-          }),
+      message: `${
+        unknown
+          ? renderMessage(unknownMessage, { name: fn.name })
+          : renderMessage(MESSAGES.crapScoreLimit, {
+              name: fn.name,
+              crap: fn.crap.toFixed(2),
+              limit,
+            })
+      } ${route}`,
       classification: 'enforceable',
       symbol: fn.name,
       ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
     };
     findings.push(
-      unknown || fn.ratchetKey === undefined ? finding : withRatchet(finding, fn, limit),
+      unknown || fn.ratchetKey === undefined ? finding : withRatchet(finding, fn, limit, route),
     );
   }
   return findings;
 }
 
 // The score is rounded to what the message shows, so noise below that never counts as a rise.
-function withRatchet(finding, fn, limit) {
+function withRatchet(finding, fn, limit, route) {
   const crap = Number(fn.crap.toFixed(2));
   return {
     ...finding,
     ratchet: {
       key: fn.ratchetKey,
       value: crap,
-      worseMessage: renderMessage(GREW_MESSAGES.crap, {
+      worseMessage: `${renderMessage(GREW_MESSAGES.crap, {
         name: fn.name,
         crap,
         limit,
         base: '{base}',
-      }),
+      })} ${route}`,
       heldMessage: renderMessage(HELD_MESSAGES.crap, {
         name: fn.name,
         crap: fn.crap.toFixed(2),

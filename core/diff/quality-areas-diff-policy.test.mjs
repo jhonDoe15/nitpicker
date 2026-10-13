@@ -674,7 +674,7 @@ describe('complete quality-area analyzer catalog', () => {
     expect(findings).toContainEqual(
       expect.objectContaining({
         message:
-          "Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the ?: at 3:29. Test it, or remove it if it can't happen.",
+          'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the ?: at 3:29. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       }),
     );
   });
@@ -1054,12 +1054,12 @@ describe('complete quality-area analyzer catalog', () => {
         location: { line: 1 },
         classification: 'enforceable',
         message:
-          'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests.',
+          'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"why"}.',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9.5,
           worseMessage:
-            'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests.',
+            'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"why"}.',
           heldMessage:
             'value: CRAP 9.50 (limit 9), allowed because base was {base}; any increase fails.',
         },

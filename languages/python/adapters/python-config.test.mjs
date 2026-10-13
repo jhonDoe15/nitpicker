@@ -90,7 +90,7 @@ describe('python config validation', () => {
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, function, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
@@ -128,6 +128,18 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'frozen-dataclas', paths: ['a'], reason: 'r' }] },
       '"frozen-dataclas"; did you mean "frozen-dataclass"?',
+    ],
+    [
+      { exceptions: [{ rule: 'changed-branch-coverage', paths: ['a'], reason: 'r' }] },
+      '"python.exceptions[0].function" is required for changed-branch-coverage',
+    ],
+    [
+      { exceptions: [{ rule: 'T201', paths: ['a'], function: 'run', reason: 'r' }] },
+      '"python.exceptions[0].function" is only supported for these rules: function-lines-limit',
+    ],
+    [
+      { exceptions: [{ rule: 'function-line-limit', paths: ['a'], reason: 'r' }] },
+      '"function-line-limit"; did you mean "function-lines-limit"?',
     ],
     [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],

@@ -331,6 +331,12 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
+- The size, CRAP and changed-branch coverage findings are not ESLint rules, but the same
+  `exceptions` key accepts them: `function-lines-limit`, `function-statements-limit`,
+  `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`,
+  `crap-coverage-unknown` and `changed-branch-coverage`, with an optional `function` (required for
+  `changed-branch-coverage`) that limits the entry to one function. The message of each finding
+  prints the entry. See [Exceptions for structure, CRAP and coverage](usage.md#exceptions-for-structure-crap-and-coverage).
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

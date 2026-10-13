@@ -5,7 +5,11 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import { methodText, readJavaStructureFindings } from './java-structure.mjs';
+import {
+  methodText,
+  readJavaStructureFindings,
+  readStructureFunctions,
+} from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
@@ -153,8 +157,12 @@ function pitFindings(context) {
 }
 
 function branchFindings(context, jacoco) {
-  const { projectRoot } = context;
+  const { projectRoot, reportRoot } = context;
   return ingestJacocoBranches(jacoco, {
+    functions: [
+      ...readStructureFunctions(reportRoot),
+      ...(context.kotlin ? readKotlinMetrics(reportRoot).functions : []),
+    ],
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
     sourceText: (file) => {
       const absolute = path.join(projectRoot, file);

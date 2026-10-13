@@ -8,7 +8,7 @@
 // each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
 // `kotlin-format.txt` a file ktfmt would change, a file `kotlin-metrics.json` is the Kotlin metrics
 // report as it is, a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
-// report. The arguments are kept in build/nitpicker/gradle-args.json.
+// report, and a file `structure.json` the Java structure report as it is. The arguments are kept in build/nitpicker/gradle-args.json.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
 if (existsSync('GRADLE_FAIL')) {
@@ -113,5 +113,8 @@ writeFileSync(
 if (existsSync('mutations.xml')) {
   mkdirSync('build/nitpicker/pit', { recursive: true });
   writeFileSync('build/nitpicker/pit/mutations.xml', readFileSync('mutations.xml'));
+}
+if (existsSync('structure.json')) {
+  writeFileSync('build/nitpicker/structure.json', readFileSync('structure.json'));
 }
 writeFileSync('build/nitpicker/lizard.csv', '');

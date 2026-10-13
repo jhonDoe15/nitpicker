@@ -1,10 +1,20 @@
-import { MESSAGES, MINIMUM_BRANCH_COVERAGE, RULE_IDS, renderMessage } from '../policy.mjs';
+import {
+  DEFAULT_EXCEPTION_KEY,
+  MESSAGES,
+  MINIMUM_BRANCH_COVERAGE,
+  RULE_IDS,
+  exceptionRoute,
+  renderMessage,
+} from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 
 // Neutral input: `{ path, key, percent, line?, arms? }` per branch (or per line of branches), where
 // `percent` is the share of its outcomes covered and `key` identifies its source text. Anything
 // below `minimum` is an enforceable `changed-branch-coverage` finding; which branches are
 // *changed* is the differential gate's job.
+//
+// `symbol` (optional) is the display name of the function the branch is in; with it the message
+// names the per-function exception that accepts the branch, without it the `exclude` route.
 //
 // `arms` (optional) names the outcomes no test took, e.g. `the false arm of the ?: at 3:28`.
 //
@@ -14,7 +24,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 
 export function branchCoverageFindings(
   branches,
-  { tool, identify, minimum = MINIMUM_BRANCH_COVERAGE },
+  { tool, identify, minimum = MINIMUM_BRANCH_COVERAGE, exceptionKey = DEFAULT_EXCEPTION_KEY },
 ) {
   const occurrences = new Map();
   const findings = [];
@@ -30,8 +40,9 @@ export function branchCoverageFindings(
       rule: RULE_IDS.changedBranchCoverage,
       path: branch.path,
       identity: identify(branch.key, occurrence),
-      message: branchMessage(branch, minimum),
+      message: `${branchMessage(branch, minimum)} ${acceptSentence(branch, exceptionKey)}`,
       classification: 'enforceable',
+      ...(isNamed(branch) ? { symbol: branch.symbol } : {}),
       ...(positiveInteger(branch.line) === undefined ? {} : { location: { line: branch.line } }),
     });
   }
@@ -44,7 +55,22 @@ function branchMessage(branch, minimum) {
     minimum,
   });
   if (!Array.isArray(branch.arms) || branch.arms.length === 0) {
-    return message;
+    return `${message}.`;
   }
   return `${message}. Not taken: ${branch.arms.join('; ')}. Test it, or remove it if it can't happen.`;
+}
+
+function isNamed(branch) {
+  return typeof branch.symbol === 'string' && branch.symbol !== '';
+}
+
+function acceptSentence(branch, key) {
+  return isNamed(branch)
+    ? exceptionRoute({
+        rule: RULE_IDS.changedBranchCoverage,
+        path: branch.path,
+        name: branch.symbol,
+        key,
+      })
+    : 'To accept the file, add it to "exclude" in nitpicker.config.json.';
 }

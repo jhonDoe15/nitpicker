@@ -731,20 +731,21 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'crap-coverage-unknown',
           symbol: 'ghost',
           message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"why"}.',
         },
         {
           tool: 'crap',
           rule: 'crap-score-limit',
           symbol: 'value',
           message:
-            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
         },
         {
           tool: 'structure',
           rule: 'function-parameters-limit',
           symbol: 'fresh',
-          message: 'fresh has 4 parameters; limit is 3',
+          message:
+            'fresh has 4 parameters; limit is 3. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"why"}.',
         },
       ]);
       expect(grown.exitCode, grown.text).toBe(1);
@@ -754,9 +755,55 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'function-parameters-limit',
           symbol: 'value',
           message:
-            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
         },
       ]);
+    });
+  });
+
+  describe('python.exceptions for structure, CRAP and coverage findings', () => {
+    const exceptions = (...entries) =>
+      `${JSON.stringify({ preset: 'python', python: { exceptions: entries } })}\n`;
+    const entry = (rule, functionName) => ({
+      rule,
+      paths: ['src/demo/a.py'],
+      ...(functionName === undefined ? {} : { function: functionName }),
+      reason: 'A reviewed reason.',
+    });
+    const wide = {
+      file: 'src/demo/a.py',
+      name: 'Service.wide',
+      start: 4,
+      end: 5,
+      lines: 2,
+      statements: 1,
+      maxControlNesting: 0,
+      parameters: 4,
+    };
+    const change = (config) => {
+      const root = pythonRepository();
+      write(root, {
+        'nitpicker.config.json': config,
+        'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
+        'structure-data.json': JSON.stringify([wide]),
+      });
+      commit(root, 'add a wide method');
+      return run(root);
+    };
+
+    it('lifts the finding for the named function or path and keeps it for another function', () => {
+      const failing = change('{ "preset": "python" }\n');
+      const byName = change(exceptions(entry('function-parameters-limit', 'wide')));
+      const byPath = change(exceptions(entry('function-parameters-limit')));
+      const other = change(exceptions(entry('function-parameters-limit', 'narrow')));
+
+      expect(failing.exitCode, failing.text).toBe(1);
+      expect(failing.json('new-findings.json').map(({ symbol }) => symbol)).toEqual([
+        'Service.wide',
+      ]);
+      expect(byName.exitCode, byName.text).toBe(0);
+      expect(byPath.exitCode, byPath.text).toBe(0);
+      expect(other.exitCode, other.text).toBe(1);
     });
   });
 
@@ -997,9 +1044,67 @@ describe('changed-branch-coverage with "preset": "python"', () => {
         path: 'src/demo/a.py',
         line: 5,
         message:
-          "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
+          'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
       },
     ]);
+  });
+
+  it('names the function of an untested branch and passes once python.exceptions accepts it', () => {
+    const functions = JSON.stringify([
+      {
+        file: 'src/demo/a.py',
+        name: 'value',
+        start: 4,
+        end: 7,
+        lines: 4,
+        statements: 2,
+        maxControlNesting: 1,
+        parameters: 1,
+      },
+    ]);
+    const exceptionFor = (functionName) =>
+      `${JSON.stringify({
+        preset: 'python',
+        python: {
+          exceptions: [
+            {
+              rule: 'changed-branch-coverage',
+              paths: ['src/demo/a.py'],
+              function: functionName,
+              reason: 'A reviewed reason.',
+            },
+          ],
+        },
+      })}\n`;
+    const change = (config) => {
+      const root = branchyRepository();
+      write(root, {
+        ...(config === undefined ? {} : { 'nitpicker.config.json': config }),
+        'src/demo/a.py': BRANCHY.replace('if x:', 'if  x:'),
+        'structure-data.json': functions,
+      });
+      commit(root, 'touch the branch line');
+      return run(root);
+    };
+
+    const failing = change(undefined);
+    const accepted = change(exceptionFor('value'));
+    const other = change(exceptionFor('other'));
+
+    expect(failing.exitCode, failing.text).toBe(1);
+    expect(
+      failing
+        .json('new-findings.json')
+        .map(({ symbol, message }) => [symbol, message.match(/To accept it.*$/)?.[0]]),
+    ).toEqual([
+      [
+        'value',
+        'To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
+      ],
+    ]);
+    expect(accepted.exitCode, accepted.text).toBe(0);
+    expect(newBranchFindings(accepted)).toEqual([]);
+    expect(other.exitCode, other.text).toBe(1);
   });
 
   it('fails a new branch that no test takes and passes once a test covers it', () => {

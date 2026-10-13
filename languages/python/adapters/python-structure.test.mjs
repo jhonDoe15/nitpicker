@@ -82,13 +82,14 @@ describe('reading the structure report', () => {
       {
         rule: 'function-parameters-limit',
         symbol: 'Service.handle',
-        message: 'Service.handle has 4 parameters; limit is 3',
+        message:
+          'Service.handle has 4 parameters; limit is 3. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"why"}.',
       },
       {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"why"}.',
       },
     ]);
     expect(
@@ -112,7 +113,7 @@ describe('reading the structure report', () => {
       key: 'function:Service.handle:occurrence:1:parameters',
       value: 4,
       worseMessage:
-        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"why"}.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });

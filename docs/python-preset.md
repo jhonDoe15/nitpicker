@@ -177,6 +177,15 @@ error, not a silent no-op. Prefer fixing the code; an exception is for code that
 legitimately outside the rule, such as a command line entry point that prints or a module that
 must keep a mutable dataclass.
 
+**Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
+optional `function` in the entry: the name the finding prints (`Service.run`, `outer.inner`) or its
+last part (`run`). For `changed-branch-coverage` it is required, and the entry accepts the uncovered
+branches inside that function only, so the rest of the file keeps every other check; a branch in no
+function (module level) can only be lifted with `exclude`. The branch is attributed to the narrowest
+function of `structure.json` that holds its line. Branch coverage is enforced by default; this is
+the escape hatch for a branch that cannot be tested. A `function` on any other rule is a config
+error.
+
 `exclude` is the other way out: it drops every finding under the globs, and the paths are not
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
 `T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a loop that must handle
@@ -207,7 +216,7 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence, except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence (the size, CRAP and coverage findings end with their own entry, from the shared rules), except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -347,8 +356,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `spec/checks.md` is regenerated. A function that already breaks a limit on the base and is edited
   fails only when the change makes that metric worse, exactly as for the other languages (the
   `ratchet` field of the finding, handled by the core comparison); a new function over a limit, or
-  one the change pushes over it, fails as usual. Exceptions are the usual ones: `exclude` in
-  `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable.
+  one the change pushes over it, fails as usual. Exceptions are the usual ones: a
+  `python.exceptions` entry for the rule (optionally with `function`, see below), `exclude` in
+  `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable. Each
+  message ends with the entry that accepts it, for example
+  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"why"}`;
+  the shared rules append it (`exceptionKey` is `python.exceptions` here).
 - **Structure metrics (decision to review).** `languages/python/metrics/structure_metrics.py` parses
   the source files with the standard library `ast` module (parse only, nothing is imported or run)
   and writes one object per function to `structure.json`. It is run by the project's own Python
@@ -462,9 +475,11 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.` It
-  names where the untaken outcomes lead; those line numbers are only in the message, never in the
-  identity.
+or remove it if it can't happen. To accept it, add an entry to "python.exceptions" in
+nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"why"}.`
+  It names where the untaken outcomes lead (those line numbers are only in the message, never in the
+  identity) and the entry that accepts the branch for its function; a branch in no function points at
+  `exclude` instead.
 - **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
   `match` cases) is judged on all of them together. coverage.py does not track conditional
   expressions or `and`/`or` operands, nor the arms of `try`/`except`/`else`/`finally`, only jumps

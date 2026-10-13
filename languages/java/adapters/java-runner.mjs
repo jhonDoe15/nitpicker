@@ -1,7 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
-import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
@@ -35,16 +34,26 @@ export function analyzeJavaSnapshot(
 
 const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
-  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
+  ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
   ' [--kotlin-detekt-config <path>]';
 
 function parseException(value) {
-  const separator = value.indexOf(EXCEPTION_SEPARATOR);
-  if (separator <= 0 || separator === value.length - 1) {
+  let entry;
+  try {
+    entry = JSON.parse(value);
+  } catch {
     throw new Error(USAGE);
   }
-  return { rule: value.slice(0, separator), glob: value.slice(separator + 1) };
+  const isValid =
+    typeof entry?.rule === 'string' &&
+    Array.isArray(entry.paths) &&
+    entry.paths.every((glob) => typeof glob === 'string') &&
+    (entry.function === undefined || typeof entry.function === 'string');
+  if (!isValid) {
+    throw new Error(USAGE);
+  }
+  return entry;
 }
 
 function optionPairs(arguments_) {
