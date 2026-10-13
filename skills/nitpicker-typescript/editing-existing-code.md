@@ -7,6 +7,8 @@ applies to the lines you add.
   function and put the new code there. To make room, extract the smallest existing block into a
   function; extracted code is new code and must meet every rule. Don't rewrite or move legacy code
   the task doesn't need.
+- A file or folder already over its limit must not grow either: put the new code in a new file,
+  and a new file in a subfolder.
 - An edited legacy line may keep a violation its function already had, as long as the function
   doesn't get more of it: change `lines.push(a)` to `lines.push(a, ...extra)` rather than adding a
   second push.
@@ -16,7 +18,7 @@ applies to the lines you add.
   typed values the legacy function already reads.
 - A legacy function that throws keeps its throw count: return the new failure as a union from a
   new helper and throw its reason by editing an existing `throw` line in place
-  (`` throw new Error(`Line ${n}: ${entry.reason}`) ``). A `throw` on a new line counts as new even
+  (``throw new Error(`Line ${n}: ${entry.reason}`)``). A `throw` on a new line counts as new even
   when the count holds. Keep the public function where it is.
 - When a union gains a member that a legacy `switch` must handle and the function is over a limit,
   extract the switch into a new exhaustive function; never replace it with one call per member.

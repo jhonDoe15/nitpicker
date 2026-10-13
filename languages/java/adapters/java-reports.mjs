@@ -5,7 +5,11 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import { methodText, readJavaStructureFindings } from './java-structure.mjs';
+import {
+  methodText,
+  readJavaFileLimitFindings,
+  readJavaStructureFindings,
+} from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
@@ -23,7 +27,10 @@ import {
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
 
-export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {}) {
+export function readJavaFindings(
+  projectRoot,
+  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
   requireGradleReports(projectRoot, preset);
@@ -51,6 +58,11 @@ export function readJavaFindings(projectRoot, { crapLimit, preset = 'java' } = {
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
+      ...readJavaFileLimitFindings(projectRoot, {
+        manifest,
+        kotlin,
+        policy: { thresholds: fileLimits, exclude, exceptions },
+      }),
       ...branchFindings(context, context.jacoco),
       ...readCouplingFindings(reportRoot, {
         projectRoot,
