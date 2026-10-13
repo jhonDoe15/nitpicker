@@ -31,6 +31,12 @@ Before this scope, both sides mutated the whole source area. On ufo (1,575 sourc
 mutants) that took 426 s with the TypeScript checker; the changed lines of a three-line function
 (6 mutants) take 18 s.
 
+The Python preset does the same with mutmut's per-mutant results instead of a Stryker file: head
+starts from the `mutants/*.meta` files of the base work tree when only added or modified
+non-test `.py` files under a source root changed, and runs every mutant after any other change,
+including every test change, because mutmut does not re-test results when a test changes. See
+[python-preset.md](python-preset.md#reusing-base-results-on-head).
+
 ## Question
 
 Should there be an optional, manually run, wider-scope mutation profile?
