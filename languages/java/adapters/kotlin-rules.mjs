@@ -1,5 +1,24 @@
 const DETEKT_TOOL = 'detekt';
-const ALL_SUPPRESSION = /^(?:detekt[.:])?all$/i;
+const BANNED_SUPPRESSIONS = [
+  /^all$/i,
+  /^detekt(?:[.:]|$)/i,
+  /^ktlint(?:[.:]|$)/i,
+  /^[A-Z][A-Za-z0-9]*[a-z][A-Za-z0-9]*$/,
+];
+const DETEKT_RULESETS = new Set([
+  'comments',
+  'complexity',
+  'coroutines',
+  'empty-blocks',
+  'exceptions',
+  'formatting',
+  'libraries',
+  'naming',
+  'performance',
+  'potential-bugs',
+  'ruleauthors',
+  'style',
+]);
 
 export const ONE_WAY_RULES = [
   {
@@ -11,12 +30,6 @@ export const ONE_WAY_RULES = [
   { name: 'CastNullableToNonNullableType', ruleset: 'potential-bugs' },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
-  {
-    name: 'ForbiddenImport',
-    ruleset: 'style',
-    allowed:
-      'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.',
-  },
   {
     name: 'UnnecessaryLet',
     ruleset: 'style',
@@ -40,19 +53,8 @@ export const SUPPRESSION_RULE = 'inline-suppression';
 
 export const ONE_WAY_RULE_IDS = ONE_WAY_RULES.map(({ id }) => id);
 
-const SUPPRESSION_TOKENS = new Set([
-  ...ONE_WAY_RULES.flatMap(({ name, ruleset }) => [
-    name,
-    `detekt.${name}`,
-    `detekt:${name}`,
-    `detekt.${ruleset}.${name}`,
-    `detekt:${ruleset}:${name}`,
-  ]),
-  ...ONE_WAY_RULES.flatMap(({ ruleset }) => [ruleset, `detekt.${ruleset}`, `detekt:${ruleset}`]),
-]);
-
 export function isBannedSuppression(token) {
-  return SUPPRESSION_TOKENS.has(token) || ALL_SUPPRESSION.test(token);
+  return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
 }
 
 function appendSentence(message, sentence) {

@@ -150,10 +150,43 @@ const detektFindingsOf = (findings, testCase) =>
     ({ tool, path: file }) => tool === 'detekt' && file.includes(`/demo/${testCase.id}/`),
   );
 
-const USE_DATA_CLASS_OFF = `style:
-  UseDataClass:
+const HOSTILE_DETEKT_CONFIG = `formatting:
+  active: true
+  Indentation:
+    active: true
+compose:
+  active: true
+style:
+  active: false
+  excludes: ['**/*.kt']
+  ForbiddenMethodCall:
     active: false
+    severity: info
+    excludes: ['**/*.kt']
+    methods:
+      - 'kotlin.io.println'
+coroutines:
+  active: false
+potential-bugs:
+  active: false
+  UnsafeCallOnNullableType:
+    severity: info
+  CastNullableToNonNullableType:
+    excludes: ['**/*.kt']
 `;
+
+const EXTRA_SOURCES = {
+  'Wildcard.kt':
+    'package demo.extras\n\nimport kotlinx.coroutines.*\n\nfun waitWildcard(): Int = runBlocking { 1 }\n',
+  'Qualified.kt':
+    'package demo.extras\n\nfun waitQualified(): Int = kotlinx.coroutines.runBlocking { 1 }\n',
+  'Holder.kt': 'package demo.extras\n\nclass Holder(var count: Int)\n',
+  'convention.gradle.kts': 'println("a script next to the sources")\n',
+  'Hidden.kt':
+    '@file:Suppress("ktlint:standard:indent")\n\npackage demo.extras\n\nval pattern = "**/*.kt"\nval maybe: String? = "a"\n\n@get:Suppress("UnsafeCallOnNullableType")\nval size: Int get() = maybe!!.length\n\n/** end */\n',
+  'Compiler.kt':
+    'package demo.extras\n\n@Suppress("UNCHECKED_CAST", "unused")\nfun cast(value: Any): List<String> = value as List<String>\n',
+};
 
 let repository;
 let mixedRepository;
@@ -246,9 +279,15 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
     commitBranch('one-way-banned', ruleFixtures('banned'));
     commitBranch('one-way-allowed', ruleFixtures('allowed'));
-    commitBranch('one-way-config', {
+    commitBranch('one-way-hostile-config', {
       ...ruleFixtures('banned'),
-      'config/detekt/detekt.yml': USE_DATA_CLASS_OFF,
+      'config/detekt/detekt.yml': HOSTILE_DETEKT_CONFIG,
+      ...Object.fromEntries(
+        Object.entries(EXTRA_SOURCES).map(([name, text]) => [
+          `src/main/kotlin/demo/extras/${name}`,
+          text,
+        ]),
+      ),
     });
   });
 
@@ -393,12 +432,52 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       ]);
     });
 
-    it('keeps a one-way rule on when the project switches it off in its detekt config', () => {
-      const result = diffOnce('one-way-config');
-      const record = kotlinRuleCases.find(({ id }) => id === 'recordClass');
+    it('keeps every one-way rule on when the project config switches rulesets off, lowers severities or excludes paths, and still runs with plugin rulesets', () => {
+      const result = diffOnce('one-way-hostile-config');
+      const missing = kotlinRuleCases
+        .filter(({ rule }) => rule !== SUPPRESSION_RULE)
+        .filter(
+          (testCase) =>
+            !detektFindingsOf(result.newEnforceable, testCase).some(
+              ({ rule }) => rule === testCase.rule,
+            ),
+        )
+        .map(({ id }) => id);
 
-      expect(detektFindingsOf(result.newEnforceable, record).map(({ rule }) => rule)).toEqual([
-        record.rule,
+      expect(missing).toEqual([]);
+    });
+
+    it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
+      const extras = diffOnce('one-way-hostile-config').newEnforceable.filter(({ path: file }) =>
+        file.includes('/demo/extras/'),
+      );
+
+      expect(
+        extras
+          .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
+          .map(({ path: file }) => path.basename(file))
+          .sort(),
+      ).toEqual(['Qualified.kt', 'Wildcard.kt']);
+      expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+    });
+
+    it('does not analyze a Kotlin script among the sources', () => {
+      const result = diffOnce('one-way-hostile-config');
+
+      expect(result.newFindings.some(({ path: file }) => file.endsWith('.kts'))).toBe(false);
+      expect(result.newFindings.some(({ rule }) => rule === 'gradle-failure')).toBe(false);
+    });
+
+    it('reports the suppressions that hide a detekt or ktlint rule, however they are written, and leaves compiler warnings alone', () => {
+      const result = diffOnce('one-way-hostile-config');
+
+      const suppressions = result.newEnforceable
+        .filter(({ rule, path: file }) => rule === SUPPRESSION_RULE && file.includes('/extras/'))
+        .map(({ path: file, identity }) => `${path.basename(file)} ${identity}`);
+
+      expect(suppressions.toSorted()).toEqual([
+        'Hidden.kt suppress:UnsafeCallOnNullableType',
+        'Hidden.kt suppress:ktlint:standard:indent',
       ]);
     });
 

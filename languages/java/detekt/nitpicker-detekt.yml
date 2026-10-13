@@ -1,22 +1,43 @@
 # Nitpicker's detekt rules for the Kotlin preset (detekt 1.23.8). Laid over detekt's defaults and over the
-# project's own detekt config, so a project cannot switch these rules off in detekt.yml: lift them per
+# project's own detekt config, so a project cannot switch these rules off, lower their severity or exclude
+# paths in detekt.yml: every rule below sets active, severity, includes and excludes itself. Lift them per
 # path with "exceptions" in nitpicker.config.json. The rule list is languages/java/adapters/kotlin-rules.mjs.
 # Rules here that need type resolution run because the detekt task passes the module's classpath.
 
 potential-bugs:
+  active: true
+  excludes: []
+  includes: []
   UnsafeCallOnNullableType:
     active: true
+    severity: warning
     excludes: []
+    includes: []
   CastNullableToNonNullableType:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
 
 coroutines:
+  active: true
+  excludes: []
+  includes: []
   GlobalCoroutineUsage:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
 
 style:
+  active: true
+  excludes: []
+  includes: []
   ForbiddenMethodCall:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
     methods:
       - value: 'kotlin.run'
         reason: 'Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.'
@@ -24,17 +45,31 @@ style:
         reason: 'Use `apply` to configure an object (`StringBuilder().apply { ... }`), or call the members on the receiver.'
       - value: 'kotlin.also'
         reason: 'Use `apply` to configure an object, or write a plain statement after it.'
-  ForbiddenImport:
-    active: true
-    imports:
-      - 'kotlinx.coroutines.runBlocking'
+      - value: 'kotlinx.coroutines.runBlocking'
+        reason: 'Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.'
   UnnecessaryLet:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
   UnnecessaryApply:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
   UseLet:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
   UseDataClass:
     active: true
+    severity: warning
+    excludes: []
+    includes: []
+    allowVars: true
   DataClassShouldBeImmutable:
     active: true
+    severity: warning
+    excludes: []
+    includes: []

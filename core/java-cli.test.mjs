@@ -432,21 +432,23 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
 
   describe('exceptions for one-way rules', () => {
-    const importRule = 'detekt.style.ForbiddenImport';
+    const callRule = 'detekt.style.ForbiddenMethodCall';
+    const forbidden =
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
     const withExceptions = (exceptions) => `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
     const exception = {
-      rule: importRule,
+      rule: callRule,
       paths: ['src/main/kotlin/demo/K.kt'],
       reason: 'The entry point blocks on its coroutine.',
     };
     const added = {
-      'detekt.txt': `Legacy magic number\n${importRule} :: The import has been forbidden.\n`,
+      'detekt.txt': `Legacy magic number\n${callRule} :: ${forbidden}\n`,
     };
 
     it('fails a new finding of a one-way rule and hands it the allowed form and the exception route', () => {
       const root = kotlinRepository();
       write(root, added);
-      commit(root, 'add a forbidden import');
+      commit(root, 'add a forbidden call');
 
       const result = run(root);
 
@@ -454,12 +456,11 @@ describe('nitpicker with "preset": "kotlin"', () => {
       expect(result.json('new-findings.json')).toEqual([
         {
           tool: 'detekt',
-          rule: importRule,
+          rule: callRule,
           path: 'src/main/kotlin/demo/K.kt',
-          identity: 'fp:nitpicker/subject=The import has been forbidden.',
+          identity: `fp:nitpicker/subject=${forbidden}`,
           location: { line: 4 },
-          message:
-            'The import has been forbidden. Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenImport in nitpicker.config.json.',
+          message: `${forbidden} To allow it on specific paths, add an "exceptions" entry for rule ${callRule} in nitpicker.config.json.`,
           classification: 'enforceable',
         },
       ]);
@@ -468,7 +469,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     it('passes the same change when nitpicker.config.json lists an exception for the path', () => {
       const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([exception]) });
       write(root, added);
-      commit(root, 'add a forbidden import');
+      commit(root, 'add a forbidden call');
 
       const result = run(root, [], { subprocess: true });
 
@@ -479,7 +480,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
       const other = { ...exception, paths: ['src/main/kotlin/other/**'] };
       const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([other]) });
       write(root, added);
-      commit(root, 'add a forbidden import');
+      commit(root, 'add a forbidden call');
 
       const result = run(root, [], { subprocess: true });
 

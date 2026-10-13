@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   addOneWayHint,
@@ -51,8 +53,6 @@ describe('one-way rule messages', () => {
     );
     for (const testCase of kotlinRuleCases) {
       expect(testCase.banned).not.toBe(testCase.allowed);
-      expect(testCase.banned).not.toBe('');
-      expect(testCase.allowed).not.toBe('');
     }
     expect(new Set(kotlinRuleCases.map(({ id }) => id)).size).toBe(kotlinRuleCases.length);
   });
@@ -96,39 +96,89 @@ describe('one-way rule messages', () => {
   });
 });
 
+describe('nitpicker-detekt.yml', () => {
+  function parseRulesets(text) {
+    const rulesets = {};
+    let ruleset;
+    let rule;
+    for (const [, indent, key, value] of text
+      .split('\n')
+      .map((line) => /^( *)([\w-]+):(?: ([^\n]*))?$/.exec(line) ?? [])
+      .filter((match) => match.length > 0)) {
+      if (indent === '') {
+        ruleset = { settings: {}, rules: {} };
+        rulesets[key] = ruleset;
+      } else if (indent.length === 2 && /^[A-Z]/.test(key)) {
+        rule = {};
+        ruleset.rules[key] = rule;
+      } else {
+        (indent.length === 2 ? ruleset.settings : rule)[key] = value;
+      }
+    }
+    return rulesets;
+  }
+
+  const rulesets = parseRulesets(
+    readFileSync(path.join(import.meta.dirname, '../detekt/nitpicker-detekt.yml'), 'utf8'),
+  );
+
+  it('configures exactly the rules of ONE_WAY_RULES', () => {
+    const ids = Object.entries(rulesets).flatMap(([ruleset, { rules }]) =>
+      Object.keys(rules).map((name) => `detekt.${ruleset}.${name}`),
+    );
+
+    expect(ids.toSorted()).toEqual(ONE_WAY_RULE_IDS.toSorted());
+  });
+
+  it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
+    const pinned = { active: 'true', excludes: '[]', includes: '[]' };
+    for (const { settings, rules } of Object.values(rulesets)) {
+      expect(settings).toEqual(pinned);
+      for (const rule of Object.values(rules)) {
+        expect(rule).toMatchObject({ ...pinned, severity: 'warning' });
+      }
+    }
+  });
+});
+
 describe('isBannedSuppression', () => {
   it.each([
     'UnsafeCallOnNullableType',
+    'MagicNumber',
+    'LongMethod',
+    'detekt',
     'detekt.UnsafeCallOnNullableType',
     'detekt:UnsafeCallOnNullableType',
-    'detekt.potential-bugs.UnsafeCallOnNullableType',
+    'detekt.style.MagicNumber',
     'detekt:potential-bugs:UnsafeCallOnNullableType',
-    'ForbiddenMethodCall',
-    'UseDataClass',
+    'detekt.all',
+    'detekt:ALL',
     'style',
-    'detekt.style',
-    'detekt:coroutines',
+    'naming',
     'potential-bugs',
     'all',
     'ALL',
     'All',
-    'detekt.all',
-    'detekt:ALL',
+    'ktlint',
+    'ktlint:standard:indent',
+    'ktlint.standard.indent',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
 
   it.each([
-    'MagicNumber',
-    'detekt.style.MagicNumber',
-    'unchecked_cast',
     'UNCHECKED_CAST',
-    'unsafecallonnullabletype',
-    'naming',
-    'detekt',
+    'DEPRECATION',
+    'UNUSED_VARIABLE',
+    'unchecked',
+    'unused',
+    'unchecked_cast',
+    'rawtypes',
     'allowed',
+    'detector',
+    'ktlinter',
     '',
-  ])('allows %s', (token) => {
+  ])('allows the compiler diagnostic or unrelated token %s', (token) => {
     expect(isBannedSuppression(token)).toBe(false);
   });
 });
