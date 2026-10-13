@@ -1,10 +1,11 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readDuplicateFindings } from './python-duplicates.mjs';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
+import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
@@ -20,6 +21,11 @@ function readReport(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
 }
 
+function readSource(projectRoot, file) {
+  const absolute = path.join(projectRoot, file);
+  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+}
+
 export function readPythonFindings({ projectRoot, reportRoot }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
@@ -29,6 +35,10 @@ export function readPythonFindings({ projectRoot, reportRoot }) {
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
+        roots,
+        sourceText: (file) => readSource(projectRoot, file),
+      }).findings,
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),

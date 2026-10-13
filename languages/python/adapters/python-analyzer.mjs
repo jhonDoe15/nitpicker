@@ -83,6 +83,7 @@ export function createPythonAnalyzer(settings = {}) {
       'ruff-format',
       'black',
       'coverage',
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',
