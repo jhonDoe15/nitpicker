@@ -437,7 +437,7 @@ with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do
 honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
 evaluates constant expressions there, so nitpicker reports each such annotation, and any whose
 arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
-`languages/java/adapters/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
+`languages/java/adapters/suppressions/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.
@@ -494,7 +494,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
 placement need a cross-class view and come with nitpicker's ArchUnit rules.
 
-**Tests.** `java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+**Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must

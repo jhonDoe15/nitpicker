@@ -13,6 +13,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
+import { JAVA_TOOLS } from '../languages/java/adapters/gradle-presets.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../languages/java/adapters/kotlin-options.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
@@ -828,22 +829,7 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual([
-      'pmd',
-      'spotbugs',
-      'archunit',
-      'google-java-format',
-      'jacoco',
-      'checkstyle',
-      'crap',
-      'duplicates',
-      'pit',
-      'structure',
-      'coupling',
-      'detekt',
-      'ktlint',
-      'ktfmt',
-    ]);
+    expect(analyzer.reportedTools).toEqual([...JAVA_TOOLS, 'detekt', 'ktlint', 'ktfmt']);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');

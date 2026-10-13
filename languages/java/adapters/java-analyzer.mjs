@@ -33,7 +33,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/kotlin-tools.mjs',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
-  'languages/java/adapters/java-suppressions.mjs',
+  'languages/java/adapters/suppressions/java-suppressions.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/file-limits.mjs',
