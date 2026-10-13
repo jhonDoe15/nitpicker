@@ -20,10 +20,13 @@ start; the gate is a backstop.
    PATH (or `NITPICKER_GRADLE=./gradlew`) and `lizard==1.24.1` installed.
 4. Act on the exit code:
    - 0: done.
-   - 1: fix every new finding (printed as `tool/rule path:line`), then rerun.
+   - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
+     them, then rerun.
    - 2: no new findings, but a tool failed (Gradle, a missing lizard, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
+5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, config `exclude`/`disable`, legacy entries,
+   or weakened tests. If a finding seems wrong, stop and ask.
 
 ## Write it this way
 
@@ -44,11 +47,17 @@ start; the gate is a backstop.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
-- Utility classes: no private constructor (it counts as an untested method, `crap-coverage-unknown`).
-  Use a final class of static methods with the implicit constructor, or instance methods.
+- Utility classes: no empty private no-arg constructor. JaCoCo leaves it out of its report, so it
+  fails `crap-coverage-unknown`. Use a final class of static methods with the implicit constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
   less stable one (`stability-direction`).
+- Names and declarations: abbreviations are words (`parseUrl`, `HttpClient`, `userId`, never
+  `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
+  overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
+  never call `System.exit`. A trailing array parameter is varargs (`String... names`).
+- Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
+  every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - A project's own `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` replaces the
   default PMD rules (errorprone, bestpractices; main sources only) and Google checks. Read them.
 
@@ -64,13 +73,14 @@ start; the gate is a backstop.
 
 ## Structure limits
 
-- A method: at most 50 lines, 15 statements, control nesting 2, 3 parameters (lambda bodies count
+- A method in main sources: at most 50 lines, 15 statements, control nesting 2, 3 parameters (lambda bodies count
   toward the method). Return early instead of nesting; past 3 parameters, pass a `record`.
 - A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
   test files directly in it; group the rest into sub-packages.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
-- A new clone of 5 lines or 50 tokens or more (`duplicate-clone`) fails: extract a method.
+- A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
+  a method.
 
 ## Tests
 
@@ -80,8 +90,8 @@ start; the gate is a backstop.
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it.
-- PMD, SpotBugs and Checkstyle read main sources only; the size limits and format also apply to
-  tests.
+- PMD, SpotBugs, Checkstyle, the formatter, the method limits, CRAP and duplicate detection read
+  main sources only. Tests get only the file (500 lines) and folder (6 files) limits.
 
 ## Editing existing code
 
@@ -101,11 +111,12 @@ start; the gate is a backstop.
   `folder-files-limit`). `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings` and
   `// CHECKSTYLE:OFF` are not blocked today, but never add one, nor a config `exclude`, `disable`,
   `thresholds` or legacy entry, nor a weaker test, to get past the gate.
-- A violated ArchUnit rule fails the gate (some versions report it as exit 2 "unexpected tool
-  archunit"); run that test class to see the violation, and fix the code.
+- A violated ArchUnit rule currently stops the gate with exit 2 ("unexpected tool archunit"). Run
+  the `*ArchTest` class with Gradle to read the violation, and fix the code.
 - If a finding looks wrong, stop and ask.
 
 ## Kotlin projects
 
-Under `"preset": "kotlin"` the Java sources get the same checks; Kotlin sources follow the Kotlin
-section of the nitpicker skill.
+Under the kotlin preset the Java sources get the same checks. Kotlin sources follow the
+`nitpicker-kotlin` skill; if it isn't installed, install it with
+`npx skills add jhonDoe15/nitpicker --skill nitpicker-kotlin`.

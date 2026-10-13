@@ -11,7 +11,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 This is for `"preset": "javascript"` in `nitpicker.config.json`: plain `.js`, `.mjs` and `.cjs` files
 whose types are written as JSDoc and checked by TypeScript (`checkJs`). The rules are the TypeScript
 preset's, with the type syntax written in JSDoc. A `.ts`, `.mts` or `.cts` file in the same project
-follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), not this page.
+follows the full TypeScript rules (no `as`, `enum`, `interface`, `any`, `!`), not this page: install
+`nitpicker-typescript` too (`npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript`).
 
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
@@ -56,6 +57,8 @@ If your change edits a function that existed before it, read
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.
 - Shared code lives in `src/main/shared/` and does not import features.
+- Export only what another module imports: an exported function or `@typedef` that nothing imports
+  fails dead-code.
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
   outside the preset.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
@@ -109,6 +112,8 @@ line) is a finding.
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
+  extract a function.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
