@@ -3,12 +3,15 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
+import { calculateCrap, ingestCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 const SOURCE_ROOTS = ['src/main/java'];
-const ingest = (csv = fixture('lizard.csv'), xml = fixture('jacoco-crap.xml'), options = {}) =>
-  ingestCrap(csv, xml, { sourceRoots: SOURCE_ROOTS, ...options }).findings;
+const structure = () => JSON.parse(fixture('structure.json'));
+const withComplexity = (name, complexity) =>
+  structure().map((entry) => (entry.name === name ? { ...entry, complexity } : entry));
+const ingest = (entries = structure(), xml = fixture('jacoco-crap.xml'), options = {}) =>
+  ingestCrap(entries, xml, { sourceRoots: SOURCE_ROOTS, ...options }).findings;
 
 describe('ingestCrap', () => {
   it('computes CRAP as ccn^2 * (1 - coverage)^3 + ccn', () => {
@@ -21,8 +24,8 @@ describe('ingestCrap', () => {
     const findings = ingest();
 
     expect(findings.map((f) => `${f.rule} ${f.symbol}`)).toEqual([
-      'crap-score-limit Calc::classify( int a , int b , String s)',
-      'crap-coverage-unknown Calc::Inner::get( int a)',
+      'crap-score-limit Calc.classify(int, int, String)',
+      'crap-coverage-unknown Calc.Inner.get(int)',
     ]);
     expect(findings.every((f) => f.tool === 'crap' && f.classification === 'enforceable')).toBe(
       true,
@@ -34,11 +37,11 @@ describe('ingestCrap', () => {
 
   it('joins constructors, anonymous-class methods and uses the lower of line and branch coverage', () => {
     // run(): ccn 2, 100% lines but 50% branches -> CRAP 2.5; the constructor matches `<init>`.
-    expect(ingest().some((f) => f.symbol.includes('run') || f.symbol.includes('Calc::Calc'))).toBe(
+    expect(ingest().some((f) => f.symbol.includes('run') || f.symbol.includes('Calc.Calc'))).toBe(
       false,
     );
-    const higher = fixture('lizard.csv').replace('3,2,22,0,3,', '3,8,22,0,3,');
-    expect(ingest(higher).map((f) => f.symbol)).toContain('Calc::Calc::anon.run()');
+    const higher = withComplexity('Calc.<anonymous>.run', 8);
+    expect(ingest(higher).map((f) => f.symbol)).toContain('Calc.<anonymous>.run()');
   });
 
   it('treats CRAP exactly at the limit as a failure, like the TypeScript check', () => {
@@ -56,11 +59,8 @@ describe('ingestCrap', () => {
   });
 
   it('never puts a line number in the identity, and numbers repeated identities', () => {
-    const csv = fixture('lizard.csv');
-    const shifted = csv.replaceAll(
-      /,(\d+),(\d+)$/gm,
-      (_, a, b) => `,${Number(a) + 40},${Number(b) + 40}`,
-    );
+    const entries = structure();
+    const shifted = entries.map((e) => ({ ...e, start: e.start + 40, end: e.end + 40 }));
     const xml = fixture('jacoco-crap.xml').replace(
       / line="(\d+)"/g,
       (_, n) => ` line="${Number(n) + 40}"`,
@@ -71,34 +71,32 @@ describe('ingestCrap', () => {
       expect(finding.identity).not.toMatch(/\d{2,}/);
     }
 
-    const twice = `${csv}${csv.split('\n')[1]}\n`;
+    const twice = [...entries, entries[1]];
     expect(new Set(ingest(twice).map((f) => f.identity)).size).toBe(ingest(twice).length);
   });
 
   describe('an edited method over the limit', () => {
     const scoreFinding = (findings) => findings.find((f) => f.rule === 'crap-score-limit');
-    const withHash = (sourceHash, csv = fixture('lizard.csv')) =>
-      ingest(csv, undefined, { sourceHash: () => sourceHash });
-    const edit = (headCsv) =>
+    const withHash = (sourceHash, entries = structure()) =>
+      ingest(entries, undefined, { sourceHash: () => sourceHash });
+    const edit = (headEntries) =>
       compareFindings({
         baseFindings: withHash('before'),
-        headFindings: withHash('after', headCsv),
+        headFindings: withHash('after', headEntries),
       });
 
     it('keys the score finding by the method source and ratchets on the method alone', () => {
       const finding = scoreFinding(withHash('abc'));
 
-      expect(finding.identity).toBe(
-        'function:Calc::classify( int a , int b , String s):source:abc',
-      );
+      expect(finding.identity).toBe('function:Calc.classify(int, int, String):source:abc');
       expect(finding.ratchet).toMatchObject({
-        key: 'function:Calc::classify( int a , int b , String s):crap',
+        key: 'function:Calc.classify(int, int, String):crap',
         value: expect.any(Number),
       });
     });
 
     it('stays baselined when the score is unchanged', () => {
-      const result = edit(fixture('lizard.csv'));
+      const result = edit(structure());
 
       expect(result.newFindings).toEqual([]);
       expect(result.unchangedFindings.map((f) => f.rule)).toEqual([
@@ -108,29 +106,40 @@ describe('ingestCrap', () => {
     });
 
     it('stays baselined when the score fell', () => {
-      const result = edit(fixture('lizard.csv').replace('13,9,109', '13,8,109'));
+      const result = edit(withComplexity('Calc.classify', 8));
 
       expect(result.newFindings).toEqual([]);
     });
 
     it('fails when the score rose, and says from what', () => {
-      const result = edit(fixture('lizard.csv').replace('13,9,109', '13,10,109'));
+      const result = edit(withComplexity('Calc.classify', 10));
 
       expect(scoreFinding(result.newFindings).message).toBe(
-        'Calc::classify( int a , int b , String s) CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests.',
+        'Calc.classify(int, int, String) CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests.',
       );
     });
 
     it('does not key a method with unknown coverage by its source', () => {
       const unknown = withHash('abc').find((f) => f.rule === 'crap-coverage-unknown');
 
-      expect(unknown.identity).toBe('function:Calc::Inner::get( int a)');
+      expect(unknown.identity).toBe('function:Calc.Inner.get(int)');
     });
   });
 
+  it('leaves out a private empty constructor, which JaCoCo omits from its report', () => {
+    const [util] = structure().filter((e) => e.name === 'Calc.Util.Util');
+    const reported = ingest([{ ...util, privateEmptyConstructor: false }]);
+
+    expect(reported.map((f) => `${f.rule} ${f.symbol}`)).toEqual([
+      'crap-coverage-unknown Calc.Util.Util()',
+    ]);
+    expect(ingest([util])).toEqual([]);
+    expect(ingest().some((f) => f.symbol.includes('Util'))).toBe(false);
+  });
+
   it('rejects malformed input', () => {
-    expect(() => parseLizardCsv('a,b,c')).toThrow('Unrecognized lizard CSV row');
-    expect(() => ingestCrap('', '<x/>')).toThrow('<report>');
-    expect(ingest('')).toEqual([]);
+    expect(() => ingest([{ name: 'A.a', file: 'a' }])).toThrow('without complexity: A.a');
+    expect(() => ingestCrap([], '<x/>')).toThrow('<report>');
+    expect(ingest([])).toEqual([]);
   });
 });

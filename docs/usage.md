@@ -226,7 +226,8 @@ new enforceable findings fail. Exit codes, console summary, `new-findings.json`,
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
-Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
+Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
+project root has an executable one, else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
 presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines` and `folderFiles`), `exclude`
 (findings under the globs are dropped), `exceptions` and `legacyInventory`. A Java exception names

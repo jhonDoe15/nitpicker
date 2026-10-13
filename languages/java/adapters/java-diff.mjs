@@ -10,6 +10,7 @@ import {
   resolveComparison,
 } from '../../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
+import { gradleCommand, spawnTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy, PROJECT_TOOL_CONFIGS } from './java-policy.mjs';
@@ -49,29 +50,24 @@ export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyR
   });
 }
 
-function runJavaPreset(
-  projectRoot,
-  { gradle = 'gradle', initScript = INIT_SCRIPT, policy = {} } = {},
-) {
-  const result = spawnSync(
-    gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      ...kotlinProperties(projectRoot, policy),
-      ...toolConfigProperties(projectRoot, policy),
-      '-I',
-      initScript,
-      'nitpickerJava',
-    ],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: GRADLE_TIMEOUT_MS,
-    },
-  );
+function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
+  const target = spawnTarget(gradleCommand(projectRoot, gradle), [
+    '--console=plain',
+    '--quiet',
+    '--no-configuration-cache',
+    ...kotlinProperties(projectRoot, policy),
+    ...toolConfigProperties(projectRoot, policy),
+    '-I',
+    initScript,
+    'nitpickerJava',
+  ]);
+  const result = spawnSync(target.command, target.args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: GRADLE_TIMEOUT_MS,
+  });
   if (result.error !== undefined) {
     throw result.error;
   }

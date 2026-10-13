@@ -22,6 +22,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-runner.mjs',
   'languages/java/adapters/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',
+  'languages/java/adapters/gradle-wrapper/gradle-command.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
   'languages/java/adapters/kotlin-metrics.mjs',
   'languages/java/adapters/kotlin-options.mjs',

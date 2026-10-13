@@ -7,8 +7,8 @@ export function calculateCrap(complexity, coveragePercent) {
   return complexity * complexity * uncovered ** 3 + complexity;
 }
 
-export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+export function ingestCrap(structure, jacocoXml, options = {}) {
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -52,6 +52,24 @@ export function ingestCrapRows(parsed, options, resolve) {
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function structureFunctions(entries) {
+  return entries
+    .filter((entry) => entry.privateEmptyConstructor !== true)
+    .map((entry) => {
+      if (!Number.isInteger(entry.complexity)) {
+        throw new TypeError(`Structure entry without complexity: ${entry.name}`);
+      }
+      return {
+        ccn: entry.complexity,
+        file: entry.file,
+        name: entry.name.split('.').at(-1),
+        longName: entry.signature ?? entry.name,
+        start: entry.start,
+        end: entry.end,
+      };
+    });
 }
 
 export function parseLizardCsv(text) {
@@ -143,9 +161,8 @@ function counter(element, type) {
 }
 
 function selectNamedMethods(fn, candidates) {
-  const methodName = fn.name.split('::').at(-1);
   return candidates.filter(
-    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
   );
 }
 
