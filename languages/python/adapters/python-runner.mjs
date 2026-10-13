@@ -73,6 +73,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       projectRoot,
       reportRoot,
       crapLimit: policy.crapLimit,
+      policy,
     });
     return applyFindingPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,

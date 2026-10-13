@@ -37,7 +37,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--duplicate-skipped-folders <json array>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -106,6 +106,7 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
+      fileLimits: parseFileLimits(values.get('--file-limits')),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -134,8 +135,20 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--kotlin-detekt-config',
+  '--file-limits',
   '--duplicate-skipped-folders',
 ];
+
+function parseFileLimits(text) {
+  if (text === undefined) {
+    return undefined;
+  }
+  const parsed = JSON.parse(text);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('--file-limits must be a JSON object');
+  }
+  return parsed;
+}
 
 function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);

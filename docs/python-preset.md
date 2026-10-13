@@ -53,7 +53,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
 - **Ingesters.** The generic ingesters live in `shared/ingest/` and are shared with the Gradle
   presets: `sarif.mjs` (ruff), `format-check.mjs` (the format check), `common.mjs`,
-  `lizard-crap.mjs`, `prepare-sarif.mjs` and `structure-report.mjs`.
+  `lizard-crap.mjs` and `prepare-sarif.mjs`.
   The one new ingester is `languages/python/ingest/coverage-json.mjs` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
   `shared/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
@@ -112,11 +112,13 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3), `exclude` (findings under the globs are
-dropped) and `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the
-`python` object below. `layout` and the top-level `exceptions` describe TypeScript source roots and
-ESLint rules and stay a config error with this preset; the Python equivalent of `exceptions` is
-`python.exceptions`. `python` is an error with any other preset.
+`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
+below. `layout` describes TypeScript source roots and stays a config error with this preset. The
+top-level `exceptions` is accepted only for the file limits shared by every language
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
+`exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
 {
@@ -340,6 +342,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 
 ## Slice 3: structure limits and CRAP
 
+- **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
+  file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
+  module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
+  file or folder already over a limit fails only when it grows, and a folder moved to a new path is
+  matched to its old path.
 - **Rules.** The shared structure rule (`shared/rules/structure.mjs`) and CRAP rule
   (`shared/rules/crap.mjs`) run on Python with the TypeScript and Java ids, limits and messages:
   `function-lines-limit` (50), `function-statements-limit` (15), `function-control-nesting-limit`

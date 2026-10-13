@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { layoutJscpdConfig } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
@@ -95,7 +95,7 @@ describe('duplicate-code report', () => {
   it('analyses the folders the project takes off the skipped list', () => {
     const ignore = layoutJscpdConfig(
       JSON.parse(readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8')),
-      resolveLayout(undefined, [], { duplicateSkippedFolders: ['dist'] }),
+      resolveLayoutFor({ duplicates: { skippedFolders: ['dist'] } }),
     ).ignore;
     const { result, report } = analyzeFixture('excluded', ['--ignore', ignore.join(',')]);
 

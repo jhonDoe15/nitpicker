@@ -164,8 +164,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`). It is the
-    only threshold the Java preset enforces (branch coverage and duplicates have fixed limits).
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+    `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
+    the main and test source sets (branch coverage and duplicates have fixed limits). Line length
+    is Checkstyle's; `thresholds.lineLength` is a config error.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -173,8 +175,9 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `layout` and `exceptions` configure TypeScript source roots and ESLint rules; they have no Java
-    meaning and stay a config error with `"preset": "java"` instead of being ignored.
+  - `layout` and ESLint `exceptions` configure TypeScript source roots and rules; they have no Java
+    meaning and stay a config error with `"preset": "java"` instead of being ignored. `exceptions`
+    for `file-lines-limit` and `folder-files-limit` are accepted.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -353,16 +356,16 @@ resolved plus a new finding, as in the TypeScript check.
   (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
-- **Findings.** `shared/ingest/structure-report.mjs` (shared with Python) hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `structure-report.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
-- **Tests.** `shared/ingest/structure-report.test.mjs` (fast: limits, messages, identity stability);
+- **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy
   oversize method baselined.
 

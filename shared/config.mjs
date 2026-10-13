@@ -8,8 +8,20 @@ import path from 'node:path';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
-/** Thresholds a project can set; both languages enforce a CRAP limit. */
-export const THRESHOLD_KEYS = ['crapLimit'];
+/** Thresholds a project can set; the file limits take whole numbers. */
+export const THRESHOLD_KEYS = [
+  'crapLimit',
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+];
+const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+]);
 
 const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
 
@@ -43,6 +55,9 @@ export function validateThresholds(thresholds) {
     }
     if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
       throw configError(`"thresholds.${key}" must be a positive number`);
+    }
+    if (WHOLE_NUMBER_THRESHOLD_KEYS.has(key) && !Number.isInteger(value)) {
+      throw configError(`"thresholds.${key}" must be a whole number`);
     }
   }
 }
@@ -78,6 +93,11 @@ function validateSkippedFolders(folders) {
   if (new Set(folders).size !== folders.length) {
     throw configError('"duplicates.skippedFolders" must not contain duplicates');
   }
+}
+
+/** Whether every `exceptions` entry lifts one of `rules` (the file limits a non-ESLint preset honours). */
+export function liftsOnlyRules(exceptions, rules) {
+  return Array.isArray(exceptions) && exceptions.every((entry) => rules.includes(entry?.rule));
 }
 
 export function validateProjectRelativePath(value, name) {

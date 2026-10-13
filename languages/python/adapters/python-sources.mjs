@@ -4,7 +4,7 @@ import {
   PYTHON_SKIPPED_FOLDERS,
   skippedFolderGlobs,
 } from '../../../core/tooling/jscpd/skipped-folders.mjs';
-import { sourceLines } from '../../../shared/ingest/structure-report.mjs';
+import { sourceLines } from '../../java/adapters/java-structure.mjs';
 import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
