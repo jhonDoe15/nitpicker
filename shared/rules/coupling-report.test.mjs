@@ -61,6 +61,41 @@ describe('coupling report on a neutral module graph', () => {
     ]);
   });
 
+  describe('type-only edges', () => {
+    const modules = ['p1/a', 'p2/a', 'stable/s', 'volatile/v', 'leaf/q'];
+    const edges = [
+      { source: 'p1/a', target: 'stable/s' },
+      { source: 'p2/a', target: 'stable/s' },
+      { source: 'volatile/v', target: 'leaf/q' },
+    ];
+    const reportWith = (...extra) =>
+      buildCouplingReport({ modules, edges: [...edges, ...extra], packageOf, fileOf });
+    const inversion = { source: 'stable/s', target: 'volatile/v' };
+
+    it('count in the metrics but not in the stability direction', () => {
+      const report = reportWith({ ...inversion, kind: 'type-only' });
+
+      expect(report.summary.dependencies).toBe(4);
+      expect(report.modules.find(({ file }) => file === 'stable/s.py')).toEqual({
+        file: 'stable/s.py',
+        fanIn: 2,
+        fanOut: 1,
+        totalCoupling: 3,
+        instability: 0.3333,
+      });
+      expect(report.stabilityDirection).toEqual([]);
+    });
+
+    it('are runtime edges once any copy of the edge is a runtime edge', () => {
+      const typeOnly = { ...inversion, kind: 'type-only' };
+      const expected = [{ source: 'stable', target: 'volatile', delta: 0.1667 }];
+
+      expect(reportWith(typeOnly, inversion).stabilityDirection).toEqual(expected);
+      expect(reportWith(inversion, typeOnly).stabilityDirection).toEqual(expected);
+      expect(reportWith(typeOnly, typeOnly).summary.dependencies).toBe(4);
+    });
+  });
+
   it('orders packages by name', () => {
     const report = buildCouplingReport({
       modules: ['b/x', 'a/x', 'B/x'],

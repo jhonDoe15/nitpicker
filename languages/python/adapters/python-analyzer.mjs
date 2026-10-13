@@ -91,6 +91,7 @@ export function createPythonAnalyzer(settings = {}) {
       'coverage',
       'mypy',
       'pyright',
+      'basedpyright',
       'structure',
       'crap',
       RULES_TOOL,

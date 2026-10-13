@@ -121,6 +121,8 @@ const WEAKENED_PYRIGHT = JSON.stringify({
   exclude: ['src/demo/typed.py'],
   typeCheckingMode: 'off',
 });
+const BASEDPYRIGHT_PYPROJECT = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.basedpyright]\nreportMissingImports = true\n`;
+const WEAKENED_BASEDPYRIGHT = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.basedpyright]\ntypeCheckingMode = "off"\nignore = ["src/demo/typed.py"]\nexclude = ["src/demo/typed.py"]\n`;
 const CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
 const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${CLAMP}`;
 const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${CLAMP}`;
@@ -262,6 +264,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'src/demo/typed.py': TYPE_ERROR,
       'pyrightconfig.json': '{}\n',
     });
+    commitBranch(project, 'basedpyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyproject.toml': BASEDPYRIGHT_PYPROJECT,
+    });
+    commitBranch(project, 'weakened-basedpyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyproject.toml': WEAKENED_BASEDPYRIGHT,
+    });
     commitBranch(project, 'weakened-mypy', {
       'src/demo/typed.py': TYPE_ERROR,
       'pyproject.toml': WEAKENED_MYPY,
@@ -393,6 +403,23 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
+  });
+
+  it('runs basedpyright when the project configures it, in the same strict mode', () => {
+    const result = gate(project, 'basedpyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('summary.json').tools[0].version).toMatch(
+      /^ruff@[\d.]+;basedpyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
+    );
+    expect(withoutMutants(enforceable(result))).toEqual(['basedpyright reportReturnType typed.py']);
+  });
+
+  it('keeps checking when the project config switches basedpyright off for the file', () => {
+    const result = gate(project, 'weakened-basedpyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual(['basedpyright reportReturnType typed.py']);
   });
 
   it('keeps checking when the project config switches mypy off for the file', () => {
@@ -994,6 +1021,23 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
     });
+    const typeCheckingFiles = {
+      'src/shop/domain/pricing.py': `from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from shop.web import views\n\n\n${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    return "ok"\n\n\ndef shown(page: "views.Page") -> str:\n    return str(page)\n`,
+      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\nclass Page:\n    title = "shop"\n`,
+    };
+    commitBranch(project, 'type-checking-import', {
+      ...typeCheckingFiles,
+      'nitpicker.config.json':
+        '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
+    });
+    commitBranch(project, 'type-checking-contract', typeCheckingFiles);
+    commitBranch(project, 'type-checking-contract-excluded', {
+      ...typeCheckingFiles,
+      '.importlinter': LAYERED_FILES['.importlinter'].replace(
+        'root_package = shop\n',
+        'root_package = shop\nexclude_type_checking_imports = True\n',
+      ),
+    });
     commitBranch(project, 'contracts-off', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
       'nitpicker.config.json':
@@ -1062,6 +1106,23 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
           'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
       },
     ]);
+  });
+
+  it('does not count an import under if TYPE_CHECKING as a stability inversion', () => {
+    const result = gate(project, 'type-checking-import');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(newRules(result)).toEqual([]);
+  });
+
+  it('leaves an import under if TYPE_CHECKING to the project contracts', () => {
+    const broken = gate(project, 'type-checking-contract');
+    const excluded = gate(project, 'type-checking-contract-excluded');
+
+    expect(broken.exitCode, broken.text).toBe(1);
+    expect(newRules(broken)).toEqual(['import-linter contract-broken']);
+    expect(excluded.exitCode, excluded.text).toBe(0);
+    expect(newRules(excluded)).toEqual([]);
   });
 
   it('does not run the contracts when the config turns import-linter off', () => {

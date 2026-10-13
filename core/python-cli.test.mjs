@@ -370,8 +370,9 @@ describe('nitpicker with "preset": "python"', () => {
     const root = pythonRepository();
     rmSync(path.join(root, '.venv/bin/mypy'));
     rmSync(path.join(root, '.venv/bin/pyright'));
+    rmSync(path.join(root, '.venv/bin/basedpyright'));
     const broken = temporaryRoot('nitpicker-python-broken-checkers-');
-    for (const name of ['mypy', 'pyright']) {
+    for (const name of ['mypy', 'pyright', 'basedpyright']) {
       writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
     setEnvironment('PATH', `${broken}${path.delimiter}${process.env.PATH}`);

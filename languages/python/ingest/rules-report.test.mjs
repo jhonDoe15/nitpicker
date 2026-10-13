@@ -32,6 +32,7 @@ describe('rules script report', () => {
       entry({ rule: 'no-type-check', subject: 'Parser.parse' }),
       entry({ rule: 'not-type-checking', subject: 'if not TYPE_CHECKING' }),
       entry({ rule: 'stub-beside-source', subject: 'mod.pyi' }),
+      entry({ rule: 'swallowed-exception', subject: 'except ValueError' }),
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ message }) => message)).toEqual([
@@ -41,6 +42,7 @@ describe('rules script report', () => {
       '`Parser.parse` is excluded from type checking by `@no_type_check`',
       '`if not TYPE_CHECKING` hides code from the type checkers',
       '`mod.pyi` sits beside its source and replaces it for the checkers',
+      '`except ValueError` swallows the error',
     ]);
   });
 
