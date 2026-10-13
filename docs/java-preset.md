@@ -16,7 +16,7 @@ side contributes only two things: producing reports, and converting them into fi
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
-  -> languages/java/adapters/java-spring.mjs           (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
+  -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
 
@@ -437,7 +437,7 @@ with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do
 honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
 evaluates constant expressions there, so nitpicker reports each such annotation, and any whose
 arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
-`languages/java/adapters/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
+`languages/java/adapters/suppressions/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.
@@ -467,7 +467,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
 placement need a cross-class view and come with nitpicker's ArchUnit rules.
 
-**Tests.** `java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+**Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
@@ -479,8 +479,9 @@ Findings with tool `spring`, produced in Node from the project's `application.pr
 `application.yml`, `application.yaml` and `application-<profile>.(properties|yml|yaml)`. No JVM and
 no new dependency: `spring-config-parser.mjs` flattens properties and YAML (nested maps, dotted
 keys, comments, quotes, single-line flow maps and sequences, multi-document files) to dotted keys
-with their line, `spring-secrets.mjs` decides what counts as a literal secret, and `java-spring.mjs`
-applies the rules.
+with their line, `spring-config-files.mjs` finds the files and their profiles, `spring-secrets.mjs`
+decides what counts as a literal secret, and `java-spring.mjs` applies the rules (all in
+`languages/java/adapters/spring/`).
 
 - **Spring projects only.** The checks run only when `manifest.json` says `spring: true` (the
   compile classpath has `spring-context` or `spring-boot`, see Spring rules above). Quarkus,
@@ -542,8 +543,9 @@ applies the rules.
   followed.
 - **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
   order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
-  (key words, value judgement), `java-spring.test.mjs` (relaxed keys, every rule, profile
-  expressions, line stability, exceptions, the configuration hash) and `java-reports.test.mjs`
+  (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,
+  profile expressions, line stability, exceptions, the configuration hash), `java-spring-rules.test.mjs`
+  (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
 ## Slice 1: what is deliberately not included

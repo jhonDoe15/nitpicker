@@ -5,8 +5,8 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import { readInlineSuppressionFindings } from './java-suppressions.mjs';
-import { readSpringConfigFindings } from './java-spring.mjs';
+import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
+import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
   methodText,
   readJavaFileLimitFindings,
