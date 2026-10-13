@@ -15,12 +15,26 @@
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
 //   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
+//   no-mutmut.txt        the mutmut version probe fails
+//   mutmut-version.txt   the version the mutmut probe prints (default 3.8.0)
+//   mutants-data.json    { "<source path>": { "exitCodes": {...}, "mutated": "<text>" } }: what
+//                        `mutmut run` leaves in mutants/ (default: an empty mutants/)
+//   mutmut-exit.txt      exit status of `mutmut run` (default 0); 1 says no mutant is covered, any
+//                        other status says the clean test run failed
+//   mutmut-output.txt    what `mutmut run` prints instead of those messages
 //   import-scan.json     printed by the import scan script (default: no imports)
 //   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
 //                        exit status is 1 when the text says BROKEN
 // When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
 // PYTHONPATH.
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 
 const [tool, ...args] = process.argv.slice(2);
@@ -32,7 +46,13 @@ const valueOf = (flag) => args[args.indexOf(flag) + 1];
 if (process.env.FAKE_PYTHON_LOG !== undefined) {
   appendFileSync(
     process.env.FAKE_PYTHON_LOG,
-    `${JSON.stringify({ tool, args, cwd, pythonPath: process.env.PYTHONPATH ?? '' })}\n`,
+    `${JSON.stringify({
+      tool,
+      args,
+      cwd,
+      pythonPath: process.env.PYTHONPATH ?? '',
+      pytestAddopts: process.env.PYTEST_ADDOPTS,
+    })}\n`,
   );
 }
 
@@ -130,6 +150,13 @@ function lintImports() {
 }
 
 function python() {
+  if (args.join(' ').includes('"mutmut"')) {
+    if (existsSync('no-mutmut.txt')) {
+      process.exit(1);
+    }
+    process.stdout.write(`${lines('mutmut-version.txt')[0] ?? '3.8.0'}\n`);
+    return;
+  }
   if (args.some((argument) => argument.endsWith('import-scan.py'))) {
     process.stdout.write(
       existsSync('import-scan.json') ? readFileSync('import-scan.json', 'utf8') : '{}',
@@ -162,5 +189,44 @@ function lizard() {
   }
 }
 
-const tools = { ruff, black, coverage, python, lizard, 'lint-imports': lintImports };
+const MUTMUT_MESSAGES = {
+  0: '',
+  1: 'Stopping early, because we could not find any test case for any mutant.\n',
+};
+
+function seededMutants() {
+  return existsSync('mutants')
+    ? readdirSync('mutants', { recursive: true }).filter((file) => file.endsWith('.meta'))
+    : [];
+}
+
+function mutmut() {
+  if (process.env.FAKE_PYTHON_LOG !== undefined) {
+    appendFileSync(
+      process.env.FAKE_PYTHON_LOG,
+      `${JSON.stringify({ tool: 'mutmut-seeded', seeded: seededMutants() })}\n`,
+    );
+  }
+  const data = existsSync('mutants-data.json')
+    ? JSON.parse(readFileSync('mutants-data.json', 'utf8'))
+    : {};
+  mkdirSync('mutants', { recursive: true });
+  for (const [file, { exitCodes, mutated }] of Object.entries(data)) {
+    mkdirSync(path.dirname(path.join('mutants', file)), { recursive: true });
+    writeFileSync(
+      path.join('mutants', `${file}.meta`),
+      JSON.stringify({ exit_code_by_key: exitCodes }),
+    );
+    writeFileSync(path.join('mutants', file), mutated);
+  }
+  const status = Number(lines('mutmut-exit.txt')[0] ?? 0);
+  process.stdout.write(
+    existsSync('mutmut-output.txt')
+      ? readFileSync('mutmut-output.txt', 'utf8')
+      : (MUTMUT_MESSAGES[status] ?? 'Failed to run clean test\n'),
+  );
+  process.exit(status);
+}
+
+const tools = { ruff, black, coverage, python, lizard, mutmut, 'lint-imports': lintImports };
 tools[tool]();

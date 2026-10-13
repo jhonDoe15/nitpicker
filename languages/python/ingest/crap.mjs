@@ -3,11 +3,12 @@ import { normalizeReportPath } from '../../java/ingest/common.mjs';
 
 export function ingestPythonCrap(lizardCsv, coverageJson, options = {}) {
   const files = coverageFiles(coverageJson, options.roots ?? [undefined]);
-  const rows = parseLizardCsv(lizardCsv).map((row) => ({
+  const parsed = parseLizardCsv(lizardCsv);
+  const rows = parsed.map((row) => ({
     ...row,
     path: normalizeReportPath(row.file, options.root),
   }));
-  return ingestCrapRows(lizardCsv, options, (fn, filePath) => {
+  return ingestCrapRows(parsed, options, (fn, filePath) => {
     const data = files.get(filePath);
     if (data === undefined) {
       return { name: fn.name };
