@@ -23,7 +23,7 @@
 //   build/nitpicker/ktfmt.txt     ktfmt: one Kotlin file needing a reformat per line (when it is ktfmt)
 //   build/nitpicker/kotlin-metrics.json per-function lines, statements, control nesting, parameters and complexity, and the
 //                                       JVM class names of each file (languages/java/gradle/KotlinMetrics.java)
-// and manifest.json gains kotlin, kotlinSourceRoots and kotlinFormatter. The Nitpicker side decides
+// and manifest.json gains kotlin, kotlinSourceRoots, kotlinTestSourceRoots and kotlinFormatter. The Nitpicker side decides
 // the formatter, the ktfmt style and the detekt config and passes them as the properties
 // nitpicker.kotlin.formatter (ktlint, ktfmt or none), nitpicker.kotlin.ktfmtStyle (kotlinlang,
 // google or meta), nitpicker.kotlin.editorconfig (true when the project has an .editorconfig) and
@@ -426,12 +426,14 @@ allprojects {
         if (kotlinPreset) {
             plugins.withId('org.jetbrains.kotlin.jvm') {
                 def relative = { File file -> projectDir.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
-                def kotlinSourceDirs = {
+                def kotlinSourceDirsOf = { String sourceSet ->
                     def generated = layout.buildDirectory.get().asFile.toPath()
-                    project.kotlin.sourceSets.getByName('main').kotlin.srcDirs.findAll {
+                    def kotlinSourceSet = project.kotlin.sourceSets.findByName(sourceSet)
+                    (kotlinSourceSet == null ? [] : kotlinSourceSet.kotlin.srcDirs).findAll {
                         it.exists() && it.toPath().startsWith(projectDir.toPath()) && !it.toPath().startsWith(generated)
                     }.sort()
                 }
+                def kotlinSourceDirs = { kotlinSourceDirsOf('main') }
                 def kotlinFiles = {
                     kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
                 }
@@ -634,6 +636,7 @@ allprojects {
                         manifest.sourceRoots = sourceSets.main.java.srcDirs.collect { relative(it) }
                         manifest.kotlin = true
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
+                        manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
                         manifestFile.text = groovy.json.JsonOutput.toJson(manifest)
                     }
