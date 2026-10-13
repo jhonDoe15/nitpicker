@@ -21,3 +21,19 @@ function hintedDescriptor(descriptor, hint) {
     ? descriptor
     : { ...descriptor, message: `${descriptor.message}${hint}` };
 }
+
+export function withoutFixes(rule) {
+  const { fixable, hasSuggestions, ...meta } = rule.meta;
+  return {
+    ...rule,
+    meta,
+    create: (context) =>
+      rule.create(
+        Object.create(context, {
+          report: {
+            value: ({ fix, suggest, ...descriptor }) => context.report(descriptor),
+          },
+        }),
+      ),
+  };
+}

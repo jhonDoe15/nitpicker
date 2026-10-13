@@ -47,14 +47,16 @@ export const reactRuleIds = [
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
 
+export const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
+export const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
+
 export const testingLibraryHints = {
-  'await-async-events': '. Await it: `await userEvent.click(button)`.',
-  'no-node-access':
-    ' Query by accessible role: `screen.getByRole("listitem")`, or `within(...)` to narrow the search. If the markup has no accessible role, add an exception for this rule in nitpicker.config.json.',
-  'no-test-id-queries':
-    ' Query by accessible role: `screen.getByRole("button", { name: "Save" })`. If the element has no role or name, add an exception for this rule in nitpicker.config.json.',
-  'prefer-user-event':
-    '. `userEvent` fires the whole sequence of browser events: `await userEvent.click(button)`. If an event has no `userEvent` equivalent, add an exception for this rule in nitpicker.config.json.',
+  'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,
+  'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.${GENERAL_HINT}`,
+  'await-async-utils': `. Await it: \`await waitFor(...)\`.${GENERAL_HINT}`,
+  'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and \`toHaveFocus()\` for focus.${GENERAL_HINT}`,
+  'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.${GENERAL_HINT}`,
+  'prefer-user-event': `. Use \`await user.click(button)\`.${GENERAL_HINT}`,
 };
 
 const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
@@ -65,3 +67,7 @@ export const reactTestRuleIds = [
   'nitpicker/react-test-no-implementation-details',
   ...testingLibraryRuleIds,
 ];
+
+export const reactNativeTestingPackage = '@testing-library/react-native';
+
+export const testingLibrarySettings = { 'testing-library/utils-module': 'test-utils' };

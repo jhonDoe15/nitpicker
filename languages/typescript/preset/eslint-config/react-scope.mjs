@@ -4,7 +4,12 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { cssInJsSource } from '../eslint-plugin/rules/react-single-styling-approach.mjs';
 import { codeExtensions } from '../layout.mjs';
-import { defaultStylingApproach, reactTestRuleIds } from './react-rules.mjs';
+import {
+  defaultStylingApproach,
+  reactNativeTestingPackage,
+  reactTestRuleIds,
+  testingLibrarySettings,
+} from './react-rules.mjs';
 
 const REACT_PACKAGE = 'react';
 
@@ -81,7 +86,11 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
     {
       ...testScope(layout),
       plugins: { nitpicker: nitpickerRules, 'testing-library': testingLibraryPlugin },
-      rules: Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
+      settings: testingLibrarySettings,
+      rules: {
+        ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
+        ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
+      },
     },
   ];
 }
@@ -103,8 +112,9 @@ function reactTypedConfigFor(layout) {
 
 export async function reactScopeConfigFor(layout, react = {}, projectRoot = analyzedProjectRoot()) {
   const styling = stylingApproachFor({ projectRoot, react });
+  const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
   return [
-    ...(await reactSyntaxConfigFor(layout, { ...react, styling })),
+    ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
     ...reactTypedConfigFor(layout),
   ];
 }

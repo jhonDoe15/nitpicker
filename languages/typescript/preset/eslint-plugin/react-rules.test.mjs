@@ -276,6 +276,7 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
 });
 
 const testFilename = '/repo/test/ui/panel.test.tsx';
+const reactTestingImport = "import { render } from '@testing-library/react'; ";
 
 function componentInternalsError(name) {
   return { messageId: 'componentInternals', data: { name } };
@@ -311,7 +312,20 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
     'node[0];',
     'reactNode.value;',
     'react.useState;',
-  ].map((code) => ({ filename: testFilename, code })),
+  ]
+    .map((code) => ({ filename: testFilename, code: `${reactTestingImport}${code}` }))
+    .concat(
+      [
+        'useStore.setState({ count: 0 });',
+        'Registry.getInstance();',
+        'expect(machine.state()).toEqual({});',
+        'const fiber = node.stateNode;',
+        'vi.spyOn(React, "useState");',
+        "import { test } from '@playwright/test'; test('a', async ({ page }) => { page.instance(); });",
+        "import { createStore } from 'redux-like'; createStore().setState({});",
+        "import { reactive } from 'vue'; reactive().state();",
+      ].map((code) => ({ filename: testFilename, code })),
+    ),
   invalid: [
     { code: 'wrapper.instance();', errors: [componentInternalsError('instance()')] },
     { code: 'renderer.getInstance();', errors: [componentInternalsError('getInstance()')] },
@@ -352,5 +366,28 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
       code: 'vi.spyOn(React, "useState"); wrapper.state();',
       errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
     },
-  ].map((testCase) => ({ filename: testFilename, ...testCase })),
+  ]
+    .map((testCase) => ({
+      filename: testFilename,
+      ...testCase,
+      code: `${reactTestingImport}${testCase.code}`,
+    }))
+    .concat(
+      [
+        "import { mount } from 'enzyme';",
+        "import renderer from 'react-test-renderer';",
+        "import { createRoot } from 'react-dom/client';",
+        "import React from 'react';",
+        "import { renderWithProviders } from '../utils/test-utils';",
+        "import { renderWithProviders } from './test-utils.tsx';",
+        "import type { Wrapper } from '@testing-library/react';",
+        "const { render } = require('@testing-library/react');",
+        "import enzyme = require('enzyme');",
+        "export { render } from '@testing-library/react';",
+      ].map((importLine) => ({
+        filename: testFilename,
+        code: `${importLine} wrapper.instance();`,
+        errors: [componentInternalsError('instance()')],
+      })),
+    ),
 });
