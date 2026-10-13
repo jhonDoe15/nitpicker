@@ -248,8 +248,10 @@ describe('running pyright', () => {
     });
     const { context, reportRoot } = fakes.contextFor(root, {}, ['src/gen/**', '**/*_pb2.py']);
 
-    expect(pyrightConfig(context)).toMatchObject({
+    expect(pyrightConfig(context)).toEqual({
       extends: path.join(root, 'pyproject.toml'),
+      typeCheckingMode: 'strict',
+      enableTypeIgnoreComments: false,
       ignore: [],
       exclude: [
         '**/node_modules',
@@ -258,6 +260,8 @@ describe('running pyright', () => {
         path.relative(reportRoot, path.join(root, 'src/gen/**')),
         path.relative(reportRoot, path.join(root, '**/*_pb2.py')),
       ],
+      include: [path.relative(reportRoot, path.join(root, 'src'))],
+      extraPaths: [path.join(root, 'src')],
     });
   });
 

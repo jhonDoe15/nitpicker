@@ -73,11 +73,15 @@ describe('mypy text report', () => {
     const after = 'a.py:14: error: Name "dup" already defined on line 10  [no-redef]\n';
 
     expect(ingestMypy(after, { roots })).toEqual([
-      expect.objectContaining({
+      {
+        tool: 'mypy',
+        rule: 'no-redef',
+        path: 'a.py',
         identity: 'Name "dup" already defined',
         message: 'Name "dup" already defined on line 10',
+        classification: 'enforceable',
         location: { line: 14 },
-      }),
+      },
     ]);
     expect(ingestMypy(after, { roots })[0].identity).toBe(
       ingestMypy(before, { roots })[0].identity,

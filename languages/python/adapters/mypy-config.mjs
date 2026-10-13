@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 
-export const MYPY_CONFIG = 'mypy.ini';
+const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
   'plugins',
   'mypy_path',
@@ -24,26 +24,45 @@ function toml() {
   return createRequire(import.meta.url)('smol-toml');
 }
 
+function startSection(name, sections, state) {
+  state.options = new Map();
+  state.key = undefined;
+  sections.set(name.trim(), state.options);
+}
+
+function appendValue(content, state) {
+  state.options.set(state.key, `${state.options.get(state.key)}\n${content}`);
+}
+
+function startOption(line, state) {
+  const option = INI_OPTION.exec(line);
+  if (option === null || state.options === undefined) {
+    return;
+  }
+  state.key = option[1].trim();
+  state.options.set(state.key, option[2].trim());
+}
+
+function readIniLine(line, sections, state) {
+  const content = line.trim();
+  const indented = /^\s/.test(line);
+  const section = indented ? null : INI_SECTION.exec(content);
+  if (content === '' || /^[#;]/.test(content)) {
+    state.key = undefined;
+  } else if (section !== null) {
+    startSection(section[1], sections, state);
+  } else if (indented && state.key !== undefined) {
+    appendValue(content, state);
+  } else {
+    startOption(line, state);
+  }
+}
+
 function parseIni(text) {
   const sections = new Map();
-  let options;
-  let key;
+  const state = { options: undefined, key: undefined };
   for (const raw of text.split(/\r?\n/)) {
-    const line = raw.replace(INI_COMMENT, '');
-    const section = INI_SECTION.exec(line.trim());
-    const option = INI_OPTION.exec(line);
-    if (line.trim() === '' || /^\s*[#;]/.test(line)) {
-      key = undefined;
-    } else if (section !== null && !/^\s/.test(line)) {
-      options = new Map();
-      sections.set(section[1].trim(), options);
-      key = undefined;
-    } else if (/^\s/.test(line) && key !== undefined) {
-      options.set(key, `${options.get(key)}\n${line.trim()}`);
-    } else if (option !== null && options !== undefined) {
-      key = option[1].trim();
-      options.set(key, option[2].trim());
-    }
+    readIniLine(raw.replace(INI_COMMENT, ''), sections, state);
   }
   return sections;
 }
@@ -108,19 +127,26 @@ function pluginEntry(entry, projectRoot) {
   return entry.replace(PLUGIN_FILE, (file) => path.resolve(projectRoot, file));
 }
 
-function environmentValue(key, value, projectRoot) {
-  const expand = (text) => text.replace(CONFIG_DIRECTORY_VARIABLE, projectRoot);
-  if (key !== 'plugins') {
-    return Array.isArray(value)
-      ? value.map(expand)
-      : typeof value === 'string'
-        ? expand(value)
-        : value;
+function expandDirectory(text, projectRoot) {
+  return text.replace(CONFIG_DIRECTORY_VARIABLE, projectRoot);
+}
+
+function expandValue(value, projectRoot) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => expandDirectory(entry, projectRoot));
   }
+  return typeof value === 'string' ? expandDirectory(value, projectRoot) : value;
+}
+
+function pluginValue(value, projectRoot) {
   const entries = (Array.isArray(value) ? value : value.split(','))
-    .map((entry) => pluginEntry(expand(entry.trim()), projectRoot))
+    .map((entry) => pluginEntry(expandDirectory(entry.trim(), projectRoot), projectRoot))
     .filter((entry) => entry !== '');
   return Array.isArray(value) ? entries : entries.join(', ');
+}
+
+function environmentValue(key, value, projectRoot) {
+  return key === 'plugins' ? pluginValue(value, projectRoot) : expandValue(value, projectRoot);
 }
 
 function pick(options, keys, projectRoot) {
@@ -147,7 +173,7 @@ function iniText(sections) {
     .join('\n');
 }
 
-export function mypyConfigText(model, { projectRoot, exclude }) {
+function mypyConfigText(model, { projectRoot, exclude }) {
   const options = {
     ...pick(model.options, GLOBAL_OPTIONS, projectRoot),
     ...(exclude.length === 0 ? {} : { exclude: excludePattern(exclude) }),
