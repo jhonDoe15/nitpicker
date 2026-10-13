@@ -54,11 +54,14 @@ function indentOf(text) {
 function enclosingScope(lines, index) {
   const names = [];
   let indent = indentOf(lines[index]);
-  for (let at = index - 1; at >= 0 && indent > 0; at -= 1) {
-    const name = SCOPE_START.exec(lines[at].trimStart())?.[1];
-    if (name !== undefined && indentOf(lines[at]) < indent) {
+  for (const earlier of lines.slice(0, index).reverse()) {
+    if (indent === 0) {
+      break;
+    }
+    const name = SCOPE_START.exec(earlier.trimStart())?.[1];
+    if (name !== undefined && indentOf(earlier) < indent) {
       names.unshift(name);
-      indent = indentOf(lines[at]);
+      indent = indentOf(earlier);
     }
   }
   return names.join('.');
