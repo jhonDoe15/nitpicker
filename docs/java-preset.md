@@ -439,6 +439,15 @@ and strings and comments skipped first). The one accepted marker is
 the decision belongs on that one method rather than in a config exception that covers paths.
 Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
 
+SpotBugs has no switch to ignore its annotations, so the same scan reports every
+`@SuppressFBWarnings` (and `edu.umd.cs.findbugs.annotations.SuppressWarnings`) as
+`spotbugs/InlineSuppression`; a SpotBugs exception names the bug pattern, for example
+`spotbugs/EI_EXPOSE_REP`. Checkstyle's bundled `google_checks.xml` honors
+`@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`, `CHECKSTYLE.SUPPRESS` comments;
+nitpicker writes a copy without those filters (and without the optional xpath suppression file
+the bundled config would read from the working directory), so they suppress nothing. A project's own
+`config/checkstyle/checkstyle.xml` is still used as is.
+
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
 "reason": "..." }`.

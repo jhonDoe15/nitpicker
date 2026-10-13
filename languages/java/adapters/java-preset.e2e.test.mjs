@@ -124,10 +124,12 @@ class CalcTest {
 }
 `;
 
-// Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter).
+// Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter). The
+// Checkstyle suppressions must not hide anything: nitpicker removes the inline suppression filters.
 const BAD = `package demo;
 
 public final class Bad {
+  @SuppressWarnings("checkstyle:EmptyCatchBlock")
   public String decode(byte[] bytes) {
     try {
       Integer.parseInt("x");
@@ -135,6 +137,7 @@ public final class Bad {
     }
     return new String(bytes);
   }
+        // CHECKSTYLE.SUPPRESS: Indentation
         public void sloppy() { }
 }
 `;

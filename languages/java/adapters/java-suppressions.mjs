@@ -8,7 +8,12 @@ const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 const LITERALS_AND_COMMENTS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
 const SUPPRESS_WARNINGS = /@(?:java\.lang\.)?SuppressWarnings\s*\(/g;
+const SUPPRESS_FB_WARNINGS =
+  /@(?:[\w.]*\.)?SuppressFBWarnings\b|@edu\.umd\.cs\.findbugs\.annotations\.SuppressWarnings\b/g;
+const SPOTBUGS_SUPPRESS_WARNINGS_IMPORT =
+  /\bimport\s+edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*(?:SuppressWarnings|\*)\s*;/;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
+const JUSTIFICATION = /\bjustification\s*=\s*"(?:[^"\\]|\\.)*"/g;
 const UNICODE_ESCAPE = /\\u+([0-9a-fA-F]{4})/g;
 const NESTED_PARENTHESES = /(\([^()]*)\([^()]*\)/g;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
@@ -16,6 +21,8 @@ const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
   'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+const SPOTBUGS_MESSAGE =
+  'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -43,19 +50,52 @@ export function fileFindings(source, filePath) {
     source.replace(UNICODE_ESCAPE, (_, code) => String.fromCodePoint(Number.parseInt(code, 16))),
   );
   const occurrences = new Map();
-  return annotationSuppressions(views).map(({ offset, found }) => {
+  const spotbugsOwnsSuppressWarnings = SPOTBUGS_SUPPRESS_WARNINGS_IMPORT.test(views.code);
+  const suppressions = [
+    ...(spotbugsOwnsSuppressWarnings ? [] : pmdSuppressions(views)),
+    ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
+  ].sort((left, right) => left.offset - right.offset);
+  return suppressions.map(({ tool, offset, found }) => {
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
-    const occurrence = nextOccurrence(occurrences, key);
+    const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
     return {
-      tool: 'pmd',
+      tool,
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${MESSAGE} Found: ${found}.`,
+      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}.`,
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
   });
+}
+
+function pmdSuppressions(views) {
+  return annotationSuppressions(views).map((suppression) => ({ tool: 'pmd', ...suppression }));
+}
+
+function spotbugsSuppressions({ code, withoutComments }, includeSuppressWarnings) {
+  const annotations = includeSuppressWarnings
+    ? new RegExp(`${SUPPRESS_FB_WARNINGS.source}|${SUPPRESS_WARNINGS.source}`, 'g')
+    : SUPPRESS_FB_WARNINGS;
+  return [...code.matchAll(annotations)].map((match) => ({
+    tool: 'spotbugs',
+    offset: match.index,
+    found: spotbugsFound(withoutComments.slice(match.index, annotationEnd(code, match))),
+  }));
+}
+
+function annotationEnd(code, match) {
+  const afterName = match.index + match[0].replace(/\($/, '').length;
+  const rest = code.slice(afterName);
+  return /^\s*\(/.test(rest) ? code.indexOf(')', afterName) + 1 : afterName;
+}
+
+function spotbugsFound(annotation) {
+  const values = [...annotation.replace(JUSTIFICATION, '').matchAll(STRING_LITERAL)].map(
+    ([, value]) => `"${value}"`,
+  );
+  return values.length === 0 ? 'a suppression of every bug pattern' : values.join(', ');
 }
 
 function sourceViews(source) {

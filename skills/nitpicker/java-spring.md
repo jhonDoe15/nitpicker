@@ -12,7 +12,8 @@ SKILL.md don't apply; this page does.
    tool failed (usually compilation or a test), never a pass.
 3. Never suppress: no `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or
    `"fallthrough"` (PMD honors all of them, so each is a finding; `// NOPMD` does nothing), no
-   config `exclude`, `exceptions` or legacy entries. If a finding seems
+   `@SuppressFBWarnings` (also a finding), no `CHECKSTYLE` comments or `"checkstyle:..."` values
+   (they do nothing), no config `exclude`, `exceptions` or legacy entries. If a finding seems
    wrong, stop and ask. The one exception is native SQL, below.
 
 A method that existed before your change and is already over a size limit may be edited but must

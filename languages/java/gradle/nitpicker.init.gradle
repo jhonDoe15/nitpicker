@@ -99,6 +99,13 @@ allprojects {
         // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
         // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format), with
         // Javadoc allowed but not required, the same doc comment rule as the TypeScript preset.
+        // The bundled config's inline suppression filters (@SuppressWarnings("checkstyle:..."),
+        // CHECKSTYLE.OFF/SUPPRESS comments) and its optional xpath suppression file are removed:
+        // exceptions go in nitpicker.config.json, where review sees them.
+        def inlineCheckstyleFilters = ['SuppressWarningsFilter', 'SuppressWarningsHolder',
+            'SuppressionCommentFilter', 'SuppressWithNearbyCommentFilter', 'SuppressWithNearbyTextFilter',
+            'SuppressionXpathFilter']
+        def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         checkstyle {
             toolVersion = pinned.checkstyle
             ignoreFailures = true
@@ -108,9 +115,29 @@ allprojects {
                 configFile = consumerConfig
             } else {
                 def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
-                config = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+                def bundledConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+                def writeConfig = tasks.register('nitpickerCheckstyleConfig') {
+                    group = 'nitpicker'
+                    inputs.files(checkstyleJar)
+                    outputs.file(nitpickerCheckstyleConfig)
+                    doLast {
+                        def text = bundledConfig.asString()
+                        inlineCheckstyleFilters.each { name ->
+                            text = text.replaceAll("(?s)<module name=\"${name}\"\\s*(?:/>|>.*?</module>)", '')
+                        }
+                        def left = inlineCheckstyleFilters.findAll { text.contains("\"${it}\"") }
+                        if (!left.isEmpty()) {
+                            throw new GradleException("nitpicker could not remove ${left} from google_checks.xml")
+                        }
+                        def target = nitpickerCheckstyleConfig.get().asFile
+                        target.parentFile.mkdirs()
+                        target.text = text
+                    }
+                }
+                configFile = nitpickerCheckstyleConfig.get().asFile
                 configProperties = ['org.checkstyle.google.suppressionfilter.config':
                     new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
+                tasks.named('checkstyleMain') { dependsOn writeConfig }
             }
         }
         tasks.named('checkstyleMain') {
