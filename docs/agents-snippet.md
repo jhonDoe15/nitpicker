@@ -61,7 +61,7 @@ and metric changes are reported but never fail.
 1. Read the message. It says what is wrong.
 2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0.
 3. **Never suppress a finding.** Do not add `eslint-disable` comments, `@ts-ignore` or
-   `@ts-expect-error`, edit the rule configuration, add to `exclude` or `disable` in
+   `@ts-expect-error`, edit the rule configuration, add to `exclude`, `disable` or `exceptions` in
    `nitpicker.config.json`, add to `nitpicker.legacy.json`, or delete or weaken tests to make the
    gate pass. Those overrides are listed in the report and change the policy hash, so they are
    visible in review.

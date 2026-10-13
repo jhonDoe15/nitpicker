@@ -791,19 +791,23 @@ describe('nitpicker with "preset": "python"', () => {
       return run(root);
     };
 
-    it('lifts the finding for the named function or path and keeps it for another function', () => {
+    it('fails the wide method and names it', () => {
       const failing = change('{ "preset": "python" }\n');
-      const byName = change(exceptions(entry('function-parameters-limit', 'wide')));
-      const byPath = change(exceptions(entry('function-parameters-limit')));
-      const other = change(exceptions(entry('function-parameters-limit', 'narrow')));
 
       expect(failing.exitCode, failing.text).toBe(1);
       expect(failing.json('new-findings.json').map(({ symbol }) => symbol)).toEqual([
         'Service.wide',
       ]);
-      expect(byName.exitCode, byName.text).toBe(0);
-      expect(byPath.exitCode, byPath.text).toBe(0);
-      expect(other.exitCode, other.text).toBe(1);
+    });
+
+    it.each([
+      ['the function name', entry('function-parameters-limit', 'wide'), 0],
+      ['the whole path', entry('function-parameters-limit'), 0],
+      ['another function', entry('function-parameters-limit', 'narrow'), 1],
+    ])('lifts the finding by %s only as far as the entry reaches', (_, lifted, exitCode) => {
+      const result = change(exceptions(lifted));
+
+      expect(result.exitCode, result.text).toBe(exitCode);
     });
   });
 

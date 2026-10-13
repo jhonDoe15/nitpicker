@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../preset/coding-standards/inventory-path.mjs';
 import { parsePositiveNumber } from '../preset/quality-checks.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
-import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
+import { applyFunctionRuleExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
@@ -104,7 +104,7 @@ export async function runQualityArea(options) {
     )
       return [];
   }
-  return applyFindingExceptions(await runner(options), readHeadPolicy().exceptions);
+  return applyFunctionRuleExceptions(await runner(options), readHeadPolicy().exceptions);
 }
 
 function runPolicyTests(options) {
