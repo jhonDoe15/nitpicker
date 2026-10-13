@@ -8,6 +8,8 @@ import {
   readKotlinMetrics,
   readKotlinStructureFindings,
 } from './kotlin-metrics.mjs';
+import { addOneWayHint } from './kotlin-rules.mjs';
+import { readSuppressionFindings } from './kotlin-suppressions.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -32,6 +34,7 @@ export function readKotlinFindings(context, crapLimit) {
   const metrics = readKotlinMetrics(reportRoot);
   return [
     ...detektFindings(reportRoot),
+    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
     ...readKotlinCrapFindings(metrics, {
@@ -65,7 +68,9 @@ function readSarif(reportRoot, file) {
 }
 
 function detektFindings(reportRoot) {
-  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings;
+  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
+    addOneWayHint,
+  );
 }
 
 function ktlintSwitch(ruleId) {

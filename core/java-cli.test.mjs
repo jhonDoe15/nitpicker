@@ -13,6 +13,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
+import { ONE_WAY_RULE_IDS } from '../languages/java/adapters/kotlin-rules.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
@@ -430,6 +431,77 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
+  describe('exceptions for one-way rules', () => {
+    const callRule = 'detekt.style.ForbiddenMethodCall';
+    const forbidden =
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+    const withExceptions = (exceptions) => `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
+    const exception = {
+      rule: callRule,
+      paths: ['src/main/kotlin/demo/K.kt'],
+      reason: 'The entry point blocks on its coroutine.',
+    };
+    const added = {
+      'detekt.txt': `Legacy magic number\n${callRule} :: ${forbidden}\n`,
+    };
+
+    it('fails a new finding of a one-way rule and hands it the allowed form and the exception route', () => {
+      const root = kotlinRepository();
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        {
+          tool: 'detekt',
+          rule: callRule,
+          path: 'src/main/kotlin/demo/K.kt',
+          identity: `fp:nitpicker/subject=${forbidden}`,
+          location: { line: 4 },
+          message: `${forbidden} To allow it on specific paths, add an "exceptions" entry for rule ${callRule} in nitpicker.config.json.`,
+          classification: 'enforceable',
+        },
+      ]);
+    });
+
+    it('passes the same change when nitpicker.config.json lists an exception for the path', () => {
+      const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([exception]) });
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root, [], { subprocess: true });
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    });
+
+    it('does not lift the rule for another path', () => {
+      const other = { ...exception, paths: ['src/main/kotlin/other/**'] };
+      const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([other]) });
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root, [], { subprocess: true });
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    });
+
+    it('rejects an exception for a rule that is not a one-way rule', () => {
+      const root = kotlinRepository({
+        'nitpicker.config.json': withExceptions([
+          { ...exception, rule: 'detekt.style.MagicNumber' },
+        ]),
+      });
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.output.err).toBe(
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${ONE_WAY_RULE_IDS.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+      );
+    });
+  });
   it.each([undefined, 'none'])(
     'runs no format check for a project without a detected formatter (kotlin.formatter %s)',
     (formatter) => {
@@ -725,7 +797,7 @@ describe('Java analyzer', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
