@@ -212,6 +212,64 @@ describe('readJavaFindings with the kotlin preset', () => {
     ).toEqual([['fp:nitpicker/subject=Todo', 'descriptive']]);
   });
 
+  it('ends the message of a one-way rule with the allowed form and the exception route, keeping the identity', () => {
+    const root = projectWithKotlinReports();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/detekt.sarif'),
+      JSON.stringify({
+        runs: [
+          {
+            tool: { driver: { name: 'detekt' } },
+            results: [
+              {
+                ruleId: 'detekt.potential-bugs.UnsafeCallOnNullableType',
+                level: 'warning',
+                message: { text: 'Calling !! on a nullable type will throw.' },
+                locations: [
+                  {
+                    physicalLocation: {
+                      artifactLocation: { uri: bad },
+                      region: { startLine: 3 },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const [finding] = kotlinFindings(root, 'detekt');
+
+    expect(finding.identity).toBe('fp:nitpicker/subject=Calling !! on a nullable type will throw.');
+    expect(finding.message).toMatch(
+      /^Calling !! on a nullable type will throw\. Handle null with `value \?: return`.*checkNotNull\(value\).*"exceptions" entry for rule detekt\.potential-bugs\.UnsafeCallOnNullableType in nitpicker\.config\.json\.$/,
+    );
+  });
+
+  it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
+    const root = projectWithKotlinReports();
+    writeFileSync(
+      path.join(root, bad),
+      `${KOTLIN_SOURCE}\n@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun f(text: String?) = text!!.length\n`,
+    );
+
+    expect(
+      kotlinFindings(root, 'detekt').filter(({ rule }) => rule === 'inline-suppression'),
+    ).toEqual([
+      {
+        tool: 'detekt',
+        rule: 'inline-suppression',
+        path: bad,
+        identity: 'suppress:UnsafeCallOnNullableType',
+        message:
+          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
+        classification: 'enforceable',
+      },
+    ]);
+  });
+
   describe('identity of a finding with a measured value', () => {
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     const identitiesOf = (messages) => {

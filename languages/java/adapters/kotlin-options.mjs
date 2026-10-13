@@ -3,11 +3,27 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
+import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 
+function validateKotlinExceptions(config) {
+  if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
+    return;
+  }
+  for (const [index, entry] of config.exceptions.entries()) {
+    const rule = isPlainObject(entry) ? entry.rule : undefined;
+    if (typeof rule === 'string' && rule !== '' && !ONE_WAY_RULE_IDS.includes(rule)) {
+      throw configError(
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${ONE_WAY_RULE_IDS.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
+      );
+    }
+  }
+}
+
 export function validateKotlinOptions(config) {
+  validateKotlinExceptions(config);
   if (config.kotlin === undefined) {
     return;
   }

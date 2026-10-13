@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
+import { addOneWayHint } from './kotlin-rules.mjs';
+import { readSuppressionFindings } from './kotlin-suppressions.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -66,9 +68,10 @@ export function reportOnlyKotlinMutants(findings) {
   );
 }
 
-export function readKotlinFindings({ reportRoot, manifest }) {
+export function readKotlinFindings({ reportRoot, manifest, projectRoot }) {
   return [
     ...detektFindings(reportRoot),
+    ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
   ];
 }
@@ -95,7 +98,9 @@ function readSarif(reportRoot, file) {
 }
 
 function detektFindings(reportRoot) {
-  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings;
+  return ingestSarif(readSarif(reportRoot, DETEKT_REPORT), { tool: DETEKT_TOOL }).findings.map(
+    addOneWayHint,
+  );
 }
 
 function ktlintSwitch(ruleId) {
