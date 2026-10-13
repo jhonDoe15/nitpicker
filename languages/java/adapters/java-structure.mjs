@@ -11,8 +11,12 @@ export function readJavaStructureFindings(reportRoot, projectRoot) {
   if (!existsSync(report)) {
     return [];
   }
+  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot);
+}
+
+export function structureFindings(entries, projectRoot) {
   const sources = new Map();
-  const functions = JSON.parse(readFileSync(report, 'utf8')).map((entry) => ({
+  const functions = entries.map((entry) => ({
     ...entry,
     sourceHash: hash(methodText(sources, projectRoot, entry)),
   }));
