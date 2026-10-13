@@ -14,8 +14,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
 
 // End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
-// ruff and network access to PyPI (it installs pytest and coverage into throwaway environments),
-// so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
+// ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
+// environments), so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixture = path.resolve(import.meta.dirname, 'fixtures/python-project');
@@ -79,6 +79,15 @@ function gate(root, branch, extra = []) {
   return { exitCode, json, text: output.text, reports };
 }
 
+const enforceable = (result) =>
+  summarize(
+    result
+      .json('new-findings.json')
+      .filter(({ classification }) => classification === 'enforceable'),
+  );
+
+const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
+
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
@@ -86,11 +95,38 @@ const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const GREETER_HI = 'def greet(name):\n    return f"Hi, {name}!"\n';
 const GREETER_HI_TEST =
   'from demo.greeter import greet\nfrom demo.legacy import clamp, value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n\n\ndef test_clamp():\n    assert clamp(3) == 3\n';
+const TYPE_ERROR = 'def double(value: int) -> str:\n    return value * 2\n';
+const ONE_WAY_VIOLATIONS = [
+  'import os',
+  'from dataclasses import dataclass',
+  '',
+  '',
+  '@dataclass',
+  'class Order:',
+  '    identifier: str',
+  '',
+  '',
+  'def home() -> str:',
+  '    return os.path.join("a", "b")',
+  '',
+  '',
+  'LIMIT: int = 3  # noqa: E501',
+  '',
+].join('\n');
+const HIDDEN_ERROR =
+  'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
+const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
+const WEAKENED_PYRIGHT = JSON.stringify({
+  ignore: ['src/demo/typed.py'],
+  exclude: ['src/demo/typed.py'],
+  typeCheckingMode: 'off',
+});
 const CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
 const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${CLAMP}`;
 const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${CLAMP}`;
-const PRICING = 'def discount(price):\n    return price - 5 if price > 100 else price\n';
-const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused():\n    return 3\n`;
+const PRICING =
+  'def discount(price: int) -> int:\n    return price - 5 if price > 100 else price\n';
+const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused() -> int:\n    return 3\n`;
 const PRICING_TEST =
   'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n';
 const PRICING_FULL_TEST =
@@ -198,6 +234,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'coverage',
       'mutmut',
       'pytest',
+      'mypy',
     ]);
     commitBranch(project, 'clean', {
       'src/demo/greeter.py': GREETER_HI,
@@ -205,6 +242,35 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
     commitBranch(project, 'moved', { 'src/demo/legacy.py': LEGACY_MOVED });
     commitBranch(project, 'violation', { 'src/demo/bad.py': VIOLATION });
+    commitBranch(project, 'type-error', { 'src/demo/typed.py': TYPE_ERROR });
+    commitBranch(project, 'one-way', { 'src/demo/rules.py': ONE_WAY_VIOLATIONS });
+    commitBranch(project, 'excepted', {
+      'src/demo/rules.py': ONE_WAY_VIOLATIONS,
+      'nitpicker.config.json': JSON.stringify({
+        preset: 'python',
+        disable: ['mutation'],
+        python: {
+          exceptions: [
+            { rule: 'PTH118', paths: ['src/demo/rules.py'], reason: 'fixture' },
+            { rule: 'frozen-dataclass', paths: ['src/demo/*.py'], reason: 'fixture' },
+            { rule: 'no-inline-suppression', paths: ['src/**'], reason: 'fixture' },
+          ],
+        },
+      }),
+    });
+    commitBranch(project, 'pyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyrightconfig.json': '{}\n',
+    });
+    commitBranch(project, 'weakened-mypy', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyproject.toml': WEAKENED_MYPY,
+    });
+    commitBranch(project, 'weakened-pyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
+    });
+    commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
     commitBranch(project, 'weaker-source', { 'src/demo/legacy.py': LEGACY_WEAKER });
     commitBranch(project, 'survivors', {
       'src/demo/pricing.py': PRICING_WITH_UNUSED,
@@ -234,7 +300,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
     const [python, mutation] = result.json('summary.json').tools;
-    expect(python.version).toMatch(/^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/);
+    expect(python.version).toMatch(
+      /^ruff@[\d.]+;mypy@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
+    );
     expect(mutation.version).toMatch(/^mutmut@3\.[\d.]+;pytest@[\d.]+$/);
     expect(python.unchanged).toBeGreaterThan(0);
   });
@@ -258,7 +326,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           .json('new-findings.json')
           .filter(({ classification }) => classification === 'enforceable'),
       ),
-    ).toEqual(['mutmut mutant-nocoverage bad.py', 'ruff F401 bad.py', 'ruff-format format bad.py']);
+    ).toEqual([
+      'mutmut mutant-nocoverage bad.py',
+      'mypy no-untyped-def bad.py',
+      'ruff F401 bad.py',
+      'ruff-format format bad.py',
+    ]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',
@@ -267,11 +340,81 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'coverage/line-coverage',
       'coverage/uncovered-function',
       'mutmut/mutant-nocoverage',
+      'mypy/no-untyped-def',
       'ruff/F401',
       'ruff-format/format',
     ]);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
     expect(result.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+  });
+
+  it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
+    const result = gate(project, 'type-error');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
+    expect(result.text).toMatch(/Fix the type; inline ignores are banned/);
+  });
+
+  it('fails the one-way rules, each message naming the allowed form', () => {
+    const result = gate(project, 'one-way');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual([
+      'python-rules frozen-dataclass rules.py',
+      'python-rules no-inline-suppression rules.py',
+      'ruff PTH118 rules.py',
+    ]);
+    expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
+    expect(result.text).toMatch(/Use `pathlib\.Path`/);
+    expect(result.text).toMatch(/Remove the comment and fix the code/);
+    expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
+  });
+
+  it('passes the same code when python.exceptions lifts its rules', () => {
+    const result = gate(project, 'excepted');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(withoutMutants(enforceable(result))).toEqual([]);
+    expect(result.json('summary.json').configOverrides).toEqual([
+      'preset: "python"',
+      'disable: ["mutation"]',
+      'exception: {"rule":"PTH118","paths":["src/demo/rules.py"],"reason":"fixture"}',
+      'exception: {"rule":"frozen-dataclass","paths":["src/demo/*.py"],"reason":"fixture"}',
+      'exception: {"rule":"no-inline-suppression","paths":["src/**"],"reason":"fixture"}',
+    ]);
+  });
+
+  it('runs pyright when the project has a pyright config, in its strict mode', () => {
+    const result = gate(project, 'pyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(result.json('summary.json').tools[0].version).toMatch(
+      /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
+    );
+    expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
+  });
+
+  it('keeps checking when the project config switches mypy off for the file', () => {
+    const result = gate(project, 'weakened-mypy');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual(['mypy return-value typed.py']);
+  });
+
+  it('keeps checking when the project config ignores or excludes the file in pyright', () => {
+    const result = gate(project, 'weakened-pyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
+  });
+
+  it('fails code hidden from the checkers with @no_type_check', () => {
+    const result = gate(project, 'hidden-from-types');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
+    expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
 
   it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
@@ -579,7 +722,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('summary.json').tools[0].version).toMatch(
-        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest;jscpd@[\d.]+$/,
+        /^ruff@[\d.]+;black@[\d.]+;(?:mypy|pyright)@[\d.]+;coverage@[\d.]+;unittest;jscpd@[\d.]+$/,
       );
     });
 
@@ -780,11 +923,11 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 });
 
 const ORDER_TOTAL = [
-  'def order_total(lines, discount):',
+  'def order_total(lines: list[tuple[int, int]], discount: int) -> int:',
   '    total = 0',
   '    for line in lines:',
-  '        if line.price > 0 and line.quantity > 0:',
-  '            total += line.price * line.quantity',
+  '        if line[0] > 0 and line[1] > 0:',
+  '            total += line[0] * line[1]',
   '        else:',
   '            total -= discount',
   '    if total < 0 and discount > 0:',
@@ -799,15 +942,15 @@ const LAYERED_FILES = {
     '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
   'src/shop/__init__.py': '',
   'src/shop/domain/__init__.py': '',
-  'src/shop/domain/pricing.py': `def price_with_tax(amount, rate):\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
+  'src/shop/domain/pricing.py': `def price_with_tax(amount: float, rate: float) -> float:\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
   'src/shop/infra/__init__.py': '',
   'src/shop/infra/store.py':
-    'from shop.domain import pricing\n\n\ndef total(amounts):\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
+    'from shop.domain import pricing\n\n\ndef total(amounts: list[float]) -> float:\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
   'src/shop/web/__init__.py': '',
   'src/shop/web/views.py':
-    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts):\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
+    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts: list[float]) -> str:\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
   'tests/test_shop.py':
-    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    assert pricing.order_total([line, line], 0) == 12\n',
+    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    assert pricing.order_total([(2, 3), (2, 3)], 0) == 12\n',
 };
 
 describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end to end', () => {
@@ -841,18 +984,18 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
       'import-linter',
     ]);
     commitBranch(project, 'clean', {
-      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts):\n    return len(amounts)\n`,
+      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\ndef hide(amounts: list[float]) -> int:\n    return len(amounts)\n`,
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
       'tests/test_bulk.py':
-        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    empty = type("Line", (), {"price": 0, "quantity": 1})\n    assert bulk.bulk_total([line, empty], 5) == 1\n    assert bulk.bulk_total([empty], 5) == 0\n',
+        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    assert bulk.bulk_total([(2, 3), (0, 1)], 5) == 1\n    assert bulk.bulk_total([(0, 1)], 5) == 0\n',
     });
     commitBranch(project, 'upward-import', {
-      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
     });
     commitBranch(project, 'contracts-off', {
-      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
+      'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
       'nitpicker.config.json':
         '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
     });
@@ -930,7 +1073,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 });
 
 const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
-const BRANCH_CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
+const BRANCH_CLAMP = 'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 const signsTest = (...assertions) =>
   `from demo import signs\n\n\n${assertions
     .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)

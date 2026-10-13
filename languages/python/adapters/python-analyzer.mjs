@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { PINNED_VERSIONS_SOURCE } from './python-crap.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 
@@ -88,8 +89,11 @@ export function createPythonAnalyzer(settings = {}) {
       'ruff-format',
       'black',
       'coverage',
+      'mypy',
+      'pyright',
       'structure',
       'crap',
+      RULES_TOOL,
       'coverage-py',
       'duplicates',
       'coupling',

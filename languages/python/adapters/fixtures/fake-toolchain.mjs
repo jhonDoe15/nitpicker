@@ -6,6 +6,8 @@ const TOOLS = [
   'ruff',
   'black',
   'coverage',
+  'mypy',
+  'pyright',
   'python',
   'python3',
   'lizard',

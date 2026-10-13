@@ -173,9 +173,9 @@ is visible in review.
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                              |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
-| `exceptions`      | object[]                                                           | The TypeScript, JavaScript and Kotlin presets; a config error with `java` and `python`. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)), `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                              |
+| `exceptions`      | object[]                                                           | The TypeScript, JavaScript and Kotlin presets; a config error with `java`; `python` has `python.exceptions`. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)), `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                         |
 | `react`           | object                                                             | TypeScript preset. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                 |
-| `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner` and `sourceRoots` overrides for what nitpicker detects; see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner`, `typeChecker` and `sourceRoots` overrides for what nitpicker detects, and `exceptions` (the Python counterpart of `exceptions`); see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -320,7 +320,8 @@ CRAP is measured on `.js`, `.mjs`, `.cjs` and `.ts` files like on TypeScript one
 ## Python preset
 
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
-format check (ruff format or black, whichever the project uses), the test suite under
+format check (ruff format or black, whichever the project uses), a strict type check (mypy or
+pyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
 score (lizard at the version the Java preset pins, plus per-function coverage; it must be installed
 as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
@@ -328,7 +329,7 @@ enforceable findings fail. Exit codes, console summary, `new-findings.json`, `re
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
-`coverage-failed`, `structure-failed`, `lizard-failed` or a plain one when the environment is missing, and `mutation` for
+`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed`, `lizard-failed` or a plain one when the environment is missing, and `mutation` for
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
@@ -337,7 +338,7 @@ The environment is detected: `uv.lock` (also the one of a uv workspace above a m
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage` and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
+install step) and needs `coverage`, a type checker (`mypy` or `pyright`) and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
@@ -357,21 +358,42 @@ under the globs are dropped), `legacyInventory` (same format as the Java one; `s
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
 `"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
-`importLinter` (`true` or `false`; by default the import-linter contracts run when the project
-configures them) and `sourceRoots` (default `src`, else the top-level packages). The gate also reports new
-duplicates (`duplicates/duplicate-clone`), package coupling (`coupling/stability-direction`) and broken import-linter
-contracts (`import-linter/contract-broken`); their messages name the file to add to `exclude` when the
-repetition or dependency is intended. `layout` and `exceptions` describe TypeScript and stay a config error.
-Inline disables are not honored: neither `# noqa` nor `# pragma: no cover` / `# pragma: no branch`; lift a rule for a path with `exclude` (for `T201`
-`print` in a command-line tool, `PERF203` `try` in a loop, `F401` in an `__init__.py` that
-re-exports). Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
+`typeChecker` (`"mypy"` or `"pyright"`), `importLinter` (`true` or `false`; by default the import-linter
+contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
+packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
+(`coupling/stability-direction`) and broken import-linter contracts (`import-linter/contract-broken`);
+their messages name the file to add to `exclude` when the repetition or dependency is intended.
+`layout` and the top-level `exceptions` describe TypeScript and stay a config error.
+
+The one-way rules (pathlib, f-strings, no mutable defaults, no bare or swallowing `except`, no
+`import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
+instead of string constants) and the strict type check name the allowed form in every failure
+message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy or pyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code
+that is legitimately outside a rule is lifted with `python.exceptions`, the Python counterpart of
+`exceptions` and of the same shape (`rule`, `paths`, `reason`, all required):
+
+```json
+{
+  "preset": "python",
+  "python": {
+    "exceptions": [
+      {
+        "rule": "T201",
+        "paths": ["src/cli/**"],
+        "reason": "Command line entry points print their result."
+      }
+    ]
+  }
+}
+```
+
+`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
 run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
 arms are judged, an untested `except` handler is not. The project's own coverage configuration is
 ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
 measurement): nitpicker's rcfile measures branches, skips test files and excludes only
 `if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
-A file that cannot be tested is lifted with `exclude`. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details:
-[python-preset.md](python-preset.md).
+A file that cannot be tested is lifted with `exclude`. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
 ## The strict preset
 

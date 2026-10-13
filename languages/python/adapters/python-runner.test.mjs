@@ -55,6 +55,8 @@ const coverageReport = JSON.stringify({
   },
 });
 
+const withoutCoupling = ({ findings }) => findings.filter(({ tool }) => tool !== 'coupling');
+
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
 
@@ -90,25 +92,21 @@ describe('analyzing a Python snapshot', () => {
       rule: 'F401',
       path: 'src/demo/a.py',
       identity: 'fp:nitpicker/subject=`os` imported but unused',
-      message: '`os` imported but unused',
+      message:
+        '`os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1, column: 1 },
     });
   });
 
-  it('says how to lift the rules that flag idiomatic code and when the formatter was guessed', () => {
-    const root = project({
-      'violations.txt': 'T201|src/demo/a.py|`print` found\nB006|src/demo/a.py|mutable\n',
-      'unformatted.txt': 'src/demo/a.py\n',
-    });
+  it('says when the formatter was guessed', () => {
+    const root = project({ 'unformatted.txt': 'src/demo/a.py\n' });
 
     const messages = enforceable(analyze(root).findings).map(
       ({ rule, message }) => `${rule}: ${message}`,
     );
 
     expect(messages).toEqual([
-      'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
-      'B006: mutable',
       'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
     ]);
     expect(
@@ -129,6 +127,41 @@ describe('analyzing a Python snapshot', () => {
         classification: 'enforceable',
       },
     ]);
+  });
+
+  it('reads type errors and the one-way rules, each message naming the allowed form', () => {
+    const root = project({
+      'violations.txt': 'T201|src/demo/a.py|`print` found\n',
+      'type-errors.txt':
+        'src/demo/a.py:3: error: Incompatible return value type (got "int", expected "str")  [return-value]\nsrc/demo/a.py:3: note: ignored\n',
+      'rules.json': JSON.stringify([
+        { rule: 'frozen-dataclass', path: 'src/demo/a.py', subject: 'Order', line: 5 },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ tool, rule, identity }) => `${tool} ${rule} ${identity}`)).toEqual([
+      'ruff T201 fp:nitpicker/subject=`print` found',
+      'mypy return-value Incompatible return value type (got "int", expected "str")',
+      'python-rules frozen-dataclass Order',
+    ]);
+    expect(findings.map(({ message }) => message)).toEqual([
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+      'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+      'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+    ]);
+  });
+
+  it('lifts a rule for the paths of a python exception and nothing else', () => {
+    const root = project({
+      'violations.txt': 'T201|scripts/run.py|`print` found\nT201|src/demo/a.py|`print` found\n',
+    });
+    const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
+
+    const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
+
+    expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
   });
 
   it('turns the mutmut run into mutant findings in the mutation part and cleans the snapshot unless it is the base', () => {
@@ -294,6 +327,14 @@ describe('analyzing a Python snapshot', () => {
         path: '.',
         identity: 'tests-failed',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
+        classification: 'tool-error',
+      },
+      {
+        tool: 'python',
+        rule: 'rules-failed',
+        path: '.',
+        identity: 'rules-failed',
+        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
         classification: 'tool-error',
       },
     ]);
