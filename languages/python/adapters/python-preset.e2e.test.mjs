@@ -111,6 +111,14 @@ const ONE_WAY_VIOLATIONS = [
   'LIMIT: int = 3  # noqa: E501',
   '',
 ].join('\n');
+const HIDDEN_ERROR =
+  'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
+const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
+const WEAKENED_PYRIGHT = JSON.stringify({
+  ignore: ['src/demo/typed.py'],
+  exclude: ['src/demo/typed.py'],
+  typeCheckingMode: 'off',
+});
 const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
 
 const roots = [];
@@ -168,6 +176,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'src/demo/typed.py': TYPE_ERROR,
       'pyrightconfig.json': '{}\n',
     });
+    commitBranch(project, 'weakened-mypy', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyproject.toml': WEAKENED_MYPY,
+    });
+    commitBranch(project, 'weakened-pyright', {
+      'src/demo/typed.py': TYPE_ERROR,
+      'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
+    });
+    commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
     commitBranch(project, 'failing-tests', {
       'tests/test_greeter.py': GREETER_HI_TEST,
     });
@@ -230,7 +247,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
-    expect(result.text).toMatch(/Fix the type: correct the annotation or narrow the value/);
+    expect(result.text).toMatch(/Fix the type; inline ignores are banned/);
   });
 
   it('fails the one-way rules, each message naming the allowed form', () => {
@@ -244,7 +261,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     ]);
     expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
-    expect(result.text).toMatch(/`# noqa` and `# pyright: ignore` are banned/);
+    expect(result.text).toMatch(/Remove the comment and fix the code/);
     expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
   });
 
@@ -269,6 +286,28 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/,
     );
     expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
+  });
+
+  it('keeps checking when the project config switches mypy off for the file', () => {
+    const result = gate(project, 'weakened-mypy');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(['mypy return-value typed.py']);
+  });
+
+  it('keeps checking when the project config ignores or excludes the file in pyright', () => {
+    const result = gate(project, 'weakened-pyright');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(['pyright reportReturnType typed.py']);
+  });
+
+  it('fails code hidden from the checkers with @no_type_check', () => {
+    const result = gate(project, 'hidden-from-types');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(enforceable(result)).toEqual(['python-rules no-type-check hidden.py']);
+    expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
 
   it('reports line coverage as a descriptive finding', () => {
