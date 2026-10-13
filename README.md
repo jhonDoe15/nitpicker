@@ -1,15 +1,18 @@
 # nitpicker
 
-**A quality gate for code written by coding agents.**
+**A quality gate that holds coding agents to one allowed way of writing each thing.**
+
+[Usage](docs/usage.md) · [Mindset](docs/mindset.md) · [Checks](spec/checks.md)
 
 Flexible languages offer many ways to write the same thing, and coding agents use all of them.
-They also repeat the same mistakes: swallowed errors, casts instead of checks, tests that cannot
+Agents also repeat the same mistakes: swallowed errors, casts instead of checks, tests that cannot
 fail, giant functions, tangled imports. nitpicker narrows TypeScript, JavaScript, Python, Java and
-Kotlin to roughly one allowed way of doing each thing, and checks every change against it. The
-quickest way for an agent to get a green build becomes the right way.
+Kotlin to roughly one allowed way of doing each thing and checks every change against it, so the
+quickest way to a green build is the right way. Only what a change adds can fail, so it works on
+an existing codebase.
 
-An agent adds this function to a TypeScript project, with a test that only checks the result is
-an array:
+An agent adds `src/main/features/greeting/adapters/load-names.ts` to a TypeScript project, with a
+test whose only assertion is `expect(names.length >= 0).toBe(true)`:
 
 ```ts
 import { readFile } from 'node:fs/promises';
@@ -40,81 +43,70 @@ $ npx nitpicker
     Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
 ```
 
-## What it does
+## Why nitpicker
 
-- **One allowed form for each construct.** Rules are on by default, including the ones other
-  linters leave off as noisy, because those are the patterns agents produce most. Every message
-  names the form to use instead.
-- **Only new problems fail.** nitpicker checks your branch and its merge base, and fails only on
-  what the change adds. Existing problems are recorded and left alone, so you can add it to an
-  existing codebase today.
-- **More than lint.** It also checks that changed branches are tested, that tests can fail
-  (mutation testing), function size, module boundaries, dead code, duplication and slow
-  test patterns.
-- **Teaches first, gates second.** A bundled agent skill teaches the allowed forms before the
-  agent writes code. The gate in CI is the backstop.
-- **Exceptions are explicit.** When a rule flags legitimate code, its message says how to add an
-  exception to `nitpicker.config.json`, with the paths and a reason. Review sees it, and every
-  report lists it.
-- **One command.** The analyzers ship pinned and preconfigured inside the package.
-
-## Languages
-
-| Language                                                  | Preset                 | Your project provides                             |
-| --------------------------------------------------------- | ---------------------- | ------------------------------------------------- |
-| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | Vitest and TypeScript                             |
-| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | Vitest and TypeScript                             |
-| [Python](docs/python-preset.md)                           | `python`               | A Python environment (uv, poetry or a virtualenv) |
-| [Java](docs/java-preset.md)                               | `java`                 | Gradle and Java 21                                |
-| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | Gradle and Java 21                                |
+- **Strict by default.** Rules that other linters leave off as noisy are on, because those are the
+  patterns agents produce most. Every finding says what to do instead.
+- **Only new problems fail.** nitpicker compares your branch with its merge base and counts what
+  the change adds, so you can adopt it without fixing existing code first. See
+  [Adopting nitpicker on existing code](docs/usage.md#adopting-nitpicker-on-existing-code).
+- **Beyond lint.** Depending on the language, it also checks that changed code is covered by
+  tests, that tests can fail (mutation testing), function size, duplication, module boundaries,
+  dead code and slow test patterns.
+- **Teaches first, gates second.** A bundled agent skill teaches the allowed forms before the agent
+  writes code. The gate in CI is the backstop.
 
 ## Getting started
 
-For TypeScript:
+nitpicker needs Node.js 22.14 or newer and a Git repository. For a TypeScript project:
 
 ```sh
 npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node
 npx nitpicker
 ```
 
-For another language, install `nitpicker` and name the preset in `nitpicker.config.json`, for
-example `{ "preset": "python" }`. nitpicker needs Node.js 22.14 or newer and a Git repository.
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
+For another language, put the preset in `nitpicker.config.json`, for example
+`{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
 
-Then teach your agent. For TypeScript, Python and Kotlin, copy the bundled skill into your agent's
-skills folder (for Claude Code, `.claude/skills/`):
+| Language                                                  | Preset                 | Agent skill |
+| --------------------------------------------------------- | ---------------------- | ----------- |
+| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | yes         |
+| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | no          |
+| [Python](docs/python-preset.md)                           | `python`               | yes         |
+| [Java](docs/java-preset.md)                               | `java`                 | no          |
+| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | yes         |
+
+To teach your agent, copy the skill from the package into its skills folder (for Claude Code,
+`.claude/skills/`):
 
 ```sh
 mkdir -p .claude/skills && cp -r node_modules/nitpicker/skills/nitpicker .claude/skills/
 ```
 
-For other agents, add the [agent snippet](docs/agents-snippet.md) to your `AGENTS.md`.
+For languages without the skill, or agents without skills, add the
+[agent snippet](docs/agents-snippet.md) to your `AGENTS.md`.
+
+In CI, run `npx nitpicker` as a step and fetch enough history to contain the merge base (for
+example `fetch-depth: 0`). It exits non-zero when a change adds a problem.
+
+> nitpicker is pre-1.0. Rules and messages can change between versions, so pin the version you
+> use.
 
 ## Disagree with a rule?
 
-If a rule flags code that is right, add an exception for those paths with a reason. If it flags
-right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues): the fix is a
-narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules are chosen.
+If a rule flags code that is right, its message says how to add an exception in
+`nitpicker.config.json`: the rule, the paths and a reason. Review sees it, and every report lists
+it. If a rule flags right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues):
+the fix is a narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules
+are chosen.
 
 ## Documentation
 
 - [Mindset](docs/mindset.md): what nitpicker enforces and why.
-- [Usage](docs/usage.md): the command line, reports, exit codes, configuration, exceptions and CI.
+- [Usage](docs/usage.md): the command line, reports, exit codes, configuration, caching and
+  sharding in CI.
 - [Checks](spec/checks.md): every check and rule, and what fails.
-- Language guides: [TypeScript](docs/typescript-strict-preset.md),
-  [JavaScript](docs/usage.md#javascript-preset), [Python](docs/python-preset.md),
-  [Java](docs/java-preset.md), [Kotlin](docs/kotlin-preset.md).
-
-## Status
-
-nitpicker is pre-1.0. Rules and messages can change between versions; pin the version you use.
-
-## Acknowledgements
-
-The approach follows Lauren Tan's public talks on the conventions her team uses with coding agents
-(Dune): one allowed form for each construct, repeated review feedback turned into lint rules, and
-boundaries enforced mechanically. nitpicker uses those talks as a reference, not a spec, and
-contains no code from them.
 
 ## Contributing
 
@@ -123,3 +115,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 ## License
 
 [MIT](LICENSE)
+
+## Acknowledgements
+
+The approach follows Lauren Tan's public talks on the conventions her team uses with coding
+agents. nitpicker uses them as a reference, not a spec, and contains no code from them.
