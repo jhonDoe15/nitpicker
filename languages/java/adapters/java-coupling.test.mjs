@@ -206,10 +206,8 @@ describe('Kotlin classes', () => {
       'src/main/kotlin/other/Reports.kt',
       'src/main/kotlin/stable/Core.kt',
     ]);
-    expect(report.modules.find(({ file }) => file.endsWith('stable/Core.kt'))).toMatchObject({
-      fanIn: 2,
-      fanOut: 1,
-    });
+    const core = report.modules.find(({ file }) => file.endsWith('stable/Core.kt'));
+    expect({ fanIn: core.fanIn, fanOut: core.fanOut }).toEqual({ fanIn: 2, fanOut: 1 });
   });
 
   it('finds a stability direction violation between Kotlin packages', () => {
@@ -238,11 +236,10 @@ describe('Kotlin classes', () => {
           finding.rule === 'module-coupling' && finding.path === 'src/main/kotlin/stable/Core.kt',
       ),
     ).toBeDefined();
-    expect(findings.filter((finding) => finding.classification === 'enforceable')).toEqual([
-      expect.objectContaining({
-        rule: 'stability-direction',
-        identity: 'package-edge:stable->churn',
-      }),
-    ]);
+    expect(
+      findings
+        .filter((finding) => finding.classification === 'enforceable')
+        .map(({ rule, identity }) => ({ rule, identity })),
+    ).toEqual([{ rule: 'stability-direction', identity: 'package-edge:stable->churn' }]);
   });
 });
