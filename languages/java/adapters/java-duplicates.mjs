@@ -35,6 +35,46 @@ function relativeNames(report, cwd) {
   };
 }
 
+function jscpdArguments({ jscpd, paths, config, format, output, ignore, together }) {
+  return [
+    jscpd,
+    ...paths,
+    '--config',
+    config,
+    '--format',
+    format,
+    '--mode',
+    DUPLICATES_MODE,
+    '--reporters',
+    'json',
+    '--output',
+    output,
+    '--silent',
+    '--ignore',
+    ignore.join(','),
+    ...(together ? ['--absolute'] : []),
+  ];
+}
+
+function runJscpdOnce({ cwd, output, args }) {
+  rmSync(output, { recursive: true, force: true });
+  mkdirSync(output, { recursive: true });
+  const result = spawnSync(process.execPath, args, {
+    cwd,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    timeout: JSCPD_TIMEOUT_MS,
+  });
+  if (result.error !== undefined) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
+    throw new Error(`jscpd exited with ${String(result.status)} in ${cwd}: ${detail}`);
+  }
+  return JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
+}
+
 export function runJscpd({ cwd, roots, format, ignore, reportRoot, together = false }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const config = path.join(reportRoot, JSCPD_CONFIG);
@@ -44,43 +84,8 @@ export function runJscpd({ cwd, roots, format, ignore, reportRoot, together = fa
     : roots.map((root) => [root]);
   const runs = groups.map((paths, index) => {
     const output = path.join(reportRoot, 'jscpd', String(index));
-    rmSync(output, { recursive: true, force: true });
-    mkdirSync(output, { recursive: true });
-    const result = spawnSync(
-      process.execPath,
-      [
-        jscpd,
-        ...paths,
-        '--config',
-        config,
-        '--format',
-        format,
-        '--mode',
-        DUPLICATES_MODE,
-        '--reporters',
-        'json',
-        '--output',
-        output,
-        '--silent',
-        '--ignore',
-        ignore.join(','),
-        ...(together ? ['--absolute'] : []),
-      ],
-      {
-        cwd,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        timeout: JSCPD_TIMEOUT_MS,
-      },
-    );
-    if (result.error !== undefined) {
-      throw result.error;
-    }
-    if (result.status !== 0) {
-      const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-      throw new Error(`jscpd exited with ${String(result.status)} in ${cwd}: ${detail}`);
-    }
-    const report = JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
+    const args = jscpdArguments({ jscpd, paths, config, format, output, ignore, together });
+    const report = runJscpdOnce({ cwd, output, args });
     return together
       ? { root: '.', report: relativeNames(report, cwd) }
       : { root: paths[0], report };
