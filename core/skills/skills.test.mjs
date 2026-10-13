@@ -34,7 +34,7 @@ function mentionsPreset(text, preset) {
 
 describe('agent skills', () => {
   it.each(SUPPORTED_PRESETS)('has a skill for the %s preset', (preset) => {
-    expect(skillNames).toContain(`nitpicker-${preset}`);
+    expect(skillNames.includes(`nitpicker-${preset}`)).toBe(true);
   });
 
   it.each(skillNames)('%s has strict YAML frontmatter naming its folder', (name) => {
