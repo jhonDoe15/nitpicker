@@ -179,16 +179,19 @@ function coverageSources({ projectRoot, project }) {
   return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
+function indented(entries) {
+  return entries.map((entry) => `    ${entry}`).join('\n');
+}
+
 function coverageConfig(sources) {
-  const list = (entries) => entries.map((entry) => `    ${entry}`).join('\n');
   return [
     '[run]',
     'branch = True',
     'parallel = False',
-    `source =\n${list(sources)}`,
-    `omit =\n${list(TEST_FILES)}`,
+    `source =\n${indented(sources)}`,
+    `omit =\n${indented(TEST_FILES)}`,
     '[report]',
-    `exclude_lines =\n${list(UNTESTABLE_LINES)}`,
+    `exclude_lines =\n${indented(UNTESTABLE_LINES)}`,
     'partial_branches =',
     '',
   ].join('\n');
