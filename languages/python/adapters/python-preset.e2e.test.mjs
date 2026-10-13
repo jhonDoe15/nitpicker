@@ -733,6 +733,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     project = repository();
     cpSync(fixture, project, { recursive: true });
     write(project, {
+      'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
       'src/demo/signs.py': SIGNS,
       'tests/test_signs.py': signsTest(SIGN_POSITIVE),
     });
