@@ -13,6 +13,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
+import { ONE_WAY_RULE_IDS } from '../languages/java/adapters/kotlin-rules.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
@@ -430,6 +431,77 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ]);
   });
 
+  describe('exceptions for one-way rules', () => {
+    const callRule = 'detekt.style.ForbiddenMethodCall';
+    const forbidden =
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+    const withExceptions = (exceptions) => `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
+    const exception = {
+      rule: callRule,
+      paths: ['src/main/kotlin/demo/K.kt'],
+      reason: 'The entry point blocks on its coroutine.',
+    };
+    const added = {
+      'detekt.txt': `Legacy magic number\n${callRule} :: ${forbidden}\n`,
+    };
+
+    it('fails a new finding of a one-way rule and hands it the allowed form and the exception route', () => {
+      const root = kotlinRepository();
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+      expect(result.json('new-findings.json')).toEqual([
+        {
+          tool: 'detekt',
+          rule: callRule,
+          path: 'src/main/kotlin/demo/K.kt',
+          identity: `fp:nitpicker/subject=${forbidden}`,
+          location: { line: 4 },
+          message: `${forbidden} To allow it on specific paths, add an "exceptions" entry for rule ${callRule} in nitpicker.config.json.`,
+          classification: 'enforceable',
+        },
+      ]);
+    });
+
+    it('passes the same change when nitpicker.config.json lists an exception for the path', () => {
+      const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([exception]) });
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root, [], { subprocess: true });
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    });
+
+    it('does not lift the rule for another path', () => {
+      const other = { ...exception, paths: ['src/main/kotlin/other/**'] };
+      const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([other]) });
+      write(root, added);
+      commit(root, 'add a forbidden call');
+
+      const result = run(root, [], { subprocess: true });
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    });
+
+    it('rejects an exception for a rule that is not a one-way rule', () => {
+      const root = kotlinRepository({
+        'nitpicker.config.json': withExceptions([
+          { ...exception, rule: 'detekt.style.MagicNumber' },
+        ]),
+      });
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.output.err).toBe(
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${ONE_WAY_RULE_IDS.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+      );
+    });
+  });
   it.each([undefined, 'none'])(
     'runs no format check for a project without a detected formatter (kotlin.formatter %s)',
     (formatter) => {
@@ -473,6 +545,146 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'site:fbe5622ec73235ebeafafa81',
         message: 'Legacy allowance increased from 1 to 2 for detekt.style.MagicNumber',
         classification: 'enforceable',
+      },
+    ]);
+  });
+
+  const wideFunction = (name, parameters, start) => ({
+    file: 'src/main/kotlin/demo/Wide.kt',
+    name,
+    start,
+    end: start,
+    lines: 1,
+    statements: 1,
+    maxControlNesting: 0,
+    parameters,
+    complexity: 1,
+  });
+  const wideSource = (...signatures) =>
+    `package demo\n\n${signatures.map((signature) => `fun ${signature} = 0\n`).join('\n')}`;
+  const metricsOf = (...functions) => `${JSON.stringify({ functions, files: [] })}\n`;
+  const newEnforceable = (result, tool) =>
+    result
+      .json('new-findings.json')
+      .filter((finding) => finding.tool === tool && finding.classification === 'enforceable');
+  const FOUR_PARAMETERS = 'sum(a: Int, b: Int, c: Int, d: Int)';
+  const legacyWide = () =>
+    kotlinRepository({
+      'src/main/kotlin/demo/Wide.kt': wideSource(FOUR_PARAMETERS),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 3)),
+    });
+
+  it('keeps a Kotlin function over the parameter limit baselined when it only moves', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': `package demo\n\nval answer = 1\n\nfun ${FOUR_PARAMETERS} = 0\n`,
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 5)),
+    });
+    commit(root, 'move the function');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+  });
+
+  it('fails a Kotlin function that grows past the parameter limit it already exceeded', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': wideSource('sum(a: Int, b: Int, c: Int, d: Int, e: Int)'),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 5, 3)),
+    });
+    commit(root, 'add a parameter');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'structure')).toEqual([
+      {
+        tool: 'structure',
+        rule: 'function-parameters-limit',
+        path: 'src/main/kotlin/demo/Wide.kt',
+        identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
+        message:
+          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+        classification: 'enforceable',
+        symbol: 'sum',
+        location: { line: 3 },
+        ratchet: {
+          key: 'function:sum:occurrence:1:parameters',
+          value: 5,
+          worseMessage:
+            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          heldMessage:
+            'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+        },
+      },
+    ]);
+  });
+
+  it('fails a new Kotlin function over the parameter limit', () => {
+    const root = legacyWide();
+    write(root, {
+      'src/main/kotlin/demo/Wide.kt': wideSource(
+        FOUR_PARAMETERS,
+        'product(a: Int, b: Int, c: Int, d: Int)',
+      ),
+      'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 3), wideFunction('product', 4, 5)),
+    });
+    commit(root, 'add a function');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'structure')).toEqual([
+      {
+        tool: 'structure',
+        rule: 'function-parameters-limit',
+        path: 'src/main/kotlin/demo/Wide.kt',
+        identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
+        message: 'product has 4 parameters; limit is 3',
+        classification: 'enforceable',
+        symbol: 'product',
+        location: { line: 5 },
+        ratchet: {
+          key: 'function:product:occurrence:1:parameters',
+          value: 4,
+          worseMessage:
+            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          heldMessage:
+            'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
+        },
+      },
+    ]);
+  });
+
+  it('fails a new Kotlin clone found by jscpd', () => {
+    const root = kotlinRepository();
+    const clone = (name) =>
+      `package demo\n\nclass ${name} {\n    fun total(a: Int, b: Int): Int {\n        var total = 0\n${Array.from(
+        { length: 10 },
+        (_, index) =>
+          `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }\n`,
+      ).join('')}        return total\n    }\n}\n`;
+    write(root, {
+      'src/main/kotlin/demo/Left.kt': clone('Left'),
+      'src/main/kotlin/demo/Right.kt': clone('Right'),
+    });
+    commit(root, 'copy a class');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+    expect(newEnforceable(result, 'duplicates')).toEqual([
+      {
+        tool: 'duplicates',
+        rule: 'duplicate-clone',
+        path: 'src/main/kotlin/demo/Left.kt',
+        identity:
+          'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:36d1c9baac959e2d7350e29b:occurrence:1',
+        message:
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places.',
+        classification: 'enforceable',
+        location: { line: 3 },
       },
     ]);
   });
@@ -585,7 +797,7 @@ describe('Java analyzer', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;jscpd@[\d.]+$/,
+      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });

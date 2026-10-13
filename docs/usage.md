@@ -44,8 +44,12 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
-- **Mutation testing** in a comparison mutates only the source lines the change adds or edits, on
-  the head side, so every surviving mutant it reports is new. `--all` mutates every source file.
+- **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
+  adds or edits on the head side, so every surviving mutant it reports is new. Python's mutmut
+  works per function, not per line: head reuses the base results for the modules the change did
+  not edit and that import no edited module, and runs every other mutant (all of them when a test
+  or any other file changed). Only mutants that are new on head fail, whichever way the results
+  were obtained. `--all` mutates every source file.
 
 The base ref is the first match of:
 
@@ -169,7 +173,7 @@ is visible in review.
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                              |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`. |
-| `exceptions`      | object[]                                                           | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures, `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                                                                                                      |
+| `exceptions`      | object[]                                                           | The TypeScript, JavaScript and Kotlin presets; a config error with `java` and `python`. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)), `paths` a non-empty glob array, `reason` a non-empty text. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                                                                                                                              |
 | `react`           | object                                                             | TypeScript preset. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                 |
 | `python`          | object                                                             | Python preset only: `environment`, `formatter`, `testRunner` and `sourceRoots` overrides for what nitpicker detects; see [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -181,7 +185,8 @@ These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
 `entry-points`, `prettier-format`, `typescript-typecheck`, `dependency-architecture`,
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
-`crap` and `mutation`.
+`crap` and `mutation`. The Java and Kotlin presets have one analyzer each, and the Python preset has
+two, `python` and `mutation`.
 
 ### React
 
@@ -237,11 +242,20 @@ have no Java meaning, and stay a config error with this preset. Details:
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
 Java and Kotlin. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
-neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources, and
-JaCoCo coverage for both. The project's detekt config is found in the usual places or set with
+neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
+JaCoCo coverage for both, and the structure limits, CRAP, duplicates and package stability checks
+on Kotlin code. The project's detekt config is found in the usual places or set with
 `"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
 requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
+
+The preset also narrows Kotlin to one way of writing the common many-ways spots, with detekt rules
+of its own that the project's detekt config cannot switch off: `!!` and unsafe casts of nullable
+values, the scope functions `run`, `with` and `also` (`let` and `apply` stay), `GlobalScope` and
+`runBlocking`, and plain classes that only hold data. Every message names the allowed form.
+Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings may be suppressed). Where a rule flags legitimate code, add an `exceptions`
+entry with the same shape as TypeScript's, for example
+`{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
 
 ## JavaScript preset
 
@@ -309,21 +323,33 @@ score (lizard at the version the Java preset pins, plus per-function coverage; i
 as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
-environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
-(`ruff-failed`, `format-failed`, `tests-failed`, `coverage-failed`, `structure-failed`,
-`lizard-failed`, or a plain one when the
-environment is missing; exit 2
-when there are no new findings), never thrown.
+environment, failing tests, a crashing tool), the failure is reported as a tool error of the
+analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
+`coverage-failed`, `structure-failed`, `lizard-failed` or a plain one when the environment is missing, and `mutation` for
+`mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
+format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
+error.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `.venv/`
 directory is used as is, otherwise the tools come from the `PATH`; `python.environment` can also be
 an absolute virtualenv directory. The environment has to exist already (`uv sync`, `poetry install`, or your CI's
-install step) and needs `coverage` and, for pytest projects, `pytest`; `ruff` (or `black`) may come
+install step) and needs `coverage` and `pytest`, and `mutmut` unless mutation is disabled (mutmut runs every suite with pytest, which also runs `unittest` tests); `ruff` (or `black`) may come
 from the `PATH`. The base snapshot runs against the same environment with its own sources first on
 `PYTHONPATH`, so an editable install does not make base tests exercise head code.
 
-Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds` (`crapLimit`), `exclude` (findings
+Mutation testing is the `mutation` analyzer and runs mutmut 3.x after the `python` analyzer: a new
+surviving or uncovered mutant fails (`mutant-survived`, `mutant-nocoverage`), there is no score
+gate, and mutants that survived on the base stay baselined. `"disable": ["mutation"]` turns it off
+(`python` cannot be disabled alone, because `mutation` depends on it), and it is also what to do
+when mutmut cannot be installed. A project's own `[tool.mutmut]` is used as it is; without one
+nitpicker mutates the source roots, skipping test files and the `exclude` globs. A mutant that no
+test can tell from the original (an equivalent mutant) is lifted in `[tool.mutmut]` with
+`do_not_mutate`, or by listing the path in `exclude`, which drops its findings. mutmut needs
+`fork`, so on native Windows the analyzer is skipped with a note: run nitpicker in WSL. Add
+`mutants/` to your ignore file. See [python-preset.md](python-preset.md).
+
+Config keys with this preset: `base`, `disable` (`python` and `mutation` are the analyzer names), `analyzers`, `thresholds` (`crapLimit`), `exclude` (findings
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or

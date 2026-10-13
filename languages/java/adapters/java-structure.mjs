@@ -7,16 +7,20 @@ const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
-  return readStructureFindings(reportRoot, projectRoot, { textOf: methodText });
+  return readStructureFindings(reportRoot, projectRoot);
 }
 
-export function readStructureFindings(reportRoot, projectRoot, { textOf, hints }) {
+export function readStructureFindings(reportRoot, projectRoot, options) {
   const report = path.join(reportRoot, STRUCTURE_REPORT);
   if (!existsSync(report)) {
     return [];
   }
+  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
+}
+
+export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
   const sources = new Map();
-  const functions = JSON.parse(readFileSync(report, 'utf8')).map((entry) => ({
+  const functions = entries.map((entry) => ({
     ...entry,
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
