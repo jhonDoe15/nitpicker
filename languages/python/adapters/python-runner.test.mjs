@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -51,6 +59,8 @@ const withoutCoupling = ({ findings }) => findings.filter(({ tool }) => tool !==
 
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
+
+const analyzeMutation = (root, extra = {}) => analyze(root, { part: 'mutation', ...extra });
 
 function enforceable(findings) {
   return findings.filter(({ classification }) => classification !== 'descriptive');
@@ -152,6 +162,98 @@ describe('analyzing a Python snapshot', () => {
     const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
 
     expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
+  });
+
+  it('turns the mutmut run into mutant findings in the mutation part and cleans the snapshot unless it is the base', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const files = {
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+      'src/demo/a.py': 'def f():\n    return 1\n',
+    };
+    const head = project(files);
+    const base = project(files);
+
+    const { findings } = analyzeMutation(head);
+    const baseFindings = analyzeMutation(base, { policy: { snapshot: 'base' } }).findings;
+
+    expect(findings).toEqual([
+      {
+        tool: 'mutmut',
+        rule: 'mutant-survived',
+        path: 'src/demo/a.py',
+        identity: 'f|1→2#1',
+        symbol: 'f',
+        message:
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        classification: 'enforceable',
+        location: { line: 2 },
+      },
+      {
+        tool: 'mutmut',
+        rule: 'mutation-summary',
+        path: '.',
+        identity: 'status:Survived',
+        message: 'Survived mutants',
+        classification: 'descriptive',
+        metric: { name: 'Survived', value: 1 },
+      },
+    ]);
+    expect(baseFindings).toEqual(findings);
+    expect(existsSync(path.join(head, 'mutants'))).toBe(false);
+    expect(existsSync(path.join(base, 'mutants'))).toBe(true);
+  });
+
+  it('leaves mutation testing to the mutation part, so lint and tests never wait for or fail with mutmut', () => {
+    const root = project({ 'no-mutmut.txt': '', 'violations.txt': 'F401|src/demo/a.py|unused\n' });
+
+    const lintFindings = analyze(root).findings.filter(({ tool }) => tool === 'ruff');
+    expect(lintFindings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual(['ruff F401']);
+    expect(analyzeMutation(root).findings).toEqual([
+      {
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message:
+          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('drops the mutants of excluded paths', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const root = project({
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+    });
+
+    const { findings } = analyzeMutation(root, { policy: { exclude: ['src/demo/**'] } });
+
+    expect(findings.map(({ rule }) => rule)).toEqual(['mutation-summary']);
+  });
+
+  it('maps an unexpected failure of the mutation part to a mutation-failed tool error', () => {
+    const root = project({
+      'mutants-data.json': '{"src/demo/a.py": {"exitCodes": {"k": 0}, "mutated": ""}}',
+    });
+
+    expect(analyzeMutation(root).findings).toEqual([
+      {
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message:
+          'mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
+        classification: 'tool-error',
+      },
+    ]);
   });
 
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {
@@ -288,10 +390,11 @@ describe('analyzing a Python snapshot', () => {
 describe('runner arguments', () => {
   it('defaults the live root to the project and the settings to none', () => {
     expect(parsePythonArguments(['--project-root', '/p'])).toEqual({
+      part: 'python',
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
-      policy: { exclude: [], snapshot: 'head' },
+      policy: { exclude: [], exceptions: [], snapshot: 'head' },
     });
   });
 
@@ -303,6 +406,8 @@ describe('runner arguments', () => {
       '/live',
       '--python-settings',
       '{"formatter":"black"}',
+      '--part',
+      'mutation',
       '--exclude',
       'gen/**',
       '--snapshot',
@@ -310,11 +415,18 @@ describe('runner arguments', () => {
     ]);
 
     expect(parsed).toEqual({
+      part: 'mutation',
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], snapshot: 'base' },
+      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
     });
+  });
+
+  it('rejects a part it does not know', () => {
+    expect(() => parsePythonArguments(['--project-root', '/p', '--part', 'lint'])).toThrow(
+      '--part must be one of: python, mutation',
+    );
   });
 
   it('rejects unknown options', () => {

@@ -5,7 +5,7 @@ requires-python = ">=3.10"
 dependencies = []
 
 [dependency-groups]
-dev = ["coverage", "mypy", "pytest", "ruff"]
+dev = ["coverage", "mutmut", "mypy", "pytest", "ruff"]
 
 [build-system]
 requires = ["hatchling"]

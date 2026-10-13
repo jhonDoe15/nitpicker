@@ -8,7 +8,8 @@ import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
 import { checkRules } from './python-ast-rules.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
-import { execute, failure, run } from './python-process.mjs';
+import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
+import { execute, failure, probeVersion, run } from './python-process.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
@@ -20,6 +21,7 @@ import { RUFF_CONFIG } from './python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
+  pytestLabel,
   testCommand,
   testRunnerLabel,
   testsRan,
@@ -33,7 +35,6 @@ export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
-const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
@@ -46,6 +47,8 @@ export function createToolContext({
   settings = {},
   reportRoot,
   exclude = [],
+  snapshot = 'head',
+  baselineRoot,
 }) {
   const launcher = openEnvironment(detectEnvironment(liveRoot, settings.environment), liveRoot);
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
@@ -55,6 +58,8 @@ export function createToolContext({
   return {
     projectRoot,
     reportRoot,
+    snapshot,
+    baselineRoot,
     launcher,
     exclude,
     project: {
@@ -221,14 +226,6 @@ function writeCoverageReport(context, { config, measured }) {
   );
 }
 
-function probeVersion(context, command) {
-  const result = execute(context, command);
-  if (result.error !== undefined || result.status !== 0) {
-    return 'missing';
-  }
-  return VERSION_PATTERN.exec(result.stdout)?.[0] ?? 'unknown';
-}
-
 function typeCheckerVersion(context) {
   const checker = resolveTypeChecker(context);
   return checker === undefined
@@ -265,4 +262,8 @@ export function toolVersions(context) {
     `jscpd@${jscpdVersion()}`,
     ...importLinterVersion(context),
   ].join(';');
+}
+
+export function mutationVersions(context) {
+  return [`mutmut@${probeVersion(context, MUTMUT_VERSION_PROBE)}`, pytestLabel(context)].join(';');
 }

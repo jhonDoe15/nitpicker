@@ -92,7 +92,7 @@ const summarize = (findings) =>
 const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const GREETER_HI = 'def greet(name):\n    return f"Hi, {name}!"\n';
 const GREETER_HI_TEST =
-  'from demo.greeter import greet\nfrom demo.legacy import value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n';
+  'from demo.greeter import greet\nfrom demo.legacy import clamp, value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n\n\ndef test_clamp():\n    assert clamp(3) == 3\n';
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value * 2\n';
 const ONE_WAY_VIOLATIONS = [
   'import os',
@@ -119,7 +119,16 @@ const WEAKENED_PYRIGHT = JSON.stringify({
   exclude: ['src/demo/typed.py'],
   typeCheckingMode: 'off',
 });
-const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
+const CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
+const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${CLAMP}`;
+const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${CLAMP}`;
+const PRICING =
+  'def discount(price: int) -> int:\n    return price - 5 if price > 100 else price\n';
+const PRICING_WITH_UNUSED = `${PRICING}\n\ndef unused() -> int:\n    return 3\n`;
+const PRICING_TEST =
+  'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n';
+const PRICING_FULL_TEST =
+  'from demo.pricing import discount\n\n\ndef test_discount():\n    assert discount(50) == 50\n    assert discount(101) == 96\n    assert discount(100) == 100\n';
 
 const roots = [];
 
@@ -148,6 +157,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       '-e',
       '.',
       'coverage',
+      'mutmut',
       'pytest',
       'mypy',
     ]);
@@ -185,6 +195,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
     });
     commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
+    commitBranch(project, 'weaker-source', { 'src/demo/legacy.py': LEGACY_WEAKER });
+    commitBranch(project, 'survivors', {
+      'src/demo/pricing.py': PRICING_WITH_UNUSED,
+      'tests/test_pricing.py': PRICING_TEST,
+    });
+    commitBranch(project, 'killed', {
+      'src/demo/pricing.py': PRICING,
+      'tests/test_pricing.py': PRICING_FULL_TEST,
+    });
     commitBranch(project, 'failing-tests', {
       'tests/test_greeter.py': GREETER_HI_TEST,
     });
@@ -204,10 +223,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
-    expect(result.json('summary.json').tools[0].version).toMatch(
+    const [python, mutation] = result.json('summary.json').tools;
+    expect(python.version).toMatch(
       /^ruff@[\d.]+;mypy@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
-    expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
+    expect(mutation.version).toMatch(/^mutmut@3\.[\d.]+;pytest@[\d.]+$/);
+    expect(python.unchanged).toBeGreaterThan(0);
   });
 
   it('keeps the legacy violation baselined when its line moves', () => {
@@ -229,7 +250,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           .json('new-findings.json')
           .filter(({ classification }) => classification === 'enforceable'),
       ),
-    ).toEqual(['mypy no-untyped-def bad.py', 'ruff F401 bad.py', 'ruff-format format bad.py']);
+    ).toEqual([
+      'mutmut mutant-nocoverage bad.py',
+      'mypy no-untyped-def bad.py',
+      'ruff F401 bad.py',
+      'ruff-format format bad.py',
+    ]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',
@@ -237,6 +263,8 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'coupling/module-coupling',
       'coverage/line-coverage',
       'coverage/uncovered-function',
+      'mutmut/mutation-summary',
+      'mutmut/mutant-nocoverage',
       'mypy/no-untyped-def',
       'ruff/F401',
       'ruff-format/format',
@@ -313,6 +341,55 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
 
+  it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
+    const result = gate(project, 'survivors');
+
+    expect(result.exitCode, result.text).toBe(1);
+    const mutants = result
+      .json('new-findings.json')
+      .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
+    expect(new Set(mutants.map(({ rule }) => rule))).toEqual(
+      new Set(['mutant-survived', 'mutant-nocoverage']),
+    );
+    expect(new Set(mutants.map(({ path: file }) => file))).toEqual(
+      new Set(['src/demo/pricing.py']),
+    );
+    expect(mutants.find(({ rule }) => rule === 'mutant-survived')).toEqual({
+      tool: 'mutmut',
+      rule: 'mutant-survived',
+      path: 'src/demo/pricing.py',
+      identity: 'discount|-→+#1',
+      message:
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      classification: 'enforceable',
+      symbol: 'discount',
+      location: { line: 2 },
+    });
+  });
+
+  it('passes new code whose mutants are all killed', () => {
+    const result = gate(project, 'killed');
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary'),
+    ).toEqual([]);
+  });
+
+  it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
+    const result = gate(project, 'weaker-source');
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
+    ).toEqual(['mutmut mutant-survived value']);
+  });
+
   it('reports line coverage as a descriptive finding', () => {
     const result = gate(project, 'violation');
 
@@ -349,7 +426,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         rule: 'tests-failed',
         path: '.',
         message: expect.stringMatching(
-          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 1 passed in [\d.]+s$/,
+          /^coverage run exited 1 in the virtualenv environment:\n[\s\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\s\S]*1 failed, 2 passed in [\d.]+s$/,
         ),
       },
     ]);
@@ -359,12 +436,12 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const result = gate(project, 'broken-environment');
 
     expect(result.exitCode, result.text).toBe(2);
-    expect(result.json('tool-errors.json')).toEqual([
-      {
-        tool: 'python',
-        snapshot: 'head',
-        message: `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
-      },
+    const message = `No Python environment at ${path.join(project, 'nowhere')} (${path.join(project, 'nowhere/bin')} does not exist): create it, or set "python.environment"`;
+    expect(
+      result.json('tool-errors.json').sort((left, right) => left.tool.localeCompare(right.tool)),
+    ).toEqual([
+      { tool: 'mutation', snapshot: 'head', message },
+      { tool: 'python', snapshot: 'head', message },
     ]);
   });
 
@@ -374,8 +451,8 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     beforeAll(() => {
       plain = repository();
       write(plain, {
-        'nitpicker.config.json': '{ "preset": "python" }\n',
-        '.gitignore': '.venv/\n__pycache__/\n',
+        'nitpicker.config.json': '{ "preset": "python", "python": { "testRunner": "unittest" } }\n',
+        '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
         'pyproject.toml': '[tool.black]\nline-length = 88\n',
         'pkg/__init__.py': '',
         'pkg/shape.py': 'def area(side):\n    return side * side\n',
@@ -386,7 +463,16 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       git(plain, 'add', '-A');
       git(plain, 'commit', '-q', '-m', 'base');
       command(plain, 'uv', ['venv', '-q', '.venv']);
-      command(plain, 'uv', ['pip', 'install', '-q', '--python', '.venv', 'coverage']);
+      command(plain, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'mutmut',
+        'pytest',
+      ]);
       commitBranch(plain, 'clean', {
         'pkg/shape.py': 'def area(side):\n    return side**2\n',
       });
@@ -425,7 +511,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         'nitpicker.config.json': '{ "preset": "python" }\n',
         '.gitignore': '.venv/\n__pycache__/\n',
         'pyproject.toml':
-          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n',
+          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n\n[tool.mutmut]\nsource_paths = ["pkg"]\n',
         'pkg/__init__.py': '',
         'pkg/shape.py': 'def area(side):\n    return side * side\n',
         'tests/test_shape.py':
@@ -443,6 +529,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         '--python',
         '.venv',
         'coverage',
+        'mutmut',
         'pytest',
         'pytest-cov',
         'pytest-xdist',
@@ -500,6 +587,71 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     });
   });
 
+  describe('a project whose mutmut configuration nitpicker writes, with xdist and an excluded Python 2 file', () => {
+    let callers;
+
+    beforeAll(() => {
+      callers = repository();
+      write(callers, {
+        'nitpicker.config.json': '{ "preset": "python", "exclude": ["calc/legacy.py"] }\n',
+        '.gitignore': '.venv/\n__pycache__/\n',
+        'pyproject.toml':
+          '[project]\nname = "calc"\nversion = "0.1.0"\n\n[tool.pytest.ini_options]\naddopts = "-n 2"\n',
+        'calc/__init__.py': '',
+        'calc/helper.py': 'def f(x):\n    return x + 2\n',
+        'calc/core.py':
+          'from calc.helper import f\n\n\ndef g(x):\n    return 1 if f(x) > 3 else 0\n',
+        'calc/legacy.py': 'print "old"\n',
+        'tests/test_core.py':
+          'from calc.core import g\n\n\ndef test_low():\n    assert g(1) == 0\n\n\ndef test_high():\n    assert g(2) == 1\n',
+      });
+      git(callers, 'init', '-q', '-b', 'main');
+      git(callers, 'add', '-A');
+      git(callers, 'commit', '-q', '-m', 'base');
+      command(callers, 'uv', ['venv', '-q', '.venv']);
+      command(callers, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'mutmut',
+        'pytest',
+        'pytest-xdist',
+      ]);
+      commitBranch(callers, 'unrelated', { 'calc/extra.py': 'EXTRA = 1\n' });
+      commitBranch(callers, 'callee', {
+        'calc/helper.py': 'def f(x):\n    return x + 3 if x >= 2 else x + 1\n',
+      });
+    });
+
+    it('runs mutmut despite xdist in the addopts and never mutates the excluded file', () => {
+      const result = gate(callers, 'unrelated');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('summary.json').overallStatus).toBe('completed');
+    });
+
+    it('does not reuse the results of an unchanged caller whose callee changed', () => {
+      const result = gate(callers, 'callee');
+
+      expect(result.exitCode, result.text).toBe(1);
+      const survivors = result
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'mutant-survived');
+      expect(survivors.map(({ path: file, identity }) => `${file} ${identity}`).sort()).toEqual(
+        [
+          'calc/core.py g|>→>=#1',
+          'calc/core.py g|3→4#1',
+          'calc/helper.py f|+→-#1',
+          'calc/helper.py f|1→2#1',
+          'calc/helper.py f|3→4#1',
+        ].sort(),
+      );
+    });
+  });
+
   describe('a uv project', () => {
     let locked;
 
@@ -546,7 +698,7 @@ const ORDER_TOTAL = [
   '',
 ].join('\n');
 const LAYERED_FILES = {
-  'nitpicker.config.json': '{ "preset": "python" }\n',
+  'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
   '.gitignore': '.venv/\n__pycache__/\n',
   '.importlinter':
     '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
@@ -604,7 +756,8 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     });
     commitBranch(project, 'contracts-off', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
-      'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
+      'nitpicker.config.json':
+        '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
     });
   });
 
