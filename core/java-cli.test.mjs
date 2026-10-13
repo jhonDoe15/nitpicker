@@ -527,12 +527,25 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(newEnforceable(result, 'structure')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'structure',
         rule: 'function-parameters-limit',
         path: 'src/main/kotlin/demo/Wide.kt',
-        message: expect.stringContaining('grew from 4 to 5 parameters'),
-      }),
+        identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
+        message:
+          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+        classification: 'enforceable',
+        symbol: 'sum',
+        location: { line: 3 },
+        ratchet: {
+          key: 'function:sum:occurrence:1:parameters',
+          value: 5,
+          worseMessage:
+            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          heldMessage:
+            'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
+        },
+      },
     ]);
   });
 
@@ -551,11 +564,24 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(newEnforceable(result, 'structure')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'structure',
         rule: 'function-parameters-limit',
+        path: 'src/main/kotlin/demo/Wide.kt',
+        identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
+        message: 'product has 4 parameters; limit is 3',
+        classification: 'enforceable',
         symbol: 'product',
-      }),
+        location: { line: 5 },
+        ratchet: {
+          key: 'function:product:occurrence:1:parameters',
+          value: 4,
+          worseMessage:
+            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          heldMessage:
+            'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
+        },
+      },
     ]);
   });
 
@@ -577,11 +603,17 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(newEnforceable(result, 'duplicates')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: 'src/main/kotlin/demo/Left.kt',
-      }),
+        identity:
+          'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:36d1c9baac959e2d7350e29b:occurrence:1',
+        message:
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places.',
+        classification: 'enforceable',
+        location: { line: 3 },
+      },
     ]);
   });
 

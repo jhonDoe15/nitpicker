@@ -134,12 +134,21 @@ describe('readKotlinStructureFindings', () => {
         message: 'Counter.wide has 4 parameters; limit is 3',
       },
     ]);
-    expect(findings[0]).toMatchObject({
-      tool: 'structure',
-      path: 'src/main/kotlin/demo/Tiers.kt',
-      classification: 'enforceable',
-      location: { line: 14 },
-    });
+    expect(
+      findings.map(({ tool, path: file, classification, location }) => ({
+        tool,
+        path: file,
+        classification,
+        location,
+      })),
+    ).toEqual([
+      {
+        tool: 'structure',
+        path: 'src/main/kotlin/demo/Tiers.kt',
+        classification: 'enforceable',
+        location: { line: 14 },
+      },
+    ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
 
@@ -235,14 +244,23 @@ describe('readKotlinCrapFindings', () => {
   it('computes the score over the function and its lambda, not over its default-argument bridge', () => {
     const findings = crap({ ...FULL, tier: lines(0, 5) }, { crapLimit: 6 });
 
-    expect(findings).toEqual([
-      expect.objectContaining({
+    expect(
+      findings.map(({ tool, rule, symbol, message, path: file }) => ({
+        tool,
+        rule,
+        symbol,
+        message,
+        path: file,
+      })),
+    ).toEqual([
+      {
         tool: 'crap',
         rule: 'crap-score-limit',
         symbol: 'tier',
-        message: expect.stringContaining('CRAP 6.00'),
+        message:
+          'tier has CRAP 6.00; score must be below 6. Test its uncovered branches, or split a branchy part into its own function.',
         path: 'src/main/kotlin/demo/Tiers.kt',
-      }),
+      },
     ]);
   });
 
@@ -311,7 +329,10 @@ describe('readKotlinCrapFindings', () => {
 
     expect(moved.identity).toBe(base.identity);
     expect(moved.location).toEqual({ line: 5 });
-    expect(base.ratchet).toMatchObject({ key: 'function:tier:crap', value: 6 });
+    expect({ key: base.ratchet.key, value: base.ratchet.value }).toEqual({
+      key: 'function:tier:crap',
+      value: 6,
+    });
   });
 });
 
