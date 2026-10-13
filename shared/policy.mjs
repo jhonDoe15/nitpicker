@@ -159,7 +159,7 @@ export const RULES = [
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: withKotlin(ALL, false),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.mutantSurvived,
