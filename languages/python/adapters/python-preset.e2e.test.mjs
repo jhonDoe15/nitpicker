@@ -559,7 +559,7 @@ const ORDER_TOTAL = [
   '',
 ].join('\n');
 const LAYERED_FILES = {
-  'nitpicker.config.json': '{ "preset": "python" }\n',
+  'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
   '.gitignore': '.venv/\n__pycache__/\n',
   '.importlinter':
     '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
@@ -617,7 +617,8 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     });
     commitBranch(project, 'contracts-off', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
-      'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
+      'nitpicker.config.json':
+        '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
     });
   });
 
