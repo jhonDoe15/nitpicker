@@ -95,9 +95,22 @@ describe('changed-branch-coverage on Kotlin sources', () => {
       sourceText: (file) => sourceText(file.replace(/\.java$/, '.kt')),
     }).findings.map((finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`);
 
-    expect(everyLine).toEqual(
-      expect.arrayContaining(['More.java:106', 'More.java:107', 'Coro.java:15', 'Coro.java:34']),
-    );
+    expect(everyLine).toEqual([
+      'More.java:10',
+      'More.java:106',
+      'More.java:107',
+      'More.java:108',
+      'More.java:112',
+      'More.java:120',
+      'Coro.java:15',
+      'Coro.java:16',
+      'Coro.java:17',
+      'Coro.java:18',
+      'Coro.java:34',
+      'Coro.java:38',
+      'Coro.java:44',
+      'Coro.java:45',
+    ]);
     expect(everyLine.length).toBeGreaterThan(ingest(report).length);
   });
 
