@@ -75,7 +75,15 @@ function runJscpdOnce({ cwd, output, args }) {
   return JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
 }
 
-export function runJscpd({ cwd, roots, format, ignore, reportRoot, together = false }) {
+export function runJscpd({
+  cwd,
+  roots,
+  format,
+  ignore,
+  reportRoot,
+  reportFile = DUPLICATES_REPORT,
+  together = false,
+}) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
   const config = path.join(reportRoot, JSCPD_CONFIG);
   writeFileSync(config, JSON.stringify(JSCPD_SETTINGS));
@@ -90,20 +98,30 @@ export function runJscpd({ cwd, roots, format, ignore, reportRoot, together = fa
       ? { root: '.', report: relativeNames(report, cwd) }
       : { root: paths[0], report };
   });
-  writeFileSync(path.join(reportRoot, DUPLICATES_REPORT), `${JSON.stringify({ runs })}\n`);
+  writeFileSync(path.join(reportRoot, reportFile), `${JSON.stringify({ runs })}\n`);
 }
 
-export function runJavaDuplicates(projectRoot) {
+export function runJavaDuplicates(
+  projectRoot,
+  { format = 'java', rootsKey = 'sourceRoots', reportFile = DUPLICATES_REPORT } = {},
+) {
   const reportRoot = path.join(projectRoot, 'build/nitpicker');
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  const roots = (manifest.sourceRoots ?? []).filter((root) =>
+  const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );
-  runJscpd({ cwd: projectRoot, roots, format: 'java', ignore: JSCPD_IGNORE, reportRoot });
+  runJscpd({
+    cwd: projectRoot,
+    roots,
+    format,
+    ignore: JSCPD_IGNORE,
+    reportRoot,
+    reportFile,
+  });
 }
 
-export function readDuplicateFindings(reportRoot) {
-  const { runs } = JSON.parse(readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'));
+export function readDuplicateFindings(reportRoot, reportFile = DUPLICATES_REPORT) {
+  const { runs } = JSON.parse(readFileSync(path.join(reportRoot, reportFile), 'utf8'));
   return runs.flatMap(({ root, report }) =>
     evaluateDuplicates(jscpdClones(report, [root]), DUPLICATES_TOOL),
   );
