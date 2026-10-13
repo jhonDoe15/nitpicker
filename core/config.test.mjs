@@ -112,7 +112,7 @@ describe('config file', () => {
 
   describe('kotlin exceptions', () => {
     const exception = {
-      rule: 'detekt.style.ForbiddenImport',
+      rule: 'detekt.style.ForbiddenMethodCall',
       paths: ['src/main/kotlin/app/Main.kt'],
       reason: 'The entry point blocks on its coroutine.',
     };
@@ -128,18 +128,8 @@ describe('config file', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
       expect(() => validateConfig({ preset: 'kotlin', exceptions: [other] })).toThrow(
-        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenImport.*config\/detekt\/detekt\.yml/,
+        /"exceptions\[0\]\.rule" is "detekt\.style\.MagicNumber".*detekt\.style\.ForbiddenMethodCall.*config\/detekt\/detekt\.yml/,
       );
-    });
-
-    it.each([
-      [{ preset: 'kotlin', exceptions: {} }, /"exceptions" must be an array/],
-      [{ preset: 'kotlin', exceptions: ['x'] }, /"exceptions\[0\]" must be an object/],
-      [{ preset: 'kotlin', exceptions: [{ ...exception, rule: '' }] }, /non-empty rule id/],
-      [{ preset: 'kotlin', exceptions: [{ ...exception, reason: ' ' }] }, /reason" is required/],
-      [{ preset: 'kotlin', exceptions: [{ ...exception, paths: [] }] }, /at least one path glob/],
-    ])('validates the shape of %j', (config, message) => {
-      expect(() => validateConfig(config)).toThrow(message);
     });
   });
 

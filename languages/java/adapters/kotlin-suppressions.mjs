@@ -1,17 +1,16 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter } from '../ingest/common.mjs';
+import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
 import { isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
-const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const SUPPRESS_ANNOTATION =
-  /@(?:file:)?(?:(?:kotlin|java\.lang)\.)?Suppress(?:Warnings)?\s*\(((?:"(?:[^"\\]|\\.)*"|[^")])*)\)/g;
-const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
+  /@\[?(?:\w+:)?(?:(?:kotlin|java\.lang)\.)?Suppress(?:Warnings)?\s*\(((?:"[^"]*"|[^")])*)\)/g;
 
 export function suppressionTokens(source) {
-  const code = source.replace(COMMENTS, '');
+  const { code, literals } = maskKotlinSource(source);
   return [...code.matchAll(SUPPRESS_ANNOTATION)].flatMap(([, argumentText]) =>
-    [...argumentText.matchAll(STRING_LITERAL)].map(([, token]) => token),
+    [...argumentText.matchAll(LITERAL_MARK)].map(([, index]) => literals[Number(index)]),
   );
 }
 
@@ -30,7 +29,7 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: `Suppressing "${token}" inline hides a rule nitpicker enforces. Fix the code the rule flags; to allow a rule on specific paths, add an "exceptions" entry for it in nitpicker.config.json.`,
+    message: `Suppressing "${token}" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.`,
     classification: 'enforceable',
   };
 }

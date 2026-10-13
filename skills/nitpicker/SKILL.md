@@ -151,9 +151,13 @@ project's ktlint or ktfmt). Exit codes are as above.
   created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
 - Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
-- Coroutines: no `GlobalScope`, no `runBlocking` (not even imported). Make the caller `suspend`
+- Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
-- Never `@Suppress` these rules (or `all`, `style`, `potential-bugs`): fix the code. If one flags
-  legitimate code, stop and ask: the project adds an `exceptions` entry (`detekt.<ruleset>.<Rule>`,
-  paths, reason) to `nitpicker.config.json`, never an edit to `detekt.yml`.
+  A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
+  narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
+- Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
+  fix the code. Kotlin compiler warnings (`UNCHECKED_CAST`) may be suppressed. If a one-way rule
+  flags legitimate code, stop and ask: the project adds an `exceptions` entry
+  (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
+  `detekt.yml` has no effect. Generated code goes in `exclude`.

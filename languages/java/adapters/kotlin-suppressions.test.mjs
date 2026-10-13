@@ -29,6 +29,11 @@ describe('suppressionTokens', () => {
     ['@Suppress( "A" ,\n  "B" )', ['A', 'B']],
     ['@Suppress(names = ["A", "B"])', ['A', 'B']],
     ['@file:Suppress("A")', ['A']],
+    ['@get:Suppress("A")', ['A']],
+    ['@field:Suppress("A")', ['A']],
+    ['@param:SuppressWarnings("A")', ['A']],
+    ['@property:kotlin.Suppress("A")', ['A']],
+    ['@[Suppress("A")]', ['A']],
     ['@kotlin.Suppress("A")', ['A']],
     ['@SuppressWarnings("A")', ['A']],
     ['@java.lang.SuppressWarnings("A")', ['A']],
@@ -49,12 +54,41 @@ describe('suppressionTokens', () => {
     '@Suppress',
     '@Suppress()',
     '@SuppressFoo("A")',
+    'val text = "@Suppress(\\"A\\")"',
+    'val text = """\n@Suppress("A")\n"""',
+    "val quote = '\\''\n/* @Suppress(\"A\") */",
   ])('finds nothing in %j', (source) => {
     expect(suppressionTokens(source)).toEqual([]);
   });
 
   it('reads the annotation that follows a comment on the same line', () => {
     expect(suppressionTokens('/* note */ @Suppress("A") // @Suppress("B")')).toEqual(['A']);
+  });
+
+  it.each([
+    [
+      'a comment opener inside a string',
+      'val open = "/*"\n@Suppress("A")\nfun f() = 1\nval close = "*/"',
+    ],
+    ['a glob followed by a KDoc', 'val glob = "**/*.kt"\n@Suppress("A")\nfun f() = 1\n/** doc */'],
+    ['a line comment opener inside a string', 'val url = "http://x"; @Suppress("A") fun f() = 1'],
+    ['a comment opener in the arguments', '@Suppress("a//b", "A") fun f() = 1'],
+    ['a comment opener inside a raw string', 'val raw = """/*"""\n@Suppress("A") fun f() = 1'],
+    ['a quote in a character literal', 'val quote = \'"\'\n@Suppress("A") fun f() = 1'],
+    [
+      'a template with a nested string',
+      'val s = "${f("x")} // not a comment"\n@Suppress("A") fun f() = 1',
+    ],
+    [
+      'a block comment nested in a comment',
+      '/* outer /* inner */ still comment */ @Suppress("A") fun f() = 1',
+    ],
+  ])('still reads the annotation after %s', (_name, source) => {
+    expect(suppressionTokens(source).at(-1)).toBe('A');
+  });
+
+  it('skips an annotation that only sits inside a nested block comment', () => {
+    expect(suppressionTokens('/* outer /* inner */ @Suppress("A") */ fun f() = 1')).toEqual([]);
   });
 });
 
@@ -64,7 +98,7 @@ describe('readSuppressionFindings', () => {
   it('reports each banned token with its rule, a line-free identity and a message that names the fix', () => {
     const root = projectWith({
       [file]:
-        '@Suppress("UnsafeCallOnNullableType", "MagicNumber")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
+        '@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
     expect(readSuppressionFindings(root, ['src/main/kotlin'])).toEqual([
@@ -74,7 +108,7 @@ describe('readSuppressionFindings', () => {
         path: file,
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
-          'Suppressing "UnsafeCallOnNullableType" inline hides a rule nitpicker enforces. Fix the code the rule flags; to allow a rule on specific paths, add an "exceptions" entry for it in nitpicker.config.json.',
+          'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
         classification: 'enforceable',
       },
       {
@@ -83,7 +117,7 @@ describe('readSuppressionFindings', () => {
         path: file,
         identity: 'suppress:all',
         message:
-          'Suppressing "all" inline hides a rule nitpicker enforces. Fix the code the rule flags; to allow a rule on specific paths, add an "exceptions" entry for it in nitpicker.config.json.',
+          'Suppressing "all" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.',
         classification: 'enforceable',
       },
     ]);
@@ -126,7 +160,7 @@ describe('readSuppressionFindings', () => {
 
   it('reports nothing for allowed suppressions, comments and missing source roots', () => {
     const root = projectWith({
-      [file]: '@Suppress("MagicNumber")\nfun a() = 42\n// @Suppress("all")\n',
+      [file]: '@Suppress("UNCHECKED_CAST", "unused")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
     expect(readSuppressionFindings(root, ['src/main/kotlin', 'src/main/missing'])).toEqual([]);

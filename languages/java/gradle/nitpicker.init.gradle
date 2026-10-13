@@ -440,7 +440,8 @@ allprojects {
                 // and one it omits runs with its default. languages/java/detekt/detekt-validation.yml comes last
                 // and turns config validation off: the project's file may configure rulesets of plugins that this
                 // detekt run does not load (formatting), and validation would end the run with exit code 3 on them.
-                // Exit code 2 means findings; anything else is a failure.
+                // --includes '**/*.kt' keeps .kts scripts (precompiled Gradle plugins) out: detekt's type resolution
+                // crashes on them. Exit code 2 means findings; anything else is a failure.
                 // Type resolution: the rules of nitpicker-detekt.yml and several default ones need it. The
                 // classpath is the module's compile classpath plus the compiled Java classes, with the
                 // project's kotlin-stdlib replaced by the one detekt itself embeds (pinned.detektKotlin):
@@ -469,6 +470,7 @@ allprojects {
                         def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() } + libraries)
                             .collect { it.absolutePath }.join(File.pathSeparator)
                         args(['--input', kotlinSourceDirs().join(','),
+                              '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', projectDir.absolutePath,
                               '--build-upon-default-config',

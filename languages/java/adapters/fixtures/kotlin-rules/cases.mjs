@@ -33,8 +33,9 @@ export const kotlinRuleCases = [
   },
   {
     id: 'runBlocking',
-    rule: 'detekt.style.ForbiddenImport',
-    message: 'The import `kotlinx.coroutines.runBlocking` has been forbidden in the detekt config.',
+    rule: 'detekt.style.ForbiddenMethodCall',
+    message:
+      'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.',
     allowedForm: 'suspend fun main()',
     banned: 'import kotlinx.coroutines.runBlocking\n\nfun wait(): Int = runBlocking { 1 }\n',
     allowed: 'import kotlinx.coroutines.delay\n\nsuspend fun wait() {\n    delay(1)\n}\n',
