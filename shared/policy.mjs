@@ -55,7 +55,10 @@ export function mutantRuleId(status) {
  * if the base had it. `tools` limits a rule to findings from those tools (the TypeScript check of
  * the same name keys its identity on branch source instead).
  */
-export const TOUCHED_CODE_RULES = [{ rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] }];
+export const TOUCHED_CODE_RULES = [
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['jacoco'] },
+  { rule: RULE_IDS.changedBranchCoverage, tools: ['coverage-py'] },
+];
 
 /** Failure-message templates; `{name}` placeholders are filled by `renderMessage`. */
 export const MESSAGES = {
@@ -156,7 +159,7 @@ export const RULES = [
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: withKotlin(BOTH, false),
+    enforcedBy: withKotlin(ALL, false),
   },
   {
     id: RULE_IDS.mutantSurvived,

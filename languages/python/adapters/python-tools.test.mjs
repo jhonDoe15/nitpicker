@@ -23,6 +23,30 @@ function temporaryRoot() {
   return root;
 }
 
+function coverageRc(...sources) {
+  return [
+    '[run]',
+    'branch = True',
+    'parallel = False',
+    'source =',
+    ...sources.map((source) => `    ${source}`),
+    'omit =',
+    '    test_*.py',
+    '    *_test.py',
+    '    conftest.py',
+    '    */tests/*',
+    '    */test/*',
+    '[report]',
+    'exclude_lines =',
+    String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
+    String.raw`    ^\s*if __name__ == .__main__.:`,
+    String.raw`    ^\s*@(typing\.)?overload\b`,
+    String.raw`    ^\s*raise NotImplementedError\b`,
+    'partial_branches =',
+    '',
+  ].join('\n');
+}
+
 function setEnvironment(name, value) {
   if (!savedEnvironment.has(name)) {
     savedEnvironment.set(name, process.env[name]);
@@ -203,9 +227,7 @@ describe('running the tools', () => {
       sourceRoots: ['src'],
       testsRan: true,
     });
-    expect(readReport(reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n',
-    );
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
   });
 
   it('checks formatting with black when the project uses it', () => {
@@ -220,14 +242,22 @@ describe('running the tools', () => {
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
 
+  it('measures branches without honoring pragmas, the project config or test files', () => {
+    const { context, reportRoot } = contextFor(
+      project({ 'pyproject.toml': '[tool.coverage.run]\n' }),
+    );
+
+    runPythonTools(context);
+
+    expect(readReport(reportRoot, 'coveragerc')).toBe(coverageRc('src'));
+  });
+
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
     const root = project({ 'lib/a.py': '' });
     const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
     runPythonTools(both.context);
-    expect(readReport(both.reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n    lib\n',
-    );
+    expect(readReport(both.reportRoot, 'coveragerc')).toBe(coverageRc('src', 'lib'));
 
     const none = contextFor(root, { sourceRoots: ['missing'] });
     expect(runPythonTools(none.context)).toEqual([]);

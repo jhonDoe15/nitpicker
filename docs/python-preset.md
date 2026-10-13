@@ -1,6 +1,6 @@
 # Python preset
 
-Status: slices 1, 5 and 6 (tickets PY1, PY5 and PY6, mutation testing) implemented; the others are planned below. The scope is a proposal
+Status: slices 1, 4, 5 and 6 (tickets PY1, PY4, PY5 and PY6) implemented; the others are planned below. The scope is a proposal
 pending owner review.
 
 The Python preset runs the same differential gate as the TypeScript and Java presets on a Python
@@ -144,7 +144,8 @@ for its place are `T201` (`print` in a command-line tool or a notebook), `PERF20
 loop that must handle each item) and `F401` (an `__init__.py` that re-exports): `exclude` the
 path, for example `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff
 configuration (`[tool.ruff]`, `ruff.toml`) and `[tool.coverage]` are not read for linting and
-coverage, so the result means the same on every project; there is no override key for them.
+coverage, so the result means the same on every project; there is no override key for them (the
+coverage settings that are dropped are listed under the test step below).
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
@@ -192,17 +193,20 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `--cov=pkg` or `-n 2` in `addopts` cannot replace the outer coverage run or fork it away, and
   `--lf` or `--sw` find their cache in the report directory. The coverage settings are nitpicker's,
   written to the report directory: branch coverage on, `parallel` off, `source` the source roots
-  that exist in the snapshot. The project's `.coveragerc` is not used, so a project that measures
-  subprocesses or uses a coverage plugin needs more than this slice. `# pragma: no cover` keeps
-  its coverage.py meaning for now. Exit status 5 (no tests collected) is accepted; any other
+  that exist in the snapshot, test files left out of measurement (`test_*.py`, `*_test.py`,
+  `conftest.py`, `*/tests/*`, `*/test/*`), and a fixed `exclude_lines` of the idioms that cannot be
+  tested (see Exceptions under slice 4). The project's own coverage configuration (`.coveragerc`, `setup.cfg`,
+  `tox.ini`, `[tool.coverage]`) is not read, so its `exclude_lines`, `exclude_also`,
+  `partial_branches`, `omit`, plugins and subprocess measurement are all dropped and the gate
+  measures every project the same way. Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
   needed for the per-function data.
 - **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-json.mjs`:
   `line-coverage` per file (a metric, as for JaCoCo and lcov) and `uncovered-function` for each
-  function none of whose statements ran. Both are descriptive in this slice; PY3 and PY4 turn the
-  same report into CRAP and changed-branch coverage. The JSON also carries the per-line branch data
+  function none of whose statements ran. Both are descriptive; PY3 turns the same report into CRAP
+  and PY4 into changed-branch coverage (slice 4 below). The JSON also carries the per-line branch data
   (`executed_branches`, `missing_branches`) those slices need, which is why it was chosen over lcov.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
@@ -213,10 +217,61 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
-- **Not included.** Type checking, the one-way rules, structure limits, CRAP and changed-branch
-  coverage are the next slices. Multi-project
+- **Not included.** Type checking, the one-way rules, structure limits and CRAP are the next
+  slices. Multi-project
   repositories are analyzed one project root at a time. Windows is untested (mutation testing
   needs WSL, see slice 6).
+
+## Slice 4: gate on changed branch coverage
+
+- **Tool and report.** No new tool and no extra run: the coverage JSON of slice 1 already has, per
+  file, the branch arcs coverage.py recorded, `executed_branches` and `missing_branches` as
+  `[from line, to line]` pairs (a negative `to` leaves the enclosing function, class or module).
+  The runner always turns branch coverage on, so both snapshots have them.
+- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-branches.mjs`) groups the
+  arcs by their `from` line and emits one enforceable `coverage-py` / `changed-branch-coverage`
+  finding per line whose taken outcomes are below 95% (the minimum of the other languages). Lines
+  without branches are never reported. The tool name is `coverage-py`, not `coverage`: `coverage`
+  is also the name of the TypeScript coverage analyzer, whose identity scheme differs, and the
+  touched-code rule in `shared/policy.mjs` (`TOUCHED_CODE_RULES`) is scoped by tool name.
+- **What makes it "changed".** The same mechanism as Java slice 8: the differential comparison maps
+  head lines to the merge base through the zero-context diff, and `TOUCHED_CODE_RULES` lists
+  `coverage-py` for this rule, so an uncovered branch whose head line lies in a changed range, or in
+  an added file, is new even if the base had it. An uncovered branch on an unchanged line stays
+  baselined and does not fail.
+- **Identity.** `branch-source:<16 hex>`, a hash of the line's source text (trimmed, whitespace
+  collapsed), with `#2`, `#3` for identical lines in one enclosing scope, in order. The scope is the
+  chain of `def` / `class` names found from the line's indentation (`Class.method`, empty at module
+  level), so a new identical line in another function does not renumber a legacy gap. No line
+  number, so inserting code above keeps the finding baselined and a renamed file follows the rename
+  map. Moving a gap into another function, or renaming its function, makes a new identity, which
+  matters only when the branch line itself is also changed.
+  Editing the line changes both the identity and the changed range, so it is new.
+- **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
+or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.` It
+  names where the untaken outcomes lead; those line numbers are only in the message, never in the
+  identity.
+- **Granularity and limits.** A line with several outcomes (`while`, `for`, `if`/`else` chains,
+  `match` cases) is judged on all of them together. coverage.py does not track conditional
+  expressions or `and`/`or` operands, nor the arms of `try`/`except`/`else`/`finally`, only jumps
+  between lines, so those are not reported: an untested `except` handler is not gated by this rule.
+  Reformatting a line counts as changing it. A file without readable source text is skipped.
+  Coverage comes from the tests of the snapshot being analyzed, so adding or removing a
+  test changes which branches are covered on head.
+- **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
+  `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
+  coverage settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
+  and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
+  `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
+  only this rule's. Test files are not measured, so a `.` source root does not gate them.
+- **Tests.** `languages/python/ingest/coverage-branches.test.mjs` (the ingester on a recorded
+  coverage.py report, identity stability, baselined / touched / added cases through
+  `compareFindings`); `core/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
+  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
+  branch passes).
 
 ## Slice 5: duplicates, coupling and import contracts
 
@@ -426,7 +481,7 @@ exclude and legacy-inventory policy (`applyJavaPolicy`) serve more than one lang
 | PY1 | [#168](https://github.com/jhonDoe15/nitpicker/issues/168) | Base runner and CLI          | ruff, ruff format or black, pytest or unittest under coverage.py     | lint and format findings, `line-coverage`, `uncovered-function`, `tool-error`                     | done    |
 | PY2 | [#169](https://github.com/jhonDoe15/nitpicker/issues/169) | Type checking, one-way rules | mypy or pyright; ruff rules and import rules for the one allowed way | type errors; one-way rules with their failure messages; the Python skill                          | planned |
 | PY3 | [#170](https://github.com/jhonDoe15/nitpicker/issues/170) | Structure limits and CRAP    | function metrics (lizard or ast) joined with the coverage report     | `function-*-limit` rules as for TypeScript and Java; `crap-score-limit`, `crap-coverage-unknown`  | planned |
-| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git         | `changed-branch-coverage`                                                                         | planned |
+| PY4 | [#171](https://github.com/jhonDoe15/nitpicker/issues/171) | Changed-branch coverage      | the coverage JSON branch data and the changed lines from git         | `changed-branch-coverage`                                                                         | done    |
 | PY5 | [#172](https://github.com/jhonDoe15/nitpicker/issues/172) | Duplicates and coupling      | jscpd with the `python` format; import graph for stability           | `duplicate-clone`, `duplicate-clone-size`; `stability-direction`; import-linter `contract-broken` | done    |
 | PY6 | [#173](https://github.com/jhonDoe15/nitpicker/issues/173) | Mutation testing             | mutmut 3 run data, per docs/mutation-testing                         | `mutant-survived`, `mutant-nocoverage` (new surviving mutants fail)                               | done    |
 
