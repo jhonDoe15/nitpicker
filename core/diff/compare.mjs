@@ -154,13 +154,12 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
 
 function groupBaseByRatchetKey(unmatchedBase, keyOf) {
   const baseByRatchet = new Map();
-  for (const baseFinding of unmatchedBase) {
-    if (baseFinding.ratchet !== undefined) {
-      const key = keyOf(baseFinding);
-      if (key !== undefined) {
-        baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
-      }
-    }
+  const keyed = unmatchedBase
+    .filter((baseFinding) => baseFinding.ratchet !== undefined)
+    .map((baseFinding) => [keyOf(baseFinding), baseFinding])
+    .filter(([key]) => key !== undefined);
+  for (const [key, baseFinding] of keyed) {
+    baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
   }
   return baseByRatchet;
 }
