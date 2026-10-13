@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readKotlinCrapFindings, readKotlinStructureFindings } from './kotlin-metrics.mjs';
+import { readKotlinCrapFindings, readKotlinStructureFindings } from '../kotlin-metrics.mjs';
 
 const temporaryRoots = [];
 

@@ -1,7 +1,7 @@
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
-import { jacocoLineUnits } from './jacoco-lines.mjs';
+import { jacocoLineUnits } from './coverage/jacoco-lines.mjs';
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
