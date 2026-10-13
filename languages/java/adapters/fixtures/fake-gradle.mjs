@@ -4,8 +4,9 @@
 // `NO_REPORTS` makes it succeed without reports (a root project the plugin is not applied to), and each
 // line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
 // `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
-// src/main/kotlin/demo/K.kt, each line of `ktlint.txt` (`rule|message`) one ktlint result there and
-// each line of `kotlin-format.txt` a file ktfmt would change. The arguments are kept in
+// src/main/kotlin/demo/K.kt (rule `detekt.style.MagicNumber`, or the part before ` :: ` in the line),
+// each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
+// `kotlin-format.txt` a file ktfmt would change. The arguments are kept in
 // build/nitpicker/gradle-args.json.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -44,10 +45,10 @@ if (kotlin) {
     'build/nitpicker/detekt.sarif',
     sarif(
       'detekt',
-      lines('detekt.txt').map((text, index) => ({
-        ruleId: 'detekt.style.MagicNumber',
+      lines('detekt.txt').map((line, index) => ({
+        ruleId: line.includes(' :: ') ? line.split(' :: ')[0] : 'detekt.style.MagicNumber',
         level: 'warning',
-        message: { text },
+        message: { text: line.includes(' :: ') ? line.split(' :: ')[1] : line },
         locations: [
           {
             physicalLocation: {

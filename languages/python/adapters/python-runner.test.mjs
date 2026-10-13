@@ -353,7 +353,7 @@ describe('runner arguments', () => {
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
-      policy: { exclude: [], snapshot: 'head' },
+      policy: { exclude: [], exceptions: [], snapshot: 'head' },
     });
   });
 
@@ -378,7 +378,7 @@ describe('runner arguments', () => {
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], snapshot: 'base' },
+      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
     });
   });
 

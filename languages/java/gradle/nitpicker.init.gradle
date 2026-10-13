@@ -43,6 +43,7 @@ def pinned = [
     pitest          : '1.17.4',
     pitestJunit5    : '1.2.1',
     detekt          : '1.23.8',
+    detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
     ktfmt           : '0.64',
 ]
@@ -417,11 +418,13 @@ allprojects {
 
                 configurations {
                     nitpickerDetekt { canBeConsumed = false }
+                    nitpickerDetektStdlib { canBeConsumed = false }
                     nitpickerKtlint { canBeConsumed = false }
                     nitpickerKtfmt { canBeConsumed = false }
                 }
                 dependencies {
                     nitpickerDetekt("io.gitlab.arturbosch.detekt:detekt-cli:${pinned.detekt}:all") { transitive = false }
+                    nitpickerDetektStdlib("org.jetbrains.kotlin:kotlin-stdlib:${pinned.detektKotlin}") { transitive = false }
                     nitpickerKtlint("com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all") { transitive = false }
                     nitpickerKtfmt("com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies") { transitive = false }
                 }
@@ -430,14 +433,21 @@ allprojects {
                 tasks.named('nitpickerFormat') { onlyIf { hasJavaSources() } }
                 tasks.named('nitpickerSpotbugs') { onlyIf { hasJavaSources() && hasJavaClasses() } }
 
-                // detekt reports through SARIF. The project's config (nitpicker.kotlin.detektConfig, chosen on
-                // the Nitpicker side) is laid over detekt's default config (--build-upon-default-config), so
-                // a rule it sets active: false stays off and one it omits runs with its default.
-                // languages/java/detekt/detekt-validation.yml turns config validation off: the project's file
-                // may configure rulesets of plugins that this detekt run does not load (formatting), and
-                // validation would end the run with exit code 3 on them.
-                // Exit code 2 means findings; anything else is a failure. Rules that need type
-                // resolution are not run (no classpath is passed).
+                // detekt reports through SARIF. Three configs are layered, the last winning: detekt's defaults
+                // (--build-upon-default-config), the project's config (nitpicker.kotlin.detektConfig, chosen on the
+                // Nitpicker side), and Nitpicker's languages/java/detekt/nitpicker-detekt.yml, so the one-way rules
+                // cannot be switched off from the project's file; a rule the project sets active: false stays off
+                // and one it omits runs with its default. languages/java/detekt/detekt-validation.yml comes last
+                // and turns config validation off: the project's file may configure rulesets of plugins that this
+                // detekt run does not load (formatting), and validation would end the run with exit code 3 on them.
+                // --includes '**/*.kt' keeps .kts scripts (precompiled Gradle plugins) out: detekt's type resolution
+                // crashes on them. Exit code 2 means findings; anything else is a failure.
+                // Type resolution: the rules of nitpicker-detekt.yml and several default ones need it. The
+                // classpath is the module's compile classpath plus the compiled Java classes, with the
+                // project's kotlin-stdlib replaced by the one detekt itself embeds (pinned.detektKotlin):
+                // detekt 1.23 cannot read the metadata of a newer Kotlin standard library, and then every
+                // call to it stays unresolved. Libraries built with a newer Kotlin than detekt's stay
+                // unresolved too, so rules report less there. --jdk-home makes JDK types resolve.
                 tasks.register('nitpickerDetekt', JavaExec) {
                     group = 'nitpicker'
                     classpath = configurations.nitpickerDetekt
@@ -445,18 +455,28 @@ allprojects {
                     ignoreExitValue = true
                     def report = reportDir.map { it.file('detekt.sarif') }
                     def log = new ByteArrayOutputStream()
+                    def nitpickerConfig = new File(initScriptDir, '../detekt/nitpicker-detekt.yml').canonicalFile
                     def validationOff = new File(initScriptDir, '../detekt/detekt-validation.yml').canonicalFile
+                    dependsOn 'compileJava'
                     onlyIf { !kotlinSourceDirs().isEmpty() }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
                         def projectConfig = findProperty('nitpicker.kotlin.detektConfig')
+                        def libraries = sourceSets.main.compileClasspath.files.findAll {
+                            it.exists() && !it.name.startsWith('kotlin-stdlib')
+                        }
+                        def typeResolutionClasspath = (configurations.nitpickerDetektStdlib.files + analyzedClassDirs().findAll { it.exists() } + libraries)
+                            .collect { it.absolutePath }.join(File.pathSeparator)
                         args(['--input', kotlinSourceDirs().join(','),
+                              '--includes', '**/*.kt',
                               '--report', "sarif:${report.get().asFile.absolutePath}".toString(),
                               '--base-path', projectDir.absolutePath,
                               '--build-upon-default-config',
-                              '--config', ([projectConfig] + [validationOff.absolutePath]).findAll { it }.join(',')])
+                              '--config', ([projectConfig, nitpickerConfig.absolutePath, validationOff.absolutePath]).findAll { it }.join(','),
+                              '--classpath', typeResolutionClasspath,
+                              '--jdk-home', System.getProperty('java.home')])
                     }
                     doLast {
                         def code = executionResult.get().exitValue
