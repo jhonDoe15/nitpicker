@@ -43,19 +43,30 @@ function startOption(line, state) {
   state.options.set(state.key, option[2].trim());
 }
 
+function isIndented(line) {
+  return /^\s/.test(line);
+}
+
+function sectionName(line) {
+  return isIndented(line) ? undefined : INI_SECTION.exec(line.trim())?.[1];
+}
+
 function readIniLine(line, sections, state) {
   const content = line.trim();
-  const indented = /^\s/.test(line);
-  const section = indented ? null : INI_SECTION.exec(content);
+  const name = sectionName(line);
   if (content === '' || /^[#;]/.test(content)) {
     state.key = undefined;
-  } else if (section !== null) {
-    startSection(section[1], sections, state);
-  } else if (indented && state.key !== undefined) {
-    appendValue(content, state);
-  } else {
-    startOption(line, state);
+    return;
   }
+  if (name !== undefined) {
+    startSection(name, sections, state);
+    return;
+  }
+  if (isIndented(line) && state.key !== undefined) {
+    appendValue(content, state);
+    return;
+  }
+  startOption(line, state);
 }
 
 function parseIni(text) {
