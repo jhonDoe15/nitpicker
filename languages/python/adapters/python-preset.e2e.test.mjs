@@ -638,6 +638,8 @@ const ORDER_TOTAL = [
   '    return total',
   '',
 ].join('\n');
+const BULK_TEST =
+  'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    free = type("Line", (), {"price": 0, "quantity": 1})\n    assert bulk.bulk_total([line, free], 5) == 1\n    assert bulk.bulk_total([free], 5) == 0\n    assert bulk.bulk_total([line], 0) == 6\n';
 const LAYERED_FILES = {
   'nitpicker.config.json': '{ "preset": "python" }\n',
   '.gitignore': '.venv/\n__pycache__/\n',
@@ -691,6 +693,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     });
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
+      'tests/test_bulk.py': BULK_TEST,
     });
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe():\n    from shop.web import views\n\n    return views.show([1])\n`,
