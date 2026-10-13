@@ -1,6 +1,6 @@
 ---
 name: nitpicker
-description: Use before writing or changing TypeScript in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
+description: Use before writing or changing TypeScript or Kotlin in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
 ---
 
 # nitpicker
@@ -140,3 +140,27 @@ Applies when `react` is in `package.json`.
   styles with CSS-in-JS (or `react.styling` says so), follow that instead.
 - `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
+- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
+  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
+  or hook internals.
+
+## Kotlin
+
+Applies when `nitpicker.config.json` has `"preset": "kotlin"`; the TypeScript sections above do not.
+Run the project's tests (`./gradlew test`), then `npx nitpicker` (no `--fix`; format with the
+project's ktlint or ktfmt). Exit codes are as above.
+
+- Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
+  created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
+- Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
+  `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
+- Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
+  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`.
+- Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
+  A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
+  narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
+- Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
+  fix the code. Kotlin compiler warnings (`UNCHECKED_CAST`) may be suppressed. If a one-way rule
+  flags legitimate code, stop and ask: the project adds an `exceptions` entry
+  (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
+  `detekt.yml` has no effect. Generated code goes in `exclude`.

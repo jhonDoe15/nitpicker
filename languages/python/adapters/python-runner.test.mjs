@@ -50,6 +50,10 @@ const coverageReport = JSON.stringify({
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
 
+function enforceable(findings) {
+  return findings.filter(({ classification }) => classification !== 'descriptive');
+}
+
 describe('analyzing a Python snapshot', () => {
   it('turns the ruff, format and coverage reports into findings', () => {
     const root = project({
@@ -60,7 +64,11 @@ describe('analyzing a Python snapshot', () => {
 
     const { findings } = analyze(root);
 
-    expect(findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`)).toEqual([
+    expect(
+      findings
+        .filter(({ tool }) => tool !== 'coupling')
+        .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+    ).toEqual([
       'ruff F401 src/demo/a.py',
       'ruff B006 src/demo/a.py',
       'ruff-format format src/demo/a.py',
@@ -84,22 +92,24 @@ describe('analyzing a Python snapshot', () => {
       'unformatted.txt': 'src/demo/a.py\n',
     });
 
-    const messages = analyze(root).findings.map(({ rule, message }) => `${rule}: ${message}`);
+    const messages = enforceable(analyze(root).findings).map(
+      ({ rule, message }) => `${rule}: ${message}`,
+    );
 
     expect(messages).toEqual([
       'T201: `print` found Not wanted here? Add the path to "exclude" in nitpicker.config.json.',
       'B006: mutable',
       'format: File is not formatted with ruff (detected; set "python.formatter" if wrong)',
     ]);
-    expect(analyze(root, { settings: { formatter: 'ruff' } }).findings.at(-1).message).toBe(
-      'File is not formatted with ruff',
-    );
+    expect(
+      enforceable(analyze(root, { settings: { formatter: 'ruff' } }).findings).at(-1).message,
+    ).toBe('File is not formatted with ruff');
   });
 
   it('reports a run without tests as an enforceable finding, so only a change that removes them fails', () => {
     const root = project({ 'test-exit.txt': '5\n' });
 
-    expect(analyze(root).findings).toEqual([
+    expect(enforceable(analyze(root).findings)).toEqual([
       {
         tool: 'python',
         rule: 'no-tests-ran',
@@ -138,7 +148,7 @@ describe('analyzing a Python snapshot', () => {
       },
     });
 
-    expect(findings).toEqual([
+    expect(findings.filter(({ classification }) => classification !== 'descriptive')).toEqual([
       {
         tool: 'python',
         rule: 'baseline-expansion',
@@ -240,7 +250,7 @@ describe('runner arguments', () => {
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
-      policy: { exclude: [], snapshot: 'head' },
+      policy: { exclude: [], exceptions: [], snapshot: 'head' },
     });
   });
 
@@ -262,7 +272,7 @@ describe('runner arguments', () => {
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], snapshot: 'base' },
+      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
     });
   });
 

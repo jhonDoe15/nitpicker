@@ -5,7 +5,7 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
-export const LANGUAGES = ['typescript', 'java', 'kotlin'];
+export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -106,8 +106,9 @@ export const HELD_MESSAGES = {
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
-const BOTH = { typescript: true, java: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false };
+const BOTH = { typescript: true, java: true, python: false };
+const ALL = { typescript: true, java: true, python: true };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
 /**
@@ -173,13 +174,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: withKotlin(BOTH, true),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: withKotlin(BOTH, true),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.noProductionRuntime,
