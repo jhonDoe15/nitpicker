@@ -155,12 +155,30 @@ val answer = 1
 fun sum(a: Int, b: Int, c: Int, d: Int): Int = a + b + c + d
 `;
 
-const WIDE_GROWN = `package demo
+const GROWN = `package demo
 
-fun sum(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a + b + c + d + e
+fun product(a: Int, b: Int, c: Int, d: Int): Int = a * b * c * d
 `;
 
-const WIDE_GROWN_TEST = WIDE_TEST.replace('sum(1, 2, 3, 4)', 'sum(1, 2, 3, 4, 0)');
+const GROWN_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class GrownTest {
+    @Test
+    fun multiplies() {
+        assertEquals(24, product(1, 2, 3, 4))
+    }
+}
+`;
+
+const GROWN_WIDER = `package demo
+
+fun product(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a * b * c * d * e
+`;
+
+const GROWN_WIDER_TEST = GROWN_TEST.replace('product(1, 2, 3, 4)', 'product(1, 2, 3, 4, 1)');
 
 const DEEP = `package demo
 
@@ -190,16 +208,14 @@ class DeepTest {
 }
 `;
 
-const classifier = (branches, bump = 1) => `package demo
+const classifier = (name, branches, { bump = 1, step = 10 } = {}) => `package demo
 
-fun classify(value: Int): Int {
+fun ${name}(value: Int): Int {
     var result = 0
-${Array.from({ length: branches }, (_, index) => `    if (value > ${index * 10}) {\n        result += ${index === 0 ? bump : 1}\n    }`).join('\n')}
+${Array.from({ length: branches }, (_, index) => `    if (value > ${index * step}) {\n        result += ${index === 0 ? bump : 1}\n    }`).join('\n')}
     return result
 }
 `;
-
-const RANK = classifier(9).replace('classify', 'rank');
 
 const TIERS = `package demo
 
@@ -276,21 +292,74 @@ class ${name} {
 }
 `;
 
-const STABILITY_FILES = {
-  'src/main/kotlin/client/ClientOne.kt': stabilityClass(
-    'client',
+const stabilityFiles = (suffix) => ({
+  [`src/main/kotlin/client${suffix}/ClientOne.kt`]: stabilityClass(
+    `client${suffix}`,
     'ClientOne',
-    'stable.Core().value()',
+    `stable${suffix}.Core().value()`,
   ),
-  'src/main/kotlin/client/ClientTwo.kt': stabilityClass(
-    'client',
+  [`src/main/kotlin/client${suffix}/ClientTwo.kt`]: stabilityClass(
+    `client${suffix}`,
     'ClientTwo',
-    'stable.Core().value() + 1',
+    `stable${suffix}.Core().value() + 1`,
   ),
-  'src/main/kotlin/stable/Core.kt': stabilityClass('stable', 'Core', 'churn.Volatile().value()'),
-  'src/main/kotlin/churn/Volatile.kt': stabilityClass('churn', 'Volatile', 'leaf.Leaf().value()'),
-  'src/main/kotlin/leaf/Leaf.kt': stabilityClass('leaf', 'Leaf', '1'),
-};
+  [`src/main/kotlin/stable${suffix}/Core.kt`]: stabilityClass(
+    `stable${suffix}`,
+    'Core',
+    `churn${suffix}.Volatile().value()`,
+  ),
+  [`src/main/kotlin/churn${suffix}/Volatile.kt`]: stabilityClass(
+    `churn${suffix}`,
+    'Volatile',
+    `leaf${suffix}.Leaf().value()`,
+  ),
+  [`src/main/kotlin/leaf${suffix}/Leaf.kt`]: stabilityClass(`leaf${suffix}`, 'Leaf', '1'),
+});
+
+const FLATTEN = `package demo
+
+fun flatten(value: Int): Int {
+    var result = 0
+${Array.from({ length: 5 }, (_, index) => `    if (value > ${index * 10}) {\n        result += ${index + 1}\n    }`).join('\n')}
+    return result
+}
+`;
+
+const FLATTEN_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class FlattenTest {
+    @Test
+    fun flattensNothing() {
+        assertEquals(0, flatten(0))
+    }
+}
+`;
+
+const COMBINE = `package demo
+
+val combine: (Int, Int, Int, Int) -> Int = { a, b, c, d -> a + b + c + d }
+`;
+
+const COMBINE_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class CombineTest {
+    @Test
+    fun combines() {
+        assertEquals(10, combine(1, 2, 3, 4))
+    }
+}
+`;
+
+const PIPELINE = `package demo.build
+
+fun pipeline(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a + b + c + d + e
+`;
 
 let repository;
 let mixedRepository;
@@ -338,7 +407,7 @@ function initializeRepository() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-'));
   cpSync(path.resolve(import.meta.dirname, 'fixtures/kotlin-project'), root, { recursive: true });
   repository = root;
-  writeAll({ '.gitignore': 'build/\n.gradle/\n.kotlin/\n' });
+  writeAll({ '.gitignore': '/build/\n/.gradle/\n/.kotlin/\n' });
   git('init', '-q', '-b', 'main');
   git('add', '-A');
   git('commit', '-q', '-m', 'base with one legacy detekt finding');
@@ -396,37 +465,33 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     commitBranch('structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
-      [`${kotlinSources}/Complex.kt`]: classifier(9),
+      [`${kotlinSources}/Grown.kt`]: GROWN,
+      'src/test/kotlin/demo/GrownTest.kt': GROWN_TEST,
+      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9),
+      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 9, { step: 7 }),
+      ...stabilityFiles(''),
     });
-    commitFromStructureBase('structure-new', {
+    commitFromStructureBase('head', {
       [`${kotlinSources}/Wide.kt`]: WIDE_MOVED,
+      [`${kotlinSources}/Grown.kt`]: GROWN_WIDER,
+      'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
+      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9, { bump: 2 }),
+      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 10, { step: 7 }),
       [`${kotlinSources}/Deep.kt`]: DEEP,
       'src/test/kotlin/demo/DeepTest.kt': DEEP_TEST,
-    });
-    commitFromStructureBase('structure-grown', {
-      [`${kotlinSources}/Wide.kt`]: WIDE_GROWN,
-      'src/test/kotlin/demo/WideTest.kt': WIDE_GROWN_TEST,
-    });
-    commitFromStructureBase('legacy-edited', { [`${kotlinSources}/Complex.kt`]: classifier(9, 2) });
-    commitFromStructureBase('legacy-worse', { [`${kotlinSources}/Complex.kt`]: classifier(10) });
-    commitFromStructureBase('crap', {
-      [`${kotlinSources}/Rank.kt`]: RANK,
+      [`${kotlinSources}/Rank.kt`]: classifier('rank', 9, { step: 13 }),
       [`${kotlinSources}/Tiers.kt`]: TIERS,
       'src/test/kotlin/demo/TiersTest.kt': TIERS_TEST,
-    });
-    commitFromStructureBase('clone', {
+      [`${kotlinSources}/Combine.kt`]: COMBINE,
+      'src/test/kotlin/demo/CombineTest.kt': COMBINE_TEST,
+      'src/main/kotlin/Flatten.kt': FLATTEN,
+      'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
+      [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
       [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
       [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
+      ...stabilityFiles('2'),
+      'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
     });
-    commitFromStructureBase('stability', STABILITY_FILES);
-    commitBranch(
-      'stability-edited',
-      {
-        'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
-      },
-      [],
-      'stability',
-    );
   });
 
   afterAll(() => {
@@ -536,76 +601,47 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     ]);
   });
 
-  it('fails a new function over the nesting limit and keeps a legacy wide function baselined when it moves', () => {
-    const result = diffOf('structure-new', kotlinPolicy, 'structure-base');
+  it('applies the structure, CRAP, clone and stability rules to one change', () => {
+    const result = diffOf('head', kotlinPolicy, 'structure-base');
+    const messageOf = (rule, symbol) =>
+      onlyTools(result.newEnforceable, 'structure', 'crap').find(
+        (finding) => finding.rule === rule && finding.symbol === symbol,
+      ).message;
 
-    expect(rulesOf(result.newEnforceable, 'structure')).toEqual([
+    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit Left.total',
+      'crap crap-score-limit Right.total',
+      'crap crap-score-limit classify2',
+      'crap crap-score-limit flatten',
+      'crap crap-score-limit rank',
       'structure function-control-nesting-limit depth',
+      'structure function-lines-limit Left.total',
+      'structure function-lines-limit Right.total',
+      'structure function-parameters-limit combine',
+      'structure function-parameters-limit pipeline',
+      'structure function-parameters-limit product',
+      'structure function-statements-limit Left.total',
+      'structure function-statements-limit Right.total',
+      'structure function-statements-limit classify2',
+      'structure function-statements-limit rank',
     ]);
-    expect(onlyTools(result.newEnforceable, 'structure')[0].message).toBe(
+    expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
       'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
     );
-    expect(rulesOf(result.unchangedFindings, 'structure')).toEqual([
-      'structure function-parameters-limit sum',
-      'structure function-statements-limit classify',
-    ]);
-    expect(rulesOf(result.newEnforceable, 'crap')).toEqual([]);
-  });
-
-  it('fails a touched function that grows past a structure limit it already exceeded', () => {
-    const result = diffOf('structure-grown', kotlinPolicy, 'structure-base');
-
-    expect(rulesOf(result.newEnforceable, 'structure')).toEqual([
-      'structure function-parameters-limit sum',
-    ]);
-    expect(onlyTools(result.newEnforceable, 'structure')[0].message).toBe(
-      'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+    expect(messageOf('function-parameters-limit', 'product')).toBe(
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
     );
-  });
-
-  it('lets a touched legacy function pass when none of its limits got worse', () => {
-    const result = diffOf('legacy-edited', kotlinPolicy, 'structure-base');
-
-    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
+    expect(messageOf('crap-score-limit', 'classify2')).toBe(
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
+    );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',
       'structure function-parameters-limit sum',
       'structure function-statements-limit classify',
     ]);
-  });
-
-  it('fails a legacy function whose statements and CRAP score rise', () => {
-    const result = diffOf('legacy-worse', kotlinPolicy, 'structure-base');
-
-    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
-      'crap crap-score-limit classify',
-      'structure function-statements-limit classify',
-    ]);
-    expect(onlyTools(result.newEnforceable, 'crap')[0].message).toBe(
-      'classify CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
-    );
-  });
-
-  it('measures CRAP on file facades, classes, accessors, lambdas and default arguments', () => {
-    const result = diffOf('crap', kotlinPolicy, 'structure-base');
-
-    expect(rulesOf(result.newEnforceable, 'crap')).toEqual(['crap crap-score-limit rank']);
-    expect(rulesOf(result.newEnforceable, 'structure')).toEqual([
-      'structure function-statements-limit rank',
-    ]);
-  });
-
-  it('fails a new Kotlin clone found by jscpd', () => {
-    const result = diffOf('clone', kotlinPolicy, 'structure-base');
-
     expect(rulesOf(result.newEnforceable, 'duplicates')).toEqual([
       'duplicates duplicate-clone Left.kt',
     ]);
-  });
-
-  it('fails a package depending on a less stable package, read from the bytecode of Kotlin files', () => {
-    const result = diffOf('stability', kotlinPolicy, 'structure-base');
-
     expect(
       onlyTools(result.newEnforceable, 'coupling').map(({ rule, identity, message }) => ({
         rule,
@@ -615,20 +651,14 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     ).toEqual([
       {
         rule: 'stability-direction',
-        identity: 'package-edge:stable->churn',
-        message: 'stable depends on less stable package churn',
+        identity: 'package-edge:stable2->churn2',
+        message: 'stable2 depends on less stable package churn2',
       },
     ]);
     const stable = onlyTools(result.newFindings, 'coupling').find(
-      ({ identity }) => identity === 'package:stable:instability',
+      ({ identity }) => identity === 'package:stable2:instability',
     );
     expect(stable.metric).toEqual({ name: 'instability', value: 0.3333 });
-  });
-
-  it('keeps an existing stability-direction violation baselined when the package is edited', () => {
-    const result = diffOf('stability-edited', kotlinPolicy, 'stability');
-
-    expect(onlyTools(result.newFindings, 'coupling')).toEqual([]);
     expect(
       onlyTools(result.unchangedFindings, 'coupling')
         .filter(({ rule }) => rule === 'stability-direction')

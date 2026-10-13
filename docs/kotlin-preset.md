@@ -183,16 +183,27 @@ complexity per function from lizard would be attributed to the wrong lines.
 | `statements`        | Every element of a block (declarations, expressions, `return`), plus the unbraced body of an `if`, `else`, loop or `when` branch that is itself a statement, plus 1 for an expression body.              |
 | `maxControlNesting` | Deepest nesting of `if`, `for`, `while`, `do`, `when` (like Java's `switch`) and `catch`; an `else if` nests one level deeper, as in TypeScript and Java. `try` itself and lambdas are not control flow. |
 | `parameters`        | Declared value parameters. An extension receiver is not one; a parameter with a default value is.                                                                                                        |
-| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `                                                                                                                |     | `and`?:`. It is the CRAP input, below. |
+| complexity          | 1 plus each `if`, `for`, `while`, `do`, `when` branch other than `else`, `catch`, `&&`, `\|\|` and `?:`. It is the CRAP input, below.                                                                    |
 
-A unit is a function with a body, a property accessor with a body, or a secondary constructor with a
-block body. Lambdas and local functions count towards the function that contains them; members of
-nested, local and anonymous classes and objects are units of their own. Init blocks, property
-initializers, primary constructors and functions without a body (abstract, interface, `expect`) are
-not units, as initializer blocks are not in the Java preset. Names are `function` (top level),
-`Class.function`, `Class.Receiver.function` for an extension, `Class.property.get` for an accessor,
-`Class.Class` for a secondary constructor and `<anonymous>` for an object expression. Script files
-(`.kts`) are not read.
+A unit is a function with a body, a property accessor with a body, a secondary constructor with a
+block body, or a property whose initializer is a lambda or an anonymous function or whose delegate
+takes a lambda (`val handler = { x -> ... }`, `val f = fun(x: Int) { ... }`, `val v by lazy { ... }`),
+the way an arrow-function constant is a unit in TypeScript; the body is the lambda's and the unit is
+named after the property. Lambdas and local functions inside a function count towards the function
+that contains them; members of nested, local and anonymous classes and objects are units of their
+own. Init blocks, other property initializers (`val x = run { ... }`), primary constructors and
+functions without a body (abstract, interface, `expect`) are not units, as initializer blocks are
+not in the Java preset. Names are `function` (top level), `Class.function`,
+`Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
+for a lambda property, `Class.Class` for a secondary constructor and `<anonymous>` for an object
+expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
+(generated code under the build directory is already left out), so a package named `build`, `out`
+or `target` is measured like any other.
+
+**A syntax error is a failure.** The sources have compiled before the metrics step runs, so a parse
+error means the pinned compiler (2.4.21) does not know the syntax the project uses. The step fails
+with the file, the line and the pinned version instead of reporting wrong numbers; bump
+`kotlinCompiler` in the init script. A leading byte order mark is ignored.
 
 ## CRAP
 
@@ -206,15 +217,18 @@ CRAP ingester (`ingestCrapFunctions`) is the Java one.
 lizard's, for the reason above; it counts what lizard counts for Java. Coverage is JaCoCo's per-method
 data. The match is by file and line, not by function name, because Kotlin's JVM names do not follow
 the source: JaCoCo keys classes by `package/sourcefilename`, so `FileNameKt` facades, companions,
-nested classes and `DefaultImpls` of one file are all that file's methods. A JaCoCo method belongs to
-the function whose line range holds its first line, unless it lies inside a unit of its own (a member
+nested classes and `DefaultImpls` of one file are all that file's methods. The key is built from the
+`package` statement of the file and its file name, not from its directory, so a file outside the
+directory of its package (`src/main/kotlin/Flat.kt` with `package demo`) gets its coverage. A JaCoCo
+method belongs to the function whose line range holds its first line, unless it lies inside a unit of its own (a member
 of a class declared in the function). So the getter `getDoubled` belongs to `val doubled get() = ...`,
 the lambda `bump$lambda$0` and a local function belong to the function that declares them, and their
 lines and branches are summed into its coverage. The synthetic `name$default` method that Kotlin
 generates for default arguments is ignored: it has no source of its own and delegates to the function.
 A `@JvmStatic` companion function, which compiles to the function and a static method that delegates
 to it on the same line, is counted once, through the method that holds the code. The score of a
-function whose range holds no instrumented method is unknown, which is a finding.
+function whose range holds no instrumented method is unknown, which is a finding
+(`crap-coverage-unknown`; its message says to add a test that calls the function).
 
 **`inline` functions have no CRAP score (decision).** The compiler copies the body of an `inline`
 function into every caller and the original is never run, so JaCoCo reports it as uncovered (a
@@ -250,8 +264,9 @@ the file facade (`FooKt`, or the `@file:JvmName` name) when the file has top-lev
 Nested classes, companions, lambdas and `WhenMappings` fold into their outermost class by the `$` in
 the name, and classes of one file are merged into one module, so the metrics count files and not the
 classes Kotlin generates. The package is the one in the bytecode, that is the `package` statement of
-the file and not its directory. A class that no file lists (for example a `@JvmMultifileClass` part)
-is its own module.
+the file and not its directory. Of a `@JvmMultifileClass` facade, each file lists its own part
+(`Facade__FileKt`) and the first file (in path order) lists the facade class, so callers of the
+facade belong to that file. A class that no file lists is its own module.
 
 ## Failure policy
 
@@ -297,9 +312,14 @@ config error.
   Kotlin compile error becomes a tool error; a new function over the nesting limit fails and a
   moved legacy function stays baselined; a legacy function that grows past a limit, or whose CRAP
   score rises, fails and one edited without getting worse passes; CRAP over a file facade, a class
-  with a secondary constructor, accessor, lambda and default argument; a new clone; and a
-  stability-direction violation between Kotlin packages, new and baselined. It needs network access to
-  Maven Central for the Kotlin compiler as well.
+  with a secondary constructor, accessor, lambda and default argument, a lambda property, a file
+  outside the directory of its package and a package named `build`; a new clone; and a
+  stability-direction violation between Kotlin packages, new and baselined. These cases share one
+  head commit and one diff, and the project forces another Kotlin version onto the compiler
+  configuration. It needs network access to Maven Central for the Kotlin compiler as well.
+- `KotlinMetrics.java` on a fixture (units, lambda properties, package, multifile parts, byte order
+  mark, parse error) is tested in the same opt-in suite, so a bump of the pinned compiler is checked
+  with `npm run test:kotlin`.
 
 ## Remaining slices
 
@@ -320,8 +340,12 @@ config error.
 - Only main sources are linted, and generated sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
   (about 60 MB, cached by Gradle) on the first run. It parses with the pinned compiler, so syntax newer
-  than that version is read with parse errors tolerated, which can miscount the function that uses it.
+  than that version ends the run with an error naming the file and the version. A version that the
+  project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
+  management) does not reach that compiler: the pin is applied last.
 - `inline` functions are not measured by CRAP (see [CRAP](#crap)); their structure limits still apply.
+- `init` blocks and other property initializers (`val x = run { ... }`) are not units: logic moved
+  into one is not measured.
 - Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
 - detekt runs without type resolution; its results can differ from a project's own detekt run that
   has a classpath.

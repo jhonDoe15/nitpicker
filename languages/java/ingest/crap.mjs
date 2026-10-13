@@ -16,7 +16,7 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const coverageOf = coverageLookup({
     methods: jacocoMethods(jacocoXml),
-    sourceRoots: options.sourceRoots ?? [''],
+    keysOf: options.jacocoKeys ?? rootRelativeKeys(options.sourceRoots ?? ['']),
     selectMethods: options.selectMethods ?? selectNamedMethods,
     parsed,
   });
@@ -43,7 +43,9 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
       crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
     });
   }
-  return { findings: crapFindings(functions, { tool, limit }) };
+  return {
+    findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
+  };
 }
 
 export function parseLizardCsv(text) {
@@ -141,21 +143,21 @@ function selectNamedMethods(fn, candidates) {
   );
 }
 
-function coverageLookup({ methods, sourceRoots, selectMethods, parsed }) {
+function rootRelativeKeys(sourceRoots) {
+  return (filePath) =>
+    sourceRoots.flatMap((root) => {
+      const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
+      return filePath.startsWith(prefix) ? [filePath.slice(prefix.length)] : [];
+    });
+}
+
+function coverageLookup({ methods, keysOf, selectMethods, parsed }) {
   const siblings = Map.groupBy(parsed, (fn) => fn.file);
 
   function coverageOf(fn, filePath) {
-    const matches = sourceRoots.flatMap((root) => {
-      const prefix = root === '' ? '' : `${root.replace(/\/+$/, '')}/`;
-      if (!filePath.startsWith(prefix)) {
-        return [];
-      }
-      return selectMethods(
-        fn,
-        methods.get(filePath.slice(prefix.length)) ?? [],
-        siblings.get(fn.file),
-      );
-    });
+    const matches = keysOf(filePath).flatMap((key) =>
+      selectMethods(fn, methods.get(key) ?? [], siblings.get(fn.file)),
+    );
     return lowestCoverage(matches);
   }
 

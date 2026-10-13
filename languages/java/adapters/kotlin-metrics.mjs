@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestCrapFunctions } from '../ingest/crap.mjs';
+import { MESSAGES } from '../../../shared/policy.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from './java-structure.mjs';
 
@@ -48,7 +49,17 @@ function withoutStaticBridges(methods) {
   });
 }
 
-export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, sourceRoots, crapLimit }) {
+function jacocoKeys(metrics) {
+  const keys = new Map(
+    metrics.files.map(({ file, package: packageName }) => [
+      file,
+      [packageName.replaceAll('.', '/'), path.posix.basename(file)].filter(Boolean).join('/'),
+    ]),
+  );
+  return (file) => (keys.has(file) ? [keys.get(file)] : []);
+}
+
+export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit }) {
   const sources = new Map();
   const functions = metrics.functions
     .filter((entry) => !entry.inline)
@@ -61,8 +72,9 @@ export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, sourceRoo
       end: entry.end,
     }));
   return ingestCrapFunctions(functions, jacoco, {
-    sourceRoots,
+    jacocoKeys: jacocoKeys(metrics),
     limit: crapLimit,
+    unknownMessage: MESSAGES.crapCoverageUnknownPlain,
     selectMethods: selectKotlinMethods,
     sourceHash: (entry) =>
       existsSync(path.join(projectRoot, entry.file))

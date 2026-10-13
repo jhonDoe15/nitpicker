@@ -347,7 +347,7 @@ describe('readJavaFindings with the kotlin preset', () => {
             complexity: 3,
           },
         ],
-        files: [{ file: bad, classes: ['demo.Bad'] }],
+        files: [{ file: bad, package: 'demo', classes: ['demo.Bad'] }],
       }),
     );
     writeFileSync(
