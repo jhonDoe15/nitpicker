@@ -53,6 +53,7 @@ describe('npm package contents', () => {
     assertRuntimeFiles(files);
     expect(files.has('core/fix/run-fix.mjs')).toBe(true);
     expect(files.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
+    expect(files.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
     expect(files.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
     expect(files.has('languages/python/adapters/python-runner.mjs')).toBe(true);
     expect(files.has('languages/python/ingest/coverage-json.mjs')).toBe(true);
