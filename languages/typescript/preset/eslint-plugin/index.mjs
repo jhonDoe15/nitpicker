@@ -35,6 +35,7 @@ import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-
 import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -80,5 +81,6 @@ export const nitpickerRules = {
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
+    'react-test-no-implementation-details': reactTestNoImplementationDetails,
   },
 };

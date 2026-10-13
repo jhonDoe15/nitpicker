@@ -140,3 +140,6 @@ Applies when `react` is in `package.json`.
   styles with CSS-in-JS (or `react.styling` says so), follow that instead.
 - `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
+- Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
+  `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
+  or hook internals.

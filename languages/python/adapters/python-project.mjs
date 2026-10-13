@@ -32,13 +32,11 @@ const REQUIRES_PYTHON = [
   /^\s*python\s*=\s*["']([^"']+)["']/m,
 ];
 export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
+export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
 export const NON_SOURCE_DIRECTORIES = new Set([
   'tests',
   'test',
-  'docs',
-  'doc',
-  'examples',
-  'scripts',
+  ...DOCUMENTATION_DIRECTORIES,
   'build',
   'dist',
   'env',

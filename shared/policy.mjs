@@ -105,7 +105,7 @@ export const HELD_MESSAGES = {
 };
 
 const BOTH = { typescript: true, java: true, python: false };
-const WITH_PYTHON = { ...BOTH, python: true };
+const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 
 /**
@@ -117,37 +117,37 @@ export const RULES = [
     id: RULE_IDS.functionLines,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.lines.limit)} lines`,
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionStatements,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.statements.limit)} statements`,
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionControlNesting,
     check: 'structure',
     limit: `control nesting deeper than ${String(FUNCTION_STRUCTURE_LIMITS.maxControlNesting.limit)}`,
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.functionParameters,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.parameters.limit)} parameters`,
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
     limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.changedBranchCoverage,
@@ -171,13 +171,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.noProductionRuntime,
@@ -195,7 +195,7 @@ export const RULES = [
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: WITH_PYTHON,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.publicAlternativeBypass,
