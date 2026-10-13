@@ -324,8 +324,12 @@ Config keys with this preset: `base`, `disable`, `analyzers`, `thresholds` (`cra
 under the globs are dropped), `legacyInventory` (same format as the Java one; `source` is the
 finding's `identity`) and `python`, whose keys all override a detection: `environment` (`"uv"`,
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
-`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it) and
-`sourceRoots` (default `src`, else the top-level packages). `layout` and `exceptions` describe TypeScript and stay a config error.
+`"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it),
+`importLinter` (`true` or `false`; by default the import-linter contracts run when the project
+configures them) and `sourceRoots` (default `src`, else the top-level packages). The gate also reports new
+duplicates (`duplicates/duplicate-clone`), package coupling (`coupling/stability-direction`) and broken import-linter
+contracts (`import-linter/contract-broken`); their messages name the file to add to `exclude` when the
+repetition or dependency is intended. `layout` and `exceptions` describe TypeScript and stay a config error.
 Inline `# noqa` comments are not honored: lift a rule for a path with `exclude` (for `T201`
 `print` in a command-line tool, `PERF203` `try` in a loop, `F401` in an `__init__.py` that
 re-exports). A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details:

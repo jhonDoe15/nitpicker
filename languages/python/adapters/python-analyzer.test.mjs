@@ -2,6 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import {
   configurationFiles,
@@ -28,7 +29,15 @@ describe('Python analyzer', () => {
     const analyzer = createPythonAnalyzer();
 
     expect(analyzer.name).toBe(PYTHON_ANALYZER_NAME);
-    expect(analyzer.reportedTools).toEqual(['ruff', 'ruff-format', 'black', 'coverage']);
+    expect(analyzer.reportedTools).toEqual([
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'duplicates',
+      'coupling',
+      'import-linter',
+    ]);
     expect(analyzer.exclusions).toEqual([]);
     expect(analyzer.timeoutMs).toBe(30 * 60 * 1000);
     expect(analyzer.version).toBe('unresolved');
@@ -104,9 +113,14 @@ describe('Python analyzer', () => {
     const live = temporaryRoot();
     installFakeToolchain(path.join(live, '.venv/bin'));
 
+    const jscpd = `jscpd@${jscpdVersion()}`;
+
     expect(createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live)).toBe(
-      'ruff@0.9.9;coverage@7.6.1;pytest@8.3.1',
+      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
+    expect(
+      createPythonAnalyzer({ formatter: 'black', testRunner: 'pytest' }).resolveVersion(live),
+    ).toBe(`ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
   });
 
   it('reports a missing environment when resolving the version', () => {
