@@ -1,18 +1,13 @@
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
-import { isProfileKey, parseProperties, parseYaml, relaxKey } from './spring-config-parser.mjs';
+import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
+import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
+import { relaxKey } from './spring-config-parser.mjs';
 import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
-const CONFIG_FILE = /^application(?:-(.+))?\.(properties|ya?ml)$/;
-const MAIN_FILES = ['application.properties', 'application.yml', 'application.yaml'];
 const LOCAL_PROFILES = new Set(['local', 'dev', 'development']);
 const TEST_PROFILES = new Set(['it', 'integration-test']);
-const PROFILE_SEPARATORS = /[,|&!() ]/;
 const TRUE_SPELLINGS = new Set(['true', 'on', 'yes', '1']);
-const PERSISTENCE_IMPORT = /^\s*import\s+(?:jakarta|javax)\.persistence\./m;
 const OPEN_IN_VIEW = 'spring.jpa.open-in-view';
 const DDL_MODE_NAMES = [
   'spring.jpa.hibernate.ddl-auto',
@@ -53,10 +48,6 @@ function isTrue(entry) {
 
 function isPlaceholder(entry) {
   return entry.value.startsWith('${');
-}
-
-function stripBracketsAndQuotes(text) {
-  return text.replaceAll(/[[\]"']/g, '');
 }
 
 const ENTRY_RULES = [
@@ -147,97 +138,6 @@ export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resour
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),
     ...ENTRY_RULES.flatMap((rule) => entryFindings(documents, rule, occurrences)),
   ];
-}
-
-function joinPosix(...parts) {
-  return parts.filter((part) => part !== '').join('/');
-}
-
-function attempt(action) {
-  try {
-    return { ok: true, value: action() };
-  } catch {
-    return { ok: false };
-  }
-}
-
-function valueOr(fallback, action) {
-  const result = attempt(action);
-  return result.ok ? result.value : fallback;
-}
-
-function readText(file) {
-  return valueOr(undefined, () => readFileSync(file, 'utf8'));
-}
-
-function configFileNames(directory) {
-  return valueOr([], () =>
-    readdirSync(directory, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && CONFIG_FILE.test(entry.name))
-      .map((entry) => entry.name)
-      .sort(),
-  );
-}
-
-function readSpringDocuments(projectRoot, resourceRoots) {
-  return resourceRoots.flatMap((root) => {
-    const directory = root.replaceAll('\\', '/').replace(/\/+$/, '');
-    return [directory, joinPosix(directory, 'config')].flatMap((relative) =>
-      directoryDocuments(projectRoot, relative),
-    );
-  });
-}
-
-function directoryDocuments(projectRoot, relative) {
-  const absolute = path.join(projectRoot, relative);
-  return configFileNames(absolute).flatMap((name) =>
-    fileDocuments(absolute, joinPosix(relative, name), name),
-  );
-}
-
-function fileDocuments(absoluteDirectory, relativePath, name) {
-  const [, fileProfile, extension] = CONFIG_FILE.exec(name);
-  const text = readText(path.join(absoluteDirectory, name));
-  if (text === undefined) {
-    return [];
-  }
-  const parsed = extension === 'properties' ? parseProperties(text) : parseYaml(text);
-  return parsed.map((document) => ({
-    path: relativePath,
-    main: MAIN_FILES.includes(name),
-    ...documentProfiles(document.entries, fileProfile),
-    entries: document.entries,
-  }));
-}
-
-function documentProfiles(entries, fileProfile) {
-  const declared = entries
-    .filter((entry) => isProfileKey(entry.key))
-    .map((entry) => stripBracketsAndQuotes(entry.value).toLowerCase());
-  const profiles = declared.flatMap((value) =>
-    value.split(PROFILE_SEPARATORS).filter((profile) => profile !== ''),
-  );
-  if (profiles.length > 0) {
-    return { profiles, negated: declared.some((value) => value.includes('!')) };
-  }
-  return { profiles: fileProfile === undefined ? [] : [fileProfile.toLowerCase()], negated: false };
-}
-
-function javaFiles(directory) {
-  return valueOr([], () =>
-    readdirSync(directory, { recursive: true })
-      .map(String)
-      .filter((file) => file.endsWith('.java')),
-  );
-}
-
-function usesJpa(projectRoot, sourceRoots) {
-  return sourceRoots.some((root) => {
-    const absolute = path.join(projectRoot, root);
-    return javaFiles(absolute).some((file) =>
-      PERSISTENCE_IMPORT.test(readText(path.join(absolute, file)) ?? ''),
-    );
-  });
 }
 
 function openInViewFindings(documents, occurrences) {
