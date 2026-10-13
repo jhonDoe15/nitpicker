@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
@@ -11,14 +11,38 @@ export const DUPLICATES_REPORT = 'duplicates.json';
 const JSCPD_IGNORE = ['**/build/**', '**/generated/**', '**/target/**', '**/out/**'];
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
+const JSCPD_CONFIG = 'jscpd-config.json';
+const JSCPD_SETTINGS = { minTokens: 50, minLines: 5, threshold: 100 };
 
 export function jscpdVersion() {
   return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
 }
 
-export function runJscpd({ cwd, roots, format, ignore, reportRoot }) {
+function relativeNames(report, cwd) {
+  const bases = [cwd, realpathSync(cwd)].map((base) => `${base.replaceAll('\\', '/')}/`);
+  function relative(name) {
+    const normalized = name.replaceAll('\\', '/');
+    const base = bases.find((candidate) => normalized.startsWith(candidate));
+    return base === undefined ? normalized : normalized.slice(base.length);
+  }
+  return {
+    ...report,
+    duplicates: (report.duplicates ?? []).map((duplicate) => ({
+      ...duplicate,
+      firstFile: { ...duplicate.firstFile, name: relative(duplicate.firstFile.name) },
+      secondFile: { ...duplicate.secondFile, name: relative(duplicate.secondFile.name) },
+    })),
+  };
+}
+
+export function runJscpd({ cwd, roots, format, ignore, reportRoot, together = false }) {
   const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
-  const runs = roots.map((root, index) => {
+  const config = path.join(reportRoot, JSCPD_CONFIG);
+  writeFileSync(config, JSON.stringify(JSCPD_SETTINGS));
+  const groups = together
+    ? [roots].filter((group) => group.length > 0)
+    : roots.map((root) => [root]);
+  const runs = groups.map((paths, index) => {
     const output = path.join(reportRoot, 'jscpd', String(index));
     rmSync(output, { recursive: true, force: true });
     mkdirSync(output, { recursive: true });
@@ -26,7 +50,9 @@ export function runJscpd({ cwd, roots, format, ignore, reportRoot }) {
       process.execPath,
       [
         jscpd,
-        root,
+        ...paths,
+        '--config',
+        config,
         '--format',
         format,
         '--mode',
@@ -38,6 +64,7 @@ export function runJscpd({ cwd, roots, format, ignore, reportRoot }) {
         '--silent',
         '--ignore',
         ignore.join(','),
+        ...(together ? ['--absolute'] : []),
       ],
       {
         cwd,
@@ -54,7 +81,9 @@ export function runJscpd({ cwd, roots, format, ignore, reportRoot }) {
       throw new Error(`jscpd exited with ${String(result.status)} in ${cwd}: ${detail}`);
     }
     const report = JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
-    return { root, report };
+    return together
+      ? { root: '.', report: relativeNames(report, cwd) }
+      : { root: paths[0], report };
   });
   writeFileSync(path.join(reportRoot, DUPLICATES_REPORT), `${JSON.stringify({ runs })}\n`);
 }

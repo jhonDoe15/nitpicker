@@ -12,6 +12,7 @@ const CONFIG_FILES = [
   { file: 'pyproject.toml', marker: /^\s*\[tool\.importlinter\]/m },
 ];
 const OUTPUT_TAIL_LENGTH = 3000;
+const NOT_FOUND_HINT = ', or turn the contracts off with "python": { "importLinter": false }';
 
 export function hasImportLinterConfig(projectRoot) {
   return CONFIG_FILES.some(
@@ -29,9 +30,10 @@ export function runImportLinter(context, run) {
   if (!importLinterEnabled(context.projectRoot, context.project.importLinter)) {
     return;
   }
-  const result = run(context, ['lint-imports', '--no-cache', '--no-logo'], {
+  const result = run(context, ['lint-imports', '--no-cache'], {
     accepted: [0, 1],
     rule: IMPORT_LINTER_FAILED_RULE,
+    notFoundHint: NOT_FOUND_HINT,
   });
   if (!importLinterCompleted(result.stdout)) {
     const output = `${result.stdout}\n${result.stderr}`.trim() || 'no diagnostic output';

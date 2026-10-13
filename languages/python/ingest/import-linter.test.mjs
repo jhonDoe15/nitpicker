@@ -71,6 +71,37 @@ describe('import-linter findings', () => {
     );
   });
 
+  it('reads a hop that lists several import lines as one chain at its first line', () => {
+    const files = new Map([['q.a.x', 'src/q/a/x.py']]);
+
+    const { findings } = ingestImportLinter(fixture('import-linter-multi-line.txt'), { files });
+
+    expect(findings).toEqual([
+      {
+        tool: 'import-linter',
+        rule: 'contract-broken',
+        path: 'src/q/a/x.py',
+        identity: 'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w',
+        message:
+          'Import contract "a must not reach c" is broken: q.a.x -> q.b.y -> q.c.w. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        classification: 'enforceable',
+        location: { line: 2 },
+      },
+    ]);
+  });
+
+  it('keeps a legacy contract baselined when its import lines move', () => {
+    const before = ingestImportLinter(fixture('import-linter-multi-line.txt')).findings;
+    const moved = fixture('import-linter-multi-line.txt').replace(
+      '(l.2, l.3, l.4)',
+      '(l.7, l.8, l.9)',
+    );
+    const after = ingestImportLinter(moved).findings;
+
+    expect(after.map(({ identity }) => identity)).toEqual(before.map(({ identity }) => identity));
+    expect(after[0].location).toEqual({ line: 7 });
+  });
+
   it('reports the items of contract types that do not list import chains', () => {
     const { findings } = ingestImportLinter(fixture('import-linter-other-types.txt'), {
       files: FILES,
@@ -81,7 +112,7 @@ describe('import-linter findings', () => {
       ['contract:Acyclic:.web -> .domain (1 import)', '.'],
     ]);
     expect(findings[1].message).toBe(
-      'Import contract "Acyclic" is broken: .web -> .domain (1 import). Remove the import, or lift this file with exclude in nitpicker.config.json.',
+      'Import contract "Acyclic" is broken: .web -> .domain (1 import). Remove the import.',
     );
     expect(findings[1]).not.toHaveProperty('location');
   });
@@ -113,31 +144,20 @@ describe('import-linter findings', () => {
         rule: 'contract-broken',
         path: '.',
         identity: 'contract:Odd one',
-        message:
-          'Import contract "Odd one" is broken. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        message: 'Import contract "Odd one" is broken. Remove the import.',
         classification: 'enforceable',
       },
     ]);
   });
 
-  it('numbers identical identities', () => {
-    const text = [
-      'Twice BROKEN',
-      'Twice BROKEN',
-      'Contracts: 0 kept, 2 broken.',
-      'Broken contracts',
-      'Twice',
-      '-----',
-      '- a -> b (l.1)',
-      '- a -> b (l.2)',
-      '',
-    ].join('\n');
+  it('numbers the same chain printed under several sections of one contract', () => {
+    const { findings } = ingestImportLinter(fixture('import-linter-overlapping.txt'));
 
-    expect(ingestImportLinter(text).findings.map(({ identity }) => identity)).toEqual([
-      'contract:Twice:a -> b',
-      'contract:Twice:a -> b#2',
-      'contract:Twice:a -> b#3',
-      'contract:Twice:a -> b#4',
+    expect(findings.map(({ identity }) => identity)).toEqual([
+      'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w',
+      'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w#2',
+      'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w#3',
+      'contract:a must not reach c:q.a.x -> q.b.y -> q.c.w#4',
     ]);
   });
 
@@ -159,8 +179,7 @@ describe('import-linter findings', () => {
         rule: 'contract-broken',
         path: '.',
         identity: 'contract:Fast one:a -> b -> c',
-        message:
-          'Import contract "Fast one" is broken: a -> b -> c. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        message: 'Import contract "Fast one" is broken: a -> b -> c. Remove the import.',
         classification: 'enforceable',
       },
     ]);

@@ -133,6 +133,10 @@ function python() {
     );
     return;
   }
+  if (args.some((argument) => argument.includes('"import-linter"'))) {
+    process.stdout.write('2.5\n');
+    return;
+  }
   if (existsSync('no-pytest.txt')) {
     process.exit(1);
   }
