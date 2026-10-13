@@ -1,7 +1,6 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 
 const roots = [];
 
@@ -27,10 +26,6 @@ export function project(files, { jpa = true } = {}) {
 
 export const sourceRoots = ['src/main/java'];
 export const resource = (name) => `src/main/resources/${name}`;
-
-export function read(files, options) {
-  return readSpringConfigFindings(project(files, options), { sourceRoots });
-}
 
 export const OPEN_IN_VIEW_MESSAGE =
   'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';

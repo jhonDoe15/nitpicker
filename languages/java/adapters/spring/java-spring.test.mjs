@@ -12,7 +12,6 @@ import {
   finding,
   openInView,
   project,
-  read,
   removeProjects,
   resource,
   rules,
@@ -20,6 +19,10 @@ import {
 } from '../fixtures/spring-config-projects.mjs';
 
 afterEach(removeProjects);
+
+function read(files, options) {
+  return readSpringConfigFindings(project(files, options), { sourceRoots });
+}
 
 describe('readSpringConfigFindings', () => {
   it('reports nothing without Spring configuration files', () => {
