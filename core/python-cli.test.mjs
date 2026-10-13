@@ -337,12 +337,16 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(failed.exitCode, failed.text).toBe(1);
     expect(newFindings(failed, 'duplicate-clone')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'duplicates',
+        rule: 'duplicate-clone',
         path: 'src/demo/a.py',
+        identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
+        message:
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
-        message: expect.stringContaining('This code repeats src/demo/b.py'),
-      }),
+        location: { line: 1 },
+      },
     ]);
 
     const legacy = pythonRepository({
@@ -385,12 +389,14 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(newFindings(result, 'stability-direction')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'coupling',
+        rule: 'stability-direction',
         path: '.',
         identity: 'package-edge:base->other',
         message: 'base depends on less stable package other',
-      }),
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -406,12 +412,16 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(newFindings(result, 'contract-broken')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'import-linter',
+        rule: 'contract-broken',
         path: 'src/demo/a.py',
         identity: 'contract:Layers:demo.a -> demo.b',
+        message:
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        classification: 'enforceable',
         location: { line: 4 },
-      }),
+      },
     ]);
   });
 
@@ -435,12 +445,13 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.json('tool-errors.json')).toEqual([
-      expect.objectContaining({
+      {
         tool: 'python',
         snapshot: 'head',
         rule: 'import-linter-failed',
-        message: expect.stringContaining('Could not find .importlinter.'),
-      }),
+        path: '.',
+        message: 'lint-imports could not check the contracts:\nCould not find .importlinter.',
+      },
     ]);
   });
 

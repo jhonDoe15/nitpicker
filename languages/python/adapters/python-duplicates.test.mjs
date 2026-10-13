@@ -52,13 +52,16 @@ describe('duplicates in Python sources', () => {
     const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE });
 
     expect(clonesOf(context)).toEqual([
-      expect.objectContaining({
+      {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: 'src/app/a.py',
+        identity: 'pair:src/app/a.py|src/app/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
+        message:
+          'This code repeats src/app/b.py:1 (10 lines). Keep one copy and call it from both places.',
         classification: 'enforceable',
-        message: expect.stringContaining('This code repeats src/app/b.py'),
-      }),
+        location: { line: 1 },
+      },
     ]);
   });
 

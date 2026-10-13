@@ -43,8 +43,14 @@ describe('import-linter findings', () => {
       classification: 'enforceable',
       location: { line: 2 },
     });
-    expect(byIdentity('contract:Independent:app.web.views -> app.infra.db')).toMatchObject({
+    expect(byIdentity('contract:Independent:app.web.views -> app.infra.db')).toEqual({
+      tool: 'import-linter',
+      rule: 'contract-broken',
       path: 'src/app/web/views.py',
+      identity: 'contract:Independent:app.web.views -> app.infra.db',
+      message:
+        'Import contract "Independent" is broken: app.web.views -> app.infra.db. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+      classification: 'enforceable',
       location: { line: 1 },
     });
   });
@@ -102,12 +108,15 @@ describe('import-linter findings', () => {
     const { findings } = ingestImportLinter(text);
 
     expect(findings).toEqual([
-      expect.objectContaining({
-        identity: 'contract:Odd one',
+      {
+        tool: 'import-linter',
+        rule: 'contract-broken',
         path: '.',
+        identity: 'contract:Odd one',
         message:
           'Import contract "Odd one" is broken. Remove the import, or lift this file with exclude in nitpicker.config.json.',
-      }),
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -145,7 +154,15 @@ describe('import-linter findings', () => {
     ].join('\n');
 
     expect(ingestImportLinter(text).findings).toEqual([
-      expect.objectContaining({ identity: 'contract:Fast one:a -> b -> c' }),
+      {
+        tool: 'import-linter',
+        rule: 'contract-broken',
+        path: '.',
+        identity: 'contract:Fast one:a -> b -> c',
+        message:
+          'Import contract "Fast one" is broken: a -> b -> c. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
     ]);
   });
 });

@@ -508,7 +508,8 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
         tool: 'duplicates',
         rule: 'duplicate-clone',
         file: 'src/shop/domain/bulk.py',
-        message: expect.stringContaining('This code repeats src/shop/domain/pricing.py'),
+        message:
+          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places.',
       },
     ]);
   });
