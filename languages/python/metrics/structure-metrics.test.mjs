@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { readPythonStructureFindings, STRUCTURE_REPORT } from '../adapters/python-structure.mjs';
 
 const script = path.resolve(import.meta.dirname, 'structure_metrics.py');
 const directories = [];
@@ -297,6 +298,69 @@ describe('control nesting', () => {
         'maxControlNesting',
       ),
     ).toEqual([3]);
+  });
+});
+
+describe('the structure findings of the report', () => {
+  function findingsOf(source) {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-findings-'));
+    directories.push(directory);
+    writeFileSync(path.join(directory, 'sample.py'), `${source.join('\n')}\n`);
+    writeFileSync(path.join(directory, 'listing.txt'), 'sample.py');
+    const output = path.join(directory, STRUCTURE_REPORT);
+    const result = spawnSync(
+      'python3',
+      [script, output, directory, path.join(directory, 'listing.txt')],
+      { encoding: 'utf8' },
+    );
+    if (result.status !== 0) {
+      throw new Error(result.stderr);
+    }
+    return readPythonStructureFindings(directory, directory).map(({ rule, symbol, message }) => ({
+      rule,
+      symbol,
+      message,
+    }));
+  }
+
+  it('does not fail a loop around a long if, elif and else chain', () => {
+    expect(
+      findingsOf([
+        'def flat(items):',
+        '    for item in items:',
+        '        if item == 1:',
+        '            return 1',
+        '        elif item == 2:',
+        '            return 2',
+        '        elif item == 3:',
+        '            return 3',
+        '        elif item == 4:',
+        '            return 4',
+        '        else:',
+        '            return 5',
+      ]),
+    ).toEqual([]);
+  });
+
+  it('fails an if nested in the body of an elif below a loop, and names the elif rule', () => {
+    expect(
+      findingsOf([
+        'def deep(items, flag):',
+        '    for item in items:',
+        '        if item == 1:',
+        '            return 1',
+        '        elif item == 2:',
+        '            if flag:',
+        '                return 2',
+      ]),
+    ).toEqual([
+      {
+        rule: 'function-control-nesting-limit',
+        symbol: 'deep',
+        message:
+          'deep nests control flow 3 deep (limit 2). Return early instead of nesting. An if/elif chain counts as one level; use match, a dict lookup or a helper function for what nests inside a branch.',
+      },
+    ]);
   });
 });
 
