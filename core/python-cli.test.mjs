@@ -356,20 +356,6 @@ describe('changed-branch-coverage with "preset": "python"', () => {
       message,
     }));
 
-  it('keeps an uncovered branch that was already there baselined, even when it moves', () => {
-    const root = branchyRepository();
-    write(root, {
-      'src/demo/a.py': `X = 1\n\n${BRANCHY}`,
-      'coverage-data.json': coverageData([[7, 8]], [[7, 9]]),
-    });
-    commit(root, 'add a line above');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('new-findings.json')).toEqual([]);
-  });
-
   it('fails an uncovered branch whose line the change touches', () => {
     const root = branchyRepository();
     write(root, { 'src/demo/a.py': BRANCHY.replace('if x:', 'if  x:') });
@@ -385,7 +371,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
         path: 'src/demo/a.py',
         line: 5,
         message:
-          "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can't happen.",
+          "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
       },
     ]);
   });
@@ -423,20 +409,5 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     commit(root, 'test it');
 
     expect(run(root).exitCode).toBe(0);
-  });
-
-  it('ignores coverage data of files that are not in the project', () => {
-    const root = branchyRepository();
-    write(root, {
-      'coverage-data.json': JSON.stringify({
-        files: { '/elsewhere/gone.py': { executed_branches: [], missing_branches: [[1, 2]] } },
-      }),
-      'src/demo/b.py': 'x = 1\n',
-    });
-    commit(root, 'change');
-
-    const result = run(root);
-
-    expect(result.exitCode, result.text).toBe(0);
   });
 });

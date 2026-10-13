@@ -25,6 +25,13 @@ export const COVERAGE_REPORT = 'coverage.json';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_CONFIG = 'coveragerc';
 const COVERAGE_DATA = '.coverage';
+const UNTESTABLE_LINES = [
+  String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
+  String.raw`^\s*if __name__ == .__main__.:`,
+  String.raw`^\s*@(typing\.)?overload\b`,
+  String.raw`^\s*raise NotImplementedError\b`,
+];
+const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/test/*'];
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
@@ -172,11 +179,25 @@ function coverageSources({ projectRoot, project }) {
   return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
 
+function coverageConfig(sources) {
+  const list = (entries) => entries.map((entry) => `    ${entry}`).join('\n');
+  return [
+    '[run]',
+    'branch = True',
+    'parallel = False',
+    `source =\n${list(sources)}`,
+    `omit =\n${list(TEST_FILES)}`,
+    '[report]',
+    `exclude_lines =\n${list(UNTESTABLE_LINES)}`,
+    'partial_branches =',
+    '',
+  ].join('\n');
+}
+
 function test(context, outcome) {
   const sources = coverageSources(context);
   const config = path.join(context.reportRoot, COVERAGE_CONFIG);
-  const lines = sources.map((root) => `    ${root}`).join('\n');
-  writeFileSync(config, `[run]\nbranch = True\nparallel = False\nsource =\n${lines}\n`);
+  writeFileSync(config, coverageConfig(sources));
   const result = run(context, ['coverage', 'run', '--rcfile', config, ...testCommand(context)], {
     accepted: [0, NO_TESTS_EXIT],
     rule: TESTS_FAILED_RULE,

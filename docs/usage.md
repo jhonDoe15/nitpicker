@@ -325,9 +325,15 @@ finding's `identity`) and `python`, whose keys all override a detection: `enviro
 `"poetry"`, `"path"` or a virtualenv directory in the project), `formatter` (`"ruff"` or
 `"black"`), `testRunner` (`"pytest"` or `"unittest"`; default `pytest` when the project uses it) and
 `sourceRoots` (default `src`, else the top-level packages). `layout` and `exceptions` describe TypeScript and stay a config error.
-Inline `# noqa` comments are not honored: lift a rule for a path with `exclude` (for `T201`
+Inline disables are not honored: neither `# noqa` nor `# pragma: no cover` / `# pragma: no branch`; lift a rule for a path with `exclude` (for `T201`
 `print` in a command-line tool, `PERF203` `try` in a loop, `F401` in an `__init__.py` that
-re-exports). A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details:
+re-exports). Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
+run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
+arms are judged, an untested `except` handler is not. The project's own coverage configuration is
+ignored (`exclude_lines`, `exclude_also`, `partial_branches`, `omit`, plugins, subprocess
+measurement): nitpicker's rcfile measures branches, skips test files and excludes only
+`if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
+A file that cannot be tested is lifted with `exclude`. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details:
 [python-preset.md](python-preset.md).
 
 ## The strict preset

@@ -30,19 +30,19 @@ describe('ingestCoverageBranches', () => {
     expect(findings.map((f) => [f.location.line, f.message])).toEqual([
       [
         2,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
       ],
       [
         5,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can't happen.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 6. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
       ],
       [
         7,
-        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can't happen.",
+        "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 8. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
       ],
       [
         13,
-        "Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can't happen.",
+        "Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
       ],
     ]);
     expect(
@@ -66,7 +66,7 @@ describe('ingestCoverageBranches', () => {
     const [finding] = ingest({}, reportOf([[2, 3]], [[2, -1]]));
 
     expect(finding.message).toBe(
-      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen.",
+      "Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
     );
   });
 
@@ -157,6 +157,34 @@ describe('ingestCoverageBranches', () => {
     }
   });
 
+  it('numbers identical lines per enclosing scope, nested scopes included', () => {
+    const source = [
+      'class A:',
+      '    def m(self, x):',
+      '        if x:',
+      '            pass',
+      '    def n(self, x):',
+      '        if x:',
+      '            pass',
+      'def m(x):',
+      '    if x:',
+      '        pass',
+      'if x:',
+      '    pass',
+    ].join('\n');
+    const gaps = [3, 6, 9, 11].flatMap((line) => [
+      [line, line + 1],
+      [line, line + 2],
+    ]);
+
+    const findings = ingestCoverageBranches(reportOf([], gaps), {
+      sourceText: () => source,
+    }).findings;
+
+    expect(new Set(findings.map((f) => f.identity)).size).toBe(4);
+    expect(findings.every((f) => !f.identity.includes('#'))).toBe(true);
+  });
+
   it('tells identical lines apart by order and ignores indentation and spacing', () => {
     const source = ['if x:', '    pass', 'if  x:', '', '  if x:'].join('\n');
     const text = reportOf(
@@ -217,6 +245,28 @@ describe('changed-branch-coverage in the differential comparison', () => {
     });
 
     expect(added.newFindings.map((f) => f.location.line)).toEqual([13]);
+  });
+
+  it('keeps a legacy gap baselined when an identical line is added above it in another function', () => {
+    const legacy = 'def legacy(a):\n    if a:\n        return 1\n    return 2\n';
+    const fresh = 'def fresh(a):\n    if a:\n        return 1\n    return 2\n';
+    const gaps = (...lines) =>
+      reportOf(
+        [],
+        lines.flatMap((line) => [
+          [line, line + 1],
+          [line, line + 2],
+        ]),
+      );
+
+    const result = compareFindings({
+      baseFindings: ingest({ sourceText: () => legacy }, gaps(2)),
+      headFindings: ingest({ sourceText: () => `${fresh}\n\n${legacy}` }, gaps(2, 8)),
+      touchedCode: touched(diffFor('@@ -0,0 +1,6 @@')),
+    });
+
+    expect(result.newFindings.map((f) => f.location.line)).toEqual([2]);
+    expect(result.unchangedFindings.map((f) => f.location.line)).toEqual([8]);
   });
 
   it('applies to the Python tool only, not to the TypeScript coverage check of the same rule', () => {

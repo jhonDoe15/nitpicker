@@ -201,9 +201,7 @@ describe('running the tools', () => {
       sourceRoots: ['src'],
       testsRan: true,
     });
-    expect(readReport(reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n',
-    );
+    expect(readReport(reportRoot, 'coveragerc')).toContain('source =\n    src\n');
   });
 
   it('checks formatting with black when the project uses it', () => {
@@ -218,14 +216,32 @@ describe('running the tools', () => {
     expect(readReport(reportRoot, 'format.txt')).toBe(path.join(root, 'src/demo/a.py'));
   });
 
+  it('measures branches without honoring pragmas, the project config or test files', () => {
+    const { context, reportRoot } = contextFor(project({}));
+
+    runPythonTools(context);
+
+    const [run, report] = readReport(reportRoot, 'coveragerc').split('[report]');
+    expect(run).toContain('branch = True\nparallel = False\n');
+    expect(run).toContain(
+      'omit =\n    test_*.py\n    *_test.py\n    conftest.py\n    */tests/*\n    */test/*\n',
+    );
+    expect(report.split('\n').filter((line) => line.startsWith('    '))).toEqual([
+      String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
+      String.raw`    ^\s*if __name__ == .__main__.:`,
+      String.raw`    ^\s*@(typing\.)?overload\b`,
+      String.raw`    ^\s*raise NotImplementedError\b`,
+    ]);
+    expect(report).toContain('partial_branches =\n');
+    expect(report).not.toMatch(/pragma/);
+  });
+
   it('measures the source roots that exist and writes an empty report when none does', () => {
     const calls = callsLog();
     const root = project({ 'lib/a.py': '' });
     const both = contextFor(root, { sourceRoots: ['src', 'lib', 'missing'] });
     runPythonTools(both.context);
-    expect(readReport(both.reportRoot, 'coveragerc')).toBe(
-      '[run]\nbranch = True\nparallel = False\nsource =\n    src\n    lib\n',
-    );
+    expect(readReport(both.reportRoot, 'coveragerc')).toContain('source =\n    src\n    lib\n');
 
     const none = contextFor(root, { sourceRoots: ['missing'] });
     expect(runPythonTools(none.context)).toEqual([]);
