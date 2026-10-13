@@ -37,6 +37,7 @@ describe('Python analyzer', () => {
       'ruff-format',
       'black',
       'coverage',
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',
