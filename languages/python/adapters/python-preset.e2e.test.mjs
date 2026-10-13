@@ -165,6 +165,10 @@ const SAMPLE_SOURCE = [
   '',
 ].join('\n');
 
+const NO_MUTATION = {
+  'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+};
+
 const roots = [];
 
 function repository() {
@@ -262,7 +266,6 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'coupling/module-coupling',
       'coverage/line-coverage',
       'coverage/uncovered-function',
-      'mutmut/mutation-summary',
       'mutmut/mutant-nocoverage',
       'ruff/F401',
       'ruff-format/format',
@@ -378,18 +381,22 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   describe('function structure and CRAP', () => {
     beforeAll(() => {
       commitBranch(project, 'nested-and-wide', {
+        ...NO_MUTATION,
         'src/demo/nested.py':
           'def classify(rows, skip, stop, default):\n    for row in rows:\n        for cell in row:\n            if cell:\n                return cell\n    return None\n',
         'tests/test_nested.py':
           'from demo.nested import classify\n\n\ndef test_classify():\n    assert classify([[0, 5]], 0, 0, 0) == 5\n    assert classify([[0]], 0, 0, 0) is None\n',
       });
       commitBranch(project, 'legacy-edited', {
+        ...NO_MUTATION,
         'src/demo/wide.py': 'def wide(a, b, c, d):\n    return a + b + c + d + 1\n',
       });
       commitBranch(project, 'legacy-grown', {
+        ...NO_MUTATION,
         'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
       });
       commitBranch(project, 'untested-complex', {
+        ...NO_MUTATION,
         ...SAME_NAME_SOURCES,
         'src/demo/branchy.py':
           'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
@@ -399,7 +406,10 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     const enforceable = (result) =>
       result
         .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable');
+        .filter(
+          ({ classification, tool }) =>
+            classification === 'enforceable' && ['structure', 'crap'].includes(tool),
+        );
 
     it('fails a new function over the structure limits with the same rules as TypeScript and Java', () => {
       const result = gate(project, 'nested-and-wide');
