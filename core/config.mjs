@@ -91,10 +91,13 @@ function validateScalars(config) {
 }
 
 function validateJavaKeys(config) {
-  const unsupported = TYPESCRIPT_ONLY_KEYS.filter((key) => config[key] !== undefined);
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) => !(config.preset === 'kotlin' && key === 'exceptions'),
+  );
+  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${TYPESCRIPT_ONLY_KEYS.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
 }

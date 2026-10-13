@@ -7,6 +7,7 @@ import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import { failure } from './python-process.mjs';
 import {
   createToolContext,
+  mutationVersions,
   onlyUnparsableFiles,
   runPythonTools,
   toolVersions,
@@ -606,6 +607,7 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(project()).context)).toBe(
       `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
     );
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
   });
 
   it('adds import-linter to the versions when the project has contracts', () => {
@@ -632,7 +634,7 @@ describe('tool versions', () => {
   });
 
   it('marks tools that are missing', () => {
-    const root = project({ 'no-pytest.txt': '' }, { tools: ['python'] });
+    const root = project({ 'no-pytest.txt': '', 'no-mutmut.txt': '' }, { tools: ['python'] });
     setEnvironment('PATH', temporaryRoot());
 
     const jscpd = `jscpd@${jscpdVersion()}`;
@@ -643,6 +645,7 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(root).context)).toBe(
       `ruff@missing;types@missing;coverage@missing;unittest;${jscpd}`,
     );
+    expect(mutationVersions(contextFor(root).context)).toBe('mutmut@missing;pytest@missing');
   });
 
   it('marks a version it cannot read', () => {

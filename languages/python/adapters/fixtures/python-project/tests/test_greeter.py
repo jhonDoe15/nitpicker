@@ -1,5 +1,5 @@
 from demo.greeter import greet
-from demo.legacy import value
+from demo.legacy import clamp, value
 
 
 def test_greet():
@@ -8,3 +8,7 @@ def test_greet():
 
 def test_value():
     assert value() == 1
+
+
+def test_clamp():
+    assert clamp(3) == 3
