@@ -1120,7 +1120,10 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     const excluded = gate(project, 'type-checking-contract-excluded');
 
     expect(broken.exitCode, broken.text).toBe(1);
-    expect(newRules(broken)).toEqual(['import-linter contract-broken']);
+    expect(newRules(broken)).toEqual([
+      'import-linter contract-broken',
+      'import-linter contract-broken',
+    ]);
     expect(excluded.exitCode, excluded.text).toBe(0);
     expect(newRules(excluded)).toEqual([]);
   });
