@@ -8,16 +8,20 @@ import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { withoutLineNumbers } from '../ingest/identities.mjs';
+import { ingestRulesReport } from '../ingest/rules-report.mjs';
+import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
+import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { RULES_REPORT } from './python-ast-rules.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
 import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
 import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
+import { TYPES_REPORT } from './python-types.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
-const EXCLUDE_HINT = 'Not wanted here? Add the path to "exclude" in nitpicker.config.json.';
-const LIFTABLE_RULES = new Set(['T201', 'PERF203']);
 
 function readReport(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
@@ -33,9 +37,11 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
   return {
-    findings: [
+    findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
+      ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
+      ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...readPythonCrapFindings({
@@ -53,24 +59,24 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
-    ],
+    ]),
   };
 }
 
-function ruffFindings(log, { roots, projectRoot }) {
+export function ruffFindings(log, { roots, projectRoot }) {
   const prepared = prepareSarif(log, {
     roots,
     sourceRoots: [],
     projectRoot,
-    identityKey: (result) => result.message?.text,
+    identityKey: (result) => withoutLineNumbers(result.message?.text ?? ''),
   });
-  return ingestSarif(prepared, { tool: 'ruff' }).findings.map(withExcludeHint);
+  return ingestSarif(prepared, { tool: 'ruff' }).findings;
 }
 
-function withExcludeHint(finding) {
-  return LIFTABLE_RULES.has(finding.rule)
-    ? { ...finding, message: `${finding.message} ${EXCLUDE_HINT}` }
-    : finding;
+const TYPE_INGESTERS = { mypy: ingestMypy, pyright: ingestPyright };
+
+export function typeFindings({ checker, output }, roots) {
+  return TYPE_INGESTERS[checker](output, { roots });
 }
 
 function noTestsFinding() {

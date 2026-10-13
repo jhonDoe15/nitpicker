@@ -8,6 +8,7 @@ import {
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
+import { applyPythonExceptions } from './python-exceptions.mjs';
 import { mutationFindings } from './python-mutation.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
@@ -72,7 +73,10 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       reportRoot,
       crapLimit: policy.crapLimit,
     });
-    return applyJavaPolicy(findings, { ...policy, inventoryTool: PYTHON_ANALYZER_NAME });
+    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+      ...policy,
+      inventoryTool: PYTHON_ANALYZER_NAME,
+    });
   });
 }
 

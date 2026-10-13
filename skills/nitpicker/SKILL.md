@@ -1,12 +1,15 @@
 ---
 name: nitpicker
-description: Use before writing or changing TypeScript or Kotlin in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
+description: Use before writing or changing TypeScript, Kotlin or Python in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
 ---
 
 # nitpicker
 
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
+
+Everything below is TypeScript, except the finishing steps. In a Python project
+(`"preset": "python"` in `nitpicker.config.json`) follow [Python](#python) instead.
 
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
@@ -143,6 +146,33 @@ Applies when `react` is in `package.json`.
 - Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
   `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
   or hook internals.
+
+## Python
+
+For `"preset": "python"`. The finishing steps above apply, except: run the project's tests, then
+`npx nitpicker` without `--fix` (it fixes TypeScript only), and the exit codes mean the same.
+
+- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
+  choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
+  are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
+  around code, or a `.pyi` beside its `.py`.
+- Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
+- Strings: f-strings only. No `.format()` and no `%`.
+- Defaults: `None`, then build the value inside the function. No mutable default arguments.
+- Errors: a `try` inside a loop is flagged (PERF203): move it out or extract the body into a function. Catch the specific exception and handle it, log it with `logger.exception(...)`, or
+  re-raise. No bare `except:`, `except Exception:` or `except X: pass`; one expected error that is
+  deliberately ignored is `with contextlib.suppress(SpecificError):`.
+- Imports: name what you use. No `from module import *`.
+- Output: `logger = logging.getLogger(__name__)` and `logger.info(...)`. No `print`.
+- Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. Pydantic only in
+  an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
+- Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
+  not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Tests: use the project's runner (pytest or unittest), and test what you add.
+- A finding that flags legitimate code (a command line entry point that prints) is lifted in
+  `nitpicker.config.json`, under `python.exceptions`, with an entry such as
+  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
+  message. Don't add one to get past the gate: stop and ask.
 
 ## Kotlin
 

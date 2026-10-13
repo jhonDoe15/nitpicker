@@ -6,6 +6,7 @@ import { scanImports } from './python-coupling.mjs';
 import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { checkRules } from './python-ast-rules.mjs';
 import { crap } from './python-crap.mjs';
 import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
@@ -14,8 +15,10 @@ import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
+  detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
+import { RUFF_CONFIG } from './python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
@@ -24,9 +27,9 @@ import {
   testRunnerLabel,
   testsRan,
 } from './python-test-runner.mjs';
+import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 import { structure } from './python-structure.mjs';
 
-const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const COVERAGE_REPORT = 'coverage.json';
@@ -71,6 +74,7 @@ export function createToolContext({
     project: {
       formatter: detectFormatter(projectRoot, settings.formatter),
       formatterDetected: settings.formatter === undefined,
+      typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
       testRunner: detectTestRunner(projectRoot, settings.testRunner),
       targetVersion: detectTargetVersion(projectRoot),
       importLinter: settings.importLinter,
@@ -90,6 +94,8 @@ export function runPythonTools(context) {
     lint,
     format,
     test,
+    typeCheck,
+    checkRules,
     structure,
     crap,
     runDuplicates,
@@ -125,7 +131,7 @@ export function runPythonTools(context) {
   return failures;
 }
 
-function lint(context) {
+export function lint(context) {
   run(
     context,
     [
@@ -248,6 +254,13 @@ function writeCoverageReport(context, { config, measured }) {
   );
 }
 
+function typeCheckerVersion(context) {
+  const checker = resolveTypeChecker(context);
+  return checker === undefined
+    ? 'types@missing'
+    : `${checker}@${probeVersion(context, [checker, '--version'])}`;
+}
+
 const IMPORT_LINTER_METADATA = [
   'python',
   '-I',
@@ -271,6 +284,7 @@ export function toolVersions(context) {
   return [
     `ruff@${probeVersion(context, ['ruff', '--version'])}`,
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
+    typeCheckerVersion(context),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerLabel(context),
     `jscpd@${jscpdVersion()}`,

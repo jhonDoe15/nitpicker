@@ -12,6 +12,12 @@
 //                        formatter does and names them on stderr)
 //   no-pytest.txt        `python -c "import pytest"` fails
 //   pytest-cov.txt, xdist.txt  the pytest probe reports that plugin as installed
+//   sources.txt          one path per line: what `ruff check --show-files` lists (default: every
+//                        .py file below the project, except .venv)
+//   type-errors.txt      printed by mypy as its report (exit 1 when not empty)
+//   pyright.json         { generalDiagnostics } printed by pyright as its report, relative files made
+//                        absolute (exit 1 when it has diagnostics)
+//   rules.json           written by the nitpicker rules script (default: no findings)
 //   structure-data.json  written as the structure metrics report of `python structure_metrics.py`
 //                        (default: no functions)
 //   lizard-data.csv      printed by `lizard --csv` (default: no functions); `lizard --version` is 1.24.1
@@ -25,8 +31,9 @@
 //   import-scan.json     printed by the import scan script (default: no imports)
 //   lint-imports.txt     printed by lint-imports (default: a report with no broken contracts); its
 //                        exit status is 1 when the text says BROKEN
-// When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd and
-// PYTHONPATH.
+// `python -c` with `sys.executable` prints `$VIRTUAL_ENV/bin/python` and always works.
+// When FAKE_PYTHON_LOG is set, every call appends a JSON line with the tool, arguments, cwd,
+// PYTHONPATH, MYPYPATH and PYTEST_ADDOPTS.
 import {
   appendFileSync,
   existsSync,
@@ -51,6 +58,7 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
       args,
       cwd,
       pythonPath: process.env.PYTHONPATH ?? '',
+      ...(process.env.MYPYPATH === undefined ? {} : { mypyPath: process.env.MYPYPATH }),
       pytestAddopts: process.env.PYTEST_ADDOPTS,
     })}\n`,
   );
@@ -58,7 +66,8 @@ if (process.env.FAKE_PYTHON_LOG !== undefined) {
 
 const failures = existsSync('fail.json') ? JSON.parse(readFileSync('fail.json', 'utf8')) : {};
 const failure = failures[`${tool} ${args[0]}`] ?? failures[tool];
-if (failure !== undefined && !args.includes('--version')) {
+const probesExecutable = tool === 'python' && args[1]?.includes('sys.executable');
+if (failure !== undefined && !args.includes('--version') && !probesExecutable) {
   process.stderr.write(`${failure}\n`);
   process.exit(2);
 }
@@ -87,9 +96,23 @@ const sarif = () => ({
   ],
 });
 
+function sources() {
+  const listed = lines('sources.txt');
+  const found = readdirSync(cwd, { recursive: true }).filter(
+    (file) => file.endsWith('.py') && !file.startsWith('.venv'),
+  );
+  return (listed.length > 0 ? listed : found.sort()).map((file) => path.join(cwd, file));
+}
+
 function ruff() {
   if (args[0] === '--version') {
     process.stdout.write('ruff 0.9.9\n');
+  } else if (args.includes('--show-files')) {
+    process.stdout.write(
+      sources()
+        .map((file) => `${file}\n`)
+        .join(''),
+    );
   } else if (args[0] === 'check') {
     writeFileSync(valueOf('--output-file'), JSON.stringify(sarif()));
     process.exit(lines('violations.txt').length > 0 ? 1 : 0);
@@ -137,6 +160,32 @@ function coverage() {
   }
 }
 
+function mypy() {
+  if (args[0] === '--version') {
+    process.stdout.write('mypy 1.13.0 (compiled: yes)\n');
+    return;
+  }
+  const report = existsSync('type-errors.txt') ? readFileSync('type-errors.txt', 'utf8') : '';
+  process.stdout.write(report);
+  process.exit(report === '' ? 0 : 1);
+}
+
+function pyright() {
+  if (args[0] === '--version') {
+    process.stdout.write('pyright 1.1.390\n');
+    return;
+  }
+  const { generalDiagnostics = [] } = existsSync('pyright.json')
+    ? JSON.parse(readFileSync('pyright.json', 'utf8'))
+    : {};
+  const absolute = generalDiagnostics.map((item) => ({
+    ...item,
+    file: path.resolve(cwd, item.file),
+  }));
+  process.stdout.write(JSON.stringify({ generalDiagnostics: absolute }));
+  process.exit(absolute.length === 0 ? 0 : 1);
+}
+
 function lintImports() {
   if (args[0] === '--version') {
     process.stdout.write('lint-imports, version 2.5\n');
@@ -150,6 +199,15 @@ function lintImports() {
 }
 
 function python() {
+  if (args[1]?.endsWith('nitpicker_rules.py')) {
+    const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
+    writeFileSync(args[3], report);
+    return;
+  }
+  if (args[1]?.includes('sys.executable')) {
+    process.stdout.write(`${process.env.VIRTUAL_ENV ?? '/usr'}/bin/python\n`);
+    return;
+  }
   if (args.join(' ').includes('"mutmut"')) {
     if (existsSync('no-mutmut.txt')) {
       process.exit(1);
@@ -228,5 +286,15 @@ function mutmut() {
   process.exit(status);
 }
 
-const tools = { ruff, black, coverage, python, lizard, mutmut, 'lint-imports': lintImports };
+const tools = {
+  ruff,
+  black,
+  coverage,
+  mypy,
+  pyright,
+  python,
+  lizard,
+  mutmut,
+  'lint-imports': lintImports,
+};
 tools[tool]();

@@ -177,6 +177,7 @@ describe('tool context', () => {
       formatterDetected: true,
       testRunner: 'unittest',
       targetVersion: 'py38',
+      typeCheckers: [],
       sourceRoots: ['src'],
     });
   });
@@ -201,6 +202,7 @@ describe('tool context', () => {
     expect(context.project).toEqual({
       formatter: 'black',
       formatterDetected: false,
+      typeCheckers: [],
       testRunner: 'unittest',
       targetVersion: 'py38',
       sourceRoots: ['src'],
@@ -221,6 +223,11 @@ describe('running the tools', () => {
     expect(JSON.parse(readReport(reportRoot, 'ruff.sarif')).runs[0].results).toHaveLength(1);
     expect(readReport(reportRoot, 'format.txt')).toBe('src/demo/a.py');
     expect(readReport(reportRoot, 'coverage.json')).toBe('{"files":{}}');
+    expect(JSON.parse(readReport(reportRoot, 'type-check.json'))).toEqual({
+      checker: 'mypy',
+      output: '',
+    });
+    expect(readReport(reportRoot, 'rules.json')).toBe('[]');
     expect(JSON.parse(readReport(reportRoot, 'manifest.json'))).toEqual({
       formatter: 'ruff',
       formatterDetected: true,
@@ -265,22 +272,51 @@ describe('running the tools', () => {
     expect(calls('coverage', 'json')).toHaveLength(1);
   });
 
-  it.each([
-    ['ruff check', 'ruff-failed'],
-    ['ruff format', 'format-failed'],
-    ['coverage run', 'tests-failed'],
-    ['coverage json', 'coverage-failed'],
-  ])('names the failing step: %s is %s', (call, rule) => {
-    const root = project({ 'fail.json': JSON.stringify({ [call]: 'it blew up' }) });
+  it('names each failing step with its command and output', () => {
+    const calls = ['ruff format', 'coverage run', 'mypy', 'python'];
+    const structureScript = path.resolve(import.meta.dirname, '../metrics/structure_metrics.py');
+    const root = project({
+      'fail.json': JSON.stringify(
+        Object.fromEntries(calls.map((call) => [call, `${call} blew up`])),
+      ),
+    });
+    const { context } = contextFor(root);
+
+    const failures = runPythonTools(context);
+
+    expect(failures).toEqual(
+      [
+        ['format-failed', 'ruff format', 'ruff format'],
+        ['tests-failed', 'coverage run', 'coverage run'],
+        ['types-failed', 'mypy', 'mypy'],
+        ['rules-failed', 'python', 'python'],
+        ['structure-failed', `python ${structureScript}`, 'python'],
+      ].map(([rule, command, call]) => ({
+        rule,
+        message: `${command} exited 2 in the virtualenv environment:\n${call} blew up`,
+      })),
+    );
+  });
+
+  it('names a failing coverage report', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'coverage json': 'it blew up' }) });
     const { context } = contextFor(root);
 
     expect(runPythonTools(context)).toEqual([
       {
-        rule,
-        message: expect.stringMatching(
-          new RegExp(`^${call} exited 2 in the virtualenv environment:\\nit blew up$`),
-        ),
+        rule: 'coverage-failed',
+        message: 'coverage json exited 2 in the virtualenv environment:\nit blew up',
       },
+    ]);
+  });
+
+  it('fails the lint step and the rules step when ruff itself fails', () => {
+    const root = project({ 'fail.json': JSON.stringify({ 'ruff check': 'it blew up' }) });
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context).map(({ rule }) => rule)).toEqual([
+      'ruff-failed',
+      'rules-failed',
     ]);
   });
 
@@ -292,6 +328,7 @@ describe('running the tools', () => {
       'ruff-failed',
       'format-failed',
       'tests-failed',
+      'rules-failed',
     ]);
   });
 
@@ -418,7 +455,7 @@ describe('running the tools', () => {
   it('tells how to turn the contracts off when lint-imports is not installed', () => {
     const root = project(
       { '.importlinter': '[importlinter]\nroot_package = demo\n', 'conftest.py': '' },
-      { tools: ['ruff', 'coverage', 'python'] },
+      { tools: ['ruff', 'coverage', 'mypy', 'python'] },
     );
     const { context } = contextFor(root);
 
@@ -591,13 +628,16 @@ describe('tool versions', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
     expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      `ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(root, { typeChecker: 'pyright' }).context)).toBe(
+      `ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
     expect(toolVersions(contextFor(project()).context)).toBe(
-      `ruff@0.9.9;coverage@7.6.1;unittest;${jscpd}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;${jscpd}`,
     );
     expect(mutationVersions(contextFor(root).context)).toBe('mutmut@3.8.0;pytest@8.3.1');
   });
@@ -606,7 +646,7 @@ describe('tool versions', () => {
     const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
 
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
     );
     expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
       'import-linter',
@@ -632,10 +672,10 @@ describe('tool versions', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      `ruff@missing;coverage@missing;pytest@missing;${jscpd}`,
+      `ruff@missing;types@missing;coverage@missing;pytest@missing;${jscpd}`,
     );
     expect(toolVersions(contextFor(root).context)).toBe(
-      `ruff@missing;coverage@missing;unittest;${jscpd}`,
+      `ruff@missing;types@missing;coverage@missing;unittest;${jscpd}`,
     );
     expect(mutationVersions(contextFor(root).context)).toBe('mutmut@missing;pytest@missing');
   });

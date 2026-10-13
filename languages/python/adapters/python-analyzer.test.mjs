@@ -37,8 +37,11 @@ describe('Python analyzer', () => {
       'ruff-format',
       'black',
       'coverage',
+      'mypy',
+      'pyright',
       'structure',
       'crap',
+      'python-rules',
       'coverage-py',
       'duplicates',
       'coupling',
@@ -135,6 +138,10 @@ describe('Python analyzer', () => {
     expect(hash).toMatch(/^[0-9a-f]{64}$/);
     expect(createPythonAnalyzer({}).configurationHash).toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'black' }).configurationHash).not.toBe(hash);
+    expect(
+      createPythonAnalyzer({ exceptions: [{ rule: 'T201', paths: ['cli/**'], reason: 'CLI' }] })
+        .configurationHash,
+    ).not.toBe(hash);
     expect(createPythonAnalyzer({ formatter: 'ruff' }).configurationHash).not.toBe(
       createPythonAnalyzer({ formatter: 'black' }).configurationHash,
     );
@@ -148,11 +155,14 @@ describe('Python analyzer', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
 
     expect(createPythonAnalyzer({ testRunner: 'pytest' }).resolveVersion(live)).toBe(
-      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
     expect(
       createPythonAnalyzer({ formatter: 'black', testRunner: 'pytest' }).resolveVersion(live),
-    ).toBe(`ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
+    ).toBe(`ruff@0.9.9;black@24.1.0;mypy@1.13.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
+    expect(
+      createPythonAnalyzer({ typeChecker: 'pyright', testRunner: 'pytest' }).resolveVersion(live),
+    ).toBe(`ruff@0.9.9;pyright@1.1.390;coverage@7.6.1;pytest@8.3.1;${jscpd}`);
     expect(createMutationAnalyzer().resolveVersion(live)).toBe('mutmut@3.8.0;pytest@8.3.1');
   });
 
