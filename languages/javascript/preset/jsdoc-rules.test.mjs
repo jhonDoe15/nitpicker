@@ -43,7 +43,7 @@ tester.run('no-comments with JSDoc types', noComments, {
       options: jsdocTypes,
     },
     { code: "/** @import {Row} from './row.js' */", options: jsdocTypes },
-    { code: '/* istanbul ignore next */\nconst value = 1;', options: jsdocTypes },
+    { code: '// prettier-ignore\nconst value = 1;', options: jsdocTypes },
     { code: '/** @type {Row} */\nconst row = make();', options: jsdocTypes },
     { code: 'const value = 1;', options: jsdocTypes },
   ],
