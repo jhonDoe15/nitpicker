@@ -71,7 +71,10 @@ export function readJavaFindings(
         kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
+      ...readInlineSuppressionFindings(projectRoot, [
+        ...context.sourceRoots,
+        ...(manifest.testSourceRoots ?? []),
+      ]),
     ],
   };
 }
@@ -108,12 +111,17 @@ function formatFindings({ reportRoot, roots }) {
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  const checkstyle = readFileSync(path.join(reportRoot, 'checkstyle.xml'), 'utf8');
-  return roots.flatMap((root) =>
-    ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-      existsSync(path.join(projectRoot, finding.path)),
-    ),
-  );
+  return ['checkstyle.xml', 'checkstyle-test.xml']
+    .map((report) => path.join(reportRoot, report))
+    .filter((report) => existsSync(report))
+    .flatMap((report) => {
+      const checkstyle = readFileSync(report, 'utf8');
+      return roots.flatMap((root) =>
+        ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+          existsSync(path.join(projectRoot, finding.path)),
+        ),
+      );
+    });
 }
 
 function jacocoFindings(context, jacoco) {

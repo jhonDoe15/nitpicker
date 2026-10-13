@@ -211,6 +211,30 @@ describe('readJavaFindings', () => {
     expect(identities(after)).toEqual(identities(before));
     expect(after[0].location.line).toBe(before[0].location.line + 17);
   });
+
+  it("reads the test sources' Checkstyle report and inline suppressions like the main ones", () => {
+    const root = projectWithReports();
+    const testFile = path.join(root, 'src/test/java/demo/BadTest.java');
+    mkdirSync(path.dirname(testFile), { recursive: true });
+    writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
+    writeFileSync(
+      path.join(root, 'build/nitpicker/manifest.json'),
+      JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] }),
+    );
+    writeFileSync(
+      path.join(root, 'build/nitpicker/checkstyle-test.xml'),
+      `<checkstyle><file name="${testFile}"><error line="2" severity="warning" message="Too long" source="${CS_LENGTH}"/></file></checkstyle>`,
+    );
+
+    const onTests = readJavaFindings(root).findings.filter(
+      ({ path: file }) => file === 'src/test/java/demo/BadTest.java',
+    );
+
+    expect(onTests.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
+      `checkstyle ${CS_LENGTH}`,
+      'pmd InlineSuppression',
+    ]);
+  });
 });
 
 describe('readJavaFindings: ArchUnit', () => {

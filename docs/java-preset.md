@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
@@ -456,6 +456,18 @@ when `nitpicker.config.json` names them in `tools`, for example
 `{ "tools": { "pmd": { "precedence": ["project", "nitpicker"] }, "checkstyle": { "precedence": ["project"] } } }`;
 see [Your project's tool configs](usage.md#your-projects-tool-configs). A project config chosen
 this way is used as written, including its own suppression filters.
+
+**Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
+`build/nitpicker/checkstyle-test.xml`), google-java-format and the inline suppression scan cover
+`src/test/java` as well as the main sources, the way the TypeScript preset lints its tests; the
+file and folder limits already counted test files. PMD runs nitpicker's own rule set,
+[`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
+errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
+`UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
+plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
+`NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
+forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`). SpotBugs, the structure
+limits and CRAP stay on main code, as in the TypeScript preset.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],

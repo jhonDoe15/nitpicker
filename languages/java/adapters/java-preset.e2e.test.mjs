@@ -142,6 +142,24 @@ public final class Bad {
 }
 `;
 
+// A test that swallows every exception: PMD and Checkstyle run on test sources too.
+const SWALLOWING_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class SwallowingTest {
+  @Test
+  void parses() {
+    try {
+      assertEquals(1, Integer.parseInt("1"));
+    } catch (Exception e) {
+    }
+  }
+}
+`;
+
 // A project rule set that would replace nitpicker's PMD rules if it were read without an opt-in.
 const PROJECT_PMD_RULESET = `<?xml version="1.0"?>
 <ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
@@ -361,6 +379,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
+    branchWith('test-violation', { 'src/test/java/demo/SwallowingTest.java': SWALLOWING_TEST });
     branchWith('project-pmd', { 'Bad.java': BAD, 'config/pmd/ruleset.xml': PROJECT_PMD_RULESET });
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
@@ -445,6 +464,23 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       ]);
       expect(summarize(result.unchangedFindings)).toEqual(
         expect.arrayContaining(['pmd UnusedPrivateField Legacy.java']),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'lints test sources with PMD and Checkstyle like main sources',
+    () => {
+      const result = diffOf('test-violation');
+
+      expect(result.failed).toBe(true);
+      expect(summarize(result.newEnforceable)).toEqual(
+        expect.arrayContaining([
+          `checkstyle ${CHECKSTYLE_PREFIX}blocks.EmptyCatchBlockCheck SwallowingTest.java`,
+          'pmd AvoidCatchingGenericException SwallowingTest.java',
+          'pmd EmptyCatchBlock SwallowingTest.java',
+        ]),
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
