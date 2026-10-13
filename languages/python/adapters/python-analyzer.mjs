@@ -56,7 +56,16 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings),
     configurationHash: hashConfiguration(settings),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage', 'coverage-py'],
+    reportedTools: [
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'coverage-py',
+      'duplicates',
+      'coupling',
+      'import-linter',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation({ projectRoot, toolRoot, liveProjectRoot }) {
       return {
