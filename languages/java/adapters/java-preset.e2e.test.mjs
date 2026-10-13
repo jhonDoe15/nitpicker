@@ -555,6 +555,39 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
+    'names the method of an uncovered branch and accepts it with an exception that names the method',
+    () => {
+      const failing = diffOf('branch-edited');
+      const accepted = diffOf('branch-edited', {
+        exceptions: [
+          {
+            rule: 'changed-branch-coverage',
+            paths: ['src/main/java/demo/Branchy.java'],
+            function: 'larger',
+          },
+        ],
+      });
+      const other = diffOf('branch-edited', {
+        exceptions: [
+          {
+            rule: 'changed-branch-coverage',
+            paths: ['src/main/java/demo/Branchy.java'],
+            function: 'smaller',
+          },
+        ],
+      });
+
+      expect(failing.newEnforceable.map(({ message }) => message)).toEqual([
+        'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"why"}.',
+      ]);
+      expect(accepted.failed).toBe(false);
+      expect(summarize(accepted.newEnforceable)).toEqual([]);
+      expect(other.failed).toBe(true);
+    },
+    GRADLE_STEP_TIMEOUT_MS * 3,
+  );
+
+  it(
     'fails a new uncovered branch and keeps the old one baselined',
     () => {
       const result = diffOf('branch-added');
@@ -587,7 +620,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'function-control-nesting-limit Wide.deep',
       ]);
       expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
-        'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
+        'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.deep","reason":"why"}.',
       );
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },

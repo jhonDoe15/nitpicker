@@ -167,14 +167,14 @@ describe('reading the CRAP inputs', () => {
         symbol: 'f',
         identity: expect.any(String),
         message:
-          'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+          'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"why"}.',
         classification: 'enforceable',
         location: { line: 1 },
         ratchet: {
           key: 'function:f:crap',
           value: 12,
           worseMessage:
-            'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests.',
+            'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"why"}.',
           heldMessage:
             'f: CRAP 12.00 (limit 9), allowed because base was {base}; any increase fails.',
         },

@@ -14,11 +14,13 @@ import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../preset/coding-standards/inventory-path.mjs';
 import { parsePositiveNumber } from '../preset/quality-checks.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
+import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import {
   addMetric,
+  enclosingFunctionName,
   hash,
   nextOccurrence,
   positiveInteger,
@@ -34,7 +36,7 @@ import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mj
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { sourceRoot, existingRoots } from '../preset/layout.mjs';
-import { readLayout } from '../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
@@ -102,7 +104,7 @@ export async function runQualityArea(options) {
     )
       return [];
   }
-  return runner(options);
+  return applyFindingExceptions(await runner(options), readHeadPolicy().exceptions);
 }
 
 function runPolicyTests(options) {
@@ -811,15 +813,20 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     metricName: 'branches',
     value: coveragePercent(branchOutcomes),
   });
-  const branches = branchEntries.map(([branchId, outcomes]) => ({
-    path: relativePath,
-    key:
-      coverage.branchSourceHashes?.[branchId] ??
-      hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
-    percent: coveragePercent(outcomes),
-    line: coverage.branchMap?.[branchId]?.loc?.start?.line,
-    arms: coverage.uncoveredArms?.[branchId],
-  }));
+  const functions = namedFunctions(coverage, relativePath);
+  const branches = branchEntries.map(([branchId, outcomes]) => {
+    const line = coverage.branchMap?.[branchId]?.loc?.start?.line;
+    return {
+      path: relativePath,
+      key:
+        coverage.branchSourceHashes?.[branchId] ??
+        hash(JSON.stringify(coverage.branchMap?.[branchId] ?? { branchId })),
+      percent: coveragePercent(outcomes),
+      line,
+      arms: coverage.uncoveredArms?.[branchId],
+      symbol: enclosingFunctionName(functions, relativePath, line),
+    };
+  });
   findings.push(
     ...branchCoverageFindings(branches, {
       tool: analyzerName,
@@ -827,6 +834,12 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     }),
   );
   return branchOutcomes.filter((value) => value > 0).length;
+}
+
+function namedFunctions(coverage, file) {
+  return Object.values(coverage.fnMap ?? {})
+    .filter(({ name }) => typeof name === 'string' && !name.startsWith('(anonymous'))
+    .map(({ name, loc }) => ({ file, name, start: loc?.start?.line, end: loc?.end?.line }));
 }
 
 function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount }) {

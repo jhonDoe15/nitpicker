@@ -10,21 +10,27 @@ export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot);
 }
 
-export function readStructureFindings(reportRoot, projectRoot, options) {
+export function readStructureFunctions(reportRoot) {
   const report = path.join(reportRoot, STRUCTURE_REPORT);
-  if (!existsSync(report)) {
-    return [];
-  }
-  return structureFindings(JSON.parse(readFileSync(report, 'utf8')), projectRoot, options);
+  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : [];
 }
 
-export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
+export function readStructureFindings(reportRoot, projectRoot, options) {
+  const entries = readStructureFunctions(reportRoot);
+  return entries.length === 0 ? [] : structureFindings(entries, projectRoot, options);
+}
+
+export function structureFindings(
+  entries,
+  projectRoot,
+  { textOf = methodText, hints, exceptionKey } = {},
+) {
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
-  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
+  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints, exceptionKey }).filter(
     (finding) => finding.classification === 'enforceable',
   );
 }

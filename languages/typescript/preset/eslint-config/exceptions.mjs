@@ -1,4 +1,7 @@
-export function applyRuleExceptions(configEntries, exceptions = []) {
+import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+
+export function applyRuleExceptions(configEntries, allExceptions = []) {
+  const exceptions = allExceptions.filter(({ rule }) => !FUNCTION_EXCEPTION_RULES.includes(rule));
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(

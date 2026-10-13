@@ -37,6 +37,30 @@ describe('python exceptions', () => {
     expect(applyPythonExceptions(findings, [exception('T', ['**'])])).toEqual([findings[2]]);
   });
 
+  it('lifts a function-scoped rule only inside the named function', () => {
+    const at = (symbol) => ({
+      tool: 'coverage-py',
+      rule: 'changed-branch-coverage',
+      path: 'src/store.py',
+      identity: symbol ?? 'none',
+      symbol,
+    });
+    const scoped = [at('Store.save'), at('Store.load'), at('save_all'), at(undefined)];
+    const lifted = {
+      rule: 'changed-branch-coverage',
+      paths: ['src/**'],
+      function: 'save',
+      reason: 'because',
+    };
+
+    expect(applyPythonExceptions(scoped, [lifted])).toEqual([scoped[1], scoped[2], scoped[3]]);
+    expect(applyPythonExceptions(scoped, [{ ...lifted, function: 'Store.load' }])).toEqual([
+      scoped[0],
+      scoped[2],
+      scoped[3],
+    ]);
+  });
+
   it('needs the other tools to name the rule exactly', () => {
     const mypy = { tool: 'mypy', rule: 'arg-type', path: 'src/a.py', identity: 'x' };
     const rules = {

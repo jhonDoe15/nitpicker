@@ -173,7 +173,11 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 }
 ```
 
-`rule` is one of the ids above (anything else is a config error naming them). Findings of that rule
+`rule` is one of the ids above or, for the structure, CRAP and coverage findings below,
+`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
+`function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or
+`changed-branch-coverage` with an optional `function` (required for the last one); anything else is
+a config error naming them. Findings of that rule
 under the globs are dropped on both snapshots, like `exclude`, and the exception changes the
 analyzer's cache key. The rule is lifted for the whole file, so one exception for
 `kotlin.run` also lifts `kotlin.with`, `kotlin.also` and `runBlocking` there (they share a
@@ -289,8 +293,10 @@ Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in
 counts the generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no
 branch of yours is untested)`); put the suspension call on a line of its own, or, when that is not
-possible, lift the rule for the file with `exclude` in `nitpicker.config.json` (path-level, so it
-also stops gating the real branches of that file). A line is judged as a whole, as for Java, and a
+possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
+(`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
+and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
+(path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
 reformatted line is a changed line. Lines of inline functions that the compiler copies into other
 files are not in the report (JaCoCo maps them outside the file).
 
@@ -393,9 +399,11 @@ The shared structure rule (`shared/rules/structure.mjs`) runs on Kotlin function
 that number grew (`{name} grew from 4 to 5 parameters (limit 3)...`); a function that only moved,
 or was edited without getting worse, stays baselined. That is the shared "only if worse" ratchet,
 keyed by function name and occurrence in the file, with a hash of the function text in the identity.
-The only exception mechanism is `nitpicker.config.json`: `exclude` drops the findings under a path
-(generated code, a legitimately wide function), `thresholds.crapLimit` changes the CRAP limit;
-there are no inline disables.
+The exception mechanisms are in `nitpicker.config.json`: an `exceptions` entry for the rule accepts
+one function (`{ "rule": "function-lines-limit", "paths": ["src/main/kotlin/app/Big.kt"],
+"function": "Big.run", "reason": "..." }`, `function` optional here) or the whole path, and the
+message of each finding prints the entry; `exclude` drops every finding under a path (generated code);
+`thresholds.crapLimit` changes the CRAP limit; there are no inline disables.
 
 **Metric source (decision).** `languages/java/gradle/KotlinMetrics.java` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
@@ -515,7 +523,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules) per path. `layout` is a config error.
+[one-way rules](#one-way-rules) per path, and the structure, CRAP and coverage rules per path or
+function. `layout` is a config error.
 
 ## Tests
 

@@ -66,7 +66,7 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
-  it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
+  it('hands each exception to the runner with its rule, paths and function and changes the hash', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
     const exceptions = [
       {
@@ -75,15 +75,21 @@ describe('configureJavaAnalyzer', () => {
         reason: 'Entry point.',
       },
       { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'], reason: 'Mapped by a framework.' },
+      {
+        rule: 'changed-branch-coverage',
+        paths: ['d/Store.kt'],
+        function: 'Store.save',
+        reason: 'Defensive branch.',
+      },
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
     const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
-      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
-      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'b/**' },
-      { rule: 'detekt.style.UseDataClass', glob: 'c/*.kt' },
+      { rule: 'detekt.style.ForbiddenMethodCall', paths: ['a/Main.kt', 'b/**'] },
+      { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'] },
+      { rule: 'changed-branch-coverage', paths: ['d/Store.kt'], function: 'Store.save' },
     ]);
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
@@ -167,19 +173,25 @@ describe('parseRunnerArguments', () => {
     });
   });
 
-  it.each(['nocolon', ':glob/**', 'rule:'])(
-    'rejects the exception %s without a rule or a glob',
-    (value) => {
-      expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
-        /Usage/,
-      );
-    },
-  );
+  it.each([
+    'nojson',
+    '{"paths":["a"]}',
+    '{"rule":"r"}',
+    '{"rule":"r","paths":[1]}',
+    '{"rule":"r","paths":["a"],"function":3}',
+  ])('rejects the exception %s without a rule, paths and a text function', (value) => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+      /Usage/,
+    );
+  });
 
-  it('keeps a colon inside the glob', () => {
+  it('keeps a colon inside a glob and a function', () => {
+    const entry = { rule: 'r', paths: ['a:b/**'], function: 'Calc::run' };
+
     expect(
-      parseRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy.exceptions,
-    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+      parseRunnerArguments(['--project-root', '/p', '--exception', JSON.stringify(entry)]).policy
+        .exceptions,
+    ).toEqual([entry]);
   });
 
   it('rejects an unknown preset or Kotlin formatter', () => {
@@ -210,7 +222,24 @@ describe('applyJavaPolicy', () => {
 
     expect(
       applyJavaPolicy(findings, {
-        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
+        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', paths: ['src/Main.kt'] }],
+      }),
+    ).toEqual([findings[1], findings[2]]);
+  });
+
+  it('drops a finding of a function exception only inside that function', () => {
+    const at = (symbol) => ({
+      ...finding('src/Store.java'),
+      rule: 'changed-branch-coverage',
+      symbol,
+    });
+    const findings = [at('Store.save'), at('Store.load'), at(undefined)];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [
+          { rule: 'changed-branch-coverage', paths: ['src/Store.java'], function: 'save' },
+        ],
       }),
     ).toEqual([findings[1], findings[2]]);
   });

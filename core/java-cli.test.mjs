@@ -14,6 +14,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
 import { ONE_WAY_RULE_IDS } from '../languages/java/adapters/kotlin-rules.mjs';
+import { FUNCTION_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
@@ -178,6 +179,77 @@ describe('nitpicker with "preset": "java"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
+  });
+
+  describe('exceptions for structure, CRAP and coverage findings', () => {
+    const WIDE_SOURCE = [
+      'package demo;',
+      '',
+      'public final class Wide {',
+      '  int sum(int a, int b, int c, int d) {',
+      '    return a + b + c + d;',
+      '  }',
+      '}',
+      '',
+    ].join('\n');
+    const structure = `${JSON.stringify([
+      {
+        file: 'src/main/java/demo/Wide.java',
+        name: 'Wide.sum',
+        start: 4,
+        end: 6,
+        lines: 3,
+        statements: 1,
+        maxControlNesting: 0,
+        parameters: 4,
+      },
+    ])}\n`;
+    const configWith = (...exceptions) => `${JSON.stringify({ preset: 'java', exceptions })}\n`;
+    const entry = (functionName, rule = 'function-parameters-limit') => ({
+      rule,
+      paths: ['src/main/java/demo/Wide.java'],
+      ...(functionName === undefined ? {} : { function: functionName }),
+      reason: 'A reviewed reason.',
+    });
+    const change = (config) => {
+      const root = gradleRepository();
+      write(root, {
+        'nitpicker.config.json': config,
+        'src/main/java/demo/Wide.java': WIDE_SOURCE,
+        'structure.json': structure,
+      });
+      commit(root, 'add a wide method');
+      return run(root, [], { subprocess: true });
+    };
+
+    it('names the entry that accepts a method over the parameter limit', () => {
+      const result = change('{ "preset": "java" }\n');
+
+      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
+      expect(
+        result.json('new-findings.json').map(({ symbol, message }) => [symbol, message]),
+      ).toEqual([
+        [
+          'Wide.sum',
+          'Wide.sum has 4 parameters; limit is 3. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"why"}.',
+        ],
+      ]);
+    });
+
+    it('passes once an exception names the method or the path, and fails for another method', () => {
+      expect(change(configWith(entry('sum'))).exitCode).toBe(0);
+      expect(change(configWith(entry(undefined))).exitCode).toBe(0);
+      expect(change(configWith(entry('product'))).exitCode).toBe(1);
+    });
+
+    it('rejects an exception for a rule outside structure, CRAP and coverage', () => {
+      const result = change(configWith(entry(undefined, 'UnusedPrivateField')));
+
+      expect(result.exitCode).toBe(2);
+      expect(result.output.err).toBe(
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "UnusedPrivateField", which is not a rule with exceptions. Rules with exceptions for the java preset: ${FUNCTION_EXCEPTION_RULES.join(', ')}\n`,
+      );
+    });
   });
 
   describe('legacy inventory', () => {
@@ -465,11 +537,75 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'branch-source:2523a9a20c75ac9a',
-        message: 'Branch coverage is 50.00%; minimum is 95%',
+        message:
+          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 5 },
       },
     ]);
+  });
+
+  it('names the function of an untested Kotlin branch and accepts it through an exception', () => {
+    const metrics = `${JSON.stringify({
+      functions: [
+        {
+          file: 'src/main/kotlin/demo/K.kt',
+          name: 'surcharge',
+          start: 5,
+          end: 5,
+          lines: 1,
+          statements: 1,
+          maxControlNesting: 0,
+          parameters: 1,
+          complexity: 2,
+        },
+      ],
+      files: [],
+    })}\n`;
+    const exceptionFor = (functionName) =>
+      `${JSON.stringify({
+        preset: 'kotlin',
+        exceptions: ['changed-branch-coverage', 'crap-coverage-unknown'].map((rule) => ({
+          rule,
+          paths: ['src/main/kotlin/demo/K.kt'],
+          function: functionName,
+          reason: 'A reviewed reason.',
+        })),
+      })}\n`;
+    const change = (config) => {
+      const root = kotlinRepository({
+        'src/main/kotlin/demo/K.kt': feeSource,
+        'jacoco.xml': branchReport(),
+      });
+      write(root, {
+        'nitpicker.config.json': config,
+        'src/main/kotlin/demo/K.kt': surchargeSource,
+        'jacoco.xml': branchReport([5, 1, 1]),
+        'kotlin-metrics.json': metrics,
+      });
+      commit(root, 'add an untested branch');
+      return run(root, [], { subprocess: true });
+    };
+
+    const rejected = change(kotlinConfig());
+    const accepted = change(exceptionFor('surcharge'));
+    const other = change(exceptionFor('fee'));
+
+    expect(rejected.exitCode, rejected.output.out + rejected.output.err).toBe(1);
+    expect(
+      rejected
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'changed-branch-coverage')
+        .map(({ symbol, message }) => [symbol, message]),
+    ).toEqual([
+      [
+        'surcharge',
+        'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/K.kt"],"function":"surcharge","reason":"why"}.',
+      ],
+    ]);
+    expect(accepted.exitCode, accepted.output.out + accepted.output.err).toBe(0);
+    expect(accepted.json('new-findings.json')).toEqual([]);
+    expect(other.exitCode, other.output.out + other.output.err).toBe(1);
   });
 
   it('keeps an uncovered Kotlin branch baselined while its line is unchanged', () => {
@@ -599,7 +735,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${ONE_WAY_RULE_IDS.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${[...ONE_WAY_RULE_IDS, ...FUNCTION_EXCEPTION_RULES].join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
       );
     });
   });
@@ -706,7 +842,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
         message:
-          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"why"}.',
         classification: 'enforceable',
         symbol: 'sum',
         location: { line: 3 },
@@ -714,7 +850,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:sum:occurrence:1:parameters',
           value: 5,
           worseMessage:
-            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"why"}.',
           heldMessage:
             'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -742,7 +878,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         rule: 'function-parameters-limit',
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
-        message: 'product has 4 parameters; limit is 3',
+        message:
+          'product has 4 parameters; limit is 3. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"why"}.',
         classification: 'enforceable',
         symbol: 'product',
         location: { line: 5 },
@@ -750,12 +887,46 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:product:occurrence:1:parameters',
           value: 4,
           worseMessage:
-            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"why"}.',
           heldMessage:
             'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
       },
     ]);
+  });
+
+  it('accepts the new Kotlin function over the parameter limit that an exception names, and no other', () => {
+    const exceptionFor = (functionName) =>
+      `${JSON.stringify({
+        preset: 'kotlin',
+        exceptions: ['function-parameters-limit', 'crap-coverage-unknown'].map((rule) => ({
+          rule,
+          paths: ['src/main/kotlin/demo/Wide.kt'],
+          function: functionName,
+          reason: 'A reviewed reason.',
+        })),
+      })}\n`;
+    const change = (config) => {
+      const root = legacyWide();
+      write(root, {
+        'nitpicker.config.json': config,
+        'src/main/kotlin/demo/Wide.kt': wideSource(
+          FOUR_PARAMETERS,
+          'product(a: Int, b: Int, c: Int, d: Int)',
+        ),
+        'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 3), wideFunction('product', 4, 5)),
+      });
+      commit(root, 'add a function');
+      return run(root, [], { subprocess: true });
+    };
+
+    const accepted = change(exceptionFor('product'));
+    const other = change(exceptionFor('sum'));
+
+    expect(accepted.exitCode, accepted.output.out + accepted.output.err).toBe(0);
+    expect(newEnforceable(accepted, 'structure')).toEqual([]);
+    expect(other.exitCode, other.output.out + other.output.err).toBe(1);
+    expect(newEnforceable(other, 'structure').map(({ symbol }) => symbol)).toEqual(['product']);
   });
 
   it('fails a new Kotlin clone found by jscpd', () => {

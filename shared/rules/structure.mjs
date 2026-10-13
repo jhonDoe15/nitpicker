@@ -21,10 +21,12 @@
 // name, occurrence and source hash; every other numeric metric is descriptive.
 
 import {
+  DEFAULT_EXCEPTION_KEY,
   FUNCTION_STRUCTURE_LIMITS,
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
+  exceptionRoute,
   renderMessage,
 } from '../policy.mjs';
 import {
@@ -37,7 +39,11 @@ import {
 
 const METADATA_FIELDS = new Set(['file', 'name', 'sourceHash', 'start', 'end']);
 
-export function evaluateStructure(report, analyzerName, { hints = {} } = {}) {
+export function evaluateStructure(
+  report,
+  analyzerName,
+  { hints = {}, exceptionKey = DEFAULT_EXCEPTION_KEY } = {},
+) {
   const findings = summaryMetrics(analyzerName, report.summary, 'structure');
   for (const [kind, values] of Object.entries(report.distributions ?? {})) {
     for (const [percentile, value] of Object.entries(values ?? {})) {
@@ -52,17 +58,17 @@ export function evaluateStructure(report, analyzerName, { hints = {} } = {}) {
       });
     }
   }
-  addEntries(findings, analyzerName, report.functions, 'function', hints);
-  addEntries(findings, analyzerName, report.classes, 'class', hints);
+  addEntries(findings, analyzerName, report.functions, 'function', { hints, exceptionKey });
+  addEntries(findings, analyzerName, report.classes, 'class', { hints, exceptionKey });
   return findings;
 }
 
-function addEntries(findings, analyzerName, entries = [], kind, hints) {
+function addEntries(findings, analyzerName, entries = [], kind, messageOptions) {
   const occurrences = new Map();
   for (const entry of entries) {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     if (kind === 'function') {
-      addLimitViolations(findings, analyzerName, entry, occurrence, hints);
+      addLimitViolations(findings, analyzerName, entry, occurrence, messageOptions);
     }
     for (const [metricName, value] of Object.entries(entry)) {
       if (METADATA_FIELDS.has(metricName)) {
@@ -97,38 +103,50 @@ function withHint(message, hint) {
   return message.endsWith('.') ? `${message} ${hint}` : `${message}. ${hint}`;
 }
 
-function addLimitViolations(findings, analyzerName, entry, occurrence, hints) {
+function addLimitViolations(findings, analyzerName, entry, occurrence, { hints, exceptionKey }) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
   for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
     if (typeof entry[metricName] !== 'number' || entry[metricName] <= limit) {
       continue;
     }
+    const route = exceptionRoute({
+      rule: ruleId,
+      path: entry.file,
+      name: entry.name,
+      key: exceptionKey,
+    });
     findings.push({
       tool: analyzerName,
       rule: ruleId,
       path: entry.file,
       identity: `function:${entry.name}:occurrence:${String(occurrence)}:source:${sourceHash}`,
       message: withHint(
-        renderMessage(structureMessage(metricName), {
-          name: entry.name,
-          value: entry[metricName],
-          metric: metricName,
-          limit,
-        }),
-        hints[metricName],
+        withHint(
+          renderMessage(structureMessage(metricName), {
+            name: entry.name,
+            value: entry[metricName],
+            metric: metricName,
+            limit,
+          }),
+          hints[metricName],
+        ),
+        route,
       ),
       classification: 'enforceable',
       symbol: entry.name,
       ratchet: {
         key: `function:${entry.name}:occurrence:${String(occurrence)}:${metricName}`,
         value: entry[metricName],
-        worseMessage: renderMessage(GREW_MESSAGES[metricName], {
-          name: entry.name,
-          value: entry[metricName],
-          limit,
-          base: '{base}',
-        }),
+        worseMessage: withHint(
+          renderMessage(GREW_MESSAGES[metricName], {
+            name: entry.name,
+            value: entry[metricName],
+            limit,
+            base: '{base}',
+          }),
+          route,
+        ),
         heldMessage: renderMessage(HELD_MESSAGES[metricName], {
           name: entry.name,
           value: entry[metricName],

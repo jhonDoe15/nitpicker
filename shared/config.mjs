@@ -5,13 +5,14 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
+import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES } from './policy.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
 /** Thresholds a project can set; both languages enforce a CRAP limit. */
 export const THRESHOLD_KEYS = ['crapLimit'];
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
+const EXCEPTION_KEYS = ['rule', 'paths', 'function', 'reason'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -84,7 +85,27 @@ function validateException(entry, label) {
   if (entry.paths.length === 0) {
     throw configError(`"${label}.paths" needs at least one path glob`);
   }
+  validateFunction(entry, label);
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+}
+
+function validateFunction(entry, label) {
+  if (entry.function === undefined) {
+    if (FUNCTION_REQUIRED_RULES.includes(entry.rule)) {
+      throw configError(
+        `"${label}.function" is required for ${entry.rule}: name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
+      );
+    }
+    return;
+  }
+  if (!FUNCTION_EXCEPTION_RULES.includes(entry.rule)) {
+    throw configError(
+      `"${label}.function" is only supported for these rules: ${FUNCTION_EXCEPTION_RULES.join(', ')}`,
+    );
+  }
+  if (!isNonEmptyString(entry.function)) {
+    throw configError(`"${label}.function" must be a non-empty function name`);
   }
 }

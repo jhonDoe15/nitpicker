@@ -33,6 +33,36 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
 };
 
+/** Rules a `nitpicker.config.json` exception can lift for a path, or for one function in a path. */
+export const FUNCTION_EXCEPTION_RULES = [
+  ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
+  RULE_IDS.crapScoreLimit,
+  RULE_IDS.crapCoverageUnknown,
+  RULE_IDS.changedBranchCoverage,
+];
+
+/** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
+export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
+
+export const DEFAULT_EXCEPTION_KEY = 'exceptions';
+
+/** A function name without its parameter list, with `::` written as `.`. */
+export function normalizeFunctionName(name) {
+  const bare = name.replace(/\(.*$/s, '').trim().replaceAll('::', '.');
+  return bare === '' ? name : bare;
+}
+
+/** The sentence that names the config entry which accepts a finding of `rule` in `path`. */
+export function exceptionRoute({ rule, path, name, key = DEFAULT_EXCEPTION_KEY }) {
+  const entry = {
+    rule,
+    paths: [path],
+    ...(name === undefined ? {} : { function: normalizeFunctionName(name) }),
+    reason: 'why',
+  };
+  return `To accept it, add an entry to "${key}" in nitpicker.config.json: ${JSON.stringify(entry)}.`;
+}
+
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 

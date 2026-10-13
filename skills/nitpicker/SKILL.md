@@ -172,7 +172,9 @@ For `"preset": "python"`. The finishing steps above apply, except: run the proje
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. Don't add one to get past the gate: stop and ask.
+  message. A structure, CRAP or branch-coverage finding names its own entry
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`).
+  Don't add one to get past the gate: stop and ask.
 
 ## Kotlin
 

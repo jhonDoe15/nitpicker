@@ -201,9 +201,16 @@ const SAMPLE_SOURCE = [
   '',
 ].join('\n');
 
+const BRANCHY =
+  'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n';
+
 const NO_MUTATION = {
   'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
 };
+
+const exceptedConfig = (...exceptions) => ({
+  'nitpicker.config.json': `${JSON.stringify({ preset: 'python', disable: ['mutation'], python: { exceptions } })}\n`,
+});
 
 const roots = [];
 
@@ -541,8 +548,26 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       commitBranch(project, 'untested-complex', {
         ...NO_MUTATION,
         ...SAME_NAME_SOURCES,
-        'src/demo/branchy.py':
-          'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
+        'src/demo/branchy.py': BRANCHY,
+      });
+      commitBranch(project, 'untested-complex-excepted', {
+        ...exceptedConfig({
+          rule: 'crap-score-limit',
+          paths: ['src/demo/branchy.py'],
+          function: 'pick',
+          reason: 'fixture',
+        }),
+        ...SAME_NAME_SOURCES,
+        'src/demo/branchy.py': BRANCHY,
+      });
+      commitBranch(project, 'legacy-grown-excepted', {
+        ...exceptedConfig({
+          rule: 'function-parameters-limit',
+          paths: ['src/demo/wide.py'],
+          function: 'wide',
+          reason: 'fixture',
+        }),
+        'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
       });
     });
 
@@ -580,19 +605,28 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'wide',
           identity: expect.any(String),
           message:
-            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"why"}.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:wide:occurrence:1:parameters',
             value: 5,
             worseMessage:
-              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"why"}.',
             heldMessage:
               'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
           },
         },
       ]);
+    });
+
+    it('passes the grown legacy function and the untested branchy one once python.exceptions names them', () => {
+      for (const branch of ['legacy-grown-excepted', 'untested-complex-excepted']) {
+        const result = gate(project, branch);
+
+        expect(result.exitCode, result.text).toBe(0);
+        expect(enforceable(result)).toEqual([]);
+      }
     });
 
     it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
@@ -607,14 +641,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'pick',
           identity: expect.any(String),
           message:
-            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"why"}.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:pick:crap',
             value: 20,
             worseMessage:
-              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests.',
+              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"why"}.',
             heldMessage:
               'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
           },
@@ -1133,6 +1167,24 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     commitBranch(project, 'edited', {
       'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
     });
+    commitBranch(project, 'edited-excepted', {
+      ...exceptedConfig({
+        rule: 'changed-branch-coverage',
+        paths: ['src/demo/signs.py'],
+        function: 'sign',
+        reason: 'fixture',
+      }),
+      'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
+    });
+    commitBranch(project, 'edited-wrong-function', {
+      ...exceptedConfig({
+        rule: 'changed-branch-coverage',
+        paths: ['src/demo/signs.py'],
+        function: 'clamp',
+        reason: 'fixture',
+      }),
+      'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
+    });
     commitBranch(project, 'edited-and-tested', {
       'src/demo/signs.py': SIGNS.replace('x < 0', 'x <= -1'),
       'tests/test_signs.py': signsTest(SIGN_POSITIVE, SIGN_NEGATIVE),
@@ -1173,6 +1225,37 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     expect(result.text).toMatch(
       /Branch coverage is 50\.00%; minimum is 95%\. Not taken: the branch to line 3/,
     );
+  });
+
+  it('names the python.exceptions entry that accepts the untested branch', () => {
+    const result = gate(project, 'edited');
+
+    expect(
+      result
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'changed-branch-coverage')
+        .map(({ message, symbol }) => [symbol, message]),
+    ).toEqual([
+      [
+        'sign',
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"why"}.',
+      ],
+    ]);
+  });
+
+  it('accepts the untested branch of the function a python.exceptions entry names, and no other', () => {
+    const accepted = gate(project, 'edited-excepted');
+    const other = gate(project, 'edited-wrong-function');
+
+    expect(accepted.exitCode, accepted.text).toBe(0);
+    expect(branchFindings(accepted)).toEqual([]);
+    expect(accepted.json('summary.json').configOverrides).toEqual([
+      'preset: "python"',
+      'disable: ["mutation"]',
+      'exception: {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"fixture"}',
+    ]);
+    expect(other.exitCode, other.text).toBe(1);
+    expect(branchFindings(other)).toEqual(['src/demo/signs.py:2']);
   });
 
   it('passes an edited branch once a test takes both outcomes', () => {

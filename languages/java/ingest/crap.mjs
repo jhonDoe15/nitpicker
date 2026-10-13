@@ -50,7 +50,12 @@ export function ingestCrapRows(parsed, options, resolve) {
     });
   }
   return {
-    findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
+    findings: crapFindings(functions, {
+      tool,
+      limit,
+      unknownMessage: options.unknownMessage,
+      exceptionKey: options.exceptionKey,
+    }),
   };
 }
 

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { PYTHON_RULES_IDS } from '../rules/rule-hints.mjs';
 import { RUFF_CONFIG } from './python-ruff-config.mjs';
 
@@ -42,11 +43,13 @@ function isRuffRule(rule) {
   );
 }
 
+const NITPICKER_RULE_IDS = [...PYTHON_RULES_IDS, ...FUNCTION_EXCEPTION_RULES];
+
 export function ruleIdProblem(rule) {
-  if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || isRuffRule(rule)) {
+  if (NITPICKER_RULE_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || isRuffRule(rule)) {
     return undefined;
   }
-  const misspelled = PYTHON_RULES_IDS.find((id) => distance(id, rule) <= NEAR_MISS_DISTANCE);
+  const misspelled = NITPICKER_RULE_IDS.find((id) => distance(id, rule) <= NEAR_MISS_DISTANCE);
   if (misspelled !== undefined) {
     return `did you mean "${misspelled}"?`;
   }

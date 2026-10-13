@@ -16,6 +16,8 @@ import { RULES_REPORT } from './python-ast-rules.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
 import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
+import { readStructureFunctions } from '../../java/adapters/java-structure.mjs';
+import { PYTHON_EXCEPTION_KEY } from './python-exceptions.mjs';
 import { readPythonStructureFindings } from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
@@ -54,6 +56,8 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
       ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
         roots,
+        functions: readStructureFunctions(reportRoot),
+        exceptionKey: PYTHON_EXCEPTION_KEY,
         sourceText: (file) => readSource(projectRoot, file),
       }).findings,
       ...readDuplicateFindings(reportRoot),

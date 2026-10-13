@@ -802,7 +802,13 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
-    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
+    ).toEqual([
+      {
+        message:
+          'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/Label.kt"],"function":"Label.larger","reason":"why"}.',
+        location: { line: 4 },
+      },
+    ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(
@@ -810,6 +816,27 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
       ),
     ).not.toEqual([]);
+  });
+
+  it('accepts the untested Kotlin branch of the function an exception names, and no other', () => {
+    const exception = (functionName) => ({
+      preset: 'kotlin',
+      exceptions: [
+        {
+          rule: 'changed-branch-coverage',
+          paths: [`${kotlinSources}/Label.kt`],
+          function: functionName,
+        },
+      ],
+    });
+
+    const accepted = diffOf('one-sided-branch', exception('Label.larger'));
+    const other = diffOf('one-sided-branch', exception('Label.smaller'));
+
+    expect(fromTool(accepted.newEnforceable, 'jacoco')).toEqual([]);
+    expect(fromTool(other.newEnforceable, 'jacoco')).toEqual([
+      'jacoco changed-branch-coverage Label.kt',
+    ]);
   });
 
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
@@ -1010,13 +1037,13 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'structure function-statements-limit rank',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
-      'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      'depth nests control flow 3 deep (limit 2). Return early instead of nesting. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Deep.kt"],"function":"depth","reason":"why"}.',
     );
     expect(messageOf('function-parameters-limit', 'product')).toBe(
-      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Grown.kt"],"function":"product","reason":"why"}.',
     );
     expect(messageOf('crap-score-limit', 'classify2')).toBe(
-      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Complex2.kt"],"function":"classify2","reason":"why"}.',
     );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',
