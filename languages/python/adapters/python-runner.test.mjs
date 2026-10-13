@@ -47,6 +47,8 @@ const coverageReport = JSON.stringify({
   },
 });
 
+const withoutCoupling = ({ findings }) => findings.filter(({ tool }) => tool !== 'coupling');
+
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
 
@@ -127,7 +129,7 @@ describe('analyzing a Python snapshot', () => {
       ]),
     });
 
-    const { findings } = analyze(root);
+    const findings = withoutCoupling(analyze(root));
 
     expect(findings.map(({ tool, rule, identity }) => `${tool} ${rule} ${identity}`)).toEqual([
       'ruff T201 fp:nitpicker/subject=`print` found',
@@ -147,7 +149,7 @@ describe('analyzing a Python snapshot', () => {
     });
     const exceptions = [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }];
 
-    const { findings } = analyze(root, { settings: { exceptions } });
+    const findings = withoutCoupling(analyze(root, { settings: { exceptions } }));
 
     expect(findings.map(({ path: file }) => file)).toEqual(['src/demo/a.py']);
   });

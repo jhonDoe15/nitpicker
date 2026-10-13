@@ -181,7 +181,7 @@ function lintImports() {
 }
 
 function python() {
-  if (args[0] === '-I') {
+  if (args[1]?.endsWith('nitpicker_rules.py')) {
     const report = existsSync('rules.json') ? readFileSync('rules.json', 'utf8') : '[]';
     writeFileSync(args[3], report);
     return;
