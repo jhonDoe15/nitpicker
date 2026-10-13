@@ -264,6 +264,237 @@ const LEGACY_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
 ];
 
+const WIDE = `package demo
+
+fun sum(a: Int, b: Int, c: Int, d: Int): Int = a + b + c + d
+`;
+
+const WIDE_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class WideTest {
+    @Test
+    fun sums() {
+        assertEquals(10, sum(1, 2, 3, 4))
+    }
+}
+`;
+
+const WIDE_MOVED = `package demo
+
+val answer = 1
+
+fun sum(a: Int, b: Int, c: Int, d: Int): Int = a + b + c + d
+`;
+
+const GROWN = `package demo
+
+fun product(a: Int, b: Int, c: Int, d: Int): Int = a * b * c * d
+`;
+
+const GROWN_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class GrownTest {
+    @Test
+    fun multiplies() {
+        assertEquals(24, product(1, 2, 3, 4))
+    }
+}
+`;
+
+const GROWN_WIDER = `package demo
+
+fun product(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a * b * c * d * e
+`;
+
+const GROWN_WIDER_TEST = GROWN_TEST.replace('product(1, 2, 3, 4)', 'product(1, 2, 3, 4, 1)');
+
+const DEEP = `package demo
+
+fun depth(values: List<Int>): Int {
+    var found = 0
+    for (value in values) {
+        if (value > 1) {
+            while (found < value) {
+                found += 1
+            }
+        }
+    }
+    return found
+}
+`;
+
+const DEEP_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class DeepTest {
+    @Test
+    fun finds() {
+        assertEquals(3, depth(listOf(0, 3)))
+    }
+}
+`;
+
+const classifier = (name, branches, { bump = 1, step = 10 } = {}) => `package demo
+
+fun ${name}(value: Int): Int {
+    var result = 0
+${Array.from({ length: branches }, (_, index) => `    if (value > ${index * step}) {\n        result += ${index === 0 ? bump : 1}\n    }`).join('\n')}
+    return result
+}
+`;
+
+const TIERS = `package demo
+
+fun tier(value: Int, step: Int = 10): String {
+    if (value > step * 3) {
+        return "high"
+    }
+    if (value > step * 2) {
+        return "medium"
+    }
+    return "low"
+}
+
+fun String.shout(): String = this.uppercase()
+
+class Counter(private val start: Int) {
+    constructor() : this(0) {
+        println("default")
+    }
+
+    val doubled: Int
+        get() = start * 2
+
+    fun bump(by: Int = 1): Int {
+        val values = listOf(1, 2, 3).map { v -> if (v > by) v else by }
+        return values.sum() + start
+    }
+
+    companion object {
+        fun create(): Counter = Counter(1)
+    }
+}
+`;
+
+const TIERS_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class TiersTest {
+    @Test
+    fun tiers() {
+        assertEquals("high", tier(100, 10))
+        assertEquals("medium", tier(25, 10))
+        assertEquals("low", tier(1, 10))
+        assertEquals("HI", "hi".shout())
+    }
+
+    @Test
+    fun counter() {
+        val counter = Counter()
+        assertEquals(0, counter.doubled)
+        assertEquals(6, counter.bump())
+        assertEquals(1, Counter.create().doubled / 2)
+    }
+}
+`;
+
+const clonedClass = (name) => `package demo
+
+class ${name} {
+    fun total(a: Int, b: Int): Int {
+        var total = 0
+${Array.from({ length: 12 }, (_, index) => `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }`).join('\n')}
+        return total
+    }
+}
+`;
+
+const stabilityClass = (packageName, name, body) => `package ${packageName}
+
+class ${name} {
+    fun value(): Int = ${body}
+}
+`;
+
+const stabilityFiles = (suffix) => ({
+  [`src/main/kotlin/client${suffix}/ClientOne.kt`]: stabilityClass(
+    `client${suffix}`,
+    'ClientOne',
+    `stable${suffix}.Core().value()`,
+  ),
+  [`src/main/kotlin/client${suffix}/ClientTwo.kt`]: stabilityClass(
+    `client${suffix}`,
+    'ClientTwo',
+    `stable${suffix}.Core().value() + 1`,
+  ),
+  [`src/main/kotlin/stable${suffix}/Core.kt`]: stabilityClass(
+    `stable${suffix}`,
+    'Core',
+    `churn${suffix}.Volatile().value()`,
+  ),
+  [`src/main/kotlin/churn${suffix}/Volatile.kt`]: stabilityClass(
+    `churn${suffix}`,
+    'Volatile',
+    `leaf${suffix}.Leaf().value()`,
+  ),
+  [`src/main/kotlin/leaf${suffix}/Leaf.kt`]: stabilityClass(`leaf${suffix}`, 'Leaf', '1'),
+});
+
+const FLATTEN = `package demo
+
+fun flatten(value: Int): Int {
+    var result = 0
+${Array.from({ length: 5 }, (_, index) => `    if (value > ${index * 10}) {\n        result += ${index + 1}\n    }`).join('\n')}
+    return result
+}
+`;
+
+const FLATTEN_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class FlattenTest {
+    @Test
+    fun flattensNothing() {
+        assertEquals(0, flatten(0))
+    }
+}
+`;
+
+const COMBINE = `package demo
+
+val combine: (Int, Int, Int, Int) -> Int = { a, b, c, d -> a + b + c + d }
+`;
+
+const COMBINE_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class CombineTest {
+    @Test
+    fun combines() {
+        assertEquals(10, combine(1, 2, 3, 4))
+    }
+}
+`;
+
+const PIPELINE = `package demo.build
+
+fun pipeline(a: Int, b: Int, c: Int, d: Int, e: Int): Int = a + b + c + d + e
+`;
+
 const ruleFixtures = (variant) =>
   Object.fromEntries(
     kotlinRuleCases.map((testCase) => [
@@ -343,8 +574,8 @@ function writeAll(files) {
   }
 }
 
-function commitBranch(name, files, removed = []) {
-  git('checkout', '-q', '-b', name, 'main');
+function commitBranch(name, files, removed = [], from = 'main') {
+  git('checkout', '-q', '-b', name, from);
   writeAll(files);
   for (const relative of removed) {
     rmSync(path.join(repository, relative));
@@ -353,11 +584,15 @@ function commitBranch(name, files, removed = []) {
   git('commit', '-q', '-m', name);
 }
 
+function commitFromStructureBase(name, files) {
+  commitBranch(name, files, [], 'structure-base');
+}
+
 function initializeRepository() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-'));
   cpSync(path.resolve(import.meta.dirname, 'fixtures/kotlin-project'), root, { recursive: true });
   repository = root;
-  writeAll({ '.gitignore': 'build/\n.gradle/\n.kotlin/\n' });
+  writeAll({ '.gitignore': '/build/\n/.gradle/\n/.kotlin/\n' });
   git('init', '-q', '-b', 'main');
   git('add', '-A');
   git('commit', '-q', '-m', 'base with one legacy detekt finding');
@@ -373,10 +608,18 @@ const ktlintOf = (findings) => findings.filter((finding) => finding.tool === 'kt
 
 const ktlintRules = (findings) => [...new Set(ktlintOf(findings).map(({ rule }) => rule))].sort();
 
-const diffOf = (branch, policy = kotlinPolicy) => {
+const diffOf = (branch, policy = kotlinPolicy, base = 'main') => {
   git('checkout', '-q', branch);
-  return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
+  return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: base, gradle, policy });
 };
+
+const onlyTools = (findings, ...tools) => findings.filter(({ tool }) => tools.includes(tool));
+const rulesOf = (findings, ...tools) =>
+  onlyTools(findings, ...tools)
+    .map(({ tool, rule, symbol, path: file }) =>
+      [tool, rule, symbol ?? path.basename(file)].join(' '),
+    )
+    .sort();
 
 describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   beforeAll(() => {
@@ -417,6 +660,36 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch('structure-base', {
+      [`${kotlinSources}/Wide.kt`]: WIDE,
+      'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
+      [`${kotlinSources}/Grown.kt`]: GROWN,
+      'src/test/kotlin/demo/GrownTest.kt': GROWN_TEST,
+      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9),
+      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 9, { step: 7 }),
+      ...stabilityFiles(''),
+    });
+    commitFromStructureBase('head', {
+      [`${kotlinSources}/Wide.kt`]: WIDE_MOVED,
+      [`${kotlinSources}/Grown.kt`]: GROWN_WIDER,
+      'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
+      [`${kotlinSources}/Complex.kt`]: classifier('classify', 9, { bump: 2 }),
+      [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 10, { step: 7 }),
+      [`${kotlinSources}/Deep.kt`]: DEEP,
+      'src/test/kotlin/demo/DeepTest.kt': DEEP_TEST,
+      [`${kotlinSources}/Rank.kt`]: classifier('rank', 9, { step: 13 }),
+      [`${kotlinSources}/Tiers.kt`]: TIERS,
+      'src/test/kotlin/demo/TiersTest.kt': TIERS_TEST,
+      [`${kotlinSources}/Combine.kt`]: COMBINE,
+      'src/test/kotlin/demo/CombineTest.kt': COMBINE_TEST,
+      'src/main/kotlin/Flatten.kt': FLATTEN,
+      'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
+      [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
+      [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
+      [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
+      ...stabilityFiles('2'),
+      'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
+    });
     commitBranch('one-way-banned', ruleFixtures('banned'));
     commitBranch('one-way-allowed', ruleFixtures('allowed'));
     commitBranch('one-way-hostile-config', {
@@ -710,6 +983,71 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
         namesTheBrokenFile: true,
       },
     ]);
+  });
+
+  it('applies the structure, CRAP, clone and stability rules to one change', () => {
+    const result = diffOf('head', kotlinPolicy, 'structure-base');
+    const messageOf = (rule, symbol) =>
+      onlyTools(result.newEnforceable, 'structure', 'crap').find(
+        (finding) => finding.rule === rule && finding.symbol === symbol,
+      ).message;
+
+    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit Left.total',
+      'crap crap-score-limit Right.total',
+      'crap crap-score-limit classify2',
+      'crap crap-score-limit flatten',
+      'crap crap-score-limit rank',
+      'structure function-control-nesting-limit depth',
+      'structure function-lines-limit Left.total',
+      'structure function-lines-limit Right.total',
+      'structure function-parameters-limit combine',
+      'structure function-parameters-limit pipeline',
+      'structure function-parameters-limit product',
+      'structure function-statements-limit Left.total',
+      'structure function-statements-limit Right.total',
+      'structure function-statements-limit classify2',
+      'structure function-statements-limit rank',
+    ]);
+    expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
+      'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
+    );
+    expect(messageOf('function-parameters-limit', 'product')).toBe(
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+    );
+    expect(messageOf('crap-score-limit', 'classify2')).toBe(
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
+    );
+    expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit classify',
+      'structure function-parameters-limit sum',
+      'structure function-statements-limit classify',
+    ]);
+    expect(rulesOf(result.newEnforceable, 'duplicates')).toEqual([
+      'duplicates duplicate-clone Left.kt',
+    ]);
+    expect(
+      onlyTools(result.newEnforceable, 'coupling').map(({ rule, identity, message }) => ({
+        rule,
+        identity,
+        message,
+      })),
+    ).toEqual([
+      {
+        rule: 'stability-direction',
+        identity: 'package-edge:stable2->churn2',
+        message: 'stable2 depends on less stable package churn2',
+      },
+    ]);
+    const stable = onlyTools(result.newFindings, 'coupling').find(
+      ({ identity }) => identity === 'package:stable2:instability',
+    );
+    expect(stable.metric).toEqual({ name: 'instability', value: 0.3333 });
+    expect(
+      onlyTools(result.unchangedFindings, 'coupling')
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ identity }) => identity),
+    ).toEqual(['package-edge:stable->churn']);
   });
 
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {

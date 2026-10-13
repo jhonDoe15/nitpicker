@@ -27,19 +27,19 @@ function packageOf(className) {
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
-export function analyzeJavaCoupling({ classes, edges, fileOf }) {
+export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass }) {
   return buildCouplingReport({
-    modules: [...new Set(classes.map(outerClass))].sort(),
+    modules: [...new Set(classes.map(moduleOf))].sort(),
     edges: edges.map((edge) => ({
-      source: outerClass(edge.source),
-      target: outerClass(edge.target),
+      source: moduleOf(edge.source),
+      target: moduleOf(edge.target),
     })),
     packageOf,
     fileOf,
   });
 }
 
-export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
+export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin }) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
   if (!existsSync(jdeps) || !existsSync(classList)) {
@@ -47,6 +47,10 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
   }
   const classes = readFileSync(classList, 'utf8').split(/\r?\n/).filter(Boolean);
   function fileOf(className) {
+    const known = kotlin?.fileOf.get(className);
+    if (known !== undefined) {
+      return known;
+    }
     const relative = `${className.replaceAll('.', '/')}.java`;
     const candidates = sourceRoots.map((root) => `${root}/${relative}`);
     return (
@@ -59,6 +63,10 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {
     classes,
     edges: parseJdeps(readFileSync(jdeps, 'utf8')),
     fileOf,
+    moduleOf: (className) => {
+      const outer = outerClass(className);
+      return kotlin?.moduleOf.get(outer) ?? outer;
+    },
   });
   return evaluateCoupling(report, COUPLING_TOOL);
 }
