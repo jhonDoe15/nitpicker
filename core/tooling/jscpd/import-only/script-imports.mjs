@@ -1,7 +1,11 @@
 const COMMENTS = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 const MODULE_NAME = /(['"])[^'"\n]*\1\)?[ \t]*;?/g;
-const IMPORT_HEAD =
-  /^[\s;]*(?:import\b[\w$*\s{},]*|import\s+[\w$]+\s*=\s*require\(\s*|(?:const|let|var)\s+[\w$\s{},:]+=\s*require\(\s*)$/;
+const IMPORT_FORMS = [
+  String.raw`import\b[\w$*\s{},]*`,
+  String.raw`import\s+[\w$]+\s*=\s*require\(\s*`,
+  String.raw`(?:const|let|var)\s+[\w$\s{},:]+=\s*require\(\s*`,
+];
+const IMPORT_HEAD = new RegExp(String.raw`^[\s;]*(?:${IMPORT_FORMS.join('|')})$`);
 const IMPORT_REST = /^[\s;}]*$|\bfrom\s*$/;
 
 export function scriptImportsOnly(fragment) {

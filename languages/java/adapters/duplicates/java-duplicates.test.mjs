@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
-import { readDuplicateFindings, runJavaDuplicates } from './java-duplicates.mjs';
-import { readKotlinDuplicateFindings, runKotlinDuplicates } from './kotlin-duplicates.mjs';
+import { applyFindingPolicy } from '../../../../shared/finding-policy.mjs';
+import { readDuplicateFindings, runJavaDuplicates } from '../java-duplicates.mjs';
+import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin-duplicates.mjs';
 
 const roots = [];
 
@@ -13,6 +13,15 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+const MESSAGE = new RegExp(
+  [
+    String.raw`^This code repeats src/main/java/demo/Two\.java:\d+ \(\d+ lines\)\. `,
+    String.raw`Keep one copy and call it from both places\. `,
+    String.raw`If the repetition is intended, add src/main/java/demo/One\.java `,
+    String.raw`or src/main/java/demo/Two\.java to "exclude" in nitpicker\.config\.json\.$`,
+  ].join(''),
+);
 
 const BODY = [
   'public int run(int a, int b) {',
@@ -101,9 +110,7 @@ describe('duplicates in Java sources', () => {
     });
 
     expect(clones(projectRoot).map(({ message }) => message)).toEqual([
-      expect.stringMatching(
-        /^This code repeats src\/main\/java\/demo\/Two\.java:\d+ \(\d+ lines\)\. Keep one copy and call it from both places\. If the repetition is intended, add src\/main\/java\/demo\/One\.java or src\/main\/java\/demo\/Two\.java to "exclude" in nitpicker\.config\.json\.$/,
-      ),
+      expect.stringMatching(MESSAGE),
     ]);
   });
 

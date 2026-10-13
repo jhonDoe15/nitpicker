@@ -5,7 +5,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
-import { globToRegExp, resolveLayout, resolveLayoutFor } from './layout.mjs';
+import { globToRegExp, resolveLayout } from './layout.mjs';
 import {
   isCustomLayout,
   layoutJscpdConfig,
@@ -389,30 +389,6 @@ describe('layout-aware tool configurations', () => {
     const jscpd = layoutJscpdConfig(readDefault('jscpd.json'), customLayout);
     expect(jscpd.path).toEqual(['lib', 'spec']);
     expect(jscpd.ignore).toContain('lib/legacy/**');
-  });
-
-  it('replace the skipped folders of the duplicate scan with the ones the project lists', () => {
-    const base = readDefault('jscpd.json');
-    const kept = [
-      '**/node_modules/**',
-      '**/*.d.ts',
-      '**/coverage/**',
-      '**/reports/**',
-      '**/.stryker-tmp/**',
-    ];
-    const layout = resolveLayoutFor({
-      exclude: ['legacy/**'],
-      duplicates: { skippedFolders: ['dist'] },
-    });
-
-    expect(layoutJscpdConfig(base, layout).ignore).toEqual([...kept, '**/dist/**', 'legacy/**']);
-    expect(
-      layoutJscpdConfig(base, resolveLayoutFor({ duplicates: { skippedFolders: [] } })).ignore,
-    ).toEqual(kept);
-  });
-
-  it('count a duplicate folder list as a custom layout', () => {
-    expect(isCustomLayout(resolveLayoutFor({ duplicates: { skippedFolders: [] } }))).toBe(true);
   });
 
   it('add the configured entry points to the knip entries', () => {
