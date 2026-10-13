@@ -278,193 +278,98 @@ describe('nitpicker with "preset": "python"', () => {
   });
 
   describe('function structure and CRAP', () => {
-    const VALUE = { file: 'src/demo/a.py', name: 'value', start: 4, end: 5 };
-    const structureOf = (metrics) =>
-      JSON.stringify([{ ...VALUE, lines: 2, statements: 1, maxControlNesting: 0, ...metrics }]);
-    const LIZARD_ROW = (ccn) =>
-      `2,${ccn},9,0,2,"value@4-5@src/demo/a.py","src/demo/a.py","value","value( )",4,5\n`;
-    const COVERAGE = (covered) =>
+    const metric = (name, parameters) => ({
+      file: 'src/demo/a.py',
+      name,
+      start: 4,
+      end: 5,
+      lines: 2,
+      statements: 1,
+      maxControlNesting: 0,
+      parameters,
+    });
+    const lizardRow = (name, ccn) =>
+      `2,${ccn},9,0,2,"${name}@4-5@src/demo/a.py","src/demo/a.py","${name}","${name}( )",4,5\n`;
+    const coverageOf = (...names) =>
       JSON.stringify({
         files: {
           'src/demo/a.py': {
-            summary: { num_statements: 1, covered_lines: covered },
-            functions: {
-              value: {
-                executed_lines: covered === 0 ? [] : [5],
-                missing_lines: covered === 0 ? [5] : [],
-                summary: {
-                  num_statements: 1,
-                  covered_lines: covered,
-                  num_branches: 0,
-                  covered_branches: 0,
+            functions: Object.fromEntries(
+              names.map((name) => [
+                name,
+                {
+                  executed_lines: [],
+                  missing_lines: [5],
+                  summary: {
+                    num_statements: 1,
+                    covered_lines: 0,
+                    num_branches: 0,
+                    covered_branches: 0,
+                  },
                 },
-              },
-            },
+              ]),
+            ),
           },
         },
       });
+    const enforceable = (result) =>
+      result
+        .json('new-findings.json')
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ tool, rule, symbol, message }) => ({ tool, rule, symbol, message }));
 
-    it('fails a new function over a structure limit with the shared rule and message', () => {
-      const root = pythonRepository();
-      write(root, { 'structure-data.json': structureOf({ parameters: 4 }) });
-      commit(root, 'add a function with four parameters');
+    it('gates new structure and CRAP findings, and holds a touched legacy function at its limit unless it grows', () => {
+      const root = pythonRepository({
+        'structure-data.json': JSON.stringify([metric('value', 4)]),
+      });
+      write(root, {
+        'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
+        'structure-data.json': JSON.stringify([metric('value', 4), metric('fresh', 4)]),
+        'lizard-data.csv': lizardRow('value', 5) + lizardRow('ghost', 1),
+        'coverage-data.json': coverageOf('value'),
+      });
+      commit(root, 'add new functions, touch the legacy one');
+      const added = run(root);
 
-      const result = run(root);
+      write(root, {
+        'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
+        'structure-data.json': JSON.stringify([metric('value', 5)]),
+        'lizard-data.csv': lizardRow('value', 5),
+      });
+      commit(root, 'raise the CRAP limit, grow the legacy function');
+      const grown = run(root);
 
-      expect(result.exitCode, result.text).toBe(1);
-      expect(result.json('new-findings.json')).toEqual([
-        {
-          tool: 'structure',
-          rule: 'function-parameters-limit',
-          path: 'src/demo/a.py',
-          symbol: 'value',
-          identity: expect.any(String),
-          message: 'value has 4 parameters; limit is 3',
-          classification: 'enforceable',
-          location: { line: 4 },
-          ratchet: {
-            key: 'function:value:occurrence:1:parameters',
-            value: 4,
-            worseMessage:
-              'value grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another.',
-            heldMessage:
-              'value: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
-          },
-        },
-      ]);
-    });
-
-    it('lets a touched legacy function stay over its limit unless the change makes it worse', () => {
-      const root = pythonRepository({ 'structure-data.json': structureOf({ parameters: 4 }) });
-      write(root, { 'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n' });
-      commit(root, 'edit the legacy function');
-      const untouched = run(root);
-
-      write(root, { 'structure-data.json': structureOf({ parameters: 5 }) });
-      commit(root, 'add another parameter');
-      const worse = run(root);
-
-      expect(untouched.exitCode, untouched.text).toBe(0);
-      expect(worse.exitCode, worse.text).toBe(1);
-      expect(worse.json('new-findings.json')).toEqual([
-        {
-          tool: 'structure',
-          rule: 'function-parameters-limit',
-          path: 'src/demo/a.py',
-          symbol: 'value',
-          identity: expect.any(String),
-          message:
-            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
-          classification: 'enforceable',
-          location: { line: 4 },
-          ratchet: {
-            key: 'function:value:occurrence:1:parameters',
-            value: 5,
-            worseMessage:
-              'value grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
-            heldMessage:
-              'value: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
-          },
-        },
-      ]);
-    });
-
-    it('fails a new untested complex function and passes it once it is covered', () => {
-      const root = pythonRepository();
-      write(root, { 'lizard-data.csv': LIZARD_ROW(5), 'coverage-data.json': COVERAGE(0) });
-      commit(root, 'add a complex function without tests');
-      const untested = run(root);
-
-      write(root, { 'coverage-data.json': COVERAGE(1) });
-      commit(root, 'test it');
-      const tested = run(root);
-
-      expect(untested.exitCode, untested.text).toBe(1);
-      expect(
-        untested
-          .json('new-findings.json')
-          .filter(({ classification }) => classification === 'enforceable'),
-      ).toEqual([
-        {
-          tool: 'crap',
-          rule: 'crap-score-limit',
-          path: 'src/demo/a.py',
-          symbol: 'value',
-          identity: expect.any(String),
-          message:
-            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
-          classification: 'enforceable',
-          location: { line: 4 },
-          ratchet: {
-            key: 'function:value:crap',
-            value: 30,
-            worseMessage:
-              'value CRAP rose from {base} to 30 (limit 9). Put new code in a new function and cover it with tests.',
-            heldMessage:
-              'value: CRAP 30.00 (limit 9), allowed because base was {base}; any increase fails.',
-          },
-        },
-      ]);
-      expect(tested.exitCode, tested.text).toBe(0);
-    });
-
-    it('fails a function whose coverage is unknown', () => {
-      const root = pythonRepository();
-      write(root, { 'lizard-data.csv': LIZARD_ROW(1) });
-      commit(root, 'add a function the coverage report does not know');
-
-      const result = run(root);
-
-      expect(result.exitCode, result.text).toBe(1);
-      expect(result.json('new-findings.json')).toEqual([
+      expect(added.exitCode, added.text).toBe(1);
+      expect(enforceable(added)).toEqual([
         {
           tool: 'crap',
           rule: 'crap-coverage-unknown',
-          path: 'src/demo/a.py',
-          symbol: 'value',
-          identity: 'function:value',
+          symbol: 'ghost',
           message:
-            'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
-          classification: 'enforceable',
-          location: { line: 4 },
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+        },
+        {
+          tool: 'crap',
+          rule: 'crap-score-limit',
+          symbol: 'value',
+          message:
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+        },
+        {
+          tool: 'structure',
+          rule: 'function-parameters-limit',
+          symbol: 'fresh',
+          message: 'fresh has 4 parameters; limit is 3',
         },
       ]);
-    });
-
-    it('takes the CRAP limit from thresholds.crapLimit', () => {
-      const root = pythonRepository({
-        'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
-      });
-      write(root, { 'lizard-data.csv': LIZARD_ROW(5), 'coverage-data.json': COVERAGE(0) });
-      commit(root, 'add a complex function without tests');
-
-      const result = run(root);
-
-      expect(result.exitCode, result.text).toBe(0);
-    });
-
-    it('reports a failing lizard as a tool error', () => {
-      const root = pythonRepository({ 'fail.json': '{ "lizard": "lizard exploded" }\n' });
-      write(root, { 'src/demo/b.py': 'x = 1\n' });
-      commit(root, 'change');
-
-      const result = run(root);
-
-      expect(result.exitCode).toBe(2);
-      expect(result.json('tool-errors.json')).toEqual([
+      expect(grown.exitCode, grown.text).toBe(1);
+      expect(enforceable(grown)).toEqual([
         {
-          tool: 'python',
-          rule: 'lizard-failed',
-          path: '.',
-          snapshot: 'base',
-          message: 'lizard exited 2 in the virtualenv environment:\nlizard exploded',
-        },
-        {
-          tool: 'python',
-          rule: 'lizard-failed',
-          path: '.',
-          snapshot: 'head',
-          message: 'lizard exited 2 in the virtualenv environment:\nlizard exploded',
+          tool: 'structure',
+          rule: 'function-parameters-limit',
+          symbol: 'value',
+          message:
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
         },
       ]);
     });

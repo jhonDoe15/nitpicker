@@ -88,6 +88,13 @@ const GREETER_HI_TEST =
   'from demo.greeter import greet\nfrom demo.legacy import value\n\n\ndef test_greet():\n    assert greet("Ada") == "Hi, Ada!"\n\n\ndef test_value():\n    assert value() == 1\n';
 const LEGACY_MOVED = '"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n';
 
+const SAME_NAME_SOURCES = {
+  'src/demo/account.py':
+    'from functools import singledispatch\n\n\nclass Account:\n    def __init__(self):\n        self._balance = 0\n\n    @property\n    def balance(self):\n        return self._balance\n\n    @balance.setter\n    def balance(self, value):\n        self._balance = value\n\n\n@singledispatch\ndef show(value):\n    return str(value)\n\n\n@show.register\ndef _(value: int):\n    return f"int {value}"\n\n\n@show.register\ndef _(value: str):\n    return value\n',
+  'tests/test_account.py':
+    'from demo.account import Account, show\n\n\ndef test_balance():\n    account = Account()\n    account.balance = 5\n    assert account.balance == 5\n\n\ndef test_show():\n    assert show(1) == "int 1"\n    assert show("a") == "a"\n    assert show(1.5) == "1.5"\n',
+};
+
 const SAMPLE_SOURCE = [
   'import functools',
   '',
@@ -311,6 +318,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         'src/demo/wide.py': 'def wide(a, b, c, d, e):\n    return a + b + c + d + e\n',
       });
       commitBranch(project, 'untested-complex', {
+        ...SAME_NAME_SOURCES,
         'src/demo/branchy.py':
           'def pick(a, b, c):\n    if a:\n        return 1\n    if b:\n        return 2\n    if c:\n        return 3\n    return 4\n',
       });
@@ -362,7 +370,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       ]);
     });
 
-    it('fails a new untested branchy function on its CRAP score', () => {
+    it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
       const result = gate(project, 'untested-complex');
 
       expect(result.exitCode, result.text).toBe(1);
@@ -421,7 +429,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         ['Service.static', 8, 10, 3, 1, 0, 4],
         ['Service.build', 12, 19, 8, 2, 0, 1],
         ['Service.build.inner', 14, 17, 4, 3, 1, 1],
-        ['Service.fetch', 21, 31, 11, 6, 1, 3],
+        ['Service.fetch', 21, 31, 10, 6, 1, 3],
         ['chain', 34, 41, 8, 7, 3, 1],
         ['loops', 44, 54, 11, 8, 3, 1],
         ['positional', 57, 58, 2, 1, 0, 3],
@@ -429,10 +437,24 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       expect(metrics.every(({ file }) => file === 'sample.py')).toBe(true);
     });
 
-    it('skips a file that does not parse', () => {
-      const metrics = metricsOf({ 'broken.py': 'def (:\n', 'ok.py': 'def f():\n    return 1\n' });
+    it('skips a file that does not parse, or that is too deep for the parser', () => {
+      const metrics = metricsOf({
+        'broken.py': 'def (:\n',
+        'deep.py': `X = ${Array.from({ length: 60_000 }, () => '1').join(' + ')}\n`,
+        'ok.py': 'def f():\n    return 1\n',
+      });
 
       expect(metrics.map(({ file, name }) => `${file} ${name}`)).toEqual(['ok.py f']);
+    });
+
+    it('does not count the docstring as a line, so documenting a long function does not grow it', () => {
+      const body = ['    a = 1', '    return a'];
+      const lines = (...head) =>
+        metricsOf({ 'doc.py': ['def f():', ...head, ...body, ''].join('\n') })[0].lines;
+
+      expect(lines()).toBe(3);
+      expect(lines('    """Doc."""')).toBe(3);
+      expect(lines('    """Doc.', '', '    More.', '    """')).toBe(3);
     });
   });
 

@@ -10,7 +10,7 @@ export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot, methodText);
 }
 
-export function readStructureFindings(reportRoot, projectRoot, textOf) {
+export function readStructureFindings(reportRoot, projectRoot, textOf, hints) {
   const report = path.join(reportRoot, STRUCTURE_REPORT);
   if (!existsSync(report)) {
     return [];
@@ -20,7 +20,7 @@ export function readStructureFindings(reportRoot, projectRoot, textOf) {
     ...entry,
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
-  return evaluateStructure({ functions }, STRUCTURE_TOOL).filter(
+  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
     (finding) => finding.classification === 'enforceable',
   );
 }

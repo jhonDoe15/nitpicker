@@ -304,8 +304,8 @@ CRAP is measured on `.js`, `.mjs`, `.cjs` and `.ts` files like on TypeScript one
 Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the same way: ruff, a
 format check (ruff format or black, whichever the project uses), the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
-score (lizard 1.24.1 plus per-function coverage; it is looked up as `lizard` in the environment or
-on the `PATH`, then `uvx`, or set `NITPICKER_LIZARD`) run on the merge base and on head, inside the project's own environment, and only new
+score (lizard at the version the Java preset pins, plus per-function coverage; it must be installed
+as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a `python` tool error
