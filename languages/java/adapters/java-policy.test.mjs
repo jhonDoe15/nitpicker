@@ -1,31 +1,16 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+const context = () => ({
+  projectRoot: '/p',
+  toolRoot: '/t',
+  snapshot: 'head',
+  projectPolicyRoot: tmpdir(),
+  baselineRoot: tmpdir(),
 });
-
-function inventoryRoot(sites) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-policy-'));
-  roots.push(root);
-  writeFileSync(path.join(root, 'nitpicker.legacy.json'), JSON.stringify({ sites }));
-  return root;
-}
-
-const finding = (file, identity = 'id') => ({
-  tool: 'pmd',
-  rule: 'Rule',
-  path: file,
-  identity,
-  classification: 'enforceable',
-});
-const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
 describe('configureJavaAnalyzer', () => {
   const context = {
@@ -120,20 +105,12 @@ describe('configureJavaAnalyzer', () => {
 });
 
 describe('the duplicate folder list', () => {
-  const context = {
-    projectRoot: '/p',
-    toolRoot: '/t',
-    snapshot: 'head',
-    projectPolicyRoot: tmpdir(),
-    baselineRoot: tmpdir(),
-  };
-
   it('reaches the runner, also when it is empty, and changes the hash', () => {
     const analyzer = createJavaAnalyzer();
     const listed = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: ['target'] } });
     const empty = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: [] } });
     const policyOf = (configured) =>
-      parseRunnerArguments(configured.createInvocation(context).args.slice(1)).policy;
+      parseRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy;
 
     expect(policyOf(listed).duplicateSkippedFolders).toEqual(['target']);
     expect(policyOf(empty).duplicateSkippedFolders).toEqual([]);
@@ -150,6 +127,36 @@ describe('the duplicate folder list', () => {
         parseRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
       ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
     }
+  });
+});
+
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+    ]);
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
   });
 });
 

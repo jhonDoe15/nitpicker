@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
@@ -322,12 +323,7 @@ function graphChecksFor(exclusions) {
       exclusions: exclusions.production,
       timeoutMs: MINUTE_MS,
       shardWeight: 4,
-      configurationFiles: [
-        'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
-        'languages/typescript/preset/dependency-graph/cruise.mjs',
-        'languages/typescript/preset/structure/analyze.mjs',
-      ],
+      configurationFiles: STRUCTURE_CHECK_FILES,
     },
   ];
 }
@@ -343,6 +339,7 @@ function repositoryChecksFor(exclusions) {
       shardWeight: 2,
       configurationFiles: [
         'languages/typescript/preset/defaults/jscpd.json',
+        'languages/typescript/preset/duplicates/normalize.mjs',
         'languages/typescript/preset/tool-configs.mjs',
         'core/tooling/jscpd/import-only.mjs',
         'core/tooling/jscpd/jscpd-clones.mjs',

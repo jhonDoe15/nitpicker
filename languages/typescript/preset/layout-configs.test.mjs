@@ -5,7 +5,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
-import { globToRegExp, resolveLayout } from './layout.mjs';
+import { globToRegExp, resolveLayout, resolveLayoutFor } from './layout.mjs';
 import {
   isCustomLayout,
   layoutJscpdConfig,
@@ -400,18 +400,19 @@ describe('layout-aware tool configurations', () => {
       '**/reports/**',
       '**/.stryker-tmp/**',
     ];
-    const layout = resolveLayout(undefined, ['legacy/**'], { duplicateSkippedFolders: ['dist'] });
+    const layout = resolveLayoutFor({
+      exclude: ['legacy/**'],
+      duplicates: { skippedFolders: ['dist'] },
+    });
 
     expect(layoutJscpdConfig(base, layout).ignore).toEqual([...kept, '**/dist/**', 'legacy/**']);
     expect(
-      layoutJscpdConfig(base, resolveLayout(undefined, [], { duplicateSkippedFolders: [] })).ignore,
+      layoutJscpdConfig(base, resolveLayoutFor({ duplicates: { skippedFolders: [] } })).ignore,
     ).toEqual(kept);
   });
 
   it('count a duplicate folder list as a custom layout', () => {
-    expect(isCustomLayout(resolveLayout(undefined, [], { duplicateSkippedFolders: [] }))).toBe(
-      true,
-    );
+    expect(isCustomLayout(resolveLayoutFor({ duplicates: { skippedFolders: [] } }))).toBe(true);
   });
 
   it('add the configured entry points to the knip entries', () => {

@@ -40,11 +40,15 @@ function applyJavaConfig(analyzers, config) {
     names.includes(analyzer.name)
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
-          duplicates: config.duplicates,
-          thresholds: config.thresholds,
           exclude: config.exclude,
-          exceptions: config.exceptions,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
+          ...(analyzer.name === MUTATION_ANALYZER_NAME
+            ? { thresholds: { crapLimit: config.thresholds?.crapLimit } }
+            : {
+                thresholds: config.thresholds,
+                exceptions: config.exceptions,
+                duplicates: config.duplicates,
+              }),
         })
       : analyzer,
   );

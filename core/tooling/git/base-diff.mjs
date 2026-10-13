@@ -1,6 +1,4 @@
-import { runGit } from '../../diff/git.mjs';
-
-export function diffFromBase({ baselineRoot, projectRoot, args, pathspec = [] }) {
+export function diffFromBase({ runGit, baselineRoot, projectRoot, args, pathspec = [] }) {
   const baseCommit = runGit(baselineRoot, ['rev-parse', 'HEAD']).trim();
   return runGit(projectRoot, [
     '-c',

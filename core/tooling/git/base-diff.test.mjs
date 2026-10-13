@@ -6,6 +6,7 @@ import {
   fixtureGit,
   removeGitRepositories,
 } from '../../diff/fixtures/git-repository.mjs';
+import { runGit } from '../../diff/git.mjs';
 import { diffFromBase } from './base-diff.mjs';
 
 afterEach(removeGitRepositories);
@@ -28,6 +29,7 @@ describe('diffFromBase', () => {
 
     expect(
       diffFromBase({
+        runGit,
         baselineRoot,
         projectRoot: root,
         args: ['--name-status', '--no-renames'],
@@ -41,6 +43,7 @@ describe('diffFromBase', () => {
 
     expect(
       diffFromBase({
+        runGit,
         baselineRoot,
         projectRoot: path.join(root, 'app'),
         args: ['--name-status', '--relative'],
@@ -52,7 +55,12 @@ describe('diffFromBase', () => {
     const { root } = repositoryWithBaseWorktree();
 
     expect(() =>
-      diffFromBase({ baselineRoot: path.join(root, 'missing'), projectRoot: root, args: [] }),
+      diffFromBase({
+        runGit,
+        baselineRoot: path.join(root, 'missing'),
+        projectRoot: root,
+        args: [],
+      }),
     ).toThrow(/ENOENT|failed/);
   });
 });

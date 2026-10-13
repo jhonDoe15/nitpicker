@@ -271,7 +271,7 @@ function appendHeldSummary(lines, unchangedFindings, color) {
   if (metrics.length > 0) {
     lines.push(
       style(
-        `Note: ${String(metrics.length)} touched ${pluralize('function', metrics.length)} still over a limit (not failing, not worse than before):`,
+        `Note: ${String(metrics.length)} ${pluralize('finding', metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
         [ANSI.dim],
         color,
       ),

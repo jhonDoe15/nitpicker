@@ -17,19 +17,28 @@ function parseNameStatus(listing) {
   );
 }
 
-function changesSinceBase({ baselineRoot, projectRoot }) {
+function gitListing({ baselineRoot, projectRoot }) {
   try {
-    const listing = diffFromBase({
-      baselineRoot,
-      projectRoot,
-      args: ['--name-status', '--no-renames', '-z'],
-      pathspec: ['--', ':/'],
-    });
-    const prefix = runGit(projectRoot, ['rev-parse', '--show-prefix']).trim();
-    return parseNameStatus(listing).map((change) => ({ ...change, prefix }));
-  } catch {
-    return undefined;
+    return {
+      listing: diffFromBase({
+        runGit,
+        baselineRoot,
+        projectRoot,
+        args: ['--name-status', '--no-renames', '-z'],
+        pathspec: ['--', ':/'],
+      }),
+      prefix: runGit(projectRoot, ['rev-parse', '--show-prefix']).trim(),
+    };
+  } catch (error) {
+    return { error };
   }
+}
+
+function changesSinceBase(roots) {
+  const { listing, prefix, error } = gitListing(roots);
+  return error === undefined
+    ? parseNameStatus(listing).map((change) => ({ ...change, prefix }))
+    : undefined;
 }
 
 function isMutatedSourceChange({ status, file, prefix }, sourceRoots) {
