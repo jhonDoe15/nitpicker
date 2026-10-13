@@ -132,35 +132,42 @@ describe('changed-branch-coverage on Kotlin statements that span lines', () => {
     sourceRoot: 'src/main/kotlin',
     sourceText: multilineSource,
   }).findings;
-  const lines = (name) =>
-    findings
-      .filter((finding) => finding.rule === 'changed-branch-coverage')
-      .filter((finding) => path.basename(finding.path) === name)
-      .map((finding) => finding.location.line);
 
-  it('keeps the elvis, the condition and the operand that sit on a line of their own', () => {
-    expect(lines('Multi.kt')).toEqual(expect.arrayContaining([6, 13, 22, 28, 54, 60, 63]));
-    expect(lines('Legacy.kt')).toContain(11);
-  });
-
-  it('keeps the operand after a trailing && and ||', () => {
-    expect(lines('Probe.kt')).toEqual(expect.arrayContaining([9, 18]));
-  });
-
-  it('keeps calls of inline standard library functions', () => {
-    expect(lines('Multi.kt')).toEqual(expect.arrayContaining([35, 41]));
-  });
-
-  it('drops only the suspension lines, whatever else is on them', () => {
-    expect(lines('Gen.kt')).toEqual([]);
-    expect(lines('Exotic.kt')).not.toContain(25);
-    expect(lines('Probe.kt')).not.toEqual(expect.arrayContaining([27, 33, 45]));
+  it('keeps every line a statement spans and drops only the suspension lines', () => {
+    expect(
+      findings
+        .filter((finding) => finding.rule === 'changed-branch-coverage')
+        .map((finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`),
+    ).toEqual([
+      'Legacy.kt:4',
+      'Legacy.kt:11',
+      'Multi.kt:3',
+      'Multi.kt:6',
+      'Multi.kt:13',
+      'Multi.kt:22',
+      'Multi.kt:28',
+      'Multi.kt:29',
+      'Multi.kt:32',
+      'Multi.kt:35',
+      'Multi.kt:36',
+      'Multi.kt:41',
+      'Multi.kt:44',
+      'Multi.kt:54',
+      'Multi.kt:60',
+      'Multi.kt:63',
+      'Multi.kt:70',
+      'Multi.kt:72',
+      'Probe.kt:9',
+      'Probe.kt:18',
+      'Probe.kt:39',
+      'Exotic.kt:20',
+    ]);
   });
 
   it('says which outcome a line that branches and suspends misses', () => {
-    const forEmit = findings.find((finding) => finding.location?.line === 39);
-
-    expect(forEmit.message).toContain('emit suspending');
+    expect(findings.find((finding) => finding.location?.line === 39).message).toBe(
+      "Branch coverage is 75.00%; minimum is 95%. Not taken: emit suspending (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can't happen.",
+    );
   });
 
   it('reports a Kotlin file it cannot find without failing on it', () => {
