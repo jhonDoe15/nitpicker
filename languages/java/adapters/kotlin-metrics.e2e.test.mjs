@@ -179,8 +179,10 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   it('resolves the pinned compiler although the project forces another Kotlin version', () => {
     const jars = classpath.split(path.delimiter).map((jar) => path.basename(jar));
 
-    expect(jars).toContain(`kotlin-compiler-embeddable-${pinned}.jar`);
-    expect(jars.some((jar) => jar.includes('1.9.25'))).toBe(false);
+    expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
+      `kotlin-compiler-embeddable-${pinned}.jar`,
+    ]);
+    expect(jars.filter((jar) => /1\.9\.25/.test(jar))).toEqual([]);
   });
 
   it('measures the units of a file and leaves out what is not a unit', () => {
@@ -252,8 +254,10 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {
     const { status, log } = measure(writeSources('broken', { 'src/Broken.kt': BROKEN }));
 
-    expect(status).toBe(1);
-    expect(log).toContain('src/Broken.kt:4:');
-    expect(log).toContain(`compiler ${pinned} is too old`);
+    const [, line, version] =
+      /^src\/Broken\.kt:(\d+): .*The sources compile, so the pinned Kotlin compiler (\S+) is too old to read them: bump kotlinCompiler in nitpicker\.init\.gradle\.$/m.exec(
+        log,
+      );
+    expect([status, line, version]).toEqual([1, '4', pinned]);
   });
 });
