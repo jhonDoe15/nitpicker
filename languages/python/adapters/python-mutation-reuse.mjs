@@ -71,14 +71,20 @@ function importersOf(changedFiles, { modules, imports }) {
   return new Set([...affected].map((module) => fileOfModule.get(module)));
 }
 
+function scanOutcome(context) {
+  try {
+    return { kind: 'scanned', ...collectImports(context, run) };
+  } catch (error) {
+    return { kind: 'unreadable', error };
+  }
+}
+
 function isStaleSource(context, changes) {
   if (changes.length === 0) {
     return () => false;
   }
-  let scanned;
-  try {
-    scanned = collectImports(context, run);
-  } catch {
+  const scanned = scanOutcome(context);
+  if (scanned.kind === 'unreadable') {
     return undefined;
   }
   const known = new Set(scanned.modules.map(({ file }) => file));
