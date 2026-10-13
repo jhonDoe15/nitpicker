@@ -40,10 +40,7 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
   }
 }
 
-function validateSettings(settings) {
-  if (!isPlainObject(settings)) {
-    throw configError('"python" must be an object');
-  }
+function validateKnownKeys(settings) {
   for (const key of Object.keys(settings)) {
     if (!SETTING_KEYS.includes(key)) {
       throw configError(
@@ -51,12 +48,23 @@ function validateSettings(settings) {
       );
     }
   }
+}
+
+function validateChoices(settings) {
   validateChoice(settings.formatter, 'python.formatter', FORMATTERS);
   validateChoice(settings.testRunner, 'python.testRunner', TEST_RUNNERS);
   validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateEnvironmentDirectory(settings.environment);
   }
+}
+
+function validateSettings(settings) {
+  if (!isPlainObject(settings)) {
+    throw configError('"python" must be an object');
+  }
+  validateKnownKeys(settings);
+  validateChoices(settings);
   if (settings.importLinter !== undefined && typeof settings.importLinter !== 'boolean') {
     throw configError('"python.importLinter" must be true or false');
   }
