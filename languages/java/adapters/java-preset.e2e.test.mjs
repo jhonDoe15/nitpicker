@@ -27,7 +27,8 @@ public final class Legacy {
 `;
 
 // SH5: a legacy method over the parameter limit (baselined), and the same method with new methods
-// over the parameter and control nesting limits (the new ones fail).
+// over the parameter and control nesting limits (the new ones fail), and a flat else if chain in a loop
+// that stays within the limit.
 const WIDE = `package demo;
 
 public final class Wide {
@@ -45,6 +46,36 @@ const WIDE_EXTENDED = WIDE.replace(
       for (int i = 0; i < a; i++) {
         if (i % 2 == 0) {
           total += i;
+        }
+      }
+    }
+    return total;
+  }
+
+  public int chain(int a) {
+    int total = 0;
+    for (int i = 0; i < a; i++) {
+      if (i == 1) {
+        total += 1;
+      } else if (i == 2) {
+        total += 2;
+      } else if (i == 3) {
+        total += 3;
+      } else {
+        total += 4;
+      }
+    }
+    return total;
+  }
+
+  public int nested(int a) {
+    int total = 0;
+    for (int i = 0; i < a; i++) {
+      if (i == 1) {
+        total += 1;
+      } else {
+        if (i == 2) {
+          total += 2;
         }
       }
     }
@@ -585,10 +616,16 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(structureOf(result.newEnforceable)).toEqual([
         'function-control-nesting-limit Wide.deep',
+        'function-control-nesting-limit Wide.nested',
       ]);
-      expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'structure')
+          .map(({ message }) => message),
+      ).toEqual([
         'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting.',
-      );
+        'Wide.nested nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      ]);
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },
     GRADLE_STEP_TIMEOUT_MS,

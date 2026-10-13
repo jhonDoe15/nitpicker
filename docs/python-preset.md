@@ -380,7 +380,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `async for`, `while`, `match` and `except`; `try`, `with` and comprehensions do not nest. An
   `if`/`elif`/`else` chain nests one level, like an `else if` chain in TypeScript and Java; an `elif`
   is the same level as the `if` it continues, and a statement nested in a branch is one level
-  deeper. An `else:` block that holds an `if` is nested, as an `else { if }` block is in Java. The
+  deeper. An `else:` block that holds an `if` is nested, as an `else { if }` block is in TypeScript and Java. The
   finding says so. A `match` is one level, whatever its number of `case` clauses; a statement in a
   `case` is one level deeper.
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
@@ -409,14 +409,18 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `async for`, `while`, each `except` handler, each `case` of a `match` (a `case _:` without a
   guard is the `default` of a `switch` and does not count), each extra operand of `and` and `or`
   (`a and b and c` is two), and in a comprehension or generator expression each `for`/`async for`
-  clause and each `if` clause. This is the McCabe count the other presets use: ESLint's
-  `complexity` rule for TypeScript, lizard for Java and the Kotlin metrics program all count `if`,
-  loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`.
+  clause and each `if` clause. The decision points are the McCabe ones of the other presets
+  (ESLint's `complexity` rule for TypeScript, lizard for Java and the Kotlin metrics program all
+  count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
+  in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
+  TypeScript, which scores every arrow function and function expression on its own; and each `for`
+  and `if` clause of a comprehension counts, which has no equivalent in the other languages.
   Not counted: `else`, `finally`, the `else` of a loop or a `try`, `with`, `assert`, `try` itself.
   Lambdas and comprehensions are part of the function around them; nested functions and the
-  methods of nested classes have their own entry and do not count towards it. A function whose
-  first body statement starts on the `def` line (`def f(): return 1`, the one-line `...` stubs of
-  `@overload`) gets no CRAP score: its only statement shares a line with the definition, which
+  methods of nested classes have their own entry and do not count towards it. An
+  `@overload` stub (however the decorator is spelled: `overload`, `typing.overload`, `t.overload`)
+  gets no CRAP score, and neither does a function whose first body statement starts on the `def`
+  line (`def f(): return 1`): its only statement shares a line with the definition, which
   runs when the module is imported, so its coverage cannot be told apart. The script writes `complexity`, `definition` (the `def` line, which differs from
   `start` when the function is decorated) and `bodyStart` (the line of the first body statement)
   next to the limit metrics, and the CRAP step reads them from `structure.json`; a failing
@@ -429,14 +433,17 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
   (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
-  branches (a docstring-only stub) counts as fully covered. Definitions that share a name in a
-  scope (a `@property` getter and its `@x.setter`, `@singledispatch` registrations all named `_`,
-  conditional definitions) collapse into one coverage.py entry, which keeps only the last one. A
-  function that no entry's lines lie inside is therefore scored from the file's own
-  per-line data (`executed_lines`, `missing_lines`, `executed_branches`, `missing_branches`) over
-  its own line range: after its `def` line and without the lines of functions nested in it. A file
-  coverage.py did not report (outside the source roots), or a range without a statement, has
-  unknown coverage and fails with `crap-coverage-unknown`; nothing is guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
+  excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
+  that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
+  registrations all named `_`, conditional definitions) collapse into one coverage.py entry, which
+  keeps only the last one, so an entry is used only for the function whose lines lie inside it. Any
+  other function is scored from the file's own per-line data (`executed_lines`, `missing_lines`,
+  `executed_branches`, `missing_branches`) over its own line range: after its `def` line and
+  without the lines of functions nested in it; a docstring-only definition therefore cannot lend
+  its empty entry to a branchy one with the same name. A file coverage.py did not report (outside
+  the source roots) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
+  guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
@@ -738,10 +745,13 @@ and CRAP rules.
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
 - `languages/python/adapters/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
-  (`npm run test:python`). Needs python3, uv, ruff, black, mypy, pyright, coverage, pytest and
-  network access to PyPI; about 2 minutes; no lizard. CI runs it in `.github/workflows/python-e2e.yml`
-  only for changes under `languages/python/`, `shared/rules/` or `shared/policy.mjs`, with the tools
-  pinned in `.github/python-e2e-requirements.txt`. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
+  (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
+  pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,
+  coverage, mypy, mutmut, black and import-linter into throwaway environments); 8 to 25 minutes
+  with mutation testing; no lizard. CI runs it in `.github/workflows/python-e2e.yml` only for changes
+  under `core/`, `shared/`, `languages/python/`, `languages/java/ingest/`, `languages/java/adapters/`
+  or the package files, with every tool version pinned in `.github/python-e2e-constraints.txt`
+  (also given to the suite's own `uv pip install` calls as `UV_CONSTRAINT`). On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
   tests passes, which only works when base tests run against base code; a moved legacy violation
   stays baselined; a new unused import and an unformatted file fail in every report format;

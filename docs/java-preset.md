@@ -353,7 +353,8 @@ resolved plus a new finding, as in the TypeScript check.
   modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
   initializers and updates, `catch` parameters and `try` resources are not statements).
   `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
-  (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
+  (statement or expression) and `catch`; a flat `if`/`else if`/`else` chain is one level, as in
+  TypeScript, and an `if` inside an `else { }` block or a branch body nests one deeper. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
 - **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps

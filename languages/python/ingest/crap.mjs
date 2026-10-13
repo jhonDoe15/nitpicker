@@ -1,9 +1,11 @@
 import { ingestCrapRows } from '../../java/ingest/crap.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 
+const FULLY_COVERED = 100;
+
 function scoredFunctions(entries) {
   return entries
-    .filter((entry) => entry.bodyStart > entry.definition)
+    .filter((entry) => entry.bodyStart > entry.definition && !entry.overload)
     .map((entry) => ({
       ccn: entry.complexity,
       file: entry.file,
@@ -106,7 +108,7 @@ function coverageFromLines(lines, fn, nested) {
   const executedBranches = countOwn(lines.executedBranches.map(branchSource), fn, nested);
   const missedBranches = countOwn(lines.missingBranches.map(branchSource), fn, nested);
   return covered + missed === 0
-    ? undefined
+    ? FULLY_COVERED
     : coveragePercent({
         covered_lines: covered,
         num_statements: covered + missed,
@@ -131,8 +133,7 @@ function namedLike(candidates, fn) {
 
 function matchFunction(candidates, fn) {
   const named = namedLike(candidates, fn);
-  const inside = named
+  return named
     .filter(({ first, last }) => first !== undefined && fn.start <= first && last <= fn.end)
-    .sort((left, right) => left.first - right.first);
-  return inside[0] ?? named.find(({ first }) => first === undefined);
+    .sort((left, right) => left.first - right.first)[0];
 }
