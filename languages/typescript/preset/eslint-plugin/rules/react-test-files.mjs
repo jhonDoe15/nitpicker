@@ -34,7 +34,7 @@ function statementSources(statement) {
   }
 }
 
-export function importsReactTestModule(program) {
+function importsReactTestModule(program) {
   return program.body.some((statement) => statementSources(statement).some(isReactTestModule));
 }
 
