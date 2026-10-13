@@ -53,8 +53,8 @@ $ npx nitpicker
 - **Beyond lint.** Depending on the language, it also checks that changed code is covered by
   tests, that tests can fail (mutation testing), function size, duplication, module boundaries,
   dead code and slow test patterns.
-- **Teaches first, gates second.** A bundled agent skill teaches the allowed forms before the agent
-  writes code. The gate in CI is the backstop.
+- **Teaches first, gates second.** An agent skill for each preset teaches the allowed forms before
+  the agent writes code. The gate in CI is the backstop.
 
 ## Getting started
 
@@ -69,22 +69,26 @@ The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-p
 For another language, put the preset in `nitpicker.config.json`, for example
 `{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
 
-| Language                                                  | Preset                 | Agent skill |
-| --------------------------------------------------------- | ---------------------- | ----------- |
-| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | yes         |
-| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | no          |
-| [Python](docs/python-preset.md)                           | `python`               | yes         |
-| [Java](docs/java-preset.md)                               | `java`                 | no          |
-| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | yes         |
+| Language                                                  | Preset                 | Agent skill            |
+| --------------------------------------------------------- | ---------------------- | ---------------------- |
+| [TypeScript](docs/typescript-strict-preset.md), and React | `typescript` (default) | `nitpicker-typescript` |
+| [JavaScript](docs/usage.md#javascript-preset)             | `javascript`           | `nitpicker-javascript` |
+| [Python](docs/python-preset.md)                           | `python`               | `nitpicker-python`     |
+| [Java](docs/java-preset.md)                               | `java`                 | `nitpicker-java`       |
+| [Kotlin](docs/kotlin-preset.md)                           | `kotlin`               | `nitpicker-kotlin`     |
 
-To teach your agent, copy the skill from the package into its skills folder (for Claude Code,
-`.claude/skills/`):
+Then teach your agent the allowed forms. Install the skill for your preset with
+[skills](https://skills.sh), which works with Claude Code, Cursor, Codex and other agents:
 
 ```sh
-mkdir -p .claude/skills && cp -r node_modules/nitpicker/skills/nitpicker .claude/skills/
+npx skills add jhonDoe15/nitpicker --skill nitpicker-typescript
 ```
 
-For languages without the skill, or agents without skills, add the
+It asks which agents to install for and whether to install into this project (commit the result
+to share it) or for your user; `-a claude-code` and `-g` answer those up front. To match the
+version you installed from npm, install from the package instead:
+`npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`. A Kotlin project with Java
+sources adds `nitpicker-java` too. For an agent without skills, add the
 [agent snippet](docs/agents-snippet.md) to your `AGENTS.md`.
 
 In CI, run `npx nitpicker` as a step and fetch enough history to contain the merge base (for
