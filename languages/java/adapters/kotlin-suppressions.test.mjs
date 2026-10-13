@@ -72,7 +72,6 @@ describe('suppressionTokens', () => {
     ],
     ['a glob followed by a KDoc', 'val glob = "**/*.kt"\n@Suppress("A")\nfun f() = 1\n/** doc */'],
     ['a line comment opener inside a string', 'val url = "http://x"; @Suppress("A") fun f() = 1'],
-    ['a comment opener in the arguments', '@Suppress("a//b", "A") fun f() = 1'],
     ['a comment opener inside a raw string', 'val raw = """/*"""\n@Suppress("A") fun f() = 1'],
     ['a quote in a character literal', 'val quote = \'"\'\n@Suppress("A") fun f() = 1'],
     [
@@ -84,7 +83,11 @@ describe('suppressionTokens', () => {
       '/* outer /* inner */ still comment */ @Suppress("A") fun f() = 1',
     ],
   ])('still reads the annotation after %s', (_name, source) => {
-    expect(suppressionTokens(source).at(-1)).toBe('A');
+    expect(suppressionTokens(source)).toEqual(['A']);
+  });
+
+  it('reads both arguments when the first holds a comment opener', () => {
+    expect(suppressionTokens('@Suppress("a//b", "A") fun f() = 1')).toEqual(['a//b', 'A']);
   });
 
   it('skips an annotation that only sits inside a nested block comment', () => {
