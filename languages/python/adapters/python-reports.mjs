@@ -16,7 +16,11 @@ import { RULES_REPORT } from './python-ast-rules.mjs';
 import { readCouplingFindings } from './python-coupling.mjs';
 import { readPythonCrapFindings } from './python-crap.mjs';
 import { readImportLinterFindings } from './python-import-linter.mjs';
-import { readPythonFunctions, readPythonStructureFindings } from './python-structure.mjs';
+import {
+  pythonFileLimitFindings,
+  readPythonFunctions,
+  readPythonStructureFindings,
+} from './python-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
@@ -32,7 +36,7 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
-export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
+export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy = {} }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
   const coverage = readReport(reportRoot, COVERAGE_REPORT);
@@ -44,6 +48,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit }) {
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
       ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
+      ...pythonFileLimitFindings(projectRoot, policy),
       ...readPythonCrapFindings({
         functions: readPythonFunctions(reportRoot),
         coverage,
