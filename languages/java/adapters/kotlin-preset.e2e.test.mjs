@@ -104,6 +104,44 @@ class LabelTest {
 }
 `;
 
+const SPREAD = `package demo
+
+class Spread {
+    fun one(): Int = 1
+
+    fun length(text: String?, flag: Boolean): Int {
+        val value = text
+            ?: return 0
+        if (
+            flag
+        ) {
+            return value.length
+        }
+        return -value.length
+    }
+}
+`;
+
+const SPREAD_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class SpreadTest {
+    @Test
+    fun countsOne() {
+        assertEquals(1, Spread().one())
+    }
+}
+`;
+
+const OFFSET = `package demo.offset
+
+class Offset {
+    fun sign(value: Int): Int = if (value > 0) 1 else -1
+}
+`;
+
 const GENERATED = `package demo
 
 enum class Level { LOW, HIGH }
@@ -311,6 +349,11 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       [`${kotlinSources}/Label.kt`]: LABEL,
       'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,
     });
+    commitBranch('multiline-branch', {
+      [`${kotlinSources}/Spread.kt`]: SPREAD,
+      'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
+      'src/main/kotlin/Offset.kt': OFFSET,
+    });
     commitBranch('generated-branches', {
       [`${kotlinSources}/Generated.kt`]: GENERATED,
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
@@ -424,6 +467,18 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
       ),
     ).not.toEqual([]);
+  });
+
+  it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
+    const result = diffOf('multiline-branch');
+
+    expect(result.failed).toBe(true);
+    expect(
+      result.newEnforceable
+        .filter(({ tool }) => tool === 'jacoco')
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`)
+        .sort(),
+    ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
   });
 
   it('does not ask for coverage of branches the Kotlin compiler generated', () => {
