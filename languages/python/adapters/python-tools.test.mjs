@@ -384,6 +384,22 @@ describe('running the tools', () => {
     });
   });
 
+  it('tells how to turn the contracts off when lint-imports is not installed', () => {
+    const root = project(
+      { '.importlinter': '[importlinter]\nroot_package = demo\n', 'conftest.py': '' },
+      { tools: ['ruff', 'coverage', 'python'] },
+    );
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'import-linter-failed',
+        message:
+          'lint-imports was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it, or turn the contracts off with "python": { "importLinter": false }',
+      },
+    ]);
+  });
+
   it('reports a tool that cannot run for another reason', () => {
     const root = project();
     writeFileSync(path.join(root, '.venv/bin/ruff'), 'not a program\n', { mode: 0o755 });
@@ -563,6 +579,18 @@ describe('tool versions', () => {
     expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
       'import-linter',
     );
+  });
+
+  it('reads the import-linter version from the installed package, which old versions can only give that way', () => {
+    const calls = callsLog();
+    const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
+
+    toolVersions(contextFor(root).context);
+
+    expect(calls('python', '-I').map((call) => call.args.at(-1))).toEqual([
+      'import importlib.metadata as m; print(m.version("import-linter"))',
+    ]);
+    expect(calls('lint-imports', '--version')).toEqual([]);
   });
 
   it('marks tools that are missing', () => {

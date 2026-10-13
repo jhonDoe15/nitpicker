@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { RULE_IDS } from '../../../shared/policy.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import { listProductionModules } from './python-sources.mjs';
 
@@ -74,17 +75,52 @@ export function importEdges(modules, imports) {
   );
 }
 
+function packageOwner(entry) {
+  const owner = entry.isPackage ? entry.module : parentOf(entry.module);
+  return owner === '' ? ROOT_PACKAGE : owner;
+}
+
 export function analyzePythonCoupling({ modules, imports }) {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
-  function packageOf(name) {
-    const owner = byName.get(name).isPackage ? name : parentOf(name);
-    return owner === '' ? ROOT_PACKAGE : owner;
-  }
   return buildCouplingReport({
     modules: [...byName.keys()].sort(),
     edges: importEdges(modules, imports),
-    packageOf,
+    packageOf: (name) => packageOwner(byName.get(name)),
     fileOf: (name) => byName.get(name).file,
+  });
+}
+
+function packageAnchors(modules) {
+  const anchors = new Map();
+  for (const entry of [...modules].sort((left, right) => left.file.localeCompare(right.file))) {
+    const owner = packageOwner(entry);
+    if (!anchors.has(owner) || (entry.isPackage && entry.module === owner)) {
+      anchors.set(owner, entry.file);
+    }
+  }
+  return anchors;
+}
+
+function withStabilityRoute(findings, { report, modules }) {
+  const anchors = packageAnchors(modules);
+  const sources = new Map(
+    report.stabilityDirection.map((direction) => [
+      `package-edge:${direction.source}->${direction.target}`,
+      direction.source,
+    ]),
+  );
+  return findings.map((finding) => {
+    const source =
+      finding.rule === RULE_IDS.stabilityDirection ? sources.get(finding.identity) : undefined;
+    if (source === undefined) {
+      return finding;
+    }
+    const file = anchors.get(source);
+    return {
+      ...finding,
+      path: file,
+      message: `${finding.message}. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add ${file} to "exclude" in nitpicker.config.json.`,
+    };
   });
 }
 
@@ -93,5 +129,10 @@ export function readImportsReport(reportRoot) {
 }
 
 export function readCouplingFindings(reportRoot) {
-  return evaluateCoupling(analyzePythonCoupling(readImportsReport(reportRoot)), COUPLING_TOOL);
+  const imports = readImportsReport(reportRoot);
+  const report = analyzePythonCoupling(imports);
+  return withStabilityRoute(evaluateCoupling(report, COUPLING_TOOL), {
+    report,
+    modules: imports.modules,
+  });
 }

@@ -6,7 +6,7 @@ const BROKEN_STATUS = /^(.+?) BROKEN(?: \[[\d.]+s\])?$/;
 const DASHES = /^-{3,}$/;
 const CHAIN_START = /^-\s+(.*)$/;
 const CHAIN_CONTINUATION = /^\s+(\S.*)$/;
-const HOP = /^(\S+) -> (\S+?)(?: \(l\.(\d+)(?:, \d+)*\))?$/;
+const HOP = /^(\S+) -> (\S+?)(?: \((?:l\.)?(\d+)(?:, (?:l\.)?\d+)*\))?$/;
 const NO_VIOLATION = { modules: [], note: '' };
 
 export function importLinterCompleted(text) {
@@ -68,19 +68,22 @@ function describe(violation) {
   return violation.modules.length > 0 ? violation.modules.join(' -> ') : violation.note;
 }
 
-function brokenMessage(name, violation) {
+function brokenMessage(name, violation, file) {
   const detail = violation === NO_VIOLATION ? '' : `: ${describe(violation)}`;
-  return `Import contract "${name}" is broken${detail}. Remove the import, or lift this file with exclude in nitpicker.config.json.`;
+  const route =
+    file === undefined ? '' : ', or lift this file with exclude in nitpicker.config.json';
+  return `Import contract "${name}" is broken${detail}. Remove the import${route}.`;
 }
 
 function contractFinding({ name, violation, files, identity }) {
   const subject = violation === NO_VIOLATION ? '' : `:${describe(violation)}`;
+  const file = files.get(violation.modules[0]);
   return {
     tool: 'import-linter',
     rule: 'contract-broken',
-    path: files.get(violation.modules[0]) ?? '.',
+    path: file ?? '.',
     identity: identity(`contract:${name}${subject}`),
-    message: brokenMessage(name, violation),
+    message: brokenMessage(name, violation, file),
     classification: 'enforceable',
     ...(violation.line === undefined ? {} : { location: { line: violation.line } }),
   };

@@ -1,6 +1,6 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { readDuplicateFindings } from '../../java/adapters/java-duplicates.mjs';
+import { readDuplicateFindings } from './python-duplicates.mjs';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';

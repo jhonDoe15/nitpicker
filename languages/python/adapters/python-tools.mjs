@@ -223,11 +223,22 @@ function probeVersion(context, command) {
   return VERSION_PATTERN.exec(result.stdout)?.[0] ?? 'unknown';
 }
 
+const IMPORT_LINTER_METADATA = [
+  'python',
+  '-I',
+  '-c',
+  'import importlib.metadata as m; print(m.version("import-linter"))',
+];
+
 function importLinterVersion(context) {
   const { importLinter } = context.project;
-  return importLinterEnabled(context.projectRoot, importLinter)
-    ? [`import-linter@${probeVersion(context, ['lint-imports', '--version'])}`]
-    : [];
+  if (!importLinterEnabled(context.projectRoot, importLinter)) {
+    return [];
+  }
+  const installed = probeVersion(context, IMPORT_LINTER_METADATA);
+  const version =
+    installed === 'missing' ? probeVersion(context, ['lint-imports', '--version']) : installed;
+  return [`import-linter@${version}`];
 }
 
 export function toolVersions(context) {

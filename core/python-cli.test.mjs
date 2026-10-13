@@ -343,7 +343,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -392,9 +392,10 @@ describe('nitpicker with "preset": "python"', () => {
       {
         tool: 'coupling',
         rule: 'stability-direction',
-        path: '.',
+        path: 'src/base/__init__.py',
         identity: 'package-edge:base->other',
-        message: 'base depends on less stable package other',
+        message:
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);

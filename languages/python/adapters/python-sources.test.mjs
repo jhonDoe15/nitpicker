@@ -6,6 +6,7 @@ import {
   existingSourceRoots,
   listProductionModules,
   NON_PRODUCTION_GLOBS,
+  nonProductionGlobs,
 } from './python-sources.mjs';
 
 const roots = [];
@@ -71,12 +72,33 @@ describe('listing production modules', () => {
       'app/venv/x.py',
       'app/build/x.py',
       'app/dist/x.py',
+      'app/migrations/0001_initial.py',
       'app/data.txt',
     ]);
 
     expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
       'app/__init__.py',
       'app/keep.py',
+    ]);
+  });
+
+  it('skips documentation, examples and scripts at the top of a project that is its own root', () => {
+    const root = project([
+      'app/__init__.py',
+      'docs/conf.py',
+      'doc/conf.py',
+      'examples/demo.py',
+      'scripts/release.py',
+      'app/scripts/keep.py',
+    ]);
+
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'app/__init__.py',
+      'app/scripts/keep.py',
+    ]);
+    expect(listProductionModules(root, ['app']).map(({ file }) => file)).toEqual([
+      'app/__init__.py',
+      'app/scripts/keep.py',
     ]);
   });
 
@@ -101,6 +123,16 @@ describe('listing production modules', () => {
     expect(existingSourceRoots(root, ['src', 'lib'])).toEqual(['src']);
   });
 
+  it('adds the documentation directories to the globs when the project is its own root', () => {
+    expect(nonProductionGlobs(['src'])).toBe(NON_PRODUCTION_GLOBS);
+    expect(nonProductionGlobs(['.']).slice(NON_PRODUCTION_GLOBS.length)).toEqual([
+      'docs/**',
+      'doc/**',
+      'examples/**',
+      'scripts/**',
+    ]);
+  });
+
   it('gives the duplicate scan the same exclusions', () => {
     expect(NON_PRODUCTION_GLOBS).toEqual([
       '**/__pycache__/**',
@@ -111,6 +143,7 @@ describe('listing production modules', () => {
       '**/dist/**',
       '**/tests/**',
       '**/test/**',
+      '**/migrations/**',
       '**/.git/**',
       '**/.venv/**',
       '**/.tox/**',

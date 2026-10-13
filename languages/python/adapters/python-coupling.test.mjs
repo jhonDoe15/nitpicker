@@ -176,6 +176,73 @@ describe('analyzing the import graph', () => {
     ]);
   });
 
+  it('reports a stability inversion on the source package with the way to lift it', () => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(
+      path.join(reportRoot, 'imports.json'),
+      JSON.stringify({
+        modules: [
+          module('base', { isPackage: true }),
+          module('base.core'),
+          module('feature'),
+          module('feature.a'),
+          module('feature.b'),
+          module('other', { isPackage: true }),
+          module('other.o'),
+        ],
+        imports: {
+          'src/feature/a.py': [absolute('base', 'core')],
+          'src/feature/b.py': [absolute('base', 'core')],
+          'src/base/core.py': [absolute('other', 'o')],
+          'src/other/o.py': [absolute('feature', 'a')],
+        },
+      }),
+    );
+
+    const [finding, ...others] = readCouplingFindings(reportRoot).filter(
+      ({ classification }) => classification === 'enforceable',
+    );
+
+    expect(others).toEqual([]);
+    expect(finding).toEqual({
+      tool: 'coupling',
+      rule: 'stability-direction',
+      path: 'src/base/__init__.py',
+      identity: 'package-edge:base->other',
+      message:
+        'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+      classification: 'enforceable',
+    });
+  });
+
+  it('puts a package without an __init__ on its first file', () => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(
+      path.join(reportRoot, 'imports.json'),
+      JSON.stringify({
+        modules: [
+          module('base.zeta'),
+          module('base.alpha'),
+          module('feature.a'),
+          module('feature.b'),
+          module('other.o'),
+        ],
+        imports: {
+          'src/feature/a.py': [absolute('base', 'alpha')],
+          'src/feature/b.py': [absolute('base', 'alpha')],
+          'src/base/zeta.py': [absolute('other', 'o')],
+          'src/other/o.py': [absolute('feature', 'a')],
+        },
+      }),
+    );
+
+    expect(
+      readCouplingFindings(reportRoot)
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ path: file }) => file),
+    ).toEqual(['src/base/alpha.py']);
+  });
+
   it('reports findings against the coupling tool', () => {
     const reportRoot = temporaryRoot();
     writeFileSync(path.join(reportRoot, 'imports.json'), JSON.stringify({ modules, imports }));

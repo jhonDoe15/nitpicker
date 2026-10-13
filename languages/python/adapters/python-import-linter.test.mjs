@@ -95,8 +95,12 @@ describe('running import-linter', () => {
 
     expect(calls).toEqual([
       {
-        command: ['lint-imports', '--no-cache', '--no-logo'],
-        options: { accepted: [0, 1], rule: 'import-linter-failed' },
+        command: ['lint-imports', '--no-cache'],
+        options: {
+          accepted: [0, 1],
+          rule: 'import-linter-failed',
+          notFoundHint: ', or turn the contracts off with "python": { "importLinter": false }',
+        },
       },
     ]);
     expect(readFileSync(path.join(setup.reportRoot, 'import-linter.txt'), 'utf8')).toBe(

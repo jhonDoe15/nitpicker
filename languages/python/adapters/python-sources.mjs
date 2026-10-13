@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { importRoots } from './python-project.mjs';
+import { DOCUMENTATION_DIRECTORIES, importRoots } from './python-project.mjs';
 
 const EXCLUDED_DIRECTORIES = [
   '__pycache__',
@@ -11,6 +11,7 @@ const EXCLUDED_DIRECTORIES = [
   'dist',
   'tests',
   'test',
+  'migrations',
 ];
 const HIDDEN_PREFIX = '.';
 const COMMON_HIDDEN_DIRECTORIES = [
@@ -32,6 +33,12 @@ export const NON_PRODUCTION_GLOBS = [
   '**/conftest.py',
 ];
 
+export function nonProductionGlobs(sourceRoots) {
+  return sourceRoots.includes('.')
+    ? [...NON_PRODUCTION_GLOBS, ...DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`)]
+    : NON_PRODUCTION_GLOBS;
+}
+
 export function existingSourceRoots(projectRoot, sourceRoots) {
   return sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
 }
@@ -41,7 +48,7 @@ function moduleName(importRoot, absoluteFile) {
   return parts.at(-1) === '__init__' ? parts.slice(0, -1).join('.') : parts.join('.');
 }
 
-function listDirectory(directory) {
+function listDirectory(directory, skipped) {
   const entries = readdirSync(directory, { withFileTypes: true });
   function named(entry) {
     return path.join(directory, entry.name);
@@ -52,7 +59,8 @@ function listDirectory(directory) {
         (entry) =>
           entry.isDirectory() &&
           !entry.name.startsWith(HIDDEN_PREFIX) &&
-          !EXCLUDED_DIRECTORIES.includes(entry.name),
+          !EXCLUDED_DIRECTORIES.includes(entry.name) &&
+          !skipped.includes(entry.name),
       )
       .map(named),
     files: entries
@@ -63,11 +71,11 @@ function listDirectory(directory) {
   };
 }
 
-function productionFiles(top) {
+function productionFiles(top, skippedAtTop) {
   const pending = [top];
   const files = [];
   for (const directory of pending) {
-    const listed = listDirectory(directory);
+    const listed = listDirectory(directory, directory === top ? skippedAtTop : []);
     pending.push(...listed.directories);
     files.push(...listed.files);
   }
@@ -79,7 +87,8 @@ export function listProductionModules(projectRoot, sourceRoots) {
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
-    return productionFiles(path.resolve(projectRoot, root)).flatMap((absolute) => {
+    const skippedAtTop = root === '.' ? DOCUMENTATION_DIRECTORIES : [];
+    return productionFiles(path.resolve(projectRoot, root), skippedAtTop).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
       const module = moduleName(importRoot, absolute);
       if (seen.has(module) || module === '') {
