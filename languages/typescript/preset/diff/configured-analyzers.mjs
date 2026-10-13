@@ -7,7 +7,7 @@ import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { createQualityChecks, eslintVersion, hashFiles } from '../quality-checks.mjs';
 
 const ANALYZER_RUNTIME_FILES = [
@@ -120,6 +120,10 @@ function buildPackageAnalyzers(layout) {
 
 export const configuredAnalyzers = buildPackageAnalyzers(resolveLayout());
 
+export const javascriptAnalyzers = buildPackageAnalyzers(
+  resolveLayout(undefined, undefined, { javascript: true }),
+);
+
 export function applyLayout(analyzers, headPolicy) {
   const customized =
     (headPolicy?.exclude ?? []).length > 0 ||
@@ -128,20 +132,24 @@ export function applyLayout(analyzers, headPolicy) {
     return analyzers;
   }
   const rebuilt = new Map(
-    buildPackageAnalyzers(resolveLayout(headPolicy.layout, headPolicy.exclude)).map((analyzer) => [
+    buildPackageAnalyzers(resolveLayoutFor(headPolicy)).map((analyzer) => [
       analyzer.name,
       analyzer,
     ]),
   );
   return analyzers.map((analyzer) =>
-    configuredAnalyzers.includes(analyzer) ? (rebuilt.get(analyzer.name) ?? analyzer) : analyzer,
+    isPackageAnalyzer(analyzer) ? (rebuilt.get(analyzer.name) ?? analyzer) : analyzer,
   );
 }
 
+function isPackageAnalyzer(analyzer) {
+  return configuredAnalyzers.includes(analyzer) || javascriptAnalyzers.includes(analyzer);
+}
+
 export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {
-  const crapCheck = createQualityChecks(
-    resolveLayout(headPolicy.layout, headPolicy.exclude),
-  ).qualityAreaChecks.find(({ name }) => name === 'crap');
+  const crapCheck = createQualityChecks(resolveLayoutFor(headPolicy)).qualityAreaChecks.find(
+    ({ name }) => name === 'crap',
+  );
   if (thresholds.crapLimit === undefined || crapCheck === undefined) {
     return analyzers;
   }

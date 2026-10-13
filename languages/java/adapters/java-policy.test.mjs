@@ -27,6 +27,14 @@ const finding = (file, identity = 'id') => ({
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
+const context = () => ({
+  projectRoot: '/p',
+  toolRoot: '/t',
+  snapshot: 'head',
+  projectPolicyRoot: tmpdir(),
+  baselineRoot: tmpdir(),
+});
+
 describe('configureJavaAnalyzer', () => {
   const context = {
     projectRoot: '/p',
@@ -65,6 +73,88 @@ describe('configureJavaAnalyzer', () => {
     ).not.toBe(configured.configurationHash);
     expect(configured.legacyInventory).toBe('legacy.json');
   });
+
+  it('hands each exception path to the runner as a rule and a glob and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const exceptions = [
+      {
+        rule: 'detekt.style.ForbiddenMethodCall',
+        paths: ['a/Main.kt', 'b/**'],
+        reason: 'Entry point.',
+      },
+      { rule: 'detekt.style.UseDataClass', paths: ['c/*.kt'], reason: 'Mapped by a framework.' },
+    ];
+    const configured = configureJavaAnalyzer(analyzer, { exceptions });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
+      { rule: 'detekt.style.ForbiddenMethodCall', glob: 'b/**' },
+      { rule: 'detekt.style.UseDataClass', glob: 'c/*.kt' },
+    ]);
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { exceptions: [exceptions[0]] }).configurationHash,
+    ).not.toBe(configured.configurationHash);
+  });
+
+  it('hands the Kotlin formatter and detekt config to the runner and changes the hash', () => {
+    const analyzer = createJavaAnalyzer({ kotlin: true });
+    const configured = configureJavaAnalyzer(analyzer, {
+      kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+
+    expect(parsed.policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'ktfmt',
+      kotlinDetektConfig: 'tools/rules.yml',
+    });
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(
+      configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
+        .configurationHash,
+    ).not.toBe(analyzer.configurationHash);
+  });
+});
+
+describe('Java file limits', () => {
+  it('hands file-limit thresholds and their exceptions to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12, fileLines: 400, folderFiles: 12 },
+      exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
+    expect(parsed.policy.exceptions).toEqual([
+      { rule: 'folder-files-limit', glob: 'src/main/java/icons/**' },
+    ]);
+  });
+
+  it('passes no file limits when the config sets none', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { crapLimit: 12 },
+    });
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
+  it('rejects file limits that are not a JSON object', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+      '--file-limits must be a JSON object',
+    );
+  });
 });
 
 describe('parseRunnerArguments', () => {
@@ -76,6 +166,68 @@ describe('parseRunnerArguments', () => {
       /positive number/,
     );
   });
+
+  it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
+    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
+    });
+    expect(
+      parseRunnerArguments([
+        '--project-root',
+        '/p',
+        '--preset',
+        'kotlin',
+        '--kotlin-formatter',
+        'none',
+        '--kotlin-detekt-config',
+        'detekt.yaml',
+      ]).policy,
+    ).toEqual({
+      crapLimit: undefined,
+      exclude: [],
+      exceptions: [],
+      legacyInventory: undefined,
+      policyRoot: undefined,
+      baselineRoot: undefined,
+      snapshot: 'head',
+      preset: 'kotlin',
+      kotlinFormatter: 'none',
+      kotlinDetektConfig: 'detekt.yaml',
+    });
+  });
+
+  it.each(['nocolon', ':glob/**', 'rule:'])(
+    'rejects the exception %s without a rule or a glob',
+    (value) => {
+      expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
+        /Usage/,
+      );
+    },
+  );
+
+  it('keeps a colon inside the glob', () => {
+    expect(
+      parseRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy.exceptions,
+    ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
+  });
+
+  it('rejects an unknown preset or Kotlin formatter', () => {
+    expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+      '--preset must be one of: java, kotlin',
+    );
+    expect(() =>
+      parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+    ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
+  });
 });
 
 describe('applyJavaPolicy', () => {
@@ -84,6 +236,21 @@ describe('applyJavaPolicy', () => {
 
     expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
     expect(applyJavaPolicy(findings, {})).toEqual(findings);
+  });
+
+  it('drops only the findings of the excepted rule under the excepted globs', () => {
+    const at = (file, rule) => ({ ...finding(file), rule });
+    const findings = [
+      at('src/Main.kt', 'detekt.style.ForbiddenMethodCall'),
+      at('src/Other.kt', 'detekt.style.ForbiddenMethodCall'),
+      at('src/Main.kt', 'detekt.style.UseDataClass'),
+    ];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', glob: 'src/Main.kt' }],
+      }),
+    ).toEqual([findings[1], findings[2]]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
@@ -117,6 +284,11 @@ describe('applyJavaPolicy', () => {
       }),
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
+    expect(
+      applyJavaPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+        ({ tool, rule }) => [tool, rule],
+      ),
+    ).toEqual([['kotlin', 'baseline-expansion']]);
   });
 
   it('names the tool of a baseline-expansion after the language that asks', () => {

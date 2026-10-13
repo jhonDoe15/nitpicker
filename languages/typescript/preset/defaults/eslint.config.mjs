@@ -1,13 +1,16 @@
 import eslint from '@eslint/js';
 import vitest from '@vitest/eslint-plugin';
-import sonarjs from 'eslint-plugin-sonarjs';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
-import { reactRuleIds } from '../eslint-config/react-rules.mjs';
+import {
+  applyJavascriptDialect,
+  javascriptRuleEntries,
+} from '../../../javascript/preset/eslint-dialect.mjs';
+import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
@@ -41,14 +44,14 @@ const presetConfig = tseslint.config(
       parserOptions,
     },
     plugins: {
-      sonarjs,
+      nitpicker: nitpickerRules,
     },
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { disallowTypeAnnotations: false, fixStyle: 'separate-type-imports' },
       ],
-      'sonarjs/cognitive-complexity': ['error', 15],
+      'nitpicker/cognitive-complexity': ['error', 15],
     },
   },
   {
@@ -123,6 +126,14 @@ const presetConfig = tseslint.config(
 
 const applicableExceptions = react
   ? policy.exceptions
-  : policy.exceptions.filter(({ rule }) => !reactRuleIds.includes(rule));
+  : policy.exceptions.filter(
+      ({ rule }) => !reactRuleIds.includes(rule) && !reactTestRuleIds.includes(rule),
+    );
 
-export default applyRuleExceptions(presetConfig, applicableExceptions);
+export default applyRuleExceptions(
+  applyJavascriptDialect(
+    [...presetConfig, ...javascriptRuleEntries(policy, selectedFiles)],
+    policy,
+  ),
+  applicableExceptions,
+);

@@ -32,13 +32,46 @@ function executesAtModuleLoad(node) {
   return false;
 }
 
+function segmentName(node) {
+  if (node.type === 'Identifier') {
+    return node.name;
+  }
+  return node.type === 'MemberExpression' && !node.computed ? node.property.name : undefined;
+}
+
+function memberPath(node) {
+  const chain = [node];
+  for (const current of chain) {
+    if (current.type === 'MemberExpression') {
+      chain.push(current.object);
+    }
+  }
+  return chain.map(segmentName).reverse();
+}
+
+function isCommonJsExport(expression) {
+  if (expression.type !== 'AssignmentExpression' || expression.operator !== '=') {
+    return false;
+  }
+  const path = memberPath(expression.left);
+  return (
+    (path[0] === 'module' && path[1] === 'exports') || (path[0] === 'exports' && path.length > 1)
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Report statements that execute observable work while a module is imported',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: { commonJsExports: { type: 'boolean' } },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       sideEffectImport: 'Side-effect-only import executes code during module loading.',
       staticBlock: 'Static initialization block executes during module loading.',
@@ -48,6 +81,7 @@ export const rule = {
     },
   },
   create(context) {
+    const commonJsExports = context.options[0]?.commonJsExports === true;
     return {
       ImportDeclaration(node) {
         if (node.specifiers.length === 0) {
@@ -56,6 +90,9 @@ export const rule = {
       },
       ExpressionStatement(node) {
         if (node.parent.type !== 'Program' || isDirective(node)) {
+          return;
+        }
+        if (commonJsExports && isCommonJsExport(node.expression)) {
           return;
         }
         context.report({

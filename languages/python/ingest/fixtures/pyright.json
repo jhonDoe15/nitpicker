@@ -1,0 +1,92 @@
+{
+  "version": "1.1.414",
+  "generalDiagnostics": [
+    {
+      "file": "/work/project/src/demo/double.py",
+      "severity": "error",
+      "message": "Type \"int\" is not assignable to return type \"str\"\n  \"int\" is not assignable to \"str\"",
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 11
+        },
+        "end": {
+          "line": 1,
+          "character": 20
+        }
+      },
+      "rule": "reportReturnType"
+    },
+    {
+      "file": "/work/project/src/demo/untyped.py",
+      "severity": "error",
+      "message": "Return type is unknown",
+      "range": {
+        "start": {
+          "line": 0,
+          "character": 4
+        },
+        "end": {
+          "line": 0,
+          "character": 10
+        }
+      },
+      "rule": "reportUnknownParameterType"
+    },
+    {
+      "file": "/work/project/src/demo/untyped.py",
+      "severity": "error",
+      "message": "Type of parameter \"value\" is unknown",
+      "range": {
+        "start": {
+          "line": 0,
+          "character": 11
+        },
+        "end": {
+          "line": 0,
+          "character": 16
+        }
+      },
+      "rule": "reportUnknownParameterType"
+    },
+    {
+      "file": "/work/project/src/demo/untyped.py",
+      "severity": "error",
+      "message": "Type annotation is missing for parameter \"value\"",
+      "range": {
+        "start": {
+          "line": 0,
+          "character": 11
+        },
+        "end": {
+          "line": 0,
+          "character": 16
+        }
+      },
+      "rule": "reportMissingParameterType"
+    },
+    {
+      "file": "/work/project/src/demo/untyped.py",
+      "severity": "error",
+      "message": "Return type is unknown",
+      "range": {
+        "start": {
+          "line": 1,
+          "character": 11
+        },
+        "end": {
+          "line": 1,
+          "character": 20
+        }
+      },
+      "rule": "reportUnknownVariableType"
+    }
+  ],
+  "summary": {
+    "filesAnalyzed": 4,
+    "errorCount": 5,
+    "warningCount": 0,
+    "informationCount": 0,
+    "timeInSec": 0.5
+  }
+}

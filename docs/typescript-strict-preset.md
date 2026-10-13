@@ -106,6 +106,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`).
 - `===` and `!==` only (`eqeqeq`).
+- Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
+  Each `if`, ternary, `switch`, loop and `catch` costs 1 plus its nesting level; `else`, `else if`,
+  labelled `break`/`continue` and each run of like `&&`/`||` cost 1. Unlike the published algorithm,
+  every function, callbacks included, is scored on its own with nesting starting at 0, and code
+  outside any function is not scored. A function that must stay complex gets an exception for the
+  rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
@@ -223,8 +229,8 @@ The React scope turns on when `react` is in the analyzed project's `dependencies
 `devDependencies` (a peer dependency alone does not count), or when `nitpicker.config.json` sets
 `"react": { "enabled": true }`; `"enabled": false` turns it off whatever `package.json` says. A
 project without React gets none of the rules below and no change to the rules above. The scope covers
-production source under the source roots (every extension the preset lints, `.jsx` included), not
-tests. Each rule names the allowed form in its message and, where it can flag legitimate code, says
+production source under the source roots (every extension the preset lints, `.jsx` included); the test rules at the
+end of this list cover test files. Each rule names the allowed form in its message and, where it can flag legitimate code, says
 to add an exception for the rule in `nitpicker.config.json`. An exception that names a React rule is skipped while the scope is
 off (a PR that adds or removes React keeps linting on both sides); a misspelled rule is still an error.
 
@@ -273,9 +279,26 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
   (`onClick={async () => ...}`), which is the normal React form.
+- **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
+  source roots, and `__tests__` directories). They need no particular test runner (Vitest or
+  Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
+  or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
+  module, so Playwright and domain tests in the same roots are left alone. Query by accessible
+  role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
+  `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
+  or `toHaveFocus()` for focus. Drive the component with `userEvent`, not `fireEvent`
+  (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
+  `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
+  a project on user-event v13, whose calls are synchronous, needs an exception for
+  `await-async-events`. Do not test implementation details
+  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
+  test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
+  `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
+  element with no role or accessible name needs an exception. A project with
+  `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
-The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react) and
-`eslint-plugin-jsx-a11y-x`. `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
+The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
+`eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
 
 ## How it is enforced
@@ -314,6 +337,8 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
+- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
+  same way; each failure message spells out the entry that would lift it.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

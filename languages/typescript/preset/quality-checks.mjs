@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
@@ -26,9 +27,14 @@ export const knipVersion = 'unresolved';
 export const crapVersion = 'unresolved';
 export const strykerVersion = 'unresolved';
 
+const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
+
 const POLICY_FILES = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'languages/javascript/preset/jsdoc.mjs',
+  'languages/javascript/preset/eslint-dialect.mjs',
   'languages/typescript/preset/eslint-config/exceptions.mjs',
   'languages/typescript/preset/eslint-config/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
@@ -62,6 +68,9 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/react-no-effect-data-fetching.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-no-effect-derived-state.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-single-styling-approach.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/no-partial-output-assertion.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react-test-files.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react-test-no-implementation-details.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-external-executables-in-unit-tests.mjs',
   'languages/typescript/preset/eslint-plugin/rules/integration-test-uses-approved-harness.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-managed-resource-construction-outside-composition-roots.mjs',
@@ -172,16 +181,21 @@ function entryPointsCheckFor(layout, exclusions) {
   };
 }
 
+function prettierPatterns(layout) {
+  const code = layout.formatExtensions.join(',');
+  return [
+    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
+    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    `*.{${code},json}`,
+  ];
+}
+
 function prettierCheckFor(layout, exclusions) {
   return {
     name: 'prettier-format',
     kind: 'prettier',
     version: prettierVersion,
-    patterns: [
-      ...layout.sourceRoots.map((root) => `${root}/**/*.{ts,tsx,mts,mjs,json,yaml,yml}`),
-      ...layout.testRoots.map((root) => `${root}/**/*.{ts,tsx,mts,mjs,json}`),
-      '*.{ts,tsx,mts,mjs,json}',
-    ],
+    patterns: prettierPatterns(layout),
     exclusions: exclusions.general,
     configRelativePath: 'languages/typescript/preset/defaults/.prettierrc.json',
     ignoreRelativePath: 'languages/typescript/preset/defaults/.prettierignore',
@@ -190,6 +204,7 @@ function prettierCheckFor(layout, exclusions) {
       'languages/typescript/adapters/prettier-layers.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
+      JAVASCRIPT_PRESET_FILE,
       'languages/typescript/preset/defaults/.prettierrc.json',
       'languages/typescript/preset/defaults/.prettierignore',
     ],
@@ -209,6 +224,8 @@ function typeAndArchitectureChecksFor(layout) {
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
+        'languages/typescript/preset/tool-configs.mjs',
+        JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
     },
@@ -300,12 +317,7 @@ function graphChecksFor(exclusions) {
       exclusions: exclusions.production,
       timeoutMs: MINUTE_MS,
       shardWeight: 4,
-      configurationFiles: [
-        'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
-        'languages/typescript/preset/dependency-graph/cruise.mjs',
-        'languages/typescript/preset/structure/analyze.mjs',
-      ],
+      configurationFiles: STRUCTURE_CHECK_FILES,
     },
   ];
 }
@@ -319,7 +331,12 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: MINUTE_MS,
       shardWeight: 2,
-      configurationFiles: ['languages/typescript/preset/defaults/jscpd.json'],
+      configurationFiles: [
+        'languages/typescript/preset/defaults/jscpd.json',
+        'languages/typescript/preset/duplicates/normalize.mjs',
+        'languages/typescript/preset/tool-configs.mjs',
+        JAVASCRIPT_PRESET_FILE,
+      ],
     },
     {
       name: 'dead-code',
@@ -328,10 +345,25 @@ function repositoryChecksFor(exclusions) {
       exclusions: exclusions.general,
       timeoutMs: 2 * MINUTE_MS,
       shardWeight: 5,
-      configurationFiles: ['languages/typescript/preset/defaults/knip.json'],
+      configurationFiles: [
+        'languages/typescript/preset/defaults/knip.json',
+        'languages/typescript/preset/tool-configs.mjs',
+        JAVASCRIPT_PRESET_FILE,
+      ],
     },
   ];
 }
+
+const CRAP_CONFIGURATION_FILES = [
+  'languages/typescript/preset/defaults/crap.config.mjs',
+  'languages/typescript/preset/crap/report.mjs',
+  'languages/typescript/preset/crap/analyze.mjs',
+  'languages/javascript/preset/crap-extensions-hook.mjs',
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'shared/rules/crap.mjs',
+];
 
 function testExecutionChecksFor(exclusions) {
   return [
@@ -345,7 +377,12 @@ function testExecutionChecksFor(exclusions) {
       executionPriority: 1,
       shardWeight: 16,
       timeoutMs: 5 * MINUTE_MS,
-      configurationFiles: ['languages/typescript/preset/defaults/vitest.quality.config.ts'],
+      configurationFiles: [
+        'languages/typescript/preset/defaults/vitest.quality.config.ts',
+        'languages/typescript/preset/layout.mjs',
+        'languages/typescript/preset/head-policy.mjs',
+        JAVASCRIPT_PRESET_FILE,
+      ],
     },
     {
       name: 'crap',
@@ -356,12 +393,7 @@ function testExecutionChecksFor(exclusions) {
       shardWeight: 2,
       timeoutMs: 2 * MINUTE_MS,
       adapterArguments: ['--crap-score-limit', String(DEFAULT_CRAP_SCORE_LIMIT)],
-      configurationFiles: [
-        'languages/typescript/preset/defaults/crap.config.mjs',
-        'languages/typescript/preset/crap/report.mjs',
-        'languages/typescript/preset/crap/analyze.mjs',
-        'shared/rules/crap.mjs',
-      ],
+      configurationFiles: CRAP_CONFIGURATION_FILES,
     },
     {
       name: 'mutation',
@@ -374,6 +406,8 @@ function testExecutionChecksFor(exclusions) {
       shardWeight: 90,
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
+        'languages/typescript/preset/tool-configs.mjs',
+        JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
         'languages/typescript/preset/defaults/tsconfig.stryker.json',
