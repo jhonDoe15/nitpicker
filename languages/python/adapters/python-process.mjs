@@ -22,26 +22,31 @@ function isAccepted(accepted, result) {
   return typeof accepted === 'function' ? accepted(result) : accepted.includes(result.status);
 }
 
-export function run(context, command, { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, env }) {
+export function run(
+  context,
+  command,
+  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, env, notFoundHint = '' },
+) {
   const result = execute(context, command, { timeout: timeoutMs, env });
   if (result.error !== undefined || !isAccepted(accepted, result)) {
-    throw failure({ context, command, result, rule, timeoutMs });
+    throw failure({ context, command, result, rule, timeoutMs, notFoundHint });
   }
   return result;
 }
 
-export function failure({ context, command, result, rule, timeoutMs }) {
-  return Object.assign(new Error(describeFailure({ context, command, result, timeoutMs })), {
-    rule,
-  });
+export function failure({ context, command, result, rule, timeoutMs, notFoundHint = '' }) {
+  return Object.assign(
+    new Error(describeFailure({ context, command, result, timeoutMs, notFoundHint })),
+    { rule },
+  );
 }
 
-function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS }) {
+function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint }) {
   const [tool, subcommand = '-'] = command;
   const label = subcommand.startsWith('-') ? tool : `${tool} ${subcommand}`;
   const where = `the ${context.launcher.description} environment`;
   if (result.error?.code === 'ENOENT') {
-    return `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it`;
+    return `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it${notFoundHint}`;
   }
   if (result.error?.code === 'ETIMEDOUT') {
     return `${label} timed out after ${String(timeoutMs / MILLISECONDS_PER_MINUTE)} minutes in ${where}`;

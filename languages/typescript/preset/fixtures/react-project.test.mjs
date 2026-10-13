@@ -9,6 +9,7 @@ import { withDefaultAnalyzerParallelism } from '../../../../core/diff/fixtures/a
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixtureRoot = path.join(import.meta.dirname, 'react-project');
 const FIXTURE_TIMEOUT_MS = 300_000;
+const testRulePattern = /^(?:testing-library\/|nitpicker\/react-test-)/;
 const temporaryRoots = [];
 
 afterEach(() => {
@@ -61,13 +62,22 @@ function lintFindings(root) {
   return { exitCode, findings };
 }
 
-function rulesByFile(findings) {
+function rulesByFile(findings, directory = 'src/') {
   const rules = {};
   for (const { rule, path: file } of findings) {
-    const name = path.basename(file, '.tsx');
-    rules[name] = [...new Set([...(rules[name] ?? []), rule])].toSorted();
+    if (file.startsWith(directory)) {
+      const name = path.basename(file, '.tsx');
+      rules[name] = [...new Set([...(rules[name] ?? []), rule])].toSorted();
+    }
   }
   return rules;
+}
+
+function testRulesByFile(findings) {
+  return rulesByFile(
+    findings.filter(({ rule }) => testRulePattern.test(rule)),
+    'test/',
+  );
 }
 
 function messageOf(findings, rule) {
@@ -76,10 +86,18 @@ function messageOf(findings, rule) {
 
 describe('the react-project fixture', () => {
   it(
-    'flags each banned form with its rule and passes the allowed file',
+    'flags each banned form with its rule, passes the allowed file and leaves tests without React alone',
     () => {
       const { exitCode, findings } = lintFindings(commitProject({}));
 
+      expect(testRulesByFile(findings)).toEqual({
+        'container-query.test': ['testing-library/no-node-access'],
+        'fire-event.test': ['testing-library/prefer-user-event'],
+        'internals.test': ['nitpicker/react-test-no-implementation-details'],
+        'test-id.test': ['testing-library/no-test-id-queries'],
+        'unawaited-event.test': ['testing-library/await-async-events'],
+        'wrapper-container.test': ['testing-library/no-node-access'],
+      });
       expect(rulesByFile(findings)).toEqual({
         'class-component': ['react-x/no-class-component'],
         'conditional-hook': ['react-hooks/rules-of-hooks'],
@@ -117,6 +135,20 @@ describe('the react-project fixture', () => {
         allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
         'class-component': ['no-restricted-syntax'],
       });
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
+  it(
+    'names the configured styling approach',
+    () => {
+      const { findings } = lintFindings(
+        commitProject({ config: { react: { styling: 'css-in-js' } } }),
+      );
+
+      expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toContain(
+        'Style with styled components',
+      );
     },
     FIXTURE_TIMEOUT_MS,
   );

@@ -7,7 +7,12 @@ import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
 import { resolveLayout } from '../layout.mjs';
-import { accessibilityRuleNames, reactRuleIds } from './react-rules.mjs';
+import {
+  accessibilityRuleNames,
+  reactRuleIds,
+  reactTestRuleIds,
+  testingLibraryHints,
+} from './react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
@@ -143,17 +148,41 @@ describe('the styling approach', () => {
 
 describe('the React scope config', () => {
   it('configures exactly the listed React rule ids', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
+    const [production, tests] = await reactSyntaxConfigFor(layout);
 
-    expect(Object.keys(entry.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(Object.keys(production.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect(Object.keys(tests.rules).toSorted()).toEqual(reactTestRuleIds.toSorted());
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    const [entry] = await reactSyntaxConfigFor(layout);
+    for (const entry of await reactSyntaxConfigFor(layout)) {
+      for (const id of Object.keys(entry.rules)) {
+        const [pluginName, ...rest] = id.split('/');
+        expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
+      }
+    }
+  });
 
-    for (const id of Object.keys(entry.rules)) {
-      const [pluginName, ...rest] = id.split('/');
-      expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
+  it('runs every rule as an error', async () => {
+    for (const entry of await reactSyntaxConfigFor(layout)) {
+      for (const [id, setting] of Object.entries(entry.rules)) {
+        expect([setting].flat()[0], id).toBe('error');
+      }
+    }
+  });
+
+  it('gives every Testing Library rule a hint naming the allowed form', async () => {
+    const { testingLibraryPlugin } = await import('./react-plugins.mjs');
+
+    expect(Object.keys(testingLibraryPlugin.rules).toSorted()).toEqual(
+      Object.keys(testingLibraryHints).toSorted(),
+    );
+    for (const [name, hint] of Object.entries(testingLibraryHints)) {
+      const messages = Object.values(testingLibraryPlugin.rules[name].meta.messages);
+      expect(messages.length, name).toBeGreaterThan(0);
+      for (const message of messages) {
+        expect(message.endsWith(hint), name).toBe(true);
+      }
     }
   });
 
@@ -226,6 +255,141 @@ describe('the React scope config', () => {
     }
   });
 
+  it('applies the test rules to test files only, not to production source', async () => {
+    const entries = await reactScopeConfigFor(layout);
+
+    for (const file of [
+      'src/ui/panel.test.tsx',
+      'src/ui/panel.spec.jsx',
+      'test/panel.tsx',
+      'tests/ui/panel.tsx',
+      'src/ui/__tests__/panel.tsx',
+    ]) {
+      const config = await calculatedConfig(entries, file);
+      expect(config?.rules?.['testing-library/no-test-id-queries'], file).toBeDefined();
+      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeDefined();
+    }
+    for (const file of ['src/ui/panel.tsx', 'src/hooks/use-panel.ts']) {
+      const config = await calculatedConfig(entries, file);
+      expect(config.rules['testing-library/no-test-id-queries'], file).toBeUndefined();
+      expect(config.rules['nitpicker/react-test-no-implementation-details'], file).toBeUndefined();
+    }
+  });
+
+  it.each([
+    [
+      'a Playwright test',
+      "import { test } from '@playwright/test'; test('a', async ({ page }) => { await page.getByTestId('save').click(); });",
+    ],
+    [
+      'a store test',
+      'useStore.setState({ count: 0 }); expect(machine.state()).toBe(1); Registry.getInstance();',
+    ],
+    [
+      'an unrelated helper',
+      "import { helper } from './helpers'; fireEvent.click(helper()); screen.getByTestId('a');",
+    ],
+  ])('reports nothing in %s that imports no React test module', async (_name, code) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    expect(lintFixture({ config, filename: 'test/ui/a.test.tsx', code })).toEqual([]);
+  });
+
+  it.each([
+    ['@testing-library/react', "import { render } from '@testing-library/react';"],
+    ['react', "import { act } from 'react';"],
+    ['react-dom', "import { flushSync } from 'react-dom';"],
+    ['enzyme', "import { mount } from 'enzyme';"],
+    ['react-test-renderer', "import renderer from 'react-test-renderer';"],
+    ['a project test-utils module', "import { renderWithProviders } from '../utils/test-utils';"],
+  ])('reports in a test that imports %s', async (_name, importLine) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    const rules = lintFixture({
+      config,
+      filename: 'test/ui/a.test.tsx',
+      code: `${importLine} wrapper.state();`,
+    }).map(({ ruleId }) => ruleId);
+
+    expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);
+  });
+
+  it('reaches container queries made through a project test-utils wrapper', async () => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    const rules = lintFixture({
+      config,
+      filename: 'test/ui/a.test.tsx',
+      code: "import { renderWithProviders } from '../utils/test-utils'; const { container } = renderWithProviders(<A />); container.querySelector('a');",
+    }).map(({ ruleId }) => ruleId);
+
+    expect(rules).toEqual(['testing-library/no-node-access']);
+  });
+
+  it('keeps the test-id rule for web projects and switches it off for React Native', async () => {
+    const web = projectWith(manifestWith({ dependencies: { react: '19.0.0' } }));
+    const native = projectWith(
+      manifestWith({
+        dependencies: { react: '19.0.0' },
+        devDependencies: { '@testing-library/react-native': '13.0.0' },
+      }),
+    );
+    const testRules = async (projectRoot) =>
+      (await reactScopeConfigFor(layout, {}, projectRoot))[1].rules;
+
+    expect((await testRules(web))['testing-library/no-test-id-queries']).toBe('error');
+    expect((await testRules(native))['testing-library/no-test-id-queries']).toBe('off');
+    expect((await testRules(native))['testing-library/no-node-access']).toBe('error');
+  });
+
+  it('never runs an upstream fixer, which would mutate the AST before other rules read it', async () => {
+    const root = projectWith(undefined);
+    const eslint = new ESLint({
+      cwd: root,
+      overrideConfigFile: true,
+      overrideConfig: [
+        {
+          files: ['**/*.tsx'],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: {
+              projectService: { allowDefaultProject: ['test/*.tsx'] },
+              tsconfigRootDir: root,
+            },
+          },
+          plugins: { '@typescript-eslint': tseslint.plugin },
+          rules: { '@typescript-eslint/require-await': 'error' },
+        },
+        ...(await reactSyntaxConfigFor(layout)),
+      ],
+    });
+    const code = [
+      "import userEvent from '@testing-library/user-event';",
+      "import { screen, waitFor } from '@testing-library/react';",
+      "it('sync call', () => { userEvent.click(screen.getByRole('button')); });",
+      "it('sync setup', () => { const user = userEvent.setup(); user.click(screen.getByRole('button')); });",
+      "it('in waitFor', async () => { await waitFor(() => { userEvent.click(screen.getByRole('button')); }); });",
+    ].join('\n');
+
+    const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
+
+    expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
+      'testing-library/await-async-events',
+      'testing-library/await-async-events',
+      'testing-library/await-async-events',
+    ]);
+    expect(result.messages.every(({ fix, suggestions }) => !fix && !suggestions)).toBe(true);
+  });
+
   it('follows a custom layout', async () => {
     const entries = await reactScopeConfigFor(resolveLayout({ sourceRoots: ['lib'] }));
 
@@ -234,6 +398,17 @@ describe('the React scope config', () => {
     );
     expect((await calculatedConfig(entries, 'src/panel.tsx'))?.rules ?? {}).not.toHaveProperty(
       'react-hooks/rules-of-hooks',
+    );
+  });
+
+  it('follows a custom test root', async () => {
+    const entries = await reactScopeConfigFor(resolveLayout({ testRoots: ['spec'] }));
+
+    expect((await calculatedConfig(entries, 'spec/panel.tsx')).rules).toHaveProperty(
+      'testing-library/no-test-id-queries',
+    );
+    expect((await calculatedConfig(entries, 'test/panel.tsx'))?.rules ?? {}).not.toHaveProperty(
+      'testing-library/no-test-id-queries',
     );
   });
 });

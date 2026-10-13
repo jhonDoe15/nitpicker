@@ -6,7 +6,7 @@ import { createToolContext, mutationVersions, toolVersions } from './python-tool
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
 const UNRESOLVED_VERSION = 'unresolved';
-const ANALYZER_TIMEOUT_MS = 90 * 60 * 1000;
+const ANALYZER_TIMEOUT_MS = 30 * 60 * 1000;
 const MUTATION_TIMEOUT_MS = 70 * 60 * 1000;
 const MUTATION_SHARD_WEIGHT = 90;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
@@ -78,7 +78,15 @@ export function createPythonAnalyzer(settings = {}) {
     resolveVersion: (liveProjectRoot) => resolveVersion(liveProjectRoot, settings, toolVersions),
     configurationHash: hashConfiguration(settings, PYTHON_ANALYZER_NAME),
     exclusions: [],
-    reportedTools: ['ruff', 'ruff-format', 'black', 'coverage'],
+    reportedTools: [
+      'ruff',
+      'ruff-format',
+      'black',
+      'coverage',
+      'duplicates',
+      'coupling',
+      'import-linter',
+    ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
     createInvocation: pythonInvocation(settings, PYTHON_ANALYZER_NAME),
   };

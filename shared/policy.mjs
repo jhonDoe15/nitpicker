@@ -105,8 +105,8 @@ export const HELD_MESSAGES = {
 };
 
 const BOTH = { typescript: true, java: true, python: false };
+const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
-const ALL_LANGUAGES = { typescript: true, java: true, python: true };
 
 /**
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
@@ -159,25 +159,25 @@ export const RULES = [
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: ALL_LANGUAGES,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: ALL_LANGUAGES,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.noProductionRuntime,

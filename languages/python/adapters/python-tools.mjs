@@ -1,8 +1,12 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { scanImports } from './python-coupling.mjs';
+import { runDuplicates } from './python-duplicates.mjs';
 import { globToRegExpSource } from '../../../shared/glob.mjs';
 import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { importLinterEnabled, runImportLinter } from './python-import-linter.mjs';
 import { MUTMUT_VERSION_PROBE } from './python-mutation.mjs';
 import { execute, failure, probeVersion, run } from './python-process.mjs';
 import {
@@ -60,6 +64,7 @@ export function createToolContext({
       formatterDetected: settings.formatter === undefined,
       testRunner: detectTestRunner(projectRoot, settings.testRunner),
       targetVersion: detectTargetVersion(projectRoot),
+      importLinter: settings.importLinter,
       sourceRoots,
     },
     env: {
@@ -70,23 +75,33 @@ export function createToolContext({
   };
 }
 
-function attempt(context, outcome, step) {
-  try {
-    step(context, outcome);
-    return [];
-  } catch (error) {
-    return [
-      {
-        rule: error.rule ?? 'python-failed',
-        message: error instanceof Error ? error.message : String(error),
-      },
-    ];
-  }
-}
-
 export function runPythonTools(context) {
   const outcome = {};
-  const failures = [lint, format, test].flatMap((step) => attempt(context, outcome, step));
+  const steps = [
+    lint,
+    format,
+    test,
+    runDuplicates,
+    (stepContext) => {
+      scanImports(stepContext, run);
+    },
+    (stepContext) => {
+      runImportLinter(stepContext, run);
+    },
+  ];
+  const failures = steps.flatMap((step) => {
+    try {
+      step(context, outcome);
+      return [];
+    } catch (error) {
+      return [
+        {
+          rule: error.rule ?? 'python-failed',
+          message: error instanceof Error ? error.message : String(error),
+        },
+      ];
+    }
+  });
   writeFileSync(
     path.join(context.reportRoot, MANIFEST_REPORT),
     JSON.stringify({
@@ -205,6 +220,24 @@ function writeCoverageReport(context, { config, measured }) {
   );
 }
 
+const IMPORT_LINTER_METADATA = [
+  'python',
+  '-I',
+  '-c',
+  'import importlib.metadata as m; print(m.version("import-linter"))',
+];
+
+function importLinterVersion(context) {
+  const { importLinter } = context.project;
+  if (!importLinterEnabled(context.projectRoot, importLinter)) {
+    return [];
+  }
+  const installed = probeVersion(context, IMPORT_LINTER_METADATA);
+  const version =
+    installed === 'missing' ? probeVersion(context, ['lint-imports', '--version']) : installed;
+  return [`import-linter@${version}`];
+}
+
 export function toolVersions(context) {
   const { formatter } = context.project;
   return [
@@ -212,6 +245,8 @@ export function toolVersions(context) {
     ...(formatter === 'black' ? [`black@${probeVersion(context, ['black', '--version'])}`] : []),
     `coverage@${probeVersion(context, ['coverage', '--version'])}`,
     testRunnerLabel(context),
+    `jscpd@${jscpdVersion()}`,
+    ...importLinterVersion(context),
   ].join(';');
 }
 
