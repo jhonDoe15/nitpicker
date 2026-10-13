@@ -95,6 +95,7 @@ function parseMetric(value, context) {
 }
 
 const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
@@ -109,11 +110,13 @@ function parseRatchet(value, context) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);
     }
   }
-  if (value.existingCodeOnly !== undefined) {
-    if (typeof value.existingCodeOnly !== 'boolean') {
-      throw new TypeError(`${context}.existingCodeOnly must be a boolean`);
+  for (const name of RATCHET_FLAGS) {
+    if (value[name] !== undefined) {
+      if (typeof value[name] !== 'boolean') {
+        throw new TypeError(`${context}.${name} must be a boolean`);
+      }
+      ratchet[name] = value[name];
     }
-    ratchet.existingCodeOnly = value.existingCodeOnly;
   }
   return ratchet;
 }

@@ -7,7 +7,8 @@
 // under a `fixtures` (or `__fixtures__`) folder are test data, not checked.
 //
 // Every finding carries a ratchet, so code already over a limit on the base fails only when it gets
-// worse: a file that grows, a folder that gains a file, or a long line an edit makes longer. A long
+// worse: a file that grows, a folder that gains a file, or a long line an edit makes longer. A folder
+// finding is marked `pathIsFolder`, so a folder the change moves is matched at its new path. A long
 // line is identified by its text; an edited one is held against a long line the edit removed from
 // the same file, and a long line with nothing to be held against fails.
 
@@ -51,7 +52,7 @@ export function collectFileLimitFindings(projectRoot, entries, options) {
 
 /**
  * `options`: `analyzerName`, `thresholds` (the config's, over `FILE_LIMIT_DEFAULTS`), `exceptions`
- * (`{ rule, paths }` entries; an excepted file is neither checked nor counted in its folder, and a
+ * (`{ rule, paths }` config entries or `{ rule, glob }` runner entries; an excepted file is neither checked nor counted in its folder, and a
  * folder-files exception may also name the folder itself) and `checks`, the subset of
  * `FILE_LIMIT_CHECKS` this language leaves to nitpicker.
  */
@@ -77,9 +78,9 @@ export function evaluateFileLimits(files, options) {
 }
 
 function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths }) => ({
+  const matchers = exceptions.map(({ rule, paths, glob }) => ({
     rule,
-    patterns: paths.map((glob) => globToRegExp(glob)),
+    patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
   }));
   return (rule, ...candidates) =>
     matchers.some(
@@ -181,6 +182,7 @@ function folderFinding(context, { key, value, limit }) {
     key: `folder-files:${kind}`,
     value,
     messages: messagesFor('folderFiles', { value, kind, limit, exception, base: '{base}' }),
+    pathIsFolder: true,
   });
 }
 
@@ -192,7 +194,10 @@ function messagesFor(name, values) {
   };
 }
 
-function ratchetedFinding(context, { rule, path: findingPath, identity, key, value, messages }) {
+function ratchetedFinding(
+  context,
+  { rule, path: findingPath, identity, key, value, messages, pathIsFolder },
+) {
   return {
     tool: context.analyzerName,
     rule,
@@ -205,6 +210,7 @@ function ratchetedFinding(context, { rule, path: findingPath, identity, key, val
       value,
       worseMessage: messages.worseMessage,
       heldMessage: messages.heldMessage,
+      ...(pathIsFolder ? { pathIsFolder } : {}),
     },
   };
 }

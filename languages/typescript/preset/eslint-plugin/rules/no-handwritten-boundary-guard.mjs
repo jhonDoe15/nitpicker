@@ -1,3 +1,9 @@
+import {
+  jsdocOptionSchema,
+  typePredicateTags,
+  withJsdoc,
+} from '../../../../javascript/preset/jsdoc.mjs';
+
 const SCHEMA_PARSE_METHODS = new Set(['parse', 'safeParse', 'parseAsync', 'safeParseAsync']);
 
 function isJsonParse(node) {
@@ -33,7 +39,7 @@ export const rule = {
       description:
         'Require external data in adapters to be parsed with a zod schema instead of a hand-written type guard',
     },
-    schema: [],
+    schema: jsdocOptionSchema,
     messages: {
       typePredicate:
         'Do not hand-write a type guard for external data: parse it once at the boundary with a zod schema (schema.parse or schema.safeParse).',
@@ -66,7 +72,7 @@ export const rule = {
         );
     }
 
-    return {
+    const visitors = {
       TSTypePredicate(node) {
         context.report({ node, messageId: 'typePredicate' });
       },
@@ -76,5 +82,9 @@ export const rule = {
         }
       },
     };
+    return withJsdoc(context, visitors, {
+      selectTags: typePredicateTags,
+      messageId: 'typePredicate',
+    });
   },
 };

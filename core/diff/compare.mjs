@@ -1,4 +1,6 @@
 import { comparisonKey } from './fingerprint.mjs';
+import { normalizeGitPath } from './git.mjs';
+import { mapDirectory } from './renames.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -64,20 +66,43 @@ function classify(headFinding, baseFinding, touchedCode) {
 }
 
 function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
-  const baseByRatchet = groupBaseByRatchetKey(unmatchedBase, renames, directories);
-  const result = { newFindings: [], heldFindings: [], matchedBase: new Set() };
-  for (const headFinding of newFindings) {
+  const atSamePath = holdAgainst(
+    newFindings,
+    groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, renames, directories)),
+    { touchedCode, matchedBase: new Set() },
+  );
+  const movedFolders = groupBaseByRatchetKey(
+    unmatchedBase.filter(
+      (baseFinding) =>
+        baseFinding.ratchet?.pathIsFolder === true && !atSamePath.matchedBase.has(baseFinding),
+    ),
+    (finding) => movedFolderKey(finding, directories),
+  );
+  const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
+    touchedCode,
+    matchedBase: atSamePath.matchedBase,
+  });
+  return {
+    newFindings: [...atSamePath.grew, ...atMovedPath.grew, ...atMovedPath.unmatched],
+    heldFindings: [...atSamePath.heldFindings, ...atMovedPath.heldFindings],
+    matchedBase: atMovedPath.matchedBase,
+  };
+}
+
+function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) {
+  const result = { unmatched: [], grew: [], heldFindings: [], matchedBase };
+  for (const headFinding of headFindings) {
     const candidates = holdCandidatesFor(headFinding, baseByRatchet, touchedCode);
     const baseFinding =
-      candidates === undefined
+      candidates === undefined || candidates.length === 0
         ? undefined
         : closestCandidate(candidates, headFinding.ratchet.value);
     if (baseFinding === undefined) {
-      result.newFindings.push(headFinding);
+      result.unmatched.push(headFinding);
       continue;
     }
     if (headFinding.ratchet.value > baseFinding.ratchet.value) {
-      result.newFindings.push(grewFinding(headFinding, baseFinding.ratchet.value));
+      result.grew.push(grewFinding(headFinding, baseFinding.ratchet.value));
       continue;
     }
     candidates.splice(candidates.indexOf(baseFinding), 1);
@@ -85,6 +110,11 @@ function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directorie
     result.heldFindings.push({ ...headFinding, heldAtBase: baseFinding.ratchet.value });
   }
   return result;
+}
+
+function movedFolderKey(finding, directories) {
+  const folder = normalizeGitPath(finding.path);
+  return ratchetKey({ ...finding, path: mapDirectory(folder, directories) }, new Map(), new Map());
 }
 
 function closestCandidate(candidates, value) {
@@ -117,11 +147,11 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
   });
 }
 
-function groupBaseByRatchetKey(unmatchedBase, renames, directories) {
+function groupBaseByRatchetKey(unmatchedBase, keyOf) {
   const baseByRatchet = new Map();
   for (const baseFinding of unmatchedBase) {
     if (baseFinding.ratchet !== undefined) {
-      const key = ratchetKey(baseFinding, renames, directories);
+      const key = keyOf(baseFinding);
       baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
     }
   }

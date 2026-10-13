@@ -21,6 +21,13 @@ const LEGACY_ANY_HINT = ` If the value is a legacy \`any\`, read it through one 
 
 const DOMAIN_LEGACY_ANY_HINT = ` If the value is a legacy \`any\`, domain/ cannot take \`unknown\`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; ${FIX_TYPE_ERROR_FIRST}.`;
 
+const JAVASCRIPT_TYPE_SOURCE =
+  ' Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`)';
+
+const JAVASCRIPT_LEGACY_ANY_HINT = `${JAVASCRIPT_TYPE_SOURCE}, or read fields of a legacy \`any\` value through one reader function whose parameter is \`{unknown}\` and that returns a typed object.`;
+
+const JAVASCRIPT_DOMAIN_LEGACY_ANY_HINT = `${JAVASCRIPT_TYPE_SOURCE}: domain/ cannot take \`{unknown}\`, so have adapters/ parse a legacy \`any\` value into a typed object and pass that in.`;
+
 const DOMAIN_PATH = /(?:^|\/)features\/[^/]+\/domain\//u;
 
 const ONLY_THROW_ERROR_TEXT = 'Expected an error object to be thrown.';
@@ -44,6 +51,9 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
+const NODE_TEST_HINT =
+  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
@@ -60,6 +70,14 @@ function rejectErrorsMessage({ text, relativePath }) {
   return readLayout().isTestFile(relativePath) ? `${text}${REJECT_ERRORS_TEST_HINT}` : text;
 }
 
+function legacyAnyHint(relativePath) {
+  const inDomain = DOMAIN_PATH.test(relativePath);
+  if (readLayout().javascript) {
+    return inDomain ? JAVASCRIPT_DOMAIN_LEGACY_ANY_HINT : JAVASCRIPT_LEGACY_ANY_HINT;
+  }
+  return inDomain ? DOMAIN_LEGACY_ANY_HINT : LEGACY_ANY_HINT;
+}
+
 function unsafeAnyMessage({ text, relativePath }) {
   if (UNRESOLVED_TYPE.test(text)) {
     return `${text}${UNRESOLVED_TYPE_HINT}`;
@@ -67,7 +85,7 @@ function unsafeAnyMessage({ text, relativePath }) {
   if (readLayout().isTestFile(relativePath)) {
     return `${text}${ASYMMETRIC_MATCHER_HINT}`;
   }
-  return `${text}${DOMAIN_PATH.test(relativePath) ? DOMAIN_LEGACY_ANY_HINT : LEGACY_ANY_HINT}`;
+  return `${text}${legacyAnyHint(relativePath)}`;
 }
 
 function onlyThrowErrorMessage({ text, relativePath }) {
@@ -95,7 +113,12 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function nodeTestMessage({ text }) {
+  return `${text}${NODE_TEST_HINT}`;
+}
+
 const MESSAGE_REWRITERS = new Map([
+  ['vitest/no-import-node-test', nodeTestMessage],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],

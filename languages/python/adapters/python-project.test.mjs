@@ -6,6 +6,7 @@ import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
+  detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
 
@@ -25,6 +26,96 @@ afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+describe('type checker detection', () => {
+  it.each([
+    ['a [tool.mypy] table', { 'pyproject.toml': '[tool.mypy]\nstrict = true\n' }, 'mypy'],
+    ['a mypy override table', { 'pyproject.toml': '[[tool.mypy.overrides]]\n' }, 'mypy'],
+    ['mypy.ini', { 'mypy.ini': '[mypy]\n' }, 'mypy'],
+    ['.mypy.ini', { '.mypy.ini': '' }, 'mypy'],
+    [
+      'a [mypy] section in setup.cfg',
+      { 'setup.cfg': '[mypy]\nignore_missing_imports = True\n' },
+      'mypy',
+    ],
+    ['a per-module mypy section', { 'tox.ini': '[mypy-numpy.*]\n' }, 'mypy'],
+    ['a requirements line', { 'requirements-dev.txt': 'pytest\nmypy==1.9\n' }, 'mypy'],
+    [
+      'a poetry dependency',
+      { 'pyproject.toml': '[tool.poetry.dev-dependencies]\nmypy = "^1"\n' },
+      'mypy',
+    ],
+    [
+      'a pre-commit hook',
+      { '.pre-commit-config.yaml': '  - repo: https://github.com/pre-commit/mirrors-mypy\n' },
+      'mypy',
+    ],
+    ['a [tool.pyright] table', { 'pyproject.toml': '[tool.pyright]\n' }, 'pyright'],
+    ['a [tool.pyright] table with spaces', { 'pyproject.toml': '[ tool.pyright ]\n' }, 'pyright'],
+    ['a [tool.mypy] table with spaces', { 'pyproject.toml': '[ tool.mypy ]\n' }, 'mypy'],
+    [
+      'a dependency inside an array',
+      { 'pyproject.toml': 'dev = ["pyright>=1.1", "pytest"]\n' },
+      'pyright',
+    ],
+    ['a dependency after others', { 'pyproject.toml': 'dev = ["pytest", "mypy"]\n' }, 'mypy'],
+    ['pyrightconfig.json', { 'pyrightconfig.json': '{}' }, 'pyright'],
+    ['a requirements line', { 'requirements.txt': 'pyright>=1.1\n' }, 'pyright'],
+    [
+      'a quoted PEP 621 dependency',
+      { 'pyproject.toml': 'dev = [\n  "pyright>=1",\n]\n' },
+      'pyright',
+    ],
+    [
+      'the pyright-python hook',
+      { '.pre-commit-config.yaml': '  - repo: https://github.com/RobertCraigie/pyright-python\n' },
+      'pyright',
+    ],
+  ])('finds the checker from %s', (_name, files, expected) => {
+    expect(detectTypeCheckers(project(files), undefined)).toEqual([expected]);
+  });
+
+  it.each([
+    ['nothing', {}],
+    [
+      'other tools only',
+      {
+        'requirements.txt': 'pytest\nmypyc-extras\npyright-helper\n',
+        'pyproject.toml': 'dev = ["mypy-extensions", "basedpyright", "mypy.ini"]\n',
+      },
+    ],
+    ['a mention in a word', { 'pyproject.toml': 'description = "all about mypy"\n' }],
+  ])('finds none from %s', (_name, files) => {
+    expect(detectTypeCheckers(project(files), undefined)).toEqual([]);
+  });
+
+  it('prefers the checker with a configuration over one that is only a dependency', () => {
+    const files = { 'requirements.txt': 'mypy\n', 'pyrightconfig.json': '{}' };
+
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['pyright']);
+  });
+
+  it('prefers a configured checker that is also a dependency', () => {
+    const files = {
+      'pyproject.toml': '[tool.pyright]\n[tool.mypy]\n',
+      'requirements.txt': 'pyright\n',
+    };
+
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['pyright']);
+  });
+
+  it.each([
+    ['both configured', { 'pyproject.toml': '[tool.pyright]\n[tool.mypy]\n' }],
+    ['both declared in one array', { 'pyproject.toml': 'dev = ["pyright", "mypy"]\n' }],
+    ['both in a requirements file', { 'requirements.txt': 'pyright\nmypy\n' }],
+  ])('lists both, mypy first, when %s', (_name, files) => {
+    expect(detectTypeCheckers(project(files), undefined)).toEqual(['mypy', 'pyright']);
+  });
+
+  it('takes the setting over any detection', () => {
+    expect(detectTypeCheckers(project({ 'mypy.ini': '' }), 'pyright')).toEqual(['pyright']);
+  });
 });
 
 describe('formatter detection', () => {

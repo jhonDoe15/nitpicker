@@ -19,7 +19,7 @@ function findingsWith(policy) {
   );
 }
 
-const limits = { thresholds: { folderFiles: 2 } };
+const limits = { folderFiles: 2 };
 
 describe('Python file limits', () => {
   beforeEach(() => {
@@ -72,10 +72,8 @@ describe('Python file limits', () => {
     expect(
       findingsWith({
         exclude: ['src/gen/**'],
-        fileLimits: {
-          ...limits,
-          exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons/*'], reason: 'Icons' }],
-        },
+        fileLimits: limits,
+        exceptions: [{ rule: 'folder-files-limit', glob: 'src/icons/*' }],
       }),
     ).toEqual([]);
   });
