@@ -45,13 +45,11 @@ const REQUIRES_PYTHON = [
   /^\s*python_requires\s*=\s*(.+)$/m,
   /^\s*python\s*=\s*["']([^"']+)["']/m,
 ];
+export const DOCUMENTATION_DIRECTORIES = ['docs', 'doc', 'examples', 'scripts'];
 const NON_SOURCE_DIRECTORIES = new Set([
   'tests',
   'test',
-  'docs',
-  'doc',
-  'examples',
-  'scripts',
+  ...DOCUMENTATION_DIRECTORIES,
   'build',
   'dist',
   'venv',

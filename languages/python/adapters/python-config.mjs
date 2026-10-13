@@ -17,6 +17,7 @@ const SETTING_KEYS = [
   'formatter',
   'testRunner',
   'typeChecker',
+  'importLinter',
   'sourceRoots',
   'exceptions',
 ];
@@ -55,6 +56,9 @@ function validateSettings(settings) {
   validateChoice(settings.typeChecker, 'python.typeChecker', TYPE_CHECKERS);
   if (settings.environment !== undefined && !ENVIRONMENTS.includes(settings.environment)) {
     validateEnvironmentDirectory(settings.environment);
+  }
+  if (settings.importLinter !== undefined && typeof settings.importLinter !== 'boolean') {
+    throw configError('"python.importLinter" must be true or false');
   }
   if (settings.sourceRoots !== undefined) {
     validateSourceRoots(settings.sourceRoots);

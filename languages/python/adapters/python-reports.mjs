@@ -1,5 +1,6 @@
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { readDuplicateFindings } from './python-duplicates.mjs';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
@@ -11,6 +12,8 @@ import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { RULES_REPORT } from './python-ast-rules.mjs';
+import { readCouplingFindings } from './python-coupling.mjs';
+import { readImportLinterFindings } from './python-import-linter.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
@@ -32,6 +35,9 @@ export function readPythonFindings({ projectRoot, reportRoot }) {
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
       ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+      ...readDuplicateFindings(reportRoot),
+      ...readCouplingFindings(reportRoot),
+      ...readImportLinterFindings(reportRoot),
     ]),
   };
 }

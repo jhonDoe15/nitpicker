@@ -1,0 +1,44 @@
+
+---------
+Contracts
+---------
+
+Analyzed 7 files, 2 dependencies.
+---------------------------------
+
+a must not reach c BROKEN
+
+Contracts: 0 kept, 1 broken.
+
+
+----------------
+Broken contracts
+----------------
+
+a must not reach c
+------------------
+
+q.a is not allowed to import q.c:
+
+-   q.a.x -> q.b.y (l.2, l.3, l.4)
+    q.b.y -> q.c.w (l.1)
+
+
+q.a.x is not allowed to import q.c:
+
+-   q.a.x -> q.b.y (l.2, l.3, l.4)
+    q.b.y -> q.c.w (l.1)
+
+
+q.a is not allowed to import q.c.w:
+
+-   q.a.x -> q.b.y (l.2, l.3, l.4)
+    q.b.y -> q.c.w (l.1)
+
+
+q.a.x is not allowed to import q.c.w:
+
+-   q.a.x -> q.b.y (l.2, l.3, l.4)
+    q.b.y -> q.c.w (l.1)
+
+
