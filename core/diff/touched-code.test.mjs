@@ -214,7 +214,7 @@ describe('strict rules in touched code', () => {
     expect(isStrictRule('nitpicker/no-comments')).toBe(true);
     expect(isStrictRule('domain-does-not-import-adapters')).toBe(true);
     expect(isStrictRule('prettier/prettier')).toBe(true);
-    expect(isStrictRule('sonarjs/cognitive-complexity')).toBe(false);
+    expect(isStrictRule('max-statements')).toBe(false);
   });
 
   it('keeps an existing finding baselined when the file is untouched', () => {
@@ -277,7 +277,7 @@ describe('strict rules in touched code', () => {
   });
 
   it('does not promote findings of rules outside the strict set', () => {
-    const other = finding({ rule: 'sonarjs/cognitive-complexity' });
+    const other = finding({ rule: 'max-statements' });
     const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } };
     const result = compareFindings({
       baseFindings: [other],

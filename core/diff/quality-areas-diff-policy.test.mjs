@@ -20,13 +20,13 @@ import {
   normalizeCoverage,
   normalizeCrap,
   normalizeDeadCode,
-  normalizeDuplicates,
   normalizeMutation,
   normalizeStructure,
   normalizeTestRuntime,
   rebaseMutationConfig,
   sourceSnippet,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
+import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
 
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',
