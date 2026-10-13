@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { prepareSarif } from '../../java/adapters/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
@@ -6,8 +6,6 @@ import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { ingestMutmut } from '../ingest/mutmut.mjs';
-import { MUTATION_REPORT } from './python-mutation-data.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
@@ -28,16 +26,8 @@ export function readPythonFindings({ projectRoot, reportRoot }) {
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...ingestCoverageJson(readReport(reportRoot, COVERAGE_REPORT), { roots }).findings,
       ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...mutationFindings(reportRoot),
     ],
   };
-}
-
-function mutationFindings(reportRoot) {
-  if (!existsSync(path.join(reportRoot, MUTATION_REPORT))) {
-    return [];
-  }
-  return ingestMutmut(JSON.parse(readReport(reportRoot, MUTATION_REPORT))).findings;
 }
 
 function ruffFindings(log, { roots, projectRoot }) {

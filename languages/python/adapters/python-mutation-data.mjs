@@ -1,8 +1,8 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { SUPPORTED_MUTMUT } from '../ingest/mutmut.mjs';
 
 export const MUTANTS_DIRECTORY = 'mutants';
-export const MUTATION_REPORT = 'mutation.json';
 export const NO_COVERAGE_EXIT_CODE = 33;
 export const META_SUFFIX = '.meta';
 
@@ -18,7 +18,7 @@ function readExitCodes(file, mutantsDirectory) {
   );
   if (typeof meta?.exit_code_by_key !== 'object' || meta.exit_code_by_key === null) {
     throw new TypeError(
-      `mutmut wrote ${file}${META_SUFFIX} without exit_code_by_key: this mutmut version is not supported (tested with mutmut 3.8)`,
+      `mutmut wrote ${file}${META_SUFFIX} without exit_code_by_key: this mutmut version is not supported (nitpicker reads the run data of ${SUPPORTED_MUTMUT})`,
     );
   }
   return meta.exit_code_by_key;

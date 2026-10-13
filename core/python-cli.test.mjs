@@ -147,6 +147,9 @@ function callsLog() {
       .map((line) => JSON.parse(line));
 }
 
+const mutantFindings = (result) =>
+  result.json('new-findings.json').filter(({ rule }) => rule !== 'mutation-summary');
+
 describe('nitpicker with "preset": "python"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = pythonRepository();
@@ -156,10 +159,14 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
-    expect(result.json('summary.json').tools[0].version).toBe(
-      'ruff@0.9.9;coverage@7.6.1;unittest;mutmut@3.8.0',
-    );
+    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
+      'python',
+      'mutation',
+    ]);
+    expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
+      'ruff@0.9.9;coverage@7.6.1;unittest',
+      'mutmut@3.8.0;pytest@8.3.1',
+    ]);
   });
 
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
@@ -242,7 +249,7 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode, result.text).toBe(1);
-      expect(result.json('new-findings.json')).toEqual([
+      expect(mutantFindings(result)).toEqual([
         {
           tool: 'mutmut',
           rule: 'mutant-survived',
@@ -265,7 +272,7 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode, result.text).toBe(1);
-      expect(result.json('new-findings.json')).toEqual([
+      expect(mutantFindings(result)).toEqual([
         {
           tool: 'mutmut',
           rule: 'mutant-nocoverage',
@@ -287,7 +294,7 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode, result.text).toBe(0);
-      expect(result.json('new-findings.json')).toEqual([]);
+      expect(mutantFindings(result)).toEqual([]);
     });
 
     it('lists the mutants that are neither killed, survived nor uncovered without failing', () => {
@@ -298,7 +305,7 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode, result.text).toBe(0);
-      expect(result.json('new-findings.json')).toEqual([
+      expect(mutantFindings(result)).toEqual([
         {
           tool: 'mutmut',
           rule: 'mutant-timeout',
@@ -313,9 +320,15 @@ describe('nitpicker with "preset": "python"', () => {
     });
 
     it.each([
-      ['only mutated sources changed', { 'src/demo/a.py': 'def value():\n    return 3\n' }, true],
-      ['a test changed too', { 'tests/test_a.py': 'x = 2\n', 'src/demo/a.py': 'x = 1\n' }, false],
-    ])('reuses the base results on head when %s: %s', (_, changes, reused) => {
+      ['an unrelated source was added', { 'src/demo/b.py': 'x = 1\n' }, ['src/demo/a.py.meta']],
+      ['the source itself changed', { 'src/demo/a.py': 'def value():\n    return 3\n' }, []],
+      [
+        'a module it imports changed',
+        { 'import-graph.json': '{"src/demo/a.py": ["src/demo/b.py"]}', 'src/demo/b.py': 'y = 1\n' },
+        [],
+      ],
+      ['a test changed too', { 'tests/test_a.py': 'x = 2\n', 'src/demo/b.py': 'x = 1\n' }, []],
+    ])('reuses the base results of the untouched modules on head when %s', (_, changes, reused) => {
       const calls = callsLog();
       const root = pythonRepository({
         'mutants-data.json': mutants([0]),
@@ -330,7 +343,53 @@ describe('nitpicker with "preset": "python"', () => {
       const seeded = calls()
         .filter(({ tool }) => tool === 'mutmut-seeded')
         .map(({ seeded: files }) => files);
-      expect(seeded).toEqual([[], reused ? ['src/demo/a.py.meta'] : []]);
+      expect(seeded).toEqual([[], reused]);
+    });
+
+    it('keeps the lint and format findings when mutmut is missing, and says how to disable mutation', () => {
+      const root = pythonRepository({ 'no-mutmut.txt': '' });
+      write(root, { 'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|Mutable default\n` });
+      commit(root, 'a new violation');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(result.json('new-findings.json').map(({ rule }) => rule)).toEqual(['B006']);
+      expect(
+        result.json('tool-errors.json').map(({ tool, snapshot }) => `${tool} ${snapshot}`),
+      ).toEqual(['mutation base', 'mutation head']);
+      expect(result.json('tool-errors.json')[0].message).toContain(
+        'add "mutation" to "disable" in nitpicker.config.json',
+      );
+    });
+
+    it('does not run mutmut when mutation is disabled', () => {
+      const calls = callsLog();
+      const root = pythonRepository({
+        'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+        'no-mutmut.txt': '',
+      });
+      write(root, { 'src/demo/b.py': 'x = 1\n' });
+      commit(root, 'change');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
+      expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
+    });
+
+    it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {
+      const calls = callsLog();
+      const root = pythonRepository();
+      write(root, { 'test-exit.txt': '1\n' });
+      commit(root, 'break the tests');
+
+      const result = run(root);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
+      expect(calls().filter(({ tool }) => tool === 'mutmut')).toHaveLength(1);
     });
 
     it('reports a failing mutmut run as a tool error on head', () => {
@@ -343,7 +402,7 @@ describe('nitpicker with "preset": "python"', () => {
       expect(result.exitCode).toBe(2);
       expect(result.json('tool-errors.json')).toEqual([
         {
-          tool: 'python',
+          tool: 'mutation',
           snapshot: 'head',
           rule: 'mutation-failed',
           path: '.',
@@ -386,10 +445,14 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode).toBe(2);
     const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment"`;
-    expect(result.json('tool-errors.json')).toEqual([
-      { tool: 'python', snapshot: 'base', message },
-      { tool: 'python', snapshot: 'head', message },
-    ]);
+    expect(result.json('tool-errors.json')).toHaveLength(4);
+    expect(result.json('tool-errors.json')).toEqual(
+      expect.arrayContaining(
+        ['python', 'mutation'].flatMap((tool) =>
+          ['base', 'head'].map((snapshot) => ({ tool, snapshot, message })),
+        ),
+      ),
+    );
   });
 
   it('runs base sources, not the head ones, against the environment of the checkout', () => {
@@ -452,6 +515,7 @@ describe('nitpicker with "preset": "python"', () => {
         '',
         'Per-tool counts:',
         'python: total=1 enforceable=1 descriptive=0',
+        'mutation: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         'ruff/F401 src/demo/a.py:1 `os` imported but unused',

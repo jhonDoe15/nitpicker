@@ -1,4 +1,7 @@
+import { addMetric } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
+
+export const SUPPORTED_MUTMUT = 'mutmut 3.x';
 
 const STATUS_BY_EXIT_CODE = new Map([
   [0, 'Survived'],
@@ -29,8 +32,44 @@ export function ingestMutmut(data, options = {}) {
   if (!Array.isArray(data?.files)) {
     throw new TypeError('mutmut run data must contain a files array');
   }
-  const mutants = data.files.flatMap(fileMutants);
-  return { findings: mutantFindings(withIdentities(mutants), { tool: options.tool ?? 'mutmut' }) };
+  const tool = options.tool ?? 'mutmut';
+  const parsed = data.files.map((file) => ({ file, mutants: parsedMutants(file) }));
+  rejectUnreadableKeys(parsed);
+  const mutants = parsed.flatMap(({ file, mutants: fileResults }) =>
+    describedMutants(file, fileResults),
+  );
+  const findings = mutantFindings(withIdentities(mutants), { tool });
+  addStatusSummaries(findings, parsed, tool);
+  return { findings };
+}
+
+function rejectUnreadableKeys(parsed) {
+  const keys = parsed.flatMap(({ file }) => Object.keys(file.exitCodes));
+  if (keys.length > 0 && parsed.every(({ mutants }) => mutants.length === 0)) {
+    throw new TypeError(
+      `mutmut wrote ${String(keys.length)} results whose names are not in the form nitpicker reads (for example ${keys[0]}): this mutmut version is not supported (nitpicker reads the run data of ${SUPPORTED_MUTMUT})`,
+    );
+  }
+}
+
+function addStatusSummaries(findings, parsed, tool) {
+  const counts = new Map();
+  for (const { mutants } of parsed) {
+    for (const { status } of mutants) {
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+  }
+  for (const [status, value] of counts) {
+    addMetric(findings, {
+      analyzerName: tool,
+      rule: 'mutation-summary',
+      path: '.',
+      identity: `status:${status}`,
+      message: `${status} mutants`,
+      metricName: status,
+      value,
+    });
+  }
 }
 
 export function statusOfExitCode(exitCode) {
@@ -40,12 +79,17 @@ export function statusOfExitCode(exitCode) {
   return STATUS_BY_EXIT_CODE.get(exitCode) ?? 'RuntimeError';
 }
 
-function fileMutants(file) {
-  const blocks = functionBlocks(file.mutated);
-  const originalLines = file.original?.split(/\r?\n/u);
+function parsedMutants(file) {
   return Object.entries(file.exitCodes)
     .map(([key, exitCode]) => ({ ...parseKey(key), status: statusOfExitCode(exitCode) }))
-    .filter((mutant) => mutant.mangled !== undefined && mutant.status !== 'Killed')
+    .filter((mutant) => mutant.mangled !== undefined);
+}
+
+function describedMutants(file, mutants) {
+  const blocks = functionBlocks(file.mutated);
+  const originalLines = file.original?.split(/\r?\n/u);
+  return mutants
+    .filter((mutant) => mutant.status !== 'Killed')
     .sort((a, b) => a.number - b.number)
     .map((mutant) => ({
       path: file.path,

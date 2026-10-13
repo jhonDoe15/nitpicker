@@ -29,7 +29,7 @@ function fileOf({ source = 'def f(a, b):\n    return a + b\n', mutants = [], cod
 }
 
 function ingest(files) {
-  return ingestMutmut({ files }).findings;
+  return ingestMutmut({ files }).findings.filter(({ rule }) => rule !== 'mutation-summary');
 }
 
 describe('mutmut run data ingester', () => {
@@ -239,6 +239,41 @@ describe('mutmut run data ingester', () => {
 
     expect(finding.identity).toBe('f|+→-#1');
     expect(finding.location).toEqual({ line: 9 });
+  });
+
+  it('counts the mutants of every status, killed ones included, as descriptive metrics', () => {
+    const { findings } = ingestMutmut(recorded);
+
+    expect(findings.filter(({ rule }) => rule === 'mutation-summary')).toEqual([
+      ...[
+        ['Survived', 5],
+        ['Killed', 12],
+        ['NoCoverage', 17],
+      ].map(([status, value]) => ({
+        tool: 'mutmut',
+        rule: 'mutation-summary',
+        path: '.',
+        identity: `status:${status}`,
+        message: `${status} mutants`,
+        classification: 'descriptive',
+        metric: { name: status, value },
+      })),
+    ]);
+  });
+
+  it('fails when mutmut wrote results but none has a name it can read', () => {
+    const file = fileOf({ mutants: ['def f(a, b):\n    return a - b\n'], codes: [0] });
+    file.exitCodes = { 'm.f__mutmut_1': 0, 'm.f__mutmut_2': 1 };
+
+    expect(() => ingestMutmut({ files: [file] })).toThrow(
+      'mutmut wrote 2 results whose names are not in the form nitpicker reads (for example m.f__mutmut_1): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
+    );
+  });
+
+  it('accepts a run with no results at all', () => {
+    const file = { ...fileOf({ codes: [] }), exitCodes: {} };
+
+    expect(ingestMutmut({ files: [file] }).findings).toEqual([]);
   });
 
   it('rejects data that is not a list of files', () => {

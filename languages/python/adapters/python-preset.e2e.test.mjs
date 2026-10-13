@@ -160,10 +160,10 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('summary.json').overallStatus).toBe('completed');
-    expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;mutmut@[\d.]+$/,
-    );
-    expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
+    const [python, mutation] = result.json('summary.json').tools;
+    expect(python.version).toMatch(/^ruff@[\d.]+;coverage@[\d.]+;pytest@[\d.]+$/);
+    expect(mutation.version).toMatch(/^mutmut@3\.[\d.]+;pytest@[\d.]+$/);
+    expect(python.unchanged).toBeGreaterThan(0);
   });
 
   it('keeps the legacy violation baselined when its line moves', () => {
@@ -335,7 +335,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('summary.json').tools[0].version).toMatch(
-        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest;mutmut@[\d.]+$/,
+        /^ruff@[\d.]+;black@[\d.]+;coverage@[\d.]+;unittest$/,
       );
     });
 
@@ -362,7 +362,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
         'nitpicker.config.json': '{ "preset": "python" }\n',
         '.gitignore': '.venv/\n__pycache__/\n',
         'pyproject.toml':
-          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n\n[tool.mutmut]\nsource_paths = ["pkg"]\npytest_add_cli_args = ["-n", "0"]\n',
+          '[project]\nname = "pkg"\nversion = "0.1.0"\nrequires-python = ">=3.9"\n\n[tool.black]\nline-length = 88\n\n[tool.pytest.ini_options]\naddopts = "--cov=pkg -n 2 --lf"\n\n[tool.mutmut]\nsource_paths = ["pkg"]\n',
         'pkg/__init__.py': '',
         'pkg/shape.py': 'def area(side):\n    return side * side\n',
         'tests/test_shape.py':
@@ -435,6 +435,63 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
             .filter(({ classification }) => classification === 'enforceable'),
         ),
       ).toEqual(['python no-tests-ran .']);
+    });
+  });
+
+  describe('a project whose mutmut configuration nitpicker writes, with xdist and an excluded Python 2 file', () => {
+    let callers;
+
+    beforeAll(() => {
+      callers = repository();
+      write(callers, {
+        'nitpicker.config.json': '{ "preset": "python", "exclude": ["calc/legacy.py"] }\n',
+        '.gitignore': '.venv/\n__pycache__/\n',
+        'pyproject.toml':
+          '[project]\nname = "calc"\nversion = "0.1.0"\n\n[tool.pytest.ini_options]\naddopts = "-n 2"\n',
+        'calc/__init__.py': '',
+        'calc/helper.py': 'def f(x):\n    return x + 2\n',
+        'calc/core.py':
+          'from calc.helper import f\n\n\ndef g(x):\n    return 1 if f(x) > 3 else 0\n',
+        'calc/legacy.py': 'print "old"\n',
+        'tests/test_core.py':
+          'from calc.core import g\n\n\ndef test_low():\n    assert g(1) == 0\n\n\ndef test_high():\n    assert g(2) == 1\n',
+      });
+      git(callers, 'init', '-q', '-b', 'main');
+      git(callers, 'add', '-A');
+      git(callers, 'commit', '-q', '-m', 'base');
+      command(callers, 'uv', ['venv', '-q', '.venv']);
+      command(callers, 'uv', [
+        'pip',
+        'install',
+        '-q',
+        '--python',
+        '.venv',
+        'coverage',
+        'mutmut',
+        'pytest',
+        'pytest-xdist',
+      ]);
+      commitBranch(callers, 'unrelated', { 'calc/extra.py': 'EXTRA = 1\n' });
+      commitBranch(callers, 'callee', {
+        'calc/helper.py': 'def f(x):\n    return x + 3 if x >= 2 else x + 1\n',
+      });
+    });
+
+    it('runs mutmut despite xdist in the addopts and never mutates the excluded file', () => {
+      const result = gate(callers, 'unrelated');
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('summary.json').overallStatus).toBe('completed');
+    });
+
+    it('does not reuse the results of an unchanged caller whose callee changed', () => {
+      const result = gate(callers, 'callee');
+
+      expect(result.exitCode, result.text).toBe(1);
+      const survivors = result
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'mutant-survived');
+      expect(new Set(survivors.map(({ path: file }) => file))).toContain('calc/core.py');
     });
   });
 

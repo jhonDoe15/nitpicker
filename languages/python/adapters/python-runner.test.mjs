@@ -58,6 +58,8 @@ const coverageReport = JSON.stringify({
 const analyze = (root, extra = {}) =>
   analyzePythonSnapshot({ projectRoot: root, liveRoot: root, settings: {}, policy: {}, ...extra });
 
+const analyzeMutation = (root, extra = {}) => analyze(root, { part: 'mutation', ...extra });
+
 describe('analyzing a Python snapshot', () => {
   it('turns the ruff, format and coverage reports into findings', () => {
     const root = project({
@@ -119,7 +121,7 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
-  it('turns the mutmut run into mutant findings and cleans the snapshot unless it is the base', () => {
+  it('turns the mutmut run into mutant findings in the mutation part and cleans the snapshot unless it is the base', () => {
     const mutated =
       'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
     const files = {
@@ -131,8 +133,8 @@ describe('analyzing a Python snapshot', () => {
     const head = project(files);
     const base = project(files);
 
-    const { findings } = analyze(head);
-    const baseFindings = analyze(base, { policy: { snapshot: 'base' } }).findings;
+    const { findings } = analyzeMutation(head);
+    const baseFindings = analyzeMutation(base, { policy: { snapshot: 'base' } }).findings;
 
     expect(findings).toEqual([
       {
@@ -146,10 +148,63 @@ describe('analyzing a Python snapshot', () => {
         classification: 'enforceable',
         location: { line: 2 },
       },
+      {
+        tool: 'mutmut',
+        rule: 'mutation-summary',
+        path: '.',
+        identity: 'status:Survived',
+        message: 'Survived mutants',
+        classification: 'descriptive',
+        metric: { name: 'Survived', value: 1 },
+      },
     ]);
     expect(baseFindings).toEqual(findings);
     expect(existsSync(path.join(head, 'mutants'))).toBe(false);
     expect(existsSync(path.join(base, 'mutants'))).toBe(true);
+  });
+
+  it('leaves mutation testing to the mutation part, so lint and tests never wait for or fail with mutmut', () => {
+    const root = project({ 'no-mutmut.txt': '', 'violations.txt': 'F401|src/demo/a.py|unused\n' });
+
+    expect(analyze(root).findings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
+      'ruff F401',
+    ]);
+    expect(analyzeMutation(root).findings).toEqual([
+      {
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        path: '.',
+        identity: 'mutation-failed',
+        message: expect.stringContaining('mutmut was not found in the virtualenv environment'),
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('drops the mutants of excluded paths', () => {
+    const mutated =
+      'def x_f__mutmut_orig():\n    return 1\n\n\ndef x_f__mutmut_1():\n    return 2\n';
+    const root = project({
+      'mutants-data.json': JSON.stringify({
+        'src/demo/a.py': { exitCodes: { 'demo.a.x_f__mutmut_1': 0 }, mutated },
+      }),
+    });
+
+    const { findings } = analyzeMutation(root, { policy: { exclude: ['src/demo/**'] } });
+
+    expect(findings.map(({ rule }) => rule)).toEqual(['mutation-summary']);
+  });
+
+  it('maps an unexpected failure of the mutation part to a mutation-failed tool error', () => {
+    const root = project({ 'mutants-data.json': '{"src/demo/a.py": {"exitCodes": {"k": 0}}}' });
+
+    expect(analyzeMutation(root).findings).toEqual([
+      expect.objectContaining({
+        tool: 'mutation',
+        rule: 'mutation-failed',
+        classification: 'tool-error',
+      }),
+    ]);
   });
 
   it('drops excluded paths and baselines legacy sites, naming python in an expansion', () => {
@@ -278,6 +333,7 @@ describe('analyzing a Python snapshot', () => {
 describe('runner arguments', () => {
   it('defaults the live root to the project and the settings to none', () => {
     expect(parsePythonArguments(['--project-root', '/p'])).toEqual({
+      part: 'python',
       projectRoot: '/p',
       liveRoot: '/p',
       settings: {},
@@ -293,6 +349,8 @@ describe('runner arguments', () => {
       '/live',
       '--python-settings',
       '{"formatter":"black"}',
+      '--part',
+      'mutation',
       '--exclude',
       'gen/**',
       '--snapshot',
@@ -300,11 +358,18 @@ describe('runner arguments', () => {
     ]);
 
     expect(parsed).toEqual({
+      part: 'mutation',
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
       policy: { exclude: ['gen/**'], snapshot: 'base' },
     });
+  });
+
+  it('rejects a part it does not know', () => {
+    expect(() => parsePythonArguments(['--project-root', '/p', '--part', 'lint'])).toThrow(
+      '--part must be one of: python, mutation',
+    );
   });
 
   it('rejects unknown options', () => {
