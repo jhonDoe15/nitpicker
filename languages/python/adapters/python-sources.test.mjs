@@ -34,6 +34,39 @@ describe('pythonSourceFiles', () => {
   });
 });
 
+describe('pythonSourceFiles for a flat project', () => {
+  it('leaves tests, conftest, build copies and virtualenvs out when the source root is the project', () => {
+    const root = scratch.write(scratch.directory(), {
+      'app.py': '',
+      'util/helpers.py': '',
+      'conftest.py': '',
+      'tests/test_app.py': '',
+      'util/tests/test_helpers.py': '',
+      'build/lib/app.py': '',
+      'dist/app.py': '',
+      'env/lib/sitecustomize.py': '',
+      'venv/lib/sitecustomize.py': '',
+      '.venv/lib/v.py': '',
+    });
+
+    expect(pythonSourceFiles(root, ['.'])).toEqual(['app.py', 'util/helpers.py']);
+  });
+
+  it('keeps the files of a root that is itself named like a test directory', () => {
+    const root = scratch.write(scratch.directory(), {
+      'tests/test_app.py': '',
+      'tests/conftest.py': '',
+      'tests/tests/inner.py': '',
+    });
+
+    expect(pythonSourceFiles(root, ['tests'])).toEqual([
+      'tests/conftest.py',
+      'tests/test_app.py',
+      'tests/tests/inner.py',
+    ]);
+  });
+});
+
 describe('writeSourceListing', () => {
   it('writes one path per line to the report directory', () => {
     const root = scratch.write(scratch.directory(), { 'src/a.py': '', 'src/b.py': '' });

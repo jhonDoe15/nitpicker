@@ -8,7 +8,7 @@ import { functionText, writeSourceListing } from './python-sources.mjs';
 export const LIZARD_REPORT = 'lizard.csv';
 const LIZARD_RULE = 'lizard-failed';
 const LIZARD_OVERRIDE = 'NITPICKER_LIZARD';
-const PINNED_VERSIONS_SOURCE = path.resolve(
+export const PINNED_VERSIONS_SOURCE = path.resolve(
   import.meta.dirname,
   '../../java/gradle/nitpicker.init.gradle',
 );
@@ -17,11 +17,9 @@ export function pinnedLizardVersion() {
   return /lizard\s*:\s*'([^']+)'/.exec(readFileSync(PINNED_VERSIONS_SOURCE, 'utf8'))[1];
 }
 
-function lizardCandidates(version) {
+function lizardCandidates() {
   const override = process.env[LIZARD_OVERRIDE];
-  return override === undefined || override === ''
-    ? [['lizard'], ['uvx', `lizard==${version}`]]
-    : [[override]];
+  return override === undefined || override === '' ? [['lizard']] : [[override]];
 }
 
 function reportedVersion(context, candidate) {
@@ -31,7 +29,7 @@ function reportedVersion(context, candidate) {
 
 export function findLizard(context) {
   const version = pinnedLizardVersion();
-  const probed = lizardCandidates(version).map((candidate) => ({
+  const probed = lizardCandidates().map((candidate) => ({
     candidate,
     reported: reportedVersion(context, candidate),
   }));
@@ -42,7 +40,7 @@ export function findLizard(context) {
   const tried = probed.map(({ candidate, reported }) => `${candidate.join(' ')}: ${reported}`);
   throw Object.assign(
     new Error(
-      `lizard ${version} is required for the CRAP check but was not found (${tried.join('; ')}). Install it in the project environment with \`pip install lizard==${version}\`, or set ${LIZARD_OVERRIDE} to its executable.`,
+      `lizard ${version} is required for the CRAP check but was not found (${tried.join('; ')}). Install it in the project environment (\`pip install lizard==${version}\` or \`uv tool install lizard==${version}\`), or set ${LIZARD_OVERRIDE} to its executable.`,
     ),
     { rule: LIZARD_RULE },
   );

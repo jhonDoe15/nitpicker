@@ -16,11 +16,11 @@ const scores = (options) =>
   });
 
 describe('ingestPythonCrap', () => {
-  it('flags the uncovered method and the function no coverage entry matches, nothing else', () => {
+  it('flags the uncovered methods over the limit, nothing else', () => {
     const findings = ingest({ limit: 4 });
 
     expect(findings.map((finding) => `${finding.rule} ${finding.symbol}`)).toEqual([
-      'crap-coverage-unknown top',
+      'crap-score-limit top',
       'crap-score-limit B.go',
     ]);
     expect(findings[1]).toEqual({
@@ -58,7 +58,7 @@ describe('ingestPythonCrap', () => {
       'A.m 2.00',
       'A.p 3.00',
       'A.unused 2.00',
-      'top unknown',
+      'top 12.00',
       'B.go 6.00',
       'coro 2.00',
     ]);
@@ -135,10 +135,88 @@ describe('ingestPythonCrap', () => {
   });
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
-    const [unknown, known] = ingest({ limit: 4, sourceHash: () => 'abc' });
+    const lizard = `${fixture('crap-lizard.csv')}2,1,7,1,2,"f@1-2@other.py","other.py","f","f( )",1,2\n`;
+    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, lizard).filter(
+      (finding) => finding.symbol !== 'top',
+    );
 
     expect(known.identity).toBe('function:B.go:source:abc');
-    expect(unknown.identity).toBe('function:top');
+    expect(unknown.identity).toBe('function:f');
+  });
+
+  it('scores same-named definitions from the per-line data of their own ranges', () => {
+    const lizard = [
+      '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7',
+      '5,2,22,2,5,"x@10-14@m.py","m.py","x","x( self , v )",10,14',
+      '2,1,9,1,2,"_@23-24@m.py","m.py","_","_( a : int )",23,24',
+      '2,1,9,1,2,"_@28-29@m.py","m.py","_","_( a : str )",28,29',
+      '',
+    ].join('\n');
+    const coverage = JSON.stringify({
+      files: {
+        'm.py': {
+          executed_lines: [5, 6, 7, 9, 10, 11, 12, 22, 23, 24, 27, 28],
+          missing_lines: [14, 29],
+          executed_branches: [[11, 12]],
+          missing_branches: [[11, 14]],
+          functions: {
+            'A.x': {
+              executed_lines: [11, 12],
+              missing_lines: [14],
+              executed_branches: [[11, 12]],
+              missing_branches: [[11, 14]],
+              summary: {
+                covered_lines: 2,
+                num_statements: 3,
+                covered_branches: 1,
+                num_branches: 2,
+              },
+            },
+            _: {
+              executed_lines: [],
+              missing_lines: [29],
+              summary: {
+                covered_lines: 0,
+                num_statements: 1,
+                covered_branches: 0,
+                num_branches: 0,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const findings = ingestPythonCrap(lizard, coverage, { limit: 2 }).findings;
+
+    expect(findings.map(({ rule, symbol, location }) => [rule, symbol, location.line])).toEqual([
+      ['crap-score-limit', 'A.x', 10],
+      ['crap-score-limit', '_', 28],
+    ]);
+    expect(findings.map(({ message }) => /CRAP (\d+\.\d+)/.exec(message)[1])).toEqual([
+      '2.50',
+      '2.00',
+    ]);
+  });
+
+  it('keeps a same-named definition out of the findings when its own lines are covered', () => {
+    const lizard = '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7\n';
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [6, 7], missing_lines: [], functions: {} } },
+    });
+
+    expect(ingestPythonCrap(lizard, coverage, { limit: 2 }).findings).toEqual([]);
+  });
+
+  it('leaves coverage unknown for a function whose range holds no statement of the file', () => {
+    const lizard = '2,1,9,1,2,"x@6-7@m.py","m.py","x","x( self )",6,7\n';
+    const coverage = JSON.stringify({
+      files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
+    });
+
+    expect(ingestPythonCrap(lizard, coverage, {}).findings.map(({ rule }) => rule)).toEqual([
+      'crap-coverage-unknown',
+    ]);
   });
 
   it('rejects a coverage report without files', () => {

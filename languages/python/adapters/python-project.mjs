@@ -31,7 +31,8 @@ const REQUIRES_PYTHON = [
   /^\s*python_requires\s*=\s*(.+)$/m,
   /^\s*python\s*=\s*["']([^"']+)["']/m,
 ];
-const NON_SOURCE_DIRECTORIES = new Set([
+export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
+export const NON_SOURCE_DIRECTORIES = new Set([
   'tests',
   'test',
   'docs',
@@ -40,10 +41,11 @@ const NON_SOURCE_DIRECTORIES = new Set([
   'scripts',
   'build',
   'dist',
+  'env',
   'venv',
-  'node_modules',
-  'site-packages',
+  ...INSTALLED_DIRECTORIES,
 ]);
+export const NON_SOURCE_FILES = new Set(['conftest.py']);
 
 function readFiles(projectRoot, names) {
   return names

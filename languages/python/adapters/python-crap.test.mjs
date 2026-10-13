@@ -40,14 +40,17 @@ describe('finding lizard', () => {
     expect(findLizard(context)).toEqual(['lizard']);
   });
 
-  it('falls back to uvx with the pinned version when the environment has no lizard', () => {
-    const tools = scratch.directory();
-    script(tools, 'uvx', `echo "${pinnedLizardVersion()}"`);
-    setEnvironment('PATH', `${tools}${path.delimiter}${process.env.PATH}`);
+  it('never downloads lizard: without one in the environment or on the PATH it fails', () => {
+    setEnvironment('PATH', scratch.directory());
     setEnvironment('NITPICKER_LIZARD', undefined);
     const { context } = project({ tools: WITHOUT_LIZARD });
 
-    expect(findLizard(context)).toEqual(['uvx', `lizard==${pinnedLizardVersion()}`]);
+    const failure = () => findLizard(context);
+
+    expect(failure).toThrow('lizard: not runnable');
+    expect(failure).toThrow(`pip install lizard==${pinnedLizardVersion()}`);
+    expect(failure).toThrow(`uv tool install lizard==${pinnedLizardVersion()}`);
+    expect(failure).not.toThrow('uvx');
   });
 
   it('uses the executable named by NITPICKER_LIZARD, and only that one', () => {

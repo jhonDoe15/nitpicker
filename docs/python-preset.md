@@ -225,12 +225,15 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   and writes one object per function to `structure.json`. It is run by the project's own Python
   (`python <script> <output> <project> <file list>`), so it needs no dependency and no pin, and it
   parses with the grammar of the interpreter the project uses; a file that does not parse is
-  skipped (ruff's `E9` rules already report it). lizard has no statement count or control nesting,
+  skipped, as is a file too deeply nested for the parser (`RecursionError`, `MemoryError`); ruff's
+  `E9` rules already report a syntax error. lizard has no statement count or control nesting,
   so all four metrics come from this one script, like `StructureMetrics.java` for Java.
 - **Definitions** (the TypeScript analyzer's, applied to Python syntax). Unit: every `def` and
   `async def` with a body, methods and nested functions alike; named `Outer.method` and
   `outer.inner`, the qualified names coverage.py uses. `lines`: last line - first line + 1, from the
-  first decorator and including the docstring (TypeScript counts comments the same way).
+  first decorator, without the docstring (it is documentation, like `statements`, so adding one to
+  a long legacy function does not make it grow; TypeScript counts comments, Python has no comment
+  node to leave out).
   `statements`: every statement in the body, compound statements counting once plus their bodies:
   `if`/`elif` (an `elif` is a nested `if` statement, as `else if` is in TypeScript), `for`, `while`,
   `try`, `with`, `match`, `return`, `pass`, assignments, a nested `def` or `class` (but not its
@@ -238,7 +241,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   clauses (only their bodies). `maxControlNesting`: the deepest nesting of `if`/`elif`, `for`,
   `async for`, `while`, `match` and `except`; `try`, `with` and comprehensions do not nest. An
   `elif` chain nests one level per branch, like `else if` in TypeScript and Java, so an
-  `if`/`elif`/`elif` chain is already three deep: use early returns or a lookup table.
+  `if`/`elif`/`elif` chain is already three deep: use early returns, `match`, a dict lookup or a
+  helper function (the finding says so). Counting a whole `elif` chain as one level would differ
+  from TypeScript and Java, so it is a cross-language decision, not made here.
   `parameters`: positional-only, positional, keyword-only, `*args` and `**kwargs`, one each; the
   `/` and `*` markers are not parameters. The first positional parameter of a method (`self`,
   `cls`, or whatever it is called) is not counted, because the caller does not pass it: a function
@@ -246,9 +251,13 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   the function that contains them; nested functions and methods of nested classes are units of
   their own and do not count towards the function around them.
 - **Which files.** The `.py` files under the source roots (see `sourceRoots`), skipping hidden
-  directories, `__pycache__`, `node_modules` and `site-packages`. Node lists them once per
-  snapshot (`python-files.txt`) and hands the same list to the metrics script and to lizard.
-  Tests are outside the default source roots, so they are not gated.
+  directories, `__pycache__`, `node_modules` and `site-packages`. When the source root is the whole
+  project (`.`: no `src/` and no top-level package), the directories source root detection never
+  treats as packages (`tests`, `test`, `docs`, `doc`, `examples`, `scripts`, `build`, `dist`, `env`,
+  `venv`; one list in `python-project.mjs`) and `conftest.py` are skipped too, so tests, build
+  copies and virtualenvs are not gated. Node lists the files once per snapshot
+  (`python-files.txt`) and hands the same list to the metrics script and to lizard. Tests are
+  outside the default source roots, so they are not gated.
 - **Findings.** Same as Java: `languages/python/adapters/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
   per-function metrics are not emitted). Identity: qualified name, occurrence among equal names in
@@ -258,11 +267,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 - **CRAP.** lizard `--csv -l python -f <file list>` gives the cyclomatic complexity per function
   (the file list, not directories, because lizard silently skips files whose content is identical
   to another file when it walks a directory). It is pinned to the version in
-  `languages/java/gradle/nitpicker.init.gradle` (1.24.1). Resolution, in order: the executable
-  named by `NITPICKER_LIZARD` (only that one), `lizard` from the project environment or the `PATH`,
-  `uvx lizard==<pin>`; a lizard that is missing or reports another version is the tool error
-  `lizard-failed` with the install instruction (`pip install lizard==1.24.1`). It is not installed
-  for the project.
+  `languages/java/gradle/nitpicker.init.gradle`, the same one Java uses (the pin file is in the
+  configuration hash). Resolution, like Java: the executable named by `NITPICKER_LIZARD` (only that
+  one), else `lizard` from the project environment or the `PATH`. Nothing is downloaded at run
+  time. A lizard that is missing or reports another version is the tool error `lizard-failed`,
+  which names the pinned version and the install commands (`pip install lizard==<pin>` or
+  `uv tool install lizard==<pin>`). It is not installed for the project.
 - **Coverage join.** `languages/python/ingest/crap.mjs` takes the per-function entries of the
   coverage.py JSON report PY1 already produces (`files.<path>.functions`, coverage.py 7.6 or newer)
   and joins each lizard function to the entry with the same trailing name whose lines
@@ -272,20 +282,27 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
   (`ingestCrapRows` in `languages/java/ingest/crap.mjs`). A function with no statements and no
-  branches (a docstring-only stub) counts as fully covered. A function no coverage entry matches
-  (file outside the source roots, or shadowed by a later definition of the same name, which ruff
-  reports as `F811`) has unknown coverage and fails with `crap-coverage-unknown`; nothing is
-  guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
+  branches (a docstring-only stub) counts as fully covered. Definitions that share a name in a
+  scope (a `@property` getter and its `@x.setter`, `@singledispatch` registrations all named `_`,
+  conditional definitions) collapse into one coverage.py entry, which keeps only the last one. A
+  lizard function that no entry's lines lie inside is therefore scored from the file's own
+  per-line data (`executed_lines`, `missing_lines`, `executed_branches`, `missing_branches`) over
+  its own line range: after its `def` line and without the lines of functions nested in it. A file
+  coverage.py did not report (outside the source roots), or a range without a statement, has
+  unknown coverage and fails with `crap-coverage-unknown`; nothing is guessed. `# pragma: no cover` keeps its coverage.py meaning (excluded lines are not statements).
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
-  files, `shared/policy.mjs` and the pinned-version file are in the Python analyzer's configuration
-  hash.
+  files, `shared/policy.mjs` and the pinned-version file (`languages/java/gradle/nitpicker.init.gradle`,
+  added by name because the analyzer reads it with a pattern, not an import) are in the Python
+  analyzer's configuration hash.
 - **Tests.** `ingest/crap.test.mjs` (the join, on a real lizard CSV and coverage.py report),
   `python-structure.test.mjs`, `python-crap.test.mjs` (lizard resolution and failures) and
   `python-sources.test.mjs`, all with the fake toolchain; `core/python-cli.test.mjs` drives the CLI
-  for a new violation, the touched-legacy ratchet, an untested complex function, unknown
-  coverage, `thresholds.crapLimit` and a failing lizard. The gated e2e adds real branches for each
+  in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
+  function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the
+  `lizard-failed` error is covered by `python-crap.test.mjs` (the runner passes any step's rule
+  through to the tool error). The gated e2e adds real branches for each
   (nested loops with four parameters, a legacy function edited and then grown, an untested branchy
   function) and runs the metrics script on a sample covering methods, decorators, `async`,
   `match`, `elif` chains and a file that does not parse.

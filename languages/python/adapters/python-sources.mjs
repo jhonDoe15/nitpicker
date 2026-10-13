@@ -1,16 +1,27 @@
 import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { sourceLines } from '../../java/adapters/java-structure.mjs';
+import {
+  INSTALLED_DIRECTORIES,
+  NON_SOURCE_DIRECTORIES,
+  NON_SOURCE_FILES,
+} from './python-project.mjs';
 
 const SOURCE_LISTING = 'python-files.txt';
-const SKIPPED_DIRECTORIES = new Set(['__pycache__', 'node_modules', 'site-packages']);
+const WHOLE_PROJECT = '.';
+const INSTALLED = new Set(INSTALLED_DIRECTORIES);
 
-function isPythonFile(entry) {
-  return entry.isFile() && entry.name.endsWith('.py');
+function isPythonFile(entry, { wholeProject }) {
+  return (
+    entry.isFile() &&
+    entry.name.endsWith('.py') &&
+    !(wholeProject && NON_SOURCE_FILES.has(entry.name))
+  );
 }
 
-function isSearched(entry) {
-  return entry.isDirectory() && !entry.name.startsWith('.') && !SKIPPED_DIRECTORIES.has(entry.name);
+function isSearched(entry, { wholeProject }) {
+  const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
+  return entry.isDirectory() && !entry.name.startsWith('.') && !skipped.has(entry.name);
 }
 
 function isDirectory(absolute) {
@@ -19,17 +30,22 @@ function isDirectory(absolute) {
 
 export function pythonSourceFiles(projectRoot, sourceRoots) {
   const found = new Set();
-  const pending = [...sourceRoots];
-  for (const directory of pending) {
+  const pending = sourceRoots.map((directory) => ({
+    directory,
+    wholeProject: directory === WHOLE_PROJECT,
+  }));
+  for (const { directory, wholeProject } of pending) {
     if (!isDirectory(path.join(projectRoot, directory))) {
       continue;
     }
     const entries = readdirSync(path.join(projectRoot, directory), { withFileTypes: true });
-    for (const entry of entries.filter(isPythonFile)) {
+    for (const entry of entries.filter((candidate) => isPythonFile(candidate, { wholeProject }))) {
       found.add(path.posix.join(directory, entry.name));
     }
     pending.push(
-      ...entries.filter(isSearched).map((entry) => path.posix.join(directory, entry.name)),
+      ...entries
+        .filter((candidate) => isSearched(candidate, { wholeProject }))
+        .map((entry) => ({ directory: path.posix.join(directory, entry.name), wholeProject })),
     );
   }
   return [...found].sort();

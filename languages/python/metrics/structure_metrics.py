@@ -31,6 +31,13 @@ def blocks_of(node):
     return [child for child in ast.iter_child_nodes(node) if isinstance(child, BLOCKS)]
 
 
+def docstring_lines(function):
+    if not has_docstring(function.body):
+        return 0
+    docstring = function.body[0]
+    return docstring.end_lineno - docstring.lineno + 1
+
+
 def body_metrics(function):
     body = function.body[1:] if has_docstring(function.body) else function.body
     statements = 0
@@ -73,7 +80,7 @@ def function_entry(function, owners):
         "name": ".".join(owner.name for owner in (*owners, function)),
         "start": start,
         "end": function.end_lineno,
-        "lines": function.end_lineno - start + 1,
+        "lines": function.end_lineno - start + 1 - docstring_lines(function),
         "statements": statements,
         "maxControlNesting": deepest,
         "parameters": parameter_count(function, owners[-1] if owners else None),
@@ -93,7 +100,7 @@ def file_entries(project, relative):
         source = handle.read()
     try:
         module = ast.parse(source, relative)
-    except (SyntaxError, ValueError):
+    except (SyntaxError, ValueError, RecursionError, MemoryError):
         return []
     return [dict(entry, file=relative) for entry in function_entries(module, ())]
 
