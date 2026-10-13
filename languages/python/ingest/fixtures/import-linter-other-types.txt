@@ -1,0 +1,34 @@
+
+---------
+Contracts
+---------
+
+Analyzed 7 files, 4 dependencies.
+---------------------------------
+
+Protected BROKEN
+Acyclic BROKEN
+
+Contracts: 0 kept, 2 broken.
+
+
+----------------
+Broken contracts
+----------------
+
+Protected
+---------
+
+Illegal imports of protected package app.infra:
+
+- app.web.views -> app.infra.db (l.1)
+
+
+Acyclic
+-------
+
+No cycles are allowed in app.
+It could be made acyclic by removing 1 dependency:
+
+- .web -> .domain (1 import)
+

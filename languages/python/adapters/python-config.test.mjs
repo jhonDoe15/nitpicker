@@ -16,6 +16,7 @@ describe('python config validation', () => {
           environment: 'uv',
           formatter: 'black',
           testRunner: 'unittest',
+          importLinter: false,
           sourceRoots: ['src', 'tools/lib'],
         },
       });
@@ -54,6 +55,7 @@ describe('python config validation', () => {
     ],
     [{ formatter: 'yapf' }, '"python.formatter" must be one of: ruff, black'],
     [{ testRunner: 'nose' }, '"python.testRunner" must be one of: pytest, unittest'],
+    [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],
     [{ environment: '../outside' }, '"python.environment" must be a path inside the project'],
     [{ sourceRoots: 'src' }, '"python.sourceRoots" must be an array of non-empty strings'],

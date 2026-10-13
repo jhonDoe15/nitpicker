@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
 import { failure } from './python-process.mjs';
 import {
@@ -312,6 +313,65 @@ describe('running the tools', () => {
     ]);
   });
 
+  it('writes the duplicate, import and import-linter reports', () => {
+    const clone = [
+      'def order_total(lines, discount):',
+      '    total = 0',
+      '    for line in lines:',
+      '        if line.price > 0 and line.quantity > 0:',
+      '            total += line.price * line.quantity',
+      '        else:',
+      '            total -= discount',
+      '    return total',
+      '',
+    ].join('\n');
+    const root = project({
+      'src/demo/__init__.py': '',
+      'src/demo/a.py': clone,
+      'src/demo/b.py': clone,
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'import-scan.json': '{"src/demo/a.py":[]}',
+      'lint-imports.txt': 'Contracts: 1 kept, 0 broken.\n',
+    });
+    const { context, reportRoot } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(JSON.parse(readReport(reportRoot, 'duplicates.json')).runs).toHaveLength(1);
+    expect(JSON.parse(readReport(reportRoot, 'imports.json'))).toEqual({
+      modules: [
+        { file: 'src/demo/__init__.py', module: 'demo', isPackage: true },
+        { file: 'src/demo/a.py', module: 'demo.a', isPackage: false },
+        { file: 'src/demo/b.py', module: 'demo.b', isPackage: false },
+      ],
+      imports: { 'src/demo/a.py': [] },
+    });
+    expect(readReport(reportRoot, 'import-linter.txt')).toBe('Contracts: 1 kept, 0 broken.\n');
+  });
+
+  it('does not run import-linter for a project without contracts', () => {
+    const root = project({ 'lint-imports.txt': 'Contracts: 0 kept, 1 broken.\n' });
+    const { context, reportRoot } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([]);
+
+    expect(() => readReport(reportRoot, 'import-linter.txt')).toThrow();
+  });
+
+  it.each([
+    ['python', 'coupling-failed'],
+    ['lint-imports', 'import-linter-failed'],
+  ])('names the failing step: %s is %s', (tool, rule) => {
+    const root = project({
+      'src/demo/a.py': '',
+      '.importlinter': '[importlinter]\nroot_package = demo\n',
+      'fail.json': JSON.stringify({ [tool]: 'it blew up' }),
+    });
+    const { context } = contextFor(root, { testRunner: 'unittest' });
+
+    expect(runPythonTools(context).map((failure) => failure.rule)).toContain(rule);
+  });
+
   it('says where a missing tool should be installed', () => {
     const root = project({}, { tools: ['black', 'coverage', 'python'] });
     setEnvironment('PATH', temporaryRoot());
@@ -322,6 +382,22 @@ describe('running the tools', () => {
       message:
         'ruff was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
     });
+  });
+
+  it('tells how to turn the contracts off when lint-imports is not installed', () => {
+    const root = project(
+      { '.importlinter': '[importlinter]\nroot_package = demo\n', 'conftest.py': '' },
+      { tools: ['ruff', 'coverage', 'python'] },
+    );
+    const { context } = contextFor(root);
+
+    expect(runPythonTools(context)).toEqual([
+      {
+        rule: 'import-linter-failed',
+        message:
+          'lint-imports was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it, or turn the contracts off with "python": { "importLinter": false }',
+      },
+    ]);
   });
 
   it('reports a tool that cannot run for another reason', () => {
@@ -481,19 +557,53 @@ describe('tool versions', () => {
   it('lists the versions of the tools in use', () => {
     const root = project({ 'conftest.py': '' });
 
-    expect(toolVersions(contextFor(root).context)).toBe('ruff@0.9.9;coverage@7.6.1;pytest@8.3.1');
-    expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
-      'ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1',
+    const jscpd = `jscpd@${jscpdVersion()}`;
+
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
     );
-    expect(toolVersions(contextFor(project()).context)).toBe('ruff@0.9.9;coverage@7.6.1;unittest');
+    expect(toolVersions(contextFor(root, { formatter: 'black' }).context)).toBe(
+      `ruff@0.9.9;black@24.1.0;coverage@7.6.1;pytest@8.3.1;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(project()).context)).toBe(
+      `ruff@0.9.9;coverage@7.6.1;unittest;${jscpd}`,
+    );
+  });
+
+  it('adds import-linter to the versions when the project has contracts', () => {
+    const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
+
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@0.9.9;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()};import-linter@2.5`,
+    );
+    expect(toolVersions(contextFor(root, { importLinter: false }).context)).not.toContain(
+      'import-linter',
+    );
+  });
+
+  it('reads the import-linter version from the installed package, which old versions can only give that way', () => {
+    const calls = callsLog();
+    const root = project({ '.importlinter': '[importlinter]\n', 'conftest.py': '' });
+
+    toolVersions(contextFor(root).context);
+
+    expect(calls('python', '-I').map((call) => call.args.at(-1))).toEqual([
+      'import importlib.metadata as m; print(m.version("import-linter"))',
+    ]);
+    expect(calls('lint-imports', '--version')).toEqual([]);
   });
 
   it('marks tools that are missing', () => {
     const root = project({ 'no-pytest.txt': '' }, { tools: ['python'] });
     setEnvironment('PATH', temporaryRoot());
 
+    const jscpd = `jscpd@${jscpdVersion()}`;
+
     expect(toolVersions(contextFor(root, { testRunner: 'pytest' }).context)).toBe(
-      'ruff@missing;coverage@missing;pytest@missing',
+      `ruff@missing;coverage@missing;pytest@missing;${jscpd}`,
+    );
+    expect(toolVersions(contextFor(root).context)).toBe(
+      `ruff@missing;coverage@missing;unittest;${jscpd}`,
     );
   });
 

@@ -105,6 +105,7 @@ export const HELD_MESSAGES = {
 };
 
 const BOTH = { typescript: true, java: true, python: false, kotlin: false };
+const ALL = { typescript: true, java: true, python: true, kotlin: false };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
 
 /**
@@ -170,13 +171,13 @@ export const RULES = [
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode; any new clone fails`,
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
     limit: 'a package depending on a less stable package',
-    enforcedBy: BOTH,
+    enforcedBy: ALL,
   },
   {
     id: RULE_IDS.noProductionRuntime,

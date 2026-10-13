@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { computeCoupling, evaluateCoupling } from '../../../shared/rules/coupling.mjs';
+import { buildCouplingReport, evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';
@@ -22,56 +22,21 @@ function outerClass(className) {
   return className.split('$')[0];
 }
 
-function byName(left, right) {
-  if (left.name < right.name) {
-    return -1;
-  }
-  return left.name > right.name ? 1 : 0;
-}
-
 function packageOf(className) {
   const index = className.lastIndexOf('.');
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
 export function analyzeJavaCoupling({ classes, edges, fileOf }) {
-  const modules = [...new Set(classes.map(outerClass))].sort();
-  const moduleSet = new Set(modules);
-  const edgeKeys = new Set();
-  const moduleEdges = [];
-  for (const edge of edges) {
-    const source = outerClass(edge.source);
-    const target = outerClass(edge.target);
-    const key = `${source}\0${target}`;
-    if (source !== target && moduleSet.has(source) && moduleSet.has(target) && !edgeKeys.has(key)) {
-      edgeKeys.add(key);
-      moduleEdges.push({ source, target });
-    }
-  }
-
-  const metrics = computeCoupling({ modules, edges: moduleEdges, packageOf });
-  const packages = metrics.packages.sort(byName);
-
-  return {
-    summary: {
-      modules: modules.length,
-      dependencies: moduleEdges.length,
-      packages: packages.length,
-    },
-    modules: metrics.modules.map(({ module, fanIn, fanOut, totalCoupling, instability }) => ({
-      file: fileOf(module),
-      fanIn,
-      fanOut,
-      totalCoupling,
-      instability,
+  return buildCouplingReport({
+    modules: [...new Set(classes.map(outerClass))].sort(),
+    edges: edges.map((edge) => ({
+      source: outerClass(edge.source),
+      target: outerClass(edge.target),
     })),
-    packages,
-    stabilityDirection: metrics.stabilityDirection.map(({ source, target, delta }) => ({
-      source,
-      target,
-      delta,
-    })),
-  };
+    packageOf,
+    fileOf,
+  });
 }
 
 export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots }) {

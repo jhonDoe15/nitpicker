@@ -1,0 +1,50 @@
+
+---------
+Contracts
+---------
+
+Analyzed 7 files, 4 dependencies.
+---------------------------------
+
+Layered BROKEN
+Domain is pure BROKEN
+Independent BROKEN
+Fine KEPT
+
+Contracts: 1 kept, 3 broken.
+
+
+----------------
+Broken contracts
+----------------
+
+Layered
+-------
+
+app.domain is not allowed to import app.web:
+
+- app.domain.model -> app.web.views (l.2)
+
+
+Domain is pure
+--------------
+
+app.domain is not allowed to import app.infra:
+
+-   app.domain.model -> app.infra.db (l.1)
+
+-   app.domain.model -> app.web.views (l.2)
+    app.web.views -> app.infra.db (l.1)
+
+
+Independent
+-----------
+
+app.web is not allowed to import app.infra:
+
+- app.web.views -> app.domain.model (l.2)
+  app.domain.model -> app.infra.db (l.1)
+
+- app.web.views -> app.infra.db (l.1)
+
+
