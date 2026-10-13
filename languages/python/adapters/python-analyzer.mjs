@@ -90,6 +90,7 @@ export function createPythonAnalyzer(settings = {}) {
       'coverage',
       'structure',
       'crap',
+      'coverage-py',
       'duplicates',
       'coupling',
       'import-linter',
