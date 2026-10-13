@@ -187,12 +187,16 @@ describe('reading import-linter findings', () => {
     );
 
     expect(readImportLinterFindings(reportRoot)).toEqual([
-      expect.objectContaining({
+      {
         tool: 'import-linter',
+        rule: 'contract-broken',
         path: 'src/app/a.py',
         identity: 'contract:Naughty:app.a -> app.b',
+        message:
+          'Import contract "Naughty" is broken: app.a -> app.b. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+        classification: 'enforceable',
         location: { line: 3 },
-      }),
+      },
     ]);
   });
 });
