@@ -79,12 +79,23 @@ function ownsLine(fn, nested, line) {
   );
 }
 
+function lineItself(line) {
+  return line;
+}
+
+function branchSource([from]) {
+  return from;
+}
+
+function countOwn(values, fn, nested, lineOf) {
+  return values.filter((value) => ownsLine(fn, nested, lineOf(value))).length;
+}
+
 function coverageFromLines(lines, fn, nested) {
-  const own = (line) => ownsLine(fn, nested, line);
-  const covered = lines.executed.filter(own).length;
-  const missed = lines.missing.filter(own).length;
-  const executedBranches = lines.executedBranches.filter(([from]) => own(from)).length;
-  const missedBranches = lines.missingBranches.filter(([from]) => own(from)).length;
+  const covered = countOwn(lines.executed, fn, nested, lineItself);
+  const missed = countOwn(lines.missing, fn, nested, lineItself);
+  const executedBranches = countOwn(lines.executedBranches, fn, nested, branchSource);
+  const missedBranches = countOwn(lines.missingBranches, fn, nested, branchSource);
   return covered + missed === 0
     ? undefined
     : coveragePercent({
