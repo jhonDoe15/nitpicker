@@ -755,7 +755,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     commitBranch(project, 'copy', {
       'src/shop/domain/bulk.py': ORDER_TOTAL.replace('order_total', 'bulk_total'),
       'tests/test_bulk.py':
-        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    line = type("Line", (), {"price": 2, "quantity": 3})\n    empty = type("Line", (), {"price": 0, "quantity": 1})\n    assert bulk.bulk_total([line, empty], 5) == 1\n    assert bulk.bulk_total([empty], 5) == 0\n',
+        'from shop.domain import bulk\n\n\ndef test_bulk_total():\n    assert bulk.bulk_total([(2, 3), (0, 1)], 5) == 1\n    assert bulk.bulk_total([(0, 1)], 5) == 0\n',
     });
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
@@ -839,7 +839,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
 });
 
 const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';
-const BRANCH_CLAMP = 'def clamp(x):\n    if x > 10:\n        return 10\n    return x\n';
+const BRANCH_CLAMP = 'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 const signsTest = (...assertions) =>
   `from demo import signs\n\n\n${assertions
     .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
