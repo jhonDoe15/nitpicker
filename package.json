@@ -34,7 +34,7 @@
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node core/diff/fixtures/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/conformance.test.mjs",
-    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/java-preset.e2e.test.mjs languages/java/adapters/spring/java-spring.e2e.test.mjs",
+    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/java-preset.e2e.test.mjs languages/java/adapters/spring/java-spring.e2e.test.mjs languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs",
     "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/python/adapters/python-preset.e2e.test.mjs languages/python/rules/nitpicker-rules.e2e.test.mjs languages/python/rules/rule-cases.e2e.test.mjs",
     "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/java/adapters/kotlin-metrics.e2e.test.mjs languages/java/adapters/kotlin-preset.e2e.test.mjs"
   },
@@ -97,6 +97,7 @@
     "@types/react": "19.2.2",
     "@vitest/coverage-v8": "4.1.11",
     "typescript": "6.0.3",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "yaml": "2.9.1"
   }
 }
