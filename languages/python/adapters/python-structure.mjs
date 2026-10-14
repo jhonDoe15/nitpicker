@@ -2,7 +2,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs';
-import { readStructureFindings } from '../../java/adapters/java-structure.mjs';
+import { readStructureFindings } from '../../../shared/ingest/structure-report.mjs';
 import { run } from './python-process.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 

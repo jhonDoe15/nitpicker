@@ -356,14 +356,14 @@ resolved plus a new finding, as in the TypeScript check.
   (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
-- **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `languages/java/adapters/java-structure.mjs` (with `shared/ingest/structure-report.mjs`) hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
   identity: name, occurrence among equal names in the file and a hash of the method text with
   indentation removed, no line number. A moved or re-indented method stays baselined; editing a
   method that already violates produces a new finding, as in TypeScript.
-- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs` and the shared structure
+- **Cache invalidation.** `StructureMetrics.java`, `java-structure.mjs`, `structure-report.mjs` and the shared structure
   rule files are in the Java analyzer's configuration hash.
 - **Tests.** `java-structure.test.mjs` (fast: limits, messages, identity stability);
   the gated e2e adds a branch with a method over the parameter limit (fails) and keeps a legacy

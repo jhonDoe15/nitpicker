@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
+import { EXCEPTION_SEPARATOR } from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError, liftsOnlyRules } from '../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 
-export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {

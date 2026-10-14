@@ -2,7 +2,7 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { configureJavaAnalyzer } from './java-policy.mjs';
-import { parseRunnerArguments } from './java-runner.mjs';
+import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 
 const context = () => ({
   projectRoot: '/p',

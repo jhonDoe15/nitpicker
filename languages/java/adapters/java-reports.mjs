@@ -5,11 +5,8 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
-import {
-  methodText,
-  readJavaFileLimitFindings,
-  readJavaStructureFindings,
-} from './java-structure.mjs';
+import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mjs';
+import { methodText } from '../../../shared/ingest/structure-report.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../../shared/ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
