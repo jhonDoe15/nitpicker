@@ -603,7 +603,8 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
   when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
   per-module reports is not done for either preset yet.
-- Only main sources are linted, and generated sources under the build directory are skipped.
+- Kotlin is linted in main sources only; Java files are linted in main and test sources, as in the
+  Java preset. Generated sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
   (about 60 MB, cached by Gradle) on the first run. It parses with the pinned compiler, so syntax newer
   than that version ends the run with an error naming the file and the version. A version that the

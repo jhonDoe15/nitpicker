@@ -117,17 +117,18 @@ function formatFindings({ reportRoot, roots }) {
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  return ['checkstyle.xml', 'checkstyle-test.xml']
-    .map((report) => path.join(reportRoot, report))
-    .filter((report) => existsSync(report))
-    .flatMap((report) => {
-      const checkstyle = readFileSync(report, 'utf8');
-      return roots.flatMap((root) =>
-        ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-          existsSync(path.join(projectRoot, finding.path)),
-        ),
-      );
-    });
+  const testReport = path.join(reportRoot, 'checkstyle-test.xml');
+  return [
+    path.join(reportRoot, 'checkstyle.xml'),
+    ...(existsSync(testReport) ? [testReport] : []),
+  ].flatMap((report) => {
+    const checkstyle = readFileSync(report, 'utf8');
+    return roots.flatMap((root) =>
+      ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+        existsSync(path.join(projectRoot, finding.path)),
+      ),
+    );
+  });
 }
 
 function jacocoFindings(context, jacoco) {

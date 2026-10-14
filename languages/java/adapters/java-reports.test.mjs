@@ -248,6 +248,20 @@ describe('readJavaFindings', () => {
       'pmd InlineSuppression',
     ]);
   });
+
+  it('skips test sources the manifest does not list, but needs the main Checkstyle report', () => {
+    const root = projectWithReports();
+    const testFile = path.join(root, 'src/test/java/demo/BadTest.java');
+    mkdirSync(path.dirname(testFile), { recursive: true });
+    writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
+    const findings = readJavaFindings(root).findings;
+    rmSync(path.join(root, 'build/nitpicker/checkstyle.xml'));
+
+    expect(findings.filter(({ path: file }) => file.startsWith('src/test/'))).toEqual([]);
+    expect(() => readJavaFindings(root)).toThrow(
+      `ENOENT: no such file or directory, open '${path.join(root, 'build/nitpicker/checkstyle.xml')}'`,
+    );
+  });
 });
 
 describe('readJavaFindings: ArchUnit', () => {
