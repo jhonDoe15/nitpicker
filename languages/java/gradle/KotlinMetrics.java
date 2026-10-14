@@ -9,7 +9,8 @@
 //   lines              last line - first line + 1 (annotations and modifiers included, KDoc and comments not)
 //   statements         every element of a block, plus the unbraced body of an if, else, loop or when branch
 //                      that is itself a statement, plus 1 for an expression body
-//   maxControlNesting  deepest nesting of if, for, while, do, when and catch; an else if nests like in Java
+//   maxControlNesting  deepest nesting of if, for, while, do, when and catch; a flat if / else if / else chain is
+//                      one level, while an if inside an else { } block or inside a branch body nests one deeper
 //   parameters         declared value parameters (the extension receiver is not one)
 //   complexity         cyclomatic complexity: 1 + if, for, while, do, each when branch but else, catch,
 //                      &&, || and ?: (the CRAP input; what lizard counts for Java)
@@ -393,7 +394,7 @@ public final class KotlinMetrics {
       if (element == null || element instanceof KtClassOrObject) {
         return;
       }
-      int next = isControl(element) ? depth + 1 : depth;
+      int next = isControl(element) && !isElseIf(element) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       count(element);
       for (PsiElement child : element.getChildren()) {
@@ -437,6 +438,14 @@ public final class KotlinMetrics {
       return parent instanceof KtBlockExpression || parent instanceof KtContainerNodeForControlStructureBody
           || parent instanceof KtWhenEntry;
     }
+  }
+
+  private static boolean isElseIf(PsiElement element) {
+    PsiElement container = element.getParent();
+    return element instanceof KtIfExpression
+        && container instanceof KtContainerNodeForControlStructureBody
+        && container.getParent() instanceof KtIfExpression
+        && ((KtIfExpression) container.getParent()).getElse() == element;
   }
 
   private static boolean isControl(PsiElement element) {

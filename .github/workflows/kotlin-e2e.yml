@@ -2,25 +2,27 @@ name: kotlin-e2e
 
 # The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
 # about 15 minutes. It runs only for changes that can alter its result: the Java and Kotlin preset code, the
-# shared rules and policy it reports through, and this file. TypeScript-only, Python-only and docs-only pull
-# requests skip it.
+# core and shared code it imports, the package and test configuration, and this file. TypeScript-only,
+# Python-only and docs-only pull requests skip it.
 on:
   push:
     branches: [main]
     paths:
       - 'languages/java/**'
-      - 'shared/rules/**'
-      - 'shared/policy.mjs'
+      - 'core/**'
+      - 'shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'vitest.config.mts'
       - '.github/workflows/kotlin-e2e.yml'
   pull_request:
     paths:
       - 'languages/java/**'
-      - 'shared/rules/**'
-      - 'shared/policy.mjs'
+      - 'core/**'
+      - 'shared/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'vitest.config.mts'
       - '.github/workflows/kotlin-e2e.yml'
 
 # A new push to a pull request cancels its run still in progress; runs on main always finish.

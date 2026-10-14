@@ -4,6 +4,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from './java-diff.mjs';
+import {
+  BOM,
+  BROKEN,
+  CRLF,
+  FLAT,
+  INITIALIZERS,
+  MULTIFILE_A,
+  MULTIFILE_B,
+  NESTING,
+  ROOT_PACKAGE,
+  UNITS,
+} from './fixtures/kotlin-metrics/sources.mjs';
 
 // Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
 // files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
@@ -36,127 +48,6 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
     }
 }
 `;
-
-const UNITS = `package demo.units
-
-fun plain(a: Int, b: Int): Int {
-    if (a > 0 && b > 0 || a < -5) {
-        return a
-    }
-    return b ?: 0
-}
-
-fun Int.double(): Int = this * 2
-
-inline fun twice(block: () -> Unit) {
-    block()
-    block()
-}
-
-class Holder(private val start: Int) {
-    constructor() : this(0) {
-        println("default")
-    }
-
-    init {
-        println("init")
-    }
-
-    val doubled: Int
-        get() = start * 2
-
-    val combine: (Int, Int, Int, Int) -> Int = { a, b, c, d ->
-        if (a > b) c else d
-    }
-
-    val cached by lazy {
-        val values = listOf(1, 2)
-        values.sum()
-    }
-
-    val anonymous = fun(x: Int): Int {
-        return x + 1
-    }
-
-    val eager = run {
-        println("eager")
-        1
-    }
-
-    abstract class Nested {
-        abstract fun missing()
-    }
-}
-`;
-
-const INITIALIZERS = `package demo.init
-
-import kotlin.properties.Delegates
-
-class Boot(private val seed: Int) {
-    init {
-    }
-
-    init {
-        println("one")
-        check(seed > 0)
-    }
-
-    val plain = seed + 1
-
-    val label = if (seed > 1) "big" else "small"
-
-    val table = mapOf(1 to "a").map { (k, v) -> "$k$v" }
-
-    val chosen = when (seed) {
-        0 -> "zero"
-        1 -> "one"
-        else -> "many"
-    }
-
-    val observed by Delegates.observable(0) { _, old, new ->
-        println("$old $new")
-    }
-
-    val handler = object : Runnable {
-        override fun run() {
-            println("run")
-        }
-
-        init {
-            println("anonymous")
-        }
-    }
-
-    companion object {
-        val registry = HashMap<String, Int>().apply { put("a", 1) }
-
-        init {
-            registry["b"] = 2
-        }
-    }
-}
-
-object Single {
-    init {
-        println("single")
-    }
-}
-
-val top = listOf(1, 2).map { it * 2 }
-
-val simple = 3
-`;
-
-const FLAT = 'package demo.flat\n\nfun flat() = 1\n';
-const BOM = '﻿package demo.bom\n\nfun bom() = 1\n';
-const ROOT_PACKAGE = 'fun root() = 1\n';
-const MULTIFILE_A =
-  '@file:JvmName("Mf")\n@file:JvmMultifileClass\n\npackage demo.mf\n\nfun partA() = 1\n';
-const MULTIFILE_B =
-  '@file:JvmName("Mf")\n@file:JvmMultifileClass\n\npackage demo.mf\n\nfun partB() = 2\n';
-const CRLF = 'package demo.crlf\r\n\r\nfun crlf(): Int {\r\n    return 1\r\n}\r\n';
-const BROKEN = 'package demo.broken\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
 
 let workspace;
 let java;
@@ -286,6 +177,22 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'Boot.Companion.<init#1> 43-45 s1 p0 c1 initializer',
       'Single.<init#1> 50-52 s1 p0 c1 initializer',
       'top 55-55 s2 p0 c1 initializer',
+    ]);
+  });
+
+  it('counts a flat if / else if / else chain as one level and an if inside an else block or a branch as one deeper', () => {
+    const { metrics } = measure(writeSources('nesting', { 'src/Nesting.kt': NESTING }));
+
+    expect(
+      metrics.functions.map(
+        ({ name, maxControlNesting, complexity }) => `${name} n${maxControlNesting} c${complexity}`,
+      ),
+    ).toEqual([
+      'chain n1 c4',
+      'inElseBlock n2 c3',
+      'inBranch n2 c5',
+      'withWhen n2 c4',
+      'inLoop n2 c4',
     ]);
   });
 
