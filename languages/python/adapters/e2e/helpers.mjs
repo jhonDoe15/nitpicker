@@ -59,22 +59,29 @@ export function gate(root, branch, extra = []) {
     },
     progress: { write: () => undefined },
   });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+  function json(name) {
+    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+  }
   return { exitCode, json, text: output.text, reports };
 }
 
-export const enforceable = (result) =>
-  summarize(
+export function enforceable(result) {
+  return summarize(
     result
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable'),
   );
+}
 
-export const withoutMutants = (summaries) =>
-  summaries.filter((summary) => !summary.startsWith('mutmut '));
+export function withoutMutants(summaries) {
+  return summaries.filter((summary) => !summary.startsWith('mutmut '));
+}
 
-export const summarize = (findings) =>
-  findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
+export function summarize(findings) {
+  return findings
+    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
+    .sort();
+}
 
 const roots = [];
 
