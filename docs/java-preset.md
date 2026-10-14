@@ -158,9 +158,12 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   snapshot (`base` or `head`), skips the comparison for the analyzer and exits with 2; nothing
   throws and no partial result is compared.
 - **Gradle binary.** The command in `NITPICKER_GRADLE` when it is set; otherwise the analyzed
-  project's own wrapper (`gradlew`, or `gradlew.bat` on Windows) when the project root has an
-  executable one; otherwise `gradle` from the PATH. The wrapper is looked up in each snapshot's
+  project's own wrapper (`gradlew`, or `gradlew.bat` on Windows) when the project root has
+  one (a `gradlew` without the executable bit runs as `sh gradlew`); otherwise `gradle` from the PATH
+  (through the shell on Windows, where it is `gradle.bat`). The wrapper is looked up in each snapshot's
   project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
+  The wrapper downloads the Gradle distribution named in the head snapshot's
+  `gradle-wrapper.properties`, and base and head each use their own wrapper.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
@@ -252,12 +255,13 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 ## Slice 5: CRAP
 
-- **Complexity source.** `StructureMetrics.java` (slice 8's `nitpickerStructure` task) writes the
+- **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
+  [Structure limits (SH5)](#structure-limits-sh5)) writes the
   cyclomatic complexity of each method and constructor into `build/nitpicker/structure.json`
   (`complexity`), so the CRAP check needs no tool beyond the JDK that runs Gradle. It is
   McCabe's count: 1 plus each `if`, `for`, enhanced `for`, `while`,
-  `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not `default` (an arrow case and a case with
-  several constants count once; `case null, default` counts). Lambda bodies count towards the
+  `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not a default one (an arrow case and a case with
+  several constants count once; `default` and `case null, default` count 0). Lambda bodies count towards the
   enclosing method; members of nested and anonymous classes are methods of their own.
 - **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
@@ -267,8 +271,10 @@ identity when the value changes: editing such a line counts as a resolved plus a
   toward its enclosing method's complexity but not toward its coverage).
 - **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
   utility-class idiom, is flagged `privateEmptyConstructor` in `structure.json` and left out of the
-  join: JaCoCo omits such constructors from its report, so they would always be
-  `crap-coverage-unknown`.
+  join. JaCoCo leaves such a constructor out of its report only in some cases (inner classes, enums,
+  classes with field initializers, and a superclass other than `Object`), so it would often be
+  `crap-coverage-unknown`. Dropping it when JaCoCo does report it is harmless: its complexity is 1,
+  which can never exceed the CRAP limit.
 - **Rules, as in the TypeScript `crap` check.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, where
   coverage is the lower of the method's JaCoCo line coverage and branch coverage (whichever have
   counters). `crap-score-limit` (enforceable) when `crap >= 9`: a method at exactly the limit
@@ -349,7 +355,10 @@ resolved plus a new finding, as in the TypeScript check.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
   source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
-  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. All four
+  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. A syntax error (for
+  example syntax newer than the JVM that runs Gradle) is not skipped: the program prints `file:line` and
+  the compiler message of up to five errors and exits with status 1, so the task fails and the run is a
+  tool error instead of a report with missing or shortened methods. All four
   metrics come from this one source so they are consistent (the cyclomatic complexity of the CRAP check
   too); a second tool would make two counters disagree. PMD's metrics were rejected (not in the SARIF output, and
   its rules do not expose per-method statements). A small JavaParser step was the alternative; it would add a

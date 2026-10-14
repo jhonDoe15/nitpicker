@@ -10,13 +10,16 @@
 //   statements         every statement below the body except blocks
 //   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
 //   parameters         declared parameters
-//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch, ?:, &&, ||
-//                      and every case label but default (each `case`, also an arrow case and one with several constants)
+//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch,
+//                      ?:, &&, || and every `case` except a default one (`default`, `case null, default`);
+//                      an arrow case and a case with several constants count once
 //   signature          Owner.method(parameter types), the identity of the method in the CRAP check
-//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo leaves out of its report
+//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo often leaves out of its report
 // Members of nested classes (anonymous, local or member) are reported as methods of their own and
-// do not count towards the enclosing method; lambda bodies count towards the enclosing method (in complexity
-// too, like lizard counted them).
+// do not count towards the enclosing method; lambda bodies count towards the enclosing method.
+//
+// A syntax error (for example syntax newer than the JVM that runs Gradle) prints file:line and the compiler
+// message to stderr and exits with status 1, so the Gradle task fails instead of dropping methods.
 
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
@@ -29,6 +32,17 @@ import javax.lang.model.element.Modifier;
 import javax.tools.*;
 
 public final class StructureMetrics {
+  private static final int MAX_REPORTED_ERRORS = 5;
+
+  private static String relative(Path projectDir, Path file) {
+    return projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+  }
+
+  private static String describe(Path projectDir, Diagnostic<? extends JavaFileObject> d) {
+    String where = d.getSource() == null ? "" : relative(projectDir, Path.of(d.getSource().toUri()));
+    return where + ":" + d.getLineNumber() + ": " + d.getMessage(Locale.ROOT);
+  }
+
   public static void main(String[] args) throws IOException {
     Path output = Path.of(args[0]);
     Path projectDir = Path.of(args[1]).toAbsolutePath().normalize();
@@ -46,6 +60,7 @@ public final class StructureMetrics {
       throw new IllegalStateException("Running on a JRE without jdk.compiler; a JDK is required");
     }
     List<String> entries = new ArrayList<>();
+    List<String> errors = new ArrayList<>();
     try (StandardJavaFileManager fm =
         compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8)) {
       for (Path file : files) {
@@ -54,17 +69,25 @@ public final class StructureMetrics {
                 compiler.getTask(
                     null,
                     fm,
-                    d -> {},
+                    d -> {
+                      if (d.getKind() == Diagnostic.Kind.ERROR) {
+                        errors.add(describe(projectDir, d));
+                      }
+                    },
                     List.of("-proc:none"),
                     null,
                     fm.getJavaFileObjects(file.toFile()));
         SourcePositions positions = Trees.instance(task).getSourcePositions();
-        String relative =
-            projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+        String relative = relative(projectDir, file);
         for (CompilationUnitTree unit : task.parse()) {
           new Collector(unit, positions, relative, entries).scan(unit, "");
         }
       }
+    }
+    if (!errors.isEmpty()) {
+      System.err.println("StructureMetrics could not parse the sources:");
+      errors.stream().limit(MAX_REPORTED_ERRORS).forEach(System.err::println);
+      System.exit(1);
     }
     Files.writeString(
         output, "[" + String.join(",", entries) + "]\n", StandardCharsets.UTF_8);
@@ -203,7 +226,6 @@ public final class StructureMetrics {
     }
   }
 
-  /** Decision points of one body, lambdas included and nested classes left out. */
   private static final class Complexity extends TreeScanner<Void, Void> {
     int branches = 0;
 
@@ -223,14 +245,13 @@ public final class StructureMetrics {
     return switch (tree.getKind()) {
       case IF, FOR_LOOP, ENHANCED_FOR_LOOP, WHILE_LOOP, DO_WHILE_LOOP, CATCH, CONDITIONAL_EXPRESSION,
           CONDITIONAL_AND, CONDITIONAL_OR -> true;
-      case CASE -> !isDefaultOnly((CaseTree) tree);
+      case CASE -> !isDefault((CaseTree) tree);
       default -> false;
     };
   }
 
-  private static boolean isDefaultOnly(CaseTree tree) {
-    List<? extends CaseLabelTree> labels = tree.getLabels();
-    return labels.size() == 1 && labels.get(0).getKind() == Tree.Kind.DEFAULT_CASE_LABEL;
+  private static boolean isDefault(CaseTree tree) {
+    return tree.getLabels().stream().anyMatch(label -> label.getKind() == Tree.Kind.DEFAULT_CASE_LABEL);
   }
 
   private static String signature(String owner, String name, MethodTree tree) {
@@ -241,7 +262,6 @@ public final class StructureMetrics {
     return owner + "." + name + "(" + types + ")";
   }
 
-  /** JaCoCo filters `private Name() {}` (also with an explicit `super();`) from its report. */
   private static boolean isPrivateEmptyConstructor(MethodTree tree) {
     List<? extends StatementTree> statements = tree.getBody().getStatements();
     return tree.getName().contentEquals("<init>")
@@ -271,16 +291,7 @@ public final class StructureMetrics {
       switch (c) {
         case '"' -> out.append("\\\"");
         case '\\' -> out.append("\\\\");
-        case '\n' -> out.append("\\n");
-        case '\r' -> out.append("\\r");
-        case '\t' -> out.append("\\t");
-        default -> {
-          if (c < 0x20) {
-            out.append(String.format("\\u%04x", (int) c));
-          } else {
-            out.append(c);
-          }
-        }
+        default -> out.append(c < 0x20 ? String.format("\\u%04x", (int) c) : String.valueOf(c));
       }
     }
     return out.append('"').toString();

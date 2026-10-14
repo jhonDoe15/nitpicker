@@ -45,7 +45,7 @@ def pinned = [
     googleJavaFormat: '1.25.2',
     jacoco          : '0.8.12',
     checkstyle      : '10.21.1',
-    lizard          : '1.24.1', // not run for Java; the Python preset reads this pin (python-crap.mjs)
+    lizard          : '1.24.1',
     pitest          : '1.17.4',
     pitestJunit5    : '1.2.1',
     detekt          : '1.23.8',
