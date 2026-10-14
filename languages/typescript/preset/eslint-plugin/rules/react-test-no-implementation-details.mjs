@@ -29,14 +29,17 @@ function literalTypeName(node) {
     : undefined;
 }
 
-function staticName(node) {
+function plainName(node) {
   if (node.type === 'Identifier') {
     return node.name;
   }
-  if (node.type === 'TSAsExpression') {
-    return literalTypeName(node) ?? staticName(node.expression);
-  }
   return node.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
+}
+
+function staticName(node) {
+  return node.type === 'TSAsExpression'
+    ? (literalTypeName(node) ?? plainName(node.expression))
+    : plainName(node);
 }
 
 function memberName(node) {

@@ -17,7 +17,7 @@ function executedRoots(layout) {
   return layout.executedTestRoots ?? layout.testRoots;
 }
 
-export function expandLayoutRoots(entries, layout, testRootsOf = (value) => value.testRoots) {
+function expandLayoutRoots(entries, layout, testRootsOf = (value) => value.testRoots) {
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
     const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;
@@ -128,12 +128,10 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
           : projectLayeredTsconfig(extended, JSON.parse(text), { layout, projectDirectory });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
-    const rewritten = withEndToEndDom(
-      layoutTransform?.(text) ?? text,
-      name,
+    const rewritten = withEndToEndDom(layoutTransform?.(text) ?? text, name, {
       projectDirectory,
       layout,
-    );
+    });
     return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
   };
 }
@@ -159,7 +157,7 @@ function libsWithEndToEndDom(libs, projectDirectory, layout) {
   return hasEndToEnd && lacksDom ? [...libs, DOM_LIB] : undefined;
 }
 
-function withEndToEndDom(text, name, projectDirectory, layout) {
+function withEndToEndDom(text, name, { projectDirectory, layout }) {
   const config = JSON.parse(text);
   const lib = libsWithEndToEndDom(config.compilerOptions.lib, projectDirectory, layout);
   if (name !== 'tsconfig.quality.json' || lib === undefined) {

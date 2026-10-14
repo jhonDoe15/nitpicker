@@ -53,12 +53,24 @@ const transparentWrappers = new Set([
   'TSTypeAssertion',
 ]);
 
-function unwrap(node) {
-  let current = node;
-  while (current !== undefined && current !== null && transparentWrappers.has(current.type)) {
-    current = current.argument ?? current.expression;
+function innerExpression(node) {
+  if (transparentWrappers.has(node.type)) {
+    return node.argument ?? node.expression;
   }
-  return current;
+  const isDefault =
+    node.type === 'MemberExpression' && !node.computed && node.property.name === 'default';
+  return isDefault ? node.object : undefined;
+}
+
+function coreExpression(node) {
+  const chain = [node];
+  for (const current of chain) {
+    const inner = current ? innerExpression(current) : undefined;
+    if (inner !== undefined) {
+      chain.push(inner);
+    }
+  }
+  return chain.at(-1);
 }
 
 function loaderName(callee) {
@@ -84,14 +96,11 @@ function loadsReact(node) {
 }
 
 export function isReactExpression(node, names) {
-  const inner = unwrap(node);
-  if (inner?.type === 'Identifier') {
-    return names.has(inner.name);
+  const core = coreExpression(node);
+  if (core?.type === 'Identifier') {
+    return names.has(core.name);
   }
-  if (inner?.type === 'MemberExpression' && !inner.computed && inner.property.name === 'default') {
-    return isReactExpression(inner.object, names);
-  }
-  return loadsReact(inner);
+  return loadsReact(core);
 }
 
 function importedNames(statement) {
@@ -114,32 +123,24 @@ function children(node, visitorKeys) {
     .filter((child) => typeof child?.type === 'string');
 }
 
-function declarations(root, visitorKeys) {
-  const found = [];
-  const pending = [root];
-  while (pending.length > 0) {
-    const node = pending.pop();
-    found.push(node);
-    pending.push(...children(node, visitorKeys));
+function descendants(root, visitorKeys) {
+  const found = [root];
+  for (const node of found) {
+    found.push(...children(node, visitorKeys));
   }
   return found;
 }
 
 export function reactBindingNames(sourceCode, seed) {
-  const nodes = declarations(sourceCode.ast, sourceCode.visitorKeys);
+  const nodes = descendants(sourceCode.ast, sourceCode.visitorKeys);
   const names = new Set([...seed, ...nodes.flatMap(importedNames)]);
-  const declarators = nodes.filter(
-    (node) => node.type === 'VariableDeclarator' && node.id.type === 'Identifier',
-  );
-  let grew = true;
-  while (grew) {
-    const before = names.size;
-    for (const declarator of declarators) {
-      if (isReactExpression(declarator.init, names)) {
-        names.add(declarator.id.name);
-      }
+  const declarators = nodes
+    .filter((node) => node.type === 'VariableDeclarator' && node.id.type === 'Identifier')
+    .toSorted((left, right) => left.range[0] - right.range[0]);
+  for (const declarator of declarators) {
+    if (isReactExpression(declarator.init, names)) {
+      names.add(declarator.id.name);
     }
-    grew = names.size > before;
   }
   return names;
 }
