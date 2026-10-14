@@ -53,6 +53,8 @@ function git(...args) {
       GIT_AUTHOR_EMAIL: 'test@example.com',
       GIT_COMMITTER_NAME: 'test',
       GIT_COMMITTER_EMAIL: 'test@example.com',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
     },
   });
   if (result.status !== 0) {
