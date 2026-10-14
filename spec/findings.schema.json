@@ -82,6 +82,10 @@
         "existingCodeOnly": {
           "description": "When true, a finding on a line the change added is never held by the ratchet or matched to the base by identity: the code it points at is new.",
           "type": "boolean"
+        },
+        "pathIsFolder": {
+          "description": "When true, `path` is a folder: a base finding with no match at its own path is held at the folder most of its files were renamed to.",
+          "type": "boolean"
         }
       }
     },

@@ -347,6 +347,8 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
+- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
+  same way; each failure message spells out the entry that would lift it.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders; a missing one is
   ignored). Type checking, duplicate detection, dead-code analysis and the test-file lint scopes cover all
