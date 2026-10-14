@@ -26,7 +26,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`, legacy
-   entries, or weakened tests. If a finding seems wrong, stop and ask.
+   entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
+   `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
+   only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
 
 ## Write it this way
 
