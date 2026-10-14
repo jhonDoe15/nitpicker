@@ -9,7 +9,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 
 export const SHARED_BUILD_DIRECTORY_ENVIRONMENT = 'NITPICKER_SHARED_BUILD_DIRECTORY';
 

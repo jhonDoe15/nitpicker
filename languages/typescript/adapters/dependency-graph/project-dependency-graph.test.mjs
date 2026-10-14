@@ -2,12 +2,12 @@ import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../core/tooling/build-once.mjs';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { analyzeCoupling } from '../preset/coupling/analyze.mjs';
-import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
-import { analyzeEntryPoints } from '../preset/entry-points/analyze.mjs';
-import { defaultResolvedLayout } from '../preset/layout.mjs';
+import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../core/tooling/build-once/build-once.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { analyzeCoupling } from '../../preset/coupling/analyze.mjs';
+import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs';
+import { analyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
+import { defaultResolvedLayout } from '../../preset/layout.mjs';
 import { loadDependencyGraph } from './project-dependency-graph.mjs';
 
 const ALL_SOURCES = ['src/a.ts', 'src/b.ts', 'src/leaky.ts', 'test/a.test.ts', 'test/fixture.ts'];
