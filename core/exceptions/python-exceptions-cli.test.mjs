@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PYTHON_ANALYZER_NAME } from '../../languages/python/adapters/python-analyzer.mjs';
 import { RULE_IDS } from '../../shared/policy.mjs';
 import {
   commit,
@@ -45,6 +46,7 @@ describe('exceptions with "preset": "python"', () => {
       const failing = change('{ "preset": "python" }\n');
 
       expect(failing.exitCode, failing.text).toBe(1);
+      expect(failing.json('summary.json').tools[0].name).toBe(PYTHON_ANALYZER_NAME);
       expect(failing.json('new-findings.json').map(({ symbol }) => symbol)).toEqual([
         'Service.wide',
       ]);
