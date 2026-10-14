@@ -9,10 +9,24 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD categories for main and test sources.</description>
-  <rule ref="category/java/errorprone.xml"/>
+  <rule ref="category/java/errorprone.xml">
+    <exclude name="TestClassWithoutTestCases"/>
+  </rule>
+  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+    <properties>
+      <property name="testClassPattern"
+                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+    </properties>
+  </rule>
   <rule ref="category/java/bestpractices.xml">
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
+    <exclude name="UnitTestShouldIncludeAssert"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
+    <properties>
+      <property name="extraAssertMethodNames" value="andExpect"/>
+    </properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"
         message="Catch the specific exceptions this code can handle, not Exception, RuntimeException or NullPointerException. If a boundary must catch everything, add an exception for pmd/AvoidCatchingGenericException in nitpicker.config.json."/>
