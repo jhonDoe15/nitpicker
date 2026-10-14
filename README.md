@@ -45,6 +45,8 @@ Using a coding agent? Add the [agent snippet](docs/agents-snippet.md) to your `A
 
 ## Documentation
 
+- [Mindset](docs/mindset.md): what nitpicker enforces and why, including rules other tools call
+  noisy.
 - [Usage](docs/usage.md): the command line, reports, configuration, exceptions, caching and
   sharding in CI.
 - [TypeScript strict preset](docs/typescript-strict-preset.md): the rules, the project layout
