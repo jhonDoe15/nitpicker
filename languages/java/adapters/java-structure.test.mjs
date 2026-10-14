@@ -167,7 +167,7 @@ describe('Java file limits', () => {
       manifest,
       policy: {
         thresholds: { fileLines: 2, folderFiles: 2 },
-        exceptions: [{ rule: 'folder-files-limit', glob: 'src/test/java/**' }],
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/test/java/**'] }],
         exclude: ['src/main/java/gen/**'],
       },
     });

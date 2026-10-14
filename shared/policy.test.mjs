@@ -12,6 +12,7 @@ import {
   MINIMUM_BRANCH_COVERAGE,
   RULES,
   RULE_IDS,
+  canonicalRule,
   mutantRuleId,
   renderMessage,
 } from './policy.mjs';
@@ -77,5 +78,19 @@ describe('generated files', () => {
 
   it('no generated file is stale', () => {
     expect(staleFiles()).toEqual([]);
+  });
+});
+
+describe('canonicalRule', () => {
+  it.each([
+    ['function-lines-limit', 'function-lines-limit'],
+    ['structure/function-lines-limit', 'function-lines-limit'],
+    ['jacoco/changed-branch-coverage', 'changed-branch-coverage'],
+    ['dead-code/exports', 'exports'],
+    ['pmd/UnusedPrivateField', 'pmd/UnusedPrivateField'],
+    ['react-hooks/exhaustive-deps', 'react-hooks/exhaustive-deps'],
+    ['T201', 'T201'],
+  ])('%s names %s', (rule, expected) => {
+    expect(canonicalRule(rule)).toBe(expected);
   });
 });

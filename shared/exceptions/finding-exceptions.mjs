@@ -25,7 +25,7 @@ export function applyFindingExceptions(findings, exceptions = []) {
     (finding) =>
       !lifted.some(
         ({ rule, functionName, matchers }) =>
-          finding.rule === rule &&
+          (finding.rule === rule || `${finding.tool}/${finding.rule}` === rule) &&
           matchers.some((matcher) => matcher.test(finding.path)) &&
           (functionName === undefined || functionMatches(functionName, finding.symbol)),
       ),

@@ -1,11 +1,11 @@
 // The project config (`nitpicker.config.json`) rules that do not depend on a language: the file
 // name, the keys every preset honours and their validation. `core/config.mjs` adds the
-// TypeScript-only keys (`layout`, `exceptions`) and the preset gate on top of these.
+// TypeScript-only keys (`layout`, `tools`) and the preset gate on top of these.
 //
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
-import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES } from './policy.mjs';
+import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES, canonicalRule } from './policy.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -65,7 +65,10 @@ export function validateThresholds(thresholds) {
 
 /** Whether every `exceptions` entry lifts one of `rules` (the file limits a non-ESLint preset honours). */
 export function liftsOnlyRules(exceptions, rules) {
-  return Array.isArray(exceptions) && exceptions.every((entry) => rules.includes(entry?.rule));
+  return (
+    Array.isArray(exceptions) &&
+    exceptions.every((entry) => rules.includes(canonicalRule(String(entry?.rule))))
+  );
 }
 
 export function validateProjectRelativePath(value, name) {
@@ -113,14 +116,14 @@ function validateException(entry, label) {
 
 function validateFunction(entry, label) {
   if (entry.function === undefined) {
-    if (FUNCTION_REQUIRED_RULES.includes(entry.rule)) {
+    if (FUNCTION_REQUIRED_RULES.includes(canonicalRule(entry.rule))) {
       throw configError(
         `"${label}.function" is required for ${entry.rule}: name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
       );
     }
     return;
   }
-  if (!FUNCTION_EXCEPTION_RULES.includes(entry.rule)) {
+  if (!FUNCTION_EXCEPTION_RULES.includes(canonicalRule(entry.rule))) {
     throw configError(
       `"${label}.function" is only supported for these rules: ${FUNCTION_EXCEPTION_RULES.join(', ')}`,
     );

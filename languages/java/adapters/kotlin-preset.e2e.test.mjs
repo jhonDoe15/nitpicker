@@ -973,7 +973,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       git('checkout', '-q', 'one-way-banned');
       const exception = (testCase) => ({
         rule: testCase.rule,
-        glob: fixturePath(testCase, 'banned'),
+        paths: [fixturePath(testCase, 'banned')],
       });
       const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
         kotlinRuleCases.find((testCase) => testCase.id === id),

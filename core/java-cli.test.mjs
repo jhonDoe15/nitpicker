@@ -13,6 +13,7 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
+import { JAVA_TOOLS } from '../languages/java/adapters/gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../languages/java/adapters/kotlin-options.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
@@ -249,7 +250,7 @@ describe('nitpicker with "preset": "java"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the java preset does not have. Not supported with java: layout, exceptions, react, tools, except exceptions for ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}\n`,
       );
     });
   });
@@ -1001,21 +1002,7 @@ describe('Kotlin analyzer', () => {
     const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
 
     expect(analyzer.name).toBe('kotlin');
-    expect(analyzer.reportedTools).toEqual([
-      'pmd',
-      'spotbugs',
-      'google-java-format',
-      'jacoco',
-      'checkstyle',
-      'crap',
-      'duplicates',
-      'pit',
-      'structure',
-      'coupling',
-      'detekt',
-      'ktlint',
-      'ktfmt',
-    ]);
+    expect(analyzer.reportedTools).toEqual([...JAVA_TOOLS, 'detekt', 'ktlint', 'ktfmt']);
     expect(invocation.args.slice(-2)).toEqual(['--preset', 'kotlin']);
     expect(createJavaAnalyzer().name).toBe('java');
     expect(createJavaAnalyzer().reportedTools).not.toContain('detekt');

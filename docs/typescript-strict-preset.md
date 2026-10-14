@@ -126,7 +126,10 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   exported types. They are allowed there, never required; the Java preset follows the same rule for
   Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
-  and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions.
+  and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
+  mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
+  suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
+  gets a reviewed exception for that rule in `nitpicker.config.json`.
 
 ## Inside tests
 
