@@ -236,6 +236,30 @@ describe('readJavaFindings', () => {
     ]);
   });
 
+  it('keeps a PMD identity when a line number in its message moves', () => {
+    const identityOf = (line) => {
+      const root = projectWithReports();
+      const uri = `file://${path.join(root, 'src/main/java/demo/Bad.java')}`;
+      const text = `The String literal "x" appears 2 times in this file; the first occurrence is on line ${String(line)}`;
+      const result = {
+        ruleId: 'AvoidDuplicateLiterals',
+        message: { text },
+        locations: [
+          { physicalLocation: { artifactLocation: { uri }, region: { startLine: line } } },
+        ],
+      };
+      writeFileSync(
+        path.join(root, 'build/nitpicker/pmd.sarif'),
+        JSON.stringify({
+          runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results: [result] }],
+        }),
+      );
+      return readJavaFindings(root).findings.find(({ rule }) => rule === 'AvoidDuplicateLiterals');
+    };
+
+    expect(identityOf(4).identity).toBe(identityOf(9).identity);
+  });
+
   it('skips test sources the manifest does not list, but needs the main Checkstyle report', () => {
     const root = projectWithReports();
     const testFile = path.join(root, 'src/test/java/demo/BadTest.java');
