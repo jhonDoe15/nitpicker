@@ -122,7 +122,7 @@ const summarize = (findings) =>
 
 const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
 const exceptedConfig = (...exceptions) => ({
-  'nitpicker.config.json': `${JSON.stringify({ preset: 'python', disable: ['mutation'], python: { exceptions } })}\n`,
+  'nitpicker.config.json': `${JSON.stringify({ preset: 'python', disable: ['mutation'], exceptions })}\n`,
 });
 
 const roots = [];
@@ -356,7 +356,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       path: 'src/demo/pricing.py',
       identity: 'discount|-→+#1',
       message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'discount',
       location: { line: 2 },
@@ -533,7 +533,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       ]);
     });
 
-    it('passes the grown legacy function and the untested branchy one once python.exceptions names them', () => {
+    it('passes the grown legacy function and the untested branchy one once exceptions name them', () => {
       for (const branch of ['legacy-grown-excepted', 'untested-complex-excepted']) {
         const result = gate(project, branch);
 
@@ -949,7 +949,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
         rule: 'duplicate-clone',
         file: 'src/shop/domain/bulk.py',
         message:
-          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/shop/domain/bulk.py to "exclude" in nitpicker.config.json.',
+          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/shop/domain/bulk.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
   });
@@ -1084,7 +1084,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     );
   });
 
-  it('names the python.exceptions entry that accepts the untested branch', () => {
+  it('names the exceptions entry that accepts the untested branch', () => {
     const result = gate(project, 'edited');
 
     expect(
@@ -1100,7 +1100,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     ]);
   });
 
-  it('accepts the untested branch of the function a python.exceptions entry names, and no other', () => {
+  it('accepts the untested branch of the function an exceptions entry names, and no other', () => {
     const accepted = gate(project, 'edited-excepted');
     const other = gate(project, 'edited-wrong-function');
 
