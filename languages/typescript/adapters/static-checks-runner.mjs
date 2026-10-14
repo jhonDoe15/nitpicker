@@ -29,7 +29,7 @@ import { prettierPrecedence, readLayout, usesProjectConfig } from '../preset/hea
 import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
-import { loadDependencyGraph } from './project-dependency-graph.mjs';
+import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;

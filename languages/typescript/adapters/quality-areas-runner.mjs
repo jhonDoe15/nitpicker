@@ -34,7 +34,7 @@ import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
-import { loadDependencyGraph } from './project-dependency-graph.mjs';
+import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';

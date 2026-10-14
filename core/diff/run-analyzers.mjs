@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { analyzerName } from './report-model.mjs';
-import { withSharedBuildDirectory } from '../tooling/build-once.mjs';
+import { withSharedBuildDirectory } from '../tooling/build-once/build-once.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { headPolicyEnvironment } from '../../languages/typescript/preset/head-policy.mjs';
 

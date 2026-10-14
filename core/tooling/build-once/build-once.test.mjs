@@ -16,7 +16,7 @@ import {
   TransientBuildError,
   withSharedBuildDirectory,
 } from './build-once.mjs';
-import { removeTrackedTemporaryPaths } from './temporary-files.mjs';
+import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
 
 const ABSENT_PROCESS_ID = 2_147_483_646;
 const temporaryRoots = [];

@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../tooling/build-once.mjs';
-import { runScheduler } from './run-analyzers.mjs';
+import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from './build-once.mjs';
+import { runScheduler } from '../../diff/run-analyzers.mjs';
 
 const REPORT_DIRECTORY_SCRIPT = `
 const directory = process.env.${SHARED_BUILD_DIRECTORY_ENVIRONMENT};

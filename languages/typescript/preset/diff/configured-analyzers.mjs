@@ -16,8 +16,8 @@ const ANALYZER_RUNTIME_FILES = [
   'core/diff/run-analyzers.mjs',
 ];
 const PROJECT_DEPENDENCY_GRAPH_FILES = [
-  'languages/typescript/adapters/project-dependency-graph.mjs',
-  'core/tooling/build-once.mjs',
+  'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+  'core/tooling/build-once/build-once.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
