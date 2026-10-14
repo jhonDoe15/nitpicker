@@ -134,10 +134,11 @@ describe('fileFindings', () => {
 describe('fileFindings for SpotBugs', () => {
   const SPOTBUGS_MESSAGE =
     'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  const prefixOf = (tool) => (tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE);
   const found = (findings) =>
     findings.map(
-      (finding) =>
-        `${finding.tool} ${String(finding.location.line)}${finding.message.slice(finding.tool === 'pmd' ? MESSAGE.length : SPOTBUGS_MESSAGE.length)}`,
+      ({ tool, location, message }) =>
+        `${tool} ${String(location.line)}${message.slice(prefixOf(tool).length)}`,
     );
 
   it('reports every @SuppressFBWarnings, without the justification, and not inside comments or strings', () => {

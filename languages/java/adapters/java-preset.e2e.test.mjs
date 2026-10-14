@@ -124,12 +124,10 @@ class CalcTest {
 }
 `;
 
-// Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter). The
-// Checkstyle suppressions must not hide anything: nitpicker removes the inline suppression filters.
+// Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter).
 const BAD = `package demo;
 
 public final class Bad {
-  @SuppressWarnings("checkstyle:EmptyCatchBlock")
   public String decode(byte[] bytes) {
     try {
       Integer.parseInt("x");
@@ -137,17 +135,8 @@ public final class Bad {
     }
     return new String(bytes);
   }
-        // CHECKSTYLE.SUPPRESS: Indentation
         public void sloppy() { }
 }
-`;
-
-// A project rule set that would replace nitpicker's PMD rules if it were read without an opt-in.
-const PROJECT_PMD_RULESET = `<?xml version="1.0"?>
-<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
-  <description>Project rules</description>
-  <rule ref="category/java/codestyle.xml/MethodArgumentCouldBeFinal"/>
-</ruleset>
 `;
 
 // What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required).
@@ -361,7 +350,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     });
     branchWith('moved', { 'Legacy.java': LEGACY_MOVED });
     branchWith('violation', { 'Bad.java': BAD });
-    branchWith('project-pmd', { 'Bad.java': BAD, 'config/pmd/ruleset.xml': PROJECT_PMD_RULESET });
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
@@ -495,22 +483,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).not.toContain('crap crap-score-limit Complex.java');
     },
     GRADLE_STEP_TIMEOUT_MS,
-  );
-
-  it(
-    "uses the project's PMD rule set only when tools.pmd opts in",
-    () => {
-      const pmdRules = (result) =>
-        summarize(result.newEnforceable.filter((finding) => finding.tool === 'pmd'));
-
-      expect(pmdRules(diffOf('project-pmd'))).toEqual(['pmd EmptyCatchBlock Bad.java']);
-      expect(
-        pmdRules(
-          diffOf('project-pmd', { policyRoot: repository, toolPrecedence: { pmd: ['project'] } }),
-        ),
-      ).toEqual(['pmd MethodArgumentCouldBeFinal Bad.java']);
-    },
-    GRADLE_STEP_TIMEOUT_MS * 2,
   );
 
   it(

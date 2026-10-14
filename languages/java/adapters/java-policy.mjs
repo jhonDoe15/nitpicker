@@ -62,27 +62,15 @@ function validateJavaExceptionRule(rule, label) {
   }
 }
 
-export function configureJavaAnalyzer(
-  analyzer,
-  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {}, tools = {} },
-) {
-  const toolArguments = [...PROJECT_TOOL_CONFIGS.keys()]
-    .filter((tool) => tools[tool] !== undefined)
-    .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]);
+function javaAdapterArguments({
+  thresholds = {},
+  exclude = [],
+  exceptions = [],
+  kotlin = {},
+  tools = {},
+}) {
   const fileLimits = fileLimitThresholds(thresholds);
-  if (
-    fileLimits === undefined &&
-    thresholds.crapLimit === undefined &&
-    exclude.length === 0 &&
-    exceptions.length === 0 &&
-    legacyInventory === undefined &&
-    kotlin.formatter === undefined &&
-    kotlin.detektConfig === undefined &&
-    toolArguments.length === 0
-  ) {
-    return analyzer;
-  }
-  const adapterArguments = [
+  return [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
@@ -91,8 +79,18 @@ export function configureJavaAnalyzer(
     ),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
-    ...toolArguments,
+    ...[...PROJECT_TOOL_CONFIGS.keys()]
+      .filter((tool) => tools[tool] !== undefined)
+      .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
+}
+
+export function configureJavaAnalyzer(analyzer, options) {
+  const { exceptions = [], legacyInventory, tools = {} } = options;
+  const adapterArguments = javaAdapterArguments(options);
+  if (adapterArguments.length === 0 && exceptions.length === 0 && legacyInventory === undefined) {
+    return analyzer;
+  }
   const configurationHash = hashWithArguments(analyzer.configurationHash, adapterArguments);
   const projectConfigs = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
