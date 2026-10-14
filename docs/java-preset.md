@@ -350,8 +350,8 @@ resolved plus a new finding, as in the TypeScript check.
   over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
   (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
   `function-parameters-limit`) and the same messages (`{name} has {value} {metric}; limit is
-{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript, followed by the `exceptions` entry that accepts the method (`To accept it, add an
-entry to "exceptions" in nitpicker.config.json: {...}`). `shared/policy.mjs` marks the four rules as enforced for Java; the
+{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript, followed by the `exceptions` entry that accepts the method (`If this is intended, add {...} to
+"exceptions" in nitpicker.config.json.`). `shared/policy.mjs` marks the four rules as enforced for Java; the
   catalog in `spec/checks.md` is generated from it.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
