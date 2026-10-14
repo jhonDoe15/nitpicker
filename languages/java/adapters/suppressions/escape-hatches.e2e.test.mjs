@@ -125,7 +125,9 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
           'whitespace.EmptyLineSeparatorCheck',
         ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
         'google-java-format format Bad.java',
+        'pit mutant-nocoverage Bad.java',
         'pmd EmptyCatchBlock Bad.java',
+        'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
