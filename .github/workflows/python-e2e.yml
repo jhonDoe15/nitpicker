@@ -33,7 +33,7 @@ jobs:
   python-e2e:
     runs-on: ubuntu-latest
     # The suite installs pytest, mutmut and import-linter into throwaway environments and runs mutation
-    # testing; it takes 10 to 25 minutes.
+    # testing; it takes 8 to 25 minutes.
     timeout-minutes: 45
     env:
       # The suite's own `uv pip install` calls resolve to these versions too.
