@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import {
@@ -8,19 +8,15 @@ import {
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
-import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
-export const PROJECT_TOOL_CONFIGS = new Map([
-  ['pmd', 'config/pmd/ruleset.xml'],
-  ['checkstyle', 'config/checkstyle/checkstyle.xml'],
-]);
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
-  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
 };
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
@@ -92,17 +88,21 @@ export function configureJavaAnalyzer(analyzer, options) {
     return analyzer;
   }
   const configurationHash = hashWithArguments(analyzer.configurationHash, adapterArguments);
-  const projectConfigs = [...PROJECT_TOOL_CONFIGS]
+  const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
     .filter(([tool]) => tools[tool]?.precedence.includes('project'))
-    .map(([, file]) => file);
+    .map(([, file]) => path.dirname(file));
   const configured = {
     ...analyzer,
     configurationHash,
-    ...(projectConfigs.length === 0
+    ...(projectConfigDirectories.length === 0
       ? {}
       : {
           resolveConfigurationHash: (policyRoot) =>
-            hashWithProjectConfigs(configurationHash, policyRoot, projectConfigs),
+            hashWithProjectConfigDirectories(
+              configurationHash,
+              policyRoot,
+              projectConfigDirectories,
+            ),
         }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -134,13 +134,24 @@ function isLifted(finding, lifted) {
   );
 }
 
-function hashWithProjectConfigs(configurationHash, policyRoot, projectConfigs) {
+function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
   const hash = createHash('sha256').update(configurationHash);
-  for (const file of projectConfigs) {
-    const absolute = path.join(policyRoot, file);
-    hash.update(`${file}\0`).update(existsSync(absolute) ? readFileSync(absolute) : '');
+  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
+    const content = readFileSync(path.join(policyRoot, file));
+    hash.update(`${file}\0${String(content.length)}\0`).update(content);
   }
   return hash.digest('hex');
+}
+
+function filesUnder(root, directory) {
+  const absolute = path.join(root, directory);
+  if (!existsSync(absolute)) {
+    return [];
+  }
+  return readdirSync(absolute, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)))
+    .sort();
 }
 
 function fileLimitThresholds(thresholds) {

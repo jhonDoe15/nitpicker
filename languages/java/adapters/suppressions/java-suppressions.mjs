@@ -7,9 +7,19 @@ const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
 const LITERALS_AND_COMMENTS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
-const SUPPRESS_WARNINGS = /@(?:java\.lang\.)?SuppressWarnings\s*\(/g;
-const SUPPRESS_FB_WARNINGS =
-  /@(?:[\w.]*\.)?SuppressFBWarnings\b|@edu\.umd\.cs\.findbugs\.annotations\.SuppressWarnings\b/g;
+const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\(/g;
+const JAVA_LANG_SUPPRESS_WARNINGS = /@\s*java\s*\.\s*lang\s*\.\s*SuppressWarnings\s*\(/g;
+const BARE_SUPPRESS_WARNINGS = /@\s*SuppressWarnings\b/g;
+const QUALIFIED_ANNOTATION = String.raw`@\s*(?:\w+\s*\.\s*)*`;
+const SPOTBUGS_PACKAGE = String.raw`edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*`;
+const SUPPRESS_FB_WARNINGS = new RegExp(
+  [
+    String.raw`${QUALIFIED_ANNOTATION}\w*SuppressFBWarnings\b`,
+    String.raw`${QUALIFIED_ANNOTATION}\w+SuppressWarnings\b`,
+    String.raw`@\s*${SPOTBUGS_PACKAGE}SuppressWarnings\b`,
+  ].join('|'),
+  'g',
+);
 const SPOTBUGS_SUPPRESS_WARNINGS_IMPORT =
   /\bimport\s+edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*(?:SuppressWarnings|\*)\s*;/;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
@@ -52,7 +62,10 @@ export function fileFindings(source, filePath) {
   const occurrences = new Map();
   const spotbugsOwnsSuppressWarnings = SPOTBUGS_SUPPRESS_WARNINGS_IMPORT.test(views.code);
   const suppressions = [
-    ...(spotbugsOwnsSuppressWarnings ? [] : pmdSuppressions(views)),
+    ...pmdSuppressions(
+      views,
+      spotbugsOwnsSuppressWarnings ? JAVA_LANG_SUPPRESS_WARNINGS : SUPPRESS_WARNINGS,
+    ),
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
@@ -70,13 +83,16 @@ export function fileFindings(source, filePath) {
   });
 }
 
-function pmdSuppressions(views) {
-  return annotationSuppressions(views).map((suppression) => ({ tool: 'pmd', ...suppression }));
+function pmdSuppressions(views, annotations) {
+  return annotationSuppressions(views, annotations).map((suppression) => ({
+    tool: 'pmd',
+    ...suppression,
+  }));
 }
 
 function spotbugsSuppressions({ code, withoutComments }, includeSuppressWarnings) {
   const annotations = includeSuppressWarnings
-    ? new RegExp(`${SUPPRESS_FB_WARNINGS.source}|${SUPPRESS_WARNINGS.source}`, 'g')
+    ? new RegExp(`${SUPPRESS_FB_WARNINGS.source}|${BARE_SUPPRESS_WARNINGS.source}`, 'g')
     : SUPPRESS_FB_WARNINGS;
   return [...code.matchAll(annotations)].map((match) => ({
     tool: 'spotbugs',
@@ -116,8 +132,8 @@ function blank(text) {
   return text.replace(/[^\n]/g, ' ');
 }
 
-function annotationSuppressions({ code, withoutComments }) {
-  return [...code.matchAll(SUPPRESS_WARNINGS)].flatMap((match) => {
+function annotationSuppressions({ code, withoutComments }, annotations) {
+  return [...code.matchAll(annotations)].flatMap((match) => {
     const start = match.index + match[0].length;
     const end = code.indexOf(')', start);
     const values = [...withoutComments.slice(start, end).matchAll(STRING_LITERAL)].map(
