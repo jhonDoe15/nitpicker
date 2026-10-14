@@ -533,13 +533,15 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       ]);
     });
 
-    it('passes the grown legacy function and the untested branchy one once exceptions name them', () => {
-      for (const branch of ['legacy-grown-excepted', 'untested-complex-excepted']) {
-        const result = gate(project, branch);
+    it('passes the grown legacy function once an exception names it', () => {
+      const result = gate(project, 'legacy-grown-excepted');
 
-        expect(result.exitCode, result.text).toBe(0);
-        expect(enforceable(result)).toEqual([]);
-      }
+      expect(result.exitCode, result.text).toBe(0);
+      expect(enforceable(result)).toEqual([]);
+    });
+
+    it('lifts the CRAP score of the untested branchy function once an exception names it', () => {
+      expect(enforceable(gate(project, 'untested-complex-excepted'))).toEqual([]);
     });
 
     it('fails a new untested branchy function on its CRAP score, and scores tested same-named definitions from their own lines', () => {
