@@ -18,6 +18,7 @@ import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
+import { validateTools } from './tooling/tool-settings.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -40,13 +41,6 @@ const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints']
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
-const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
-const GRADLE_TOOL_SETTING_KEYS = new Map([
-  ['pmd', ['precedence']],
-  ['checkstyle', ['precedence']],
-]);
-const SINGLE_CONFIG_TOOLS = ['checkstyle'];
-const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 export function loadConfig(projectRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
@@ -133,56 +127,7 @@ function validateOptional(config) {
     validateCustomAnalyzers(config.analyzers);
   }
   if (config.tools !== undefined) {
-    validateTools(
-      config.tools,
-      GRADLE_PRESETS.includes(config.preset) ? GRADLE_TOOL_SETTING_KEYS : TOOL_SETTING_KEYS,
-    );
-  }
-}
-
-function validateTools(tools, toolSettingKeys) {
-  if (!isPlainObject(tools)) {
-    throw configError('"tools" must be an object keyed by tool name');
-  }
-  for (const [name, settings] of Object.entries(tools)) {
-    validateToolSettings(name, settings, toolSettingKeys);
-  }
-}
-
-function validateToolSettings(name, settings, toolSettingKeys) {
-  const allowedKeys = toolSettingKeys.get(name);
-  if (allowedKeys === undefined) {
-    throw configError(
-      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
-    );
-  }
-  if (!isPlainObject(settings)) {
-    throw configError(`"tools.${name}" must be an object`);
-  }
-  const unknown = Object.keys(settings).filter((key) => !allowedKeys.includes(key));
-  if (unknown.length > 0) {
-    throw configError(
-      `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
-    );
-  }
-  validatePrecedence(settings.precedence, name);
-  if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
-    throw configError(
-      `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
-    );
-  }
-}
-
-function validatePrecedence(precedence, name) {
-  const isValid =
-    Array.isArray(precedence) &&
-    precedence.length > 0 &&
-    precedence.every((layer) => PRECEDENCE_LAYERS.includes(layer)) &&
-    new Set(precedence).size === precedence.length;
-  if (!isValid) {
-    throw configError(
-      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once, highest precedence first. For example ["project", "nitpicker"] merges both and lets the project's config win`,
-    );
+    validateTools(config.tools, config.preset);
   }
 }
 
