@@ -50,16 +50,20 @@ export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyR
 }
 
 function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
-  const target = gradleTarget(projectRoot, gradle, [
-    '--console=plain',
-    '--quiet',
-    '--no-configuration-cache',
-    ...kotlinProperties(projectRoot, policy),
-    ...toolConfigProperties(projectRoot, policy),
-    '-I',
-    initScript,
-    'nitpickerJava',
-  ]);
+  const target = gradleTarget({
+    projectRoot,
+    configured: gradle,
+    args: [
+      '--console=plain',
+      '--quiet',
+      '--no-configuration-cache',
+      ...kotlinProperties(projectRoot, policy),
+      ...toolConfigProperties(projectRoot, policy),
+      '-I',
+      initScript,
+      'nitpickerJava',
+    ],
+  });
   const result = spawnSync(target.command, target.args, {
     cwd: projectRoot,
     encoding: 'utf8',
