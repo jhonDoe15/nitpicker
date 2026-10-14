@@ -31,6 +31,7 @@ const CONFIGURATION_FILES = [
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
+  'shared/rules/file-limits.mjs',
   'shared/rules/crap.mjs',
   'languages/java/adapters/touched-rules.mjs',
   'shared/glob.mjs',
