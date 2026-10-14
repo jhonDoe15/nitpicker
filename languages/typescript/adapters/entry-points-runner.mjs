@@ -1,34 +1,24 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { toEntryPointDiffFindings } from './entry-points.mjs';
-import {
-  PACKAGE_ROOT,
-  resolveTool,
-  SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
+import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
+import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
+import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 
-const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
 
 try {
   const options = parseArguments(process.argv.slice(2));
-  const policyModules = await loadPolicyModules(options.policyRoot);
+  const { analyzeEntryPoints } = await loadPolicyModules(options.policyRoot);
   const layout = readLayout();
+  const graphFor = graphLoader(options, layout);
   const findings = options.sourceRoots.flatMap((sourceRoot) =>
-    toEntryPointDiffFindings(
-      policyModules.analyzeEntryPoints(
-        loadGraph(options, sourceRoot, { ...policyModules, layout }),
-        sourceRoot,
-        {
-          layout,
-        },
-      ),
-    ),
+    toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
   );
   process.stdout.write(`${JSON.stringify({ findings })}\n`);
 } catch (error) {
@@ -45,89 +35,31 @@ async function loadPolicyModules(policyRoot) {
     policyRoot,
     'languages/typescript/preset/entry-points/analyze.mjs',
   );
-  const dependencyGraphModule = path.join(
-    policyRoot,
-    'languages/typescript/preset/dependency-graph/cruise.mjs',
-  );
-  const [
-    { analyzeEntryPoints },
-    { EXCLUDED_PATH_PATTERN: excludedPathPattern, withProjectTypeScriptConfig },
-  ] = await Promise.all([
-    import(pathToFileURL(entryPointsModule).href),
-    import(pathToFileURL(dependencyGraphModule).href),
-  ]);
-  return {
-    analyzeEntryPoints,
-    excludedPathPattern,
-    withProjectTypeScriptConfig,
+  return import(pathToFileURL(entryPointsModule).href);
+}
+
+function graphLoader(options, layout) {
+  const graphs = new Map();
+  return (sourceRoot) => {
+    if (!existsSync(path.join(options.projectRoot, sourceRoot))) return { modules: [] };
+    const patterns = layout.graphRoots.includes(sourceRoot)
+      ? existingRoots(options.projectRoot, layout.graphRoots)
+      : [sourceRoot];
+    const key = patterns.join('\0');
+    if (!graphs.has(key)) {
+      graphs.set(key, loadModules(options, patterns));
+    }
+    return graphs.get(key);
   };
 }
 
-function loadGraph(options, sourceRoot, tools) {
-  if (!existsSync(path.join(options.projectRoot, sourceRoot))) return { modules: [] };
-  const result = runDependencyCruiser(options, sourceRoot, tools);
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    throw new Error(
-      `dependency-cruiser exited with ${String(result.status)}: ${
-        result.stderr.trim() || result.stdout.trim() || 'no diagnostic output'
-      }`,
-    );
-  }
-  return parseGraph(result.stdout);
-}
-
-function runDependencyCruiser(options, sourceRoot, tools) {
-  const { layout, excludedPathPattern, withProjectTypeScriptConfig } = tools;
-  const dependencyCruiser = resolveTool('dependency-cruiser', {
-    bin: 'bin/dependency-cruise.mjs',
-  }).binPath;
-  const config = path.join(
-    options.policyRoot,
-    'languages/typescript/preset/dependency-graph/config.mjs',
-  );
-  return withProjectTypeScriptConfig(
-    {
-      policyRoot: options.policyRoot,
-      projectRoot: options.projectRoot,
-      name: 'entry-points',
-    },
-    (environment) =>
-      spawnSync(
-        process.execPath,
-        [
-          dependencyCruiser,
-          sourceRoot,
-          '--config',
-          config,
-          '--exclude',
-          [excludedPathPattern, layout.excludePattern]
-            .filter((pattern) => pattern !== undefined)
-            .join('|'),
-          '--output-type',
-          'json',
-        ],
-        {
-          cwd: options.projectRoot,
-          env: { ...process.env, ...environment },
-          encoding: 'utf8',
-          maxBuffer: MAX_OUTPUT_BYTES,
-        },
-      ),
-  );
-}
-
-function parseGraph(stdout) {
-  let graph;
-  try {
-    graph = JSON.parse(stdout);
-  } catch (error) {
-    throw new Error('dependency-cruiser returned invalid JSON', {
-      cause: error,
-    });
-  }
+function loadModules(options, patterns) {
+  const graph = loadDependencyGraph({
+    projectRoot: options.projectRoot,
+    policyRoot: options.policyRoot,
+    patterns,
+    exclude: EXCLUDED_PATH_PATTERN,
+  });
   if (!Array.isArray(graph.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }

@@ -10,7 +10,6 @@ import {
   statSync,
   symlinkSync,
   unlinkSync,
-  writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -30,6 +29,7 @@ import { prettierPrecedence, readLayout, usesProjectConfig } from '../preset/hea
 import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
+import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -253,14 +253,6 @@ function runTypecheck(options) {
   }
 }
 
-function architectureExclusion(exclude, layoutPattern) {
-  const repeated =
-    exclude !== undefined && layoutPattern !== undefined && exclude.includes(layoutPattern);
-  return [exclude, repeated ? undefined : layoutPattern]
-    .filter((pattern) => pattern !== undefined)
-    .join('|');
-}
-
 function runArchitecture(options) {
   if (options.patterns.length === 0) {
     throw new Error('Architecture requires at least one --pattern');
@@ -269,34 +261,16 @@ function runArchitecture(options) {
   if (layout.projectCodeFiles(options.projectRoot).length === 0) return [];
   const patterns = existingRoots(options.projectRoot, options.patterns);
   if (patterns.length === 0) return [];
-  const generatedConfig = createArchitectureConfig(options);
-  try {
-    const arguments_ = [...patterns, '--config', generatedConfig.path, '--output-type', 'json'];
-    if (options.includeOnly !== undefined) {
-      arguments_.push('--include-only', options.includeOnly);
-    }
-    const exclusion = architectureExclusion(options.exclude, layout.excludePattern);
-    if (exclusion.length > 0) {
-      arguments_.push('--exclude', exclusion);
-    }
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'dependency-cruiser/bin/dependency-cruise.mjs',
-      arguments_,
-      acceptedStatuses: [0, 1],
-    });
-    let report;
-    try {
-      report = JSON.parse(result.stdout);
-    } catch (error) {
-      throw new Error('dependency-cruiser did not produce valid JSON', {
-        cause: error,
-      });
-    }
-    return normalizeArchitectureViolations(report, options.analyzerName);
-  } finally {
-    generatedConfig.remove();
-  }
+  const report = loadDependencyGraph({
+    projectRoot: options.projectRoot,
+    policyRoot: options.policyRoot,
+    liveProjectRoot: options.liveProjectRoot,
+    patterns,
+    exclude: options.exclude,
+    includeOnly: options.includeOnly,
+    configRelativePath: options.configRelativePath,
+  });
+  return normalizeArchitectureViolations(report, options.analyzerName);
 }
 
 export function normalizeTypeScriptDiagnostics({
@@ -390,53 +364,6 @@ function canonicalCycle(value, context) {
   );
   const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
   return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
-}
-
-function createArchitectureConfig(options) {
-  const policyConfig = policyFile(options, options.configRelativePath);
-  const wrapperConfig = path.join(
-    options.projectRoot,
-    '.nitpicker-diff-dependency-cruiser.config.mjs',
-  );
-  if (existsSync(wrapperConfig)) {
-    throw new Error('Temporary architecture policy path already exists');
-  }
-  const projectConfig = linkPolicyFile(
-    policyFile(
-      options,
-      path.posix.join(path.posix.dirname(options.configRelativePath), 'tsconfig.quality.json'),
-    ),
-    path.join(options.projectRoot, '.nitpicker-diff-tsconfig.json'),
-    layoutTransformFor('tsconfig.quality.json', readLayout()),
-  );
-  trackTemporaryPath(wrapperConfig);
-  try {
-    writeFileSync(
-      wrapperConfig,
-      [
-        `import policy from ${JSON.stringify(pathToFileURL(policyConfig).href)};`,
-        'export default {',
-        '  ...policy,',
-        '  options: {',
-        '    ...policy.options,',
-        `    tsConfig: { ...policy.options?.tsConfig, fileName: ${JSON.stringify(projectConfig.targetPath)} },`,
-        '  },',
-        '};',
-        '',
-      ].join('\n'),
-      { flag: 'wx' },
-    );
-  } catch (error) {
-    projectConfig.remove();
-    throw error;
-  }
-  return {
-    path: wrapperConfig,
-    remove() {
-      unlinkSync(wrapperConfig);
-      projectConfig.remove();
-    },
-  };
 }
 
 function installTypeScriptConfig(options) {

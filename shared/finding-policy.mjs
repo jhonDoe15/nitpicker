@@ -8,6 +8,14 @@ export function findingPaths(finding) {
   return partner === undefined ? [finding.path] : [finding.path, partner];
 }
 
+function isLifted(finding, lifted) {
+  const printedRule = `${finding.tool}/${finding.rule}`;
+  return lifted.some(
+    ({ rule, matcher }) =>
+      (rule === finding.rule || rule === printedRule) && matchesAny(matcher, finding),
+  );
+}
+
 function matchesAny(matcher, finding) {
   return findingPaths(finding).some((candidate) => matcher.test(candidate));
 }
@@ -29,8 +37,7 @@ export function applyFindingPolicy(
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
     (finding) =>
-      !excluders.some((matcher) => matchesAny(matcher, finding)) &&
-      !lifted.some(({ rule, matcher }) => finding.rule === rule && matchesAny(matcher, finding)),
+      !excluders.some((matcher) => matchesAny(matcher, finding)) && !isLifted(finding, lifted),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;
