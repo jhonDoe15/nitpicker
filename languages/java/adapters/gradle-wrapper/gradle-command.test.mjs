@@ -1,11 +1,12 @@
 import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { gradleCommand, spawnTarget } from './gradle-command.mjs';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { gradleTarget } from './gradle-command.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
 
 const roots = [];
+let previousGradle;
 
 function project(files = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-')));
@@ -19,59 +20,89 @@ function project(files = {}) {
 
 const wrapper = (text = '#!/bin/sh\nexit 0\n') => ({ gradlew: { text, mode: 0o755 } });
 
+beforeEach(() => {
+  previousGradle = process.env.NITPICKER_GRADLE;
+  delete process.env.NITPICKER_GRADLE;
+});
+
 afterEach(() => {
+  if (previousGradle === undefined) {
+    delete process.env.NITPICKER_GRADLE;
+  } else {
+    process.env.NITPICKER_GRADLE = previousGradle;
+  }
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-describe.skipIf(process.platform === 'win32')('gradleCommand', () => {
+describe.skipIf(process.platform === 'win32')('gradleTarget', () => {
+  const args = ['--quiet', '-I', 'init.gradle'];
+  const plain = (command, commandArgs = args) => ({ command, args: commandArgs, shell: false });
+
   it('prefers the command that was configured', () => {
-    expect(gradleCommand(project(wrapper()), './my-gradle')).toBe('./my-gradle');
+    expect(gradleTarget(project(wrapper()), './my-gradle', args)).toEqual(plain('./my-gradle'));
   });
 
   it('uses the executable wrapper of the project, as an absolute path', () => {
     const root = project(wrapper());
 
-    expect(gradleCommand(root, undefined)).toBe(path.join(root, 'gradlew'));
-    expect(gradleCommand(root, '')).toBe(path.join(root, 'gradlew'));
+    expect(gradleTarget(root, undefined, args)).toEqual(plain(path.join(root, 'gradlew')));
+    expect(gradleTarget(root, '', args)).toEqual(plain(path.join(root, 'gradlew')));
   });
 
-  it('falls back to gradle on the PATH without an executable wrapper', () => {
-    expect(gradleCommand(project(), undefined)).toBe('gradle');
-    expect(gradleCommand(project({ gradlew: { text: 'x', mode: 0o644 } }), undefined)).toBe(
-      'gradle',
+  it('runs a wrapper without the executable bit through sh', () => {
+    const root = project({ gradlew: { text: '#!/bin/sh\nexit 0\n', mode: 0o644 } });
+
+    expect(gradleTarget(root, undefined, args)).toEqual(
+      plain('sh', [path.join(root, 'gradlew'), ...args]),
     );
+  });
+
+  it('falls back to gradle on the PATH without a wrapper', () => {
+    expect(gradleTarget(project(), undefined, args)).toEqual(plain('gradle'));
   });
 
   it('does not take a directory for the wrapper', () => {
     const root = project();
     mkdirSync(path.join(root, 'gradlew'));
 
-    expect(gradleCommand(root, undefined)).toBe('gradle');
+    expect(gradleTarget(root, undefined, args)).toEqual(plain('gradle'));
   });
 });
 
-describe('gradleCommand on Windows', () => {
-  it('uses gradlew.bat when it exists', () => {
+describe('gradleTarget on Windows', () => {
+  const args = ['-I', 'C:\\a b\\init.gradle'];
+
+  it('runs gradlew.bat through a shell with quoted words', () => {
     const root = project({ 'gradlew.bat': { text: '@echo off\n' } });
 
-    expect(gradleCommand(root, undefined, 'win32')).toBe(path.join(root, 'gradlew.bat'));
-    expect(gradleCommand(project(), undefined, 'win32')).toBe('gradle');
-    expect(gradleCommand(root, 'gradle.exe', 'win32')).toBe('gradle.exe');
+    expect(gradleTarget(root, undefined, args, 'win32')).toEqual({
+      command: `"${path.join(root, 'gradlew.bat')}"`,
+      args: ['"-I"', '"C:\\a b\\init.gradle"'],
+      shell: true,
+    });
   });
-});
 
-describe('spawnTarget', () => {
-  it('starts a program as it is and a batch file through a shell with quoted words', () => {
-    expect(spawnTarget('/p/gradlew', ['--quiet'])).toEqual({
-      command: '/p/gradlew',
-      args: ['--quiet'],
+  it('runs the gradle fallback through a shell, since it is gradle.bat', () => {
+    expect(gradleTarget(project(), undefined, args, 'win32')).toEqual({
+      command: 'gradle',
+      args,
+      shell: true,
+    });
+  });
+
+  it('starts a configured program as it is and a configured batch file through a shell', () => {
+    const root = project({ 'gradlew.bat': { text: '@echo off\n' } });
+
+    expect(gradleTarget(root, 'gradle.exe', args, 'win32')).toEqual({
+      command: 'gradle.exe',
+      args,
       shell: false,
     });
-    expect(spawnTarget('C:\\my project\\gradlew.bat', ['-I', 'C:\\a b\\init.gradle'])).toEqual({
-      command: '"C:\\my project\\gradlew.bat"',
-      args: ['"-I"', '"C:\\a b\\init.gradle"'],
+    expect(gradleTarget(root, 'C:\\my project\\gradle.cmd', ['-q'], 'win32')).toEqual({
+      command: '"C:\\my project\\gradle.cmd"',
+      args: ['"-q"'],
       shell: true,
     });
   });
@@ -83,6 +114,14 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
 
   it('runs the wrapper of the analyzed project when no command is configured', () => {
     const root = project(wrapper(failing));
+
+    expect(messageOf(root, { gradle: undefined })).toBe(
+      `Java preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+    );
+  });
+
+  it('runs a wrapper without the executable bit through sh', () => {
+    const root = project({ gradlew: { text: failing, mode: 0o644 } });
 
     expect(messageOf(root, { gradle: undefined })).toBe(
       `Java preset failed in ${root}: ran ${root}/gradlew in ${root}`,

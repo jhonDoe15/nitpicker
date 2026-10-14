@@ -4,23 +4,27 @@ import path from 'node:path';
 const EXECUTABLE_BITS = 0o111;
 const WINDOWS_SCRIPT = /\.(?:bat|cmd)$/iu;
 
-export function gradleCommand(projectRoot, configured, platform = process.platform) {
+export function gradleTarget(projectRoot, configured, args, platform = process.platform) {
   if (configured) {
-    return configured;
+    return spawnTarget(configured, args);
   }
-  const wrapper = path.join(projectRoot, platform === 'win32' ? 'gradlew.bat' : 'gradlew');
-  return isRunnable(wrapper, platform) ? wrapper : 'gradle';
-}
-
-function isRunnable(file, platform) {
   if (platform === 'win32') {
-    return existsSync(file);
+    const wrapper = path.join(projectRoot, 'gradlew.bat');
+    return existsSync(wrapper)
+      ? spawnTarget(wrapper, args)
+      : { command: 'gradle', args, shell: true };
   }
-  const stat = statSync(file, { throwIfNoEntry: false });
-  return stat !== undefined && stat.isFile() && (stat.mode & EXECUTABLE_BITS) !== 0;
+  const wrapper = path.join(projectRoot, 'gradlew');
+  const stat = statSync(wrapper, { throwIfNoEntry: false });
+  if (stat === undefined || !stat.isFile()) {
+    return { command: 'gradle', args, shell: false };
+  }
+  return (stat.mode & EXECUTABLE_BITS) === 0
+    ? { command: 'sh', args: [wrapper, ...args], shell: false }
+    : { command: wrapper, args, shell: false };
 }
 
-export function spawnTarget(command, args) {
+function spawnTarget(command, args) {
   if (!WINDOWS_SCRIPT.test(command)) {
     return { command, args, shell: false };
   }
