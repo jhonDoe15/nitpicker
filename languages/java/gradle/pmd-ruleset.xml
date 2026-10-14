@@ -14,8 +14,6 @@
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
   </rule>
-  <!-- Broad catches hide the failure the code did not expect; the TypeScript and Python presets
-       forbid them too. -->
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"
         message="Catch the specific exceptions this code can handle, not Exception, RuntimeException or NullPointerException. If a boundary must catch everything, add an exception for pmd/AvoidCatchingGenericException in nitpicker.config.json."/>
 </ruleset>

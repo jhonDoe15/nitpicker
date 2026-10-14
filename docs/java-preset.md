@@ -229,9 +229,10 @@ Notes on the glue in `java-reports.mjs`:
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` (main sources
-  only). `ignoreFailures` is on and the XML report is written to `build/nitpicker/checkstyle.xml`;
-  the HTML report is off.
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` and
+  `checkstyleTest`. `ignoreFailures` is on and the XML reports are written to
+  `build/nitpicker/checkstyle.xml` (main sources) and `build/nitpicker/checkstyle-test.xml` (test
+  sources, absent without any); the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
@@ -414,11 +415,12 @@ resolved plus a new finding, as in the TypeScript check.
 
 A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
 Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/gradle/spring-ruleset.xml),
-added to its PMD run, next to the PMD categories (and the project's own `config/pmd/ruleset.xml` when
+added to its PMD run, next to nitpicker's rule set `pmd-ruleset.xml` (and the project's own `config/pmd/ruleset.xml` when
 `tools.pmd.precedence` lists `"project"` too). Every
-project's PMD run now gets the compile classpath and the main classes as its auxiliary classpath
-(`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and supertype names exactly;
-`nitpickerPmd` therefore compiles the main classes first. The manifest records `spring` and the
+project's PMD run now gets the main and test compile classpaths and the main and test classes as
+its auxiliary classpath (`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and
+supertype names exactly; `nitpickerPmd` therefore compiles the main and test classes first, and a
+test compile error stops it. The manifest records `spring` and the
 main `resourceRoots`.
 
 Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
