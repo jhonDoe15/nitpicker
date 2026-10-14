@@ -45,6 +45,7 @@ export function readJavaFindings(
     reportRoot,
     manifest,
     sourceRoots: manifest.sourceRoots ?? [],
+    lintedRoots: [...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])],
     roots: projectRoots(projectRoot),
     kotlin,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
@@ -72,10 +73,7 @@ export function readJavaFindings(
         kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, [
-        ...context.sourceRoots,
-        ...(manifest.testSourceRoots ?? []),
-      ]),
+      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
     ],
   };
