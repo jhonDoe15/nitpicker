@@ -16,9 +16,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs Gradle on the merge base and on head, needs `gradle` on the PATH (or
-   `NITPICKER_GRADLE=./gradlew`) and `lizard==1.24.1` installed, even in a Kotlin-only project. It
-   takes minutes and prints a progress line for each slow analyzer.
+   ktfmt. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
+   is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
+   and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.
