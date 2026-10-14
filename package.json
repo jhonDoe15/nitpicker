@@ -1,14 +1,18 @@
 {
   "name": "nitpicker",
   "version": "0.1.0-rc.1",
-  "description": "A quality gate for code written by coding agents. It fails a change only for the problems that change introduces.",
+  "description": "A quality gate for code written by coding agents. It narrows each language to one allowed way of doing each thing and fails a change only for the problems it adds.",
   "keywords": [
     "quality-gate",
     "code-quality",
     "lint",
     "coding-agents",
     "typescript",
+    "javascript",
+    "react",
+    "python",
     "java",
+    "kotlin",
     "mutation-testing",
     "eslint"
   ],
