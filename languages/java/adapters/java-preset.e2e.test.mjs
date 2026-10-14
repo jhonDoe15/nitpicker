@@ -304,19 +304,17 @@ const repeated = (count, entry) => Array(count).fill(entry);
 let repository;
 const sourceDirectory = 'src/main/java/demo';
 
-const git = (...args) => runGitIn(repository, ...args);
+function git(...args) {
+  runGitIn(repository, ...args);
+}
 
-const branchWith = (name, files) =>
-  commitBranch(
-    repository,
-    name,
-    Object.fromEntries(
-      Object.entries(files).map(([file, content]) => [
-        file.includes('/') ? file : path.join(sourceDirectory, file),
-        content,
-      ]),
-    ),
-  );
+function branchWith(name, files) {
+  const rooted = Object.entries(files).map(([file, content]) => [
+    file.includes('/') ? file : path.join(sourceDirectory, file),
+    content,
+  ]);
+  commitBranch(repository, name, Object.fromEntries(rooted));
+}
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
