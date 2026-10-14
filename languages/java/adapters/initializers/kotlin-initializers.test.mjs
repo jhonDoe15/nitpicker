@@ -48,7 +48,7 @@ function entry(name, start, end, extra = {}) {
   };
 }
 
-const INIT = entry('Boot.<init#1>', 4, 8, { initializer: true, complexity: 2 });
+const INIT = entry('Boot.<init>', 4, 8, { initializer: true, complexity: 2 });
 const TABLE = entry('Boot.table', 10, 12, { initializer: true, complexity: 2 });
 const FILES = [{ file: FILE, package: 'demo', classes: ['demo.Boot'] }];
 
@@ -100,7 +100,7 @@ describe('CRAP of init blocks and property initializers', () => {
     ];
 
     expect(crap([INIT, TABLE], jacoco(missed))).toEqual([
-      'crap-score-limit Boot.<init#1>: Boot.<init#1> has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function.',
+      'crap-score-limit Boot.<init>: Boot.<init> has CRAP 6.00; score must be below 3. Test its uncovered branches, or split a branchy part into its own function.',
     ]);
   });
 
@@ -114,7 +114,7 @@ describe('CRAP of init blocks and property initializers', () => {
 
   it('reports unknown coverage for an initializer whose lines JaCoCo does not list', () => {
     expect(crap([INIT, TABLE], jacoco([sourceLine(10, 1, 0), sourceLine(11, 2, 0)]))).toEqual([
-      'crap-coverage-unknown Boot.<init#1>: Boot.<init#1> has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+      'crap-coverage-unknown Boot.<init>: Boot.<init> has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
     ]);
   });
 
@@ -151,22 +151,122 @@ describe('structure limits of init blocks and property initializers', () => {
     temporaryRoots.push(root);
     mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
     writeFileSync(path.join(root, FILE), SOURCE);
-    const wide = entry('Boot.<init#2>', 4, 90, { initializer: true, statements: 25 });
+    const wide = entry('Boot.<init>', 4, 90, { initializer: true, statements: 25 });
 
     const findings = readKotlinStructureFindings({ functions: [wide], files: FILES }, root);
 
     expect(findings.map(({ rule, symbol, message }) => ({ rule, symbol, message }))).toEqual([
       {
         rule: 'function-lines-limit',
-        symbol: 'Boot.<init#2>',
-        message: 'Boot.<init#2> has 87 lines; limit is 50',
+        symbol: 'Boot.<init>',
+        message: 'Boot.<init> has 87 lines; limit is 50',
       },
       {
         rule: 'function-statements-limit',
-        symbol: 'Boot.<init#2>',
+        symbol: 'Boot.<init>',
         message:
-          'Boot.<init#2> has 25 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+          'Boot.<init> has 25 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
       },
+    ]);
+  });
+});
+
+describe('identity of init blocks', () => {
+  const NESTED = { initializer: true, maxControlNesting: 3, complexity: 4 };
+
+  function structure(functions) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
+    writeFileSync(path.join(root, FILE), SOURCE);
+    return readKotlinStructureFindings({ functions, files: FILES }, root).map(
+      ({ rule, identity, ratchet }) => [
+        rule,
+        identity.replace(/source:\w+$/, 'source:H'),
+        ratchet.key,
+      ],
+    );
+  }
+
+  it('keeps the identity of a legacy init block when blocks that are under the limit come, go or move around it', () => {
+    const legacy = entry('Boot.<init>', 4, 8, NESTED);
+    const alone = structure([legacy]);
+
+    expect(alone).toEqual([
+      [
+        'function-control-nesting-limit',
+        'function:Boot.<init>:occurrence:1:source:H',
+        'function:Boot.<init>:occurrence:1:maxControlNesting',
+      ],
+    ]);
+    expect(structure([entry('Boot.<init>', 1, 2, { initializer: true }), legacy])).toEqual(alone);
+    expect(structure([legacy, entry('Boot.<init>', 10, 12, { initializer: true })])).toEqual(alone);
+  });
+
+  it('reports the nesting of an init block or a property initializer without advice to return early', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
+    writeFileSync(path.join(root, FILE), SOURCE);
+    const functions = [
+      entry('Boot.<init>', 4, 8, NESTED),
+      entry('Boot.table', 10, 12, NESTED),
+      entry('Boot.flag', 14, 14, { maxControlNesting: 3 }),
+    ];
+
+    expect(
+      readKotlinStructureFindings({ functions, files: FILES }, root).map(({ symbol, message }) => [
+        symbol,
+        message,
+      ]),
+    ).toEqual([
+      [
+        'Boot.<init>',
+        'Boot.<init> nests control flow 3 deep (limit 2). Move the nested part into its own function.',
+      ],
+      [
+        'Boot.table',
+        'Boot.table nests control flow 3 deep (limit 2). Move the nested part into its own function.',
+      ],
+      [
+        'Boot.flag',
+        'Boot.flag nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      ],
+    ]);
+  });
+});
+
+describe('CRAP identity of init blocks', () => {
+  function identities(functions, lines) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
+    temporaryRoots.push(root);
+    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
+    writeFileSync(path.join(root, FILE), SOURCE);
+    return readKotlinCrapFindings(
+      { functions, files: FILES },
+      { projectRoot: root, jacoco: jacoco(lines), crapLimit: 3 },
+    ).map(({ identity }) => identity.replace(/source:\w+$/, 'source:H'));
+  }
+
+  const MISSED = [sourceLine(4, 0, 1), sourceLine(5, 0, 2, [2, 0]), sourceLine(6, 0, 1)];
+
+  it('keeps the identity of an init block over the limit when another init block comes before it', () => {
+    const legacy = entry('Boot.<init>', 4, 8, { initializer: true, complexity: 2 });
+    const before = entry('Boot.<init>', 1, 2, { initializer: true, complexity: 1 });
+    const lines = [...MISSED, sourceLine(1, 1, 0)];
+
+    expect(identities([legacy], lines)).toEqual(['function:Boot.<init>:source:H']);
+    expect(identities([before, legacy], lines)).toEqual(identities([legacy], lines));
+  });
+
+  it('numbers init blocks over the limit only among those with the same source', () => {
+    const legacy = entry('Boot.<init>', 4, 8, { initializer: true, complexity: 2 });
+    const above = entry('Boot.<init>', 1, 2, { initializer: true, complexity: 2 });
+    const lines = [...MISSED, sourceLine(1, 0, 1), sourceLine(2, 0, 2, [2, 0])];
+
+    expect(identities([above, legacy], lines)).toEqual([
+      'function:Boot.<init>:source:H',
+      'function:Boot.<init>:source:H',
     ]);
   });
 });

@@ -52,11 +52,16 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   flags legitimate code, stop and ask: the project adds an `exceptions` entry
   (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
+- A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
+  the four above. Do not call anything the project lists there.
 
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;
-  past 3 parameters, pass a data class. Complex code needs tests: the CRAP score of a function must
+  past 3 parameters, pass a data class. `init` blocks (`Class.<init>`) and property
+  initializers that hold a block or a branch (`val x = run { ... }`, `val y = if (...) ... else ...`) count as
+  functions with the same limits. An `init` block cannot return early: move the nested part into
+  a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
   a function. A package must not depend on a less stable one (`stability-direction`).

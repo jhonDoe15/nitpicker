@@ -20,7 +20,7 @@
 //                      constructor or static initializer: JaCoCo has no method of its own for it, so
 //                      its coverage is read from the coverage of its source lines
 // A unit is a named function, a property accessor with a body, a secondary constructor with a block
-// body, an init block with statements (named after its class, Foo.<init#1>, numbered in source order),
+// body, an init block with statements (named after its class, Foo.<init>; several blocks of a class share the name),
 // a property whose initializer is a lambda or an anonymous function or whose delegate takes a lambda
 // (by lazy { }), or a property whose other initializer holds a block (a lambda such as run { } or
 // map { }, or braces of if, try and when) or is more than a straight line (complexity above 1 or control
@@ -225,10 +225,10 @@ public final class KotlinMetrics {
       }
     }
 
-    private void initializer(KtClassInitializer initializer, String owner, int number) {
+    private void initializer(KtClassInitializer initializer, String owner) {
       KtExpression body = initializer.getBody();
       if (body instanceof KtBlockExpression && !((KtBlockExpression) body).getStatements().isEmpty()) {
-        report(initializer, join(owner, "<init#" + number + ">"), body, 0, false, true);
+        report(initializer, join(owner, "<init>"), body, 0, false, true);
       }
       nestedClasses(body, owner);
     }
@@ -291,11 +291,9 @@ public final class KotlinMetrics {
       for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
         nestedClasses(entry, qualified);
       }
-      int initializers = 0;
       for (KtDeclaration member : klass.getDeclarations()) {
         if (member instanceof KtClassInitializer) {
-          initializers += 1;
-          initializer((KtClassInitializer) member, qualified, initializers);
+          initializer((KtClassInitializer) member, qualified);
         } else {
           declare(member, qualified);
         }

@@ -20,16 +20,14 @@ function parseOrEmpty(text) {
   }
 }
 
+const SIGNATURE = /^[^()\s]+(?:\([^()]*\))?$/u;
+
 function entryOf(raw) {
-  if (typeof raw === 'string') {
-    return raw === '' ? undefined : { value: raw };
-  }
-  if (typeof raw?.value !== 'string' || raw.value === '') {
+  const value = typeof raw === 'string' ? raw : raw?.value;
+  if (typeof value !== 'string' || !SIGNATURE.test(value)) {
     return undefined;
   }
-  return typeof raw.reason === 'string'
-    ? { value: raw.value, reason: raw.reason }
-    : { value: raw.value };
+  return typeof raw.reason === 'string' ? { value, reason: raw.reason } : { value };
 }
 
 export function forbiddenMethodsOf(text) {

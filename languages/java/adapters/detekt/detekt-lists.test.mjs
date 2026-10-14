@@ -97,6 +97,31 @@ describe('forbiddenMethodsOf', () => {
     ]);
   });
 
+  it('keeps a method name with a balanced parameter list and drops a signature detekt cannot parse', () => {
+    const config = `style:
+  ForbiddenMethodCall:
+    methods:
+      - 'java.lang.Thread.sleep(long)'
+      - 'kotlin.io.println(kotlin.Any?)'
+      - 'foo(bar,)'
+      - 'foo('
+      - 'a.b(x'
+      - 'a.b)x('
+      - 'a.b(c)d'
+      - 'kotlin.io.println(kotlin.Any?) '
+      - ' kotlin.io.println'
+      - 'two words'
+      - value: 'a.b.c('
+        reason: 'broken'
+`;
+
+    expect(forbiddenMethodsOf(config)).toEqual([
+      { value: 'java.lang.Thread.sleep(long)' },
+      { value: 'kotlin.io.println(kotlin.Any?)' },
+      { value: 'foo(bar,)' },
+    ]);
+  });
+
   it.each([
     ['an empty file', ''],
     ['a file that is not a mapping', '- a\n- b\n'],

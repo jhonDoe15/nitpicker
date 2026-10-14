@@ -20,6 +20,8 @@ import {
   BAD_KTLINT_RULES,
   BOOTER,
   BOOTER_TEST,
+  BOX_TEST,
+  boxes,
   BROKEN,
   classifier,
   clonedClass,
@@ -58,6 +60,7 @@ import {
   WIDE_TEST,
 } from './fixtures/kotlin-e2e/sources.mjs';
 import {
+  copyJdkWithNativeImage,
   EXTRA_SOURCES,
   HOSTILE_DETEKT_CONFIG,
   JDK_PROBE,
@@ -91,6 +94,7 @@ const detektFindingsOf = (findings, testCase) =>
 let repository;
 let mixedRepository;
 let kotlinOnlyRepository;
+let toolchainJdk;
 
 function git(...args) {
   return execFileSync('git', args, {
@@ -202,6 +206,16 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch('init-base', {
+      [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
+      'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
+    });
+    commitBranch(
+      'init-inserted',
+      { [`${kotlinSources}/boxes/Box.kt`]: boxes(true) },
+      [],
+      'init-base',
+    );
     commitBranch('structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
@@ -236,8 +250,12 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     });
     const buildScript = readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8');
     commitBranch('jdk-plain', { 'build.gradle.kts': `${buildScript}${JDK_PROBE}` });
+    toolchainJdk = copyJdkWithNativeImage(
+      path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-jdk-')), 'jdk'),
+    );
     commitBranch('jdk-toolchain', {
       'build.gradle.kts': `${buildScript}${JDK_PROBE}${TOOLCHAIN_PROBE}`,
+      'gradle.properties': `${readFileSync(path.join(repository, 'gradle.properties'), 'utf8')}org.gradle.java.installations.paths=${toolchainJdk}\n`,
     });
     commitBranch('one-way-banned', ruleFixtures('banned'));
     commitBranch('one-way-allowed', ruleFixtures('allowed'));
@@ -256,6 +274,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   afterAll(() => {
     rmSync(mixedRepository, { recursive: true, force: true });
     rmSync(kotlinOnlyRepository, { recursive: true, force: true });
+    rmSync(path.dirname(toolchainJdk), { recursive: true, force: true });
   });
 
   it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
@@ -457,7 +476,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       expect(missing).toEqual([]);
     });
 
-    it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
+    it('finds runBlocking behind a wildcard import and fully qualified and a forbidden call in a class the project config lists in ignoreAnnotated, and does not ask a mutable holder class to become a data class', () => {
       const extras = diffOnce('one-way-hostile-config').newEnforceable.filter(({ path: file }) =>
         file.includes('/demo/extras/'),
       );
@@ -467,7 +486,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
           .map(({ path: file }) => path.basename(file))
           .sort(),
-      ).toEqual(['Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
+      ).toEqual(['Annotated.kt', 'Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
       expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
     });
 
@@ -484,13 +503,14 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       const runBlocking =
         'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
 
+      const run =
+        'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
+
       expect(
         forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
       ).toEqual([
-        [
-          'Banned.kt',
-          `The method \`kotlin.run\` has been forbidden: Use \`let\` to name a value for a block (\`value?.let { ... }\` for null), or call the code directly.${exception}`,
-        ],
+        ['Annotated.kt', `${run}${exception}`],
+        ['Banned.kt', `${run}${exception}`],
         [
           'Printer.kt',
           `The method \`kotlin.io.println\` has been forbidden in the detekt config.${exception}`,
@@ -557,8 +577,12 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     const toolchain = jdkOf('jdk-toolchain');
 
     expect(plain.detekt).toBe(plain.gradle);
-    expect(toolchain.detekt).toBe(
-      readFileSync(path.join(repository, 'build/toolchain-home.txt'), 'utf8'),
+    expect([toolchain.detekt, toolchain.detekt === toolchain.gradle]).toEqual([
+      toolchainJdk,
+      false,
+    ]);
+    expect(readFileSync(path.join(repository, 'build/toolchain-home.txt'), 'utf8')).toBe(
+      toolchainJdk,
     );
   });
 
@@ -592,14 +616,14 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       ).message;
 
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
-      'crap crap-score-limit Booter.<init#1>',
+      'crap crap-score-limit Booter.<init>',
       'crap crap-score-limit Booter.label',
       'crap crap-score-limit Left.total',
       'crap crap-score-limit Right.total',
       'crap crap-score-limit classify2',
       'crap crap-score-limit flatten',
       'crap crap-score-limit rank',
-      'structure function-control-nesting-limit Booter.<init#1>',
+      'structure function-control-nesting-limit Booter.<init>',
       'structure function-control-nesting-limit depth',
       'structure function-lines-limit Left.total',
       'structure function-lines-limit Right.total',
@@ -651,6 +675,22 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
         .filter(({ rule }) => rule === 'stability-direction')
         .map(({ identity }) => identity),
     ).toEqual(['package-edge:stable->churn']);
+  });
+
+  it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {
+    const result = diffOf('init-inserted', kotlinPolicy, 'init-base');
+
+    const legacy = [
+      'crap crap-score-limit Box.<anonymous>.<init>',
+      'crap crap-score-limit Box.<init>',
+      'crap crap-score-limit Box.Companion.<init>',
+      'structure function-control-nesting-limit Box.<anonymous>.<init>',
+      'structure function-control-nesting-limit Box.<init>',
+      'structure function-control-nesting-limit Box.Companion.<init>',
+    ];
+
+    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
+    expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
 
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {

@@ -1,3 +1,7 @@
+import { execFileSync, spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
+
 export const HOSTILE_DETEKT_CONFIG = `formatting:
   active: true
   Indentation:
@@ -7,10 +11,12 @@ compose:
 style:
   active: false
   excludes: ['**/*.kt']
+  ignoreAnnotated: ['Marker']
   ForbiddenMethodCall:
     active: false
     severity: info
     excludes: ['**/*.kt']
+    ignoreAnnotated: ['Marker']
     methods:
       - 'kotlin.io.println'
       - value: 'kotlin.run'
@@ -21,8 +27,10 @@ coroutines:
   active: false
 potential-bugs:
   active: false
+  ignoreAnnotated: ['Marker']
   UnsafeCallOnNullableType:
     severity: info
+    ignoreAnnotated: ['Marker']
   CastNullableToNonNullableType:
     excludes: ['**/*.kt']
 `;
@@ -38,9 +46,21 @@ tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
 }
 `;
 
+export function copyJdkWithNativeImage(target) {
+  const java = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin/java') : 'java';
+  const settings = spawnSync(java, ['-XshowSettings:properties', '-version'], { encoding: 'utf8' });
+  const home = /java\.home = (.+)/.exec(settings.stderr)[1];
+  execFileSync('cp', ['-a', home, target]);
+  writeFileSync(path.join(target, 'bin/native-image'), '#!/bin/sh\n', { mode: 0o755 });
+  return target;
+}
+
 export const TOOLCHAIN_PROBE = `
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+        nativeImageCapable.set(true)
+    }
 }
 
 tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
@@ -53,6 +73,8 @@ tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
 `;
 
 export const EXTRA_SOURCES = {
+  'Annotated.kt':
+    'package demo.extras\n\nannotation class Marker\n\n@Marker\nclass Annotated {\n    fun twice(): Int = run { 1 + 1 }\n}\n',
   'Wildcard.kt':
     'package demo.extras\n\nimport kotlinx.coroutines.*\n\nfun waitWildcard(): Int = runBlocking { 1 }\n',
   'Qualified.kt':
