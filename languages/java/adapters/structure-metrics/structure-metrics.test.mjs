@@ -139,7 +139,7 @@ public class Constructs {
 `;
 
 const temporaryRoots = [];
-let structure;
+let measured;
 
 function projectWith(files) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-')));
@@ -179,9 +179,11 @@ function summary(entries) {
 beforeAll(() => {
   const root = projectWith({ [`${SOURCE_ROOT}/demo/Constructs.java`]: CONSTRUCTS });
   const result = measure(root);
-  expect(result.stderr).toBe('');
-  expect(result.status).toBe(0);
-  structure = JSON.parse(readFileSync(result.output, 'utf8'));
+  measured = {
+    status: result.status,
+    stderr: result.stderr,
+    structure: JSON.parse(readFileSync(result.output, 'utf8')),
+  };
 });
 
 afterAll(() => {
@@ -191,8 +193,12 @@ afterAll(() => {
 });
 
 describe('StructureMetrics.java', () => {
+  it('parses clean sources silently', () => {
+    expect({ status: measured.status, stderr: measured.stderr }).toEqual({ status: 0, stderr: '' });
+  });
+
   it('counts complexity and names the signature of every method and constructor', () => {
-    expect(summary(structure)).toEqual({
+    expect(summary(measured.structure)).toEqual({
       'Constructs.oldCases(int)': { complexity: 3 },
       'Constructs.arrowCases(int)': { complexity: 3 },
       'Constructs.severalConstants(int)': { complexity: 2 },
@@ -214,10 +220,14 @@ describe('StructureMetrics.java', () => {
   });
 
   it('reads as the CRAP input, which leaves out the private empty constructors', () => {
-    const { findings } = ingestCrap(structure, EMPTY_JACOCO, { sourceRoots: [SOURCE_ROOT] });
+    const { findings } = ingestCrap(measured.structure, EMPTY_JACOCO, {
+      sourceRoots: [SOURCE_ROOT],
+    });
 
     expect(findings.map((finding) => finding.symbol)).toEqual(
-      structure.filter((entry) => entry.privateEmptyConstructor !== true).map((e) => e.signature),
+      measured.structure
+        .filter((entry) => entry.privateEmptyConstructor !== true)
+        .map((entry) => entry.signature),
     );
   });
 

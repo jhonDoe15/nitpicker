@@ -4,7 +4,7 @@ import path from 'node:path';
 const EXECUTABLE_BITS = 0o111;
 const WINDOWS_SCRIPT = /\.(?:bat|cmd)$/iu;
 
-export function gradleTarget(projectRoot, configured, args, platform = process.platform) {
+export function gradleTarget({ projectRoot, configured, args, platform = process.platform }) {
   if (configured) {
     return spawnTarget(configured, args);
   }
