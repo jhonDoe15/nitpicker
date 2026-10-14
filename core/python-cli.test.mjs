@@ -711,7 +711,11 @@ describe('nitpicker with "preset": "python"', () => {
       write(root, {
         'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
         'src/demo/b.py': 'def ghost():\n    return 1\n',
-        'structure-data.json': JSON.stringify([fn('value', 4, 5), fn('fresh', 4), { ...fn('ghost', 0), file: 'src/demo/b.py' }]),
+        'structure-data.json': JSON.stringify([
+          fn('value', 4, 5),
+          fn('fresh', 4),
+          { ...fn('ghost', 0), file: 'src/demo/b.py' },
+        ]),
         'coverage-data.json': coverageOf('value', 'fresh'),
       });
       commit(root, 'add new functions, touch the legacy one');
