@@ -146,23 +146,28 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
 }
 
 function codeFilesUnder(layout, projectRoot, roots) {
+  return roots.flatMap((root) => codeFilesUnderRoot(layout, projectRoot, root).toSorted());
+}
+
+function codeFilesUnderRoot(layout, projectRoot, root) {
   const files = [];
-  const pending = roots.map((root) => ({
-    directory: path.join(projectRoot, root),
-    relative: root,
-  }));
-  for (const { directory, relative } of pending) {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const name = relative ? `${relative}/${entry.name}` : entry.name;
-      if (GENERATED_DIRECTORY.test(name)) continue;
-      if (entry.isDirectory()) {
-        pending.push({ directory: path.join(directory, entry.name), relative: name });
-      } else if (entry.isFile() && (layout.isSourceFile(name) || layout.isTestFile(name))) {
-        if (!layout.isExcluded(name)) files.push(name);
-      }
-    }
+  const pending = [root];
+  for (const relative of pending) {
+    const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
+      .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
+      .filter(({ name }) => !GENERATED_DIRECTORY.test(name));
+    pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
+    files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
   }
   return files;
+}
+
+function isCodeFile(layout, { entry, name }) {
+  return (
+    entry.isFile() &&
+    (layout.isSourceFile(name) || layout.isTestFile(name)) &&
+    !layout.isExcluded(name)
+  );
 }
 
 export function existingRoots(projectRoot, roots) {
