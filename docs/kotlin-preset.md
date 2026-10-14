@@ -147,16 +147,19 @@ are `let` with `this`, and `also` is `apply` with `it`, so each is a second way 
 `let` and `apply` are the ones that cover the other three.
 
 **Owned by Nitpicker.** The file is laid over the project's detekt config. For each of its rulesets
-and rules it sets `active: true`, `excludes: []` and `includes: []`, and for each rule
-`severity: warning`, so a project cannot switch these rules off, lower them to `info` (which the
-gate reads as descriptive) or skip paths in `detekt.yml`; paths are lifted only by `exceptions`. A
+and rules it sets `active: true`, `excludes: []`, `includes: []` and `ignoreAnnotated: []`, and for
+each rule `severity: warning`, so a project cannot switch these rules off, lower them to `info`
+(which the gate reads as descriptive) or skip paths or annotated classes in `detekt.yml`; paths are
+lifted only by `exceptions`. A
 test keeps the rule keys of the file equal to the rules the gate knows. Other rules and keys in the
 project's config work as before. The one list the preset sets, `ForbiddenMethodCall.methods`, is
 merged: detekt replaces a list instead of merging it, so Nitpicker reads the project's detekt file
 and the effective list is the preset's four calls followed by the project's own entries (strings or
 `value`/`reason` entries; a call both list keeps the preset's reason). A project can add forbidden
-calls, for example `java.lang.Thread.sleep`, but never drop one of ours; a malformed entry, a
-`methods` key that is not a list or a file that does not parse adds nothing. Findings for a
+calls, for example `java.lang.Thread.sleep`, but never drop one of ours. An entry is a method name
+with an optional parameter list (`java.lang.Thread.sleep` or `java.lang.Thread.sleep(long)`); an
+entry of any other shape, a `methods` key that is not a list or a file that does not parse adds
+nothing. Findings for a
 project's own entry have the rule `detekt.style.ForbiddenMethodCall` as well, so they are one-way
 and an exception lifts them the same way. `ForbiddenImport` is not set by the preset, so a project's
 own `ForbiddenImport.imports` works as it does in detekt. The one narrowing that stays with
@@ -409,7 +412,7 @@ there are no inline disables.
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again; the `kotlin-metrics` GitHub Actions workflow does it for a change of `KotlinMetrics.java`, of its fixture test or of the pin, and for no other change. lizard cannot be the source: it has no statement count
+pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a change under `languages/java`, `core` or `shared`, the package files or the workflow itself, and for no other change. lizard cannot be the source: it has no statement count
 or control nesting, and its Kotlin reader (1.24.1) misreads ordinary Kotlin. It drops extension
 functions (`fun String.shout() = ...`), ends an expression-bodied function at the next `fun`, and
 turns the `->` of a lambda into an anonymous function that swallows the declarations after it. A
@@ -433,13 +436,19 @@ the way an arrow-function constant is a unit in TypeScript; the body is the lamb
 named after the property. Any other property initializer is a unit when it holds a block (a lambda
 such as `run { ... }` or `map { ... }`, or the braces of `if`, `try` and `when`) or branches
 (`if`, `when`, `&&`, `?:` and the like); `val x = a + 1` and `val s = "text"` are not. Each `init`
-block is a unit named after its class and numbered in source order, `Class.<init#1>` (an empty
-block takes a number but is not a unit). Lambdas and local functions inside a function count towards
+block is a unit named after its class, `Class.<init>` (an empty block is not a unit). A class's
+blocks share the name, so a finding on one is numbered only among the blocks of that class with the
+same text that are over the same limit: inserting, deleting or reordering other blocks, or adding
+an empty `init {}`, never makes a legacy block new. An edited block is held by that rule's ratchet like any function. A message on an
+`init` block or a property initializer says to move the nested part into its own function, because
+neither can `return` early. To accept such a unit, drop its file with `exclude`, as for any structure
+or CRAP finding; the unit name (`Class.<init>`, `Class.property`) is the one that a per-function
+exception would name. Lambdas and local functions inside a function count towards
 the function that contains them; members of nested, local and anonymous classes and objects are
 units of their own. Primary constructors and functions without a body (abstract, interface,
 `expect`) are not units. Names are `function` (top level), `Class.function`,
 `Class.Receiver.function` for an extension, `Class.property.get` for an accessor, `Class.property`
-for a property unit, `Class.<init#1>` for an `init` block, `Class.Class` for a secondary
+for a property unit, `Class.<init>` for an `init` block, `Class.Class` for a secondary
 constructor and `<anonymous>` for an object expression. Script files (`.kts`) are not read. Source directories are the ones Gradle reports
 (generated code under the build directory is already left out), so a package named `build`, `out`
 or `target` is measured like any other.

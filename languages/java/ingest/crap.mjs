@@ -1,5 +1,6 @@
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
+import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
 import { jacocoLineUnits } from './coverage/jacoco-lines.mjs';
 
@@ -32,6 +33,7 @@ export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const unique = createIdentityCounter();
+  const sameSource = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -40,23 +42,40 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
-    const key = unique(`function:${name}`);
+    const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
     const sourceHash =
       coverage === undefined
         ? undefined
         : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+    const key =
+      fn.numberedAmongSameSource === true
+        ? keyAmongSameSource(sameSource, {
+            name,
+            sourceHash,
+            over: crap === undefined || crap >= limit,
+          })
+        : unique(`function:${name}`);
     functions.push({
       path: filePath,
       name,
       identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
       ratchetKey: `${key}:crap`,
       line: fn.start,
-      crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
+      crap,
     });
   }
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function keyAmongSameSource(seen, { name, sourceHash, over }) {
+  const base = `function:${name}`;
+  if (!over) {
+    return base;
+  }
+  const occurrence = nextOccurrence(seen, `${base}\0${String(sourceHash)}`);
+  return occurrence === 1 ? base : `${base}#${String(occurrence)}`;
 }
 
 export function parseLizardCsv(text) {
