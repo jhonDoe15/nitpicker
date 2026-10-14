@@ -13,7 +13,7 @@ const SUPPRESSION_PATTERNS = [
   {
     kind: 'tool-suppression',
     pattern:
-      /^[\s*]*(?:prettier-ignore|stryker-disable|jscpd:ignore|c8 ignore|istanbul ignore|v8 ignore)/,
+      /^[\s*]*(?:prettier-ignore|stryker[\s-]+(?:disable|restore)|jscpd:ignore|(?:c8|istanbul|v8)\s+ignore)/i,
   },
 ];
 
