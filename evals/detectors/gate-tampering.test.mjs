@@ -46,9 +46,11 @@ describe('inline suppressions', () => {
 
   it('reports tool suppressions such as istanbul and prettier-ignore', () => {
     const final = {
-      'src/a.ts': '/* istanbul ignore next */\n// prettier-ignore\nexport const a = 1;\n',
+      'src/a.ts':
+        '/* istanbul ignore next */\n// prettier-ignore\n// Stryker disable next-line all\nexport const a = 1;\n',
     };
     expect(kinds(detectGateTampering({ fixture, final }))).toEqual([
+      'tool-suppression',
       'tool-suppression',
       'tool-suppression',
     ]);
