@@ -62,6 +62,18 @@ def initScriptDir = buildscript.sourceFile.parentFile
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
 
+def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
+    def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
+    def excludes = testDirectories.collect { directory ->
+        "  <exclude-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</exclude-pattern>"
+    }
+    (['<?xml version="1.0" encoding="UTF-8"?>',
+      '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+      '  <description>Nitpicker\'s Spring rules on main sources only.</description>']
+        + excludes
+        + ["  <rule ref=\"${escape(springRuleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
+}
+
 allprojects {
     plugins.withId('java') {
         pluginManager.apply('jacoco')
@@ -180,9 +192,9 @@ allprojects {
                     + sourceSets.main.output.classesDirs.files
                     + sourceSets.test.output.classesDirs.files).findAll { it.exists() }.unique()
                     .collect { it.absolutePath }.join('\n')
-                def rulesets = nitpickerRulesets && usesSpring()
-                    ? "${ruleset},${new File(initScriptDir, 'spring-ruleset.xml').absolutePath}"
-                    : ruleset
+                def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
+                springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSources.files)
+                def rulesets = nitpickerRulesets && usesSpring() ? "${ruleset},${springMainRuleset.absolutePath}" : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
