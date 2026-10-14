@@ -26,7 +26,7 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const unique = createIdentityCounter();
+  const counters = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -35,6 +35,8 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
     const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined
@@ -61,11 +63,14 @@ function structureFunctions(entries) {
       if (!Number.isInteger(entry.complexity)) {
         throw new TypeError(`Structure entry without complexity: ${entry.name}`);
       }
+      if (typeof entry.signature !== 'string') {
+        throw new TypeError(`Structure entry without signature: ${entry.name}`);
+      }
       return {
         ccn: entry.complexity,
         file: entry.file,
         name: entry.name.split('.').at(-1),
-        longName: entry.signature ?? entry.name,
+        longName: entry.signature,
         start: entry.start,
         end: entry.end,
       };
@@ -127,7 +132,12 @@ function jacocoMethods(xml) {
   for (const pkg of childrenNamed(report, 'package')) {
     for (const cls of childrenNamed(pkg, 'class')) {
       const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const simpleName = (cls.attrs.name ?? '').split('/').at(-1).split('$').at(-1);
+      const simpleName = (cls.attrs.name ?? '')
+        .split('/')
+        .at(-1)
+        .split('$')
+        .at(-1)
+        .replace(/^\d+/u, '');
       for (const method of childrenNamed(cls, 'method')) {
         const line = Number.parseInt(method.attrs.line, 10);
         if (!Number.isInteger(line)) {
