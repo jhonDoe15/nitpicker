@@ -1,17 +1,20 @@
-import { spawnSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../../core/cli.mjs';
+import {
+  command,
+  commitBranch,
+  enforceable,
+  gate,
+  git,
+  LAYERED_FILES,
+  ORDER_TOTAL,
+  removeRepositories,
+  repository,
+  summarize,
+  withoutMutants,
+  write,
+} from './e2e/helpers.mjs';
 
 // End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
 // ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
@@ -19,77 +22,6 @@ import { runCli } from '../../../core/cli.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixture = path.resolve(import.meta.dirname, 'fixtures/python-project');
-
-const gitEnvironment = {
-  ...process.env,
-  GIT_AUTHOR_NAME: 'test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-function command(cwd, program, args) {
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', env: gitEnvironment });
-  if (result.status !== 0) {
-    throw new Error(`${program} ${args.join(' ')} failed: ${result.stderr}${result.stdout}`);
-  }
-}
-
-function git(root, ...args) {
-  command(root, 'git', args);
-}
-
-function write(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-}
-
-function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
-  write(root, files);
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', name);
-}
-
-function gate(root, branch, extra = []) {
-  git(root, 'checkout', '-q', branch);
-  const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
-  const output = { text: '' };
-  const exitCode = runCli({
-    arguments_: ['--base', 'main', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    stderr: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    progress: { write: () => undefined },
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, json, text: output.text, reports };
-}
-
-const enforceable = (result) =>
-  summarize(
-    result
-      .json('new-findings.json')
-      .filter(({ classification }) => classification === 'enforceable'),
-  );
-
-const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
-
-const summarize = (findings) =>
-  findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
 const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 const GREETER_HI = 'def greet(name):\n    return f"Hi, {name}!"\n';
@@ -121,8 +53,6 @@ const WEAKENED_PYRIGHT = JSON.stringify({
   exclude: ['src/demo/typed.py'],
   typeCheckingMode: 'off',
 });
-const BASEDPYRIGHT_PYPROJECT = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.basedpyright]\nreportMissingImports = true\n`;
-const WEAKENED_BASEDPYRIGHT = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.basedpyright]\ntypeCheckingMode = "off"\nignore = ["src/demo/typed.py"]\nexclude = ["src/demo/typed.py"]\n`;
 const CLAMP = 'def clamp(number):\n    return number if number < 10 else 10\n';
 const LEGACY_MOVED = `"""Legacy module."""\n\nimport os\n\n\ndef value():\n    return 1\n\n\n${CLAMP}`;
 const LEGACY_WEAKER = `import os\n\n\ndef value():\n    return 1 + 0\n\n\n${CLAMP}`;
@@ -207,14 +137,6 @@ const NO_MUTATION = {
   'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
 };
 
-const roots = [];
-
-function repository() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-')));
-  roots.push(root);
-  return root;
-}
-
 describe.skipIf(!enabled)('Python preset end to end', () => {
   let project;
 
@@ -264,14 +186,6 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'src/demo/typed.py': TYPE_ERROR,
       'pyrightconfig.json': '{}\n',
     });
-    commitBranch(project, 'basedpyright', {
-      'src/demo/typed.py': TYPE_ERROR,
-      'pyproject.toml': BASEDPYRIGHT_PYPROJECT,
-    });
-    commitBranch(project, 'weakened-basedpyright', {
-      'src/demo/typed.py': TYPE_ERROR,
-      'pyproject.toml': WEAKENED_BASEDPYRIGHT,
-    });
     commitBranch(project, 'weakened-mypy', {
       'src/demo/typed.py': TYPE_ERROR,
       'pyproject.toml': WEAKENED_MYPY,
@@ -299,9 +213,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   });
 
   afterAll(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
+    removeRepositories();
   });
 
   it('passes a change that alters behaviour: base tests run against base code, not the editable head install', () => {
@@ -403,23 +315,6 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       /^ruff@[\d.]+;pyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
     );
     expect(withoutMutants(enforceable(result))).toEqual(['pyright reportReturnType typed.py']);
-  });
-
-  it('runs basedpyright when the project configures it, in the same strict mode', () => {
-    const result = gate(project, 'basedpyright');
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(result.json('summary.json').tools[0].version).toMatch(
-      /^ruff@[\d.]+;basedpyright@[\d.]+;coverage@[\d.]+;pytest@[\d.]+;jscpd@[\d.]+$/,
-    );
-    expect(withoutMutants(enforceable(result))).toEqual(['basedpyright reportReturnType typed.py']);
-  });
-
-  it('keeps checking when the project config switches basedpyright off for the file', () => {
-    const result = gate(project, 'weakened-basedpyright');
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(withoutMutants(enforceable(result))).toEqual(['basedpyright reportReturnType typed.py']);
   });
 
   it('keeps checking when the project config switches mypy off for the file', () => {
@@ -949,37 +844,6 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
   });
 });
 
-const ORDER_TOTAL = [
-  'def order_total(lines: list[tuple[int, int]], discount: int) -> int:',
-  '    total = 0',
-  '    for line in lines:',
-  '        if line[0] > 0 and line[1] > 0:',
-  '            total += line[0] * line[1]',
-  '        else:',
-  '            total -= discount',
-  '    if total < 0 and discount > 0:',
-  '        total = 0',
-  '    return total',
-  '',
-].join('\n');
-const LAYERED_FILES = {
-  'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
-  '.gitignore': '.venv/\n__pycache__/\n',
-  '.importlinter':
-    '[importlinter]\nroot_package = shop\n\n[importlinter:contract:pure]\nname = Domain is pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.infra\n',
-  'src/shop/__init__.py': '',
-  'src/shop/domain/__init__.py': '',
-  'src/shop/domain/pricing.py': `def price_with_tax(amount: float, rate: float) -> float:\n    return round(amount * (1 + rate), 2)\n\n\n${ORDER_TOTAL}`,
-  'src/shop/infra/__init__.py': '',
-  'src/shop/infra/store.py':
-    'from shop.domain import pricing\n\n\ndef total(amounts: list[float]) -> float:\n    return sum(pricing.price_with_tax(amount, 0.1) for amount in amounts)\n',
-  'src/shop/web/__init__.py': '',
-  'src/shop/web/views.py':
-    'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts: list[float]) -> str:\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
-  'tests/test_shop.py':
-    'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    assert pricing.order_total([(2, 3), (2, 3)], 0) == 12\n',
-};
-
 describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end to end', () => {
   let project;
 
@@ -1021,23 +885,6 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
     commitBranch(project, 'upward-import', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
     });
-    const typeCheckingFiles = {
-      'src/shop/domain/pricing.py': `from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from shop.web import views\n\n\n${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    return "ok"\n\n\ndef shown(page: "views.Page") -> str:\n    return str(page)\n`,
-      'src/shop/web/views.py': `${LAYERED_FILES['src/shop/web/views.py']}\n\nclass Page:\n    title = "shop"\n`,
-    };
-    commitBranch(project, 'type-checking-import', {
-      ...typeCheckingFiles,
-      'nitpicker.config.json':
-        '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n',
-    });
-    commitBranch(project, 'type-checking-contract', typeCheckingFiles);
-    commitBranch(project, 'type-checking-contract-excluded', {
-      ...typeCheckingFiles,
-      '.importlinter': LAYERED_FILES['.importlinter'].replace(
-        'root_package = shop\n',
-        'root_package = shop\nexclude_type_checking_imports = True\n',
-      ),
-    });
     commitBranch(project, 'contracts-off', {
       'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
       'nitpicker.config.json':
@@ -1046,9 +893,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
   });
 
   afterAll(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
+    removeRepositories();
   });
 
   it('passes a change that keeps the layering and adds no copy', () => {
@@ -1106,26 +951,6 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
           'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
       },
     ]);
-  });
-
-  it('does not count an import under if TYPE_CHECKING as a stability inversion', () => {
-    const result = gate(project, 'type-checking-import');
-
-    expect(result.exitCode, result.text).toBe(0);
-    expect(newRules(result)).toEqual([]);
-  });
-
-  it('leaves an import under if TYPE_CHECKING to the project contracts', () => {
-    const broken = gate(project, 'type-checking-contract');
-    const excluded = gate(project, 'type-checking-contract-excluded');
-
-    expect(broken.exitCode, broken.text).toBe(1);
-    expect(newRules(broken)).toEqual([
-      'import-linter contract-broken',
-      'import-linter contract-broken',
-    ]);
-    expect(excluded.exitCode, excluded.text).toBe(0);
-    expect(newRules(excluded)).toEqual([]);
   });
 
   it('does not run the contracts when the config turns import-linter off', () => {
@@ -1217,9 +1042,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
   });
 
   afterAll(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
+    removeRepositories();
   });
 
   it('keeps an old uncovered branch baselined when its line moves', () => {

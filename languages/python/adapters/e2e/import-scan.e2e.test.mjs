@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readImportsReport, scanImports } from './python-coupling.mjs';
-import { run } from './python-process.mjs';
-import { createToolContext } from './python-tools.mjs';
+import { readImportsReport, scanImports } from '../python-coupling.mjs';
+import { run } from '../python-process.mjs';
+import { createToolContext } from '../python-tools.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const roots = [];
