@@ -10,8 +10,16 @@ const LITERALS_AND_COMMENTS =
 const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\(/g;
 const JAVA_LANG_SUPPRESS_WARNINGS = /@\s*java\s*\.\s*lang\s*\.\s*SuppressWarnings\s*\(/g;
 const BARE_SUPPRESS_WARNINGS = /@\s*SuppressWarnings\b/g;
-const SUPPRESS_FB_WARNINGS =
-  /@\s*(?:\w+\s*\.\s*)*\w*SuppressFBWarnings\b|@\s*(?:\w+\s*\.\s*)*\w+SuppressWarnings\b|@\s*edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*SuppressWarnings\b/g;
+const QUALIFIED_ANNOTATION = String.raw`@\s*(?:\w+\s*\.\s*)*`;
+const SPOTBUGS_PACKAGE = String.raw`edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*`;
+const SUPPRESS_FB_WARNINGS = new RegExp(
+  [
+    String.raw`${QUALIFIED_ANNOTATION}\w*SuppressFBWarnings\b`,
+    String.raw`${QUALIFIED_ANNOTATION}\w+SuppressWarnings\b`,
+    String.raw`@\s*${SPOTBUGS_PACKAGE}SuppressWarnings\b`,
+  ].join('|'),
+  'g',
+);
 const SPOTBUGS_SUPPRESS_WARNINGS_IMPORT =
   /\bimport\s+edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*(?:SuppressWarnings|\*)\s*;/;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
