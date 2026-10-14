@@ -1,6 +1,7 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 
@@ -101,6 +102,11 @@ describe('configureJavaAnalyzer', () => {
       configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
         .configurationHash,
     ).not.toBe(analyzer.configurationHash);
+  });
+
+  it('declares every tool the Java reports produce', () => {
+    expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
+    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
   });
 });
 

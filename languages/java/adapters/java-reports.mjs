@@ -5,6 +5,8 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
+import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mjs';
 import { methodText } from '../../../shared/ingest/structure-report.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
@@ -68,6 +70,8 @@ export function readJavaFindings(
         kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+      ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
+      ...springFindings(context),
     ],
   };
 }
@@ -79,6 +83,12 @@ export function requireGradleReports(projectRoot, preset) {
       `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
     );
   }
+}
+
+function springFindings({ projectRoot, manifest, sourceRoots }) {
+  return manifest.spring === true
+    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    : [];
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {

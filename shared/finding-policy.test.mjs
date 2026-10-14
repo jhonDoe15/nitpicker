@@ -51,6 +51,21 @@ describe('applyFindingPolicy', () => {
     ).toEqual([findings[1], findings[2]]);
   });
 
+  it('lifts a Java finding named as printed, <tool>/<rule>, only under the excepted glob', () => {
+    const findings = [
+      finding('src/main/java/legacy/A.java'),
+      { ...finding('src/main/java/legacy/A.java'), rule: 'Other' },
+      finding('src/main/java/app/B.java'),
+      { ...finding('src/main/java/legacy/C.java'), tool: 'spotbugs' },
+    ];
+
+    expect(
+      applyFindingPolicy(findings, {
+        exceptions: [{ rule: 'pmd/Rule', glob: 'src/main/java/legacy/**' }],
+      }),
+    ).toEqual([findings[1], findings[2], findings[3]]);
+  });
+
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
     const headRoot = inventoryRoot([allow('a.java', 1)]);
     const findings = [finding('a.java'), finding('a.java'), finding('b.java')];
