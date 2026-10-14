@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
-import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
+import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,

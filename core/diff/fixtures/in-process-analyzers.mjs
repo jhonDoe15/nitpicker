@@ -1,10 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import {
-  analyzeJavaSnapshot,
-  parseRunnerArguments,
-} from '../../../languages/java/adapters/java-runner.mjs';
+import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
+import { parseRunnerArguments } from '../../tooling/runner-arguments.mjs';
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
 import { progressEvent, reportFromAnalyzerOutput } from '../analyzer-scheduler.mjs';
 import { createProgressReporter } from '../progress.mjs';
