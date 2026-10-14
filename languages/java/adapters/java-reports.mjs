@@ -46,9 +46,7 @@ export function readJavaFindings(
     reportRoot,
     manifest,
     sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: [
-      ...new Set([...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])]),
-    ],
+    lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
@@ -80,6 +78,10 @@ export function readJavaFindings(
       ...springFindings(context),
     ],
   };
+}
+
+function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
+  return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
 export function requireGradleReports(projectRoot, preset) {
