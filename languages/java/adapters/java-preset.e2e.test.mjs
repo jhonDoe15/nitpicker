@@ -391,7 +391,8 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         {
           rule: 'stability-direction',
           identity: 'package-edge:stable->churn',
-          message: 'stable depends on less stable package churn',
+          message:
+            'stable depends on less stable package churn. If this is intended, add {"rule":"stability-direction","paths":["stable"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
       const metrics = coupling(result.newFindings).filter(

@@ -11,8 +11,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { installFakeToolchain } from '../../languages/python/adapters/fixtures/fake-toolchain.mjs';
-import { runCli } from '../cli.mjs';
+import { installFakeToolchain } from '../../../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { runCli } from '../../cli.mjs';
 
 export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
 

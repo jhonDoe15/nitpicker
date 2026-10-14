@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { commit, pythonRepository, run, usePythonCli, write } from '../fixtures/python-cli.mjs';
+import { RULE_IDS } from '../../shared/policy.mjs';
+import {
+  commit,
+  pythonRepository,
+  run,
+  usePythonCli,
+  write,
+} from '../diff/fixtures/python-cli.mjs';
 
 usePythonCli();
 
@@ -44,9 +51,9 @@ describe('exceptions with "preset": "python"', () => {
     });
 
     it.each([
-      ['the function name', entry('function-parameters-limit', 'wide'), 0],
-      ['the whole path', entry('function-parameters-limit'), 0],
-      ['another function', entry('function-parameters-limit', 'narrow'), 1],
+      ['the function name', entry(RULE_IDS.functionParameters, 'wide'), 0],
+      ['the whole path', entry(RULE_IDS.functionParameters), 0],
+      ['another function', entry(RULE_IDS.functionParameters, 'narrow'), 1],
     ])('lifts the finding by %s only as far as the entry reaches', (_, lifted, exitCode) => {
       const result = change(exceptions(lifted));
 

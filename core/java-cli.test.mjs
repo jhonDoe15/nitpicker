@@ -15,7 +15,7 @@ import {
   temporaryRoot,
   useGradleCli,
   write,
-} from './fixtures/gradle-cli.mjs';
+} from './diff/fixtures/gradle-cli.mjs';
 
 // The Java and Kotlin presets through the CLI with a fake `gradle`, so they run without Java. The
 // real Gradle runs are covered by languages/java/adapters/java-preset.e2e.test.mjs
