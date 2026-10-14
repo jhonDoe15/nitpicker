@@ -25,6 +25,17 @@ describe('withExceptionRoutes', () => {
     ]);
   });
 
+  it('ends a message that has no full stop before the entry', () => {
+    expect(
+      withExceptionRoutes([finding('stability-direction', { message: 'a depends on b' })]),
+    ).toEqual([
+      finding('stability-direction', {
+        message:
+          'a depends on b. If this is intended, add {"rule":"stability-direction","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      }),
+    ]);
+  });
+
   it('leaves descriptive findings and other rules alone', () => {
     const findings = [
       finding('mutant-survived', { classification: 'descriptive' }),
