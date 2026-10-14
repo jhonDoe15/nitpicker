@@ -7,7 +7,7 @@ const { testRoots } = layout;
 const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
 const RUNNABLE_TEST = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_SUPPORT = new RegExp(
-  `(?:^|/)(?:__tests__|${testRoots.join('|')}|fixtures)(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
+  `(?:^|/)(?:__tests__|fixtures)(?:/|$)|^(?:${testRoots.join('|')})(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
 );
 
 function isRuntimeImport(node) {
@@ -35,7 +35,11 @@ function isProductionModule(filename, source) {
   }
 
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  return layout.sourceRootOf(`${resolved}/`) !== undefined && !TEST_SUPPORT.test(resolved);
+  const resolvedRoot = layout.sourceRootOf(`${resolved}/`);
+  return (
+    resolvedRoot !== undefined &&
+    !TEST_SUPPORT.test(resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1))
+  );
 }
 
 function isProductionRequire(filename, node) {
@@ -72,7 +76,12 @@ export const rule = {
   create(context) {
     const filename = context.filename.replaceAll('\\', '/');
     const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
-    if (!RUNNABLE_TEST.test(filename) || exemptTest.test(filename)) {
+    const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
+    if (
+      !RUNNABLE_TEST.test(filename) ||
+      exemptTest.test(filename) ||
+      layout.isEndToEndTest(projectFile)
+    ) {
       return {};
     }
 

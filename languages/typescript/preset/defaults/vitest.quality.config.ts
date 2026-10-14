@@ -19,10 +19,7 @@ function readPolicy(file: string | undefined): NitpickerPolicy {
 }
 const policy = readPolicy(policyFile);
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
-const END_TO_END_ROOT = 'e2e';
-const testRoots: string[] = (
-  policy.layout?.testRoots ?? ['test', 'tests', '__tests__', END_TO_END_ROOT]
-).filter((root) => root !== END_TO_END_ROOT);
+const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests', '__tests__'];
 const exclude: string[] = policy.exclude ?? [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];

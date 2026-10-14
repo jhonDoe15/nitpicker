@@ -28,6 +28,7 @@ export const crapVersion = 'unresolved';
 export const strykerVersion = 'unresolved';
 
 const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
+const TSCONFIG_DOM_FILE = 'languages/typescript/preset/tsconfig/end-to-end-dom.mjs';
 
 const POLICY_FILES = [
   'languages/typescript/preset/layout.mjs',
@@ -227,6 +228,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        TSCONFIG_DOM_FILE,
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
@@ -341,6 +343,7 @@ function repositoryChecksFor(exclusions) {
         'languages/typescript/preset/defaults/jscpd.json',
         'languages/typescript/preset/duplicates/normalize.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        TSCONFIG_DOM_FILE,
         JAVASCRIPT_PRESET_FILE,
       ],
     },
@@ -354,6 +357,7 @@ function repositoryChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/knip.json',
         'languages/typescript/preset/tool-configs.mjs',
+        TSCONFIG_DOM_FILE,
         JAVASCRIPT_PRESET_FILE,
       ],
     },
@@ -413,6 +417,7 @@ function testExecutionChecksFor(exclusions) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'languages/typescript/preset/tool-configs.mjs',
+        TSCONFIG_DOM_FILE,
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',
         'languages/typescript/preset/defaults/vitest.quality.config.ts',

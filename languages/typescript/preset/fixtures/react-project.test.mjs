@@ -106,6 +106,13 @@ describe('the react-project fixture', () => {
       expect(testRulesByFile(findings, 'e2e/')).toEqual({
         'root-test-id.test': ['testing-library/no-test-id-queries'],
       });
+      expect(
+        findings.filter(
+          ({ path: file, rule }) =>
+            ['test/ui/snapshot.test.tsx', 'e2e/root-playwright.spec.ts'].includes(file) &&
+            /^(?:testing-library|nitpicker)\//.test(rule),
+        ),
+      ).toEqual([]);
       expect(rulesByFile(findings)).toEqual({
         'class-component': ['react-x/no-class-component'],
         'conditional-hook': ['react-hooks/rules-of-hooks'],

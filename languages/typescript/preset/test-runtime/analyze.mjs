@@ -44,6 +44,7 @@ function isPathExcludedTest(source, layout) {
   return (
     isExcludedPath(source) ||
     layout.isExcluded(source) ||
+    layout.isEndToEndTest(source) ||
     new RegExp(`(?:^|/)(?:${layout.testRoots.join('|')})/contract(?:/|$)`).test(source)
   );
 }
