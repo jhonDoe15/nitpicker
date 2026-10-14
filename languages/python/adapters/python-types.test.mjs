@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
 import { createFakeProjects } from './fixtures/fake-project.mjs';
+import { toolVersions } from './python-tools.mjs';
 import { pyrightConfig, resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();
@@ -228,10 +230,10 @@ describe('running basedpyright', () => {
       output: '{"generalDiagnostics":[]}',
     });
     const [call] = fakes.calls(logFile).filter(({ args }) => args.includes('--outputjson'));
-    expect(call).toMatchObject({
-      tool: 'basedpyright',
-      args: ['--outputjson', '--project', path.join(reportRoot, 'pyrightconfig.json')],
-    });
+    expect([call.tool, call.args]).toEqual([
+      'basedpyright',
+      ['--outputjson', '--project', path.join(reportRoot, 'pyrightconfig.json')],
+    ]);
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'pyrightconfig.json'), 'utf8'))).toEqual({
       typeCheckingMode: 'strict',
       enableTypeIgnoreComments: false,
@@ -265,6 +267,14 @@ describe('running basedpyright', () => {
     expect(fromTable).toBe(path.join(tableRoot, 'pyproject.toml'));
     expect(fromShared).toBe(path.join(sharedRoot, 'pyproject.toml'));
     expect(fromNothing).toBeUndefined();
+  });
+
+  it('names its version in the tool versions', () => {
+    const root = fakes.project({ 'conftest.py': '' });
+
+    expect(toolVersions(fakes.contextFor(root, { typeChecker: 'basedpyright' }).context)).toBe(
+      `ruff@0.9.9;basedpyright@1.40.2;coverage@7.6.1;pytest@8.3.1;jscpd@${jscpdVersion()}`,
+    );
   });
 
   it('leaves pyright alone with a basedpyright-only table or file', () => {

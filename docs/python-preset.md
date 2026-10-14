@@ -792,13 +792,15 @@ and CRAP rules.
   `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
   (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy,
   pyright and basedpyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
-  nested classes, comment forms). The preset e2e test also gates type errors with mypy, pyright and basedpyright,
-  the one-way rules and `python.exceptions` end to end.
+  nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
+  the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
+  basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
+  one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
 - `core/pack-contents.test.mjs` checks that the Python files, including the ruff config and the
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
   (import resolution, packages, stability direction, type-only edges, the scan step with a fake
-  interpreter), `import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms),
+  interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms),
   `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
   (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
