@@ -191,9 +191,25 @@ describe('config file', () => {
     );
   });
 
+  it('accepts exceptions with the java preset when they name a printed Java rule', () => {
+    const exceptions = [
+      { rule: 'pmd/SpringConstructorInjection', paths: ['src/main/**'], reason: 'Legacy wiring' },
+    ];
+    expect(validateConfig({ preset: 'java', exceptions })).toEqual({ preset: 'java', exceptions });
+    for (const rule of [
+      'SpringConstructorInjection',
+      'eslint/no-var',
+      'pmd/',
+      'java/gradle-failure',
+    ]) {
+      expect(() =>
+        validateConfig({ preset: 'java', exceptions: [{ ...exceptions[0], rule }] }),
+      ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    }
+  });
+
   it.each([
     ['java', 'layout'],
-    ['java', 'exceptions'],
     ['java', 'react'],
     ['kotlin', 'layout'],
     ['kotlin', 'react'],
@@ -203,7 +219,7 @@ describe('config file', () => {
     );
   });
 
-  it('lets the java preset lift the shared file limits, and only those', () => {
+  it('lets the java preset lift the shared file limits, but not line length or ESLint rules', () => {
     const exceptions = [
       {
         rule: 'folder-files-limit',
@@ -218,13 +234,13 @@ describe('config file', () => {
         preset: 'java',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
-    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
     expect(() =>
       validateConfig({
         preset: 'java',
         exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
       }),
-    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       'Checkstyle checks Java line length',
     );

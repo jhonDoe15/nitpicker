@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
@@ -124,6 +125,11 @@ describe('configureJavaAnalyzer', () => {
       configureJavaAnalyzer(analyzer, { kotlin: { detektConfig: 'tools/rules.yml' } })
         .configurationHash,
     ).not.toBe(analyzer.configurationHash);
+  });
+
+  it('declares every tool the Java reports produce', () => {
+    expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
+    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
   });
 });
 
@@ -253,6 +259,21 @@ describe('applyJavaPolicy', () => {
     ).toEqual([findings[1], findings[2]]);
   });
 
+  it('lifts a Java finding named as printed, <tool>/<rule>, only under the excepted glob', () => {
+    const findings = [
+      finding('src/main/java/legacy/A.java'),
+      { ...finding('src/main/java/legacy/A.java'), rule: 'Other' },
+      finding('src/main/java/app/B.java'),
+      { ...finding('src/main/java/legacy/C.java'), tool: 'spotbugs' },
+    ];
+
+    expect(
+      applyJavaPolicy(findings, {
+        exceptions: [{ rule: 'pmd/Rule', glob: 'src/main/java/legacy/**' }],
+      }),
+    ).toEqual([findings[1], findings[2], findings[3]]);
+  });
+
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
     const headRoot = inventoryRoot([allow('a.java', 1)]);
     const findings = [finding('a.java'), finding('a.java'), finding('b.java')];
@@ -276,12 +297,14 @@ describe('applyJavaPolicy', () => {
     };
 
     expect(applyJavaPolicy([], { ...options, snapshot: 'head' })).toEqual([
-      expect.objectContaining({
+      {
         tool: 'java',
         rule: 'baseline-expansion',
         path: 'a.java',
+        identity: expect.stringMatching(/^site:\w+$/),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
         classification: 'enforceable',
-      }),
+      },
     ]);
     expect(applyJavaPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
     expect(
