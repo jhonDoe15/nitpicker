@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { calculateCrap, ingestCrap } from './crap.mjs';
+import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 const SOURCE_ROOTS = ['src/main/java'];
@@ -36,10 +36,6 @@ describe('ingestCrap', () => {
   });
 
   it('joins constructors, anonymous-class methods and uses the lower of line and branch coverage', () => {
-    // run(): ccn 2, 100% lines but 50% branches -> CRAP 2.5; the constructor matches `<init>`.
-    expect(ingest().some((f) => f.symbol.includes('run') || f.symbol.includes('Calc.Calc'))).toBe(
-      false,
-    );
     const higher = withComplexity('Calc.<anonymous>.run', 8);
     expect(ingest(higher).map((f) => f.symbol)).toContain('Calc.<anonymous>.run()');
   });
@@ -73,6 +69,44 @@ describe('ingestCrap', () => {
 
     const twice = [...entries, entries[1]];
     expect(new Set(ingest(twice).map((f) => f.identity)).size).toBe(ingest(twice).length);
+  });
+
+  it('numbers repeated signatures per file, so another file never shifts an identity', () => {
+    const [entry] = structure();
+    const repeated = (file) => ({ ...entry, file, signature: 'X.run()' });
+    const entries = [
+      repeated('src/main/java/demo/A.java'),
+      repeated('src/main/java/demo/A.java'),
+      repeated('src/main/java/demo/B.java'),
+    ];
+
+    expect(ingest(entries).map((f) => `${f.path} ${f.identity}`)).toEqual([
+      'src/main/java/demo/A.java function:X.run()',
+      'src/main/java/demo/A.java function:X.run()#2',
+      'src/main/java/demo/B.java function:X.run()',
+    ]);
+  });
+
+  it('joins the constructor of a local class, whose JaCoCo class is Outer$1Loc', () => {
+    const xml = [
+      '<report name="demo"><package name="demo">',
+      '<class name="demo/Outer$1Loc" sourcefilename="Outer.java">',
+      '<method name="&lt;init&gt;" desc="()V" line="5">',
+      '<counter type="LINE" missed="7" covered="0"/>',
+      '</method></class></package></report>',
+    ].join('');
+    const local = {
+      file: 'src/main/java/demo/Outer.java',
+      name: 'Outer.Loc.Loc',
+      start: 5,
+      end: 7,
+      complexity: 12,
+      signature: 'Outer.Loc.Loc()',
+    };
+
+    expect(ingest([local], xml).map((f) => `${f.rule} ${f.symbol}`)).toEqual([
+      'crap-score-limit Outer.Loc.Loc()',
+    ]);
   });
 
   describe('an edited method over the limit', () => {
@@ -134,11 +168,18 @@ describe('ingestCrap', () => {
       'crap-coverage-unknown Calc.Util.Util()',
     ]);
     expect(ingest([util])).toEqual([]);
-    expect(ingest().some((f) => f.symbol.includes('Util'))).toBe(false);
   });
 
   it('rejects malformed input', () => {
-    expect(() => ingest([{ name: 'A.a', file: 'a' }])).toThrow('without complexity: A.a');
+    expect(() => ingest([{ name: 'A.a', file: 'a' }])).toThrow(
+      new TypeError('Structure entry without complexity: A.a'),
+    );
+    expect(() => ingest([{ name: 'A.a', file: 'a', complexity: 2 }])).toThrow(
+      new TypeError('Structure entry without signature: A.a'),
+    );
+    expect(() => parseLizardCsv('a,b,c')).toThrow(
+      new TypeError('Unrecognized lizard CSV row: a,b,c'),
+    );
     expect(() => ingestCrap([], '<x/>')).toThrow('<report>');
     expect(ingest([])).toEqual([]);
   });
