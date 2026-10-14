@@ -44,6 +44,7 @@ describe('python config validation', () => {
     'no-inline-suppression',
     'stub-beside-source',
     'swallowed-exception',
+    'blind-suppress',
     'arg-type',
     'import-not-found',
     'reportReturnType',
@@ -126,7 +127,7 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'S110', paths: ['a'], reason: 'r' }] },
-      'names no rule nitpicker reports: "S110"',
+      'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
     [
       {

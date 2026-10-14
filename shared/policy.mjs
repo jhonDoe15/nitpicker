@@ -223,7 +223,8 @@ export const RULES = [
   {
     id: RULE_IDS.stabilityDirection,
     check: 'coupling',
-    limit: 'a package depending on a less stable package',
+    limit:
+      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
     enforcedBy: withKotlin(ALL, true),
   },
   {

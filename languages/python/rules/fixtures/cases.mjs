@@ -70,6 +70,27 @@ export const RULE_CASES = [
     mention: 'contextlib.suppress',
   },
   {
+    name: 'except returning an empty list names a named default',
+    fixture: 'swallowing-container',
+    tool: 'python-rules',
+    rule: 'swallowed-exception',
+    mention: 'named default',
+  },
+  {
+    name: 'except assigning a constant names a value built from the error',
+    fixture: 'swallowing-assign',
+    tool: 'python-rules',
+    rule: 'swallowed-exception',
+    mention: 'built from the error',
+  },
+  {
+    name: 'suppress of Exception names the expected exception',
+    fixture: 'blind-suppress',
+    tool: 'python-rules',
+    rule: 'blind-suppress',
+    mention: 'contextlib.suppress(KeyError)',
+  },
+  {
     name: 'blind except names the specific exception',
     fixture: 'blind-except',
     tool: 'ruff',

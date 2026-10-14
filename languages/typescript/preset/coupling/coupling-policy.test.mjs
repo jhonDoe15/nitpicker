@@ -37,6 +37,34 @@ describe('coupling report', () => {
     expect(report.stabilityDirection).toEqual([]);
   });
 
+  it('does not report a type-only import as a stability inversion but counts it in instability', () => {
+    const module = (name, ...dependencies) => ({
+      source: `src/main/${name}.ts`,
+      dependencies: dependencies.map(([target, dependencyTypes]) => ({
+        resolved: `src/main/${target}.ts`,
+        dependencyTypes,
+      })),
+    });
+    const graphWith = (types) => ({
+      modules: [
+        module('p1/a', ['stable/s', ['local']]),
+        module('p2/a', ['stable/s', ['local']]),
+        module('stable/s', ['volatile/v', types]),
+        module('volatile/v', ['leaf/q', ['local']]),
+        module('leaf/q'),
+      ],
+    });
+
+    const runtime = analyzeCoupling(graphWith(['local']), 'src/main');
+    const typeOnly = analyzeCoupling(graphWith(['type-only']), 'src/main');
+
+    expect(runtime.stabilityDirection.map(({ source, target }) => [source, target])).toEqual([
+      ['stable', 'volatile'],
+    ]);
+    expect(typeOnly.stabilityDirection).toEqual([]);
+    expect(typeOnly.packages).toEqual(runtime.packages);
+  });
+
   it('fails visibly for a malformed analyzer graph', () => {
     expect(() => analyzeCoupling({ modules: null }, 'src/main')).toThrow(/modules array/);
   });

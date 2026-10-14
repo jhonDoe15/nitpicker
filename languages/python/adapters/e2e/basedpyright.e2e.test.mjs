@@ -17,7 +17,7 @@ const PYPROJECT = readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8');
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value * 2\n';
 const NO_MUTATION = '{ "preset": "python", "disable": ["mutation"] }\n';
 const CONFIGURED = `${PYPROJECT}\n[tool.basedpyright]\nreportMissingImports = true\n`;
-const WEAKENED = `${PYPROJECT}\n[tool.basedpyright]\ntypeCheckingMode = "off"\nignore = ["src/demo/typed.py"]\nexclude = ["src/demo/typed.py"]\n`;
+const WEAKENED = `${PYPROJECT}\n[tool.basedpyright]\ntypeCheckingMode = "off"\nignore = ["src/demo/typed.py"]\nexclude = ["src/demo/typed.py"]\nexecutionEnvironments = [{ root = "src", reportReturnType = "none" }]\n`;
 
 describe.skipIf(!enabled)('Python preset with basedpyright end to end', () => {
   let project;

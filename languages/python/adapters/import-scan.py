@@ -7,22 +7,50 @@ TYPE_CHECKING = "TYPE_CHECKING"
 TYPING_MODULES = {"typing", "typing_extensions"}
 
 
+def is_false_assignment(node):
+    return (
+        isinstance(node, ast.Assign)
+        and isinstance(node.value, ast.Constant)
+        and node.value.value is False
+        and any(isinstance(target, ast.Name) and target.id == TYPE_CHECKING for target in node.targets)
+    )
+
+
 def type_checking_names(tree):
-    names = {TYPE_CHECKING}
+    names = set()
+    modules = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module in TYPING_MODULES:
-            names.update(a.asname for a in node.names if a.name == TYPE_CHECKING and a.asname)
-    return names
+            names.update(a.asname or a.name for a in node.names if a.name == TYPE_CHECKING)
+        elif isinstance(node, ast.Import):
+            modules.update(a.asname or a.name for a in node.names if a.name in TYPING_MODULES)
+    if any(is_false_assignment(node) for node in tree.body):
+        names.add(TYPE_CHECKING)
+    return names, modules
 
 
-def is_type_checking(test, names):
+def is_type_checking(test, flags):
+    names, modules = flags
     if isinstance(test, ast.Name):
         return test.id in names
     if isinstance(test, ast.Attribute):
-        return test.attr == TYPE_CHECKING
+        return (
+            test.attr == TYPE_CHECKING
+            and isinstance(test.value, ast.Name)
+            and test.value.id in modules
+        )
     if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
-        return any(is_type_checking(value, names) for value in test.values)
+        return any(is_type_checking(value, flags) for value in test.values)
     return False
+
+
+def branches(node, type_only, flags):
+    if is_type_checking(node.test, flags):
+        return [(node.body, True), (node.orelse, type_only)]
+    negated = isinstance(node.test, ast.UnaryOp) and isinstance(node.test.op, ast.Not)
+    if negated and is_type_checking(node.test.operand, flags):
+        return [(node.body, type_only), (node.orelse, True)]
+    return None
 
 
 def statement_of(node, type_only):
@@ -41,21 +69,25 @@ def statement_of(node, type_only):
     }
 
 
-def collect(nodes, type_only, names, found):
-    for node in nodes:
+def collect(root, flags):
+    found = []
+    stack = [(root, False)]
+    while stack:
+        node, type_only = stack.pop()
         if isinstance(node, (ast.Import, ast.ImportFrom)):
             found.append(statement_of(node, type_only))
-        elif isinstance(node, ast.If) and is_type_checking(node.test, names):
-            collect(node.body, True, names, found)
-            collect(node.orelse, type_only, names, found)
+            continue
+        split = branches(node, type_only, flags) if isinstance(node, ast.If) else None
+        if split is None:
+            pending = [(child, type_only) for child in ast.iter_child_nodes(node)]
         else:
-            collect(ast.iter_child_nodes(node), type_only, names, found)
+            pending = [(child, flag) for statements, flag in split for child in statements]
+        stack.extend(reversed(pending))
+    return found
 
 
 def imports_of(tree):
-    found = []
-    collect([tree], False, type_checking_names(tree), found)
-    return found
+    return collect(tree, type_checking_names(tree))
 
 
 def scan(root, files):
