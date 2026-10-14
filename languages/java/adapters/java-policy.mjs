@@ -7,14 +7,11 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import {
-  JAVA_NATIVE_RULES,
-  SHARED_EXCEPTION_RULES,
-  canonicalRule,
-} from '../../../shared/policy.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -83,14 +80,7 @@ export function configureJavaAnalyzer(
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
-    ...exceptions.flatMap(({ rule, paths, function: functionName }) => [
-      '--exception',
-      JSON.stringify({
-        rule,
-        paths,
-        ...(functionName === undefined ? {} : { function: functionName }),
-      }),
-    ]),
+    ...exceptions.flatMap((exception) => ['--exception', exceptionArgument(exception)]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
   ];
@@ -117,6 +107,14 @@ export function configureJavaAnalyzer(
   return legacyInventory === undefined
     ? configured
     : withLegacyInventory(configured, legacyInventory);
+}
+
+function exceptionArgument({ rule, paths, function: functionName }) {
+  return JSON.stringify({
+    rule,
+    paths,
+    ...(functionName === undefined ? {} : { function: functionName }),
+  });
 }
 
 function fileLimitThresholds(thresholds) {

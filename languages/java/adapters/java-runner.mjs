@@ -42,8 +42,8 @@ function parseException(value) {
   let entry;
   try {
     entry = JSON.parse(value);
-  } catch {
-    throw new Error(USAGE);
+  } catch (error) {
+    throw new Error(USAGE, { cause: error });
   }
   const isValid =
     typeof entry?.rule === 'string' &&

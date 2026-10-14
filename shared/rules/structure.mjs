@@ -25,7 +25,6 @@ import {
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
-  exceptionRoute,
   renderMessage,
 } from '../policy.mjs';
 import {
@@ -35,6 +34,7 @@ import {
   positiveInteger,
   summaryMetrics,
 } from './finding-helpers.mjs';
+import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
 const METADATA_FIELDS = new Set(['file', 'name', 'sourceHash', 'start', 'end']);
 

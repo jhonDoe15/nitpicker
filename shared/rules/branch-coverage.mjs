@@ -1,11 +1,6 @@
-import {
-  MESSAGES,
-  MINIMUM_BRANCH_COVERAGE,
-  RULE_IDS,
-  exceptionRoute,
-  renderMessage,
-} from '../policy.mjs';
+import { MESSAGES, MINIMUM_BRANCH_COVERAGE, RULE_IDS, renderMessage } from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
+import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
 // Neutral input: `{ path, key, percent, line?, arms? }` per branch (or per line of branches), where
 // `percent` is the share of its outcomes covered and `key` identifies its source text. Anything

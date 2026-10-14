@@ -1,4 +1,5 @@
-import { exceptionRoute, RULE_IDS } from '../policy.mjs';
+import { RULE_IDS } from '../policy.mjs';
+import { exceptionRoute } from './rule-names.mjs';
 
 export const ROUTED_RULES = [
   RULE_IDS.mutantSurvived,

@@ -1,8 +1,5 @@
-import {
-  DEAD_CODE_RULES,
-  SHARED_EXCEPTION_RULES,
-  canonicalRule,
-} from '../../../../shared/policy.mjs';
+import { DEAD_CODE_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 
 const POST_FILTER_RULES = [...SHARED_EXCEPTION_RULES, ...DEAD_CODE_RULES];
 

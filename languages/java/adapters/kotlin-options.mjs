@@ -3,12 +3,9 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
-import {
-  JAVA_NATIVE_RULES,
-  SHARED_EXCEPTION_RULES,
-  canonicalRule,
-} from '../../../shared/policy.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
+import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];

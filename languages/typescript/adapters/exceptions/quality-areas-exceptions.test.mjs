@@ -2,16 +2,16 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mjs';
-import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
 import {
   normalizeCoverage,
   normalizeCrap,
   normalizeStructure,
   parseArguments,
   runQualityArea,
-} from './quality-areas-runner.mjs';
+} from '../quality-areas-runner.mjs';
 
 const roots = [];
 const originalPolicy = process.env[HEAD_POLICY_ENV];
@@ -21,7 +21,7 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
   }
   if (originalPolicy === undefined) {
-    delete process.env[HEAD_POLICY_ENV];
+    Reflect.deleteProperty(process.env, HEAD_POLICY_ENV);
   } else {
     process.env[HEAD_POLICY_ENV] = originalPolicy;
   }

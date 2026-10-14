@@ -4,10 +4,10 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
-  exceptionRoute,
   renderMessage,
 } from '../policy.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
+import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
 // Neutral input: one entry per function, `{ path, name, identity, ratchetKey?, line?, crap? }`.
 // `crap` is the function's CRAP score, or anything that is not a finite number when its coverage is

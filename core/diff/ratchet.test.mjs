@@ -144,19 +144,11 @@ describe('the message of a function that got worse', () => {
     );
   });
 
-  it('keeps the plain message for a function the change pushes over the limit', () => {
-    const result = compare(
-      [computeInvoice('lines', 40, 'before')],
-      [computeInvoice('lines', 72, 'after')],
-    );
-
-    expect(messages(result)).toEqual([
-      'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
-    ]);
-  });
-
-  it('keeps the plain message for a new function', () => {
-    const result = compare([], [computeInvoice('lines', 72, 'after')]);
+  it.each([
+    ['a function the change pushes over the limit', [computeInvoice('lines', 40, 'before')]],
+    ['a new function', []],
+  ])('keeps the plain message for %s', (_, base) => {
+    const result = compare(base, [computeInvoice('lines', 72, 'after')]);
 
     expect(messages(result)).toEqual([
       'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',

@@ -6,8 +6,9 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../shared/config.mjs';
-import { SHARED_EXCEPTION_RULES, canonicalRule } from '../../../shared/policy.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
+import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
 const FORMATTERS = ['ruff', 'black'];

@@ -47,23 +47,6 @@ export const FUNCTION_EXCEPTION_RULES = [
 /** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
 export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
 
-/** A function name without its parameter list, with `::` written as `.`. */
-export function normalizeFunctionName(name) {
-  const bare = name.replace(/\(.*$/s, '').trim().replaceAll('::', '.');
-  return bare === '' ? name : bare;
-}
-
-/** The sentence that names the config entry which accepts a finding of `rule` in `path`. */
-export function exceptionRoute({ rule, path, name }) {
-  const entry = {
-    rule,
-    paths: [path],
-    ...(name === undefined ? {} : { function: normalizeFunctionName(name) }),
-    reason: '...',
-  };
-  return `If this is intended, add ${JSON.stringify(entry)} to "exceptions" in nitpicker.config.json.`;
-}
-
 /**
  * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
  * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
@@ -77,7 +60,7 @@ export const FILE_LIMIT_DEFAULTS = {
 };
 
 /** Rules an exception lifts for a path only: a finding has no function to name. */
-export const PATH_EXCEPTION_RULES = [
+const PATH_EXCEPTION_RULES = [
   RULE_IDS.mutantSurvived,
   RULE_IDS.mutantNoCoverage,
   RULE_IDS.duplicateClone,
@@ -92,12 +75,6 @@ export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCE
 
 /** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
 export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
-
-/** The rule an `exceptions` entry names: `<tool>/<rule>`, as a finding prints it, names `<rule>` too. */
-export function canonicalRule(rule) {
-  const bare = rule.slice(rule.indexOf('/') + 1);
-  return [...SHARED_EXCEPTION_RULES, ...DEAD_CODE_RULES].includes(bare) ? bare : rule;
-}
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
