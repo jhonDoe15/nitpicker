@@ -43,6 +43,7 @@ const SOURCES = {
   'src/bridged.ts':
     '// eslint-disable-next-line local/no-foo\nexport const foo = 1;\nexport const bar = foo;\n',
   'src/separators.ts': "export const s = 'a\u2028b';\r\ndebugger;\rdebugger;\n",
+  'src/oxlint-directive.ts': '// oxlint-disable-next-line no-debugger\ndebugger;\n',
   'src/bom.ts': '\uFEFFconst x = 1; debugger;\nexport { x };\n',
 };
 
@@ -102,6 +103,12 @@ describe('lintWithOxlint', () => {
 
   it('applies disable comments to rules loaded from ESLint plugins', () => {
     expect(messagesOf('src/bridged.ts')).toEqual([{ ruleId: 'local/no-foo', line: 3, column: 20 }]);
+  });
+
+  it('ignores oxlint disable comments, which ESLint would not honor', () => {
+    expect(messagesOf('src/oxlint-directive.ts')).toEqual([
+      { ruleId: 'no-debugger', line: 2, column: 1 },
+    ]);
   });
 
   it('counts lines and columns the way ESLint does', () => {

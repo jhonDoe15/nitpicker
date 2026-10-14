@@ -69,14 +69,18 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
       hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
     }
     const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
+    const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
     const { translation, results } = lintUntilAccepted({
       plan,
       stage,
       projectRoot: options.projectRoot,
       environment,
       timeoutMs: options.timeoutMs,
-      neutralized: inlineConfig.neutralized,
-      directiveFiles: directiveFilesOf(options.projectRoot, files, plan.noInlineConfig),
+      neutralized: new Map([
+        ...inlineConfig.neutralized,
+        ...oxlintDirectiveLocations(directiveFiles),
+      ]),
+      directiveFiles,
     });
     return mergeResults([
       ...results,
@@ -246,7 +250,12 @@ function lintAttempt({
   const translation = translatePlan(plan, { ...native, bridgedRules });
   const sampleFile = plan.groups[0]?.files[0];
   const configPath = writeStageConfig({ stage, projectRoot, sampleFile, translation });
-  renameBridgedDirectives({ stage, projectRoot, directiveFiles, ruleNames: translation.ruleNames });
+  rewriteDirectiveComments({
+    stage,
+    projectRoot,
+    directiveFiles,
+    ruleNames: translation.ruleNames,
+  });
   const naming = {
     ruleNames: translation.ruleNames,
     messageIdOf: messageIdResolver(plan.ruleMessages),
@@ -453,19 +462,36 @@ function directiveFilesOf(projectRoot, files, noInlineConfig) {
   return files
     .filter((file) => !locked.has(file))
     .map((file) => ({ file, text: readFileSync(path.join(projectRoot, file), 'utf8') }))
-    .filter(({ text }) => text.includes('eslint-'))
+    .filter(({ text }) => text.includes('eslint-') || text.includes('oxlint-'))
     .map(({ file, text }) => ({ file, text, directives: directiveComments(text, file) }))
-    .filter(({ directives }) => directives.some(({ isEslint }) => isEslint));
+    .filter(({ directives }) => directives.length > 0);
 }
 
-function renameBridgedDirectives({ stage, projectRoot, directiveFiles, ruleNames }) {
+function oxlintDirectives(directives) {
+  return directives.filter(({ isEslint }) => !isEslint);
+}
+
+function oxlintDirectiveLocations(directiveFiles) {
+  return directiveFiles
+    .map(({ file, directives }) => [
+      file,
+      new Set(oxlintDirectives(directives).map(({ neutralizedLocation }) => neutralizedLocation)),
+    ])
+    .filter(([, locations]) => locations.size > 0);
+}
+
+function rewriteDirectiveComments({ stage, projectRoot, directiveFiles, ruleNames }) {
   const renames = new Map(
     [...ruleNames]
       .filter(([oxlintName]) => oxlintName.startsWith('js-'))
       .map(([oxlintName, ruleId]) => [ruleId, oxlintName]),
   );
   for (const { file, text, directives } of directiveFiles) {
-    const content = withRenamedRules(text, directives, renames);
+    const content = withRenamedRules(
+      withoutDirectives(text, oxlintDirectives(directives)),
+      directives,
+      renames,
+    );
     if (content !== text) overlayFile({ stage, projectRoot, relativePath: file, content });
   }
 }
