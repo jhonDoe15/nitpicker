@@ -30,7 +30,7 @@ const OPTIONAL_VALIDATORS = [
   ['analyzers', validateCustomAnalyzers],
   ['tools', validateTools],
 ];
-const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
+export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
