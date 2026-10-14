@@ -15,7 +15,9 @@ export function readKotlinMetrics(reportRoot) {
     : { functions: [], files: [] };
 }
 
-const repeatsInClass = (entry) => entry.name.endsWith('<init>');
+function repeatsInClass(entry) {
+  return entry.name.endsWith('<init>');
+}
 
 const RETURN_EARLY = 'Return early instead of nesting.';
 const EXTRACT_NESTED = 'Move the nested part into its own function.';
