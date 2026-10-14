@@ -124,6 +124,8 @@ If your change edits a function that existed before it, read
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
+- Test roots are `test/`, `tests/`, `__tests__/` and `e2e/` at the repo root. A Playwright or Cypress
+  spec in `e2e/` imports no production code and is not mutated; a Jest `__tests__/` goes in `exclude`.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.

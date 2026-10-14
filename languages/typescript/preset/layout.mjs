@@ -10,7 +10,8 @@ import {
 export { globToRegExp };
 
 const defaultSourceRoots = ['src'];
-const defaultTestRoots = ['test', 'tests', '__tests__', 'e2e'];
+export const END_TO_END_ROOT = 'e2e';
+const defaultTestRoots = ['test', 'tests', '__tests__', END_TO_END_ROOT];
 export const codeExtensionNames = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
 export const codeExtensions = `{${codeExtensionNames.join(',')}}`;
 const javascriptProjectExtensionNames = [
@@ -68,6 +69,10 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
 export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
+  const executedTestRoots =
+    layout.testRoots === undefined
+      ? testRoots.filter((root) => root !== END_TO_END_ROOT)
+      : testRoots;
   const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
   const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
   const excludeMatchers = exclude.map(globToRegExp);
@@ -88,6 +93,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     sourceRoots,
     sourceRoot,
     testRoots,
+    executedTestRoots,
     exclude,
     excludedGlobs,
     sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
@@ -109,6 +115,12 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       const normalized = file.replaceAll('\\', '/');
       if (!codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
       return testPattern.test(normalized);
+    },
+    isEndToEndTest(file) {
+      return (
+        testRoots.includes(END_TO_END_ROOT) &&
+        file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`)
+      );
     },
     isRunnableTestFile(file) {
       return resolved.isTestFile(file) && runnableTestPattern.test(file);

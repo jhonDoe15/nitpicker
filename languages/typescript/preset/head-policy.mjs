@@ -84,7 +84,9 @@ export function readHeadPolicy(environment = process.env) {
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
+    ...resolveLayout(readHeadPolicyFile(environment).layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+    }),
     entryPoints: policy.layout.entryPoints ?? [],
   };
 }

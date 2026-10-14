@@ -1,4 +1,4 @@
-import { inReactTestFilesOnly, isRequireOfReact, reactBindingNames } from './react-test-files.mjs';
+import { inReactTestFilesOnly, isReactExpression, reactBindingNames } from './react-test-files.mjs';
 
 const instanceMethods = new Set([
   'instance',
@@ -21,9 +21,20 @@ const fiberKeyPrefix = '__react';
 const globalReactNames = ['React', 'react'];
 const hookNamePattern = /^use[A-Z]/;
 
+function literalTypeName(node) {
+  const literal =
+    node.typeAnnotation?.type === 'TSLiteralType' ? node.typeAnnotation.literal : node;
+  return literal.type === 'Literal' && typeof literal.value === 'string'
+    ? literal.value
+    : undefined;
+}
+
 function staticName(node) {
   if (node.type === 'Identifier') {
     return node.name;
+  }
+  if (node.type === 'TSAsExpression') {
+    return literalTypeName(node) ?? staticName(node.expression);
   }
   return node.type === 'Literal' && typeof node.value === 'string' ? node.value : undefined;
 }
@@ -39,8 +50,7 @@ function isFiberName(name) {
 function spiedHook(node, reactNames) {
   const [target, hook] = node.arguments;
   const spies = node.callee.type === 'MemberExpression' && memberName(node.callee) === 'spyOn';
-  const onReact =
-    (target?.type === 'Identifier' && reactNames.has(target.name)) || isRequireOfReact(target);
+  const onReact = target !== undefined && isReactExpression(target, reactNames);
   const name = hook === undefined ? undefined : staticName(hook);
   return spies && onReact && hookNamePattern.test(name ?? '') ? name : undefined;
 }
@@ -62,7 +72,7 @@ export const rule = {
     },
   },
   create: inReactTestFilesOnly((context) => {
-    const reactNames = new Set([...globalReactNames, ...reactBindingNames(context.sourceCode.ast)]);
+    const reactNames = reactBindingNames(context.sourceCode, globalReactNames);
     return {
       CallExpression(node) {
         const callee = node.callee;

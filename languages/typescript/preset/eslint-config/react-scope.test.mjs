@@ -354,6 +354,34 @@ describe('the React scope config', () => {
     expect(rules).toHaveLength(count);
   });
 
+  it.each([
+    [
+      'toMatchSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchSnapshot();",
+    ],
+    [
+      'toMatchInlineSnapshot on a query',
+      "render(<A />); expect(screen.getByRole('list')).toMatchInlineSnapshot();",
+    ],
+    [
+      'toMatchSnapshot on asFragment',
+      'const { asFragment } = render(<A />); expect(asFragment()).toMatchSnapshot();',
+    ],
+  ])('allows a snapshot-only test: %s', async (_name, body) => {
+    const config = [
+      { languageOptions: { parser: tseslint.parser } },
+      ...(await reactSyntaxConfigFor(layout)),
+    ];
+
+    expect(
+      lintFixture({
+        config,
+        filename: 'test/ui/a.test.tsx',
+        code: `import { render, screen } from '@testing-library/react'; it('renders', () => { ${body} });`,
+      }),
+    ).toEqual([]);
+  });
+
   it('reaches container queries made through a project test-utils wrapper', async () => {
     const config = [
       { languageOptions: { parser: tseslint.parser } },

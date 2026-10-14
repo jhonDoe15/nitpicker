@@ -298,7 +298,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
   `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
-  default, namespace or `require` binding of `react`); Testing Library's guiding principle is to
+  binding of `react`: a default, namespace, `{ default as R }`, `import = require`, `require`
+  (anywhere in the file), `await import('react')` or `vi.importActual('react')` binding, or an
+  alias such as `const R = React`); Testing Library's guiding principle is to
   test the way the software is used, so assert what the user sees, or test a custom hook with
   `renderHook`. An element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
@@ -350,12 +352,23 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
-  default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders; a missing one is
-  ignored). Type checking, duplicate detection, dead-code analysis and the test-file lint scopes cover all
-  four, but the quality test run never runs `e2e` (end-to-end runners such as Playwright start those tests
-  themselves). The roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
+  default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so
+  `src/crypto/e2e/` stays production code; a missing one is ignored). Type checking, duplicate
+  detection, dead-code analysis and the test-file lint scopes cover all four. The roots must be
+  directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;
   the module-load-effects check does not apply to them, since running at load is what a script does.
+- A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
+  import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
+  they skip `contract/`), `async ({}, use)` fixtures are allowed there, and the folder is never
+  mutated. The type check adds the DOM lib when the folder exists, so `document` and `window` inside
+  `page.evaluate` compile (the lib then applies to every file in that check). The default quality
+  test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
+  you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
+- A Jest project with tests in a root `__tests__/` gets them run by Vitest in the quality test run,
+  and they fail on `jest.*` (Jest support is issue #162). Either list `layout.testRoots` without
+  `__tests__`, or add `"__tests__/**"` to `exclude`, which also leaves the folder out of the other
+  tools.
 
 ## Enforcement sources
 
