@@ -19,7 +19,7 @@ import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
-const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
+export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const KEYS = [
   'base',
