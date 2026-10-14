@@ -187,6 +187,42 @@ describe('fileFindings for SpotBugs', () => {
       'spotbugs 4 Found: a suppression of every bug pattern.',
     ]);
   });
+
+  it('still reads java.lang.SuppressWarnings as PMD when the file imports the SpotBugs one', () => {
+    const source = [
+      'import edu.umd.cs.findbugs.annotations.*;',
+      'class B {',
+      '  @java.lang.SuppressWarnings("PMD") void a() {}',
+      '  @java.lang.SuppressWarnings("unchecked") void b() {}',
+      '  @SuppressWarnings("NP") void c() {}',
+      '}',
+    ].join('\n');
+
+    expect(found(fileFindings(source, 'B.java'))).toEqual([
+      'pmd 3 Found: "PMD".',
+      'spotbugs 5 Found: "NP".',
+    ]);
+  });
+
+  it('reports the annotation names SpotBugs honors by suffix, with whitespace after the @', () => {
+    const source = [
+      'class C {',
+      '  @MySuppressFBWarnings("EI") void a() {}',
+      '  @AcmeSuppressWarnings("EI") void b() {}',
+      '  @ SuppressFBWarnings("NP") void c() {}',
+      '  @/* x */edu . umd.cs.findbugs.annotations . SuppressWarnings void d() {}',
+      '  @ SuppressWarnings("PMD") void e() {}',
+      '}',
+    ].join('\n');
+
+    expect(found(fileFindings(source, 'C.java'))).toEqual([
+      'spotbugs 2 Found: "EI".',
+      'spotbugs 3 Found: "EI".',
+      'spotbugs 4 Found: "NP".',
+      'spotbugs 5 Found: a suppression of every bug pattern.',
+      'pmd 6 Found: "PMD".',
+    ]);
+  });
 });
 
 describe('fileFindings identities', () => {
@@ -199,6 +235,15 @@ describe('fileFindings identities', () => {
 
     expect(new Set(identities).size).toBe(2);
     expect(fileFindings(shifted, 'A.java').map((finding) => finding.identity)).toEqual(identities);
+  });
+
+  it('tells repeated SpotBugs suppressions apart', () => {
+    const source =
+      'class A {\n  @SuppressFBWarnings("NP") void a() {}\n  @SuppressFBWarnings("NP") void a() {}\n}\n';
+
+    const identities = fileFindings(source, 'A.java').map((finding) => finding.identity);
+
+    expect(identities).toEqual([identities[0], `${identities[0]}#2`]);
   });
 });
 

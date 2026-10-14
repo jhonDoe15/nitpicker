@@ -159,6 +159,23 @@ describe('project tool configs', () => {
     expect(configureJavaAnalyzer(analyzer, {}).resolveConfigurationHash).toBeUndefined();
   });
 
+  it('hashes every file in the opted-in config folders', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { tools });
+    const root = projectWith({
+      'config/pmd/ruleset.xml': '<ruleset/>',
+      'config/checkstyle/checkstyle.xml': '<module/>',
+      'config/checkstyle/suppressions.xml': '<suppressions/>',
+    });
+
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(
+      path.join(root, 'config/checkstyle/suppressions.xml'),
+      '<suppressions> </suppressions>',
+    );
+
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
   it('chains the project files into the legacy inventory hash', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
       tools,
@@ -189,13 +206,19 @@ describe('project tool configs', () => {
       `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
       '-Pnitpicker.checkstyle.nitpickerConfig=false',
     ]);
+    expect(
+      toolConfigProperties('/base', { policyRoot: head, toolPrecedence: { pmd: ['project'] } }),
+    ).toEqual([
+      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
+      '-Pnitpicker.pmd.nitpickerConfig=false',
+    ]);
   });
 
   it('fails with the missing file when the project layer is chosen without one', () => {
     expect(() =>
       toolConfigProperties(projectWith({}), { toolPrecedence: { pmd: ['project'] } }),
     ).toThrow(
-      '"tools.pmd.precedence" includes "project", but the project has no config/pmd/ruleset.xml',
+      new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
     );
   });
 });

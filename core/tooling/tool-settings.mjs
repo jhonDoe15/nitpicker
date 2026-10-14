@@ -1,12 +1,15 @@
-import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
+import {
+  GRADLE_PRESETS,
+  PROJECT_TOOL_CONFIGS,
+} from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 
 const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
-const GRADLE_TOOL_SETTING_KEYS = new Map([
-  ['pmd', ['precedence']],
-  ['checkstyle', ['precedence']],
-]);
+const GRADLE_TOOL_SETTING_KEYS = new Map(
+  [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
+);
 const SINGLE_CONFIG_TOOLS = ['checkstyle'];
+const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 export function validateTools(tools, preset) {
@@ -53,7 +56,7 @@ function validatePrecedence(precedence, name) {
     new Set(precedence).size === precedence.length;
   if (!isValid) {
     throw configError(
-      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once, highest precedence first. For example ["project", "nitpicker"] merges both and lets the project's config win`,
+      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once${ORDERED_PRECEDENCE_TOOLS.includes(name) ? ', highest first' : ''}`,
     );
   }
 }
