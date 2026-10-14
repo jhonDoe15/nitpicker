@@ -184,10 +184,12 @@ allprojects {
                 + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
-                // Type resolution: the test compile classpath (which holds the main one) and the main and
-                // test classes, so rules can match annotation and supertype names exactly.
+                // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
+                // main one only) and the main and test classes, so rules can match annotation and
+                // supertype names exactly.
                 def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
-                auxClasspath.text = (sourceSets.test.compileClasspath.files
+                auxClasspath.text = (sourceSets.main.compileClasspath.files
+                    + sourceSets.test.compileClasspath.files
                     + sourceSets.main.output.classesDirs.files
                     + sourceSets.test.output.classesDirs.files).findAll { it.exists() }.unique()
                     .collect { it.absolutePath }.join('\n')
