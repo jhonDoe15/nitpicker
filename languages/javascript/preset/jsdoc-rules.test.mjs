@@ -43,11 +43,18 @@ tester.run('no-comments with JSDoc types', noComments, {
       options: jsdocTypes,
     },
     { code: "/** @import {Row} from './row.js' */", options: jsdocTypes },
-    { code: '/* istanbul ignore next */\nconst value = 1;', options: jsdocTypes },
+    { code: '// prettier-ignore\nconst value = 1;', options: jsdocTypes },
     { code: '/** @type {Row} */\nconst row = make();', options: jsdocTypes },
     { code: 'const value = 1;', options: jsdocTypes },
   ],
   invalid: [
+    ...['/** istanbul ignore next */', '// c8 ignore next', '/* Stryker disable all */'].map(
+      (comment) => ({
+        code: `${comment}\nexport function add(a, b) { return a + b; }`,
+        options: jsdocTypes,
+        errors: [{ messageId: 'coverageSuppression' }],
+      }),
+    ),
     {
       code: '/** Adds two numbers. */\nexport function add(a, b) { return a + b; }',
       options: jsdocTypes,
