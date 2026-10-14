@@ -13,7 +13,7 @@ import {
   temporaryRoot,
   usePythonCli,
   write,
-} from './fixtures/python-cli.mjs';
+} from './diff/fixtures/python-cli.mjs';
 
 usePythonCli();
 

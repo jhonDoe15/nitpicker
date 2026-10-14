@@ -599,7 +599,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       {
         rule: 'stability-direction',
         identity: 'package-edge:stable2->churn2',
-        message: 'stable2 depends on less stable package churn2',
+        message:
+          'stable2 depends on less stable package churn2. If this is intended, add {"rule":"stability-direction","paths":["stable2"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     const stable = onlyTools(result.newFindings, 'coupling').find(
