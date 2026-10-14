@@ -11,7 +11,7 @@
 //                                    a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
-//   build/nitpicker/checkstyle-test.xml Checkstyle XML report (test sources; absent without any)
+//   build/nitpicker/checkstyle-test.xml  Checkstyle XML report (test sources; absent without any)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
 //   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
 //   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters (languages/java/gradle/StructureMetrics.java)
