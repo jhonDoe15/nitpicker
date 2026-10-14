@@ -139,25 +139,30 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       const normalized = file.replaceAll('\\', '/');
       return testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`));
     },
-    projectCodeFiles: (projectRoot, roots = resolved.graphRoots) => {
-      const files = [];
-      function visit(directory, relative) {
-        for (const entry of readdirSync(directory, { withFileTypes: true })) {
-          const name = relative ? `${relative}/${entry.name}` : entry.name;
-          if (GENERATED_DIRECTORY.test(name)) continue;
-          if (entry.isDirectory()) visit(path.join(directory, entry.name), name);
-          else if (entry.isFile() && (resolved.isSourceFile(name) || resolved.isTestFile(name))) {
-            if (!resolved.isExcluded(name)) files.push(name);
-          }
-        }
-      }
-      for (const root of existingRoots(projectRoot, roots)) {
-        visit(path.join(projectRoot, root), root);
-      }
-      return files;
-    },
+    projectCodeFiles: (projectRoot, roots = resolved.graphRoots) =>
+      codeFilesUnder(resolved, projectRoot, existingRoots(projectRoot, roots)),
   };
   return resolved;
+}
+
+function codeFilesUnder(layout, projectRoot, roots) {
+  const files = [];
+  const pending = roots.map((root) => ({
+    directory: path.join(projectRoot, root),
+    relative: root,
+  }));
+  for (const { directory, relative } of pending) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const name = relative ? `${relative}/${entry.name}` : entry.name;
+      if (GENERATED_DIRECTORY.test(name)) continue;
+      if (entry.isDirectory()) {
+        pending.push({ directory: path.join(directory, entry.name), relative: name });
+      } else if (entry.isFile() && (layout.isSourceFile(name) || layout.isTestFile(name))) {
+        if (!layout.isExcluded(name)) files.push(name);
+      }
+    }
+  }
+  return files;
 }
 
 export function existingRoots(projectRoot, roots) {
