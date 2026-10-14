@@ -4,7 +4,7 @@ import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
-export const ENGINE_HINT =
+const ENGINE_HINT =
   'Set "tools": { "eslint": { "engine": "eslint" } } in nitpicker.config.json to lint with ESLint instead.';
 
 export function oxlintBinary() {

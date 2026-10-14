@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
 
-export const STAGE_DIRECTORY = '.nitpicker-oxlint';
+const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
 export function hideNestedTypeScriptConfigs(stage, projectRoot, files) {
   for (const directory of nestedConfigDirectories(projectRoot, files)) {
