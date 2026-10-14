@@ -2,12 +2,11 @@ import { lstatSync, mkdirSync, readdirSync, symlinkSync, unlinkSync, writeFileSy
 import path from 'node:path';
 import ts from 'typescript';
 
-const LINE_DIRECTIVE =
-  /^(?<space>\s*)(?<keyword>(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?)(?:\s|$)/u;
+const TOGGLE_KEYWORD = String.raw`(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?`;
+const LINE_DIRECTIVE = directivePattern(TOGGLE_KEYWORD);
 const INVISIBLE_TO_OXLINT = '\uFEFF';
 const RULE_TOKEN = /[\w@/-]+/gu;
-const BLOCK_DIRECTIVE =
-  /^(?<space>\s*)(?<keyword>(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?|eslint|eslint-env|globals?|exported)(?:\s|$)/u;
+const BLOCK_DIRECTIVE = directivePattern(`${TOGGLE_KEYWORD}|eslint|eslint-env|globals?|exported`);
 
 export function directiveComments(text, fileName) {
   const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
@@ -117,4 +116,8 @@ function materializeDirectory(stagePath, projectPath) {
   for (const entry of readdirSync(projectPath)) {
     symlinkSync(path.join(projectPath, entry), path.join(stagePath, entry));
   }
+}
+
+function directivePattern(keywords) {
+  return new RegExp(String.raw`^(?<space>\s*)(?<keyword>${keywords})(?:\s|$)`, 'u');
 }

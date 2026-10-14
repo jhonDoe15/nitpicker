@@ -1,30 +1,24 @@
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import {
-  PACKAGE_ROOT,
-  resolveTool,
-  SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
 import {
   linkPolicyFile,
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
 import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
-import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
-import { lintWithOxlint } from './oxlint/oxlint-runner.mjs';
+import { readLayout } from '../preset/head-policy.mjs';
+import { runLintEngine } from './lint-engine/lint-engine.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from './static-checks-runner.mjs';
 
-const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
@@ -76,17 +70,15 @@ function runEslint(options) {
       });
     }
     installedPolicyFiles = installPolicyFiles(options);
-    const invocation = eslintInvocation(options, installedPolicyFiles.at(0)?.targetPath);
-    const value =
-      lintEngine(options) === 'oxlint'
-        ? lintWithOxlint({
-            options,
-            environment: invocation.environment,
-            projectConfigPath: invocation.projectConfigPath,
-            runEslintCli: (patterns, extraEnvironment) =>
-              runEslintCli(invocation, patterns, extraEnvironment),
-          })
-        : runEslintCli(invocation, options.patterns);
+    const value = runLintEngine({
+      options,
+      projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
+      policyConfigPath: validatedContainedFile(
+        options.policyRoot,
+        options.configRelativePath,
+        '--config',
+      ).canonicalPath,
+    });
     return normalizeEslintResults({
       value,
       projectRoot: options.projectRoot,
@@ -102,82 +94,6 @@ function runEslint(options) {
         removeSnapshotDependencies(preparedDependencies);
       }
     }
-  }
-}
-
-function lintEngine(options) {
-  return options.eslintCliPath === undefined
-    ? (readHeadPolicy().tools.eslint?.engine ?? 'oxlint')
-    : 'eslint';
-}
-
-function eslintInvocation(options, projectConfigPath) {
-  const policyConfigPath = validatedContainedFile(
-    options.policyRoot,
-    options.configRelativePath,
-    '--config',
-  ).canonicalPath;
-  return {
-    options,
-    projectConfigPath,
-    eslintCliPath: options.eslintCliPath ?? resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
-    environment: {
-      ...process.env,
-      ...options.environment,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
-      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
-      NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath ?? '',
-    },
-  };
-}
-
-function runEslintCli(invocation, patterns, extraEnvironment = {}) {
-  const { options } = invocation;
-  const result = spawnSync(
-    process.execPath,
-    [
-      invocation.eslintCliPath,
-      '--config',
-      path.join(import.meta.dirname, 'eslint-config-wrapper.mjs'),
-      '--format',
-      'json',
-      '--no-color',
-      '--no-error-on-unmatched-pattern',
-      ...patterns,
-    ],
-    {
-      cwd: options.projectRoot,
-      env: { ...invocation.environment, ...extraEnvironment },
-      encoding: 'utf8',
-      maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
-      timeout: options.timeoutMs,
-      killSignal: 'SIGTERM',
-    },
-  );
-  assertEslintCompleted(result, options.timeoutMs);
-  try {
-    return JSON.parse(result.stdout);
-  } catch (error) {
-    const detail = result.stderr.trim();
-    const suffix = detail.length === 0 ? '' : `: ${detail}`;
-    throw new Error(`ESLint did not produce valid JSON${suffix}`, {
-      cause: error,
-    });
-  }
-}
-
-function assertEslintCompleted(result, timeoutMs) {
-  if (result.error !== undefined) {
-    if (result.error.code === 'ETIMEDOUT') {
-      throw new Error(`ESLint timed out after ${String(timeoutMs)} ms`, {
-        cause: result.error,
-      });
-    }
-    throw result.error;
-  }
-  if (result.status !== 0 && result.status !== 1) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`ESLint exited with ${String(result.status)}: ${detail}`);
   }
 }
 

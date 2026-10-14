@@ -36,7 +36,11 @@ async function lintPlan(root, globs) {
 
 function addFile(plan, file, config) {
   const rules = enabledRules(config.rules);
-  addToGroup(plan.groups, file, { rules, globals: sortedGlobals(config.languageOptions?.globals) });
+  addToGroup(plan.groups, file, {
+    rules,
+    globals: sortedGlobals(config.languageOptions?.globals),
+    settings: config.settings ?? {},
+  });
   if (config.linterOptions?.noInlineConfig === true) plan.noInlineConfig.push(file);
   for (const ruleId of typedRulesOf(config, rules)) plan.typedPluginRules.add(ruleId);
   addRuleMessages(plan.ruleMessages, config, rules);
