@@ -5,7 +5,8 @@ import {
   readOptionalInventory,
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
-import { configError, liftsOnlyRules } from '../../../shared/config.mjs';
+import { configError } from '../../../shared/config.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 
@@ -21,16 +22,18 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
 );
 
 export function validateJavaConfig(config) {
-  const unsupported = TYPESCRIPT_ONLY_KEYS.filter(
-    (key) => config[key] !== undefined && !isLiftedKey(config, key),
-  );
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');
+  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     const preset = config.preset;
-    const notSupported = TYPESCRIPT_ONLY_KEYS.join(', ');
-    const liftable = JAVA_EXCEPTION_RULES.join(', ');
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout and ESLint rules, which the ${preset} preset does not have. Not supported with ${preset}: ${notSupported}, except exceptions for ${liftable}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout, React rules and tool configs, which the ${preset} preset does not have. Not supported with ${preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
+  }
+  if (config.preset === 'java' && Array.isArray(config.exceptions)) {
+    for (const [index, entry] of config.exceptions.entries()) {
+      validateJavaExceptionRule(entry?.rule, `exceptions[${String(index)}].rule`);
+    }
   }
   if (config.thresholds?.lineLength !== undefined) {
     throw configError(
@@ -39,11 +42,16 @@ export function validateJavaConfig(config) {
   }
 }
 
-function isLiftedKey(config, key) {
-  return (
-    key === 'exceptions' &&
-    (config.preset === 'kotlin' || liftsOnlyRules(config.exceptions, JAVA_EXCEPTION_RULES))
-  );
+function validateJavaExceptionRule(rule, label) {
+  if (typeof rule !== 'string' || rule === '' || JAVA_EXCEPTION_RULES.includes(rule)) {
+    return;
+  }
+  const [tool] = rule.split('/');
+  if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
+    throw configError(
+      `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
+    );
+  }
 }
 
 export function configureJavaAnalyzer(
@@ -97,6 +105,14 @@ export function configureJavaAnalyzer(
     : withLegacyInventory(configured, legacyInventory);
 }
 
+function isLifted(finding, lifted) {
+  const printedRule = `${finding.tool}/${finding.rule}`;
+  return lifted.some(
+    ({ rule, matcher }) =>
+      (rule === finding.rule || rule === printedRule) && matcher.test(finding.path),
+  );
+}
+
 function fileLimitThresholds(thresholds) {
   const limits = FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined);
   return limits.length === 0
@@ -130,8 +146,7 @@ export function applyJavaPolicy(
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
   const kept = findings.filter(
     (finding) =>
-      !excluders.some((matcher) => matcher.test(finding.path)) &&
-      !lifted.some(({ rule, matcher }) => finding.rule === rule && matcher.test(finding.path)),
+      !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;

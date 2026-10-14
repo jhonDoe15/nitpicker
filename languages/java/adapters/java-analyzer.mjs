@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
@@ -10,6 +11,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
+  'languages/java/gradle/spring-ruleset.xml',
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-coupling.mjs',
   'languages/java/adapters/java-diff.mjs',
@@ -29,6 +31,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/kotlin-tools.mjs',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/adapters/suppressions/java-suppressions.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/file-limits.mjs',
@@ -73,18 +76,6 @@ function hashConfiguration() {
   return hash.digest('hex');
 }
 
-const JAVA_TOOLS = [
-  'pmd',
-  'spotbugs',
-  'google-java-format',
-  'jacoco',
-  'checkstyle',
-  'crap',
-  'duplicates',
-  'pit',
-  'structure',
-  'coupling',
-];
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
