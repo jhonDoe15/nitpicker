@@ -237,9 +237,9 @@ inventory has the same format as
 the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
 baselined, and raising a `count` (or adding a site) on head over the base fails as
-`baseline-expansion`. `layout`, `react` and `tools` describe TypeScript source roots, React and tool configs, have
-no Java meaning, and stay a config error with this preset. `tools` takes `pmd` and `checkstyle`; see [Your project's tool configs](#your-projects-tool-configs). Details:
-[java-preset.md](java-preset.md).
+`baseline-expansion`. `layout` and `react` describe TypeScript source roots and React, have no Java
+meaning, and stay a config error with this preset. `tools` takes `pmd` and `checkstyle`; see
+[Your project's tool configs](#your-projects-tool-configs). Details: [java-preset.md](java-preset.md).
 
 ## Kotlin preset
 
@@ -307,7 +307,8 @@ rule is identical:
 
 A JSDoc tag or form the rules reject (`@throws`, `@private`, a `?T` from a legacy API) is reported with the
 exception route: an entry for `nitpicker/no-comments` in `exceptions` lifts the JSDoc checks for the
-paths it names. In `domain/`, destructure a `require()` (`const { basename } = require('node:path')`):
+paths it names, together with everything else that rule reports there (prose comments and coverage or
+mutation ignore comments), so keep its `paths` narrow. In `domain/`, destructure a `require()` (`const { basename } = require('node:path')`):
 the module object itself is a mutable value.
 
 The code rules (`const`, `for...of`, named exports, no recursion, the layout and the `domain/` and

@@ -20,7 +20,7 @@ function removeWorktree(repositoryRoot, { worktreeRoot, temporaryRoot, created }
   } catch (error) {
     return error;
   } finally {
-    rmSync(temporaryRoot, { recursive: true, force: true });
+    rmSync(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 }
 

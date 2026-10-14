@@ -9,7 +9,7 @@ const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
-const CONFIGURATION_FILES = [
+export const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
@@ -20,6 +20,7 @@ const CONFIGURATION_FILES = [
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
+  'languages/java/adapters/spring/java-spring.mjs',
   'languages/java/adapters/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',
   'languages/java/adapters/gradle-wrapper/gradle-command.mjs',
@@ -34,6 +35,9 @@ const CONFIGURATION_FILES = [
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/adapters/suppressions/java-suppressions.mjs',
+  'languages/java/adapters/spring/spring-config-files.mjs',
+  'languages/java/adapters/spring/spring-config-parser.mjs',
+  'languages/java/adapters/spring/spring-secrets.mjs',
   'languages/java/gradle/StructureMetrics.java',
   'shared/rules/structure.mjs',
   'shared/rules/file-limits.mjs',

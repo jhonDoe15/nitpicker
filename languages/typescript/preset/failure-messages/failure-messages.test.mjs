@@ -13,6 +13,16 @@ describe('banned forms name the allowed form in their failure message', () => {
     },
   );
 
+  it('coverage ignore comment names testing the code', () => {
+    const base = failureMessageCases.find(({ name }) => name.startsWith('ts-nocheck'));
+    const result = checkFailureMessageCase({
+      ...base,
+      banned: '/* istanbul ignore next */\nconst value = 1;',
+      allowed: 'Test this code instead',
+    });
+    expect(result.ok, result.reason).toBe(true);
+  });
+
   it('rejects a fixture that does not fail', () => {
     const [base] = failureMessageCases;
     const result = checkFailureMessageCase({ ...base, banned: 'const value = 1;' });
