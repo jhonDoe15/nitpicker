@@ -1,15 +1,12 @@
 ---
-name: nitpicker
-description: Use before writing or changing TypeScript, Kotlin or Python in a project that has nitpicker installed, so the code follows its one allowed style and passes `npx nitpicker` on the first run. Not for Java projects (`"preset": "java"`).
+name: nitpicker-typescript
+description: Use before writing or changing TypeScript or React code in a project that has nitpicker installed with the typescript preset (the default), so the code follows its one allowed style and passes `npx nitpicker` on the first run.
 ---
 
-# nitpicker
+# nitpicker for TypeScript
 
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
-
-Everything below is TypeScript, except the finishing steps. In a Python project
-(`"preset": "python"` in `nitpicker.config.json`) follow [Python](#python) instead.
 
 If your change edits a function that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
@@ -74,6 +71,10 @@ If your change edits a function that existed before it, read
   returns -1, 1 or 0 from `<` and `>`, with its own unit test (a sort reads only the sign). Chain
   keys on its result: `const byMonth = compareText(a.month, b.month); if (byMonth !== 0) return byMonth;`.
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
+- A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
+  at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
+  extract a function.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
@@ -147,51 +148,3 @@ Applies when `react` is in `package.json`.
 - Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
   `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
   or hook internals.
-
-## Python
-
-For `"preset": "python"`. The finishing steps above apply, except: run the project's tests, then
-`npx nitpicker` without `--fix` (it fixes TypeScript only), and the exit codes mean the same.
-
-- Types: annotate every function, method and parameter; strict mypy or pyright (the project's own
-  choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
-  are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
-  around code, or a `.pyi` beside its `.py`.
-- Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
-- Strings: f-strings only. No `.format()` and no `%`.
-- Defaults: `None`, then build the value inside the function. No mutable default arguments.
-- Errors: a `try` inside a loop is flagged (PERF203): move it out or extract the body into a function. Catch the specific exception and handle it, log it with `logger.exception(...)`, or
-  re-raise. No bare `except:`, `except Exception:` or `except X: pass`; one expected error that is
-  deliberately ignored is `with contextlib.suppress(SpecificError):`.
-- Imports: name what you use. No `from module import *`.
-- Output: `logger = logging.getLogger(__name__)` and `logger.info(...)`. No `print`.
-- Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. Pydantic only in
-  an `adapters/` package, where untrusted input is parsed once; pass frozen dataclasses on from there.
-- Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
-  not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
-- Tests: use the project's runner (pytest or unittest), and test what you add.
-- A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`, under `python.exceptions`, with an entry such as
-  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. Don't add one to get past the gate: stop and ask.
-
-## Kotlin
-
-Applies when `nitpicker.config.json` has `"preset": "kotlin"`; the TypeScript sections above do not.
-Run the project's tests (`./gradlew test`), then `npx nitpicker` (no `--fix`; format with the
-project's ktlint or ktfmt). Exit codes are as above.
-
-- Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
-  created. No `run`, `with` or `also`, and no `let` or `apply` where a direct call works.
-- Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
-  `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
-- Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
-  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`.
-- Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
-  A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
-  narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
-- Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
-  fix the code. Kotlin compiler warnings (`UNCHECKED_CAST`) may be suppressed. If a one-way rule
-  flags legitimate code, stop and ask: the project adds an `exceptions` entry
-  (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
-  `detekt.yml` has no effect. Generated code goes in `exclude`.
