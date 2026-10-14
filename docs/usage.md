@@ -523,8 +523,6 @@ Findings match ESLint's with these known differences:
   `@typescript-eslint/unbound-method` can find a few cases TypeScript 6 missed.
 - A disable comment for a rule the analyzer does not run is reported as unused, where ESLint
   reports that the rule definition was not found.
-- `oxlint-disable` comments are honored like `eslint-disable` comments, except where the policy
-  turns off inline config.
 - Rules oxlint has its own port of word some messages differently, and a few report a different
   column. Switching engines therefore shows those findings as new once.
 - Files and folders whose names start with a dot are not linted.
