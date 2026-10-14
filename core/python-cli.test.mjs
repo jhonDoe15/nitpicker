@@ -710,7 +710,8 @@ describe('nitpicker with "preset": "python"', () => {
       });
       write(root, {
         'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
-        'structure-data.json': JSON.stringify([fn('value', 4, 5), fn('fresh', 4), fn('ghost', 0)]),
+        'src/demo/b.py': 'def ghost():\n    return 1\n',
+        'structure-data.json': JSON.stringify([fn('value', 4, 5), fn('fresh', 4), { ...fn('ghost', 0), file: 'src/demo/b.py' }]),
         'coverage-data.json': coverageOf('value', 'fresh'),
       });
       commit(root, 'add new functions, touch the legacy one');
@@ -727,17 +728,17 @@ describe('nitpicker with "preset": "python"', () => {
       expect(enforceable(added)).toEqual([
         {
           tool: 'crap',
-          rule: 'crap-coverage-unknown',
-          symbol: 'ghost',
-          message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
-        },
-        {
-          tool: 'crap',
           rule: 'crap-score-limit',
           symbol: 'value',
           message:
             'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+        },
+        {
+          tool: 'crap',
+          rule: 'crap-coverage-unknown',
+          symbol: 'ghost',
+          message:
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         },
         {
           tool: 'structure',
