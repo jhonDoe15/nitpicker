@@ -1,5 +1,7 @@
 # Contributing
 
+Before adding, loosening or removing a rule, read [docs/mindset.md](docs/mindset.md).
+
 ## Repository layout
 
 One npm package (`nitpicker`) serves every language; the package root is the repository root.
