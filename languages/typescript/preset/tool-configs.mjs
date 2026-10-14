@@ -8,7 +8,6 @@ import {
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
 import { END_TO_END_ROOT, testRoots } from './layout.mjs';
-import { libsWithEndToEndDom, projectLibs } from './tsconfig/end-to-end-dom.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(testRoots);
@@ -64,7 +63,7 @@ export const layoutTsconfig = tsconfigRewrite(
   (layout) => layout.testRoots,
 );
 
-const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS, executedRoots);
+export const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS, executedRoots);
 
 export function layoutKnipConfig(base, layout) {
   const javascript = layout.javascript === true;
@@ -137,6 +136,27 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
     );
     return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
   };
+}
+
+const DOM_LIB = 'dom';
+const LIB_FILE = /^lib\.(.+)\.d\.ts$/u;
+
+function projectLibs(projectDirectory, configName) {
+  const typescript = createRequire(import.meta.url)('typescript');
+  const { options } = typescript.parseJsonConfigFileContent(
+    readJsonc(path.join(projectDirectory, configName)),
+    typescript.sys,
+    projectDirectory,
+  );
+  return options.lib?.map((lib) => path.basename(lib).replace(LIB_FILE, '$1'));
+}
+
+function libsWithEndToEndDom(libs, projectDirectory, layout) {
+  const hasEndToEnd =
+    layout.testRoots.includes(END_TO_END_ROOT) &&
+    existsSync(path.join(projectDirectory, END_TO_END_ROOT));
+  const lacksDom = libs?.every((lib) => lib.toLowerCase() !== DOM_LIB) ?? false;
+  return hasEndToEnd && lacksDom ? [...libs, DOM_LIB] : undefined;
 }
 
 function withEndToEndDom(text, name, projectDirectory, layout) {
