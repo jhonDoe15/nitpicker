@@ -4,6 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createVitest } from 'vitest/node';
 import { afterAll, describe, expect, it } from 'vitest';
+import { resolveLayout } from '../layout.mjs';
 
 const defaults = path.join(import.meta.dirname, '..', 'defaults');
 const temporaryRoots = [];
@@ -60,27 +61,30 @@ async function selectedTests(policy) {
 }
 
 describe('the tests the quality run selects', () => {
-  it('are those under the default roots, leaving a root e2e folder to its own runner', async () => {
-    expect(await selectedTests({})).toEqual([
-      '__tests__/jest.test.ts',
-      'src/add.test.ts',
-      'test/add.test.ts',
-    ]);
-  });
-
-  it('leave out a root __tests__ folder that exclude names', async () => {
-    expect(await selectedTests({ exclude: ['__tests__/**'] })).toEqual([
-      'src/add.test.ts',
-      'test/add.test.ts',
-    ]);
-  });
-
-  it('are those under the listed test roots, e2e included when it is listed', async () => {
-    expect(await selectedTests({ layout: { testRoots: ['test', 'e2e'] } })).toEqual([
-      'e2e/api.test.ts',
-      'src/add.test.ts',
-      'test/add.test.ts',
-    ]);
+  it.each([
+    [
+      'those under the default roots, leaving a root e2e folder to its own runner',
+      {},
+      ['__tests__/jest.test.ts', 'src/add.test.ts', 'test/add.test.ts'],
+      ['test', 'tests', '__tests__'],
+    ],
+    [
+      'all but a root __tests__ folder that exclude names',
+      { exclude: ['__tests__/**'] },
+      ['src/add.test.ts', 'test/add.test.ts'],
+      ['test', 'tests', '__tests__'],
+    ],
+    [
+      'those under the listed test roots, e2e included when it is listed',
+      { layout: { testRoots: ['test', 'e2e'] } },
+      ['e2e/api.test.ts', 'src/add.test.ts', 'test/add.test.ts'],
+      ['test', 'e2e'],
+    ],
+  ])('are %s', async (_name, policy, selected, executedTestRoots) => {
+    expect(await selectedTests(policy)).toEqual(selected);
+    expect(resolveLayout(policy.layout, policy.exclude).executedTestRoots).toEqual(
+      executedTestRoots,
+    );
   });
 });
 

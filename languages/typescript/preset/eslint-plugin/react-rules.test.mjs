@@ -328,6 +328,7 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         "const Hooks = require('preact/hooks'); vi.spyOn(Hooks, 'useState');",
         "import * as ReactNamespace from 'react'; vi.spyOn(ReactNamespace, 'createElement');",
         "import { useState } from 'react'; vi.spyOn(Hooks, 'useState');",
+        "let Hooks; vi.spyOn(Hooks, 'useState');",
         "const Hooks = await import('preact/hooks'); vi.spyOn(Hooks, 'useState');",
         "const Hooks = await vi.importActual('preact/hooks'); vi.spyOn(Hooks, 'useState');",
         "import * as Hooks from 'preact/hooks'; const R = Hooks; vi.spyOn(R, 'useState');",

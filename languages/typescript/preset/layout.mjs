@@ -66,13 +66,36 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
+function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
+  return {
+    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
+    testGlobs: [
+      ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
+      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
+    ],
+    sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
+    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
+    graphRoots: [...sourceRoots, ...testRoots],
+    graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
+  };
+}
+
+function endToEndFor(layout, testRoots, extensionGlob) {
+  const isRoot = testRoots.includes(END_TO_END_ROOT);
+  return {
+    executedTestRoots:
+      layout.testRoots === undefined
+        ? testRoots.filter((root) => root !== END_TO_END_ROOT)
+        : testRoots,
+    endToEndGlobs: isRoot ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`] : [],
+    isEndToEndTest: (file) =>
+      isRoot && file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`),
+  };
+}
+
 export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
-  const executedTestRoots =
-    layout.testRoots === undefined
-      ? testRoots.filter((root) => root !== END_TO_END_ROOT)
-      : testRoots;
   const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
   const excludedGlobs = [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude];
   const excludeMatchers = exclude.map(globToRegExp);
@@ -93,21 +116,10 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     sourceRoots,
     sourceRoot,
     testRoots,
-    executedTestRoots,
     exclude,
     excludedGlobs,
-    sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-    testGlobs: [
-      ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
-      ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
-    ],
-    endToEndGlobs: testRoots.includes(END_TO_END_ROOT)
-      ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`]
-      : [],
-    sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
-    unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
-    graphRoots: [...sourceRoots, ...testRoots],
-    graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
+    ...globsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
+    ...endToEndFor(layout, testRoots, extensionGlob),
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
     isExcluded(file) {
@@ -118,12 +130,6 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       const normalized = file.replaceAll('\\', '/');
       if (!codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
       return testPattern.test(normalized);
-    },
-    isEndToEndTest(file) {
-      return (
-        testRoots.includes(END_TO_END_ROOT) &&
-        file.replaceAll('\\', '/').startsWith(`${END_TO_END_ROOT}/`)
-      );
     },
     isRunnableTestFile(file) {
       return resolved.isTestFile(file) && runnableTestPattern.test(file);
