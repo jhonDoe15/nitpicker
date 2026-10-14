@@ -17,7 +17,7 @@ describe('strict escape-hatch rules', () => {
       'export function present(value: unknown) { return value !== null; }',
     ],
     ['JSON.stringify replacer', 'export const text = JSON.stringify({ a: 1 }, null, 2);'],
-    ['tool directive', '/* istanbul ignore next */\nexport const value = 1;'],
+    ['tool directive', '// prettier-ignore\nexport const value = 1;'],
     ['ts-check', '// @ts-check\nexport const value = 1;'],
     ['shebang', '#!/usr/bin/env node\nexport const value = 1;'],
   ])('allows %s', (_name, code) => {
