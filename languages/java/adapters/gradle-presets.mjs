@@ -12,4 +12,5 @@ export const JAVA_TOOLS = [
   'pit',
   'structure',
   'coupling',
+  'spring',
 ];

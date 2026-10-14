@@ -1,8 +1,8 @@
 # Agent guidance snippet
 
 Optional. Copy the section below into your project's `AGENTS.md` (or `CLAUDE.md`) so a coding agent
-runs nitpicker and handles its findings correctly. Every statement in it matches the
-[nitpicker README](../README.md); keep the two in step.
+runs nitpicker and handles its findings correctly. Every statement in it matches
+[Using nitpicker](usage.md); keep the two in step.
 
 ---
 
