@@ -32,5 +32,9 @@ export function metricsOf(files) {
   return JSON.parse(readFileSync(output, 'utf8'));
 }
 
-export const functionsOf = (source) => metricsOf({ 'sample.py': `${source.join('\n')}\n` });
-export const field = (source, name) => functionsOf(source).map((entry) => entry[name]);
+export function functionsOf(source) {
+  return metricsOf({ 'sample.py': `${source.join('\n')}\n` });
+}
+export function field(source, name) {
+  return functionsOf(source).map((entry) => entry[name]);
+}

@@ -11,6 +11,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import {
+  coverageOf,
+  enforceable,
+  fn,
+} from '../languages/python/adapters/fixtures/structure-data.mjs';
 import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
 import { jscpdVersion } from '../languages/java/adapters/java-duplicates.mjs';
 import { runCli } from './cli.mjs';
@@ -663,47 +668,6 @@ describe('nitpicker with "preset": "python"', () => {
   });
 
   describe('function structure and CRAP', () => {
-    const fn = (name, parameters, complexity = 1) => ({
-      file: 'src/demo/a.py',
-      name,
-      start: 4,
-      definition: 4,
-      bodyStart: 5,
-      end: 5,
-      lines: 2,
-      statements: 1,
-      maxControlNesting: 0,
-      parameters,
-      complexity,
-    });
-    const coverageOf = (...names) =>
-      JSON.stringify({
-        files: {
-          'src/demo/a.py': {
-            functions: Object.fromEntries(
-              names.map((name) => [
-                name,
-                {
-                  executed_lines: [],
-                  missing_lines: [5],
-                  summary: {
-                    num_statements: 1,
-                    covered_lines: 0,
-                    num_branches: 0,
-                    covered_branches: 0,
-                  },
-                },
-              ]),
-            ),
-          },
-        },
-      });
-    const enforceable = (result) =>
-      result
-        .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable')
-        .map(({ tool, rule, symbol, message }) => ({ tool, rule, symbol, message }));
-
     it('gates new structure and CRAP findings, and holds a touched legacy function at its limit unless it grows', () => {
       const root = pythonRepository({
         'structure-data.json': JSON.stringify([fn('value', 4, 5)]),
@@ -714,7 +678,7 @@ describe('nitpicker with "preset": "python"', () => {
         'structure-data.json': JSON.stringify([
           fn('value', 4, 5),
           fn('fresh', 4),
-          { ...fn('ghost', 0), file: 'src/demo/b.py' },
+          fn('ghost', 0, 1, 'src/demo/b.py'),
         ]),
         'coverage-data.json': coverageOf('value', 'fresh'),
       });
