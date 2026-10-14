@@ -12,11 +12,13 @@ const dependencyCruiser = path.join(
 const config = path.join(import.meta.dirname, 'config.mjs');
 export const EXCLUDED_PATH_PATTERN =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+export const ARCHITECTURE_CONFIG =
+  'languages/typescript/preset/defaults/dependency-cruiser.config.mjs';
 export const POLICY_TYPESCRIPT_CONFIG =
   'languages/typescript/preset/defaults/tsconfig.quality.json';
 export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'NITPICKER_DEPENDENCY_GRAPH_TSCONFIG';
 
-export function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, operation) {
+function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, operation) {
   const linkedConfig = linkPolicyFile(
     path.join(policyRoot, POLICY_TYPESCRIPT_CONFIG),
     path.join(root, `.nitpicker-${name}-tsconfig.json`),

@@ -15,6 +15,12 @@ const ANALYZER_RUNTIME_FILES = [
   'core/diff/report-model.mjs',
   'core/diff/run-analyzers.mjs',
 ];
+const PROJECT_DEPENDENCY_GRAPH_FILES = [
+  'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+  'core/tooling/build-once/build-once.mjs',
+  'core/tooling/policy-links.mjs',
+  'core/tooling/temporary-files.mjs',
+];
 const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
@@ -30,14 +36,14 @@ const ENTRY_POINT_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/entry-points.mjs',
   'languages/typescript/adapters/entry-points-runner.mjs',
+  ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const STATIC_CHECK_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/static-checks.mjs',
   'languages/typescript/adapters/static-checks-runner.mjs',
-  'core/tooling/policy-links.mjs',
-  'core/tooling/temporary-files.mjs',
+  ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
@@ -45,6 +51,7 @@ const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/adapters/quality-areas.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
   'shared/policy.mjs',
+  ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 
 function buildAnalyzers(checks) {
