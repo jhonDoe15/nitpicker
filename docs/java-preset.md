@@ -476,8 +476,17 @@ errorprone and bestpractices categories without `UnitTestAssertionsShouldInclude
 `UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
-forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`). SpotBugs, the structure
-limits and CRAP stay on main code, as in the TypeScript preset.
+forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
+also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
+(`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
+ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
+`build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
+field injection and package-private test methods are the norm in tests. A PMD rule that flags
+legitimate test code, such as `SystemPrintln` in a test of console output, takes an exception like
+any other: `{ "rule": "pmd/<rule>", "paths": [...],
+"reason": "..." }`. PMD messages that name a line ("first occurrence is on line 12") lose the number
+in the finding's identity, so moving code does not re-report them. SpotBugs, the structure limits
+and CRAP stay on main code, as in the TypeScript preset.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],

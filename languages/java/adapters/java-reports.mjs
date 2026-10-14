@@ -28,6 +28,7 @@ import {
 } from './kotlin-reports.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
+const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
@@ -45,7 +46,9 @@ export function readJavaFindings(
     reportRoot,
     manifest,
     sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: [...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])],
+    lintedRoots: [
+      ...new Set([...(manifest.sourceRoots ?? []), ...(manifest.testSourceRoots ?? [])]),
+    ],
     roots: projectRoots(projectRoot),
     kotlin,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
@@ -101,7 +104,7 @@ function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
     findings.push(...ingestSarif(normalized, { tool }).findings);
   }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text);
+  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
   sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
   return findings;
 }
