@@ -306,7 +306,8 @@ rule is identical:
 
 A JSDoc tag or form the rules reject (`@throws`, `@private`, a `?T` from a legacy API) is reported with the
 exception route: an entry for `nitpicker/no-comments` in `exceptions` lifts the JSDoc checks for the
-paths it names. In `domain/`, destructure a `require()` (`const { basename } = require('node:path')`):
+paths it names, together with everything else that rule reports there (prose comments and coverage or
+mutation ignore comments), so keep its `paths` narrow. In `domain/`, destructure a `require()` (`const { basename } = require('node:path')`):
 the module object itself is a mutable value.
 
 The code rules (`const`, `for...of`, named exports, no recursion, the layout and the `domain/` and

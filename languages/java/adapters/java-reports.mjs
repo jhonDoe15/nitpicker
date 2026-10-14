@@ -6,6 +6,7 @@ import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
+import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
   methodText,
   readJavaFileLimitFindings,
@@ -75,6 +76,7 @@ export function readJavaFindings(
         ...context.sourceRoots,
         ...(manifest.testSourceRoots ?? []),
       ]),
+      ...springFindings(context),
     ],
   };
 }
@@ -86,6 +88,12 @@ export function requireGradleReports(projectRoot, preset) {
       `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
     );
   }
+}
+
+function springFindings({ projectRoot, manifest, sourceRoots }) {
+  return manifest.spring === true
+    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    : [];
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
