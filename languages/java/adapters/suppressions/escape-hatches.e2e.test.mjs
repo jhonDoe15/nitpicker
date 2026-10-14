@@ -7,7 +7,8 @@ import { runJavaDiff } from '../java-diff.mjs';
 
 // End-to-end test that a change cannot switch the Java preset's rules off: inline Checkstyle
 // suppressions do nothing, a project's own PMD rule set is read only when nitpicker.config.json
-// opts in, and test sources are linted like main sources. Same requirements as java-preset.e2e.test.mjs; runs with NITPICKER_JAVA_E2E=1.
+// opts in, and test sources are linted like main sources. Same requirements as
+// java-preset.e2e.test.mjs; runs with NITPICKER_JAVA_E2E=1.
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
