@@ -5,6 +5,7 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
 import {
   methodText,
   readJavaFileLimitFindings,
@@ -70,6 +71,7 @@ export function readJavaFindings(
         kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+      ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
     ],
   };
 }
