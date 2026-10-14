@@ -32,4 +32,6 @@ export function findingsOf(files) {
   );
 }
 
-export const single = (code, file = 'src/mod.py') => findingsOf({ [file]: code });
+export function single(code, file = 'src/mod.py') {
+  return findingsOf({ [file]: code });
+}
