@@ -10,6 +10,7 @@ import {
   isCustomLayout,
   layoutJscpdConfig,
   layoutKnipConfig,
+  layoutStrykerTsconfig,
   layoutTransformFor,
   layoutTsconfig,
 } from './tool-configs.mjs';
@@ -112,9 +113,13 @@ describe('layout-aware tool configurations', () => {
   const defaultLayout = resolveLayout();
 
   it('reproduce the shipped JSON configurations for the default layout', () => {
-    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
+    const rewrites = {
+      'tsconfig.quality.json': layoutTsconfig,
+      'tsconfig.stryker.json': layoutStrykerTsconfig,
+    };
+    for (const [name, rewrite] of Object.entries(rewrites)) {
       const base = readDefault(name);
-      const rewritten = layoutTsconfig(base, defaultLayout);
+      const rewritten = rewrite(base, defaultLayout);
       expect(sorted(rewritten.include)).toEqual(sorted(base.include));
       expect(rewritten.exclude).toEqual(base.exclude);
     }
@@ -572,9 +577,6 @@ describe('package-owned child configs', () => {
 
 const FILE_SELECTION = (module) => module.default.map(({ files, ignores }) => ({ files, ignores }));
 
-// Config modules read the head policy once, at import time. Each distinct policy therefore gets
-// its own module instance (a unique query string), while shared dependencies such as
-// typescript-eslint load once per test file instead of once per process.
 let policyImportCount = 0;
 
 async function loadConfig(relativePath, policy, read = (module) => module.default) {
@@ -598,8 +600,6 @@ function temporaryProject(files) {
   return projectRoot;
 }
 
-// The copied Vitest configs are functions that look for the project's own config in the
-// directory Vitest runs in, so each call runs in a fresh project directory.
 async function resolveVitestConfig(relativePath, policy, projectFiles = {}) {
   const config = await loadConfig(relativePath, policy);
   const projectRoot = temporaryProject(projectFiles);
