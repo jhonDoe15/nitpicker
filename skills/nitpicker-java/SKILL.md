@@ -25,8 +25,10 @@ start; the gate is a backstop.
    - 2: no new findings, but a tool failed (Gradle, a missing lizard, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
-5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, config `exclude`/`disable`/`exceptions`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, config `exclude`/`disable`/`exceptions`,
+   legacy entries, or weakened tests. If a finding seems wrong, stop and ask.
+
+With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
@@ -107,15 +109,17 @@ start; the gate is a backstop.
 
 ## Exceptions and suppressions
 
-- A finding of a rule nitpicker adds (file, folder, function size, CRAP, changed-branch coverage,
-  duplicate or coupling) ends with the `exceptions` entry that would accept it in
-  `nitpicker.config.json`; a PMD, SpotBugs or Checkstyle finding has none. Only the project adds
-  one, never you. `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings` and `// CHECKSTYLE:OFF` are
-  not blocked today, but never add one, nor a config `exclude`, `disable`, `exceptions`,
-  `thresholds` or legacy entry, nor a weaker test, to get past the gate.
-- A violated ArchUnit rule currently stops the gate with exit 2 ("unexpected tool archunit"). Run
-  the `*ArchTest` class with Gradle to read the violation, and fix the code.
-- If a finding looks wrong, stop and ask.
+- `// NOPMD` does nothing, and a `@SuppressWarnings` naming `"PMD..."`, `"all"`, `"unused"`,
+  `"serial"` or `"fallthrough"` is itself a finding (`pmd/InlineSuppression`). The one allowed
+  marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
+  SQL ([spring.md](spring.md)).
+- Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
+  that names the finding as printed, for example `pmd/UnusedPrivateField`, with its paths and a
+  reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
+  own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
+  weaker test, to get past the gate yourself: stop and ask.
+- A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
+  `*ArchTest` class with Gradle to read the full violation, and fix the code.
 
 ## Kotlin projects
 

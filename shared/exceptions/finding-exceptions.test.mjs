@@ -46,6 +46,16 @@ describe('applyFindingExceptions', () => {
     ).toEqual([]);
   });
 
+  it('takes the rule as the finding prints it, <tool>/<rule>, with the tool of the finding', () => {
+    const findings = [finding({ tool: 'coverage-py' }), finding({ tool: 'jacoco' })];
+
+    expect(
+      applyFindingExceptions(findings, [
+        { rule: 'coverage-py/changed-branch-coverage', paths: ['src/a.ts'], function: 'save' },
+      ]),
+    ).toEqual([findings[1]]);
+  });
+
   it('returns the findings untouched without exceptions', () => {
     const findings = [finding()];
     expect(applyFindingExceptions(findings, [])).toBe(findings);

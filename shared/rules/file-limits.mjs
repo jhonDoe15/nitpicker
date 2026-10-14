@@ -53,7 +53,7 @@ export function collectFileLimitFindings(projectRoot, entries, options) {
 
 /**
  * `options`: `analyzerName`, `thresholds` (the config's, over `FILE_LIMIT_DEFAULTS`), `exceptions`
- * (`{ rule, paths }` config entries or `{ rule, glob }` runner entries; an excepted file is neither checked nor counted in its folder, and a
+ * (`{ rule, paths }` entries; an excepted file is neither checked nor counted in its folder, and a
  * folder-files exception may also name the folder itself) and `checks`, the subset of
  * `FILE_LIMIT_CHECKS` this language leaves to nitpicker.
  */
@@ -79,9 +79,9 @@ export function evaluateFileLimits(files, options) {
 }
 
 function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths, glob }) => ({
+  const matchers = exceptions.map(({ rule, paths }) => ({
     rule,
-    patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
+    patterns: paths.map((pattern) => globToRegExp(pattern)),
   }));
   return (rule, ...candidates) =>
     matchers.some(

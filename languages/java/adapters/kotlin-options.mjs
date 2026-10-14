@@ -3,7 +3,11 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import {
+  JAVA_NATIVE_RULES,
+  SHARED_EXCEPTION_RULES,
+  canonicalRule,
+} from '../../../shared/policy.mjs';
 import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
@@ -19,7 +23,11 @@ function validateKotlinExceptions(config) {
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (typeof rule === 'string' && rule !== '' && !KOTLIN_EXCEPTION_RULES.includes(rule)) {
+    if (
+      typeof rule === 'string' &&
+      rule !== '' &&
+      !KOTLIN_EXCEPTION_RULES.includes(canonicalRule(rule))
+    ) {
       throw configError(
         `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
       );

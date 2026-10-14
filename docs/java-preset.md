@@ -16,6 +16,7 @@ side contributes only two things: producing reports, and converting them into fi
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
+  -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
 
@@ -144,8 +145,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   the config.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
-  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6) and `pit` (slice 7). The analyzer declares them as `reportedTools`, the one scheduler change this slice
-  needed (a finding for a tool that is neither the analyzer nor a declared one is still an error).
+  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
+  `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
   init script and the Java adapter files, so a tool bump invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
@@ -175,20 +176,21 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `exceptions` accepts the rules nitpicker adds, not Checkstyle, PMD or SpotBugs rules:
+  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "function"?, "reason" }`. `rule` is
+    a finding as it is printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), where `tool`
+    is one of the tools the Java analyzer reports, or a rule nitpicker adds, bare or as printed:
     `file-lines-limit`, `folder-files-limit`, the structure rules (`function-lines-limit`,
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
-    `mutant-nocoverage`, `duplicate-clone` and `stability-direction`. An entry is
-    `{ "rule", "paths", "function"?, "reason" }`; `function` names one method (`Big.run` or `run`,
-    parameter lists ignored) for the structure, CRAP and coverage rules, and is required for
-    `changed-branch-coverage`. A branch is attributed to the narrowest method of `structure.json`
-    that holds its line, so the name in the entry is the one the structure findings print. Any other
-    rule is a config error; a PMD, SpotBugs or Checkstyle finding is lifted with `exclude`. The
-    entries reach the runner as `--exception <json>`, one per entry, and change the analyzer's
-    configuration hash. Every such message ends with the entry that accepts it.
-  - `layout`, `react` and `tools` configure TypeScript source roots and have no Java meaning; they
-    stay a config error with `"preset": "java"` instead of being ignored.
+    `mutant-nocoverage`, `duplicate-clone` and `stability-direction`. `function` names one method
+    (`Big.run` or `run`, parameter lists ignored) for the structure, CRAP and coverage rules, and is
+    required for `changed-branch-coverage`. A branch is attributed to the narrowest method of
+    `structure.json` that holds its line, so the name in the entry is the one the structure findings
+    print. Matching findings are dropped on both snapshots. The entries reach the runner as
+    `--exception <json>`, one per entry, are listed in the report and change the analyzer's
+    configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it.
+  - `layout`, `react` and `tools` configure TypeScript source roots, React and tool configs; they
+    have no Java meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -417,6 +419,144 @@ entry to "exceptions" in nitpicker.config.json: {...}`). `shared/policy.mjs` mar
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
 
+## Spring rules
+
+A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
+Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/gradle/spring-ruleset.xml),
+added to its PMD run, next to the PMD categories or the project's own `config/pmd/ruleset.xml`. Every
+project's PMD run now gets the compile classpath and the main classes as its auxiliary classpath
+(`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and supertype names exactly;
+`nitpickerPmd` therefore compiles the main classes first. The manifest records `spring` and the
+main `resourceRoots`.
+
+Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
+the `rule` of a config exception.
+
+| Area          | Rules                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans`, `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`                                                                                                                                                                                                            |
+| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` or `Environment.getProperty` in beans), `SpringProfileOnConfiguration`                                                                                                                                                                                              |
+| Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException`, `SpringAsyncExecutor`, `SpringScheduledFixedDelay` |
+| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringNoCrossOrigin`, `SpringPasswordEncoder`                                                                                                                                                                                                                                              |
+| JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`                                                                                                                                                                                                                                                        |
+| Spring Data   | `SpringDataDerivedQuery` (every declared repository method has `@Query`; inherited methods such as `findById` and `save` stay legal), `SpringDataNativeQuery`, `SpringDataModifyingQuery`, `SpringDataNoSaveInLoop`, `SpringDataNoFlush`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock`                                                                      |
+
+**Inline suppressions.** PMD would let a change silence any rule without review. nitpicker runs PMD
+with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do nothing. PMD still
+honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
+evaluates constant expressions there, so nitpicker reports each such annotation, and any whose
+arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
+`languages/java/adapters/suppressions/java-suppressions.mjs`, for every Java project; unicode escapes are decoded
+and strings and comments skipped first). The one accepted marker is
+`@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
+the decision belongs on that one method rather than in a config exception that covers paths.
+Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
+
+**Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
+when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
+"reason": "..." }`.
+
+**Limits.** Rules are per file. `JpaVersion` checks the root of each entity hierarchy: an `@Entity`
+without a superclass, or a `@MappedSuperclass` that declares the `@Id`, so the `@Version` field
+belongs next to the `@Id`. An entity with a superclass is skipped, because its `@Version` may be
+inherited. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
+them. `SpringDataDerivedQuery` leaves redeclared CRUD methods alone (`findById`, `findAll`, `save`,
+`deleteById` and the rest of `ListCrudRepository`, `ListPagingAndSortingRepository`,
+`JpaRepository` and `QueryByExampleExecutor`), since Spring implements those without parsing the
+name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Couchbase and
+Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
+on interface methods are accepted, because Spring reads them for both proxy kinds.
+`SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
+method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
+`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks, lambdas and method
+references (`forEach(repository::save)`) alike. It and `SpringDataNoFlush` skip a loop that also
+calls `EntityManager.clear()`, the JPA batch idiom.
+`SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
+`Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
+exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
+placement need a cross-class view and come with nitpicker's ArchUnit rules.
+
+**Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+`npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
+sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
+reported set equals the marked set. The fixture also holds the legitimate forms each rule must
+accept.
+
+## Spring configuration files
+
+Findings with tool `spring`, produced in Node from the project's `application.properties`,
+`application.yml`, `application.yaml` and `application-<profile>.(properties|yml|yaml)`. No JVM and
+no new dependency: `spring-config-parser.mjs` flattens properties and YAML (nested maps, dotted
+keys, comments, quotes, single-line flow maps and sequences, multi-document files) to dotted keys
+with their line, `spring-config-files.mjs` finds the files and their profiles, `spring-secrets.mjs`
+decides what counts as a literal secret, and `java-spring.mjs` applies the rules (all in
+`languages/java/adapters/spring/`).
+
+- **Spring projects only.** The checks run only when `manifest.json` says `spring: true` (the
+  compile classpath has `spring-context` or `spring-boot`, see Spring rules above). Quarkus,
+  Micronaut and plain projects also have `application.*` files with other meanings, so they get no
+  `spring` findings; a manifest without the key counts as not Spring.
+- **Where.** Files directly in a resource root (`manifest.json`'s `resourceRoots` when present, else
+  `src/main/resources`) or in its `config/` directory. Without such files there are no findings; a
+  file that cannot be read is skipped.
+- **Keys.** Compared in relaxed form (lowercase, `-` and `_` removed, `[0]`-style list indexes
+  removed), so `open-in-view`, `openInView` and `open_in_view` are the same key and
+  `management.endpoints.web.exposure.include[0]=*` is the key `...include`.
+- **Profiles.** A document's profile is the file name's (`application-test.yml`) or the
+  `spring.config.activate.on-profile` (legacy `spring.profiles`) of its document: a `---` document in
+  YAML, a `#---` or `!---` document in a properties file. The plain `application.*` main document has
+  none. The expression is split on `, | & ! ( )` and spaces. A document is exempt from a rule only
+  when it has at least one profile, every positive token is exempt for that rule, and the expression
+  has no `!`. Test profiles are `test` or a name starting with `test`, `it` and `integration-test`;
+  local profiles are `local`, `dev` and `development`.
+- **True.** Wherever a rule needs `true`, Spring's spellings `true`, `on`, `yes` and `1` count, in
+  any case.
+- **Rules**, all enforceable. Each message ends with the exception line to add to
+  `nitpicker.config.json`.
+
+| Rule (`spring/<rule>`) | Fires on                                                                                                                                          | Exempt profiles  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- |
+| `open-in-view`         | JPA in the main sources (`jakarta.persistence` or `javax.persistence` import) and `spring.jpa.open-in-view` unset, or true                        | test             |
+| `ddl-auto`             | `spring.jpa.hibernate.ddl-auto` or `spring.jpa.properties.hibernate.hbm2ddl.auto` other than `none`/`validate`, or `spring.jpa.generate-ddl` true | test, local, dev |
+| `risky-startup-flags`  | `spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` true                                         | test             |
+| `actuator-exposure`    | `management.endpoints.web.exposure.include` containing `*`                                                                                        | test, local, dev |
+| `error-details`        | `server.error.include-stacktrace` set to `always` or `on-param`                                                                                   | test, local, dev |
+| `literal-secret`       | a literal value under a key whose last segment is, or ends in a separate word that is, a secret word (below)                                      | test, local, dev |
+
+- **Literal secrets.** The last key segment, split into words at `-`, `_` and case changes, must
+  end in `password`, `secret`, `token`, `credentials`, `api-key` (or `apikey`), `private-key`,
+  `secret-key` or `access-key`, so `db-password`, `client-secret` and `jwtSecret` match while
+  `password-file`, `token-validity-seconds` and `passwords` do not. Settings
+  such as `app.require-password=true` are not judged, because booleans (`true`, `false`, `on`,
+  `off`, `yes`, `no`) and numbers never count. Also not judged: empty values, YAML `null` and `~`,
+  aliases (`*ref`), Maven filtering (`@db.password@`), Jasypt (`ENC(...)`), encrypted or hashed
+  prefixes (`{cipher}`, `{bcrypt}`, `{pbkdf2}`, `{scrypt}`, `{argon2}`, `{sha256}`), SpEL
+  (`#{...}`) and placeholders: `${DB_PASS}` and `${DB_PASS:}` pass while `${DB_PASS:hunter2}` fires
+  on its default. For keys ending in `token`, a single lowercase word such as `header` is read as a
+  setting, not a token (`feature.reset-token=header`), so a real token that is one lowercase word
+  is missed; `{noop}secret` and every other literal fire. The message names the key and the
+  environment variable Spring binds to it (`spring.datasource.password` reads
+  `SPRING_DATASOURCE_PASSWORD`), or asks to drop a placeholder's literal default; never the value.
+- **Anchor and identity.** Findings sit at the offending key's line (`location`). A missing
+  `open-in-view` is one finding at the main `application.*` file with no line; a directory with only
+  profile files (`application-test.yml`, `application-prod.yml`) has none. Identity is the relaxed
+  key (plus `#2`, `#3` for repeats in one file); never the line, and never a secret's value.
+- **Exceptions.** The printed id works in `exceptions`, for example
+  `{ "rule": "spring/open-in-view", "paths": ["src/main/resources/**"], "reason": "..." }`.
+- **Limits.** Placeholders (`${...}`) are not judged, except the default of a literal-secret
+  value. YAML anchors and aliases are not resolved: `base: &b` followed by a nested map keeps
+  its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that
+  continues on later lines (`include: [` ... `]`), multi-line quoted or plain scalars (their
+  continuation lines are skipped) and `? ` complex keys are not read; a YAML list of maps is
+  skipped. Profile groups, `spring.config.import` files and `spring.profiles.active` are not
+  followed.
+- **Tests.** `spring-config-parser.test.mjs` (properties and YAML parsing, line endings, byte
+  order mark, continuations, escapes, indexes, flow collections, anchors), `spring-secrets.test.mjs`
+  (key words, value judgement), `java-spring.test.mjs` (relaxed keys, open-in-view, ddl-auto,
+  profile expressions, line stability, exceptions, the configuration hash), `java-spring-rules.test.mjs`
+  (the other rules) and `java-reports.test.mjs`
+  (glue, the `spring: true` gate).
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP via lizard, jscpd, PIT and the changed-line
@@ -433,7 +573,7 @@ entry to "exceptions" in nitpicker.config.json: {...}`). `shared/policy.mjs` mar
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

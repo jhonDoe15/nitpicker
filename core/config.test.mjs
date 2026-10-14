@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyDisable, describeConfigOverrides, validateConfig } from './config.mjs';
 import { policyHash } from './diff/report-model.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
+import { JAVA_TOOLS } from '../languages/java/adapters/gradle-presets.mjs';
 
 describe('config file', () => {
   it('accepts an empty config and the documented keys', () => {
@@ -212,7 +213,7 @@ describe('config file', () => {
       const other = { ...exception, rule: 'pmd.SomeRule' };
 
       expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
-        `"exceptions" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the java preset does not have. Not supported with java: layout, exceptions, react, tools, except exceptions for ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+        `"exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
       );
     });
   });
@@ -232,6 +233,30 @@ describe('config file', () => {
           preset,
           exceptions: [coverage],
         });
+      },
+    );
+
+    it.each(['typescript', 'java', 'kotlin', 'python'])(
+      'accepts a rule nitpicker adds named as it is printed in the %s preset',
+      (preset) => {
+        const printed = {
+          ...coverage,
+          rule: 'structure/function-lines-limit',
+          function: 'Big.run',
+        };
+
+        expect(validateConfig({ preset, exceptions: [printed] })).toEqual({
+          preset,
+          exceptions: [printed],
+        });
+        expect(() =>
+          validateConfig({
+            preset,
+            exceptions: [
+              { ...coverage, rule: 'jacoco/changed-branch-coverage', function: undefined },
+            ],
+          }),
+        ).toThrow('"exceptions[0].function" is required for jacoco/changed-branch-coverage');
       },
     );
 
@@ -278,6 +303,23 @@ describe('config file', () => {
     );
   });
 
+  it('accepts exceptions with the java preset when they name a printed Java rule', () => {
+    const exceptions = [
+      { rule: 'pmd/SpringConstructorInjection', paths: ['src/main/**'], reason: 'Legacy wiring' },
+    ];
+    expect(validateConfig({ preset: 'java', exceptions })).toEqual({ preset: 'java', exceptions });
+    for (const rule of [
+      'SpringConstructorInjection',
+      'eslint/no-var',
+      'pmd/',
+      'java/gradle-failure',
+    ]) {
+      expect(() =>
+        validateConfig({ preset: 'java', exceptions: [{ ...exceptions[0], rule }] }),
+      ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    }
+  });
+
   it.each([
     ['java', 'layout'],
     ['java', 'react'],
@@ -289,7 +331,7 @@ describe('config file', () => {
     );
   });
 
-  it('lets the java preset lift the shared file limits, and only those', () => {
+  it('lets the java preset lift the shared file limits, but not line length or ESLint rules', () => {
     const exceptions = [
       {
         rule: 'folder-files-limit',
@@ -304,13 +346,13 @@ describe('config file', () => {
         preset: 'java',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
-    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
     expect(() =>
       validateConfig({
         preset: 'java',
         exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
       }),
-    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       'Checkstyle checks Java line length',
     );

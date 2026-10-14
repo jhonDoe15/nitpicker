@@ -93,6 +93,12 @@ export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCE
 /** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
 export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
 
+/** The rule an `exceptions` entry names: `<tool>/<rule>`, as a finding prints it, names `<rule>` too. */
+export function canonicalRule(rule) {
+  const bare = rule.slice(rule.indexOf('/') + 1);
+  return [...SHARED_EXCEPTION_RULES, ...DEAD_CODE_RULES].includes(bare) ? bare : rule;
+}
+
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 

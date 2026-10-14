@@ -6,7 +6,7 @@ import {
   validateProjectRelativePath,
   validateStringArray,
 } from '../../../shared/config.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { SHARED_EXCEPTION_RULES, canonicalRule } from '../../../shared/policy.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
 
 const ENVIRONMENTS = ['uv', 'poetry', 'path'];
@@ -80,7 +80,7 @@ function validateSettings(settings) {
 
 function validateRuleIds(exceptions) {
   for (const [index, { rule }] of exceptions.entries()) {
-    if (SHARED_EXCEPTION_RULES.includes(rule)) {
+    if (SHARED_EXCEPTION_RULES.includes(canonicalRule(rule))) {
       throw configError(
         `"python.exceptions[${String(index)}].rule" is "${rule}", a file limit shared by every preset: lift it in the top-level "exceptions" instead`,
       );

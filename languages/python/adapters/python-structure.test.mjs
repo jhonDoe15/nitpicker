@@ -208,7 +208,7 @@ describe('Python file limits', () => {
       findingsWith({
         exclude: ['src/gen/**'],
         fileLimits: limits,
-        exceptions: [{ rule: 'folder-files-limit', glob: 'src/icons/*' }],
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/icons/*'] }],
       }),
     ).toEqual([]);
   });
