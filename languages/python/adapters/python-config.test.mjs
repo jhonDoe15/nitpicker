@@ -109,6 +109,10 @@ describe('python config validation', () => {
       '"python.exceptions[0].rule" names no rule nitpicker reports: "T210"; use the id printed in the finding',
     ],
     [
+      { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
+      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+    ],
+    [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "E501"',
     ],
