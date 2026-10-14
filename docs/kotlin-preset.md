@@ -53,7 +53,7 @@ properties.
 | detekt                                   |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
 | ktlint or ktfmt                          |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
 | JaCoCo                                   | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
-| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools. A Kotlin-only module has no Java files; the tasks are skipped and write empty reports.                 |
+| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
 | SpotBugs                                 | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
 | lizard (CRAP of Java)                    | yes          | no             | Java sources and classes only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                                  |
 | PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |

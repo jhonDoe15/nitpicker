@@ -12,7 +12,8 @@ import {
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
-import { applyJavaPolicy, PROJECT_TOOL_CONFIGS } from './java-policy.mjs';
+import { applyJavaPolicy } from './java-policy.mjs';
+import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
@@ -36,9 +37,7 @@ export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyR
     const precedence = toolPrecedence[tool] ?? ['nitpicker'];
     const projectConfig = path.join(policyRoot ?? projectRoot, file);
     if (precedence.includes('project') && !existsSync(projectConfig)) {
-      throw new Error(
-        `"tools.${tool}.precedence" includes "project", but the project has no ${file}. Add the file or remove "project"`,
-      );
+      throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
     }
     return [
       ...(precedence.includes('project')

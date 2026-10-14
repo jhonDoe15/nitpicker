@@ -443,9 +443,10 @@ and strings and comments skipped first). The one accepted marker is
 the decision belongs on that one method rather than in a config exception that covers paths.
 Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
 
-SpotBugs has no switch to ignore its annotations, so the same scan reports every
-`@SuppressFBWarnings` (and `edu.umd.cs.findbugs.annotations.SuppressWarnings`) as
-`spotbugs/InlineSuppression`; a SpotBugs exception names the bug pattern, for example
+SpotBugs has no switch to ignore its annotations, so the same scan reports every annotation
+SpotBugs honors as `spotbugs/InlineSuppression`: any name ending in `SuppressFBWarnings`, any
+prefixed name ending in `SuppressWarnings` (such as a project's own `@AcmeSuppressWarnings`), and
+`edu.umd.cs.findbugs.annotations.SuppressWarnings`; a SpotBugs exception names the bug pattern, for example
 `spotbugs/EI_EXPOSE_REP`. Checkstyle's bundled `google_checks.xml` honors
 `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`, `CHECKSTYLE.SUPPRESS` comments;
 nitpicker writes a copy without those filters (and without the optional xpath suppression file
@@ -456,7 +457,13 @@ the bundled config would read from the working directory), so they suppress noth
 when `nitpicker.config.json` names them in `tools`, for example
 `{ "tools": { "pmd": { "precedence": ["project", "nitpicker"] }, "checkstyle": { "precedence": ["project"] } } }`;
 see [Your project's tool configs](usage.md#your-projects-tool-configs). A project config chosen
-this way is used as written, including its own suppression filters.
+this way is used as written, including its own suppression filters, and every file under
+`config/pmd/` or `config/checkstyle/` goes into the cache key, since a config can reference its
+neighbors. The init script reads its `nitpicker.*` Gradle properties from the command line only,
+so a `gradle.properties` entry cannot opt in on the project's behalf (`nitpicker.archunit.includes`
+is the exception: it only picks which test classes run). It sets the Checkstyle config on the
+Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ... }` block in the
+project's build does not replace it either.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
