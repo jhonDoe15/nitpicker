@@ -10,7 +10,7 @@ import {
   resolveComparison,
 } from '../../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
-import { gradleCommand, spawnTarget } from './gradle-wrapper/gradle-command.mjs';
+import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
@@ -50,7 +50,7 @@ export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyR
 }
 
 function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
-  const target = spawnTarget(gradleCommand(projectRoot, gradle), [
+  const target = gradleTarget(projectRoot, gradle, [
     '--console=plain',
     '--quiet',
     '--no-configuration-cache',
