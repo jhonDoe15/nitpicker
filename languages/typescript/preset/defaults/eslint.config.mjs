@@ -66,6 +66,14 @@ const presetConfig = tseslint.config(
     },
   },
   ...strictPresetConfig(layout, parserOptions, { react }),
+  ...(layout.endToEndGlobs.length === 0
+    ? []
+    : [
+        {
+          files: layout.endToEndGlobs,
+          rules: { 'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }] },
+        },
+      ]),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every

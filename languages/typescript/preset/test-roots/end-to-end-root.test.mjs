@@ -52,6 +52,11 @@ describe('the e2e root in the layout', () => {
     expect(resolveLayout({ testRoots: ['test'] }).isEndToEndTest('e2e/login.spec.ts')).toBe(false);
   });
 
+  it('selects its code files for the lint exception, only while it is a test root', () => {
+    expect(resolveLayout().endToEndGlobs).toEqual(['e2e/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
+    expect(resolveLayout({ testRoots: ['test'] }).endToEndGlobs).toEqual([]);
+  });
+
   it('is left out of the executed test roots by default and kept when listed', () => {
     expect(resolveLayout().executedTestRoots).toEqual(['test', 'tests', '__tests__']);
     expect(resolveLayout({ testRoots: ['test', 'e2e'] }).executedTestRoots).toEqual([

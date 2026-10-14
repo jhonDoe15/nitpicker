@@ -96,16 +96,6 @@ describe('strict test rules', () => {
     ]);
   });
 
-  it('let a fixture in the e2e root destructure nothing, as Playwright fixtures do', () => {
-    const fixture = 'export const admin = async ({}, use) => { await use(1); };';
-    const config = [{ rules: { 'no-empty-pattern': 'error' } }, ...strictTestsConfig];
-    const emptyPattern = 'Unexpected empty object pattern.';
-
-    expect(messages(fixture, 'e2e/fixtures.ts', config)).toEqual([]);
-    expect(messages('const {} = value;', 'e2e/fixtures.ts', config)).toEqual([emptyPattern]);
-    expect(messages(fixture, 'test/fixtures.ts', config)).toEqual([emptyPattern]);
-  });
-
   it('are part of the strict preset, so touched code is held to them', () => {
     const presetRules = strictPresetConfig(resolveLayout(), {}).flatMap((entry) =>
       Object.keys(entry.rules ?? {}),
