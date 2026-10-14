@@ -109,6 +109,10 @@ describe('python config validation', () => {
       '"python.exceptions[0].rule" names no rule nitpicker reports: "T210"; use the id printed in the finding',
     ],
     [
+      { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
+      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+    ],
+    [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },
       'names no rule nitpicker reports: "E501"',
     ],
@@ -128,18 +132,6 @@ describe('python config validation', () => {
     [
       { exceptions: [{ rule: 'frozen-dataclas', paths: ['a'], reason: 'r' }] },
       '"frozen-dataclas"; did you mean "frozen-dataclass"?',
-    ],
-    [
-      { exceptions: [{ rule: 'changed-branch-coverage', paths: ['a'], reason: 'r' }] },
-      '"python.exceptions[0].function" is required for changed-branch-coverage',
-    ],
-    [
-      { exceptions: [{ rule: 'T201', paths: ['a'], function: 'run', reason: 'r' }] },
-      '"python.exceptions[0].function" is only supported for these rules: function-lines-limit',
-    ],
-    [
-      { exceptions: [{ rule: 'function-line-limit', paths: ['a'], reason: 'r' }] },
-      '"function-line-limit"; did you mean "function-lines-limit"?',
     ],
     [{ importLinter: 'yes' }, '"python.importLinter" must be true or false'],
     [{ environment: '' }, '"python.environment" must be a non-empty string'],

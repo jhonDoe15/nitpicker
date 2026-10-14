@@ -1,5 +1,4 @@
 import {
-  DEFAULT_EXCEPTION_KEY,
   MESSAGES,
   MINIMUM_BRANCH_COVERAGE,
   RULE_IDS,
@@ -24,7 +23,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 
 export function branchCoverageFindings(
   branches,
-  { tool, identify, minimum = MINIMUM_BRANCH_COVERAGE, exceptionKey = DEFAULT_EXCEPTION_KEY },
+  { tool, identify, minimum = MINIMUM_BRANCH_COVERAGE },
 ) {
   const occurrences = new Map();
   const findings = [];
@@ -40,7 +39,7 @@ export function branchCoverageFindings(
       rule: RULE_IDS.changedBranchCoverage,
       path: branch.path,
       identity: identify(branch.key, occurrence),
-      message: `${branchMessage(branch, minimum)} ${acceptSentence(branch, exceptionKey)}`,
+      message: `${branchMessage(branch, minimum)} ${acceptSentence(branch)}`,
       classification: 'enforceable',
       ...(isNamed(branch) ? { symbol: branch.symbol } : {}),
       ...(positiveInteger(branch.line) === undefined ? {} : { location: { line: branch.line } }),
@@ -64,13 +63,12 @@ function isNamed(branch) {
   return typeof branch.symbol === 'string' && branch.symbol !== '';
 }
 
-function acceptSentence(branch, key) {
+function acceptSentence(branch) {
   return isNamed(branch)
     ? exceptionRoute({
         rule: RULE_IDS.changedBranchCoverage,
         path: branch.path,
         name: branch.symbol,
-        key,
       })
     : 'To accept the file, add it to "exclude" in nitpicker.config.json.';
 }

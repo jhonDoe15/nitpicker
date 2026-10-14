@@ -1,4 +1,4 @@
-import { FUNCTION_EXCEPTION_RULES, normalizeFunctionName } from '../policy.mjs';
+import { normalizeFunctionName } from '../policy.mjs';
 import { globToRegExp } from '../glob.mjs';
 
 /** True when `wanted` names the function `symbol`: the whole name or its last dotted parts. */
@@ -29,13 +29,5 @@ export function applyFindingExceptions(findings, exceptions = []) {
           matchers.some((matcher) => matcher.test(finding.path)) &&
           (functionName === undefined || functionMatches(functionName, finding.symbol)),
       ),
-  );
-}
-
-/** Like `applyFindingExceptions`, for the entries that name a structure, CRAP or coverage rule. */
-export function applyFunctionRuleExceptions(findings, exceptions = []) {
-  return applyFindingExceptions(
-    findings,
-    exceptions.filter(({ rule }) => FUNCTION_EXCEPTION_RULES.includes(rule)),
   );
 }

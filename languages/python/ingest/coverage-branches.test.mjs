@@ -63,7 +63,7 @@ describe('ingestCoverageBranches', () => {
       { file: FILE, name: 'lonely', start: 12, end: 15 },
     ];
 
-    const findings = ingest({ functions, exceptionKey: 'python.exceptions' });
+    const findings = ingest({ functions });
 
     expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
       [2, 'pick'],
@@ -72,7 +72,7 @@ describe('ingestCoverageBranches', () => {
       [13, 'lonely'],
     ]);
     expect(findings[3].message).toBe(
-      'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"why"}.',
+      'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

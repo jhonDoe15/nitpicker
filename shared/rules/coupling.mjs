@@ -74,7 +74,7 @@ export function evaluateCoupling(report, analyzerName) {
     findings.push({
       tool: analyzerName,
       rule: RULE_IDS.stabilityDirection,
-      path: '.',
+      path: direction.source,
       identity,
       message,
       classification: 'enforceable',

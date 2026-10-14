@@ -210,7 +210,7 @@ describe('analyzing the import graph', () => {
       path: 'src/base/__init__.py',
       identity: 'package-edge:base->other',
       message:
-        'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+        'base depends on less stable package other. Depend on an abstraction in a more stable package instead.',
       classification: 'enforceable',
     });
   });

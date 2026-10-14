@@ -73,6 +73,8 @@ If your change edits a function that existed before it, read
   returns -1, 1 or 0 from `<` and `>`, with its own unit test (a sort reads only the sign). Chain
   keys on its result: `const byMonth = compareText(a.month, b.month); if (byMonth !== 0) return byMonth;`.
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
+- A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
+  at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
@@ -172,7 +174,7 @@ For `"preset": "python"`. The finishing steps above apply, except: run the proje
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A structure, CRAP or branch-coverage finding names its own entry
+  message. A structure, CRAP, coverage, mutation, duplicate or coupling finding names its own entry in the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`).
   Don't add one to get past the gate: stop and ask.
 

@@ -30,6 +30,15 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for the shared file limits to the structure check', () => {
+    const fileLimit = {
+      rule: 'file-lines-limit',
+      paths: ['src/big/**'],
+      reason: 'Generated tables',
+    };
+    expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
@@ -55,7 +64,7 @@ describe('strict rule exceptions', () => {
     const silentCatch = 'nitpicker/no-silent-catch';
     const config = applyMatchingRuleExceptions(errorsConfig, [
       { rule: silentCatch, paths: ['src/legacy/**'], reason: 'Legacy rewrite' },
-      { rule: 'sonarjs/cognitive-complexity', paths: ['src/legacy/**'], reason: 'Lint only' },
+      { rule: 'max-statements', paths: ['src/legacy/**'], reason: 'Lint only' },
     ]);
     await expect(ruleSeverity(config, 'src/legacy/old.ts', silentCatch)).resolves.toBe(0);
     await expect(ruleSeverity(config, 'src/fresh/new.ts', silentCatch)).resolves.toBe(2);

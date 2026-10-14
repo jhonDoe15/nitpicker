@@ -16,7 +16,7 @@ New enforceable findings: 2
   eslint-errors/nitpicker/no-silent-catch src/main/features/billing/adapters/invoice-client.ts:42
     Reference, propagate, or log the caught value before continuing.
   structure/function-statements-limit src/main/features/billing/domain/totals.ts:8
-    computeTotals has 21 statements; limit is 15. Split by responsibility and name each part for what it checks or does. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-statements-limit","paths":["src/main/features/billing/domain/totals.ts"],"function":"computeTotals","reason":"why"}.
+    computeTotals has 21 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/main/features/billing/domain/totals.ts"],"function":"computeTotals","reason":"..."} to "exceptions" in nitpicker.config.json.
 ```
 
 ## Why nitpicker

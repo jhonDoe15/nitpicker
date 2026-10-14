@@ -1,8 +1,14 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createScratch } from './fixtures/scratch.mjs';
-import { readPythonStructureFindings, structure, STRUCTURE_REPORT } from './python-structure.mjs';
+import {
+  pythonFileLimitFindings,
+  readPythonStructureFindings,
+  structure,
+  STRUCTURE_REPORT,
+} from './python-structure.mjs';
 
 const scratch = createScratch();
 
@@ -83,13 +89,13 @@ describe('reading the structure report', () => {
         rule: 'function-parameters-limit',
         symbol: 'Service.handle',
         message:
-          'Service.handle has 4 parameters; limit is 3. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"why"}.',
+          'Service.handle has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
       {
         rule: 'function-control-nesting-limit',
         symbol: 'Service.run',
         message:
-          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"why"}.',
+          'Service.run nests control flow 3 deep (limit 2). Return early instead of nesting. An elif chain counts one level per branch; use match, a dict lookup or a helper function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/demo/service.py"],"function":"Service.run","reason":"..."} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     expect(
@@ -113,7 +119,7 @@ describe('reading the structure report', () => {
       key: 'function:Service.handle:occurrence:1:parameters',
       value: 4,
       worseMessage:
-        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"why"}.',
+        'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });
@@ -121,5 +127,89 @@ describe('reading the structure report', () => {
 
   it('finds nothing when no function is over a limit', () => {
     expect(findingsFor([entry({})])).toEqual([]);
+  });
+});
+
+let projectRoot;
+
+function write(files, text = 'VALUE = 1\n') {
+  for (const file of files) {
+    mkdirSync(path.join(projectRoot, path.dirname(file)), { recursive: true });
+    writeFileSync(path.join(projectRoot, file), text);
+  }
+}
+
+function findingsWith(policy) {
+  return pythonFileLimitFindings(projectRoot, policy).map(
+    ({ rule, path: findingPath, identity }) => [rule, findingPath, identity],
+  );
+}
+
+const limits = { folderFiles: 2 };
+
+describe('Python file limits', () => {
+  beforeEach(() => {
+    projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-file-limits-'));
+  });
+
+  afterEach(() => {
+    rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  it('counts source and test modules apart, and skips non-Python files and tool folders', () => {
+    write([
+      'src/app/a.py',
+      'src/app/b.py',
+      'src/app/test_a.py',
+      'src/app/test_b.py',
+      'src/app/settings.toml',
+      'src/app/README.md',
+      'tests/test_a.py',
+      'tests/test_b.py',
+      'tests/conftest.py',
+      '.venv/lib/x.py',
+      'venv/lib/a.py',
+      'venv/lib/b.py',
+      'venv/lib/c.py',
+      'env/lib/a.py',
+      'env/lib/b.py',
+      'env/lib/c.py',
+      'src/app/__pycache__/a.py',
+      'src/app/__pycache__/b.py',
+      'src/app/__pycache__/c.py',
+    ]);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([
+      ['folder-files-limit', 'tests', 'folder-files:test:3'],
+    ]);
+  });
+
+  it('leaves package markers out of the folder count', () => {
+    write(['pkg/__init__.py', 'pkg/a.py', 'pkg/b.py']);
+
+    expect(findingsWith({ fileLimits: limits })).toEqual([]);
+  });
+
+  it('checks file and line length with the test-file limit for tests', () => {
+    write(['src/app/long.py', 'tests/test_long.py'], 'VALUE = 1\n'.repeat(301));
+    write(['src/app/wide.py'], `VALUE = ${'1 + '.repeat(40)}1\n`);
+
+    expect(findingsWith({}).map(([rule, findingPath]) => [rule, findingPath])).toEqual([
+      ['file-lines-limit', 'src/app/long.py'],
+      ['line-length-limit', 'src/app/wide.py'],
+    ]);
+  });
+
+  it('honours exclude and file-limit exceptions', () => {
+    write(['src/gen/a.py', 'src/gen/b.py', 'src/gen/c.py', 'src/icons/a.py', 'src/icons/b.py']);
+    write(['src/icons/c.py']);
+
+    expect(
+      findingsWith({
+        exclude: ['src/gen/**'],
+        fileLimits: limits,
+        exceptions: [{ rule: 'folder-files-limit', glob: 'src/icons/*' }],
+      }),
+    ).toEqual([]);
   });
 });

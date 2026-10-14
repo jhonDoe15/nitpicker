@@ -81,7 +81,7 @@ describe('ingestJacocoBranches', () => {
       [14, undefined],
     ]);
     expect(findings[1].message).toBe(
-      'Branch coverage is 0.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"why"}.',
+      'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

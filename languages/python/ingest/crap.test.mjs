@@ -16,7 +16,7 @@ const scores = (options) =>
   });
 
 const ROUTE =
-  ' To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["never.py"],"function":"B.go","reason":"why"}.';
+  ' If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"B.go","reason":"..."} to "exceptions" in nitpicker.config.json.';
 
 describe('ingestPythonCrap', () => {
   it('flags the uncovered methods over the limit, nothing else', () => {
@@ -85,7 +85,7 @@ describe('ingestPythonCrap', () => {
         symbol: 'f',
         identity: 'function:f',
         message:
-          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"why"}.',
+          'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -105,14 +105,14 @@ describe('ingestPythonCrap', () => {
         symbol: 'coro',
         identity: 'function:coro',
         message:
-          'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"why"}.',
+          'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 8 },
         ratchet: {
           key: 'function:coro:crap',
           value: 2,
           worseMessage:
-            'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"why"}.',
+            'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'coro: CRAP 2.00 (limit 2), allowed because base was {base}; any increase fails.',
         },

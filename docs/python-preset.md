@@ -111,11 +111,14 @@ set `python.sourceRoots`.
 ## Configuration
 
 Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
-`thresholds` (`crapLimit`, enforced from slice 3), `exclude` (findings under the globs are
-dropped) and `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the
-`python` object below. `layout` and the top-level `exceptions` describe TypeScript source roots and
-ESLint rules and stay a config error with this preset; the Python equivalent of `exceptions` is
-`python.exceptions`. `python` is an error with any other preset.
+`thresholds` (`crapLimit`, enforced from slice 3, and the file limits `fileLines`, `testFileLines`,
+`lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
+`legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
+below. `layout` describes TypeScript source roots and stays a config error with this preset. The
+top-level `exceptions` takes the rules nitpicker adds, shared by every language (the file limits,
+the function size limits, CRAP, changed-branch coverage, `mutant-survived`, `mutant-nocoverage`,
+`duplicate-clone` and `stability-direction`); the Python equivalent of `exceptions` for the ruff,
+type-checker and one-way rules is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
 {
@@ -178,7 +181,7 @@ legitimately outside the rule, such as a command line entry point that prints or
 must keep a mutable dataclass.
 
 **Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
-optional `function` in the entry: the name the finding prints (`Service.run`, `outer.inner`) or its
+optional `function` in an entry of the top-level `exceptions`: the name the finding prints (`Service.run`, `outer.inner`) or its
 last part (`run`). For `changed-branch-coverage` it is required, and the entry accepts the uncovered
 branches inside that function only, so the rest of the file keeps every other check; a branch in no
 function (module level) can only be lifted with `exclude`. The branch is attributed to the narrowest
@@ -216,7 +219,7 @@ can import, so an environment without pytest is an error (`environment-failed`, 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence (the size, CRAP and coverage findings end with their own entry, from the shared rules), except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers and the rules ends with the `python.exceptions` sentence (the size, CRAP, coverage, mutation, duplicate and coupling findings end with an entry for the top-level `exceptions`, from the shared rules), except the two whose own advice differs (`no-inline-suppression`, mypy `unused-ignore`). The wording lives in `languages/python/rules/rule-hints.mjs`; a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -348,6 +351,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 
 ## Slice 3: structure limits and CRAP
 
+- **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
+  file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
+  module (`test_*.py`, `*_test.py`, `conftest.py`, or anything under a `test` or `tests` folder),
+  120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
+  file or folder already over a limit fails only when it grows, and a folder moved to a new path is
+  matched to its old path.
 - **Rules.** The shared structure rule (`shared/rules/structure.mjs`) and CRAP rule
   (`shared/rules/crap.mjs`) run on Python with the TypeScript and Java ids, limits and messages:
   `function-lines-limit` (50), `function-statements-limit` (15), `function-control-nesting-limit`
@@ -356,12 +365,12 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `spec/checks.md` is regenerated. A function that already breaks a limit on the base and is edited
   fails only when the change makes that metric worse, exactly as for the other languages (the
   `ratchet` field of the finding, handled by the core comparison); a new function over a limit, or
-  one the change pushes over it, fails as usual. Exceptions are the usual ones: a
-  `python.exceptions` entry for the rule (optionally with `function`, see below), `exclude` in
+  one the change pushes over it, fails as usual. Exceptions are the usual ones: an
+  `exceptions` entry for the rule (optionally with `function`, see below), `exclude` in
   `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable. Each
   message ends with the entry that accepts it, for example
-  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"why"}`;
-  the shared rules append it (`exceptionKey` is `python.exceptions` here).
+  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"..."}`;
+  the shared rules append it.
 - **Structure metrics (decision to review).** `languages/python/metrics/structure_metrics.py` parses
   the source files with the standard library `ast` module (parse only, nothing is imported or run)
   and writes one object per function to `structure.json`. It is run by the project's own Python
@@ -475,8 +484,9 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. To accept it, add an entry to "python.exceptions" in
-nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"why"}.`
+or remove it if it can't happen. If this is intended, add
+{"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to
+"exceptions" in nitpicker.config.json.`
   It names where the untaken outcomes lead (those line numbers are only in the message, never in the
   identity) and the entry that accepts the branch for its function; a branch in no function points at
   `exclude` instead.
@@ -523,8 +533,8 @@ the source root detection already does.
   the n-th occurrence of that pair, never a line, so moving a legacy clone within its files keeps it
   baselined. Clones that consist only of import statements or `__all__` re-export lists are dropped
   (`importsOnly`); a clone that also carries code is still reported. The finding is on the first
-  file of the pair, and its message tells to add that file to `exclude` when the repetition is
-  intended. A source root of `.` is supported.
+  file of the pair, and its message ends with the `exceptions` entry for that file, for when the
+  repetition is intended. A source root of `.` is supported.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
@@ -540,8 +550,8 @@ the source root detection already does.
   the enforceable `stability-direction` (`<package> depends on less stable package <package>`),
   tool name `coupling`, identity `package-edge:<source>-><target>`. Its path is the source
   package's `__init__.py` (the package's first file when it has none), and the message says to
-  depend on an abstraction in a more stable package, or to add that file to `exclude` when the
-  inversion is intended. An edge can appear without anyone touching it, because package
+  depend on an abstraction in a more stable package, and ends with the `exceptions` entry for that
+  file, for when the inversion is intended. An edge can appear without anyone touching it, because package
   instability moves when other packages change. As in Java, packages are flat
   (`a.b` and `a.b.c` are different packages) and fan-in and fan-out count distinct files. A file
   that does not parse with the interpreter is left out of the graph (ruff already reports syntax

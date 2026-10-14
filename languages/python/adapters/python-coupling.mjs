@@ -126,7 +126,7 @@ function withStabilityRoute(findings, { report, modules }) {
     return {
       ...finding,
       path: file,
-      message: `${finding.message}. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add ${file} to "exclude" in nitpicker.config.json.`,
+      message: `${finding.message}. Depend on an abstraction in a more stable package instead.`,
     };
   });
 }

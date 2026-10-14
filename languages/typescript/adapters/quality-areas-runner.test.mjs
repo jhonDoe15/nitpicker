@@ -150,13 +150,13 @@ describe('structure limit messages', () => {
 
   it('tells the author nested functions count and where to move them', () => {
     expect(violations({ lines: 60 })).toEqual([
-      'big has 60 lines; limit is 50. Nested functions count: move inner functions to module level, passing what they close over as one object. To accept it, add an entry to \"exceptions\" in nitpicker.config.json: {\"rule\":\"function-lines-limit\",\"paths\":[\"src/a.ts\"],\"function\":\"big\",\"reason\":\"why\"}.',
+      'big has 60 lines; limit is 50. Nested functions count: move inner functions to module level, passing what they close over as one object. If this is intended, add {\"rule\":\"function-lines-limit\",\"paths\":[\"src/a.ts\"],\"function\":\"big\",\"reason\":\"...\"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
   it('tells the author how to split a function with too many statements', () => {
     expect(violations({ statements: 16 })).toEqual([
-      'big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. To accept it, add an entry to \"exceptions\" in nitpicker.config.json: {\"rule\":\"function-statements-limit\",\"paths\":[\"src/a.ts\"],\"function\":\"big\",\"reason\":\"why\"}.',
+      'big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {\"rule\":\"function-statements-limit\",\"paths\":[\"src/a.ts\"],\"function\":\"big\",\"reason\":\"...\"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });
