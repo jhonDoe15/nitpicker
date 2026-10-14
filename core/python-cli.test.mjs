@@ -1,101 +1,21 @@
-import { execFileSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../languages/java/adapters/java-duplicates.mjs';
 import { runCli } from './cli.mjs';
+import {
+  callsLog,
+  commit,
+  LEGACY_VIOLATION,
+  pythonRepository,
+  run,
+  setEnvironment,
+  temporaryRoot,
+  usePythonCli,
+  write,
+} from './fixtures/python-cli.mjs';
 
-const temporaryRoots = [];
-const savedEnvironment = {};
-
-function setEnvironment(name, value) {
-  savedEnvironment[name] ??= { value: process.env[name] };
-  process.env[name] = value;
-}
-
-function temporaryRoot(prefix) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
-  temporaryRoots.push(root);
-  return root;
-}
-
-afterEach(() => {
-  for (const [name, { value }] of Object.entries(savedEnvironment)) {
-    if (value === undefined) {
-      Reflect.deleteProperty(process.env, name);
-    } else {
-      process.env[name] = value;
-    }
-    Reflect.deleteProperty(savedEnvironment, name);
-  }
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
-
-function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
-}
-
-function write(root, files) {
-  for (const [relative, contents] of Object.entries(files)) {
-    const target = path.join(root, relative);
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, contents);
-  }
-}
-
-function commit(root, message) {
-  git(root, ['add', '-A']);
-  git(root, ['commit', '-q', '-m', message]);
-}
-
-const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
-let templateRoot;
-
-beforeAll(() => {
-  templateRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-template-')));
-  git(templateRoot, ['init', '-q', '--initial-branch=main']);
-  git(templateRoot, ['config', 'user.name', 'Nitpicker Python Fixture']);
-  git(templateRoot, ['config', 'user.email', 'nitpicker-python@example.invalid']);
-  write(templateRoot, {
-    'nitpicker.config.json': '{ "preset": "python" }\n',
-    '.gitignore': '.venv/\n',
-    'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\n',
-    'src/demo/a.py': 'import os\n\n\ndef value():\n    return 1\n',
-    'violations.txt': LEGACY_VIOLATION,
-  });
-  installFakeToolchain(path.join(templateRoot, '.venv/bin'));
-  commit(templateRoot, 'base');
-  git(templateRoot, ['branch', 'comparison-base']);
-});
-
-afterAll(() => {
-  rmSync(templateRoot, { recursive: true, force: true });
-});
-
-function pythonRepository(files = {}) {
-  const root = temporaryRoot('nitpicker-python-cli-');
-  cpSync(templateRoot, root, { recursive: true });
-  if (Object.keys(files).length > 0) {
-    write(root, files);
-    commit(root, 'base');
-    git(root, ['branch', '-f', 'comparison-base']);
-  }
-  return root;
-}
+usePythonCli();
 
 const FAILING_SUMMARY = [
   'Base: comparison-base (argument)',
@@ -153,40 +73,6 @@ const liftingConfig = (rule, file) =>
 
 function newFindings(result, rule) {
   return result.json('new-findings.json').filter((finding) => finding.rule === rule);
-}
-
-function run(root, extra = []) {
-  const output = { out: '', err: '' };
-  const reports = path.join(temporaryRoot('nitpicker-python-out-'), 'reports');
-  const exitCode = runCli({
-    arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: {
-      write: (value) => {
-        output.out += value;
-      },
-    },
-    stderr: {
-      write: (value) => {
-        output.err += value;
-      },
-    },
-    progress: { write: () => undefined },
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, reports, json, output, text: output.out + output.err };
-}
-
-function callsLog() {
-  const log = path.join(temporaryRoot('nitpicker-python-log-'), 'calls.jsonl');
-  writeFileSync(log, '');
-  setEnvironment('FAKE_PYTHON_LOG', log);
-  return () =>
-    readFileSync(log, 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
 }
 
 const mutantFindings = (result) =>
@@ -782,56 +668,6 @@ describe('nitpicker with "preset": "python"', () => {
             'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
-    });
-  });
-
-  describe('exceptions for the rules nitpicker adds', () => {
-    const exceptions = (...entries) =>
-      `${JSON.stringify({ preset: 'python', exceptions: entries })}\n`;
-    const entry = (rule, functionName) => ({
-      rule,
-      paths: ['src/demo/a.py'],
-      ...(functionName === undefined ? {} : { function: functionName }),
-      reason: 'A reviewed reason.',
-    });
-    const wide = {
-      file: 'src/demo/a.py',
-      name: 'Service.wide',
-      start: 4,
-      end: 5,
-      lines: 2,
-      statements: 1,
-      maxControlNesting: 0,
-      parameters: 4,
-    };
-    const change = (config) => {
-      const root = pythonRepository();
-      write(root, {
-        'nitpicker.config.json': config,
-        'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
-        'structure-data.json': JSON.stringify([wide]),
-      });
-      commit(root, 'add a wide method');
-      return run(root);
-    };
-
-    it('fails the wide method and names it', () => {
-      const failing = change('{ "preset": "python" }\n');
-
-      expect(failing.exitCode, failing.text).toBe(1);
-      expect(failing.json('new-findings.json').map(({ symbol }) => symbol)).toEqual([
-        'Service.wide',
-      ]);
-    });
-
-    it.each([
-      ['the function name', entry('function-parameters-limit', 'wide'), 0],
-      ['the whole path', entry('function-parameters-limit'), 0],
-      ['another function', entry('function-parameters-limit', 'narrow'), 1],
-    ])('lifts the finding by %s only as far as the entry reaches', (_, lifted, exitCode) => {
-      const result = change(exceptions(lifted));
-
-      expect(result.exitCode, result.text).toBe(exitCode);
     });
   });
 

@@ -13,9 +13,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../preset/coding-standards/inventory-path.mjs';
 import { parsePositiveNumber } from '../preset/quality-checks.mjs';
-import { DEAD_CODE_RULES, DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
-import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
-import { ROUTED_RULES, withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import {
@@ -35,9 +33,12 @@ import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mj
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { existingRoots } from '../preset/layout.mjs';
-import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
+import { readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
+import { deadCodeMessage } from './exceptions/dead-code-messages.mjs';
+import { namedFunctions } from './exceptions/function-names.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
@@ -79,10 +80,6 @@ const STRUCTURE_HINTS = {
     'Nested functions count: move inner functions to module level, passing what they close over as one object.',
 };
 
-const DEAD_CODE_DECLARATIONS = new Map([
-  ['exports', 'Export'],
-  ['types', 'Exported type'],
-]);
 const ENFORCED_DEAD_CODE_CATEGORIES = new Set(['files', 'exports', 'types']);
 
 export async function runQualityArea(options) {
@@ -102,12 +99,7 @@ export async function runQualityArea(options) {
     )
       return [];
   }
-  const routed =
-    options.kind === 'dead-code' ? [...ROUTED_RULES, ...DEAD_CODE_RULES] : ROUTED_RULES;
-  return applyFindingExceptions(
-    withExceptionRoutes(await runner(options), routed),
-    readHeadPolicy().exceptions,
-  );
+  return applyAreaExceptions(await runner(options), options.kind);
 }
 
 function runPolicyTests(options) {
@@ -707,7 +699,7 @@ export function normalizeDeadCode(report, analyzerName) {
       rule: 'files',
       path: filePath,
       identity: `file:${filePath}|source:${file?.sourceHash ?? hash(filePath)}`,
-      message: unusedFileMessage(filePath),
+      message: deadCodeMessage('files', filePath),
       classification: 'enforceable',
     });
   }
@@ -749,23 +741,6 @@ export function normalizeDeadCode(report, analyzerName) {
     }
   }
   return findings;
-}
-
-function unusedFileMessage(filePath) {
-  return `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`;
-}
-
-function deadCodeMessage(category, name, entry) {
-  if (category === 'files') {
-    return unusedFileMessage(name);
-  }
-  const kind = DEAD_CODE_DECLARATIONS.get(category);
-  if (kind === undefined) {
-    return `${category}: ${name}`;
-  }
-  return entry?.usedInFile === true
-    ? `${kind} ${name} is only used in its own file. Remove \`export\`.`
-    : `${kind} ${name} is never imported. Remove \`export\`, or the ${category === 'types' ? 'type' : 'declaration'} if nothing uses it.`;
 }
 
 export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {
@@ -814,12 +789,6 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     }),
   );
   return branchOutcomes.filter((value) => value > 0).length;
-}
-
-function namedFunctions(coverage, file) {
-  return Object.values(coverage.fnMap ?? {})
-    .filter(({ name }) => typeof name === 'string' && !name.startsWith('(anonymous'))
-    .map(({ name, loc }) => ({ file, name, start: loc?.start?.line, end: loc?.end?.line }));
 }
 
 function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount }) {

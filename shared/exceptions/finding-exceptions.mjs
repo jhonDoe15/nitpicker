@@ -1,4 +1,4 @@
-import { normalizeFunctionName } from '../policy.mjs';
+import { normalizeFunctionName } from './rule-names.mjs';
 import { globToRegExp } from '../glob.mjs';
 
 /** True when `wanted` names the function `symbol`: the whole name or its last dotted parts. */

@@ -5,7 +5,8 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
-import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES, canonicalRule } from './policy.mjs';
+import { canonicalRule } from './exceptions/rule-names.mjs';
+import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES } from './policy.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 

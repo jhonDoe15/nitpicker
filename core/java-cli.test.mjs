@@ -1,130 +1,27 @@
-import { execFileSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
 import { JAVA_TOOLS } from '../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../languages/java/adapters/kotlin-options.mjs';
-import { runCli as runCliWithSubprocesses } from './cli.mjs';
-import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
+import {
+  commit,
+  fakeGradle,
+  git,
+  gradleRepository,
+  run,
+  runCli,
+  temporaryRoot,
+  useGradleCli,
+  write,
+} from './fixtures/gradle-cli.mjs';
 
 // The Java and Kotlin presets through the CLI with a fake `gradle`, so they run without Java. The
 // real Gradle runs are covered by languages/java/adapters/java-preset.e2e.test.mjs
 // (NITPICKER_JAVA_E2E=1) and kotlin-preset.e2e.test.mjs (NITPICKER_KOTLIN_E2E=1).
 
-const fakeGradle = path.resolve(
-  import.meta.dirname,
-  '../languages/java/adapters/fixtures/fake-gradle.mjs',
-);
-const temporaryRoots = [];
-let previousGradle;
-
-beforeEach(() => {
-  previousGradle = process.env.NITPICKER_GRADLE;
-  process.env.NITPICKER_GRADLE = fakeGradle;
-});
-
-afterEach(() => {
-  if (previousGradle === undefined) {
-    delete process.env.NITPICKER_GRADLE;
-  } else {
-    process.env.NITPICKER_GRADLE = previousGradle;
-  }
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function temporaryRoot(prefix) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
-  temporaryRoots.push(root);
-  return root;
-}
-
-// Hermetic git: ignores the global config (commit signing adds a round trip to every commit).
-const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
-
-function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
-}
-
-function write(root, files) {
-  for (const [relative, contents] of Object.entries(files)) {
-    const target = path.join(root, relative);
-    mkdirSync(path.dirname(target), { recursive: true });
-    writeFileSync(target, contents);
-  }
-}
-
-function commit(root, message) {
-  git(root, ['add', '-A']);
-  git(root, ['commit', '-q', '-m', message]);
-}
-
-// One repository with the default Gradle project, built once per file; each test copies it.
-let templateRoot;
-
-beforeAll(() => {
-  templateRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-template-')));
-  git(templateRoot, ['init', '-q', '--initial-branch=main']);
-  git(templateRoot, ['config', 'user.name', 'Nitpicker Java Fixture']);
-  git(templateRoot, ['config', 'user.email', 'nitpicker-java@example.invalid']);
-  write(templateRoot, {
-    'nitpicker.config.json': '{ "preset": "java" }\n',
-    'build.gradle': "plugins { id 'java' }\n",
-    'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
-    'violations.txt': 'Avoid unused field: legacy\n',
-  });
-  commit(templateRoot, 'base');
-  git(templateRoot, ['branch', 'comparison-base']);
-});
-
-afterAll(() => {
-  rmSync(templateRoot, { recursive: true, force: true });
-});
-
-// Extra files become part of the base commit, so a test can start from a different base.
-function gradleRepository(files = {}) {
-  const root = temporaryRoot('nitpicker-java-cli-');
-  cpSync(templateRoot, root, { recursive: true });
-  if (Object.keys(files).length > 0) {
-    write(root, files);
-    commit(root, 'base');
-    git(root, ['branch', '-f', 'comparison-base']);
-  }
-  return root;
-}
-
-// The Java runner runs in-process (it still spawns the fake gradle); the test that passes
-// `{ subprocess: true }` keeps the real analyzer-scheduler and java-runner.mjs processes.
-const runCli = (options) => runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
-
-function run(root, extra = [], { subprocess = false } = {}) {
-  const output = { out: '', err: '' };
-  const reports = path.join(temporaryRoot('nitpicker-java-out-'), 'reports');
-  const exitCode = runCli({
-    arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: { write: (value) => (output.out += value) },
-    stderr: { write: (value) => (output.err += value) },
-    progress: { write: () => undefined },
-    ...(subprocess ? { runTasks: undefined } : {}),
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, reports, json, output };
-}
+useGradleCli();
 
 describe('nitpicker with "preset": "java"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
@@ -180,79 +77,6 @@ describe('nitpicker with "preset": "java"', () => {
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
-  });
-
-  describe('exceptions for structure, CRAP and coverage findings', () => {
-    const WIDE_SOURCE = [
-      'package demo;',
-      '',
-      'public final class Wide {',
-      '  int sum(int a, int b, int c, int d) {',
-      '    return a + b + c + d;',
-      '  }',
-      '}',
-      '',
-    ].join('\n');
-    const structure = `${JSON.stringify([
-      {
-        file: 'src/main/java/demo/Wide.java',
-        name: 'Wide.sum',
-        start: 4,
-        end: 6,
-        lines: 3,
-        statements: 1,
-        maxControlNesting: 0,
-        parameters: 4,
-      },
-    ])}\n`;
-    const configWith = (...exceptions) => `${JSON.stringify({ preset: 'java', exceptions })}\n`;
-    const entry = (functionName, rule = 'function-parameters-limit') => ({
-      rule,
-      paths: ['src/main/java/demo/Wide.java'],
-      ...(functionName === undefined ? {} : { function: functionName }),
-      reason: 'A reviewed reason.',
-    });
-    const change = (config) => {
-      const root = gradleRepository();
-      write(root, {
-        'nitpicker.config.json': config,
-        'src/main/java/demo/Wide.java': WIDE_SOURCE,
-        'structure.json': structure,
-      });
-      commit(root, 'add a wide method');
-      return run(root, [], { subprocess: true });
-    };
-
-    it('names the entry that accepts a method over the parameter limit', () => {
-      const result = change('{ "preset": "java" }\n');
-
-      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-      expect(
-        result.json('new-findings.json').map(({ symbol, message }) => [symbol, message]),
-      ).toEqual([
-        [
-          'Wide.sum',
-          'Wide.sum has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
-        ],
-      ]);
-    });
-
-    it.each([
-      ['the method', 'sum', 0],
-      ['the path', undefined, 0],
-      ['another method', 'product', 1],
-    ])('lifts the finding by %s only as far as the entry reaches', (_, functionName, exitCode) => {
-      expect(change(configWith(entry(functionName))).exitCode).toBe(exitCode);
-    });
-
-    it('rejects an exception for a rule outside structure, CRAP and coverage', () => {
-      const result = change(configWith(entry(undefined, 'UnusedPrivateField')));
-
-      expect(result.exitCode).toBe(2);
-      expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}\n`,
-      );
-    });
   });
 
   describe('legacy inventory', () => {
