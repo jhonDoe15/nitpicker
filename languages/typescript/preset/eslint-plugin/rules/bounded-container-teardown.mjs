@@ -1,7 +1,7 @@
 import { readLayout } from '../../head-policy.mjs';
 import { ancestorsOf, scopeChain } from './ancestry.mjs';
 
-const layout = readLayout();
+const { isTestFixture } = readLayout();
 
 function isContainerName(name) {
   return /container|agent/i.test(name);
@@ -39,7 +39,7 @@ export const rule = {
     },
   },
   create(context) {
-    if (layout.isTestFixture(context.filename, 'container-teardown.ts')) return {};
+    if (isTestFixture(context.filename, 'container-teardown.ts')) return {};
     return {
       CallExpression(node) {
         const callee =

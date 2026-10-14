@@ -91,14 +91,11 @@ export async function runQualityArea(options) {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) return [];
-    if (
-      ['coupling', 'crap', 'mutation'].includes(options.kind) &&
-      !files.some((file) => layout.isSourceFile(file))
-    )
+    if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
       return [];
     if (
       ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
-      !files.some((file) => layout.isRunnableTestFile(file))
+      !files.some(layout.isRunnableTestFile)
     )
       return [];
   }
@@ -520,9 +517,7 @@ function formatProcessOutput(result) {
 
 function hasRunnableTests(options) {
   const layout = readLayout();
-  return layout
-    .projectCodeFiles(options.projectRoot)
-    .some((file) => layout.isRunnableTestFile(file));
+  return layout.projectCodeFiles(options.projectRoot).some(layout.isRunnableTestFile);
 }
 
 function runCrap(options) {

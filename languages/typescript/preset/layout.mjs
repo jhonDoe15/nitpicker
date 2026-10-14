@@ -101,19 +101,19 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
-    isExcluded(file) {
+    isExcluded: (file) => {
       const normalized = file.replaceAll('\\', '/');
       return excludeMatchers.some((matcher) => matcher.test(normalized));
     },
-    isTestFile(file) {
+    isTestFile: (file) => {
       const normalized = file.replaceAll('\\', '/');
       if (!codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
       return testPattern.test(normalized);
     },
-    isRunnableTestFile(file) {
+    isRunnableTestFile: (file) => {
       return resolved.isTestFile(file) && runnableTestPattern.test(file);
     },
-    isSourceFile(file) {
+    isSourceFile: (file) => {
       const normalized = file.replaceAll('\\', '/');
       return (
         sourcePattern.test(normalized) &&
@@ -123,7 +123,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
         !resolved.isExcluded(normalized)
       );
     },
-    isSourceUnderRoot(file, root) {
+    isSourceUnderRoot: (file, root) => {
       const normalized = file.replaceAll('\\', '/');
       const prefix = `${root.replaceAll('\\', '/').replace(/\/$/, '')}/`;
       return (
@@ -132,14 +132,14 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
         !resolved.isExcluded(normalized)
       );
     },
-    sourceRootOf(file) {
+    sourceRootOf: (file) => {
       return sourceRoots.find((root) => file.includes(`/${root}/`));
     },
-    isTestFixture(file, name = '') {
+    isTestFixture: (file, name = '') => {
       const normalized = file.replaceAll('\\', '/');
       return testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`));
     },
-    projectCodeFiles(projectRoot, roots = resolved.graphRoots) {
+    projectCodeFiles: (projectRoot, roots = resolved.graphRoots) => {
       const files = [];
       function visit(directory, relative) {
         for (const entry of readdirSync(directory, { withFileTypes: true })) {

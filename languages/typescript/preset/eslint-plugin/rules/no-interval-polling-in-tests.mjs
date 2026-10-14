@@ -1,6 +1,6 @@
 import { readLayout } from '../../head-policy.mjs';
 
-const layout = readLayout();
+const { isTestFixture } = readLayout();
 
 export const rule = {
   meta: {
@@ -11,7 +11,7 @@ export const rule = {
     },
   },
   create(context) {
-    if (layout.isTestFixture(context.filename)) return {};
+    if (isTestFixture(context.filename)) return {};
     return {
       CallExpression(node) {
         const callee = node.callee;

@@ -1,7 +1,7 @@
 import { readLayout } from '../../head-policy.mjs';
 import { ancestorsOf } from './ancestry.mjs';
 
-const layout = readLayout();
+const { isTestFixture } = readLayout();
 
 export const rule = {
   meta: {
@@ -13,7 +13,7 @@ export const rule = {
     },
   },
   create(context) {
-    if (layout.isTestFixture(context.filename, 'container-teardown.ts')) return {};
+    if (isTestFixture(context.filename, 'container-teardown.ts')) return {};
     return {
       CallExpression(node) {
         const callee = node.callee;

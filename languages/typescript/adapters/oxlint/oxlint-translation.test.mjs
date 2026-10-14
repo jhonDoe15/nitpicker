@@ -79,30 +79,54 @@ describe('translatePlan', () => {
   it('writes one override per group with oxlint names, severities and globals', () => {
     const translated = translatePlan(plan, { nativeRules, bridgedRules: PARITY_BRIDGED_RULES });
 
-    expect(translated.overrides).toEqual([
-      {
-        files: ['src/a.ts'],
-        globals: { process: 'readonly' },
-        rules: {
-          'eslint/no-debugger': 'error',
-          'eslint/no-unused-vars': [
-            'error',
-            {
-              argsIgnorePattern: '[^\\s\\S]',
-              varsIgnorePattern: '[^\\s\\S]',
-              caughtErrorsIgnorePattern: '[^\\s\\S]',
-              destructuredArrayIgnorePattern: '[^\\s\\S]',
-              args: 'after-used',
-            },
-          ],
-          'js-nitpicker/no-comments': 'warn',
+    expect(translated.partitions.map(({ overrides }) => overrides)).toEqual([
+      [
+        {
+          files: ['src/a.ts'],
+          globals: { process: 'readonly' },
+          rules: {
+            'eslint/no-debugger': 'error',
+            'eslint/no-unused-vars': [
+              'error',
+              {
+                argsIgnorePattern: '[^\\s\\S]',
+                varsIgnorePattern: '[^\\s\\S]',
+                caughtErrorsIgnorePattern: '[^\\s\\S]',
+                destructuredArrayIgnorePattern: '[^\\s\\S]',
+                args: 'after-used',
+              },
+            ],
+            'js-nitpicker/no-comments': 'warn',
+          },
         },
-      },
+      ],
     ]);
     expect(translated.plugins).toEqual([
       { namespace: 'nitpicker', alias: 'js-nitpicker', ruleNames: ['no-comments'] },
     ]);
     expect(translated.typeAware).toBe(false);
+  });
+
+  it('splits groups with different settings into separate configs', () => {
+    const settings = { 'testing-library/utils-module': 'test-utils' };
+    const translated = translatePlan(
+      {
+        groups: [
+          { files: ['a.ts'], rules: { 'no-debugger': [2] }, settings: {} },
+          { files: ['b.ts'], rules: { 'no-debugger': [2] }, settings },
+          { files: ['c.ts'], rules: { 'no-console': [2] }, settings: {} },
+        ],
+        typedPluginRules: [],
+      },
+      { nativeRules, bridgedRules: new Set() },
+    );
+
+    expect(translated.partitions.map((partition) => [partition.settings, partition.files])).toEqual(
+      [
+        [{}, ['a.ts', 'c.ts']],
+        [settings, ['b.ts']],
+      ],
+    );
   });
 
   it('leaves type-aware plugin rules oxlint cannot run to ESLint', () => {

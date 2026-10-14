@@ -115,7 +115,7 @@ export function translatePlan(plan, { nativeRules, bridgedRules }) {
   };
   const translated = plan.groups.map((group) => ({ group, ...translateGroup(group, context) }));
   return {
-    overrides: translated.map(({ override }) => override),
+    partitions: settingsPartitions(translated),
     residual: translated
       .filter(({ residualRules }) => residualRules.length > 0)
       .map(({ group, residualRules }) => ({ files: group.files, rules: residualRules })),
@@ -123,6 +123,15 @@ export function translatePlan(plan, { nativeRules, bridgedRules }) {
     plugins: [...context.plugins.values()],
     typeAware: context.typeAware.value,
   };
+}
+
+function settingsPartitions(translated) {
+  const bySettings = Map.groupBy(translated, ({ group }) => JSON.stringify(group.settings ?? {}));
+  return [...bySettings.values()].map((members) => ({
+    settings: members[0].group.settings ?? {},
+    files: members.flatMap(({ group }) => group.files),
+    overrides: members.map(({ override }) => override),
+  }));
 }
 
 export function escapeGlob(relativePath) {
