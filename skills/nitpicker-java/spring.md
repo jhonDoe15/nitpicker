@@ -62,3 +62,16 @@ JPA and Spring Data:
   and `clear` on the `EntityManager`. No other `flush` or `saveAndFlush`.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`.
+
+`application*.properties` and `application*.yml` (findings `spring/<rule>`; test profiles, and
+local or dev ones where noted, are exempt):
+
+- With JPA, set `spring.jpa.open-in-view=false`.
+- `spring.jpa.hibernate.ddl-auto` is `none` or `validate` (schema changes go in migrations), and
+  `spring.jpa.generate-ddl` stays off; local and dev profiles may differ.
+- No `spring.main.allow-circular-references`, `allow-bean-definition-overriding` or
+  `lazy-initialization` set to true.
+- List actuator endpoints by name, never `management.endpoints.web.exposure.include=*` (local and
+  dev may).
+- No `server.error.include-stacktrace=always` or `on-param` (local and dev may).
+- Secrets come from the environment: `password=${DB_PASSWORD}`, with no literal default.
