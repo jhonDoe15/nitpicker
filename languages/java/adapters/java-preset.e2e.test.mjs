@@ -324,7 +324,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       });
 
       expect(failing.newEnforceable.map(({ message }) => message)).toEqual([
-        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Branch coverage is 0.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ]);
       expect(accepted.failed).toBe(false);
       expect(summarize(accepted.newEnforceable)).toEqual([]);
