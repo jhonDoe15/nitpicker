@@ -561,6 +561,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'crap crap-score-limit classify2',
       'crap crap-score-limit flatten',
       'crap crap-score-limit rank',
+      'structure folder-files-limit demo',
       'structure function-control-nesting-limit depth',
       'structure function-lines-limit Left.total',
       'structure function-lines-limit Right.total',
