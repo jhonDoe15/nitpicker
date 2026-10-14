@@ -1,29 +1,8 @@
-# Java and Spring
+# Spring
 
-For a project with `"preset": "java"` in `nitpicker.config.json`. The TypeScript sections of
-SKILL.md don't apply; this page does.
-
-## Finish with the gate
-
-1. Run the tests (`./gradlew test` or `gradle test`). Failing tests stop coverage, CRAP and mutation.
-2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe. It runs Gradle with its own init script on the merge base and on your change, which takes
-   minutes. Exit codes are the same as for TypeScript: 0 done, 1 fix the new findings and rerun, 2 a
-   tool failed (usually compilation or a test), never a pass.
-3. Never suppress: no `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or
-   `"fallthrough"` (PMD honors all of them, so each is a finding; `// NOPMD` does nothing), no
-   `@SuppressFBWarnings` (also a finding), no `CHECKSTYLE` comments or `"checkstyle:..."` values
-   (they do nothing), no config `exclude`, `exceptions` or legacy entries. If a finding seems
-   wrong, stop and ask. The one exception is native SQL, below.
-
-A method that existed before your change and is already over a size limit may be edited but must
-not grow: put the new code in a new method and call it.
-
-Tests get the same PMD, Checkstyle and formatting rules as main code. Catch the specific exceptions
-you handle, never `Exception`, `RuntimeException`, `NullPointerException` or `Throwable`; in a test,
-use `assertThrows` instead of a try/catch.
-
-## Spring: write it this way
+For a Java project with Spring on its compile classpath (`spring-context` or `spring-boot`):
+nitpicker then adds its Spring rules, reported as `pmd/Spring...` and `pmd/Jpa...`. Write it this
+way.
 
 Beans and configuration:
 
