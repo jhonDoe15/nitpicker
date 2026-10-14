@@ -109,8 +109,11 @@ describe('the react-project fixture', () => {
       expect(
         findings.filter(
           ({ path: file, rule }) =>
-            ['test/ui/snapshot.test.tsx', 'e2e/root-playwright.spec.ts'].includes(file) &&
-            /^(?:testing-library|nitpicker)\//.test(rule),
+            [
+              'test/ui/snapshot.test.tsx',
+              'e2e/root-playwright.spec.ts',
+              'e2e/fixtures.ts',
+            ].includes(file) && /^(?:testing-library\/|nitpicker\/|no-empty-pattern$)/.test(rule),
         ),
       ).toEqual([]);
       expect(rulesByFile(findings)).toEqual({

@@ -101,6 +101,9 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
       ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
     ],
+    endToEndGlobs: testRoots.includes(END_TO_END_ROOT)
+      ? [`${END_TO_END_ROOT}/**/*.${extensionGlob}`]
+      : [],
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
     unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
     graphRoots: [...sourceRoots, ...testRoots],

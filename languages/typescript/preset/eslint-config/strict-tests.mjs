@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { codeExtensions, defaultResolvedLayout, END_TO_END_ROOT } from '../layout.mjs';
+import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
 import { testControlFlowSelectors } from './strict-control-flow.mjs';
 import { typeAssertionSelectors } from './strict-escape-hatches.mjs';
 
@@ -24,18 +24,6 @@ function testAreaGlobsFor(layout) {
   return [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs];
 }
 
-function endToEndConfigFor(layout) {
-  return layout.testRoots.includes(END_TO_END_ROOT)
-    ? [
-        {
-          files: [`${END_TO_END_ROOT}/**/*.${codeExtensions}`],
-          ignores: layout.excludedGlobs,
-          rules: { 'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }] },
-        },
-      ]
-    : [];
-}
-
 export function strictTestConfigFor(layout = defaultResolvedLayout) {
   return [
     {
@@ -53,7 +41,6 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
       plugins: { nitpicker: nitpickerRules },
       rules: strictTestHelperRules,
     },
-    ...endToEndConfigFor(layout),
   ];
 }
 

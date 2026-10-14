@@ -21,7 +21,7 @@ describe('common layout', () => {
     const knip = readConfig('knip.json');
     for (const root of [sourceRoot, ...testRoots]) {
       expect(typecheck.include).toContain(`${root}/**/*`);
-      expect(stryker.include).toContain(`${root}/**/*`);
+      expect(stryker.include.includes(`${root}/**/*`)).toBe(root !== 'e2e');
       expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
     }
     expect(duplicates.path).toContain(sourceRoot);
