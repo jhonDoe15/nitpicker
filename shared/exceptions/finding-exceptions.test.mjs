@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  applyFindingExceptions,
-  applyFunctionRuleExceptions,
-  functionMatches,
-} from './finding-exceptions.mjs';
+import { applyFindingExceptions, functionMatches } from './finding-exceptions.mjs';
 
 const finding = (overrides) => ({
   rule: 'changed-branch-coverage',
@@ -53,18 +49,5 @@ describe('applyFindingExceptions', () => {
   it('returns the findings untouched without exceptions', () => {
     const findings = [finding()];
     expect(applyFindingExceptions(findings, [])).toBe(findings);
-  });
-});
-
-describe('applyFunctionRuleExceptions', () => {
-  it('ignores entries for rules that are not structure, CRAP or coverage rules', () => {
-    const findings = [finding({ rule: 'files', path: 'src/a.ts', symbol: undefined }), finding()];
-
-    expect(
-      applyFunctionRuleExceptions(findings, [
-        { rule: 'files', paths: ['**'], reason: 'because' },
-        { rule: 'changed-branch-coverage', paths: ['src/**'], function: 'save', reason: 'because' },
-      ]),
-    ).toEqual([findings[0]]);
   });
 });

@@ -578,7 +578,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       });
 
       expect(failing.newEnforceable.map(({ message }) => message)).toEqual([
-        'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"why"}.',
+        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Branchy.java"],"function":"Branchy.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ]);
       expect(accepted.failed).toBe(false);
       expect(summarize(accepted.newEnforceable)).toEqual([]);
@@ -620,7 +620,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'function-control-nesting-limit Wide.deep',
       ]);
       expect(result.newEnforceable.find((finding) => finding.tool === 'structure').message).toBe(
-        'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.deep","reason":"why"}.',
+        'Wide.deep nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.deep","reason":"..."} to "exceptions" in nitpicker.config.json.',
       );
       expect(structureOf(result.unchangedFindings)).toEqual(['function-parameters-limit Wide.sum']);
     },

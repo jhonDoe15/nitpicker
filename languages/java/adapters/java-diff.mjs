@@ -70,7 +70,13 @@ export function collectJavaFindings(projectRoot, options = {}) {
     runKotlinDuplicates(projectRoot);
   }
   const { findings } = parseAnalyzerReport(
-    readJavaFindings(projectRoot, { crapLimit: options.policy?.crapLimit, preset }),
+    readJavaFindings(projectRoot, {
+      crapLimit: options.policy?.crapLimit,
+      preset,
+      fileLimits: options.policy?.fileLimits,
+      exclude: options.policy?.exclude,
+      exceptions: options.policy?.exceptions,
+    }),
     preset,
   );
   return applyJavaPolicy(findings, options.policy);

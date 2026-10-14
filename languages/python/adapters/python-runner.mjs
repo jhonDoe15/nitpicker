@@ -56,6 +56,7 @@ function collectMutationFindings(options) {
   return withReportRoot((reportRoot) =>
     applyJavaPolicy(mutationFindings(toolContext(options, reportRoot)), {
       exclude: options.policy?.exclude,
+      exceptions: options.policy?.exceptions,
     }),
   );
 }
@@ -72,6 +73,7 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
       projectRoot,
       reportRoot,
       crapLimit: policy.crapLimit,
+      policy,
     });
     return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
       ...policy,

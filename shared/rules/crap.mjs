@@ -1,6 +1,5 @@
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
-  DEFAULT_EXCEPTION_KEY,
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
@@ -22,12 +21,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 
 export function crapFindings(
   functions,
-  {
-    tool,
-    limit = DEFAULT_CRAP_SCORE_LIMIT,
-    unknownMessage = MESSAGES.crapCoverageUnknown,
-    exceptionKey = DEFAULT_EXCEPTION_KEY,
-  },
+  { tool, limit = DEFAULT_CRAP_SCORE_LIMIT, unknownMessage = MESSAGES.crapCoverageUnknown },
 ) {
   const findings = [];
   for (const fn of functions) {
@@ -36,7 +30,7 @@ export function crapFindings(
       continue;
     }
     const rule = unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit;
-    const route = exceptionRoute({ rule, path: fn.path, name: fn.name, key: exceptionKey });
+    const route = exceptionRoute({ rule, path: fn.path, name: fn.name });
     const finding = {
       tool,
       rule,

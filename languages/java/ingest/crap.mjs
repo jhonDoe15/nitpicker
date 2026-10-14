@@ -54,7 +54,6 @@ export function ingestCrapRows(parsed, options, resolve) {
       tool,
       limit,
       unknownMessage: options.unknownMessage,
-      exceptionKey: options.exceptionKey,
     }),
   };
 }

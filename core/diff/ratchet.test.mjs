@@ -80,19 +80,19 @@ describe('the message of a function that got worse', () => {
   it.each([
     [
       'lines',
-      'computeInvoice grew from 68 to 69 lines (limit 50). Put new code in a new function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice grew from 68 to 69 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'statements',
-      'computeInvoice grew from 16 to 17 statements (limit 15). Put new code in a new function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-statements-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice grew from 16 to 17 statements (limit 15). Put new code in a new function. If this is intended, add {"rule":"function-statements-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'maxControlNesting',
-      'computeInvoice control nesting grew from 3 to 4 levels (limit 2). Put the new nested code in a new function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice control nesting grew from 3 to 4 levels (limit 2). Put the new nested code in a new function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
     [
       'parameters',
-      'computeInvoice grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
   ])('shows the base value and the fix for %s', (metric, expected) => {
     const start = METRIC_START[metric];
@@ -151,7 +151,7 @@ describe('the message of a function that got worse', () => {
     );
 
     expect(messages(result)).toEqual([
-      'computeInvoice has 72 lines; limit is 50. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -159,7 +159,7 @@ describe('the message of a function that got worse', () => {
     const result = compare([], [computeInvoice('lines', 72, 'after')]);
 
     expect(messages(result)).toEqual([
-      'computeInvoice has 72 lines; limit is 50. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"why"}.',
+      'computeInvoice has 72 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });
@@ -233,7 +233,7 @@ describe('CRAP limit on edited legacy functions', () => {
     );
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'priceOf CRAP rose from 15 to 17.5 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"why"}.',
+      'priceOf CRAP rose from 15 to 17.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -244,7 +244,7 @@ describe('CRAP limit on edited legacy functions', () => {
     );
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"why"}.',
+      'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 

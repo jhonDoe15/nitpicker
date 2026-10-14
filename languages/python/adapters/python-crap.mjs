@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from '../ingest/crap.mjs';
-import { PYTHON_EXCEPTION_KEY } from './python-exceptions.mjs';
 import { execute, run } from './python-process.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
 
@@ -63,7 +62,6 @@ export function readPythonCrapFindings({ lizard, coverage, projectRoot, roots, c
   return ingestPythonCrap(lizard, coverage, {
     roots,
     limit: crapLimit,
-    exceptionKey: PYTHON_EXCEPTION_KEY,
     sourceHash: (entry) => hash(functionText(sources, projectRoot, entry)),
   }).findings;
 }

@@ -605,14 +605,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'wide',
           identity: expect.any(String),
           message:
-            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"why"}.',
+            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:wide:occurrence:1:parameters',
             value: 5,
             worseMessage:
-              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"why"}.',
+              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
             heldMessage:
               'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
           },
@@ -641,14 +641,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'pick',
           identity: expect.any(String),
           message:
-            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"why"}.',
+            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:pick:crap',
             value: 20,
             worseMessage:
-              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"why"}.',
+              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
             heldMessage:
               'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
           },
@@ -1238,7 +1238,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     ).toEqual([
       [
         'sign',
-        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"why"}.',
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });

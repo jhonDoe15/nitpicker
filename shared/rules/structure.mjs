@@ -21,7 +21,6 @@
 // name, occurrence and source hash; every other numeric metric is descriptive.
 
 import {
-  DEFAULT_EXCEPTION_KEY,
   FUNCTION_STRUCTURE_LIMITS,
   GREW_MESSAGES,
   HELD_MESSAGES,
@@ -39,11 +38,7 @@ import {
 
 const METADATA_FIELDS = new Set(['file', 'name', 'sourceHash', 'start', 'end']);
 
-export function evaluateStructure(
-  report,
-  analyzerName,
-  { hints = {}, exceptionKey = DEFAULT_EXCEPTION_KEY } = {},
-) {
+export function evaluateStructure(report, analyzerName, { hints = {} } = {}) {
   const findings = summaryMetrics(analyzerName, report.summary, 'structure');
   for (const [kind, values] of Object.entries(report.distributions ?? {})) {
     for (const [percentile, value] of Object.entries(values ?? {})) {
@@ -58,8 +53,8 @@ export function evaluateStructure(
       });
     }
   }
-  addEntries(findings, analyzerName, report.functions, 'function', { hints, exceptionKey });
-  addEntries(findings, analyzerName, report.classes, 'class', { hints, exceptionKey });
+  addEntries(findings, analyzerName, report.functions, 'function', { hints });
+  addEntries(findings, analyzerName, report.classes, 'class', { hints });
   return findings;
 }
 
@@ -103,7 +98,7 @@ function withHint(message, hint) {
   return message.endsWith('.') ? `${message} ${hint}` : `${message}. ${hint}`;
 }
 
-function addLimitViolations(findings, analyzerName, entry, occurrence, { hints, exceptionKey }) {
+function addLimitViolations(findings, analyzerName, entry, occurrence, { hints }) {
   const sourceHash =
     entry.sourceHash ?? hash(`${entry.file}:${String(entry.start)}:${String(entry.end)}`);
   for (const [metricName, { limit, ruleId }] of Object.entries(FUNCTION_STRUCTURE_LIMITS)) {
@@ -114,7 +109,6 @@ function addLimitViolations(findings, analyzerName, entry, occurrence, { hints, 
       rule: ruleId,
       path: entry.file,
       name: entry.name,
-      key: exceptionKey,
     });
     findings.push({
       tool: analyzerName,

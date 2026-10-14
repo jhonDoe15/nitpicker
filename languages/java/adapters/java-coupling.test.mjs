@@ -130,7 +130,7 @@ describe('readCouplingFindings', () => {
       {
         tool: 'coupling',
         rule: 'stability-direction',
-        path: '.',
+        path: 'stable',
         identity: 'package-edge:stable->churn',
         message: 'stable depends on less stable package churn',
         classification: 'enforceable',

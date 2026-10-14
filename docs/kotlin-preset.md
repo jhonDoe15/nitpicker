@@ -523,8 +523,19 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules) per path, and the structure, CRAP and coverage rules per path or
-function. `layout` is a config error.
+[one-way rules](#one-way-rules) and the rules nitpicker adds (file limits, structure, CRAP, coverage,
+mutation, duplicates, stability) per path, and the structure, CRAP and coverage rules per function.
+`layout` is a config error.
+
+## File limits
+
+The shared file-limit rule (`shared/rules/file-limits.mjs`) checks the `.kt` and `.java` files of the
+Kotlin and Java source roots, main and test (roots under `build/` are generated and skipped): 300
+lines per file, 500 per test file, and 6 files (and separately 6 test files) directly in one package
+folder. The thresholds are `fileLines`, `testFileLines` and `folderFiles`. Line length stays with
+detekt's `MaxLineLength` (120 by default, set in `config/detekt/detekt.yml`), so
+`thresholds.lineLength` is a config error with this preset. A file or folder already over a limit
+fails only when it grows, and a package folder moved to a new path is matched to its old path.
 
 ## Tests
 

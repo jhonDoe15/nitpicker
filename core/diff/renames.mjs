@@ -120,3 +120,21 @@ export function remapRootPrefix(identity, directories) {
   const mapped = mapDirectory(identity.slice(0, separator), directories);
   return `${mapped}${identity.slice(separator)}`;
 }
+
+export function folderMoves(renames) {
+  const votes = new Map();
+  for (const [oldPath, newPath] of renames) {
+    recordVotes(votes, folderPair(oldPath, newPath));
+  }
+  return votes;
+}
+
+function folderPair(oldPath, newPath) {
+  const from = path.posix.dirname(oldPath);
+  const to = path.posix.dirname(newPath);
+  return from === to ? [] : [{ from, to }];
+}
+
+export function mainDestination(destinations) {
+  return destinations === undefined ? undefined : mostVotedDestination(destinations);
+}

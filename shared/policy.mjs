@@ -23,6 +23,9 @@ export const RULE_IDS = {
   publicAlternativeBypass: 'public-alternative-bypass',
   noProductionRuntime: 'no-production-runtime',
   typeOnlyProductionDependency: 'type-only-production-dependency',
+  fileLines: 'file-lines-limit',
+  lineLength: 'line-length-limit',
+  folderFiles: 'folder-files-limit',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -44,8 +47,6 @@ export const FUNCTION_EXCEPTION_RULES = [
 /** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
 export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
 
-export const DEFAULT_EXCEPTION_KEY = 'exceptions';
-
 /** A function name without its parameter list, with `::` written as `.`. */
 export function normalizeFunctionName(name) {
   const bare = name.replace(/\(.*$/s, '').trim().replaceAll('::', '.');
@@ -53,15 +54,51 @@ export function normalizeFunctionName(name) {
 }
 
 /** The sentence that names the config entry which accepts a finding of `rule` in `path`. */
-export function exceptionRoute({ rule, path, name, key = DEFAULT_EXCEPTION_KEY }) {
+export function exceptionRoute({ rule, path, name }) {
   const entry = {
     rule,
     paths: [path],
     ...(name === undefined ? {} : { function: normalizeFunctionName(name) }),
-    reason: 'why',
+    reason: '...',
   };
-  return `To accept it, add an entry to "${key}" in nitpicker.config.json: ${JSON.stringify(entry)}.`;
+  return `If this is intended, add ${JSON.stringify(entry)} to "exceptions" in nitpicker.config.json.`;
 }
+
+/**
+ * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
+ * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
+ * one folder separately.
+ */
+export const FILE_LIMIT_DEFAULTS = {
+  fileLines: 300,
+  testFileLines: 500,
+  lineLength: 120,
+  folderFiles: 6,
+};
+
+/** Rules an exception lifts for a path only: a finding has no function to name. */
+export const PATH_EXCEPTION_RULES = [
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  RULE_IDS.fileLines,
+  RULE_IDS.lineLength,
+  RULE_IDS.folderFiles,
+];
+
+/** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
+export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
+
+/** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
+export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
+
+/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
+export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
+
+/** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
+const EXCEPTION_HINT =
+  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
@@ -104,6 +141,9 @@ export const MESSAGES = {
   crapCoverageUnknownPlain:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
+  fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
+  lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
+  folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -125,6 +165,9 @@ export const GREW_MESSAGES = {
   parameters:
     '{name} grew from {base} to {value} parameters (limit {limit}). Group related parameters into one object instead of adding another.',
   crap: '{name} CRAP rose from {base} to {crap} (limit {limit}). Put new code in a new function and cover it with tests.',
+  fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
+  lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
+  folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
 };
 
 export const HELD_MESSAGES = {
@@ -137,6 +180,12 @@ export const HELD_MESSAGES = {
   parameters:
     '{name}: {value} parameters (limit {limit}), allowed because base was {base}; any increase fails.',
   crap: '{name}: CRAP {crap} (limit {limit}), allowed because base was {base}; any increase fails.',
+  fileLines:
+    'File: {value} lines (limit {limit}), allowed because base was {base}; any increase fails.',
+  lineLength:
+    'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
+  folderFiles:
+    'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
 };
 
 const BOTH = { typescript: true, java: true, python: false };
@@ -238,5 +287,23 @@ export const RULES = [
     check: 'entry-points',
     limit: 'none: importing around a public entry point fails',
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+  },
+  {
+    id: RULE_IDS.fileLines,
+    check: 'structure',
+    limit: `more than ${String(FILE_LIMIT_DEFAULTS.fileLines)} lines in a source file or ${String(FILE_LIMIT_DEFAULTS.testFileLines)} in a test file; override with \`thresholds.fileLines\` and \`thresholds.testFileLines\``,
+    enforcedBy: withKotlin(ALL, true),
+  },
+  {
+    id: RULE_IDS.lineLength,
+    check: 'structure',
+    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's own line length; Kotlin: detekt's)`,
+    enforcedBy: withKotlin({ ...ALL, java: false }, false),
+  },
+  {
+    id: RULE_IDS.folderFiles,
+    check: 'structure',
+    limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
+    enforcedBy: withKotlin(ALL, true),
   },
 ];

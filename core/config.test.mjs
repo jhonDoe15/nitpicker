@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyDisable, describeConfigOverrides, validateConfig } from './config.mjs';
 import { policyHash } from './diff/report-model.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
 describe('config file', () => {
   it('accepts an empty config and the documented keys', () => {
@@ -59,7 +60,7 @@ describe('config file', () => {
     ]);
   });
 
-  it('shares thresholds, exclude and legacyInventory with the python preset', () => {
+  it('shares thresholds, exclude, legacyInventory and file-limit exceptions with the python preset', () => {
     const shared = {
       thresholds: { crapLimit: 12 },
       exclude: ['generated/**'],
@@ -72,9 +73,17 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'python', layout: {} })).toThrow(
       '"layout" is not supported with "preset": "python"',
     );
-    expect(() => validateConfig({ preset: 'python', exceptions: [] })).toThrow(
-      '"exceptions" is not supported with "preset": "python"',
-    );
+    const exceptions = [{ rule: 'line-length-limit', paths: ['src/urls.py'], reason: 'URL table' }];
+    expect(validateConfig({ preset: 'python', exceptions })).toEqual({
+      preset: 'python',
+      exceptions,
+    });
+    expect(() =>
+      validateConfig({
+        preset: 'python',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "python"');
   });
 
   describe('kotlin options', () => {
@@ -141,6 +150,23 @@ describe('config file', () => {
       });
     });
 
+    it('accepts an exception for a file limit and leaves line length to detekt', () => {
+      const fileLimit = { ...exception, rule: 'folder-files-limit' };
+      expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
+        preset: 'kotlin',
+        exceptions: [fileLimit],
+      });
+      expect(() =>
+        validateConfig({
+          preset: 'kotlin',
+          exceptions: [{ ...exception, rule: 'line-length-limit' }],
+        }),
+      ).toThrow(/is not a rule with exceptions/u);
+      expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
+        'detekt checks Kotlin line length',
+      );
+    });
+
     it('names the rules that can be lifted when the rule is another detekt rule', () => {
       const other = { ...exception, rule: 'detekt.style.MagicNumber' };
 
@@ -167,11 +193,26 @@ describe('config file', () => {
       });
     });
 
+    it('accepts the other rules nitpicker adds', () => {
+      const entries = [
+        'mutant-survived',
+        'mutant-nocoverage',
+        'duplicate-clone',
+        'stability-direction',
+        'file-lines-limit',
+      ].map((rule) => ({ rule, paths: ['src/main/java/app/**'], reason: 'A reviewed reason.' }));
+
+      expect(validateConfig({ preset: 'java', exceptions: entries })).toEqual({
+        preset: 'java',
+        exceptions: entries,
+      });
+    });
+
     it('names the rules that can be lifted when the rule is another one', () => {
       const other = { ...exception, rule: 'pmd.SomeRule' };
 
       expect(() => validateConfig({ preset: 'java', exceptions: [other] })).toThrow(
-        '"exceptions[0].rule" is "pmd.SomeRule", which is not a rule with exceptions. Rules with exceptions for the java preset: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage',
+        `"exceptions" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the java preset does not have. Not supported with java: layout, exceptions, react, tools, except exceptions for ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
       );
     });
   });
@@ -248,8 +289,37 @@ describe('config file', () => {
     );
   });
 
+  it('lets the java preset lift the shared file limits, and only those', () => {
+    const exceptions = [
+      {
+        rule: 'folder-files-limit',
+        paths: ['src/main/java/icons/**'],
+        reason: 'One class per icon',
+      },
+    ];
+    const config = { preset: 'java', thresholds: { fileLines: 400, folderFiles: 12 }, exceptions };
+    expect(validateConfig(config)).toEqual(config);
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() =>
+      validateConfig({
+        preset: 'java',
+        exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
+      }),
+    ).toThrow('"exceptions" is not supported with "preset": "java"');
+    expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
+      'Checkstyle checks Java line length',
+    );
+  });
+
   it.each([
     [[], /must be a JSON object/],
+    [{ thresholds: { folderFiles: 2.5 } }, /"thresholds.folderFiles" must be a whole number/],
+    [{ thresholds: { lineLength: 0 } }, /"thresholds.lineLength" must be a positive number/],
     [{ disable: 'knip' }, /"disable" must be an array/],
     [{ disable: ['a', 'a'] }, /duplicates/],
     [{ thresholds: { crapLimit: 0 } }, /positive number/],

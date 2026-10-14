@@ -145,6 +145,12 @@ const BROKEN_CONTRACT = [
   '',
 ].join('\n');
 
+const liftingConfig = (rule, file) =>
+  `${JSON.stringify({
+    preset: 'python',
+    exceptions: [{ rule, paths: [file], reason: 'A reviewed reason.' }],
+  })}\n`;
+
 function newFindings(result, rule) {
   return result.json('new-findings.json').filter((finding) => finding.rule === rule);
 }
@@ -437,12 +443,29 @@ describe('nitpicker with "preset": "python"', () => {
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
           message:
-            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
         },
       ]);
+    });
+
+    it.each([
+      ['mutant-survived', [1, 0]],
+      ['mutant-nocoverage', [1, 33]],
+    ])('lifts a new %s mutant through an exception for its file', (rule, exitCodes) => {
+      const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
+      write(root, {
+        'nitpicker.config.json': liftingConfig(rule, 'src/demo/a.py'),
+        'mutants-data.json': mutants(exitCodes),
+      });
+      commit(root, 'a mutant is lifted');
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(mutantFindings(result)).toEqual([]);
     });
 
     it('fails a new mutant that no test reaches', () => {
@@ -459,7 +482,8 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'mutant-nocoverage',
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
-          message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+          message:
+            'NoCoverage number: no test runs this code. Add a test that reaches it. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
@@ -731,21 +755,21 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'crap-coverage-unknown',
           symbol: 'ghost',
           message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"why"}.',
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'crap',
           rule: 'crap-score-limit',
           symbol: 'value',
           message:
-            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'structure',
           rule: 'function-parameters-limit',
           symbol: 'fresh',
           message:
-            'fresh has 4 parameters; limit is 3. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"why"}.',
+            'fresh has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
       expect(grown.exitCode, grown.text).toBe(1);
@@ -755,15 +779,15 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'function-parameters-limit',
           symbol: 'value',
           message:
-            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });
   });
 
-  describe('python.exceptions for structure, CRAP and coverage findings', () => {
+  describe('exceptions for the rules nitpicker adds', () => {
     const exceptions = (...entries) =>
-      `${JSON.stringify({ preset: 'python', python: { exceptions: entries } })}\n`;
+      `${JSON.stringify({ preset: 'python', exceptions: entries })}\n`;
     const entry = (rule, functionName) => ({
       rule,
       paths: ['src/demo/a.py'],
@@ -839,7 +863,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If the repetition is intended, add src/demo/a.py to "exclude" in nitpicker.config.json.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -855,7 +879,21 @@ describe('nitpicker with "preset": "python"', () => {
     expect(run(legacy).exitCode).toBe(0);
   });
 
-  it('fails when a new import makes a stable package depend on a less stable one', () => {
+  it('lifts a new duplicate through an exception for its first file', () => {
+    const root = pythonRepository({ 'src/demo/a.py': CLONE_SOURCE });
+    write(root, {
+      'nitpicker.config.json': liftingConfig('duplicate-clone', 'src/demo/a.py'),
+      'src/demo/b.py': CLONE_SOURCE,
+    });
+    commit(root, 'copy a module');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(newFindings(result, 'duplicate-clone')).toEqual([]);
+  });
+
+  const stabilityChange = (config) => {
     const modules = Object.fromEntries(
       [
         'base/__init__',
@@ -877,11 +915,16 @@ describe('nitpicker with "preset": "python"', () => {
     const root = pythonRepository({ ...modules, 'import-scan.json': scan(feature) });
     expect(run(root).exitCode).toBe(0);
     write(root, {
+      ...(config === undefined ? {} : { 'nitpicker.config.json': config }),
       'import-scan.json': scan({ ...feature, 'src/base/core.py': [from('other', 'o')] }),
     });
     commit(root, 'depend on the volatile package');
 
-    const result = run(root);
+    return run(root);
+  };
+
+  it('fails when a new import makes a stable package depend on a less stable one', () => {
+    const result = stabilityChange();
 
     expect(result.exitCode, result.text).toBe(1);
     expect(newFindings(result, 'stability-direction')).toEqual([
@@ -891,10 +934,17 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/base/__init__.py',
         identity: 'package-edge:base->other',
         message:
-          'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
+  });
+
+  it('lifts a new stability inversion through an exception for the source package', () => {
+    const result = stabilityChange(liftingConfig('stability-direction', 'src/base/__init__.py'));
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(newFindings(result, 'stability-direction')).toEqual([]);
   });
 
   it('fails on a new broken import-linter contract when the project has contracts', () => {
@@ -1053,7 +1103,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     ]);
   });
 
-  it('names the function of an untested branch and passes once python.exceptions accepts it', () => {
+  it('names the function of an untested branch and passes once an exception accepts it', () => {
     const functions = JSON.stringify([
       {
         file: 'src/demo/a.py',
@@ -1069,16 +1119,14 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     const exceptionFor = (functionName) =>
       `${JSON.stringify({
         preset: 'python',
-        python: {
-          exceptions: [
-            {
-              rule: 'changed-branch-coverage',
-              paths: ['src/demo/a.py'],
-              function: functionName,
-              reason: 'A reviewed reason.',
-            },
-          ],
-        },
+        exceptions: [
+          {
+            rule: 'changed-branch-coverage',
+            paths: ['src/demo/a.py'],
+            function: functionName,
+            reason: 'A reviewed reason.',
+          },
+        ],
       })}\n`;
     const change = (config) => {
       const root = branchyRepository();
@@ -1099,11 +1147,11 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     expect(
       failing
         .json('new-findings.json')
-        .map(({ symbol, message }) => [symbol, message.match(/To accept it.*$/)?.[0]]),
+        .map(({ symbol, message }) => [symbol, message.match(/If this is intended.*$/)?.[0]]),
     ).toEqual([
       [
         'value',
-        'To accept it, add an entry to "python.exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"why"}.',
+        'If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(accepted.exitCode, accepted.text).toBe(0);

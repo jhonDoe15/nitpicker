@@ -805,7 +805,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     ).toEqual([
       {
         message:
-          'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/Label.kt"],"function":"Label.larger","reason":"why"}.',
+          'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/Label.kt"],"function":"Label.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 4 },
       },
     ]);
@@ -1037,13 +1037,13 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'structure function-statements-limit rank',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
-      'depth nests control flow 3 deep (limit 2). Return early instead of nesting. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Deep.kt"],"function":"depth","reason":"why"}.',
+      'depth nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Deep.kt"],"function":"depth","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(messageOf('function-parameters-limit', 'product')).toBe(
-      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Grown.kt"],"function":"product","reason":"why"}.',
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Grown.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(messageOf('crap-score-limit', 'classify2')).toBe(
-      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Complex2.kt"],"function":"classify2","reason":"why"}.',
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Complex2.kt"],"function":"classify2","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',

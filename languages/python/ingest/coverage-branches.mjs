@@ -50,7 +50,6 @@ function fileFindings(data, { path, lines, tool, minimum, options }) {
   return branchCoverageFindings(branches, {
     tool,
     minimum,
-    exceptionKey: options.exceptionKey,
     identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
   });
 }

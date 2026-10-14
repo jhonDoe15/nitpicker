@@ -13,11 +13,11 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { DEFAULT_LEGACY_INVENTORY } from '../preset/coding-standards/inventory-path.mjs';
 import { parsePositiveNumber } from '../preset/quality-checks.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
-import { applyFunctionRuleExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
+import { DEAD_CODE_RULES, DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
+import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
+import { ROUTED_RULES, withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
-import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import {
   addMetric,
   enclosingFunctionName,
@@ -31,12 +31,13 @@ import {
 } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { evaluateTestRuntime } from '../../../shared/rules/test-runtime.mjs';
-import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
-import { sourceRoot, existingRoots } from '../preset/layout.mjs';
+import { existingRoots } from '../preset/layout.mjs';
 import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
+import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
+import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
@@ -93,10 +94,7 @@ export async function runQualityArea(options) {
     const layout = readLayout();
     const files = layout.projectCodeFiles(options.projectRoot);
     if (files.length === 0) return [];
-    if (
-      ['coupling', 'structure', 'crap', 'mutation'].includes(options.kind) &&
-      !files.some(layout.isSourceFile)
-    )
+    if (['coupling', 'crap', 'mutation'].includes(options.kind) && !files.some(layout.isSourceFile))
       return [];
     if (
       ['test-runtime', 'coverage', 'mutation'].includes(options.kind) &&
@@ -104,7 +102,12 @@ export async function runQualityArea(options) {
     )
       return [];
   }
-  return applyFunctionRuleExceptions(await runner(options), readHeadPolicy().exceptions);
+  const routed =
+    options.kind === 'dead-code' ? [...ROUTED_RULES, ...DEAD_CODE_RULES] : ROUTED_RULES;
+  return applyFindingExceptions(
+    withExceptionRoutes(await runner(options), routed),
+    readHeadPolicy().exceptions,
+  );
 }
 
 function runPolicyTests(options) {
@@ -219,7 +222,7 @@ async function runStructure(options) {
     'languages/typescript/preset/structure/analyze.mjs',
   );
   const layout = readLayout();
-  return perSourceRoot(options, layout, (root) =>
+  const functionFindings = await perSourceRoot(options, layout, (root) =>
     normalizeStructure(
       withFunctionSourceHashes(
         analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout }),
@@ -228,6 +231,10 @@ async function runStructure(options) {
       options.analyzerName,
     ),
   );
+  return [
+    ...functionFindings,
+    ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+  ];
 }
 
 function runDuplicates(options) {
@@ -695,32 +702,6 @@ export function normalizeStructure(report, analyzerName) {
   );
 }
 
-function definesNamedFunction(fragment) {
-  return /\bfunction\s*\*?\s*[\p{L}_$][\p{L}\p{N}_$]*\s*[<(]|\b(?:const|let)\s+[\p{L}_$][\p{L}\p{N}_$]*\s*=\s*(?:async\s+)?(?:function\b|\([^()]*\)[^=;]*=>|[\p{L}_$][\p{L}\p{N}_$]*\s*=>)/u.test(
-    fragment,
-  );
-}
-
-function isRepeatedTestData(clone, isTestFile) {
-  return (
-    clone.fragment !== undefined &&
-    isTestFile(clone.first.file) &&
-    isTestFile(clone.second.file) &&
-    !definesNamedFunction(clone.fragment)
-  );
-}
-
-export function normalizeDuplicates(
-  report,
-  analyzerName,
-  { configuredPaths = [sourceRoot], isTestFile = readLayout().isTestFile } = {},
-) {
-  const clones = jscpdClones(report, configuredPaths).filter(
-    (clone) => !isRepeatedTestData(clone, isTestFile),
-  );
-  return evaluateDuplicates(clones, analyzerName);
-}
-
 export function normalizeDeadCode(report, analyzerName) {
   const findings = [];
   const occurrences = new Map();
@@ -734,7 +715,7 @@ export function normalizeDeadCode(report, analyzerName) {
       rule: 'files',
       path: filePath,
       identity: `file:${filePath}|source:${file?.sourceHash ?? hash(filePath)}`,
-      message: `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`,
+      message: unusedFileMessage(filePath),
       classification: 'enforceable',
     });
   }
@@ -778,7 +759,14 @@ export function normalizeDeadCode(report, analyzerName) {
   return findings;
 }
 
+function unusedFileMessage(filePath) {
+  return `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`;
+}
+
 function deadCodeMessage(category, name, entry) {
+  if (category === 'files') {
+    return unusedFileMessage(name);
+  }
   const kind = DEAD_CODE_DECLARATIONS.get(category);
   if (kind === undefined) {
     return `${category}: ${name}`;

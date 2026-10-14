@@ -3,38 +3,32 @@ import {
   isPlainObject,
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
+export const KOTLIN_EXCEPTION_RULES = [
+  ...ONE_WAY_RULE_IDS,
+  ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
+];
 
-const EXCEPTION_RULES = {
-  java: FUNCTION_EXCEPTION_RULES,
-  kotlin: [...ONE_WAY_RULE_IDS, ...FUNCTION_EXCEPTION_RULES],
-};
-const EXCEPTION_ADVICE = {
-  java: '',
-  kotlin: '. Tune any other detekt rule in config/detekt/detekt.yml',
-};
-
-function validateGradleExceptions(config) {
-  const allowed = EXCEPTION_RULES[config.preset];
-  if (allowed === undefined || !Array.isArray(config.exceptions)) {
+function validateKotlinExceptions(config) {
+  if (config.preset !== 'kotlin' || !Array.isArray(config.exceptions)) {
     return;
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (typeof rule === 'string' && rule !== '' && !allowed.includes(rule)) {
+    if (typeof rule === 'string' && rule !== '' && !KOTLIN_EXCEPTION_RULES.includes(rule)) {
       throw configError(
-        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the ${config.preset} preset: ${allowed.join(', ')}${EXCEPTION_ADVICE[config.preset]}`,
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
       );
     }
   }
 }
 
 export function validateKotlinOptions(config) {
-  validateGradleExceptions(config);
+  validateKotlinExceptions(config);
   if (config.kotlin === undefined) {
     return;
   }

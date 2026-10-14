@@ -106,6 +106,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`).
 - `===` and `!==` only (`eqeqeq`).
+- Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
+  Each `if`, ternary, `switch`, loop and `catch` costs 1 plus its nesting level; `else`, `else if`,
+  labelled `break`/`continue` and each run of like `&&`/`||` cost 1. Unlike the published algorithm,
+  every function, callbacks included, is scored on its own with nesting starting at 0, and code
+  outside any function is not scored. A function that must stay complex gets an exception for the
+  rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
@@ -331,12 +337,14 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
-- The size, CRAP and changed-branch coverage findings are not ESLint rules, but the same
-  `exceptions` key accepts them: `function-lines-limit`, `function-statements-limit`,
-  `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`,
-  `crap-coverage-unknown` and `changed-branch-coverage`, with an optional `function` (required for
-  `changed-branch-coverage`) that limits the entry to one function. The message of each finding
-  prints the entry. See [Exceptions for structure, CRAP and coverage](usage.md#exceptions-for-structure-crap-and-coverage).
+- The rules nitpicker adds are not ESLint rules, but the same `exceptions` key accepts them:
+  `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `function-lines-limit`,
+  `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`,
+  `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+  `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, and the dead-code findings `files`,
+  `exports` and `types`. The structure, CRAP and coverage rules take an optional `function`
+  (required for `changed-branch-coverage`) that limits the entry to one function. The message of
+  each finding prints the entry. See [Exceptions for rules nitpicker adds](usage.md#exceptions-for-rules-nitpicker-adds).
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

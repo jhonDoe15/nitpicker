@@ -1,5 +1,7 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { globToRegExp } from '../../../shared/glob.mjs';
+import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 
@@ -20,17 +22,13 @@ export function readStructureFindings(reportRoot, projectRoot, options) {
   return entries.length === 0 ? [] : structureFindings(entries, projectRoot, options);
 }
 
-export function structureFindings(
-  entries,
-  projectRoot,
-  { textOf = methodText, hints, exceptionKey } = {},
-) {
+export function structureFindings(entries, projectRoot, { textOf = methodText, hints } = {}) {
   const sources = new Map();
   const functions = entries.map((entry) => ({
     ...entry,
     sourceHash: hash(textOf(sources, projectRoot, entry)),
   }));
-  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints, exceptionKey }).filter(
+  return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
     (finding) => finding.classification === 'enforceable',
   );
 }
@@ -47,4 +45,45 @@ export function methodText(sources, projectRoot, { file, start, end }) {
     .slice(start - 1, end)
     .map((line) => line.trim())
     .join('\n');
+}
+
+const SOURCE_ROOT_KEYS = { source: 'sourceRoots', test: 'testSourceRoots' };
+const KOTLIN_ROOT_KEYS = { source: 'kotlinSourceRoots', test: 'kotlinTestSourceRoots' };
+
+const OUTSIDE_SOURCES = /^(?:$|\.\.(?:\/|$)|build(?:\/|$))/u;
+
+function rootsOf(manifest, kind, kotlin) {
+  return [
+    ...(manifest[SOURCE_ROOT_KEYS[kind]] ?? []),
+    ...(kotlin ? (manifest[KOTLIN_ROOT_KEYS[kind]] ?? []) : []),
+  ].filter((root) => !OUTSIDE_SOURCES.test(root));
+}
+
+export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
+  const excluders = (policy.exclude ?? []).map((glob) => globToRegExp(glob));
+  const entries = [
+    ...codeFiles(projectRoot, {
+      roots: rootsOf(manifest, 'source', kotlin),
+      kind: 'source',
+      kotlin,
+    }),
+    ...codeFiles(projectRoot, { roots: rootsOf(manifest, 'test', kotlin), kind: 'test', kotlin }),
+  ].filter((entry) => !excluders.some((matcher) => matcher.test(entry.path)));
+  return collectFileLimitFindings(projectRoot, entries, {
+    analyzerName: STRUCTURE_TOOL,
+    thresholds: policy.thresholds,
+    exceptions: policy.exceptions,
+    checks: ['fileLines', 'folderFiles'],
+  });
+}
+
+function codeFiles(projectRoot, { roots, kind, kotlin }) {
+  const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
+  return [...new Set(roots)]
+    .filter((root) => existsSync(path.join(projectRoot, root)))
+    .flatMap((root) =>
+      readdirSync(path.join(projectRoot, root), { recursive: true })
+        .filter((file) => extensions.includes(path.extname(file)))
+        .map((file) => ({ path: path.posix.join(root, file.split(path.sep).join('/')), kind })),
+    );
 }

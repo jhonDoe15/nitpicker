@@ -8,13 +8,16 @@ import {
   configError,
   isNonEmptyString,
   isPlainObject,
+  liftsOnlyRules,
   validateExceptions,
   validateProjectRelativePath,
   validateStringArray,
   validateThresholds,
 } from '../shared/config.mjs';
 import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
+import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
+import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 
 const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -84,20 +87,15 @@ function validateScalars(config) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
   if (GRADLE_PRESETS.includes(config.preset)) {
-    validateJavaKeys(config);
+    validateJavaConfig(config);
   }
   validateKotlinOptions(config);
-  validatePythonConfig(config, TYPESCRIPT_ONLY_KEYS);
-}
-
-function validateJavaKeys(config) {
-  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');
-  const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
-  if (unsupported.length > 0) {
-    throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${config.preset}": it describes the TypeScript source layout and ESLint rules, which the ${config.preset} preset does not have. Not supported with ${config.preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
-    );
-  }
+  validatePythonConfig(
+    config,
+    liftsOnlyRules(config.exceptions, SHARED_EXCEPTION_RULES)
+      ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
+      : TYPESCRIPT_ONLY_KEYS,
+  );
 }
 
 function validateDisable(disable) {

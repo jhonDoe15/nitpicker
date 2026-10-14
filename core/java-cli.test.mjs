@@ -13,8 +13,8 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../languages/java/adapters/java-runner.mjs';
 import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs';
-import { ONE_WAY_RULE_IDS } from '../languages/java/adapters/kotlin-rules.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../shared/policy.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
+import { KOTLIN_EXCEPTION_RULES } from '../languages/java/adapters/kotlin-options.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
@@ -231,7 +231,7 @@ describe('nitpicker with "preset": "java"', () => {
       ).toEqual([
         [
           'Wide.sum',
-          'Wide.sum has 4 parameters; limit is 3. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"why"}.',
+          'Wide.sum has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
         ],
       ]);
     });
@@ -249,7 +249,7 @@ describe('nitpicker with "preset": "java"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "UnusedPrivateField", which is not a rule with exceptions. Rules with exceptions for the java preset: ${FUNCTION_EXCEPTION_RULES.join(', ')}\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions" is not supported with "preset": "java": it describes the TypeScript source layout and ESLint rules, which the java preset does not have. Not supported with java: layout, exceptions, react, tools, except exceptions for ${SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)).join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory\n`,
       );
     });
   });
@@ -602,7 +602,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ).toEqual([
       [
         'surcharge',
-        'Branch coverage is 50.00%; minimum is 95%. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/K.kt"],"function":"surcharge","reason":"why"}.',
+        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/K.kt"],"function":"surcharge","reason":"..."} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(accepted.exitCode, accepted.output.out + accepted.output.err).toBe(0);
@@ -662,7 +662,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'demo.A#fee(I)I',
         location: { line: 3 },
@@ -737,7 +737,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${[...ONE_WAY_RULE_IDS, ...FUNCTION_EXCEPTION_RULES].join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
       );
     });
   });
@@ -844,7 +844,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
         message:
-          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"why"}.',
+          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'sum',
         location: { line: 3 },
@@ -852,7 +852,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:sum:occurrence:1:parameters',
           value: 5,
           worseMessage:
-            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"why"}.',
+            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -881,7 +881,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
         message:
-          'product has 4 parameters; limit is 3. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"why"}.',
+          'product has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'product',
         location: { line: 5 },
@@ -889,7 +889,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:product:occurrence:1:parameters',
           value: 4,
           worseMessage:
-            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. To accept it, add an entry to "exceptions" in nitpicker.config.json: {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"why"}.',
+            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -956,7 +956,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity:
           'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:36d1c9baac959e2d7350e29b:occurrence:1',
         message:
-          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places.',
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
