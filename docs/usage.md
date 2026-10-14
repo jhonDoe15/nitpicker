@@ -365,12 +365,12 @@ finding's `identity`) and `python`, whose keys all override a detection: `enviro
 `typeChecker` (`"mypy"`, `"pyright"` or `"basedpyright"`), `importLinter` (`true` or `false`; by default the import-linter
 contracts run when the project configures them) and `sourceRoots` (default `src`, else the top-level
 packages). The gate also reports new duplicates (`duplicates/duplicate-clone`), package coupling
-(`coupling/stability-direction`; imports under `if TYPE_CHECKING:` do not count for it) and broken import-linter contracts (`import-linter/contract-broken`);
+(`coupling/stability-direction`; an import under `if TYPE_CHECKING:` is never the reported dependency, though it still counts toward instability) and broken import-linter contracts (`import-linter/contract-broken`);
 their messages name the file to add to `exclude` when the repetition or dependency is intended.
 `layout` describes TypeScript and stays a config error; the top-level `exceptions` is accepted only
 for the file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`).
 
-The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues or returns a constant, no
+The one-way rules (pathlib, f-strings, no mutable defaults, no bare `except`, no `except` that only passes, continues, returns or assigns a constant, no `contextlib.suppress(Exception)`, no
 `import *`, logging instead of `print`, frozen dataclasses, pydantic only in `adapters/`, enums
 instead of string constants) and the strict type check name the allowed form in every failure
 message. Inline `# type: ignore`, `# noqa`, `# pyright: ignore` and `# fmt: off` are findings themselves, and so are `@no_type_check`, `if not TYPE_CHECKING:` and a `.pyi` beside its `.py`. A project's own mypy, pyright or basedpyright config cannot weaken the check. The way out of a finding that flags legitimate code (including a comment, with the rule `no-inline-suppression`) is `python.exceptions`; a rule id that nitpicker does not report is a config error. Code

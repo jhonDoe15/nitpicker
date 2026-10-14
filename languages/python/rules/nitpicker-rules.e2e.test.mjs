@@ -1,40 +1,8 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { RULES_REPORT, checkRules } from '../adapters/python-ast-rules.mjs';
-import { createToolContext } from '../adapters/python-tools.mjs';
+import { findingsOf, removeScripts, single } from './script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function findingsOf(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-script-')));
-  const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-rules-report-')));
-  roots.push(root, reportRoot);
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-  const context = createToolContext({
-    projectRoot: root,
-    liveRoot: root,
-    settings: { environment: 'path', sourceRoots: ['.'] },
-    reportRoot,
-  });
-  checkRules(context);
-  return JSON.parse(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).map(
-    ({ rule, path: file, subject, line }) => `${rule} ${file}:${String(line)} ${subject}`,
-  );
-}
-
-const single = (code, file = 'src/mod.py') => findingsOf({ [file]: code });
+afterEach(removeScripts);
 
 describe.skipIf(!enabled)('frozen-dataclass', () => {
   it.each([
@@ -322,79 +290,6 @@ describe.skipIf(!enabled)('no-inline-suppression', () => {
   it('reports the comment on its own line when it is the only one', () => {
     expect(single('x = 1\n\n\ny = 2  # type: ignore\n')).toEqual([
       'no-inline-suppression src/mod.py:4 type: ignore',
-    ]);
-  });
-});
-
-describe.skipIf(!enabled)('swallowed-exception', () => {
-  const tryBlock = (header, body) =>
-    `def f(items):\n    for item in items:\n        try:\n            g(item)\n        ${header}\n${body}\n`;
-  const inHandler = (body) => tryBlock('except ValueError:', body);
-
-  it.each([
-    ['pass', '            pass'],
-    ['an ellipsis', '            ...'],
-    ['a docstring', '            "ignored"'],
-    ['continue', '            continue'],
-    ['a bare return', '            return'],
-    ['return None', '            return None'],
-    ['return False', '            return False'],
-    ['return a string', '            return "none"'],
-    ['return a negative number', '            return -1'],
-    ['pass then return', '            pass\n            return None'],
-  ])('flags a handler that only does %s', (_name, body) => {
-    expect(single(inHandler(body))).toEqual(['swallowed-exception src/mod.py:5 except ValueError']);
-  });
-
-  it.each([
-    ['logs the error', '            logger.exception("bad")'],
-    ['re-raises', '            raise'],
-    ['raises another error', '            raise OtherError(item) from error'],
-    ['uses the bound name', '            return str(error)'],
-    ['returns a computed value', '            return default(item)'],
-    ['returns a name', '            return fallback'],
-    ['assigns', '            result = None'],
-    ['passes after logging', '            logger.warning("bad")\n            pass'],
-    ['handles then continues', '            counter += 1\n            continue'],
-    ['breaks', '            break'],
-  ])('allows a handler that %s', (_name, body) => {
-    expect(single(inHandler(body))).toEqual([]);
-  });
-
-  it.each([
-    ['a bare except', 'except:', 'except'],
-    ['a tuple of errors', 'except (ValueError, KeyError):', 'except (ValueError, KeyError)'],
-    ['a dotted error', 'except errors.Bad:', 'except errors.Bad'],
-    ['an error computed by a call', 'except errors():', 'except expression'],
-    ['a bound name that stays unused', 'except ValueError as error:', 'except ValueError'],
-  ])('names the caught error for %s', (_name, header, subject) => {
-    expect(single(tryBlock(header, '            pass'))).toEqual([
-      `swallowed-exception src/mod.py:5 ${subject}`,
-    ]);
-  });
-
-  it('flags each swallowing handler of a try and handlers nested in handlers', () => {
-    const code =
-      'try:\n    a()\nexcept A:\n    pass\nexcept B:\n    try:\n        b()\n    except C:\n        return None\n    raise\n';
-
-    expect(single(code)).toEqual([
-      'swallowed-exception src/mod.py:3 except A',
-      'swallowed-exception src/mod.py:8 except C',
-    ]);
-  });
-
-  it('flags the handlers of an except* group and of async code', () => {
-    expect(single('try:\n    a()\nexcept* ValueError:\n    pass\n')).toEqual([
-      'swallowed-exception src/mod.py:3 except ValueError',
-    ]);
-    expect(
-      single('async def f():\n    try:\n        await a()\n    except OSError:\n        pass\n'),
-    ).toEqual(['swallowed-exception src/mod.py:4 except OSError']);
-  });
-
-  it('applies to test files too', () => {
-    expect(single(inHandler('            pass'), 'tests/test_mod.py')).toEqual([
-      'swallowed-exception tests/test_mod.py:5 except ValueError',
     ]);
   });
 });

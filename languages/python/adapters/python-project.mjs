@@ -23,12 +23,7 @@ const BLACK_HINT = new RegExp(
   ].join('|'),
   'm',
 );
-const TYPE_CONFIG_FILES = [
-  'mypy.ini',
-  '.mypy.ini',
-  'pyrightconfig.json',
-  'basedpyrightconfig.json',
-];
+const TYPE_CONFIG_FILES = ['mypy.ini', '.mypy.ini', 'pyrightconfig.json'];
 const TYPE_CHECKER_HINTS = {
   mypy: {
     configured: /^\s*\[{1,2}\s*(?:tool\.)?mypy[\].\s-]/m,
@@ -42,7 +37,7 @@ const TYPE_CHECKER_HINTS = {
   },
   basedpyright: {
     configured: /^\s*\[\s*tool\.basedpyright\s*\]/m,
-    configFiles: ['basedpyrightconfig.json'],
+    configFiles: [],
     declared: /(?:^\s*|["'])basedpyright(?![\w.-])|basedpyright-pre-commit/m,
   },
 };

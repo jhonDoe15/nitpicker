@@ -153,7 +153,7 @@ top-level `exceptions` is accepted only for the file limits shared by every lang
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
 `[mypy]` in `mypy.ini`, `setup.cfg` or `tox.ini`), `pyright` when it has `pyrightconfig.json` or a
 `[tool.pyright]` table (`[ tool.pyright ]` too), `basedpyright` when it has a `[tool.basedpyright]`
-table or a `basedpyrightconfig.json`. Failing that, whichever it declares as a
+table. Failing that, whichever it declares as a
 dependency (a requirements line, a quoted entry anywhere in a pyproject dependency array, the
 `mirrors-mypy`, `pyright-python` or `basedpyright-pre-commit-mirror` hook). basedpyright also reads
 `pyrightconfig.json` and `[tool.pyright]`, so once the project declares or configures
@@ -224,14 +224,14 @@ through the real tools.
   namespace and typeshed options and, per module, `ignore_missing_imports` and `follow_imports`;
   `ignore_errors`, `disable_error_code`, `exclude` and every flag that weakens strict are dropped.
   Pyright gets a generated config that `extends` the project's (for `extraPaths`, `pythonVersion`
-  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, the source
+  and the like), then forces strict, `enableTypeIgnoreComments: false`, `ignore: []`, `executionEnvironments: []`, the source
   roots and nitpicker's `exclude` in place of the project's. basedpyright runs the same way, with the
   same generated config, and the same strict mode: it names its modes `off`, `basic`, `standard`,
   `strict`, `recommended` and `all`, and nitpicker forces `strict` (not `all`, whose extra rules such as
   `reportAny` and `reportUnusedCallResult` are style opinions, nor `recommended`, its default), so the
   two checkers report the same rules. A project's `[tool.basedpyright]` or `[tool.pyright]` table,
-  `pyrightconfig.json` or `basedpyrightconfig.json` is the one that `extends` (first file found in that
-  order, else the pyproject table), and a baseline file (`.basedpyright/baseline.json`) is not read, since the
+  `pyrightconfig.json` is the one that `extends` (the file first, else the pyproject table; basedpyright
+  does not read a `basedpyrightconfig.json`, so neither does nitpicker), and a baseline file (`.basedpyright/baseline.json`) is not read, since the
   generated config lives in the report directory. Mypy also gets the environment's
   interpreter (`--python-executable`), so packages installed there resolve. Tests are not
   type-checked unless a source root contains them. Findings are one per diagnostic: tool `mypy`, `pyright` or `basedpyright`, rule the
@@ -249,20 +249,21 @@ through the real tools.
   it sees exactly the files ruff lints, honoring `.gitignore`. Findings have tool `python-rules`.
   Files that do not parse are left to ruff's syntax errors.
 
-| Allowed form                                    | Banned form                                              | Rule                                                       |
-| ----------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
-| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                  | ruff `PTH*`                                                |
-| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list | ruff `UP031`, `UP032`, `FLY002`                            |
-| `None` default, value built in the function     | a mutable default argument                               | ruff `B006`                                                |
-| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`                      | ruff `E722`, `BLE001`                                      |
-| log, re-raise or use the caught error           | `except X:` that only passes, continues or returns       | `swallowed-exception`                                      |
-| explicit imports                                | `from module import *`                                   | ruff `F403`                                                |
-| `logging`                                       | `print`, `pprint`                                        | ruff `T201`, `T203`                                        |
-| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests        | `frozen-dataclass`                                         |
-| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere    | `pydantic-boundary`                                        |
-| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`    | `enum-string-constants`                                    |
-| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...     | `no-inline-suppression`                                    |
-| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| Allowed form                                    | Banned form                                                            | Rule                                                       |
+| ----------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                  | `os.path`, `open()`, `os.getcwd()`, ...                                | ruff `PTH*`                                                |
+| f-strings                                       | `"...".format()`, `"..." % x`, `"".join` of a fixed list               | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function     | a mutable default argument                                             | ruff `B006`                                                |
+| catch, handle, log or re-raise a specific error | bare `except:`, `except Exception:`                                    | ruff `E722`, `BLE001`                                      |
+| log, re-raise or use the caught error           | `except X:` that only passes, continues, returns or assigns a constant | `swallowed-exception`                                      |
+| `contextlib.suppress(SpecificError)`            | `contextlib.suppress(Exception)`, `BaseException` or no argument       | `blind-suppress`                                           |
+| explicit imports                                | `from module import *`                                                 | ruff `F403`                                                |
+| `logging`                                       | `print`, `pprint`                                                      | ruff `T201`, `T203`                                        |
+| `@dataclass(frozen=True)`                       | `@dataclass` without `frozen=True`, outside tests                      | `frozen-dataclass`                                         |
+| pydantic in `adapters/` only                    | importing `pydantic` or `pydantic_settings` elsewhere                  | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                      | a plain class of two string constants, or three `X_*`                  | `enum-string-constants`                                    |
+| fixing the code                                 | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                   | `no-inline-suppression`                                    |
+| annotated code the checkers read                | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside               | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
 Details that are decisions rather than the table:
 
@@ -293,18 +294,30 @@ Details that are decisions rather than the table:
   and a `.pyi` beside a `.py` of the same stem in the sources (mypy then ignores the `.py` body).
   `typing.cast` is allowed.
 - `swallowed-exception` flags an `except` handler whose body does nothing with the error: every
-  statement is `pass`, `...` or another constant expression such as a docstring, `continue`, or
-  `return` with no value or a constant (`None`, `False`, `0`, `-1`, a string). A handler that logs,
-  raises, assigns, calls anything or returns a name or computed value is allowed, and so is one that
-  uses the bound name (`except E as error: ...`), which no flagged body can do. It replaces ruff's
+  statement is `pass`, `...` or another constant expression such as a docstring, `continue`, an
+  assignment of a constant (`result = None`, `ok = False`), or `return` with no value or a constant
+  (`None`, `False`, `0`, `-1`, a string, or an empty or constant-only tuple, list, set or dict such
+  as `[]`, `()` or `{}`). A handler that logs, raises, calls anything, assigns or returns a name or
+  computed value (a named default, a value built from the error) is allowed, and so is one that
+  uses the bound name (`except E as error: ...`), which no flagged body can do. The one exception
+  inside the list is the optional-dependency idiom: a handler that catches only `ImportError` or
+  `ModuleNotFoundError` may assign constants (`except ImportError: yaml = None` or
+  `HAS_YAML = False`); an `except ImportError:` that only passes or returns is still flagged. It replaces ruff's
   `S110` (`pass`) and `S112` (`continue`), which missed `return None`, `...` and the rest, and applies to
   test files too. `break` is not in the list, since it ends the loop rather than ignoring one item.
   The subject is `except <type>` (`except (A, B)`, plain `except` for a bare one), so identities
   survive edits above; repeats in a file are numbered. The message says to log it with
-  `logger.exception(...)`, re-raise it or use it, that `contextlib.suppress(SpecificError)` ignores
-  one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
+  `logger.exception(...)`, re-raise it or use it, or return a named default or a value built from
+  the error, that `contextlib.suppress(SpecificError)` ignores one expected error, and the `python.exceptions` entry for `swallowed-exception` for a handler that
   must stay (a lookup that answers `False` for bad input, say). Untested `except` handlers are not
   gated by branch coverage either, since coverage.py emits no arcs for them.
+- `blind-suppress` closes the way around the rule above: `contextlib.suppress(Exception)`,
+  `suppress(BaseException)` (also `builtins.Exception`, an import alias, and a list holding either
+  of them) and `suppress()` with no argument ignore every error, as the bare `except Exception:` it
+  stands for. The subject is the call as written with the resolved name, for example
+  `contextlib.suppress(Exception)`; a `suppress` imported from anywhere other than `contextlib` is
+  not checked. The message points to naming the expected exception, or handling or logging the
+  error, and to the `python.exceptions` entry for `blind-suppress`.
 - `ruff check` runs with `--ignore-noqa`, so a `noqa` never hides a finding either.
 
 ## Slice 1: tools, reports and identities
@@ -546,18 +559,20 @@ the source root detection already does.
 - **Coupling.** `python -I languages/python/adapters/import-scan.py` (the project's interpreter,
   standard library only) parses every production file with `ast` and prints each file's `import`
   and `from ... import` statements, including those inside functions and `if TYPE_CHECKING:`
-  blocks, which it marks `typeOnly` (the body of an `if TYPE_CHECKING:`, `typing.TYPE_CHECKING`, an
-  aliased `TYPE_CHECKING`, or such a name in an `and` condition; its `else` branch is runtime code). Everything else is JavaScript (`python-coupling.mjs`) so it is unit-tested without Python:
+  blocks, which it marks `typeOnly` (the body of an `if TYPE_CHECKING:`, where the flag is `TYPE_CHECKING`
+  imported from `typing` or `typing_extensions` (also under an alias or as `typing.TYPE_CHECKING`) or
+  the module-level `TYPE_CHECKING = False` idiom, alone or in an `and` condition; any other
+  `TYPE_CHECKING`, such as `foo.TYPE_CHECKING` or one imported from another module, is an ordinary name; its `else` branch is runtime code, and the `else` branch of `if not TYPE_CHECKING:` is type-only). Everything else is JavaScript (`python-coupling.mjs`) so it is unit-tested without Python:
   a module is a `.py` file named relative to its import root (`a/b.py` is `a.b`, `a/__init__.py` is
   `a`), a package is the module's containing package (a package's `__init__` belongs to the package
   itself, a top-level module to `(root)`), relative imports are resolved against the importing
   module, and an import is an edge to the longest module the sources define (`import a.b.c.Thing`
   links `a.b.c`; `from a import b` links `a.b` when that is a module, else `a`). An edge is type-only
-  when every import that makes it is under `if TYPE_CHECKING:`. Type-only edges stay in the
-  report-only metrics (fan-in, fan-out, package cohesion and the dependency count) but the
-  enforceable `stability-direction` rule ignores them, both as candidate inversions and in the
-  instability it compares, so a stable package that imports an unstable one only for annotations
-  is not an inversion. Imports of anything
+  when every import that makes it is under `if TYPE_CHECKING:`. Type-only edges count in every
+  metric (fan-in, fan-out, instability, package cohesion and the dependency count), but the
+  enforceable `stability-direction` rule never reports one as the inverted dependency, so a stable
+  package that imports an unstable one only for annotations is not an inversion. TypeScript
+  applies the same rule to `import type` edges. Imports of anything
   outside the sources (the standard library, third-party packages) are not edges. The graph goes to
   the shared `buildCouplingReport`, which the Java preset now uses too, and then `evaluateCoupling`:
   report-only `coupling`, `module-coupling`, `package-coupling`, `stability-direction-metric`, and
@@ -792,7 +807,7 @@ and CRAP rules.
   `NITPICKER_PYTHON_E2E=1` too. The first runs the banned and the allowed fixture of every rule
   (`languages/python/rules/fixtures/<case>/{banned,allowed}`) through the real ruff, python3, mypy,
   pyright and basedpyright from the `PATH`; the second drives `nitpicker_rules.py` over edge cases (test files,
-  nested classes, comment forms). The preset e2e test also gates type errors with mypy and pyright,
+  nested classes, comment forms), and `swallowing.e2e.test.mjs` does the same for `swallowed-exception` and `blind-suppress`. The preset e2e test also gates type errors with mypy and pyright,
   the one-way rules and `python.exceptions` end to end; `languages/python/adapters/e2e/` holds the
   basedpyright e2e (a configured and a weakened `[tool.basedpyright]` table) and the `if TYPE_CHECKING:`
   one (no stability inversion, import-linter still sees it), which share `helpers.mjs` with the preset e2e.
@@ -800,7 +815,7 @@ and CRAP rules.
   rules script, are in the npm package.
 - Slice 5 unit tests: `python-sources.test.mjs` (module naming, exclusions), `python-coupling.test.mjs`
   (import resolution, packages, stability direction, type-only edges, the scan step with a fake
-  interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms),
+  interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms, and files with a 1100-branch `elif` chain or a 2500-term expression, which the iterative scan still reads),
   `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
   (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in

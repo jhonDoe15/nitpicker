@@ -43,7 +43,14 @@ export const RULE_HINTS = [
     rules: ['swallowed-exception'],
     describe: (subject) => `\`${subject}\` swallows the error`,
     allowed:
-      'Log it with `logger.exception(...)`, re-raise it or use it; `contextlib.suppress(SpecificError)` ignores one expected error.',
+      'Log it with `logger.exception(...)`, re-raise it or use it, or return a named default or a value built from the error; `contextlib.suppress(SpecificError)` ignores one expected error.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['blind-suppress'],
+    describe: (subject) => `\`${subject}\` ignores every error`,
+    allowed:
+      'Name the expected exception: `contextlib.suppress(KeyError)`; or handle it, log it with `logger.exception(...)` or re-raise it.',
   },
   {
     tool: RULES_TOOL,

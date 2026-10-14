@@ -78,7 +78,6 @@ describe('type checker detection', () => {
       { 'pyproject.toml': '[ tool.basedpyright ]\n' },
       'basedpyright',
     ],
-    ['basedpyrightconfig.json', { 'basedpyrightconfig.json': '{}' }, 'basedpyright'],
     [
       'a dependency in an array',
       { 'pyproject.toml': 'dev = ["basedpyright>=1.20", "pytest"]\n' },

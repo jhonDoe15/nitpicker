@@ -212,7 +212,7 @@ export function computeCoupling({ modules, edges, packageOf, runtime = false }) 
   const packageByName = new Map(packages.map((entry) => [entry.name, entry]));
   const stabilityDirection = [];
   const seenPackageEdges = new Set();
-  for (const edge of edges) {
+  for (const edge of edges.filter(({ kind }) => kind !== 'type-only')) {
     const sourcePackage = packageOf(edge.source);
     const targetPackage = packageOf(edge.target);
     if (sourcePackage === targetPackage) {
@@ -256,8 +256,8 @@ function byName(left, right) {
  * summary, per-module and per-package metrics and the stability-direction violations.
  * `fileOf(module)` gives the project-relative path a module's metrics are reported against.
  * An edge of `kind: 'type-only'` (a dependency that exists only for the type checker) counts in
- * the report-only metrics but not in the stability-direction rule; a repeated edge is type-only
- * only when every copy is.
+ * every metric, including package instability, but is never itself reported as a
+ * stability-direction violation; a repeated edge is type-only only when every copy is.
  */
 export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
   const moduleSet = new Set(modules);
@@ -271,11 +271,6 @@ export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
   }
   const allEdges = [...moduleEdges.values()];
   const metrics = computeCoupling({ modules, edges: allEdges, packageOf });
-  const { stabilityDirection } = computeCoupling({
-    modules,
-    edges: allEdges.filter(({ kind }) => kind !== 'type-only'),
-    packageOf,
-  });
   const packages = metrics.packages.sort(byName);
   return {
     summary: {
@@ -291,7 +286,7 @@ export function buildCouplingReport({ modules, edges, packageOf, fileOf }) {
       instability,
     })),
     packages,
-    stabilityDirection: stabilityDirection.map(({ source, target, delta }) => ({
+    stabilityDirection: metrics.stabilityDirection.map(({ source, target, delta }) => ({
       source,
       target,
       delta,

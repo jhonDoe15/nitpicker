@@ -15,7 +15,7 @@ const PYRIGHT_FAMILY = {
     section: /^\s*\[\s*tool\.pyright\s*\]/m,
   },
   basedpyright: {
-    files: [PYRIGHT_CONFIG, 'basedpyrightconfig.json'],
+    files: [PYRIGHT_CONFIG],
     section: /^\s*\[\s*tool\.(?:basedpyright|pyright)\s*\]/m,
   },
 };
@@ -93,6 +93,7 @@ export function pyrightConfig({ projectRoot, reportRoot, project, exclude }, che
     typeCheckingMode: 'strict',
     enableTypeIgnoreComments: false,
     ignore: [],
+    executionEnvironments: [],
     exclude: pyrightExclude({ projectRoot, reportRoot, exclude }),
     include: project.sourceRoots.map((root) =>
       path.relative(reportRoot, path.resolve(projectRoot, root)),
