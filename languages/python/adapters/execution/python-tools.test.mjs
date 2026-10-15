@@ -11,7 +11,7 @@ import {
   restoreTemporaryState,
   setEnvironment,
   temporaryRoot,
-} from './python-tools-project.mjs';
+} from './test-support/python-tools-project.mjs';
 import { fileURLToPath } from 'node:url';
 
 afterEach(restoreTemporaryState);

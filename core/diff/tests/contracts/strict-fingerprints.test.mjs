@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mjs';
-import { failureMessageCases } from '../../../../languages/typescript/preset/failure-messages/cases.mjs';
-import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/harness.mjs';
+import { failureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
+import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
 
 const temporaryRoots = [];

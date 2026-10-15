@@ -1,8 +1,8 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { installFakeToolchain } from '../fixtures/fake-toolchain.mjs';
-import { createToolContext } from '../python-tools.mjs';
+import { installFakeToolchain } from '../../fixtures/fake-toolchain.mjs';
+import { createToolContext } from '../../python-tools.mjs';
 
 const roots = [];
 

@@ -11,7 +11,7 @@ import {
   readDefault,
   removeTemporaryRoots,
   temporaryProject,
-} from './layout-config-helpers.mjs';
+} from './test-support/layout-config-helpers.mjs';
 
 afterAll(removeTemporaryRoots);
 
