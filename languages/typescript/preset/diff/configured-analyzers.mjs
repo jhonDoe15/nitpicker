@@ -28,6 +28,16 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-hints.mjs',
   'languages/typescript/adapters/eslint-config-wrapper.mjs',
+  'languages/typescript/adapters/lint-engine/lint-engine.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-bridge.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-diagnostics.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-plan.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-process.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-runner.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-translation.mjs',
+  'languages/typescript/adapters/oxlint/stage/oxlint-directives.mjs',
+  'languages/typescript/adapters/oxlint/stage/oxlint-inline-config.mjs',
+  'languages/typescript/adapters/oxlint/stage/oxlint-stage.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
@@ -43,6 +53,9 @@ const STATIC_CHECK_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/static-checks.mjs',
   'languages/typescript/adapters/static-checks-runner.mjs',
+  'languages/typescript/adapters/typecheck/native-diagnostics.mjs',
+  'languages/typescript/adapters/typecheck/typescript-program.mjs',
+  'shared/glob.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const QUALITY_AREA_ADAPTER_FILES = [
