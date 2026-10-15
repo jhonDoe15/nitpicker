@@ -63,6 +63,13 @@ describe('config exceptions', () => {
       },
     );
 
+    const COVERAGE_TOOLS = {
+      typescript: 'coverage',
+      java: 'jacoco',
+      kotlin: 'jacoco',
+      python: 'coverage-py',
+    };
+
     it.each(['typescript', 'java', 'kotlin', 'python'])(
       'accepts a rule nitpicker adds named as it is printed in the %s preset',
       (preset) => {
@@ -80,10 +87,16 @@ describe('config exceptions', () => {
           validateConfig({
             preset,
             exceptions: [
-              { ...coverage, rule: 'jacoco/changed-branch-coverage', function: undefined },
+              {
+                ...coverage,
+                rule: `${COVERAGE_TOOLS[preset]}/changed-branch-coverage`,
+                function: undefined,
+              },
             ],
           }),
-        ).toThrow('"exceptions[0].function" is required for jacoco/changed-branch-coverage');
+        ).toThrow(
+          `"exceptions[0].function" is required for ${COVERAGE_TOOLS[preset]}/changed-branch-coverage`,
+        );
       },
     );
 
@@ -97,11 +110,28 @@ describe('config exceptions', () => {
       expect(() =>
         validateConfig({ exceptions: [{ ...coverage, rule: 'nitpicker/no-throw' }] }),
       ).toThrow(
-        '"exceptions[0].function" is only supported for these rules: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage',
+        '"exceptions[0].function" is only supported for these rules: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage, mutant-survived, mutant-nocoverage',
       );
-      expect(() => validateConfig({ exceptions: [{ ...coverage, function: '' }] })).toThrow(
-        '"exceptions[0].function" must be a non-empty function name',
-      );
+      for (const blank of ['', '  ']) {
+        expect(() => validateConfig({ exceptions: [{ ...coverage, function: blank }] })).toThrow(
+          '"exceptions[0].function" must be a non-blank name',
+        );
+      }
+    });
+
+    it('accepts a function on a mutant rule and a name on an export or type of dead code', () => {
+      const mutant = { ...coverage, rule: 'mutant-survived' };
+      const unused = { ...coverage, rule: 'exports', function: undefined, name: 'unusedA' };
+
+      expect(validateConfig({ exceptions: [mutant, unused] })).toEqual({
+        exceptions: [mutant, unused],
+      });
+      expect(() =>
+        validateConfig({ exceptions: [{ ...unused, rule: 'files' }] }),
+      ).toThrow('"exceptions[0].name" is only supported for these rules: exports, types');
+      expect(() =>
+        validateConfig({ exceptions: [{ ...unused, function: 'save' }] }),
+      ).toThrow('"exceptions[0].function" is only supported for these rules');
     });
 
     it('allows a structure exception with or without a function', () => {
@@ -112,5 +142,46 @@ describe('config exceptions', () => {
         exceptions: [lines, whole],
       });
     });
+  });
+
+  describe('what an entry may say', () => {
+    const entry = {
+      rule: 'function-lines-limit',
+      paths: ['src/a.ts'],
+      function: 'save',
+      reason: 'A reviewed reason.',
+    };
+    const rejected = (override) => () => validateConfig({ exceptions: [{ ...entry, ...override }] });
+
+    it('rejects a tool prefix that is not the tool of the rule', () => {
+      expect(rejected({ rule: 'bogus/function-lines-limit' })).toThrow(
+        '"exceptions[0].rule" has an unknown tool prefix "bogus" for function-lines-limit: use the rule bare or as structure/function-lines-limit',
+      );
+      expect(
+        () =>
+          validateConfig({
+            preset: 'python',
+            exceptions: [{ ...entry, rule: 'jacoco/changed-branch-coverage' }],
+          }),
+      ).toThrow(
+        '"exceptions[0].rule" has an unknown tool prefix "jacoco" for changed-branch-coverage: use the rule bare or as coverage-py/changed-branch-coverage',
+      );
+    });
+
+    it.each(['...', ' ... ', '<why this is intended>', '', '   '])(
+      'rejects the reason %j',
+      (reason) => {
+        expect(rejected({ reason })).toThrow('"exceptions[0].reason" is');
+      },
+    );
+
+    it.each(['/abs/a.ts', 'C:/a.ts', '../a.ts', 'src/../a.ts', ' '])(
+      'rejects the path %j',
+      (glob) => {
+        expect(rejected({ paths: [glob] })).toThrow(
+          `"exceptions[0].paths" has "${glob}": use a glob relative to the project root, without \`..\``,
+        );
+      },
+    );
   });
 });

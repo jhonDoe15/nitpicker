@@ -1054,12 +1054,12 @@ describe('complete quality-area analyzer catalog', () => {
         location: { line: 1 },
         classification: 'enforceable',
         message:
-          'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9.5,
           worseMessage:
-            'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'value: CRAP 9.50 (limit 9), allowed because base was {base}; any increase fails.',
         },

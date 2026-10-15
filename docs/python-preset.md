@@ -369,7 +369,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `exceptions` entry for the rule (optionally with `function`, see below), `exclude` in
   `nitpicker.config.json` for a path, or the legacy inventory; there is no inline disable. Each
   message ends with the entry that accepts it, for example
-  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"..."}`;
+  `{"rule":"function-lines-limit","paths":["src/demo/a.py"],"function":"Service.run","reason":"<why this is intended>"}`;
   the shared rules append it.
 - **Structure metrics (decision to review).** `languages/python/metrics/structure_metrics.py` parses
   the source files with the standard library `ast` module (parse only, nothing is imported or run)
@@ -484,8 +484,8 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   matters only when the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
-or remove it if it can't happen. If this is intended, add
-{"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to
+or remove it if it can't happen. If a reviewer agrees this is intended, add
+{"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to
 "exceptions" in nitpicker.config.json.`
   It names where the untaken outcomes lead (those line numbers are only in the message, never in the
   identity) and the entry that accepts the branch for its function; a branch in no function points at

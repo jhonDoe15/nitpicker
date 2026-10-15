@@ -30,7 +30,7 @@ export function crapFindings(
       continue;
     }
     const rule = unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit;
-    const route = exceptionRoute({ rule, path: fn.path, name: fn.name });
+    const route = exceptionRoute({ rule, path: fn.path, function: fn.name });
     const finding = {
       tool,
       rule,

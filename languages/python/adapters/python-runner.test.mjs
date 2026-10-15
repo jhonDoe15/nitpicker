@@ -187,7 +187,7 @@ describe('analyzing a Python snapshot', () => {
         identity: 'f|1→2#1',
         symbol: 'f',
         message:
-          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2 },
       },

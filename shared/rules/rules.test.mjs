@@ -31,7 +31,7 @@ describe('structure rule on neutral function metrics', () => {
         rule: 'function-lines-limit',
         path: 'src/A.java',
         message:
-          'run has 80 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'run has 80 lines; limit is 50. If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         symbol: 'run',
         location: { line: 10 },
       }),
@@ -49,7 +49,7 @@ describe('structure rule on neutral function metrics', () => {
       (candidate) => candidate.classification === 'enforceable',
     );
     const route =
-      'If this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"..."} to "exceptions" in nitpicker.config.json.';
+      'If a reviewer agrees this is intended, add {"rule":"function-lines-limit","paths":["src/A.java"],"function":"run","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
     expect(finding.message).toBe(`run has 51 lines; limit is 50. ${route}`);
     expect(finding.ratchet.worseMessage).toBe(
       `run grew from {base} to 51 lines (limit 50). Put new code in a new function. ${route}`,
@@ -284,7 +284,7 @@ describe('crapFindings', () => {
         path: 'a.ts',
         identity: 'function:f',
         message:
-          'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'f has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'f',
         location: { line: 3 },
@@ -297,11 +297,11 @@ describe('crapFindings', () => {
       tool: 'crap',
     });
     expect(unknown.message).toBe(
-      'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["a.ts"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     const [ratcheted] = crapFindings([{ ...fn, ratchetKey: 'f:crap', crap: 12 }], { tool: 'crap' });
     expect(ratcheted.ratchet.worseMessage).toBe(
-      'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'f CRAP rose from {base} to 12 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["a.ts"],"function":"f","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -350,7 +350,7 @@ describe('branchCoverageFindings', () => {
       { tool: 'cov', identify },
     );
     expect(finding.message).toBe(
-      'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.symbol).toBe('Store.save');
   });

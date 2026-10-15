@@ -62,13 +62,13 @@ describe('exceptions with "preset": "java"', () => {
       ).toEqual([
         [
           'Wide.sum',
-          'Wide.sum has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Wide.sum has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Wide.java"],"function":"Wide.sum","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         ],
       ]);
     });
 
     it.each([
-      ['the method', 'sum', 0],
+      ['the method', 'Wide.sum', 0],
       ['the path', undefined, 0],
       ['another method', 'product', 1],
     ])('lifts the finding by %s only as far as the entry reaches', (_, functionName, exitCode) => {

@@ -40,7 +40,7 @@ $ npx nitpicker
   eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
     Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
   mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
-    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.
 ```
 
 ## Why nitpicker
