@@ -4,6 +4,7 @@ import { reactRuleIds, reactTestRuleIds } from './eslint-config/react-rules.mjs'
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
+  '@typescript-eslint/explicit-module-boundary-types',
   '@typescript-eslint/naming-convention',
   '@typescript-eslint/no-floating-promises',
   '@typescript-eslint/no-magic-numbers',

@@ -6,7 +6,9 @@ import { productionPolicyConfigFor } from './production-policy.mjs';
 
 const layout = { ...defaultResolvedLayout, entryPoints: ['src/scripts/*.ts'] };
 
-function ruleIds(filename, code, { react = false } = {}) {
+const RETURN_TYPE_RULE = '@typescript-eslint/explicit-module-boundary-types';
+
+function allRuleIds(filename, code, { react = false } = {}) {
   const config = [
     ...productionPolicyConfigFor(layout, { react }),
     ...strictSyntaxConfigFor(layout, { react }),
@@ -14,6 +16,14 @@ function ruleIds(filename, code, { react = false } = {}) {
   return lintFixture({ config, filename, code })
     .map((message) => message.ruleId)
     .filter(Boolean);
+}
+
+function ruleIds(filename, code, options) {
+  return allRuleIds(filename, code, options).filter((ruleId) => ruleId !== RETURN_TYPE_RULE);
+}
+
+function returnTypeFindings(filename, code, options) {
+  return allRuleIds(filename, code, options).filter((ruleId) => ruleId === RETURN_TYPE_RULE);
 }
 
 const adapter = 'src/main/features/a/adapters/x.ts';
@@ -168,5 +178,22 @@ describe('magic numbers and other basics', () => {
     const floating = rules.map((entry) => entry['@typescript-eslint/no-floating-promises']);
 
     expect(floating.filter(Boolean)).toEqual(Array(2).fill(['error', { ignoreVoid }]));
+  });
+
+  it('requires a return type on exported production functions, components included', () => {
+    const code = 'export function total(a: number) { return a + 1; }';
+    const component = 'src/main/features/a/adapters/user-list.tsx';
+
+    expect(returnTypeFindings(adapter, code)).toEqual([RETURN_TYPE_RULE]);
+    expect(
+      returnTypeFindings(component, 'export function UserList() { return 1; }', { react: true }),
+    ).toEqual([RETURN_TYPE_RULE]);
+    expect(
+      returnTypeFindings(adapter, 'export function total(a: number): number { return a + 1; }'),
+    ).toEqual([]);
+    expect(returnTypeFindings('src/main/features/a/x.test.ts', code)).toEqual([]);
+    expect(
+      returnTypeFindings('src/main/features/a/adapters/x.mjs', 'export function f() { return 1; }'),
+    ).toEqual([]);
   });
 });

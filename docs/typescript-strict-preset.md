@@ -178,6 +178,10 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   PascalCase; functions, variables and parameters in camelCase; constants may be UPPER_CASE; a
   leading underscore is allowed. PascalCase functions and variables are allowed in a React project.
   Names a destructuring takes from external data are not checked.
+- Exported production functions declare their return type
+  (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
+  a React component returns `ReactElement`. A function typed by its variable
+  (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
 - No magic numbers (`@typescript-eslint/no-magic-numbers`): name the number with a constant
   (`const SECONDS_PER_DAY = 86400;`). `-1`, `0`, `1` and `2`, default parameter values, array
   indexes, numeric literal types and object property values are allowed. Tests are exempt.

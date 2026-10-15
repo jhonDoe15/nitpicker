@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict-domain.mjs';
 
+const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2];
 
 const RANDOM_MESSAGE =
@@ -92,6 +93,17 @@ export function productionPolicyConfigFor(layout, options = {}) {
         ...(options.react === true
           ? {}
           : { 'nitpicker/no-unknown-main-folder': ['error', { sourceRoots: layout.sourceRoots }] }),
+      },
+    },
+    {
+      files: layout.sourceGlobs,
+      ignores: [...production.ignores, JAVASCRIPT_FILES],
+      plugins: { '@typescript-eslint': tseslint.plugin },
+      rules: {
+        '@typescript-eslint/explicit-module-boundary-types': [
+          'error',
+          { allowArgumentsExplicitlyTypedAsAny: true },
+        ],
       },
     },
     {
