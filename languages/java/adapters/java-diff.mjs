@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
@@ -6,9 +7,11 @@ import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/re
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRenameMap } from '../../../core/diff/git/paths.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
+import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
+import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings, requireGradleReports } from './reporting/java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
@@ -27,28 +30,44 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
-function runJavaPreset(
-  projectRoot,
-  { gradle = 'gradle', initScript = INIT_SCRIPT, policy = {} } = {},
-) {
-  const result = spawnSync(
-    gradle,
-    [
+export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
+  return [...PROJECT_TOOL_CONFIGS].flatMap(([tool, file]) => {
+    const precedence = toolPrecedence[tool] ?? ['nitpicker'];
+    const projectConfig = path.join(policyRoot ?? projectRoot, file);
+    if (precedence.includes('project') && !existsSync(projectConfig)) {
+      throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
+    }
+    return [
+      ...(precedence.includes('project')
+        ? [`-Pnitpicker.${tool}.projectConfig=${projectConfig}`]
+        : []),
+      ...(precedence.includes('nitpicker') ? [] : [`-Pnitpicker.${tool}.nitpickerConfig=false`]),
+    ];
+  });
+}
+
+function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
+  const target = gradleTarget({
+    projectRoot,
+    configured: gradle,
+    args: [
       '--console=plain',
       '--quiet',
       '--no-configuration-cache',
       ...kotlinProperties(projectRoot, policy),
+      ...toolConfigProperties(projectRoot, policy),
       '-I',
       initScript,
       'nitpickerJava',
     ],
-    {
-      cwd: projectRoot,
-      encoding: 'utf8',
-      maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: GRADLE_TIMEOUT_MS,
-    },
-  );
+  });
+  const result = spawnSync(target.command, target.args, {
+    cwd: projectRoot,
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTPUT_BYTES,
+    shell: target.shell,
+    timeout: GRADLE_TIMEOUT_MS,
+  });
   if (result.error !== undefined) {
     throw result.error;
   }

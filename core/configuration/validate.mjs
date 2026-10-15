@@ -114,7 +114,7 @@ function validateOptional(config) {
     validateCustomAnalyzers(config.analyzers);
   }
   if (config.tools !== undefined) {
-    validateTools(config.tools);
+    validateTools(config.tools, config.preset);
   }
 }
 

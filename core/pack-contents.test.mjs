@@ -50,6 +50,7 @@ describe('npm package contents', () => {
     expect(files.has('languages/python/metrics/structure_metrics.py')).toBe(true);
     expect(files.has('languages/python/adapters/import-scan.py')).toBe(true);
     expect(files.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
+    expect(files.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
     expect(
       [...files].filter(
         (file) =>

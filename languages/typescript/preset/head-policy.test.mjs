@@ -19,6 +19,7 @@ import {
   readHeadPolicy,
   readLayout,
   resolveHeadPolicy,
+  typecheckEngine,
   withHeadPolicyFile,
 } from './head-policy.mjs';
 
@@ -97,6 +98,14 @@ describe('head policy reader', () => {
         'project',
         'nitpicker',
       ]);
+    });
+  });
+
+  it('reads the type check engine, defaulting to TypeScript 7', () => {
+    expect(typecheckEngine({})).toBe('native');
+    const policy = resolveHeadPolicy({ tools: { typescript: { engine: 'project' } } });
+    withHeadPolicyFile(policy, (policyFile) => {
+      expect(typecheckEngine({ NITPICKER_POLICY: policyFile })).toBe('project');
     });
   });
 
