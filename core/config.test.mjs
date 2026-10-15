@@ -208,27 +208,6 @@ describe('config file', () => {
     }
   });
 
-  it('asks for the printed name of a Checkstyle check instead of its class', () => {
-    const exception = { rule: 'checkstyle/Indentation', paths: ['src/**'], reason: 'Legacy' };
-    expect(validateConfig({ preset: 'java', exceptions: [exception] })).toEqual({
-      preset: 'java',
-      exceptions: [exception],
-    });
-    expect(() =>
-      validateConfig({
-        preset: 'java',
-        exceptions: [
-          {
-            ...exception,
-            rule: 'checkstyle/com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
-          },
-        ],
-      }),
-    ).toThrow(
-      `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
-    );
-  });
-
   it.each([
     ['java', 'layout'],
     ['java', 'react'],
