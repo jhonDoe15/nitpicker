@@ -140,7 +140,6 @@ const NO_ROUTE_RULES = new Set([
   'eslint/inline-config-disabled',
 ]);
 
-/** `text` with the sentence that names the config entry which turns `rule` off for `path`. */
 function withEslintRoute(text, { rule, path: relativePath }) {
   return NO_ROUTE_RULES.has(rule)
     ? text
