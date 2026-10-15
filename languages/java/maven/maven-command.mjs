@@ -8,6 +8,8 @@ const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
+const MINIMUM_MAVEN = '3.6.3';
+const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
 const MAVEN_NOISE = [
   /^\[ERROR\]\s*$/u,
@@ -40,7 +42,16 @@ export function mavenErrorSummary(output) {
     (line) => line.startsWith('[ERROR]') && !MAVEN_NOISE.some((noise) => noise.test(line)),
   );
   const chosen = errors.length > 0 ? errors : lines.filter((line) => line.trim() !== '');
-  return chosen.slice(0, MAX_ERROR_LINES).join('\n') || 'no diagnostic output';
+  const hint = OLD_MAVEN.test(output) ? [`nitpicker needs Maven ${MINIMUM_MAVEN} or newer`] : [];
+  return [...chosen.slice(0, MAX_ERROR_LINES), ...hint].join('\n') || 'no diagnostic output';
+}
+
+function missingMaven(error, command) {
+  return error.code === 'ENOENT'
+    ? new Error(
+        `${command} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
+      )
+    : error;
 }
 
 export function runMaven({ projectRoot, maven, args }) {
@@ -53,7 +64,7 @@ export function runMaven({ projectRoot, maven, args }) {
     timeout: MAVEN_TIMEOUT_MS,
   });
   if (result.error !== undefined) {
-    throw result.error;
+    throw missingMaven(result.error, target.command);
   }
   if (result.status !== 0) {
     throw new Error(

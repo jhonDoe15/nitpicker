@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,6 +16,7 @@ import {
   junitLauncherVersion,
   pitTargets,
   pitTests,
+  runJacocoReport,
 } from './maven-tests.mjs';
 
 const roots = [];
@@ -146,6 +155,69 @@ describe('collectTestResults', () => {
           '  and 2 more',
         ].join('\n'),
       ),
+    );
+  });
+
+  it('reports whether any test ran', () => {
+    const run = (files) =>
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: tree(files), testOutputDirectory: tree({}) },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+      });
+
+    expect([
+      run({}),
+      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }),
+    ]).toEqual([false, true]);
+  });
+
+  it('fails when surefire ran none of the ArchUnit classes', () => {
+    const testClasses = tree({ 'shop/LayerRules.class': '', 'shop/OrderTest.class': '' });
+
+    expect(() => {
+      collectTestResults({
+        module: {
+          basedir: '/m',
+          surefireReports: tree({
+            'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]),
+          }),
+          testOutputDirectory: testClasses,
+        },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher('**/*Rules.class'),
+      });
+    }).toThrow(
+      new Error(
+        'maven-surefire-plugin ran none of the ArchUnit classes in /m (shop.LayerRules). ' +
+          'Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results',
+      ),
+    );
+  });
+});
+
+describe('runJacocoReport', () => {
+  it('writes an empty report for a module without main classes', () => {
+    const reportDir = tree({});
+    const module = {
+      basedir: '/m',
+      coordinates: 'shop:it',
+      outputDirectory: path.join(reportDir, 'missing'),
+    };
+
+    runJacocoReport({
+      module,
+      reportDir,
+      tools: {},
+      execFile: '/m/none.exec',
+      since: 0,
+      testsRan: true,
+    });
+
+    expect(readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8')).toBe(
+      '<?xml version="1.0"?><report name="shop:it"></report>',
     );
   });
 });

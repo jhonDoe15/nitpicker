@@ -27,7 +27,9 @@ export function wrapperTarget({
   }
   if (platform === 'win32') {
     const script = path.join(projectRoot, windowsWrapper);
-    return existsSync(script) ? spawnTarget(script, args) : { command: tool, args, shell: true };
+    return existsSync(script)
+      ? spawnTarget(script, args)
+      : { command: tool, args: args.map(quoted), shell: true };
   }
   const script = path.join(projectRoot, wrapper);
   const stat = statSync(script, { throwIfNoEntry: false });
@@ -43,5 +45,9 @@ function spawnTarget(command, args) {
   if (!WINDOWS_SCRIPT.test(command)) {
     return { command, args, shell: false };
   }
-  return { command: `"${command}"`, args: args.map((arg) => `"${arg}"`), shell: true };
+  return { command: quoted(command), args: args.map(quoted), shell: true };
+}
+
+function quoted(word) {
+  return `"${word}"`;
 }

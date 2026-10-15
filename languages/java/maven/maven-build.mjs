@@ -20,10 +20,10 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
-import { jacocoPlugin, MAVEN_PLUGINS, readPinnedTools, resolveTools } from './maven-tools.mjs';
+import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
-const GRADLE_DIRECTORY = path.resolve(import.meta.dirname, '../gradle');
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
@@ -132,7 +132,7 @@ function relativeRoots(module, roots) {
   return roots.map((root) => relativeTo(module.basedir, root));
 }
 
-function writeManifest({ module, reportDir, pinned, classpaths }) {
+function writeManifest({ module, reportDir, pinned, spring }) {
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({
@@ -141,20 +141,23 @@ function writeManifest({ module, reportDir, pinned, classpaths }) {
       sourceRoots: relativeRoots(module, module.sourceRoots),
       testSourceRoots: relativeRoots(module, module.testSourceRoots),
       resourceRoots: relativeRoots(module, module.resourceRoots),
-      spring: classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry))),
+      spring,
     }),
   );
 }
 
-function analyzeModule({ module, work, tools, pinned, configs, since }) {
-  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
-  const classpaths = moduleClasspaths(
+function readClasspaths(work, module) {
+  return moduleClasspaths(
     module,
     parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
   );
+}
+
+function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
+  const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
-  collectTestResults({ module, reportDir, since, isArchunit });
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runFormat({ module, reportDir, tools });
@@ -162,9 +165,19 @@ function analyzeModule({ module, work, tools, pinned, configs, since }) {
   runStructure(module, reportDir);
   runJdeps(module, reportDir);
   const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
-  runJacocoReport({ module, reportDir, tools, execFile, since });
+  runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, classpaths });
+  writeManifest({ module, reportDir, pinned, spring });
+}
+
+function staleOutputs(module) {
+  const execFiles = [path.join(module.buildDirectory, OWN_JACOCO_EXEC), module.jacocoDestFile];
+  return [
+    path.join(module.basedir, MAVEN_REPORT_DIRECTORY),
+    ...execFiles.filter(
+      (file) => file !== undefined && file.startsWith(`${module.buildDirectory}${path.sep}`),
+    ),
+  ];
 }
 
 function readModules(projectRoot, maven, work) {
@@ -176,28 +189,25 @@ function readModules(projectRoot, maven, work) {
       `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
     );
   }
+  for (const file of modules.flatMap(staleOutputs)) {
+    rmSync(file, { recursive: true, force: true });
+  }
   for (const module of modules) {
-    rmSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true, force: true });
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
   return modules;
 }
 
-function missingLauncherVersions(modules, work) {
-  const versions = modules.map((module) =>
-    junitLauncherVersion(
-      moduleClasspaths(
-        module,
-        parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-      ).testRuntime,
-    ),
-  );
+function missingLauncherVersions(analyzed) {
+  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
   return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   if (policy.preset === 'kotlin') {
-    throw new Error('The kotlin preset runs on Gradle builds only; this project builds with Maven');
+    throw new Error(
+      'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
+    );
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
@@ -205,35 +215,21 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
     const modules = readModules(projectRoot, maven, work);
     const since = Date.now() - 2000;
     buildAndTest({ projectRoot, maven, work, pinned });
-    const launcherVersions = missingLauncherVersions(modules, work);
-    const tools = resolveTools({ projectRoot, maven, pinned, launcherVersions });
-    for (const module of modules) {
-      analyzeModule({ module, work, tools, pinned, configs, since });
+    const analyzed = modules.map((module) => ({
+      module,
+      classpaths: readClasspaths(work, module),
+    }));
+    const tools = resolveTools({
+      projectRoot,
+      maven,
+      pinned,
+      launcherVersions: missingLauncherVersions(analyzed),
+    });
+    for (const { module, classpaths } of analyzed) {
+      analyzeModule({ module, classpaths, tools, pinned, configs, since });
     }
     return modules.map((module) => module.basedir);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
-}
-
-const GRADLE_BUILD_FILES = [
-  'settings.gradle',
-  'settings.gradle.kts',
-  'build.gradle',
-  'build.gradle.kts',
-];
-
-export function detectJavaBuild(projectRoot) {
-  const present = new Set(
-    ['pom.xml', 'mvnw', 'gradlew', ...GRADLE_BUILD_FILES].filter((name) =>
-      existsSync(path.join(projectRoot, name)),
-    ),
-  );
-  if (!present.has('pom.xml')) {
-    return 'gradle';
-  }
-  if (!GRADLE_BUILD_FILES.some((name) => present.has(name))) {
-    return 'maven';
-  }
-  return present.has('mvnw') && !present.has('gradlew') ? 'maven' : 'gradle';
 }

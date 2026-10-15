@@ -135,6 +135,61 @@ describe('readReactor', () => {
       [root, 'demo:solo'],
     ]);
   });
+  it('matches a module whose raw coordinates use a property by its build directory', () => {
+    const root = reactor({
+      'pom.xml': raw('parent'),
+      'a/pom.xml':
+        '<project><parent><groupId>demo</groupId></parent><artifactId>${project.parent.artifactId}-a</artifactId></project>',
+    });
+    const effectivePom = [
+      '<projects>',
+      `<project><groupId>demo</groupId><artifactId>parent-a</artifactId><build><directory>${root}/a/target</directory></build></project>`,
+      `<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging><modules><module>a</module></modules><build><directory>${root}/target</directory></build></project>`,
+      '</projects>',
+    ].join('');
+
+    expect(
+      readReactor(root, effectivePom).map((module) => [module.basedir, module.coordinates]),
+    ).toEqual([
+      [root, 'demo:parent'],
+      [path.join(root, 'a'), 'demo:parent-a'],
+    ]);
+  });
+
+  it.each([
+    [
+      'a module missing from the effective POM',
+      { 'pom.xml': raw('parent'), 'gone/pom.xml': raw('gone') },
+      '<modules><module>gone</module></modules>',
+      (root) =>
+        `Maven module ${path.join(root, 'gone/pom.xml')} is not in the effective POM; nitpicker cannot read it`,
+    ],
+    [
+      'a module outside the project',
+      { 'pom.xml': raw('parent') },
+      '<modules><module>../elsewhere</module></modules>',
+      (root) =>
+        `Maven module ${path.resolve(root, '../elsewhere')} lies outside ${root}; run nitpicker from a directory that holds every module`,
+    ],
+    [
+      'two modules in one directory',
+      { 'pom.xml': raw('parent'), 'b/pom.xml': raw('b'), 'b/pom-alt.xml': raw('b-alt') },
+      '<modules><module>b/pom-alt.xml</module><module>b</module></modules>',
+      (root) =>
+        `${path.join(root, 'b')} holds more than one Maven module; nitpicker reads one module per directory`,
+    ],
+  ])('fails on %s', (_, files, modules, message) => {
+    const root = reactor(files);
+    const effectivePom = [
+      '<projects>',
+      `<project><groupId>demo</groupId><artifactId>parent</artifactId>${modules}</project>`,
+      '<project><groupId>demo</groupId><artifactId>b-alt</artifactId></project>',
+      '<project><groupId>demo</groupId><artifactId>b</artifactId></project>',
+      '</projects>',
+    ].join('');
+
+    expect(() => readReactor(root, effectivePom)).toThrow(new Error(message(root)));
+  });
 });
 
 describe('parseDependencyList', () => {
@@ -145,6 +200,7 @@ describe('parseDependencyList', () => {
       '   org.junit.jupiter:junit-jupiter-api:jar:5.11.0:test:/m2/junit-jupiter-api-5.11.0.jar -- module org.junit.jupiter.api',
       '   demo:core:jar:tests:1.0:test:/work/core/target/test-classes',
       '   demo:shared:jar:1.0:compile:C:\\work\\shared\\target\\classes (optional)',
+      '   demo:z:jar:runtime:1.0:compile:/m2/z-1.0-runtime.jar',
       '   none',
     ].join('\n');
 
@@ -152,12 +208,13 @@ describe('parseDependencyList', () => {
       { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
       { scope: 'test', file: '/work/core/target/test-classes' },
       { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
+      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
     ]);
   });
 });
 
 describe('moduleClasspaths', () => {
-  it('keeps compile, provided and system scopes for main code and everything for tests', () => {
+  it('keeps compile scopes for main code, adds test for test code, and everything at test runtime', () => {
     const module = { outputDirectory: '/m/classes', testOutputDirectory: '/m/test-classes' };
     const dependencies = ['compile', 'provided', 'runtime', 'test', 'system'].map((scope) => ({
       scope,
@@ -166,6 +223,7 @@ describe('moduleClasspaths', () => {
 
     expect(moduleClasspaths(module, dependencies)).toEqual({
       mainCompile: ['compile.jar', 'provided.jar', 'system.jar'],
+      testCompile: ['compile.jar', 'provided.jar', 'test.jar', 'system.jar'],
       testRuntime: [
         '/m/test-classes',
         '/m/classes',

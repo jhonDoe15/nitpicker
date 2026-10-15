@@ -12,8 +12,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
+import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 
-const GRADLE_DIRECTORY = path.resolve(import.meta.dirname, '../gradle');
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
@@ -62,6 +62,18 @@ function springMainRuleset(testRoots) {
   ].join('\n');
 }
 
+function writeAuxClasspath({ module, reportDir, classpaths }) {
+  const file = path.join(reportDir, 'pmd-aux-classpath.txt');
+  const entries = new Set([
+    ...classpaths.mainCompile,
+    ...classpaths.testCompile,
+    module.outputDirectory,
+    module.testOutputDirectory,
+  ]);
+  writeFileSync(file, [...entries].filter((entry) => existsSync(entry)).join('\n'));
+  return file;
+}
+
 export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
@@ -71,13 +83,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
-  const auxClasspath = path.join(reportDir, 'pmd-aux-classpath.txt');
-  writeFileSync(
-    auxClasspath,
-    [...new Set([...classpaths.testRuntime, ...classpaths.mainCompile])]
-      .filter((entry) => existsSync(entry))
-      .join('\n'),
-  );
+  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
   const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
   writeFileSync(springRuleset, springMainRuleset(module.testSourceRoots));
   const rulesets = [

@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { javaFiles, nitpickerCheckstyleConfig } from './maven-lint.mjs';
-import { readPinnedTools, toolDependencies } from './maven-tools.mjs';
+import { toolDependencies } from './maven-tools.mjs';
+import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
 
@@ -58,24 +59,6 @@ describe('javaFiles', () => {
 });
 
 describe('maven tools', () => {
-  it('reads the versions pinned in the Gradle init script', () => {
-    expect(Object.keys(readPinnedTools())).toEqual([
-      'pmd',
-      'spotbugs',
-      'googleJavaFormat',
-      'jacoco',
-      'checkstyle',
-      'lizard',
-      'pitest',
-      'pitestJunit5',
-      'detekt',
-      'detektKotlin',
-      'ktlint',
-      'ktfmt',
-      'kotlinCompiler',
-    ]);
-  });
-
   it('keeps the project JUnit Platform for PIT and adds a launcher per missing version', () => {
     const pinned = readPinnedTools();
     const exclusions = [

@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir } from 'node:os';
 import path from 'node:path';
 import { runMaven } from './maven-command.mjs';
 
-const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
@@ -15,20 +14,6 @@ const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.opentest4j',
   'org.apiguardian',
 ];
-
-export function readPinnedTools(initScript = INIT_SCRIPT) {
-  const block = /def pinned = \[([^\]]*)\]/u.exec(readFileSync(initScript, 'utf8'));
-  const pinned = Object.fromEntries(
-    [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/gu)].map(([, name, version]) => [
-      name,
-      version,
-    ]),
-  );
-  if (Object.keys(pinned).length === 0) {
-    throw new Error(`No pinned tool versions found in ${initScript}`);
-  }
-  return pinned;
-}
 
 export function jacocoPlugin(pinned) {
   return `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}`;
@@ -112,18 +97,24 @@ function readClasspaths(directory, names) {
   );
 }
 
-function complete(classpaths) {
-  return Object.values(classpaths).every(
-    (jars) => jars.length > 0 && jars.every((jar) => existsSync(jar)),
-  );
+function missing(classpaths) {
+  return Object.entries(classpaths)
+    .filter(([, jars]) => jars.length === 0 || !jars.every((jar) => existsSync(jar)))
+    .map(([name]) => name);
+}
+
+function cacheDirectory(key) {
+  const root = path.join(process.env.XDG_CACHE_HOME ?? path.join(homedir(), '.cache'), 'nitpicker');
+  mkdirSync(root, { recursive: true, mode: 0o700 });
+  return path.join(root, `maven-tools-${key}`);
 }
 
 export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
   const tools = toolDependencies(pinned, launcherVersions);
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
-  const directory = path.join(tmpdir(), `nitpicker-maven-tools-${key}`);
+  const directory = cacheDirectory(key);
   const cached = readClasspaths(directory, Object.keys(tools));
-  if (complete(cached)) {
+  if (missing(cached).length === 0) {
     return cached;
   }
   writeToolsProject(directory, tools);
@@ -139,8 +130,11 @@ export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
     ],
   });
   const resolved = readClasspaths(directory, Object.keys(tools));
-  if (!complete(resolved)) {
-    throw new Error(`Maven did not resolve the analysis tools into ${directory}`);
+  const unresolved = missing(resolved);
+  if (unresolved.length > 0) {
+    throw new Error(
+      `Maven resolved no jars for ${unresolved.join(', ')} under ${directory}. Check that Maven can download from its repositories, then rerun`,
+    );
   }
   return resolved;
 }

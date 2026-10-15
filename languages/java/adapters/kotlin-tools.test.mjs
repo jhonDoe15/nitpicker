@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings, INIT_SCRIPT } from './java-diff.mjs';
+import { collectJavaFindings } from './java-diff.mjs';
+import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { kotlinGradleArguments, resolveKotlinTools } from './kotlin-tools.mjs';
 
 const fakeGradle = path.join(import.meta.dirname, 'fixtures/fake-gradle.mjs');

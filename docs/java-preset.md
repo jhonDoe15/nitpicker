@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 ## How it works
 
 ```
-gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
+gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
@@ -50,51 +50,68 @@ A project is built with Maven when its root has a `pom.xml` and no Gradle build 
 (`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
 anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
 so nitpicker follows the one the project uses (`detectJavaBuild` in
-`languages/java/maven/maven-build.mjs`).
+`languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
 
 The Maven side produces the same reports as the init script, one set per module in
 `<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
 end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
-field by field, and crank (a real single-module Maven project) gave the same 3,329 findings both
-ways. Per snapshot:
+field by field. Per snapshot:
 
 1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
    output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
    surefire reports directory, a JaCoCo `destFile` the project configures, and the
-   `nitpicker.archunit.includes` property. Module directories come from following `<modules>` from
-   the root `pom.xml`, matched to the effective POM by `groupId:artifactId`.
+   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
+   or `settings.xml`). Module directories come from following the effective `<modules>` (active
+   profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
+   project by `groupId:artifactId`, or, when the raw coordinates use a property, by the effective
+   build directory inside the module directory. A declared module that matches nothing, a module
+   outside the project root, or two modules in one directory is a tool error.
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
-   module's resolved classpath (reactor modules as their `target/classes`).
-3. The tools resolved once from Maven Central through Maven itself (a generated tools project in the
-   temp directory, reused while the jars exist), so the project's `settings.xml` mirrors apply.
+   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
+   (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
+   build, so coverage never accumulates across runs.
+3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
+   `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
+   exist), so the project's `settings.xml` mirrors apply.
 4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
    without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
-   JaCoCo CLI report and PIT, with the same arguments as the init script tasks. The versions are read
-   from the init script's `pinned` map, so both builds always run the same tools.
+   JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
+   auxiliary classpath is the main and test compile classpaths plus both class directories). The
+   versions are read from the init script's `pinned` map, so both builds always run the same tools.
 
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
   `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
-  the build are ignored.
+  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
+  surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
+  `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
+  rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
+  the covered test run does not change coverage.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
   replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
-  instead. A module with test classes but no fresh coverage file is a tool error that points at a
-  surefire `<argLine>` without `@{argLine}`.
+  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
+  surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
+  or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
+  classes gets an empty report.
 - **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
   are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
-  (`languages/java/multi-module/java-modules.mjs`, build-neutral).
+  (`languages/java/builds/java-modules.mjs`, build-neutral). Duplicate detection runs per module, so
+  a clone between two modules is not found, as a clone between two source roots is not.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
-  run with `sh` when not executable; otherwise `mvn` from the PATH. The JDK tools (`java`, `jar`,
-  `jdeps`) come from `JAVA_HOME` when set, else the PATH.
-- **Not covered.** The Kotlin preset needs Gradle and says so. A surefire configuration that sets
+  run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
+  that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
+  set, else the PATH.
+- **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
+  project's Java sources. A surefire configuration that sets
   `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
   violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
   dependency on another module in the `test` phase; such reactors fail as they would with
-  `mvn test`.
+  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
+  [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
 
@@ -208,8 +225,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   (0 pass, 1 new enforceable findings, 2 tool error), the console summary, `new-findings.json`,
   `summary.json`, `report.sarif` and `report.junit.xml` are the ones described in the CLI README.
 - **Gradle failure.** `languages/java/adapters/java-runner.mjs` catches any failure of the preset on a
-  snapshot and returns one finding, `java/gradle-failure` with classification `tool-error`, whose
-  message is Gradle's diagnostic output. The comparison turns it into a tool error for that
+  snapshot and returns one finding, `java/gradle-failure` (`java/maven-failure` on a Maven build) with
+  classification `tool-error`, whose message is the build's diagnostic output. The comparison turns it into a tool error for that
   snapshot (`base` or `head`), skips the comparison for the analyzer and exits with 2; nothing
   throws and no partial result is compared.
 - **Gradle binary.** The command in `NITPICKER_GRADLE` when it is set; otherwise the analyzed
@@ -665,7 +682,8 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
-- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
+- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven (since added, see
+  [Maven builds](#maven-builds)).
 
 ## Tests
 
