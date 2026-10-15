@@ -8,7 +8,9 @@ The default Stryker config (`languages/typescript/preset/defaults/stryker.config
 files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the shared excluded globs (`dist`, `build`,
 `generated`, `node_modules`, `coverage`, `reports`, `target`, `*.d.ts`), `src/**/__tests__/**` and
 every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
-and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
+and `thresholds.break: null`, so Stryker itself never fails the run. For a Jest project the adapter swaps
+in Stryker's Jest runner (same checker and `perTest` analysis), and for a `node:test` project the TAP
+runner, which reruns whole test files, so analysis is per file there. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`
 reporter, and turns `Survived` and `NoCoverage` mutants into findings. `nitpicker --all` mutates
 that whole area.
