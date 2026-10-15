@@ -15,6 +15,8 @@
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
 //   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters and cyclomatic
 //                                    complexity (the CRAP input) (languages/java/gradle/StructureMetrics.java)
+//   build/nitpicker/classes.json    per-class methods, fields and superclass of the main sources, and the package and
+//                                    imports of each file (languages/java/gradle/ClassMetrics.java)
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
@@ -81,6 +83,7 @@ allprojects {
 
         def reportDir = layout.buildDirectory.dir('nitpicker')
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def aosp = nitpickerArgument('nitpicker.java.style') == 'aosp'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -236,7 +239,7 @@ allprojects {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
                 def files = (mainSources.asFileTree + testSources.asFileTree).matching { include '**/*.java' }.files.sort()
-                args(['--dry-run'] + files*.absolutePath)
+                args(['--dry-run'] + (aosp ? ['--aosp'] : []) + files*.absolutePath)
             }
         }
 
@@ -342,31 +345,36 @@ allprojects {
         // shared structure rule and the CRAP check. languages/java/gradle/StructureMetrics.java parses
         // the main sources with the JDK's own compiler tree API in single-file source mode, run by the
         // JVM that runs Gradle: no extra dependency and no version to pin beyond the JDK.
-        tasks.register('nitpickerStructure') {
-            group = 'nitpicker'
-            def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
-            doLast {
-                reportDir.get().asFile.mkdirs()
-                def roots = mainSources.files.findAll { it.exists() }.collect {
-                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                }
-                def output = reportDir.get().file('structure.json').asFile
-                def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-                def process = new ProcessBuilder([java, metricsSource.absolutePath,
-                        output.absolutePath, projectDir.absolutePath] + roots)
-                    .directory(projectDir).redirectErrorStream(true).start()
-                def log = process.inputStream.getText('UTF-8')
-                if (process.waitFor() != 0) {
-                    throw new GradleException("StructureMetrics failed: ${log.trim()}")
-                }
+        def runSourceMetrics = { String sourceName, String reportName ->
+            reportDir.get().asFile.mkdirs()
+            def roots = mainSources.files.findAll { it.exists() }.collect {
+                projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
+            }
+            def output = reportDir.get().file(reportName).asFile
+            def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+            def process = new ProcessBuilder([java, new File(initScriptDir, sourceName).absolutePath,
+                    output.absolutePath, projectDir.absolutePath] + roots)
+                .directory(projectDir).redirectErrorStream(true).start()
+            def log = process.inputStream.getText('UTF-8')
+            if (process.waitFor() != 0) {
+                throw new GradleException("${sourceName} failed: ${log.trim()}")
             }
         }
+        tasks.register('nitpickerStructure') {
+            group = 'nitpicker'
+            doLast { runSourceMetrics('StructureMetrics.java', 'structure.json') }
+        }
         // END SH5 structure metrics
+
+        tasks.register('nitpickerClasses') {
+            group = 'nitpicker'
+            doLast { runSourceMetrics('ClassMetrics.java', 'classes.json') }
+        }
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
             description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerClasses', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
