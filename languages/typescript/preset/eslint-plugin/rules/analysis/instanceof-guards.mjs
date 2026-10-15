@@ -58,11 +58,14 @@ function provesNotInstance(guard, expression) {
 }
 
 function exits(statement) {
-  if (statement.type === 'BlockStatement') {
-    const last = statement.body.at(-1);
-    return last !== undefined && exits(last);
+  const chain = [statement];
+  for (const current of chain) {
+    const last = current.type === 'BlockStatement' ? current.body.at(-1) : undefined;
+    if (last !== undefined) {
+      chain.push(last);
+    }
   }
-  return EXIT_STATEMENTS.has(statement.type);
+  return EXIT_STATEMENTS.has(chain.at(-1).type);
 }
 
 function isEarlierExitGuard(guard, statement) {
