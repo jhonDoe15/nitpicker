@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../java-diff.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 
 const script = readFileSync(INIT_SCRIPT, 'utf8');
 
@@ -31,6 +31,10 @@ describe('nitpickerSpringArch in the init script', () => {
     expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
       'onlyIf { usesSpring() }',
     );
+  });
+
+  it('tells the reader through the manifest that the rules ran', () => {
+    expect(/springArch\s*: ([^,\n]+)/.exec(taskBody('nitpickerJava'))[1]).toBe('usesSpring()');
   });
 
   it('resolves the pinned ArchUnit version', () => {
