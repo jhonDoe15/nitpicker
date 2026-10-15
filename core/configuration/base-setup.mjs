@@ -10,7 +10,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
   return createBaseSetupResolver({
     headConfig,
     conventions: headPolicy.conventions,
-    injectedAnalyzers: cli.analyzers,
+    injectedAnalyzers: cli.injectedAnalyzers,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
