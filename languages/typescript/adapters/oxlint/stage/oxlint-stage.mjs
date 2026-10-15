@@ -99,7 +99,7 @@ export function writeStageConfigs({ stage, projectRoot, sampleFile, translation 
   });
 }
 
-function stageConfig({ settings, overrides }, jsPlugins) {
+export function stageConfig({ settings, overrides }, jsPlugins) {
   const categories = [
     'correctness',
     'suspicious',

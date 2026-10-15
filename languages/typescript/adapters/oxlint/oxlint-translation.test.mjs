@@ -3,6 +3,7 @@ import {
   escapeGlob,
   messageIdResolver,
   nativeRuleIndex,
+  nativeSetting,
   PARITY_BRIDGED_RULES,
   rejectedRuleIds,
   reportedRuleKey,
@@ -189,5 +190,39 @@ describe('messageIdResolver', () => {
   it('leaves the id out when no template of the rule matches', () => {
     expect(messageIdOf('nitpicker/size', 'Something else.')).toBeUndefined();
     expect(messageIdOf('eslint/no-debugger', 'Unexpected debugger statement.')).toBeUndefined();
+  });
+});
+
+describe('options oxlint does not accept for a native rule', () => {
+  it.each([
+    [
+      'drops options that only steer the autofix',
+      'vitest/no-focused-tests',
+      [2, { fixable: true }],
+      [2],
+      [],
+    ],
+    [
+      'keeps the options oxlint knows and drops empty defaults',
+      'preserve-caught-error',
+      [2, { requireCatchParameter: true, errorClassNames: [] }],
+      [2, { requireCatchParameter: true }],
+      [],
+    ],
+    [
+      'bridges the rule when an option would change what it reports',
+      'preserve-caught-error',
+      [2, { requireCatchParameter: false, errorClassNames: ['AppError'] }],
+      [2, { requireCatchParameter: false, errorClassNames: ['AppError'] }],
+      ['preserve-caught-error'],
+    ],
+    ['leaves other rules alone', 'no-debugger', [2, { any: 1 }], [2, { any: 1 }], []],
+  ])('%s', (_name, ruleId, setting, expected, bridged) => {
+    const bridgedRules = new Set();
+
+    expect([nativeSetting(ruleId, setting, bridgedRules), [...bridgedRules]]).toEqual([
+      expected,
+      bridged,
+    ]);
   });
 });
