@@ -147,28 +147,33 @@ function enter(sourceFile, node, scope) {
   return { scope };
 }
 
+function unitEntry(sourceFile, node, { scope, unit }) {
+  return {
+    node,
+    at: node.getStart(sourceFile),
+    name: scope.join('.'),
+    kind: unit.kind,
+    ...lineRange(sourceFile, unit.range),
+  };
+}
+
 export function functionUnits(sourceFile) {
-  const names = new Map();
   const found = [];
   const pending = [{ node: sourceFile, scope: [] }];
   for (const { node, scope } of pending) {
-    const { scope: childScope, unit } = enter(sourceFile, node, scope);
-    if (unit !== undefined) {
-      const name = childScope.join('.');
-      found.push({
-        at: node.getStart(sourceFile),
-        name,
-        kind: unit.kind,
-        ...lineRange(sourceFile, unit.range),
-      });
-      if (unit.kind === 'function') {
-        names.set(node, name);
-      }
+    const entered = enter(sourceFile, node, scope);
+    if (entered.unit !== undefined) {
+      found.push(unitEntry(sourceFile, node, entered));
     }
     ts.forEachChild(node, (child) => {
-      pending.push({ node: child, scope: childScope });
+      pending.push({ node: child, scope: entered.scope });
     });
   }
-  const units = found.toSorted((left, right) => left.at - right.at).map(({ at, ...unit }) => unit);
+  const names = new Map(
+    found.filter(({ kind }) => kind === 'function').map(({ node, name }) => [node, name]),
+  );
+  const units = found
+    .toSorted((left, right) => left.at - right.at)
+    .map(({ name, kind, start, end }) => ({ name, kind, start, end }));
   return { names, units };
 }

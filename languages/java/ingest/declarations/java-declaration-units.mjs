@@ -43,10 +43,13 @@ function startMember(frame, memberStart) {
   Object.assign(frame, { memberStart, parentheses: 0, equals: -1, braces: 0 });
 }
 
+function lineOf(starts, offset) {
+  return starts.findLastIndex((start) => start <= offset) + 1;
+}
+
 function addUnit(state, name, { from, to }) {
-  const { starts } = state;
-  const lineOf = (offset) => starts.findLastIndex((start) => start <= offset) + 1;
-  state.units.push({ file: state.file, name, start: lineOf(from), end: lineOf(to) });
+  const { starts, file } = state;
+  state.units.push({ file, name, start: lineOf(starts, from), end: lineOf(starts, to) });
 }
 
 function onSemicolon(state, frame, offset) {
