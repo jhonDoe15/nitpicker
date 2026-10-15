@@ -5,10 +5,10 @@ import {
   PACKAGE_ROOT,
   SNAPSHOT_DIRECTORY_NAMES,
 } from '../../../../core/tooling/tool-resolution.mjs';
-export const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
-export const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
+const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
+const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
 
-export const VALUE_ARGUMENTS = new Set([
+const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
   '--kind',
   '--project-root',
@@ -21,14 +21,14 @@ export const VALUE_ARGUMENTS = new Set([
   '--exclude',
 ]);
 
-export function recordValue(values, name, value) {
+function recordValue(values, name, value) {
   if (!VALUE_ARGUMENTS.has(name)) {
     throw new Error(`Unknown static-check adapter argument: ${name}`);
   }
   values.set(name, value);
 }
 
-export function collectArguments(arguments_) {
+function collectArguments(arguments_) {
   const values = new Map();
   const patterns = [];
   const remaining = arguments_.values();
@@ -77,7 +77,7 @@ export function parseArguments(arguments_) {
   };
 }
 
-export function directoryRoot(value, name) {
+function directoryRoot(value, name) {
   const root = realpathSync(path.resolve(value));
   if (!statSync(root).isDirectory()) {
     throw new Error(`${name} must be a directory`);
@@ -85,7 +85,7 @@ export function directoryRoot(value, name) {
   return root;
 }
 
-export function validatedSnapshotRoot(value, name) {
+function validatedSnapshotRoot(value, name) {
   const root = directoryRoot(value, name);
   if (root === TRUSTED_TOOL_ROOT) {
     return root;
@@ -104,7 +104,7 @@ export function validatedSnapshotRoot(value, name) {
   return root;
 }
 
-export function normalizedPattern(value) {
+function normalizedPattern(value) {
   if (
     value.length === 0 ||
     path.posix.isAbsolute(value) ||
@@ -130,7 +130,7 @@ export function normalizedRelativePath(value, context) {
   return normalizedPath;
 }
 
-export function requiredValue(values, name) {
+function requiredValue(values, name) {
   return requiredString(values.get(name), name);
 }
 
