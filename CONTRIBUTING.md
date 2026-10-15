@@ -55,4 +55,21 @@ CI (the `typescript` workflow) runs:
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
+## Licenses
+
+Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
+unmodified, either downloaded at run time or installed as an unmodified npm package, may be
+weak-copyleft (LGPL, EPL, MPL). GPL, AGPL and source-available licenses (SSPL, SSALv1, BSL,
+Elastic and the like) are never allowed, in either form.
+
+Weak-copyleft tools today: SpotBugs and its find-sec-bugs plugin, and Checkstyle (LGPL); JaCoCo
+(EPL); axe-core, which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0).
+
+`core/licensing/dependency-licenses.test.mjs` enforces this on every test run. It reads the license
+field and the LICENSE file of every npm package nitpicker ships (the whole dependency tree, not just
+`package.json`) and checks every tool pinned in `languages/java/gradle/nitpicker.init.gradle` against
+the allowlist in `core/licensing/`. Adding a pinned Java tool means adding its license to that list
+in the same change, after reading the license text, since a package's metadata can disagree with
+its LICENSE file.
+
 To cut a release, see [docs/releasing.md](docs/releasing.md).
