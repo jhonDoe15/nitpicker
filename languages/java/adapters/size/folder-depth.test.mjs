@@ -31,8 +31,13 @@ describe('Java folder depth', () => {
     expect(findings([source('x/a/b/c/d/e'), source('y')])).toHaveLength(1);
   });
 
-  it('counts a file in the default package at the root', () => {
-    expect(findings([source('', 'Main.java'), source('a/b/c/d/e')])).toHaveLength(1);
+  it('lets default-package files and module and package descriptors leave the root alone', () => {
+    const shop = 'com/example/shop';
+    const legacy = [source(shop), source(`${shop}/a/b/c/d`)];
+    expect(findings([...legacy, source('', 'Main.java')])).toEqual([]);
+    expect(findings([...legacy, source('', 'module-info.java')])).toEqual([]);
+    expect(findings([...legacy, source('com/example', 'package-info.java')])).toEqual([]);
+    expect(findings([source('', 'Main.java'), source('a/b/c/d/e')])).toEqual([]);
   });
 
   it('takes the limit from thresholds and lifts the rule for the paths an exception names', () => {
@@ -45,6 +50,19 @@ describe('Java folder depth', () => {
         exceptions: [{ rule: 'folder-depth-limit', glob: 'src/main/java/r/a/**' }],
       }),
     ).toEqual([]);
+  });
+
+  it('keeps the root of the base when the branch adds a package outside it', () => {
+    const shop = 'com/example/shop';
+    const base = [source(shop), source(`${shop}/a/b/c/d`)];
+    const head = [...base, source('db/migration')];
+    expect(findings(head).map(({ path: found }) => found)).toEqual([
+      'src/main/java/com/example/shop/a/b/c/d',
+    ]);
+    expect(findings(head, { rootEntries: base })).toEqual([]);
+    expect(findings([...head, source('db/migration/a/b/c/d')], { rootEntries: base })).toHaveLength(
+      1,
+    );
   });
 
   it('has nothing to check without code', () => {
