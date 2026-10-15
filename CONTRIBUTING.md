@@ -63,13 +63,19 @@ weak-copyleft (LGPL, EPL, MPL). GPL, AGPL and source-available licenses (SSPL, S
 Elastic and the like) are never allowed, in either form.
 
 Weak-copyleft tools today: SpotBugs and its find-sec-bugs plugin, and Checkstyle (LGPL); JaCoCo
-(EPL); axe-core, which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0).
+(EPL-2.0); the JUnit Platform launcher that PIT needs (EPL-2.0, added at run time next to the
+project's own engine); Saxon-HE (MPL-2.0), which PMD, SpotBugs and Checkstyle pull in; axe-core,
+which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0). PMD itself is BSD-style, which the Java tool
+list accepts as permissive.
 
-`core/licensing/dependency-licenses.test.mjs` enforces this on every test run. It reads the license
-field and the LICENSE file of every npm package nitpicker ships (the whole dependency tree, not just
-`package.json`) and checks every tool pinned in `languages/java/gradle/nitpicker.init.gradle` against
-the allowlist in `core/licensing/`. Adding a pinned Java tool means adding its license to that list
-in the same change, after reading the license text, since a package's metadata can disagree with
-its LICENSE file.
+`core/licensing/dependency-licenses.test.mjs` enforces what it can read on every test run: each
+tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license entry in
+`core/licensing/` that the allowlist accepts and an exact version, and every package in
+`package-lock.json` must declare an allowed license, with its installed LICENSE text scanned for a
+GPL, AGPL or source-available notice (a package that offers an allowed license in an OR expression
+passes). Adding a pinned Java tool means adding its license entry in the same change, after reading
+the license text, since a package's metadata can disagree with its LICENSE file. Transitive Java
+dependencies that Gradle resolves at run time (Saxon-HE, the JUnit launcher) are not read by the
+test; they are listed above and reviewed by hand when a pinned tool is bumped.
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).

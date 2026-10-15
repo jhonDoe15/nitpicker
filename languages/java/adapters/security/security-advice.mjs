@@ -16,7 +16,7 @@ export function securityMessage(pattern) {
 }
 
 export function enclosingMethod(result) {
-  return result.locations?.[0]?.logicalLocations?.[0]?.fullyQualifiedName;
+  return result.locations?.[0]?.logicalLocations?.[0]?.fullyQualifiedName?.replace(/\(.*$/, '');
 }
 
 export function securitySubject(result, fallback) {

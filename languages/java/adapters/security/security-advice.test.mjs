@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { pinnedJavaTools } from '../../../../core/licensing/dependency-licenses.mjs';
 import { ADVICE_GROUPS } from './advice-groups.mjs';
 import {
   enclosingMethod,
@@ -11,7 +12,9 @@ import {
   withSecurityMessages,
 } from './security-advice.mjs';
 
-const FIND_SEC_BUGS_1_14_0 = [
+const LISTED_VERSION = '1.14.0';
+
+const FIND_SEC_BUGS_PATTERNS = [
   'ANDROID_BROADCAST',
   'ANDROID_EXTERNAL_FILE_ACCESS',
   'ANDROID_GEOLOCATION',
@@ -162,15 +165,49 @@ const excludeFilter = readFileSync(
   path.join(path.dirname(fileURLToPath(import.meta.url)), '../../gradle/security/exclude.xml'),
   'utf8',
 );
+const sinks = readFileSync(
+  path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../gradle/security/jakarta-sinks.txt',
+  ),
+  'utf8',
+);
+
+function queryOffsetFromTop(line) {
+  const parameters = /\(([^)]*)\)/.exec(line)[1];
+  return (parameters.match(/L[^;]+;/g) ?? []).length - 1;
+}
+
+function sinkOffsetErrors(text) {
+  return text
+    .split('\n')
+    .filter((line) => line !== '')
+    .filter((line) => Number(line.split(':').at(-1)) !== queryOffsetFromTop(line));
+}
+
 const excluded = [...excludeFilter.matchAll(/pattern="([^"]*)"/g)].flatMap(([, list]) =>
   list.split(','),
 );
 
+const initScript = readFileSync(
+  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../gradle/nitpicker.init.gradle'),
+  'utf8',
+);
+
 describe('find-sec-bugs advice', () => {
+  it('lists the patterns of the version the init script pins', () => {
+    const pinned = pinnedJavaTools(initScript).find(({ tool }) => tool === 'findSecBugs');
+
+    expect(
+      pinned?.version,
+      `FIND_SEC_BUGS_PATTERNS is the list of find-sec-bugs ${LISTED_VERSION} but the init script pins another version. Regenerate it: unzip the findsecbugs-plugin jar, list the <BugPattern type=...> values of findbugs.xml, update the list and LISTED_VERSION, then give each new pattern advice in advice-groups.mjs or exclude it in gradle/security/exclude.xml.`,
+    ).toBe(LISTED_VERSION);
+  });
+
   it('covers every pattern of the pinned plugin that is not excluded, and nothing else', () => {
     const covered = securityPatterns();
 
-    expect([...covered, ...excluded].sort()).toEqual([...FIND_SEC_BUGS_1_14_0].sort());
+    expect([...covered, ...excluded].sort()).toEqual([...FIND_SEC_BUGS_PATTERNS].sort());
   });
 
   it('gives each pattern one piece of advice', () => {
@@ -243,7 +280,8 @@ describe('security results', () => {
   });
 
   it('reads the enclosing method', () => {
-    expect(enclosingMethod(result('X', 'a.B.run(String)'))).toBe('a.B.run(String)');
+    expect(enclosingMethod(result('X', 'a.B.run(String)'))).toBe('a.B.run');
+    expect(enclosingMethod(result('X', 'a.B.run()'))).toBe('a.B.run');
     expect(enclosingMethod(result('X'))).toBeUndefined();
     expect(enclosingMethod({ ruleId: 'X' })).toBeUndefined();
   });
@@ -255,7 +293,48 @@ describe('security results', () => {
     expect(first).not.toBe(second);
   });
 
+  it('keeps the identity when only a parameter type of the method changes', () => {
+    const before = securitySubject(result('COMMAND_INJECTION', 'a.B.run(String)'), 'text');
+    const after = securitySubject(result('COMMAND_INJECTION', 'a.B.run(java.lang.Object)'), 'text');
+
+    expect(after).toBe(before);
+  });
+
   it('leaves the identity of a core SpotBugs result alone', () => {
     expect(securitySubject(result('DM_DEFAULT_ENCODING', 'a.B.run()'), 'text')).toBe('text');
+  });
+});
+
+describe('jakarta-sinks.txt', () => {
+  it('marks the query text, counted from the last argument, as the sink', () => {
+    expect(sinkOffsetErrors(sinks)).toEqual([]);
+  });
+
+  it('lists the five EntityManager query methods', () => {
+    expect(
+      sinks
+        .split('\n')
+        .filter((line) => line !== '')
+        .map((line) => line.split('(')[0]),
+    ).toEqual([
+      'jakarta/persistence/EntityManager.createQuery',
+      'jakarta/persistence/EntityManager.createQuery',
+      'jakarta/persistence/EntityManager.createNativeQuery',
+      'jakarta/persistence/EntityManager.createNativeQuery',
+      'jakarta/persistence/EntityManager.createNativeQuery',
+    ]);
+  });
+});
+
+describe('sinkOffsetErrors', () => {
+  it('counts the query text from the last argument', () => {
+    expect(queryOffsetFromTop('a.b(Ljava/lang/String;)V:0')).toBe(0);
+    expect(queryOffsetFromTop('a.b(Ljava/lang/String;Ljava/lang/Class;)V:1')).toBe(1);
+  });
+
+  it('reports a line with the wrong offset', () => {
+    expect(
+      sinkOffsetErrors('a.b(Ljava/lang/String;Ljava/lang/Class;)V:0\na.c(Ljava/lang/String;)V:0\n'),
+    ).toEqual(['a.b(Ljava/lang/String;Ljava/lang/Class;)V:0']);
   });
 });

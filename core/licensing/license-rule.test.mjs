@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   classifyExpression,
+  offersChoice,
   declaredExpression,
   forbiddenLicenseText,
   PERMISSIVE,
@@ -28,6 +29,8 @@ describe('classifyExpression', () => {
     ['Elastic-2.0', REJECTED],
     ['SEE LICENSE IN LICENSE.md', REJECTED],
     ['UNLICENSED', REJECTED],
+    ['\u0001permissive', REJECTED],
+    ['BSD-style', REJECTED],
   ])('%s is %s', (expression, verdict) => {
     expect(classifyExpression(expression)).toBe(verdict);
   });
@@ -64,6 +67,14 @@ describe('declaredExpression', () => {
 describe('forbiddenLicenseText', () => {
   it.each([
     ['GNU AFFERO GENERAL PUBLIC LICENSE\n Version 3', 'GPL or AGPL'],
+    ['# GNU GENERAL PUBLIC LICENSE\nVersion 2, June 1991', 'GPL or AGPL'],
+    ['**GNU GENERAL PUBLIC LICENSE**\n**Version 3, 29 June 2007**', 'GPL or AGPL'],
+    ['Licensed under the GNU General Public License Version 3', 'GPL or AGPL'],
+    ['GNU\nGENERAL PUBLIC\nLICENSE\nVersion 2', 'GPL or AGPL'],
+    ['Creative Commons Attribution-NonCommercial 4.0', 'Creative Commons NonCommercial'],
+    ['Sustainable Use License\nVersion 1.0', 'Sustainable Use License'],
+    ['Redis Source Available License 2.0 (RSALv2)', 'Redis Source Available License'],
+    ['The Prosperity Public License 3.0.0', 'Prosperity Public License'],
     ['  GNU GENERAL PUBLIC LICENSE\n Version 2', 'GPL or AGPL'],
     ['Server Side Public License\nVERSION 1', 'SSPL'],
     ['Sonar Source-Available License v1.0', 'SSALv1'],
@@ -84,5 +95,22 @@ describe('forbiddenLicenseText', () => {
         'GNU LESSER GENERAL PUBLIC LICENSE\nincorporates the terms of version 3 of the GNU General Public License.',
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('classifyExpression for Java tools', () => {
+  it('accepts an extra permissive name only when the caller passes it', () => {
+    const extraPermissive = new Set(['BSD-style']);
+
+    expect(classifyExpression('BSD-style', { extraPermissive })).toBe(PERMISSIVE);
+    expect(classifyExpression('BSD-style')).toBe(REJECTED);
+  });
+});
+
+describe('offersChoice', () => {
+  it('is true for an OR with an acceptable arm and false otherwise', () => {
+    expect(offersChoice('(MIT OR GPL-3.0)')).toBe(true);
+    expect(offersChoice('MIT')).toBe(false);
+    expect(offersChoice('GPL-3.0 OR AGPL-3.0')).toBe(false);
   });
 });

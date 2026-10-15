@@ -1,13 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  collectShippedPackages,
   javaToolLicenseViolations,
   JAVA_TOOL_LICENSES,
+  lockedPackages,
   npmLicenseViolations,
   pinnedJavaTools,
 } from './dependency-licenses.mjs';
@@ -25,22 +24,22 @@ afterEach(() => {
   }
 });
 
-function projectWith(dependencies) {
+function projectWith(packages) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-licenses-'));
   temporaryRoots.push(root);
-  writeFileSync(
-    path.join(root, 'package.json'),
-    JSON.stringify({
-      dependencies: Object.fromEntries(Object.keys(dependencies).map((name) => [name, '1.0.0'])),
-    }),
+  const lockPackages = Object.fromEntries(
+    Object.entries(packages).map(([name, { manifest, version = '1.0.0' }]) => [
+      `node_modules/${name}`,
+      { version, ...manifest },
+    ]),
   );
-  for (const [name, { manifest, files = {} }] of Object.entries(dependencies)) {
+  writeFileSync(
+    path.join(root, 'package-lock.json'),
+    JSON.stringify({ packages: { '': { name: 'demo' }, ...lockPackages } }),
+  );
+  for (const [name, { files = {} }] of Object.entries(packages)) {
     const directory = path.join(root, 'node_modules', name);
     mkdirSync(directory, { recursive: true });
-    writeFileSync(
-      path.join(directory, 'package.json'),
-      JSON.stringify({ name, version: '1.0.0', ...manifest }),
-    );
     for (const [file, text] of Object.entries(files)) {
       writeFileSync(path.join(directory, file), text);
     }
@@ -53,10 +52,8 @@ describe('licenses of what nitpicker ships', () => {
     expect(npmLicenseViolations(repositoryRoot)).toEqual([]);
   });
 
-  it('walks the whole dependency tree, not just package.json', () => {
-    const names = collectShippedPackages(repositoryRoot).packages.map(
-      ([, manifest]) => manifest.name,
-    );
+  it('reads the whole locked dependency tree, not just package.json', () => {
+    const names = lockedPackages(repositoryRoot).map(({ label }) => label.replace(/@[^@]*$/, ''));
 
     expect(
       ['eslint', 'typescript-eslint', 'axe-core', 'minimatch'].filter(
@@ -90,7 +87,21 @@ describe('npm license violations', () => {
     expect(npmLicenseViolations(root)).toEqual([]);
   });
 
-  it('rejects a package whose LICENSE file is source-available although package.json says LGPL', () => {
+  it('accepts a dual-licensed package that ships both license texts', () => {
+    const root = projectWith({
+      dual: {
+        manifest: { license: '(MIT OR GPL-3.0)' },
+        files: {
+          LICENSE: 'MIT License\n\nPermission is hereby granted',
+          'LICENSE-GPL': '# GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007',
+        },
+      },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([]);
+  });
+
+  it('rejects a package whose LICENSE file is source-available although the lock says LGPL', () => {
     const root = projectWith({
       sonar: {
         manifest: { license: 'LGPL-3.0-only' },
@@ -103,11 +114,12 @@ describe('npm license violations', () => {
     ]);
   });
 
-  it('rejects GPL, AGPL, SSPL and a missing license field', () => {
+  it('rejects GPL, AGPL, SSPL, a forged verdict and a missing license field', () => {
     const root = projectWith({
       gpl: { manifest: { license: 'GPL-3.0-or-later' } },
       agpl: { manifest: { license: 'AGPL-3.0' } },
       sspl: { manifest: { license: 'SSPL-1.0' } },
+      forged: { manifest: { license: '\u0001permissive' } },
       none: { manifest: {} },
     });
 
@@ -115,19 +127,23 @@ describe('npm license violations', () => {
       'gpl@1.0.0: license "GPL-3.0-or-later" is not on the allowlist',
       'agpl@1.0.0: license "AGPL-3.0" is not on the allowlist',
       'sspl@1.0.0: license "SSPL-1.0" is not on the allowlist',
+      'forged@1.0.0: license "\u0001permissive" is not on the allowlist',
       'none@1.0.0: license "undefined" is not on the allowlist',
     ]);
   });
 
-  it('checks dependencies of dependencies', () => {
-    const root = projectWith({
-      outer: { manifest: { license: 'MIT', dependencies: { inner: '1.0.0' } } },
-    });
-    const inner = path.join(root, 'node_modules/outer/node_modules/inner');
-    mkdirSync(inner, { recursive: true });
+  it('skips development-only packages and checks transitive ones by their lock entry', () => {
+    const root = projectWith({ outer: { manifest: { license: 'MIT' } } });
     writeFileSync(
-      path.join(inner, 'package.json'),
-      JSON.stringify({ name: 'inner', version: '2.0.0', license: 'BUSL-1.1' }),
+      path.join(root, 'package-lock.json'),
+      JSON.stringify({
+        packages: {
+          '': { name: 'demo' },
+          'node_modules/outer': { version: '1.0.0', license: 'MIT' },
+          'node_modules/outer/node_modules/inner': { version: '2.0.0', license: 'BUSL-1.1' },
+          'node_modules/tool': { version: '3.0.0', license: 'GPL-3.0', dev: true },
+        },
+      }),
     );
 
     expect(npmLicenseViolations(root)).toEqual([
@@ -135,14 +151,24 @@ describe('npm license violations', () => {
     ]);
   });
 
-  it('reports a dependency that is not installed', () => {
-    const root = projectWith({ a: { manifest: { license: 'MIT' } } });
+  it('uses the package name of an alias entry', () => {
+    const root = projectWith({});
     writeFileSync(
-      path.join(root, 'package.json'),
-      JSON.stringify({ dependencies: { a: '1.0.0', gone: '1.0.0' } }),
+      path.join(root, 'package-lock.json'),
+      JSON.stringify({
+        packages: {
+          'node_modules/typescript-native': {
+            name: 'typescript',
+            version: '7.0.2',
+            license: 'GPL-2.0',
+          },
+        },
+      }),
     );
 
-    expect(npmLicenseViolations(root)).toEqual(['gone: listed in dependencies but not installed']);
+    expect(npmLicenseViolations(root)).toEqual([
+      'typescript@7.0.2: license "GPL-2.0" is not on the allowlist',
+    ]);
   });
 });
 

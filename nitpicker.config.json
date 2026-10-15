@@ -48,6 +48,7 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/java/adapters/java-preset.e2e.test.mjs",
+        "languages/java/adapters/security/security.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs"
       ],
