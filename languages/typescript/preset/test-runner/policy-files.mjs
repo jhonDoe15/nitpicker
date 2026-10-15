@@ -5,7 +5,6 @@ const PACKAGE_ROOT = path.resolve(import.meta.dirname, '../../../..');
 const SOURCE_DIRECTORIES = [
   'languages/typescript/preset/test-runner',
   'languages/typescript/preset/test-runner/configs',
-  'languages/typescript/preset/eslint-plugin/rules/test-runner',
 ];
 
 function sourceFilesIn(directory) {
