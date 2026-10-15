@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { finding, sourceRoots } from '../../fixtures/spring-config-projects.mjs';
+import { finding, sourceRoots } from '../test-support/spring-config-projects.mjs';
 import { readSpringConfigFindings } from '../java-spring.mjs';
 import { springWiringProblems } from './spring-wiring.mjs';
 

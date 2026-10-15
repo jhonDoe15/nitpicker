@@ -8,7 +8,7 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
   summarize,
-} from '../fixtures/gradle-e2e.mjs';
+} from '../test-support/gradle-e2e.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 
 // End-to-end test of the find-sec-bugs plugin on the small Gradle fixture. It needs Java 21, Gradle

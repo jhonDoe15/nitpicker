@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONFIGURATION_FILES } from '../../java-analyzer.mjs';
+import { configurationFiles } from '../../java-analyzer.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');
@@ -12,7 +12,7 @@ const NAMES_MARKER_INSTEAD = new Set(['SpringDataNativeQuery']);
 
 describe('spring-ruleset.xml', () => {
   it('is part of the Java analyzer cache key', () => {
-    expect(CONFIGURATION_FILES.filter((file) => file.endsWith('spring-ruleset.xml'))).toEqual([
+    expect(configurationFiles().filter((file) => file.endsWith('spring-ruleset.xml'))).toEqual([
       'languages/java/gradle/spring-ruleset.xml',
     ]);
   });
