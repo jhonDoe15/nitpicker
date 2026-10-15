@@ -1,3 +1,4 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ESLint } from 'eslint';
 import functional from 'eslint-plugin-functional';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -5,7 +6,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { afterAll, describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
 import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mjs';
 
@@ -62,12 +62,12 @@ export function total(lines: readonly Line[]) {
   });
 });
 
-const typedRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-domain-typed-'));
-afterAll(() => rmSync(typedRoot, { recursive: true, force: true }));
+const typed = { root: '', eslint: undefined };
 
-async function typedFindings(code) {
-  const eslint = new ESLint({
-    cwd: typedRoot,
+beforeAll(() => {
+  typed.root = mkdtempSync(path.join(tmpdir(), 'nitpicker-domain-typed-'));
+  typed.eslint = new ESLint({
+    cwd: typed.root,
     overrideConfigFile: true,
     overrideConfig: [
       ...strictDomainConfig.map((entry) => ({ ...entry, files: ['**/*.ts'] })),
@@ -77,7 +77,7 @@ async function typedFindings(code) {
           parser: tseslint.parser,
           parserOptions: {
             projectService: { allowDefaultProject: ['*.ts'] },
-            tsconfigRootDir: typedRoot,
+            tsconfigRootDir: typed.root,
           },
         },
         plugins: { functional, nitpicker: nitpickerRules },
@@ -85,13 +85,17 @@ async function typedFindings(code) {
       },
     ],
   });
-  const [result] = await eslint.lintText(code, { filePath: path.join(typedRoot, 'invoice.ts') });
-  return result.messages.map(({ line, ruleId, message }) => ({
-    line,
-    ruleId,
-    start: message.split(' ').slice(0, 2).join(' '),
-  }));
+});
+
+afterAll(() => rmSync(typed.root, { recursive: true, force: true }));
+
+async function typedFindings(code) {
+  const filePath = path.join(typed.root, 'invoice.ts');
+  const [result] = await typed.eslint.lintText(code, { filePath });
+  return result.messages.map(({ line, ruleId, message }) => ({ line, ruleId, message }));
 }
+
+const lineAndRule = ({ line, ruleId }) => `${line} ${ruleId}`;
 
 describe('readonly types and mutation of domain values', () => {
   it('checks parameters, return types and module values, not locals inside functions', async () => {
@@ -108,58 +112,75 @@ describe('readonly types and mutation of domain values', () => {
       '}',
     ].join('\n');
 
-    const findings = await typedFindings(code);
+    const immutability = (await typedFindings(code))
+      .filter(({ ruleId }) => ruleId === 'functional/prefer-immutable-types')
+      .map(({ line, message }) => `${line} ${message.split(' ')[0]}`);
 
-    expect(findings.filter(({ ruleId }) => ruleId.startsWith('functional/'))).toEqual([
-      { line: 1, ruleId: 'functional/prefer-immutable-types', start: 'Variable should' },
-      { line: 2, ruleId: 'functional/prefer-immutable-types', start: 'Parameter should' },
-      { line: 2, ruleId: 'functional/prefer-immutable-types', start: 'Return type' },
-      { line: 7, ruleId: 'functional/prefer-immutable-types', start: 'Return type' },
-    ]);
+    expect(immutability).toEqual(['1 Variable', '2 Parameter', '2 Return', '7 Return']);
   });
 
-  it('reports each way a local could still be mutated', async () => {
+  it('reports each way a local could still be mutated, once', async () => {
     const code = [
-      'export function run(ms: number, n: number): number {',
-      '  const d = new Date(ms); d.setUTCHours(0);',
-      '  const s = new Set<number>(); s.add(n); s.clear();',
-      '  const m = new Map<number, number>(); m.set(1, n);',
-      '  const t = new Uint8Array(4); t.set([1, 2]);',
-      "  const a = [n]; a['push'](2);",
-      '  Array.prototype.push.call(a, 3); a.push.bind(a)(4);',
+      'export function run<T extends Set<number>>(ms: number, n: number, rd: Readonly<Date>, make: () => T): number {',
+      '  const d = new Date(ms); d.setUTCHours(0); rd.setTime(1);',
+      '  const s = new Set<number>(); s.add(n); s.clear(); make().add(1);',
+      "  const m = new Map<number, number>(); m.set(1, n); m['delete'](1);",
+      '  const t = new Uint8Array(4); t.set([1, 2]); t.sort();',
+      "  const a = [n]; a['push'](2); const k = 'pop'; a[k]();",
+      '  Array.prototype.push.call(a, 3); a.push.bind(a)(4); const p = a.push;',
       '  const o = { x: n }; ({ x: o.x } = { x: 2 });',
-      "  Reflect.set(o, 'x', 2);",
-      '  Set.prototype.add.call(s, 2);',
-      '  return d.getTime() + s.size + m.size + t.length + a.length + o.x;',
+      "  Reflect.set(o, 'x', 2); Reflect.apply(p, a, [5]);",
+      '  [1, 2].map(s.add, s); Set.prototype.add.call(s, 2);',
+      "  const q = new URLSearchParams(); q.append('a', 'b');",
+      '  return d.getTime() + s.size + m.size + t.length + a.length + o.x + q.size;',
       '}',
     ].join('\n');
 
-    const lines = (await typedFindings(code)).map(({ line, ruleId }) => `${line} ${ruleId}`);
+    const findings = await typedFindings(code);
 
-    expect(lines).toEqual([
+    expect(
+      findings
+        .filter(({ ruleId }) => ruleId !== 'functional/prefer-immutable-types')
+        .map(lineAndRule),
+    ).toEqual([
+      '1 no-restricted-syntax',
+      '2 nitpicker/no-mutating-method-in-domain',
       '2 nitpicker/no-mutating-method-in-domain',
       '3 nitpicker/no-mutating-method-in-domain',
       '3 nitpicker/no-mutating-method-in-domain',
+      '3 nitpicker/no-mutating-method-in-domain',
+      '4 nitpicker/no-mutating-method-in-domain',
       '4 nitpicker/no-mutating-method-in-domain',
       '5 nitpicker/no-mutating-method-in-domain',
-      '6 no-restricted-syntax',
+      '5 no-restricted-syntax',
+      '6 nitpicker/no-mutating-method-in-domain',
+      '6 nitpicker/no-mutating-method-in-domain',
       '7 no-restricted-syntax',
       '7 no-restricted-syntax',
+      '7 nitpicker/no-mutating-method-in-domain',
       '8 no-restricted-syntax',
       '9 no-restricted-syntax',
+      '9 no-restricted-syntax',
       '10 nitpicker/no-mutating-method-in-domain',
+      '10 nitpicker/no-mutating-method-in-domain',
+      '11 nitpicker/no-mutating-method-in-domain',
     ]);
+    expect(findings.find(({ line }) => line === 11).message).toContain(
+      'URLSearchParams.append changes the value it is called on',
+    );
   });
 
-  it('accepts reads and fresh values built from them', async () => {
+  it('accepts reads, fresh values and objects whose methods only share a name', async () => {
     const code = [
-      'export function shift(ms: number, xs: readonly number[]): number {',
+      'type Money = { readonly add: (a: number, b: number) => number };',
+      'export function shift(ms: number, xs: readonly number[], money: Money): number {',
       '  const seen = new Set(xs);',
       '  const next = new Set([...seen, 1]);',
       '  const byId = new Map(xs.map((x) => [x, x] as const));',
       '  const day = new Date(ms).getUTCDate();',
       "  const params = { sort: 'asc' };",
-      '  return next.size + byId.size + day + (seen.has(1) ? 1 : 0) + params.sort.length;',
+      '  const total = money.add(next.size, byId.size);',
+      '  return total + day + (seen.has(1) ? 1 : 0) + params.sort.length;',
       '}',
     ].join('\n');
 

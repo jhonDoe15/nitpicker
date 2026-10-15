@@ -1,58 +1,101 @@
-const COLLECTION_MUTATORS = new Map([
+const ARRAY_MUTATORS = new Set([
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+]);
+const TYPED_ARRAY_MUTATORS = new Set(['set', 'sort', 'reverse', 'fill', 'copyWithin']);
+const OWNER_MUTATORS = new Map([
+  ['Array', ARRAY_MUTATORS],
   ['Set', new Set(['add', 'delete', 'clear'])],
   ['WeakSet', new Set(['add', 'delete'])],
   ['Map', new Set(['set', 'delete', 'clear'])],
   ['WeakMap', new Set(['set', 'delete'])],
+  ['URLSearchParams', new Set(['append', 'delete', 'set', 'sort'])],
 ]);
 const TYPED_ARRAY =
   /^(Int8|Uint8|Uint8Clamped|Int16|Uint16|Int32|Uint32|Float16|Float32|Float64|BigInt64|BigUint64)Array$/;
-const TYPED_ARRAY_MUTATORS = new Set(['set', 'fill', 'sort', 'reverse', 'copyWithin']);
 const DATE_SETTER =
   /^set(UTC)?(FullYear|Month|Date|Hours|Minutes|Seconds|Milliseconds)$|^set(Time|Year)$/;
-
+const BUFFER_WRITER = /^(write|swap)/;
 const INDIRECT_CALLS = new Set(['call', 'apply', 'bind']);
 
-function mutatingAccess(callee) {
-  const method = methodName(callee);
-  if (INDIRECT_CALLS.has(method) && callee.object.type === 'MemberExpression') {
-    return { receiver: callee.object.object, method: methodName(callee.object) };
-  }
-  return { receiver: callee.object, method };
-}
-
-function methodName(callee) {
-  if (callee.type !== 'MemberExpression') {
-    return undefined;
-  }
-  return callee.computed ? callee.property.value : callee.property.name;
-}
-
-function typeNames(type) {
-  const parts = type.isUnion() || type.isIntersection() ? type.types : [type];
-  return parts.map((part) => part.getSymbol()?.getName()).filter((name) => name !== undefined);
-}
-
-function mutates(typeName, method) {
-  if (typeName === 'Date') {
+function mutates(owner, method) {
+  if (owner === 'Date') {
     return DATE_SETTER.test(method);
   }
-  if (TYPED_ARRAY.test(typeName)) {
+  if (owner === 'Buffer') {
+    return BUFFER_WRITER.test(method);
+  }
+  if (TYPED_ARRAY.test(owner)) {
     return TYPED_ARRAY_MUTATORS.has(method);
   }
-  return COLLECTION_MUTATORS.get(typeName)?.has(method) === true;
+  return OWNER_MUTATORS.get(owner)?.has(method) === true;
+}
+
+function staticName(node, services) {
+  if (!node.computed) {
+    return node.property.type === 'Identifier' ? node.property.name : undefined;
+  }
+  const type = services.getTypeAtLocation(node.property);
+  return type.isStringLiteral() ? type.value : undefined;
+}
+
+function partsOf(type) {
+  return type.isUnion() || type.isIntersection() ? type.types : [type];
+}
+
+function ownersOf(property) {
+  return (property?.declarations ?? [])
+    .map((declaration) => declaration.parent?.name?.text)
+    .filter((name) => name !== undefined);
+}
+
+function mutatedOwner(node, method, services) {
+  const checker = services.program.getTypeChecker();
+  const receiver = services.getTypeAtLocation(node.object);
+  return partsOf(receiver)
+    .flatMap((part) => ownersOf(checker.getApparentType(part).getProperty(method)))
+    .find((owner) => mutates(owner, method));
+}
+
+function isPlainCallee(node) {
+  return !node.computed && node.parent.type === 'CallExpression' && node.parent.callee === node;
+}
+
+function isReportedBySyntax(node, method) {
+  if (!ARRAY_MUTATORS.has(method) || node.computed) {
+    return false;
+  }
+  if (isPlainCallee(node)) {
+    return true;
+  }
+  const outer = node.parent;
+  return (
+    outer.type === 'MemberExpression' &&
+    outer.object === node &&
+    INDIRECT_CALLS.has(outer.property.name) &&
+    isPlainCallee(outer)
+  );
 }
 
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow mutating Set, Map, Date and typed array methods in domain code',
+      description:
+        'Disallow mutating methods of arrays, Set, Map, Date, typed arrays, Buffer and URLSearchParams in domain code',
       requiresTypeChecking: true,
     },
     schema: [],
     messages: {
       mutatingMethod:
-        'domain/ code does not mutate a {{type}}: build a new value instead (new Set([...set, x]), new Map([...map, [k, v]]), new Date(ms) from a computed time). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
+        'domain/ code does not mutate values, and {{owner}}.{{method}} changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
@@ -63,18 +106,14 @@ export const rule = {
       );
     }
     return {
-      CallExpression(node) {
-        if (node.callee.type !== 'MemberExpression') {
+      MemberExpression(node) {
+        const method = staticName(node, services);
+        if (method === undefined || isReportedBySyntax(node, method)) {
           return;
         }
-        const { receiver, method } = mutatingAccess(node.callee);
-        if (typeof method !== 'string') {
-          return;
-        }
-        const type = services.getTypeAtLocation(receiver);
-        const mutated = typeNames(type).find((name) => mutates(name, method));
-        if (mutated !== undefined) {
-          context.report({ node, messageId: 'mutatingMethod', data: { type: mutated } });
+        const owner = mutatedOwner(node, method, services);
+        if (owner !== undefined) {
+          context.report({ node, messageId: 'mutatingMethod', data: { owner, method } });
         }
       },
     };
