@@ -53,7 +53,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
 - **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
   `languages/java/ingest/sarif.mjs` (ruff), `format-check.mjs` (the format check) and `common.mjs`.
-  The one new ingester is `languages/python/ingest/coverage/coverage-json.mjs` for the coverage.py JSON
+  The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is Java's `applyJavaPolicy` /
   `configureJavaAnalyzer`, which are language-neutral and take the tool name for a
   `baseline-expansion` finding as an option.
@@ -321,7 +321,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
   needed for the per-function data.
-- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage/coverage-json.mjs`:
+- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-reports/coverage-json.mjs`:
   `line-coverage` per file (a metric, as for JaCoCo and lcov) and `uncovered-function` for each
   function none of whose statements ran. Both are descriptive; PY3 turns the same report into CRAP
   and PY4 into changed-branch coverage (slice 4 below). The JSON also carries the per-line branch data
@@ -450,7 +450,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   file, the branch arcs coverage.py recorded, `executed_branches` and `missing_branches` as
   `[from line, to line]` pairs (a negative `to` leaves the enclosing function, class or module).
   The runner always turns branch coverage on, so both snapshots have them.
-- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage/coverage-branches.mjs`) groups the
+- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-reports/coverage-branches.mjs`) groups the
   arcs by their `from` line and emits one enforceable `coverage-py` / `changed-branch-coverage`
   finding per line whose taken outcomes are below 95% (the minimum of the other languages). Lines
   without branches are never reported. The tool name is `coverage-py`, not `coverage`: `coverage`
@@ -488,7 +488,7 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
   and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
   `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
   only this rule's. Test files are not measured, so a `.` source root does not gate them.
-- **Tests.** `languages/python/ingest/coverage/coverage-branches.test.mjs` (the ingester on a recorded
+- **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
   six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,

@@ -14,9 +14,9 @@ import {
 } from '../metrics/java-structure.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { ingestJacoco } from '../../ingest/coverage/jacoco.mjs';
+import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
-import { ingestJacocoBranches } from '../../ingest/coverage/jacoco-branches.mjs';
+import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../../ingest/sarif.mjs';
 import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {

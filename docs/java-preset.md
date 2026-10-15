@@ -309,7 +309,7 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Tool and report.** No new tool: the JaCoCo XML of slice 1 already has, per source line, the
   covered and missed branch outcomes (`<line nr mb cb>`). The init script is unchanged.
-- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage/jacoco-branches.mjs`) emits one enforceable
+- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage-reports/jacoco-branches.mjs`) emits one enforceable
   `jacoco` / `changed-branch-coverage` finding per source line whose covered branch outcomes are
   below 95% (the TypeScript check's minimum); lines without branches are never reported. It runs on
   both snapshots, so a branch that is uncovered on the base is baselined like any other finding.
@@ -331,7 +331,7 @@ resolved plus a new finding, as in the TypeScript check.
   used. A line that is only reformatted counts as changed. Lines whose source text is empty after
   trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
   that is added or removed changes which branches are covered on head.
-- **Tests.** `languages/java/ingest/coverage/jacoco-branches.test.mjs` (sample report, identity stability,
+- **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs` (sample report, identity stability,
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).

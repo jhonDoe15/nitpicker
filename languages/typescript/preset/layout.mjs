@@ -1,5 +1,4 @@
-import { filesUnder } from '../../../shared/filesystem.mjs';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
 import {
@@ -102,19 +101,19 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     graphIncludeOnly: `^(${[...sourceRoots, ...testRoots].map(escapeRegExp).join('|')})(?:/|$)`,
     excludePattern:
       exclude.length === 0 ? undefined : exclude.map((glob) => globToRegExpSource(glob)).join('|'),
-    isExcluded(file) {
+    isExcluded: (file) => {
       const normalized = file.replaceAll('\\', '/');
       return excludeMatchers.some((matcher) => matcher.test(normalized));
     },
-    isTestFile(file) {
+    isTestFile: (file) => {
       const normalized = file.replaceAll('\\', '/');
       if (!codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
       return testPattern.test(normalized);
     },
-    isRunnableTestFile(file) {
+    isRunnableTestFile: (file) => {
       return resolved.isTestFile(file) && runnableTestPattern.test(file);
     },
-    isSourceFile(file) {
+    isSourceFile: (file) => {
       const normalized = file.replaceAll('\\', '/');
       return (
         sourcePattern.test(normalized) &&
@@ -124,7 +123,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
         !resolved.isExcluded(normalized)
       );
     },
-    isSourceUnderRoot(file, root) {
+    isSourceUnderRoot: (file, root) => {
       const normalized = file.replaceAll('\\', '/');
       const prefix = `${root.replaceAll('\\', '/').replace(/\/$/, '')}/`;
       return (
@@ -133,35 +132,42 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
         !resolved.isExcluded(normalized)
       );
     },
-    sourceRootOf(file) {
+    sourceRootOf: (file) => {
       return sourceRoots.find((root) => file.includes(`/${root}/`));
     },
-    isTestFixture(file, name = '') {
+    isTestFixture: (file, name = '') => {
       const normalized = file.replaceAll('\\', '/');
       return testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`));
     },
-    projectCodeFiles(projectRoot, roots = resolved.graphRoots) {
-      const files = [];
-      for (const root of existingRoots(projectRoot, roots)) {
-        function skipDirectory(absolute) {
-          return GENERATED_DIRECTORY.test(
-            path.relative(projectRoot, absolute).replaceAll('\\', '/'),
-          );
-        }
-        for (const absolute of filesUnder(path.join(projectRoot, root), { skipDirectory })) {
-          const name = path.relative(projectRoot, absolute).replaceAll('\\', '/');
-          if (
-            !GENERATED_DIRECTORY.test(name) &&
-            (resolved.isSourceFile(name) || resolved.isTestFile(name)) &&
-            !resolved.isExcluded(name)
-          )
-            files.push(name);
-        }
-      }
-      return files;
-    },
+    projectCodeFiles: (projectRoot, roots = resolved.graphRoots) =>
+      codeFilesUnder(resolved, projectRoot, existingRoots(projectRoot, roots)),
   };
   return resolved;
+}
+
+function codeFilesUnder(layout, projectRoot, roots) {
+  return roots.flatMap((root) => codeFilesUnderRoot(layout, projectRoot, root).toSorted());
+}
+
+function codeFilesUnderRoot(layout, projectRoot, root) {
+  const files = [];
+  const pending = [root];
+  for (const relative of pending) {
+    const entries = readdirSync(path.join(projectRoot, relative), { withFileTypes: true })
+      .map((entry) => ({ entry, name: relative ? `${relative}/${entry.name}` : entry.name }))
+      .filter(({ name }) => !GENERATED_DIRECTORY.test(name));
+    pending.push(...entries.filter(({ entry }) => entry.isDirectory()).map(({ name }) => name));
+    files.push(...entries.filter((item) => isCodeFile(layout, item)).map(({ name }) => name));
+  }
+  return files;
+}
+
+function isCodeFile(layout, { entry, name }) {
+  return (
+    entry.isFile() &&
+    (layout.isSourceFile(name) || layout.isTestFile(name)) &&
+    !layout.isExcluded(name)
+  );
 }
 
 export function existingRoots(projectRoot, roots) {
