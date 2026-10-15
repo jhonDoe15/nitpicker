@@ -9,7 +9,7 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
   summarize,
-} from '../fixtures/gradle-e2e.mjs';
+} from '../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
