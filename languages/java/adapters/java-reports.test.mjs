@@ -460,7 +460,8 @@ describe('readJavaFindings: guard reports', () => {
       path.join(reports, 'dependencies.json'),
       JSON.stringify({
         buildFile: 'build.gradle',
-        declared: [{ group: 'g', name: 'a', version: '2.+' }],
+        analyzed: true,
+        declared: [{ configuration: 'implementation', group: 'g', name: 'a', archives: ['a.jar'] }],
       }),
     );
 
@@ -473,7 +474,7 @@ describe('readJavaFindings: guard reports', () => {
     ).toEqual([
       ['javac', 'rawtypes', 'src/main/java/demo/Bad.java'],
       ['forbiddenapis', 'legacy-date-time', 'src/main/java/demo/Bad.java'],
-      ['dependencies', 'dependency-version-not-pinned', 'build.gradle'],
+      ['dependencies', 'unused-declared-dependency', 'build.gradle'],
     ]);
   });
 });
