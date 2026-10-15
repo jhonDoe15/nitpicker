@@ -28,7 +28,7 @@ const inProcessScripts = new Map([
   [javaRunnerPath, runJavaRunner],
 ]);
 
-/** Same contract as the scheduler subprocess: `{ reports, errors, timings }` in task order. */
+/** Same contract as the scheduler subprocess: `{ reports, errors, timings, skipped }` in task order. */
 export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
   const reportSettled =
     progress === undefined
@@ -88,6 +88,9 @@ export function runTasksInProcess(tasks, headPolicyFile, { progress } = {}) {
       .filter((outcome) => outcome.error !== undefined)
       .map((outcome) => ({ name: outcome.name, message: outcome.error })),
     timings: results.map(({ name, elapsedMs }) => ({ name, elapsedMs })),
+    skipped: results
+      .filter((outcome) => outcome.skippedBecause !== undefined)
+      .map((outcome) => ({ name: outcome.name, because: outcome.skippedBecause })),
   };
 }
 

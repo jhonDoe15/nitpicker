@@ -558,6 +558,9 @@ fails only when it grows, and a package folder moved to a new path is matched to
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/java-cli.test.mjs` runs an exception through the CLI.
+- `languages/java/adapters/red-base/red-base.e2e.test.mjs`: the Kotlin half (with a Java half under
+  `NITPICKER_JAVA_E2E=1`): a base whose tests fail and a head that repairs them. See "A base whose
+  tests fail" in `usage.md`. `red-base/tests-failed.test.mjs` covers the rerun with a fake Gradle.
 - `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project

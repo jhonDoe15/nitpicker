@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
@@ -17,6 +17,7 @@ import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs'
 import { planAnalyzerShards } from './sharding.mjs';
 import { takeOptionValue } from './cli.mjs';
 import { runGit } from './git.mjs';
+import { readAndValidateShard, readJson } from './shards/read-shard.mjs';
 import { withTemporaryWorktree } from './worktree.mjs';
 
 const COMMON_SUMMARY_PROPERTIES = [
@@ -73,7 +74,7 @@ export function aggregateShardReports({
   );
   validateCommonSummaries(shardReports);
 
-  const { newFindings, resolvedFindings, changedMetrics, heldFindings, toolErrors } =
+  const { newFindings, resolvedFindings, changedMetrics, heldFindings, toolErrors, notes } =
     mergeShardEntries(shardReports, analyzerResolutionErrors);
   const toolsByName = new Map(
     shardReports.flatMap(({ summary }) => summary.tools.map((tool) => [tool.name, tool])),
@@ -107,6 +108,7 @@ export function aggregateShardReports({
     unchangedFindings: sortByToolAndPath(heldFindings),
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
+    notes: sortByToolAndPath(notes),
   };
   report.text = writeDiffReports(outputRoot, report);
   return report;
@@ -125,6 +127,7 @@ function mergeShardEntries(shardReports, analyzerResolutionErrors) {
     changedMetrics: mergeEntries(shardReports, 'changedMetrics'),
     heldFindings: mergeEntries(shardReports, 'heldFindings'),
     toolErrors,
+    notes: mergeEntries(shardReports, 'notes'),
   };
 }
 
@@ -289,77 +292,6 @@ function parseArguments(arguments_) {
     shardCount: Number(values['--shard-count']),
     policyRoot: values['--policy-root'],
   };
-}
-
-function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
-  const shardRoot = path.join(inputRoot, String(index));
-  const report = {
-    summary: readJson(shardRoot, 'summary.json', index),
-    newFindings: readJson(shardRoot, 'new-findings.json', index),
-    resolvedFindings: readJson(shardRoot, 'resolved-findings.json', index),
-    changedMetrics: readJson(shardRoot, 'changed-metrics.json', index),
-    heldFindings: readOptionalJson(shardRoot, 'held-findings.json', index) ?? [],
-    toolErrors: readJson(shardRoot, 'tool-errors.json', index),
-  };
-  const expectedNames = expectedAnalyzers.map(({ name }) => name);
-  const actualNames = report.summary.tools?.map(({ name }) => name);
-  if (JSON.stringify(actualNames) !== JSON.stringify(expectedNames)) {
-    throw new Error(
-      `Quality shard ${String(index)} expected analyzers ${expectedNames.join(', ')} but reported ${(actualNames ?? []).join(', ')}`,
-    );
-  }
-  for (const [toolIndex, analyzer] of expectedAnalyzers.entries()) {
-    const tool = report.summary.tools[toolIndex];
-    if (
-      tool.version !== analyzer.version ||
-      tool.configurationHash !== analyzer.configurationHash
-    ) {
-      throw new Error(`Quality shard ${String(index)} has stale policy for ${analyzer.name}`);
-    }
-  }
-  validateShardEntries(report, new Set(expectedNames), index);
-  return report;
-}
-
-function readOptionalJson(root, fileName, shardIndex) {
-  return existsSync(path.join(root, fileName)) ? readJson(root, fileName, shardIndex) : undefined;
-}
-
-function readJson(root, fileName, shardIndex) {
-  const filePath = path.join(root, fileName);
-  try {
-    return JSON.parse(readFileSync(filePath, 'utf8'));
-  } catch (error) {
-    throw new Error(
-      `Quality shard ${String(shardIndex)} could not read ${fileName}: ${error instanceof Error ? error.message : String(error)}`,
-      { cause: error },
-    );
-  }
-}
-
-function validateShardEntries(report, expectedNames, shardIndex) {
-  for (const property of ['newFindings', 'resolvedFindings', 'changedMetrics', 'heldFindings']) {
-    if (!Array.isArray(report[property])) {
-      throw new TypeError(`Quality shard ${String(shardIndex)} ${property} must be an array`);
-    }
-    const unexpected = report[property].find(({ tool }) => !expectedNames.has(tool));
-    if (unexpected !== undefined) {
-      throw new Error(
-        `Quality shard ${String(shardIndex)} reported unexpected analyzer ${unexpected.tool}`,
-      );
-    }
-  }
-  if (!Array.isArray(report.toolErrors)) {
-    throw new TypeError(`Quality shard ${String(shardIndex)} toolErrors must be an array`);
-  }
-  const unexpectedError = report.toolErrors.find(
-    ({ tool }) => tool !== 'analyzer-scheduler' && !expectedNames.has(tool),
-  );
-  if (unexpectedError !== undefined) {
-    throw new Error(
-      `Quality shard ${String(shardIndex)} reported unexpected analyzer ${unexpectedError.tool}`,
-    );
-  }
 }
 
 function validateCommonSummaries(shardReports) {

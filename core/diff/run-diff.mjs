@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
-import { compareFindings } from './compare.mjs';
+import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
 import {
   captureWorkingTree,
   readChangedLines,
@@ -9,7 +9,7 @@ import {
   resolveBaseProjectPath,
   resolveComparison,
 } from './git.mjs';
-import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
+import { policyHash, sortByToolAndPath } from './report-model.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import {
   prepareSnapshotDependencies,
@@ -253,73 +253,10 @@ function withPreparedAnalyzerDependencies(
 }
 
 function combineAnalyzerReports(context) {
-  const { analyzers, baseRun, headRun, additionalToolErrors } = context;
+  const { baseRun, headRun, additionalToolErrors } = context;
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const outcomes = analyzers.map((analyzer, index) =>
-    compareAnalyzer({ ...context, analyzer, index, toolErrors }),
-  );
-  return buildReport({ ...context, outcomes, toolErrors });
-}
-
-function compareAnalyzer(context) {
-  const { analyzer, index, baseRun, headRun, toolErrors } = context;
-  const name = analyzerName(analyzer, index);
-  const baseReport = baseRun.reports.get(name);
-  const headReport = headRun.reports.get(name);
-  const baseFindings = withoutEmittedToolErrors(baseReport?.findings ?? [], 'base', toolErrors);
-  const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
-  const comparable =
-    baseReport !== undefined &&
-    headReport !== undefined &&
-    !toolErrors.some((error) => error.tool === name);
-  const result = comparable
-    ? compareOrReportError({ ...context, name, baseFindings, headFindings })
-    : emptyComparison();
-  return {
-    result,
-    tool: toolSummary({ ...context, name, baseFindings, headFindings, result }),
-  };
-}
-
-function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors } = context;
-  try {
-    return compareFindings({
-      baseFindings,
-      headFindings,
-      baseToHeadRenames: context.baseToHeadRenames,
-      baseToHeadDirectories: context.baseToHeadDirectories,
-      touchedCode: context.touchedCode,
-    });
-  } catch (error) {
-    toolErrors.push({
-      tool: name,
-      snapshot: 'comparison',
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return emptyComparison();
-  }
-}
-
-function toolSummary({ analyzer, name, baseRun, headRun, baseFindings, headFindings, result }) {
-  const baseElapsedMs = baseRun.timings.get(name);
-  const headElapsedMs = headRun.timings.get(name);
-  const skippedBecause = headRun.skipped?.get(name) ?? baseRun.skipped?.get(name);
-  return {
-    name,
-    ...(skippedBecause === undefined ? {} : { skippedBecause }),
-    version: analyzerMetadata(analyzer, 'version'),
-    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
-    base: baseFindings.length,
-    head: headFindings.length,
-    new: result.newFindings.length,
-    resolved: result.resolvedFindings.length,
-    unchanged: result.unchangedFindings.length,
-    changedMetrics: result.changedMetrics.length,
-    baseElapsedMs,
-    headElapsedMs,
-    elapsedMs: (baseElapsedMs ?? 0) + (headElapsedMs ?? 0),
-  };
+  const { outcomes, notes } = compareAnalyzers({ ...context, toolErrors });
+  return buildReport({ ...context, outcomes, notes, toolErrors });
 }
 
 function collect(outcomes, key) {
@@ -363,30 +300,6 @@ function buildReport(context) {
     unchangedFindings: sortByToolAndPath(collect(outcomes, 'unchangedFindings')),
     changedMetrics: sortByToolAndPath(collect(outcomes, 'changedMetrics')),
     toolErrors: sortByToolAndPath(toolErrors),
-  };
-}
-
-function withoutEmittedToolErrors(findings, snapshot, toolErrors) {
-  return findings.filter((finding) => {
-    if (finding.classification !== 'tool-error') {
-      return true;
-    }
-    toolErrors.push({
-      tool: finding.tool,
-      snapshot,
-      rule: finding.rule,
-      path: finding.path,
-      message: finding.message,
-    });
-    return false;
-  });
-}
-
-function emptyComparison() {
-  return {
-    newFindings: [],
-    resolvedFindings: [],
-    unchangedFindings: [],
-    changedMetrics: [],
+    notes: sortByToolAndPath(context.notes),
   };
 }

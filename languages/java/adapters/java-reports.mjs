@@ -49,17 +49,21 @@ export function readJavaFindings(
     lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
-    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
+    jacoco:
+      manifest.testsFailed === true
+        ? undefined
+        : readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
+  const { jacoco } = context;
   return {
     findings: [
       ...sarifFindings(context),
       ...formatFindings(context),
       ...checkstyleFindings(context),
       ...readDuplicateFindings(reportRoot),
-      ...jacocoFindings(context, context.jacoco),
+      ...(jacoco === undefined ? [] : jacocoFindings(context, jacoco)),
       ...archunitFindings(context),
-      ...crapFindings(context, context.jacoco, crapLimit),
+      ...(jacoco === undefined ? [] : crapFindings(context, jacoco, crapLimit)),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
       ...readJavaFileLimitFindings(projectRoot, {
@@ -67,7 +71,7 @@ export function readJavaFindings(
         kotlin,
         policy: { thresholds: fileLimits, exclude, exceptions },
       }),
-      ...branchFindings(context, context.jacoco),
+      ...(jacoco === undefined ? [] : branchFindings(context, jacoco)),
       ...readCouplingFindings(reportRoot, {
         projectRoot,
         sourceRoots: context.sourceRoots,

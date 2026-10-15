@@ -51,6 +51,26 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   or any other file changed). Only mutants that are new on head fail, whichever way the results
   were obtained. `--all` mutates every source file.
 
+### A base whose tests fail
+
+A change that repairs a red base is not blocked. When the project's tests fail on the base and pass
+on the head, the run is not a tool error in any preset: the report carries a note (`notes.json`, a
+`Notes:` section of `report.txt`, one line in the console summary) and the run is judged as follows.
+
+- The base results of the checks that need passing tests are unknown: changed-branch coverage
+  (`changed-branch-coverage`), CRAP (`crap-score-limit`, `crap-coverage-unknown`) and mutation
+  (`mutant-*`). Every other check (lint, format, types, structure, duplicates, coupling, file
+  limits, test-runtime) is compared with the base as usual.
+- A finding of those checks on the head is new when its file is added by the change or it sits on a
+  line the change adds or edits (a CRAP finding: anywhere in an edited function). Any other one
+  is unchanged and does not fail, so legacy code cannot fail merely because the base had no data.
+  An edited function over the CRAP limit therefore fails, because there is no base score to hold
+  it against: test it or split it.
+- A red head still fails, with `tests-failed` as a tool error. When base and head are both red,
+  both are listed as tool errors.
+- A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
+  reason is still a tool error.
+
 The base ref is the first match of:
 
 1. `--base <ref>`
@@ -67,7 +87,7 @@ In CI, fetch enough history to contain the merge base (for example `fetch-depth:
 
 Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override and a
+`changed-metrics.json`, `tool-errors.json` and `notes.json` (informational notes such as a red base). The summary records every config override and a
 policy hash. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
 console output.
 
@@ -332,7 +352,8 @@ score (lizard at the version pinned in languages/java/gradle/nitpicker.init.grad
 as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
-environment, failing tests, a crashing tool), the failure is reported as a tool error of the
+environment, failing tests, a crashing tool; failing tests on the base alone are only a note, see
+[A base whose tests fail](#a-base-whose-tests-fail)), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
 `coverage-failed`, `types-failed`, `rules-failed`, `structure-failed`, `lizard-failed` or a plain one when the environment is missing, and `mutation` for
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,

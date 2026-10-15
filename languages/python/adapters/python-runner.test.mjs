@@ -340,6 +340,43 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
+  it('keeps the findings that need no test run, and leaves out the coverage ones, when the base tests fail', () => {
+    const root = project({
+      'violations.txt': 'F401|src/demo/a.py|unused\n',
+      'unformatted.txt': 'src/demo/a.py\n',
+      'coverage-data.json': coverageReport,
+      'test-exit.txt': '1\n',
+    });
+
+    const { findings } = analyze(root, { policy: { snapshot: 'base' } });
+
+    expect(
+      findings
+        .filter(({ tool }) => tool !== 'coupling')
+        .map(({ tool, rule, classification }) => `${tool} ${rule} ${classification}`),
+    ).toEqual([
+      'ruff F401 enforceable',
+      'ruff-format format enforceable',
+      'python tests-failed tool-error',
+    ]);
+  });
+
+  it('returns only the tool errors when another step fails on the base too', () => {
+    const root = project({
+      'fail.json': JSON.stringify({ ruff: 'ruff crashed' }),
+      'test-exit.txt': '1\n',
+    });
+
+    const { findings } = analyze(root, { policy: { snapshot: 'base' } });
+
+    expect(findings.map(({ rule }) => rule)).toEqual([
+      'ruff-failed',
+      'format-failed',
+      'tests-failed',
+      'rules-failed',
+    ]);
+  });
+
   it('maps a broken environment to one tool-error finding', () => {
     const root = project();
 

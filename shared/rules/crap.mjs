@@ -14,6 +14,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 // identity includes the function's source hash); this rule decides:
 //   `crap-coverage-unknown` (enforceable) when `crap` is not a finite number;
 //   `crap-score-limit` (enforceable) when `crap` >= `limit`.
+// `endLine`, when given, is its last line: an edit inside the function then counts as touching it.
 // `ratchetKey` names the function without its source hash. With it, a function that was already
 // over the limit on the base and was edited fails only when its score rose (see the ratchet in
 // core/diff/compare.mjs); without it, every edit of an over-limit function is a new finding.
@@ -42,13 +43,22 @@ export function crapFindings(
           }),
       classification: 'enforceable',
       symbol: fn.name,
-      ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
+      ...locationOf(fn),
     };
     findings.push(
       unknown || fn.ratchetKey === undefined ? finding : withRatchet(finding, fn, limit),
     );
   }
   return findings;
+}
+
+function locationOf({ line, endLine }) {
+  if (positiveInteger(line) === undefined) {
+    return {};
+  }
+  return {
+    location: { line, ...(positiveInteger(endLine) === undefined ? {} : { endLine }) },
+  };
 }
 
 // The score is rounded to what the message shows, so noise below that never counts as a rise.

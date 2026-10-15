@@ -329,7 +329,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
   the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the project's own
-  tests fail, the same rule the TypeScript preset uses), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `lizard-failed`, `environment-failed`,
+  tests fail, the same rule the TypeScript preset uses; on the base alone it is a note, see [A base whose tests fail](usage.md#a-base-whose-tests-fail)), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `lizard-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -731,6 +731,9 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
+- `languages/python/adapters/red-base/red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+  too. A base whose test fails and a head that repairs it passes with a note; a new violation or an
+  edited untested legacy function still fails next to the red base.
 - `languages/python/adapters/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 2
   minutes. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the

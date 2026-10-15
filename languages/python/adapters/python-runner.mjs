@@ -1,6 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { applyJavaPolicy } from '../../java/adapters/java-policy.mjs';
 import { parseRunnerArguments } from '../../java/adapters/java-runner.mjs';
 import {
@@ -60,24 +61,34 @@ function collectMutationFindings(options) {
   );
 }
 
-function collectPythonFindings({ projectRoot, liveRoot, settings, policy }) {
+function readFindings({ projectRoot, liveRoot, settings, policy }, reportRoot, { testsFailed }) {
+  const { findings } = readPythonFindings({
+    projectRoot,
+    reportRoot,
+    crapLimit: policy.crapLimit,
+    policy,
+    testsFailed,
+  });
+  return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
+    ...policy,
+    inventoryTool: PYTHON_ANALYZER_NAME,
+  });
+}
+
+function collectPythonFindings(options) {
   return withReportRoot((reportRoot) => {
-    const failures = runPythonTools(
-      toolContext({ projectRoot, liveRoot, settings, policy }, reportRoot),
-    );
-    if (failures.length > 0) {
-      return failures.map((failure) => toolError(failure));
+    const failures = runPythonTools(toolContext(options, reportRoot));
+    if (failures.length === 0) {
+      return readFindings(options, reportRoot, { testsFailed: false });
     }
-    const { findings } = readPythonFindings({
-      projectRoot,
-      reportRoot,
-      crapLimit: policy.crapLimit,
-      policy,
-    });
-    return applyJavaPolicy(applyPythonExceptions(findings, settings.exceptions), {
-      ...policy,
-      inventoryTool: PYTHON_ANALYZER_NAME,
-    });
+    const failedTests = failures.filter(({ rule }) => rule === TESTS_FAILED_RULE);
+    const readable = options.policy.snapshot === 'base' && failedTests.length === failures.length;
+    return readable
+      ? [
+          ...readFindings(options, reportRoot, { testsFailed: true }),
+          ...failures.map((failure) => toolError(failure)),
+        ]
+      : failures.map((failure) => toolError(failure));
   });
 }
 
