@@ -25,4 +25,14 @@ public final class Literals {
       default -> "ab".equals(status) || "ab".isEmpty() || "ab".isBlank() ? 6 : 0;
     };
   }
+
+  public String titles(java.util.ResourceBundle messages) {
+    String title = messages.getString("orders.title") + messages.getString("orders.title");
+    return title + messages.getString("orders.title");
+  }
+
+  public String keys(java.util.Properties properties) {
+    String first = properties.getProperty("orders.footer") + properties.getProperty("orders.footer");
+    return first + properties.getProperty("orders.footer"); // violation: RepeatedStringLiteral
+  }
 }
