@@ -69,7 +69,9 @@ function isAllowedPascalCase(node) {
 const filtered = withReportFilter(baseRule, (descriptor) => !isAllowedPascalCase(descriptor.node));
 
 function hasSyntaxServices(services) {
-  return services?.esTreeNodeToTSNodeMap != null && services.tsNodeToESTreeNodeMap != null;
+  return (
+    services?.esTreeNodeToTSNodeMap !== undefined && services.tsNodeToESTreeNodeMap !== undefined
+  );
 }
 
 function withSyntaxServices(context) {
