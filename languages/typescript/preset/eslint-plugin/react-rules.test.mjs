@@ -1,10 +1,10 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
-import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
-import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
+import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
+import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
+import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
