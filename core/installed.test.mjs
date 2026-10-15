@@ -1,9 +1,4 @@
 import { createRequire } from 'node:module';
-import {
-  expectedOutput254_35,
-  expectedOutput264_30,
-  expectedOutput310_33,
-} from './diff/fixtures/expected-output/core-installed.mjs';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -30,6 +25,69 @@ const layouts = [undefined, 'nested', 'linked'];
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
+
+const expectedDirtyFindings = [
+  {
+    tool: 'eslint-lint',
+    rule: 'no-debugger',
+    path: 'src/main/example.ts',
+    identity: 'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
+    message: "Unexpected 'debugger' statement.",
+    classification: 'enforceable',
+    symbol: 'example',
+    location: { line: 2, column: 3 },
+    ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
+  },
+  {
+    tool: 'prettier-format',
+    rule: 'prettier/prettier',
+    path: 'src/main/example.ts',
+    identity: 'format-diff:3021261b8c9abc3d63b74d13',
+    message: 'Format these lines with Prettier',
+    classification: 'enforceable',
+    location: { line: 1, endLine: 1 },
+  },
+  {
+    tool: 'prettier-format',
+    rule: 'prettier/prettier',
+    path: 'src/main/example.ts',
+    identity: 'format-diff:92772ea69de4f061a708c457',
+    message: 'Format these lines with Prettier',
+    classification: 'enforceable',
+    location: { line: 3, endLine: 3 },
+  },
+];
+const expectedSnapshotOutput = [
+  'Nitpicker quality snapshot',
+  'Status: violations',
+  'Enforceable findings: 2',
+  'Descriptive findings: 0',
+  'Tool errors: 0',
+  '',
+  'Per-tool counts:',
+  'prettier-format: total=2 enforceable=2 descriptive=0',
+  '',
+  'Enforceable findings:',
+  'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
+  'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
+  'nitpicker: head: running 1 analyzer',
+  '',
+].join('\n');
+
+function expectedDirtyOutput(root) {
+  return `Base: main (argument)
+
+Quality gate summary
+✖ 3 new enforceable violations
+  eslint-lint/no-debugger src/main/example.ts:2
+    Unexpected 'debugger' statement.
+  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
+    Format these lines with Prettier
+Full diagnostics: ${root}/reports/dirty/report.txt
+nitpicker: base 2 analyzers cached
+nitpicker: head: running 2 analyzers
+`;
+}
 
 function command(cwd, executable, args) {
   const result = spawnSync(executable, args, {
@@ -257,8 +315,8 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(expectedOutput254_35());
-        expect(dirty.output).toEqual(expectedOutput264_30({ root }));
+        expect(findings('dirty')).toEqual(expectedDirtyFindings);
+        expect(dirty.output).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -304,7 +362,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toEqual(expectedOutput310_33());
+        expect(snapshot.output).toEqual(expectedSnapshotOutput);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);

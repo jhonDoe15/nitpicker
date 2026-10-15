@@ -1,8 +1,3 @@
-import {
-  expectedOutput47_29,
-  expectedOutput50_34,
-  expectedOutput91_31,
-} from '../diff/fixtures/expected-output/core-snapshot-run-snapshot.mjs';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -49,8 +44,27 @@ describe('quality snapshot run', () => {
 
     expect(report.summary.overallStatus).toBe('violations');
     expect(report.summary.enforceableFindings).toBe(1);
-    expect(report.findings).toEqual(expectedOutput47_29());
-    expect(report.summary.tools).toEqual(expectedOutput50_34());
+    expect(report.findings).toEqual([
+      {
+        tool: 'fake-quality-analyzer',
+        rule: 'fixture-rule',
+        path: 'src/main/existing.ts',
+        identity: 'existing',
+        message: 'Fixture finding',
+        classification: 'enforceable',
+        location: { line: 1, column: 4 },
+      },
+    ]);
+    expect(report.summary.tools).toEqual([
+      {
+        name: 'fake-quality-analyzer',
+        version: '1.0.0',
+        configurationHash: 'fixture-policy',
+        total: 1,
+        enforceable: 1,
+        descriptive: 0,
+      },
+    ]);
   });
 
   it('does not count a descriptive finding as a violation', () => {
@@ -84,7 +98,15 @@ describe('quality snapshot run', () => {
 
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.findings).toEqual([]);
-    expect(report.toolErrors).toEqual(expectedOutput91_31());
+    expect(report.toolErrors).toEqual([
+      {
+        tool: 'fake-quality-analyzer',
+        snapshot: 'head',
+        rule: 'fixture-rule',
+        path: 'src/main/broken.ts',
+        message: 'partial analysis',
+      },
+    ]);
   });
 
   it('surfaces an analyzer crash as a tool error rather than throwing', () => {
