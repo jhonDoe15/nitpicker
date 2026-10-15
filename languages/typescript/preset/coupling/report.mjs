@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cruise } from '../dependency-graph/cruise.mjs';
@@ -20,18 +21,26 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(
-  JSON.stringify(
-    {
-      output: path.relative(projectRoot, outputPath),
-      ...report.summary,
-      stabilityDirectionSignals: report.stabilityDirection.length,
-    },
-    null,
-    2,
-  ),
+process.stdout.write(
+  formatOutput(
+    JSON.stringify(
+      {
+        output: path.relative(projectRoot, outputPath),
+        ...report.summary,
+        stabilityDirectionSignals: report.stabilityDirection.length,
+      },
+      null,
+      2,
+    ),
+  ) + '\n',
 );
-console.log('\nHighest-coupled modules (fan-in / fan-out / instability):');
+process.stdout.write(
+  formatOutput('\nHighest-coupled modules (fan-in / fan-out / instability):') + '\n',
+);
 for (const entry of report.hubs) {
-  console.log(`${entry.fanIn}\t${entry.fanOut}\t${entry.instability ?? 'N/A'}\t${entry.source}`);
+  process.stdout.write(
+    formatOutput(
+      `${entry.fanIn}\t${entry.fanOut}\t${entry.instability ?? 'N/A'}\t${entry.source}`,
+    ) + '\n',
+  );
 }

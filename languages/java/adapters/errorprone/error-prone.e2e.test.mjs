@@ -11,8 +11,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../fixtures/gradle-e2e.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { readErrorProneFindings } from './java-errorprone.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

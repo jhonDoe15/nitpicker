@@ -19,6 +19,29 @@ choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typ
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
 tool error.
 
+### From a GitHub release
+
+A release made by following [the release steps](releasing.md) also attaches the package as a
+tarball, `nitpicker-<version>.tgz`, with a `SHA256SUMS` file. Install it when you want a version that
+is not on npm. Keep the tarball in your repository, so teammates and CI install the same file
+without access to the release:
+
+```sh
+VERSION=0.1.0-rc.1
+gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
+(cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
+```
+
+`package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
+TypeScript preset's; for another preset, install the tarball with the peers its guide lists, if any.
+`gh` signs in with your GitHub account, which a private repository needs. On a public repository,
+`npm install` takes the asset URL directly:
+`https://github.com/jhonDoe15/nitpicker/releases/download/v<version>/nitpicker-<version>.tgz`.
+
+The tarball carries the agent skills; install the one for your preset from `./node_modules/nitpicker`
+as the [README](../README.md) describes.
+
 ## First run
 
 ```sh
@@ -219,12 +242,18 @@ arguments are part of the policy hash.
 
 ## Java preset
 
-Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle project the same way: PMD,
+Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
 SpotBugs, Error Prone (with NullAway), google-java-format and JaCoCo run on the merge base and on head (through
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
+A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
+is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
+at a time (findings carry the module path); a Maven failure or a failing test is a
+`java/maven-failure` tool error naming the cause. Maven runs through `mvnw` when the project has
+one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
+[Maven builds](java-preset.md#maven-builds).
 
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
