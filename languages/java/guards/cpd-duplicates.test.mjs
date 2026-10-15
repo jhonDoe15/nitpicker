@@ -96,6 +96,19 @@ describe('isDataTable', () => {
     expect(isDataTable(rows)).toBe(true);
     expect(isDataTable(LOGIC)).toBe(false);
   });
+
+  it('treats constant collections built from literals as data', () => {
+    const entries =
+      'static final Map<String, Integer> CODES = Map.ofEntries(\n  entry("AT", 43),\n  Map.entry("BE", 32));';
+    const list = 'private static final List<String> NAMES = List.of(\n  "ada",\n  "bob");';
+    const computed = 'static final List<String> NAMES = List.of(\n  load(name),\n  "bob");';
+
+    expect([entries, list, computed].map((fragment) => isDataTable(fragment))).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
 });
 
 describe('cpdClones', () => {

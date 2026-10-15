@@ -26,4 +26,11 @@ public final class Types {
     }
     return 0;
   }
+
+  public List<String> names(Object value) {
+    if (value instanceof List) {
+      return (List<String>) value; // violation: javac/unchecked
+    }
+    return List.of();
+  }
 }

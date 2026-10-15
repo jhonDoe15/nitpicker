@@ -34,6 +34,13 @@ public final class Streams {
     }
   }
 
+  public long countDeclared(Path file) throws IOException {
+    Stream<String> lines = Files.lines(file);
+    try (lines) {
+      return lines.count();
+    }
+  }
+
   public Stream<String> open(Path file) throws IOException {
     return Files.lines(file);
   }

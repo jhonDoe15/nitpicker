@@ -475,12 +475,15 @@ A Checkstyle rule prints as its full check class, for example
   annotations (`@RequestParam`, `@RequestHeader`, `@PathVariable`, `@CookieValue`,
   `@RequestAttribute`, `@SessionAttribute`, `@MatrixVariable`, `@RequestPart`), where an optional
   request value is the framework's form. `StreamResourceNotClosed` skips a stream returned to the
-  caller. `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
+  caller or held in a variable that a later `try (lines)` closes. `InstanceofThenCast` skips a cast
+  that adds type arguments the `instanceof` cannot test (`o instanceof List`, then
+  `(List<String>) o`). `CollectorsToList` reports `collect(Collectors.toList())` only, not a downstream
   `toList()` inside `groupingBy` or `mapping`. `NestedQuantifierRegex` reports a repeated group
   whose whole body is one quantified item (`(a+)+`, `(\s*)*`, `([a-z]+)*`), not a group of
   several items such as `([A-Z][a-z]+)+`. `SignatureDeclareThrowsException` skips overriding
-  methods and a method that takes Spring Security's `HttpSecurity` (whose `build()` declares
-  `Exception`). `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
+  methods, a method that takes Spring Security's `HttpSecurity`, `WebSecurity`,
+  `AuthenticationConfiguration` or `AuthenticationManagerBuilder` (whose methods declare
+  `Exception`), and `getObject()` of a `FactoryBean`. `NonFinalStaticField` skips JUnit's `@TempDir`, `@Container`, `@RegisterExtension`
   and `@ClassRule` fields, Testcontainers containers and fields assigned in `@BeforeAll`;
   `MutableStaticCollection` skips a private static concurrent collection used as a cache.
 - **Checkstyle.** `rules/checkstyle-all.xml` (`ConstantName`) is added to the `google_checks.xml`
@@ -496,11 +499,12 @@ A Checkstyle rule prints as its full check class, for example
   `build/nitpicker/javac-lint.txt` (tool `javac`, rule = lint category). It compiles a copy in
   which every `@SuppressWarnings(...)` is blanked out (same lines and columns), with the project's
   compiler, release (or `-source`/`-target` from the source and target compatibility when no
-  release is set) and compiler arguments (without `-Werror`, `-Xlint` and processor options),
+  release is set) and compiler arguments (without `-Werror`, `-Xlint`, `-Xplugin` and processor
+  options),
   and with the main classes on the classpath, so it runs only Lombok of the annotation processors
   (the classes other processors generate are already compiled) and stops after flow analysis
-  without writing classes. `module-info.java` is left out and the sources compile on the class
-  path. On the head, when the base produced a lint report in the same run, only the source files
+  without writing classes. With a `module-info.java` the sources compile as that module, with
+  the modular jars of the class path on `--module-path`, and every file is linted. On the head, when the base produced a lint report in the same run, only the source files
   whose content differs from the base are compiled; the base's warnings for the unchanged files
   are kept, so the report matches a full lint. The cost: a warning that appears in an unchanged
   file only because a changed file changed (a method the change deprecated, called from an
@@ -527,7 +531,9 @@ A Checkstyle rule prints as its full check class, for example
   jscpd already reports (same two files, overlapping lines) is not reported twice, overlapping
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
-  or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists). Findings use the
+  or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists, and constants
+  built from literals with `Map.ofEntries`, `Map.of`, `List.of`, `Set.of`, `Stream.of` or
+  `Arrays.asList`). Findings use the
   same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
   they never match a jscpd finding; between two test files the message points at a helper or a
   `@ParameterizedTest`. The message ends with the exception route for
@@ -550,10 +556,11 @@ A Checkstyle rule prints as its full check class, for example
   build file. Versions are not checked: how a project pins its versions is its own choice.
 - **Tests.** The test rules run on test sources only. `TestSleep` (`Thread.sleep` and
   `TimeUnit.sleep`), `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
-  assertion or `verify` inside an `if` or `switch` of a test method; a loop over results is fine),
+  assertion or `verify` inside an `if` or `switch` of a test method; a loop over results and an
+  `if` that only calls `fail` are fine),
   `TryCatchInTest` (use `assertThrows`), `AssertTrueOnEquality` (`assertTrue(a.equals(b))`,
   `assertTrue(a == b)`), `TautologicalAssertion` (`assertThat(true)`, `assertTrue(true)`,
-  `assertEquals(1, 1)`), `MockedValueType` (a `String`, number, date, collection, `Optional` or
+  `assertEquals(1, 1)`; `assertEquals(a, a)` is a reflexivity test and is fine), `MockedValueType` (a `String`, number, date, collection, `Optional` or
   record mocked with `mock` or `@Mock`) and `TestOrderDependence` (`@TestMethodOrder`,
   `@FixMethodOrder`, `@Order` on a test). A test class with `static` non-final fields or a static
   collection it changes is a `pmd/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
@@ -565,9 +572,12 @@ A Checkstyle rule prints as its full check class, for example
   sample per rule with a `// violation: <tool>/<rule>` marker, and expects exactly the marked
   findings (part of `npm run test:java`). The clean samples include a `@RequestParam Optional`
   parameter, an `HttpSecurity` bean method that throws `Exception`, a main-code rule in a test and
-  a test rule's pattern in main code. The test also checks one message's exception route, and runs
-  PMD on `guards-release-11`, compiled for Java 11, where `InstanceofThenCast` and
-  `CollectorsToList` must not fire. The `lint-not-run` path is unit-tested only: a source that
+  a test rule's pattern in main code, the Spring Security methods that throw `Exception`, a generic
+  cast after `instanceof`, a `try (lines)` on a variable, a `fail` guard and `assertEquals(a, a)`.
+  The test also checks one message's exception route, and runs `guards-compile-modes`: PMD on its
+  `legacy` module, compiled for Java 11, where `InstanceofThenCast` and `CollectorsToList` must
+  not fire, and the lint on modules with a javac plug-in (`-Xplugin`), `--enable-preview` and a
+  module descriptor with a sealed type across packages. The `lint-not-run` path is unit-tested only: a source that
   breaks the lint compile breaks `compileJava` first.
 - **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
   JPA entity is common enough that blocking it needs its own decision), `java.util.Random`
