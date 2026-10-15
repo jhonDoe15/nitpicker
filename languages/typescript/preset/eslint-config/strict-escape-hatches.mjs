@@ -10,7 +10,7 @@ const reactNullHost =
 
 function nullMessageFor({ react }) {
   const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
-  return `Use \`undefined\` for an absent value. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
+  return `Use \`undefined\` for an absent value, and an optional field or parameter (\`value?: T\`) where it may be missing. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
 }
 
 export const typeAssertionSelectors = [
