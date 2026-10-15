@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MESSAGES } from '../../../../shared/policy.mjs';
 import {
   coverageFailureFindings,
   formatVitestFailures,
@@ -49,8 +50,8 @@ describe('test timeout text', () => {
   });
 
   it('omits the duration when the report has none', () => {
-    expect(timeoutText({ failureMessages: ['Error: STACK_TRACE_ERROR'] })).toMatch(
-      /^Test timed out\. A fake clock/u,
+    expect(timeoutText({ failureMessages: ['Error: STACK_TRACE_ERROR'] })).toBe(
+      'Test timed out. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
     );
   });
 
@@ -63,8 +64,9 @@ describe('test timeout text', () => {
       '/p',
     );
 
-    expect(message).toContain('src/t.test.ts > times out: Test timed out after 305 ms.');
-    expect(message).not.toContain('STACK_TRACE_ERROR');
+    expect(message).toBe(
+      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  src/t.test.ts > times out: Test timed out after 305 ms. A fake clock that was never restored (`vi.useRealTimers()` in `afterEach`), a promise that never settles or a long wait is the usual cause.',
+    );
   });
 });
 
@@ -100,7 +102,9 @@ describe('snapshot failures', () => {
       '/p',
     );
 
-    expect(message).toContain('commit the .snap file');
+    expect(message).toBe(
+      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/a.test.ts > snap: Error: Snapshot `snap 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
+    );
   });
 });
 
@@ -127,7 +131,9 @@ describe('unhandled errors in the Vitest output', () => {
 
     expect(errors.map(({ kind }) => kind)).toEqual(['uncaught exception', 'unhandled error']);
     expect(errors[0].message).toBe(`${'x'.repeat(200)}…`);
-    expect(unhandledErrorText(errors)).toContain('(and 1 more)');
+    expect(unhandledErrorText(errors)).toBe(
+      `Vitest caught an uncaught exception: ${'x'.repeat(200)}… (and 1 more). Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.`,
+    );
   });
 
   it('becomes a tool error that names the file, the message and the fix', () => {
@@ -161,8 +167,8 @@ describe('mutation skip', () => {
 
 describe('unknown coverage text', () => {
   it('suggests composition-root wiring only for composition-root files', () => {
-    expect(crapUnknownMessage('src/main/composition-root.ts')).toContain('composition-root wiring');
-    expect(crapUnknownMessage('src/server.ts')).toContain('composition-root wiring');
+    expect(crapUnknownMessage('src/main/composition-root.ts')).toBe(MESSAGES.crapCoverageUnknown);
+    expect(crapUnknownMessage('src/server.ts')).toBe(MESSAGES.crapCoverageUnknown);
     expect(crapUnknownMessage('src/main/features/greeting/domain/greet.ts')).toBe(
       '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
     );
@@ -176,8 +182,12 @@ describe('unknown coverage text', () => {
     const [domain] = normalizeCrap(report('src/main/features/greeting/domain/greet.ts'), 'crap');
     const [root] = normalizeCrap(report('src/main/composition-root.ts'), 'crap');
 
-    expect(domain.message).not.toContain('composition-root');
-    expect(root.message).toContain('composition-root wiring');
+    expect(domain.message).toBe(
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
+    );
+    expect(root.message).toBe(
+      'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+    );
   });
 });
 

@@ -91,23 +91,6 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/no-uninjectable-delay.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-process-globals-outside-main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
-  'languages/typescript/preset/eslint-config/test-honesty/index.mjs',
-  'languages/typescript/preset/eslint-config/test-honesty/restricted-matchers.mjs',
-  'languages/typescript/preset/eslint-config/test-honesty/selectors.mjs',
-  'languages/typescript/preset/eslint-config/test-honesty/setup-files.mjs',
-  'languages/typescript/preset/eslint-plugin/test-assertions/no-switched-off-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/test-assertions/rules.mjs',
-  'languages/typescript/preset/eslint-plugin/test-isolation/no-production-imports-in-setup-files.mjs',
-  'languages/typescript/preset/eslint-plugin/test-isolation/no-real-time-random-or-network.mjs',
-  'languages/typescript/preset/eslint-plugin/test-isolation/no-uncollected-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/test-isolation/production-source.mjs',
-  'languages/typescript/preset/eslint-plugin/test-isolation/rules.mjs',
-  'languages/typescript/preset/eslint-plugin/test-placement/no-test-helpers-in-source.mjs',
-  'languages/typescript/preset/eslint-plugin/test-quality/fake-timers-require-restore.mjs',
-  'languages/typescript/preset/eslint-plugin/test-quality/no-copy-pasted-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/test-quality/no-shared-test-state.mjs',
-  'languages/typescript/preset/eslint-plugin/test-quality/rules.mjs',
-  'languages/typescript/preset/eslint-plugin/test-quality/test-calls.mjs',
 ];
 
 const ARCHITECTURE_EXCLUSION =

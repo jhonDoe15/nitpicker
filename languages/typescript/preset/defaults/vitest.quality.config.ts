@@ -65,7 +65,7 @@ const stripCoverageIgnoreHints: Plugin = {
       return undefined;
     }
     const stripped = code.replaceAll(coverageIgnoreHint, (hint) => hint.replaceAll(/[^\n]/gu, ' '));
-    return stripped === code ? undefined : { code: stripped, map: null };
+    return stripped === code ? undefined : { code: stripped };
   },
 };
 
