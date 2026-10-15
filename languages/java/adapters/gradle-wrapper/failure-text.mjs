@@ -2,6 +2,7 @@ const TOOL_NOISE = [
   /Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS):/u,
   /PIT >> INFO\b/u,
   /^\[ant:checkstyle\] /u,
+  /^SLF4J\(W\): /u,
 ];
 const GRADLE_HINT = /^\* Try:$|^> (?:Run with|Get more help)/u;
 const FAILURE_START = /^(?:FAILURE: |\* What went wrong:)/u;
