@@ -16,29 +16,37 @@ export function resolveCacheDirectory({ projectRoot, environment = process.env }
     : undefined;
 }
 
+function readStoredFile(file) {
+  try {
+    return { kind: 'read', text: readFileSync(file, 'utf8') };
+  } catch (error) {
+    return { kind: 'unreadable', error };
+  }
+}
+
+function writeStoredFile({ directory, target, text }) {
+  try {
+    mkdirSync(directory, { recursive: true });
+    const temporary = `${target}.${String(process.pid)}.tmp`;
+    writeFileSync(temporary, text);
+    renameSync(temporary, target);
+    return { kind: 'written' };
+  } catch (error) {
+    return { kind: 'unwritable', error };
+  }
+}
+
 export function createDirectoryStore(directory) {
   function fileFor(key) {
     return path.join(directory, `${key}.json`);
   }
   return {
     get(key) {
-      try {
-        return readFileSync(fileFor(key), 'utf8');
-      } catch {
-        return undefined;
-      }
+      const result = readStoredFile(fileFor(key));
+      return result.kind === 'read' ? result.text : undefined;
     },
     put(key, text) {
-      try {
-        mkdirSync(directory, { recursive: true });
-        const target = fileFor(key);
-        const temporary = `${target}.${String(process.pid)}.tmp`;
-        writeFileSync(temporary, text);
-        renameSync(temporary, target);
-        return true;
-      } catch {
-        return false;
-      }
+      return writeStoredFile({ directory, target: fileFor(key), text }).kind === 'written';
     },
   };
 }
