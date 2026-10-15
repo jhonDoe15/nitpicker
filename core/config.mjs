@@ -19,6 +19,8 @@ import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { validateTools } from './config/tool-settings.mjs';
+import { conventionDefinitions } from './conventions/definitions.mjs';
+import { validateConventions } from '../shared/conventions/settings.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -36,6 +38,7 @@ const KEYS = [
   'python',
   'tools',
   'kotlin',
+  'conventions',
 ];
 const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
@@ -128,6 +131,9 @@ function validateOptional(config) {
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
+  }
+  if (config.conventions !== undefined) {
+    validateConventions(config.conventions, conventionDefinitions(config.preset));
   }
 }
 
