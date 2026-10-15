@@ -7,11 +7,12 @@ const BASE_USAGE =
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>]';
 
-function usageOf(runner, choices) {
+function usageOf(runner, choices, precedenceTools) {
   const listed = Object.entries(choices).map(
     ([option, values]) => ` [${option} ${values.join('|')}]`,
   );
-  return `Usage: ${runner}${BASE_USAGE}${listed.join('')}`;
+  const precedence = precedenceTools.map((tool) => ` [--${tool}-precedence <layers>]`);
+  return `Usage: ${runner}${BASE_USAGE}${listed.join('')}${precedence.join('')}`;
 }
 
 function parseException(value, usage) {
@@ -33,12 +34,12 @@ function parseSkippedFolders(value) {
   return folders;
 }
 
-function optionPairs(arguments_, usage) {
+function optionPairs(arguments_, usage, allowed) {
   const pairs = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const value = remaining.next().value;
-    if (!RUNNER_OPTIONS.includes(name) || value === undefined) {
+    if (!allowed.includes(name) || value === undefined) {
       throw new Error(usage);
     }
     pairs.push([name, value]);
@@ -50,8 +51,8 @@ function valuesOf(pairs, option) {
   return pairs.filter(([name]) => name === option).map(([, value]) => value);
 }
 
-function readOptionValues(arguments_, usage) {
-  const pairs = optionPairs(arguments_, usage);
+function readOptionValues(arguments_, usage, allowed) {
+  const pairs = optionPairs(arguments_, usage, allowed);
   const values = new Map(pairs.filter(([name]) => !REPEATED_OPTIONS.includes(name)));
   if (!values.has('--project-root')) {
     throw new Error(usage);
@@ -72,9 +73,13 @@ function checkChoices(values, choices) {
   }
 }
 
-export function parseRunnerArguments(arguments_, { runner = 'runner', choices = {} } = {}) {
-  const usage = usageOf(runner, choices);
-  const { values, exclude, exceptions } = readOptionValues(arguments_, usage);
+export function parseRunnerArguments(
+  arguments_,
+  { runner = 'runner', choices = {}, precedenceTools = [] } = {},
+) {
+  const usage = usageOf(runner, choices, precedenceTools);
+  const allowed = [...RUNNER_OPTIONS, ...precedenceTools.map(precedenceOption)];
+  const { values, exclude, exceptions } = readOptionValues(arguments_, usage, allowed);
   checkChoices(values, choices);
   const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
@@ -95,8 +100,22 @@ export function parseRunnerArguments(arguments_, { runner = 'runner', choices = 
       kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
+      toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
+}
+
+function precedenceOption(tool) {
+  return `--${tool}-precedence`;
+}
+
+function toolPrecedence(values, precedenceTools) {
+  const chosen = precedenceTools.filter((tool) => values.has(precedenceOption(tool)));
+  return chosen.length === 0
+    ? undefined
+    : Object.fromEntries(
+        chosen.map((tool) => [tool, values.get(precedenceOption(tool)).split(',')]),
+      );
 }
 
 const REPEATED_OPTIONS = ['--exclude', '--exception'];
