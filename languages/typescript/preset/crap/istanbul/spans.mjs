@@ -2,51 +2,53 @@ import { isPlainObject } from '../../../../../shared/config.mjs';
 
 export const MAX_COLUMN = Number.MAX_SAFE_INTEGER;
 
-function integerOrNull(value) {
-  return typeof value === 'number' && Number.isInteger(value) ? value : null;
+function integerOf(value) {
+  return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
 }
 
-export function finiteNumberOrNull(value) {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+export function finiteNumberOf(value) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
 }
 
 function lineNumberOf(value) {
-  const parsed = integerOrNull(value);
-  return parsed !== null && parsed >= 1 ? parsed : null;
+  const parsed = integerOf(value);
+  return parsed !== undefined && parsed >= 1 ? parsed : undefined;
 }
 
 function columnNumberOf(value) {
-  if (value === null || value === undefined) {
-    return MAX_COLUMN;
-  }
-  const parsed = integerOrNull(value);
-  return parsed !== null && parsed >= 0 ? parsed : null;
+  const parsed = integerOf(value ?? MAX_COLUMN);
+  return parsed !== undefined && parsed >= 0 ? parsed : undefined;
 }
 
-export function comparePosition(leftLine, leftColumn, rightLine, rightColumn) {
-  return leftLine === rightLine ? leftColumn - rightColumn : leftLine - rightLine;
+export function spanStart(span) {
+  return { line: span.startLine, column: span.startColumn };
+}
+
+export function spanEnd(span) {
+  return { line: span.endLine, column: span.endColumn };
+}
+
+export function comparePosition(left, right) {
+  return left.line === right.line ? left.column - right.column : left.line - right.line;
 }
 
 export function parsePosition(value) {
   if (!isPlainObject(value)) {
-    return null;
+    return undefined;
   }
   const line = lineNumberOf(value.line);
   const column = columnNumberOf(value.column);
-  return line === null || column === null ? null : { line, column };
+  return line === undefined || column === undefined ? undefined : { line, column };
 }
 
 export function parseSpan(value) {
   if (!isPlainObject(value)) {
-    return null;
+    return undefined;
   }
   const start = parsePosition(value.start);
   const end = parsePosition(value.end);
-  if (start === null || end === null) {
-    return null;
-  }
-  if (comparePosition(start.line, start.column, end.line, end.column) > 0) {
-    return null;
+  if (start === undefined || end === undefined || comparePosition(start, end) > 0) {
+    return undefined;
   }
   return {
     startLine: start.line,
@@ -58,8 +60,8 @@ export function parseSpan(value) {
 
 export function parseLineSpan(value) {
   const line = lineNumberOf(value);
-  return line === null
-    ? null
+  return line === undefined
+    ? undefined
     : { startLine: line, startColumn: 0, endLine: line, endColumn: MAX_COLUMN };
 }
 
@@ -73,25 +75,15 @@ export function spansEqual(left, right) {
 
 export function spanContains(container, candidate) {
   return (
-    comparePosition(
-      container.startLine,
-      container.startColumn,
-      candidate.startLine,
-      candidate.startColumn,
-    ) <= 0 &&
-    comparePosition(
-      candidate.endLine,
-      candidate.endColumn,
-      container.endLine,
-      container.endColumn,
-    ) <= 0
+    comparePosition(spanStart(container), spanStart(candidate)) <= 0 &&
+    comparePosition(spanEnd(candidate), spanEnd(container)) <= 0
   );
 }
 
 export function spanContainsPosition(span, line, column) {
+  const position = { line, column };
   return (
-    comparePosition(span.startLine, span.startColumn, line, column) <= 0 &&
-    comparePosition(line, column, span.endLine, span.endColumn) < 0
+    comparePosition(spanStart(span), position) <= 0 && comparePosition(position, spanEnd(span)) < 0
   );
 }
 
@@ -101,7 +93,7 @@ export function spansShareBoundaryLines(left, right) {
 
 export function spansOverlap(left, right) {
   return (
-    comparePosition(left.startLine, left.startColumn, right.endLine, right.endColumn) < 0 &&
-    comparePosition(right.startLine, right.startColumn, left.endLine, left.endColumn) < 0
+    comparePosition(spanStart(left), spanEnd(right)) < 0 &&
+    comparePosition(spanStart(right), spanEnd(left)) < 0
   );
 }

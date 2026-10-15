@@ -45,9 +45,9 @@ describe('function-level CRAP policy', () => {
       result.crapScore,
     ]).toEqual([
       1,
-      { percent: 100, status: 'measured', unknownReason: null },
-      { percent: null, status: 'structural_na', unknownReason: null },
-      { percent: 100, status: 'measured', unknownReason: null },
+      { percent: 100, status: 'measured', unknownReason: undefined },
+      { percent: undefined, status: 'structural_na', unknownReason: undefined },
+      { percent: 100, status: 'measured', unknownReason: undefined },
       1,
     ]);
   });
@@ -78,11 +78,11 @@ describe('function-level CRAP policy', () => {
     const result = metric('unknownCoverage');
 
     expect(result.coverage).toEqual({
-      percent: null,
+      percent: undefined,
       status: 'unknown',
       unknownReason: 'statement_unattributed',
     });
-    expect(result.crapScore).toBeNull();
+    expect(result.crapScore).toBeUndefined();
   });
 });
 
@@ -96,6 +96,6 @@ describe('coverage of an arrow whose callback shares its lines', () => {
       byName.get('sleep').crapScore,
       byName.get('find').crapScore,
     ]).toEqual([0, 2, 1]);
-    expect(analysis.metrics.filter((entry) => entry.crapScore === null)).toEqual([]);
+    expect(analysis.metrics.filter((entry) => entry.crapScore === undefined)).toEqual([]);
   });
 });

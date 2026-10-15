@@ -8,6 +8,8 @@ import {
   spansShareBoundaryLines,
 } from './spans.mjs';
 
+const AMBIGUOUS = Symbol('ambiguous');
+
 function normalizedForFnMap(span) {
   return span.endLine <= span.startLine
     ? span
@@ -23,7 +25,7 @@ function uniqueOutcome(matches) {
   if (matches.length === 1) {
     return matches[0];
   }
-  return matches.length > 1 ? null : undefined;
+  return matches.length > 1 ? AMBIGUOUS : undefined;
 }
 
 function matchByCandidateSpans(methodSpan, functions) {
@@ -85,7 +87,7 @@ function attributableMethods(methods, functions) {
   }
   return methods.map((method) => {
     const matched = matchFunctionCoverage(method, functions);
-    return { span: matched?.span ?? method.bodySpan, fnMapConflict: matched === null };
+    return { span: matched?.span ?? method.bodySpan, fnMapConflict: matched === AMBIGUOUS };
   });
 }
 
@@ -97,24 +99,22 @@ function isCandidate(method, span) {
   );
 }
 
+function innermost(best, current) {
+  return best === undefined || spanContains(best.method.span, current.method.span) ? current : best;
+}
+
 function owningMethodIndex(methods, span) {
-  let best = null;
-  methods.forEach((method, index) => {
-    if (
-      isCandidate(method, span) &&
-      (best === null || spanContains(methods[best].span, method.span))
-    ) {
-      best = index;
-    }
-  });
-  return best;
+  return methods
+    .map((method, index) => ({ method, index }))
+    .filter(({ method }) => isCandidate(method, span))
+    .reduce(innermost, undefined)?.index;
 }
 
 function attributeUnits(methods, units) {
   const owned = methods.map(() => []);
   for (const unit of units) {
     const owner = owningMethodIndex(methods, unit.span);
-    if (owner !== null) {
+    if (owner !== undefined) {
       owned[owner].push(unit);
     }
   }

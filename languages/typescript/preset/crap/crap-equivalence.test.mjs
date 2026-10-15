@@ -9,8 +9,11 @@ const corpus = path.join(import.meta.dirname, 'fixtures/corpus');
 const TYPESCRIPT_EXTENSIONS = ['ts', 'tsx', 'mts', 'cts'];
 const JAVASCRIPT_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'];
 
-const expected = (name) =>
-  JSON.parse(readFileSync(path.join(corpus, `expected-${name}.json`), 'utf8'));
+const expected = (name) => readFileSync(path.join(corpus, `expected-${name}.json`), 'utf8');
+
+const former = (name) => JSON.parse(expected(name));
+const formerWithoutNulls = (name) =>
+  JSON.parse(expected(name), (_key, value) => (value === null ? undefined : value));
 
 function measured(extensions) {
   const files = readdirSync(path.join(corpus, 'src/main')).map((name) =>
@@ -33,8 +36,8 @@ function measured(extensions) {
 const summary = (functions) => ({
   files: new Set(functions.map(({ source }) => source)).size,
   functions: functions.length,
-  measuredFunctions: functions.filter(({ crap }) => crap !== null).length,
-  unknownCoverageFunctions: functions.filter(({ crap }) => crap === null).length,
+  measuredFunctions: functions.filter(({ crap }) => typeof crap === 'number').length,
+  unknownCoverageFunctions: functions.filter(({ crap }) => typeof crap !== 'number').length,
 });
 
 describe.each([
@@ -42,16 +45,16 @@ describe.each([
   ['JavaScript project', 'js', JAVASCRIPT_EXTENSIONS],
 ])('CRAP of a %s against what the former library measured', (_name, golden, extensions) => {
   it('reports the same functions, complexity, coverage and score', () => {
-    expect(measured(extensions)).toEqual(expected(golden));
+    expect(measured(extensions)).toEqual(formerWithoutNulls(golden));
   });
 
   it('turns them into the same findings, so legacy findings stay legacy', () => {
     const now = measured(extensions);
-    const former = expected(golden);
+    const before = former(golden);
     const normalize = (functions) =>
       normalizeCrap({ summary: summary(functions), functions }, 'crap', { scoreLimit: 2 });
 
-    expect(normalize(now)).toEqual(normalize(former));
-    expect(normalize(former).filter(({ rule }) => rule === 'crap-score-limit')).not.toEqual([]);
+    expect(normalize(now)).toEqual(normalize(before));
+    expect(normalize(before).filter(({ rule }) => rule === 'crap-score-limit')).not.toEqual([]);
   });
 });

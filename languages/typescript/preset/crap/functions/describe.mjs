@@ -48,7 +48,7 @@ function declaredFunctionName(node) {
   }
   return node.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword)
     ? 'default'
-    : null;
+    : undefined;
 }
 
 function memberName(node) {
@@ -64,35 +64,32 @@ function memberName(node) {
   if (ts.isGetAccessorDeclaration(node) || ts.isSetAccessorDeclaration(node)) {
     return `${ts.isGetAccessorDeclaration(node) ? 'get' : 'set'} ${propertyName(node.name)}`;
   }
-  return null;
+  return undefined;
 }
 
 function namingOf(node) {
   const name = memberName(node);
-  if (name !== null) {
+  if (name !== undefined) {
     return { name, containerName: containerNameFrom(node.parent) };
   }
   return ts.isFunctionExpression(node) || ts.isArrowFunction(node)
     ? assignedFunctionName(node)
-    : null;
+    : undefined;
 }
 
 function describeNode(sourceFile, node) {
   const hasBody = ts.isArrowFunction(node) || node.body !== undefined;
-  const naming = hasBody ? namingOf(node) : null;
-  return naming ? descriptorOf(sourceFile, node, naming) : null;
+  const naming = hasBody ? namingOf(node) : undefined;
+  return naming ? descriptorOf(sourceFile, node, naming) : undefined;
 }
 
 export function describeFunctions(sourceFile) {
-  const descriptors = [];
-  const pending = [sourceFile];
-  while (pending.length > 0) {
-    const node = pending.pop();
-    const descriptor = describeNode(sourceFile, node);
-    if (descriptor) {
-      descriptors.push(descriptor);
-    }
-    pending.push(...childrenOf(node).reverse());
+  const nodes = [sourceFile];
+  for (const node of nodes) {
+    nodes.push(...childrenOf(node));
   }
-  return descriptors;
+  return nodes
+    .sort((left, right) => left.pos - right.pos)
+    .map((node) => describeNode(sourceFile, node))
+    .filter((descriptor) => descriptor !== undefined);
 }
