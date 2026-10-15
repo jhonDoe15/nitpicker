@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { writeDetektLists } from '../detekt/detekt-lists.mjs';
+import { writeDetektLists } from './detekt/detekt-lists.mjs';
 
 const BUILD_FILES = [
   'build.gradle',
