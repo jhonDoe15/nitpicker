@@ -2,10 +2,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionEntryText, exceptionSentence } from '../../../shared/exceptions/sentence.mjs';
-import { RULE_CASES } from './fixtures/cases.mjs';
-
-const routeFor = (rule) =>
-  exceptionSentence(exceptionEntryText({ rule, path: 'src/a.py' }), 'python.exceptions');
+import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -13,6 +10,9 @@ import {
   RULE_HINTS,
   withHint,
 } from './rule-hints.mjs';
+
+const routeFor = (rule) =>
+  exceptionSentence(exceptionEntryText({ rule, path: 'src/a.py' }), 'python.exceptions');
 
 const sample = ({ tool, rule }) => ({
   tool,

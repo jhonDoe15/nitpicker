@@ -1,5 +1,5 @@
 // The project config (`nitpicker.config.json`) rules that do not depend on a language: the file
-// name, the keys every preset honours and their validation. `core/config.mjs` adds the
+// name, the keys every preset honours and their validation. `core/configuration/config.mjs` adds the
 // TypeScript-only keys (`layout`, `tools`) and the preset gate on top of these.
 //
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
@@ -160,7 +160,11 @@ function validateNarrowing(entry, label) {
     required: FUNCTION_REQUIRED_RULES,
     requiredText: `name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
   });
-  validateNarrowingKey(entry, label, { key: 'name', supported: NAME_EXCEPTION_RULES, required: [] });
+  validateNarrowingKey(entry, label, {
+    key: 'name',
+    supported: NAME_EXCEPTION_RULES,
+    required: [],
+  });
   if (entry.function !== undefined && entry.name !== undefined) {
     throw configError(`"${label}" takes either "function" or "name", not both (rule ${rule})`);
   }

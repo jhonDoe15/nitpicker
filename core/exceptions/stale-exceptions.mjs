@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runGit } from '../diff/git.mjs';
-import { renderRuleFilterSection } from '../diff/reporters.mjs';
+import { runGit } from '../diff/git/repository/command.mjs';
+import { renderRuleFilterSection } from '../diff/reporting/text.mjs';
 import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { RULE_IDS } from '../../shared/policy.mjs';

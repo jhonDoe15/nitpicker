@@ -1,23 +1,26 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { readDuplicateFindings } from './python-duplicates.mjs';
-import { prepareSarif } from '../../java/adapters/java-reports.mjs';
+import { readDuplicateFindings } from './analysis/python-duplicates.mjs';
+import { prepareSarif } from '../../java/adapters/reporting/java-reports.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
-import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
+import { ingestFormatCheck } from '../../java/ingest/formatting/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
-import { ingestCoverageBranches } from '../ingest/coverage-branches.mjs';
-import { ingestCoverageJson } from '../ingest/coverage-json.mjs';
+import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-branches.mjs';
+import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mjs';
 import { PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
 import { withoutLineNumbers } from '../ingest/identities.mjs';
 import { ingestRulesReport } from '../ingest/rules-report.mjs';
 import { ingestMypy, ingestPyright } from '../ingest/type-check.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
-import { RULES_REPORT } from './python-ast-rules.mjs';
-import { readCouplingFindings } from './python-coupling.mjs';
-import { LIZARD_REPORT, readPythonCrapFindings } from './python-crap.mjs';
-import { readImportLinterFindings } from './python-import-linter.mjs';
-import { readStructureFunctions } from '../../java/adapters/java-structure.mjs';
-import { pythonFileLimitFindings, readPythonStructureFindings } from './python-structure.mjs';
+import { RULES_REPORT } from './analysis/python-ast-rules.mjs';
+import { readCouplingFindings } from './analysis/python-coupling.mjs';
+import { LIZARD_REPORT, readPythonCrapFindings } from './mutation/python-crap.mjs';
+import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
+import {
+  pythonFileLimitFindings,
+  readPythonStructureFindings,
+} from './analysis/python-structure.mjs';
+import { readStructureFunctions } from '../../java/adapters/metrics/java-structure.mjs';
 import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 

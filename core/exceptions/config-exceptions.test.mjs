@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
-import { validateConfig } from '../config.mjs';
+import { validateConfig } from '../configuration/validate.mjs';
 
 describe('config exceptions', () => {
   describe('java exceptions', () => {

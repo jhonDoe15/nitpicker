@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createGitRepository, removeGitRepositories } from '../diff/fixtures/git-repository.mjs';
+import {
+  createGitRepository,
+  removeGitRepositories,
+} from '../diff/git/test-support/git-repository.mjs';
 import { staleExceptionLines } from './stale-exceptions.mjs';
 
 afterEach(removeGitRepositories);
