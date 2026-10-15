@@ -1,7 +1,7 @@
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
+import { excludedGlobs as builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mjs';
 import { conventionDefinitions } from './definitions.mjs';
 import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
