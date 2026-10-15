@@ -5,14 +5,20 @@ const SCHEDULING = 'org.springframework.scheduling.annotation';
 const CACHE = 'org.springframework.cache.annotation';
 const SECURITY = 'org.springframework.security.access';
 const FEATURES = [
-  { enabler: ['EnableScheduling'], users: [`${SCHEDULING}.Scheduled`] },
-  { enabler: ['EnableAsync'], users: [`${SCHEDULING}.Async`] },
+  {
+    enabler: ['EnableScheduling'],
+    xml: /<task:annotation-driven\b/,
+    users: [`${SCHEDULING}.Scheduled`],
+  },
+  { enabler: ['EnableAsync'], xml: /<task:annotation-driven\b/, users: [`${SCHEDULING}.Async`] },
   {
     enabler: ['EnableCaching'],
+    xml: /<cache:annotation-driven\b/,
     users: ['Cacheable', 'CacheEvict', 'CachePut', 'Caching'].map((name) => `${CACHE}.${name}`),
   },
   {
     enabler: ['EnableMethodSecurity', 'EnableGlobalMethodSecurity', 'EnableReactiveMethodSecurity'],
+    xml: /<(?:security:)?(?:global-)?method-security\b/,
     users: [
       ...['PreAuthorize', 'PostAuthorize', 'PreFilter', 'PostFilter'].map(
         (name) => `${SECURITY}.prepost.${name}`,
@@ -22,12 +28,14 @@ const FEATURES = [
   },
   {
     enabler: ['EnableRetry', 'EnableResilientMethods'],
+    xml: /<retry:annotation-driven\b/,
     users: [
       'org.springframework.retry.annotation.Retryable',
       'org.springframework.resilience.annotation.Retryable',
     ],
   },
 ];
+const SOURCE_FILE = /\.(?:java|kt)$/;
 const LITERALS_AND_COMMENTS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
 
@@ -45,10 +53,10 @@ function escaped(text) {
   return text.replaceAll('.', String.raw`\.`);
 }
 
-function javaFiles(directory) {
+function filesIn(directory, pattern) {
   return existsSync(directory)
     ? readdirSync(directory, { withFileTypes: true, recursive: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
+        .filter((entry) => entry.isFile() && pattern.test(entry.name))
         .map((entry) => path.join(entry.parentPath, entry.name))
         .sort()
     : [];
@@ -58,56 +66,55 @@ function enablerPattern(names) {
   return new RegExp(String.raw`@\s*(?:\w+\s*\.\s*)*(?:${names.join('|')})\b`);
 }
 
-function firstUse(code, qualified) {
+function uses(code, qualified) {
   const separator = qualified.lastIndexOf('.');
   const owner = qualified.slice(0, separator);
   const simple = qualified.slice(separator + 1);
-  const imported = new RegExp(String.raw`\bimport\s+${escaped(owner)}\.(?:${simple}|\*)\s*;`);
-  const patterns = [new RegExp(String.raw`@\s*${escaped(qualified)}\b`)];
-  if (imported.test(code)) {
-    patterns.push(new RegExp(String.raw`@\s*${simple}\b`));
-  }
-  const offsets = patterns
-    .map((pattern) => pattern.exec(code)?.index)
-    .filter((offset) => offset !== undefined);
-  return offsets.length === 0 ? undefined : { simple, offset: Math.min(...offsets) };
+  const imported = new RegExp(String.raw`\bimport\s+${escaped(owner)}\.(?:${simple}\b|\*)`);
+  const names = imported.test(code) ? [escaped(qualified), simple] : [escaped(qualified)];
+  const pattern = new RegExp(String.raw`@\s*(?:${names.join('|')})\b`, 'g');
+  return [...code.matchAll(pattern)].map((match) => ({ simple, offset: match.index }));
 }
 
 function lineOf(code, offset) {
   return code.slice(0, offset).split('\n').length;
 }
 
-function readSources(projectRoot, sourceRoots) {
-  return sourceRoots
-    .flatMap((root) => javaFiles(path.join(projectRoot, root)))
+function readSources(projectRoot, roots, pattern) {
+  return roots
+    .flatMap((root) => filesIn(path.join(projectRoot, root), pattern))
     .map((file) => ({
       path: path.relative(projectRoot, file).split(path.sep).join('/'),
-      code: codeOf(readFileSync(file, 'utf8')),
+      text: readFileSync(file, 'utf8'),
     }));
 }
 
-export function springWiringProblems(projectRoot, sourceRoots) {
-  const files = readSources(projectRoot, sourceRoots);
-  return FEATURES.flatMap(({ enabler, users }) => {
-    const pattern = enablerPattern(enabler);
-    if (files.some(({ code }) => pattern.test(code))) {
-      return [];
-    }
-    return files.flatMap(({ path: file, code }) => {
-      const use = users
-        .map((qualified) => firstUse(code, qualified))
-        .filter((found) => found !== undefined)
-        .sort((left, right) => left.offset - right.offset)[0];
-      return use === undefined
-        ? []
-        : [
-            {
-              path: file,
-              line: lineOf(code, use.offset),
-              key: `enable-${enabler[0].slice('Enable'.length).toLowerCase()}`,
-              message: `@${use.simple} does nothing: no class has @${enabler[0]}. Add @${enabler[0]} to one @Configuration class.`,
-            },
-          ];
-    });
-  });
+function enabled(feature, files, xmlFiles) {
+  const pattern = enablerPattern(feature.enabler);
+  return (
+    files.some(({ code }) => pattern.test(code)) ||
+    xmlFiles.some(({ text }) => feature.xml.test(text))
+  );
+}
+
+export function springWiringProblems(projectRoot, sourceRoots, resourceRoots = []) {
+  const files = readSources(projectRoot, sourceRoots, SOURCE_FILE).map(({ path: file, text }) => ({
+    path: file,
+    code: codeOf(text),
+  }));
+  const xmlFiles = readSources(projectRoot, [...sourceRoots, ...resourceRoots], /\.xml$/);
+  return FEATURES.filter((feature) => !enabled(feature, files, xmlFiles)).flatMap(
+    ({ enabler, users }) =>
+      files.flatMap(({ path: file, code }) =>
+        users
+          .flatMap((qualified) => uses(code, qualified))
+          .sort((left, right) => left.offset - right.offset)
+          .map((use) => ({
+            path: file,
+            line: lineOf(code, use.offset),
+            key: `enable-${enabler[0].slice('Enable'.length).toLowerCase()}`,
+            message: `@${use.simple} does nothing: no class has @${enabler[0]}. Add @${enabler[0]} to one @Configuration class.`,
+          })),
+      ),
+  );
 }

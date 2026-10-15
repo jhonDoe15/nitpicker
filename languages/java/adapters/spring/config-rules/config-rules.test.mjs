@@ -23,13 +23,20 @@ function only(name, text) {
   return read({ [resource(name)]: text });
 }
 
+const PROFILE_ADVICE = {
+  'spring.profiles.active':
+    'Set SPRING_PROFILES_ACTIVE in each deployment instead, or spring.profiles.default for a fallback that a deployment can override.',
+  'spring.profiles.include':
+    'Name them in a spring.profiles.group entry instead, and activate that group with SPRING_PROFILES_ACTIVE in each deployment.',
+};
+
 describe('active-profile', () => {
   const profileFinding = (key, line = 1, file = MAIN_PROPERTIES) =>
     finding({
       rule: 'active-profile',
       file,
       identity: relaxed(key),
-      message: `${key} in the packaged main file turns those profiles on in every environment. Set SPRING_PROFILES_ACTIVE in each deployment instead.`,
+      message: `${key} in the packaged main file turns those profiles on in every environment. ${PROFILE_ADVICE[key]}`,
       line,
     });
 
@@ -48,6 +55,12 @@ describe('active-profile', () => {
     ).toEqual([4, 5]);
     expect(only('application.properties', 'spring.profiles.active=${PROFILE:prod}')).toEqual([
       profileFinding('spring.profiles.active'),
+    ]);
+  });
+
+  it('reports a flow list once for its line', () => {
+    expect(only('application.yml', 'spring:\n  profiles:\n    active: [dev, h2]\n')).toEqual([
+      profileFinding('spring.profiles.active', 3, 'src/main/resources/application.yml'),
     ]);
   });
 
@@ -122,11 +135,35 @@ describe('unsafe-diagnostics', () => {
         'spring.h2.console.enabled=true opens the H2 web console. Enable it only in a local profile.',
       ),
     ],
+    [
+      'spring.jpa.show-sql=${SHOW_SQL:true}',
+      diagnostic(
+        'spring.jpa.show-sql',
+        'spring.jpa.show-sql=true prints SQL to standard output, outside logging. Remove it, and use the logging.level.org.hibernate.SQL logger in a local profile.',
+      ),
+    ],
+    [
+      'logging.level.org.hibernate.type=TRACE',
+      diagnostic(
+        'logging.level.org.hibernate.type',
+        'logging.level.org.hibernate.type=TRACE logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+      ),
+    ],
+    [
+      'logging.level.root=all',
+      diagnostic(
+        'logging.level.root',
+        'logging.level.root=all logs bound SQL values, including passwords and personal data. Leave the level at its default.',
+      ),
+    ],
   ])('flags %s', (line, expected) => {
     expect(only('application.properties', line)).toEqual([expected]);
   });
 
   it.each([
+    'logging.level.org=info',
+    'logging.level.org.hibernate.SQL=trace',
+    'spring.jpa.show-sql=${SHOW_SQL}',
     'spring.jpa.show-sql=false',
     'spring.jpa.show-sql=${SHOW_SQL:false}',
     'logging.level.org.hibernate.orm.jdbc.bind=INFO',
@@ -164,6 +201,11 @@ describe('error-details beyond the stack trace', () => {
       'server.error.include-binding-errors=on-param',
       'server.error.includebindingerrors',
       'server.error.include-binding-errors sends rejected values to clients. Use never, and report field errors from a @RestControllerAdvice.',
+    ],
+    [
+      'server.error.include-message=${INCLUDE_MESSAGE:always}',
+      'server.error.includemessage',
+      'server.error.include-message sends exception messages to clients. Use never, and return a fixed ProblemDetail from a @RestControllerAdvice.',
     ],
     [
       'server.error.include-exception=true',

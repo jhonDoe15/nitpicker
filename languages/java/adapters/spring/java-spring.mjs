@@ -98,21 +98,20 @@ function allowance(rule) {
 }
 
 export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resourceRoots } = {}) {
-  const documents = readSpringDocuments(
-    projectRoot,
-    Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS,
-  );
+  const resources = Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS;
+  const documents = readSpringDocuments(projectRoot, resources);
   const occurrences = new Map();
   return [
-    ...springWiringProblems(projectRoot, sourceRoots).map(({ path: file, line, key, message }) =>
-      buildFinding({
-        rule: 'missing-enable',
-        document: { path: file },
-        entry: { line },
-        key,
-        message,
-        occurrences,
-      }),
+    ...springWiringProblems(projectRoot, sourceRoots, resources).map(
+      ({ path: file, line, key, message }) =>
+        buildFinding({
+          rule: 'missing-enable',
+          document: { path: file },
+          entry: { line },
+          key,
+          message,
+          occurrences,
+        }),
     ),
     ...(documents.length === 0
       ? []
@@ -174,10 +173,18 @@ function entryFindings(documents, { rule, exempt, problem, lists = false }, occu
         .filter((entry) => lists || !entry.list)
         .map((entry) => ({ entry, message: problem(entry, relaxKey(entry.key)) }))
         .filter(({ message }) => message !== undefined)
+        .filter(
+          ({ entry }, index, found) =>
+            found.findIndex((other) => sameLine(other.entry, entry)) === index,
+        )
         .map(({ entry, message }) =>
           buildFinding({ rule, document, entry, key: relaxKey(entry.key), message, occurrences }),
         ),
     );
+}
+
+function sameLine(left, right) {
+  return left.line === right.line && relaxKey(left.key) === relaxKey(right.key);
 }
 
 function buildFinding({ rule, document, entry, key, message, occurrences }) {

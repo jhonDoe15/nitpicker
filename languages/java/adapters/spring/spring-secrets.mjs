@@ -40,7 +40,11 @@ const NOT_LITERAL = [
   /^(?:classpath\*?|file):/i,
 ];
 const URL_PASSWORD = /:\/\/[^/\s:@]*:([^@\s/]+)@/;
-const URL_PARAMETER = /[?&;](?:password|pwd|passwd|secret|token|api-?key|access-?key)=([^&;\s]+)/i;
+const URL_PARAMETER =
+  /[?&;][\w.-]*(?:password|pwd|passwd|secret|token|api-?key|access-?key)=([^&;\s]+)/i;
+const ORACLE_LOGIN = /^jdbc:oracle:\w+:@?[^/@\s:]+\/([^@\s]+)@/i;
+const URL_TEMPLATE = /^(?:\{[^}]*\}|%[a-z]|<[^>]*>)$/i;
+const ALGORITHM = /^(?:[A-Z]{2,6}\d{0,4}|[A-Z]+(?:_[A-Z]+)+)$/;
 
 function keyWords(key) {
   const segments = key.split('.');
@@ -66,7 +70,7 @@ function endsWithSecretWord(words) {
   return SECRET_WORDS.has(words.at(-1)) || SECRET_WORDS.has(words.slice(-2).join(''));
 }
 
-function placeholderDefault(value) {
+export function placeholderDefault(value) {
   const pending = [value];
   for (const text of pending) {
     const placeholder = PLACEHOLDER.exec(text);
@@ -77,17 +81,20 @@ function placeholderDefault(value) {
   return pending.at(-1);
 }
 
-function isLiteralValue(value, isToken) {
+function isLiteralValue(value, isLabel) {
   const text = placeholderDefault(value);
   if (text === '' || text.startsWith('${') || NOT_LITERAL.some((pattern) => pattern.test(text))) {
     return false;
   }
-  return !(isToken && ENUM_WORD.test(text));
+  return !(isLabel && (ENUM_WORD.test(text) || ALGORITHM.test(text)));
 }
 
 export function isLiteralSecret(key, value) {
   const words = keyWords(key);
-  return endsWithSecretWord(words) && isLiteralValue(value.trim(), words.at(-1) === 'token');
+  const ownerKey = segmentWords(key.split('.').at(-1)).join('-') === 'key';
+  return (
+    endsWithSecretWord(words) && isLiteralValue(value.trim(), ownerKey || words.at(-1) === 'token')
+  );
 }
 
 export function secretVariable(key) {
@@ -100,8 +107,8 @@ export function secretVariable(key) {
 
 export function credentialUrl(value) {
   const text = placeholderDefault(value.trim());
-  return [URL_PASSWORD, URL_PARAMETER].some((pattern) => {
+  return [URL_PASSWORD, URL_PARAMETER, ORACLE_LOGIN].some((pattern) => {
     const secret = pattern.exec(text)?.[1];
-    return secret !== undefined && !secret.startsWith('${');
+    return secret !== undefined && !secret.startsWith('${') && !URL_TEMPLATE.test(secret);
   });
 }

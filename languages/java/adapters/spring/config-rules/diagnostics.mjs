@@ -1,4 +1,5 @@
 import { relaxKey } from '../spring-config-parser.mjs';
+import { placeholderDefault } from '../spring-secrets.mjs';
 import { isTestOrLocal, isTrue } from './profiles.mjs';
 
 const CLIENT_DETAIL_MODES = new Set(['always', 'on-param', 'on_param']);
@@ -7,6 +8,7 @@ const BIND_LOGGERS = [
   'logging.level.org.hibernate.orm.jdbc.extract',
   'logging.level.org.hibernate.type.descriptor.sql',
 ].map(relaxKey);
+const ROOT_LOGGER = relaxKey('logging.level.root');
 const SHOW_SQL = ['spring.jpa.show-sql', 'spring.jpa.properties.hibernate.show_sql'].map(relaxKey);
 const ALWAYS_VALUES = [
   'management.endpoint.env.show-values',
@@ -17,7 +19,16 @@ const ALWAYS_VALUES = [
 const H2_CONSOLE = ['spring.h2.console.enabled', 'spring.h2.console.settings.web-allow-others'].map(
   relaxKey,
 );
-const ACTIVE_PROFILE_KEYS = ['spring.profiles.active', 'spring.profiles.include'].map(relaxKey);
+const PROFILE_ADVICE = new Map([
+  [
+    relaxKey('spring.profiles.active'),
+    'Set SPRING_PROFILES_ACTIVE in each deployment instead, or spring.profiles.default for a fallback that a deployment can override.',
+  ],
+  [
+    relaxKey('spring.profiles.include'),
+    'Name them in a spring.profiles.group entry instead, and activate that group with SPRING_PROFILES_ACTIVE in each deployment.',
+  ],
+]);
 const FROM_ENVIRONMENT = /^(?:@[^@\s]+@|\$\{[^}:]*:?\})?$/;
 const ERROR_DETAILS = [
   {
@@ -44,30 +55,46 @@ const ERROR_DETAILS = [
   },
 ];
 
+function effective(entry) {
+  return placeholderDefault(entry.value.trim()).toLowerCase();
+}
+
+function logsBoundValues(key) {
+  return (
+    key === ROOT_LOGGER ||
+    BIND_LOGGERS.some((logger) => key.startsWith(logger) || logger.startsWith(`${key}.`))
+  );
+}
+
 function errorDetailsProblem(entry, key) {
-  const value = entry.value.toLowerCase();
+  const value = effective(entry);
   return ERROR_DETAILS.find((detail) => detail.key === key && detail.sensitive(value))?.message;
 }
 
 function diagnosticsProblem(entry, key) {
-  const value = entry.value.toLowerCase();
-  if (SHOW_SQL.includes(key) && isTrue(entry)) {
+  const value = effective(entry);
+  const enabled = isTrue({ value });
+  if (SHOW_SQL.includes(key) && enabled) {
     return `${entry.key}=true prints SQL to standard output, outside logging. Remove it, and use the logging.level.org.hibernate.SQL logger in a local profile.`;
   }
-  if (BIND_LOGGERS.some((logger) => key.startsWith(logger)) && ['trace', 'all'].includes(value)) {
+  if (
+    key.startsWith('logging.level.') &&
+    logsBoundValues(key) &&
+    ['trace', 'all'].includes(value)
+  ) {
     return `${entry.key}=${entry.value} logs bound SQL values, including passwords and personal data. Leave the level at its default.`;
   }
   if (ALWAYS_VALUES.includes(key) && value === 'always') {
     return `${entry.key}=always serves internals to every caller. Use when-authorized, or never.`;
   }
-  return H2_CONSOLE.includes(key) && isTrue(entry)
+  return H2_CONSOLE.includes(key) && enabled
     ? `${entry.key}=true opens the H2 web console. Enable it only in a local profile.`
     : undefined;
 }
 
 function activeProfileProblem(entry, key) {
-  return ACTIVE_PROFILE_KEYS.includes(key) && !FROM_ENVIRONMENT.test(entry.value.trim())
-    ? `${entry.key} in the packaged main file turns those profiles on in every environment. Set SPRING_PROFILES_ACTIVE in each deployment instead.`
+  return PROFILE_ADVICE.has(key) && !FROM_ENVIRONMENT.test(entry.value.trim())
+    ? `${entry.key.replace(/\[\d+\]$/, '')} in the packaged main file turns those profiles on in every environment. ${PROFILE_ADVICE.get(key)}`
     : undefined;
 }
 
