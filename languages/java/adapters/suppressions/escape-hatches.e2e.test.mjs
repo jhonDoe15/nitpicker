@@ -124,6 +124,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
           'regexp.RegexpSinglelineJavaCheck',
           'whitespace.EmptyLineSeparatorCheck',
         ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        'errorprone DefaultCharset Bad.java',
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java',
         'pmd EmptyCatchBlock Bad.java',

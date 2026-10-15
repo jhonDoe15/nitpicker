@@ -5,10 +5,10 @@ description: Use before writing or changing Java in a project that runs nitpicke
 
 # nitpicker for Java
 
-nitpicker gates a Gradle project (Java 21) with PMD, SpotBugs, Checkstyle, google-java-format,
-JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on findings your
-change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
-start; the gate is a backstop.
+nitpicker gates a Gradle project (Java 21) with PMD, SpotBugs, Error Prone with NullAway,
+Checkstyle, google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails
+only on findings your change adds, so leave code the task doesn't need alone. Write the allowed
+forms below from the start; the gate is a backstop.
 
 ## Finish with the gate
 
@@ -95,10 +95,11 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it.
-- Tests get the same PMD, Checkstyle and formatter checks as main code, plus the file (500 lines)
-  and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection read main
-  sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
-  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
+- Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
+  (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
+  read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
+  to main sources only. If a PMD rule flags test code that is right, add an exception for
+  `pmd/<rule>`.
 
 ## Editing existing code
 
@@ -108,9 +109,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A file or folder already over its limit must not grow: put the new code in a new class, and a
   new file in a new package.
 - A line you touch must have its branches covered, even if it was uncovered before.
-- Existing PMD, SpotBugs and Checkstyle findings stay baselined while their message is unchanged;
-  adding another of the same kind in the file is new. Don't rename or move a file that has
-  findings: Checkstyle and CRAP findings don't follow renames and would count as new.
+- Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
+  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
+  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Exceptions and suppressions
 

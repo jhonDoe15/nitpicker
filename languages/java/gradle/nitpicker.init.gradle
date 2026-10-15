@@ -18,6 +18,8 @@
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
+//   build/nitpicker/errorprone.json  Error Prone and NullAway diagnostics over main and test sources, a JSON
+//                                    array of {file, line, column, kind, message} (languages/java/gradle/errorprone/)
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
@@ -53,6 +55,8 @@ def pinned = [
     ktlint          : '1.8.0',
     ktfmt           : '0.64',
     kotlinCompiler  : '2.4.21',
+    errorProne      : '2.50.0',
+    nullAway        : '0.14.2',
 ]
 
 // BEGIN SH5 structure metrics
@@ -363,10 +367,14 @@ allprojects {
         }
         // END SH5 structure metrics
 
+        project.ext.nitpickerErrorProneVersions = pinned.subMap(['errorProne', 'nullAway'])
+        project.ext.nitpickerReportDir = reportDir
+        project.apply from: new File(initScriptDir, 'errorprone/error-prone.gradle')
+
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')

@@ -225,6 +225,45 @@ describe('fileFindings for SpotBugs', () => {
   });
 });
 
+describe('fileFindings for Error Prone', () => {
+  const NULLAWAY_MESSAGE =
+    'Do not silence NullAway inline: mark what may be null with @Nullable, or add an exception for errorprone/NullAway in nitpicker.config.json. Error Prone itself ignores @SuppressWarnings; NullAway does not.';
+
+  it('reports @SuppressWarnings naming NullAway, but not the Error Prone checks, which nitpicker runs with suppressions ignored', () => {
+    const source = [
+      'class A {',
+      '  @SuppressWarnings("NullAway") String a() { return null; }',
+      '  @SuppressWarnings({"NullAway.Init", "unchecked"}) private String b;',
+      '  @SuppressWarnings("FutureReturnValueIgnored") void c() {}',
+      '  @SuppressWarnings("NullAwayLike") void d() {}',
+      '}',
+    ].join('\n');
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [
+        finding.tool,
+        finding.rule,
+        finding.location.line,
+        finding.message,
+      ]),
+    ).toEqual([
+      ['errorprone', 'InlineSuppression', 2, `${NULLAWAY_MESSAGE} Found: "NullAway".`],
+      ['errorprone', 'InlineSuppression', 3, `${NULLAWAY_MESSAGE} Found: "NullAway.Init".`],
+    ]);
+  });
+
+  it('reports a NullAway suppression next to a PMD one on the same annotation once per tool', () => {
+    const source = 'class A {\n  @SuppressWarnings({"PMD", "NullAway"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "PMD".`],
+      ['errorprone', `${NULLAWAY_MESSAGE} Found: "NullAway".`],
+    ]);
+  });
+});
+
 describe('fileFindings identities', () => {
   it('keeps identities when lines shift and tells repeated suppressions apart', () => {
     const source =

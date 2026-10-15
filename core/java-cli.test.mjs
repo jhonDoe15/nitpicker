@@ -884,8 +884,8 @@ describe('Java analyzer', () => {
   it('records the pinned tool versions and a stable configuration hash', () => {
     const analyzer = createJavaAnalyzer();
 
-    expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
+    expect(analyzer.version.replaceAll(/@[\d.]+/g, '')).toBe(
+      'pmd;spotbugs;googleJavaFormat;jacoco;checkstyle;lizard;pitest;pitestJunit5;detekt;detektKotlin;ktlint;ktfmt;kotlinCompiler;errorProne;nullAway;jscpd',
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
