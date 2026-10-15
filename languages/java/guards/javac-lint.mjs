@@ -4,6 +4,8 @@ import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
 
 const LINT_TOOL = 'javac';
 const LINT_REPORT = 'javac-lint.txt';
+const LINT_FAILURE = 'javac-lint-failed.txt';
+const LINT_NOT_RUN = 'lint-not-run';
 const WARNING = /^(.+\.java):(\d+): warning: \[(\w+)\] (.+)$/;
 const ADVICE = {
   rawtypes: 'Add the type arguments, as in List<String>.',
@@ -36,10 +38,31 @@ export function parseLintWarnings(text) {
   });
 }
 
+function lintNotRun(reportRoot) {
+  const failure = path.join(reportRoot, LINT_FAILURE);
+  if (!existsSync(failure)) {
+    return [];
+  }
+  const firstError =
+    readFileSync(failure, 'utf8')
+      .split(/\r?\n/)
+      .find((line) => /error:/.test(line)) ?? 'javac exited with an error';
+  return [
+    {
+      tool: LINT_TOOL,
+      rule: LINT_NOT_RUN,
+      path: '.',
+      identity: LINT_NOT_RUN,
+      message: `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, unchecked operations, deprecated calls and redundant casts were not checked.`,
+      classification: 'descriptive',
+    },
+  ];
+}
+
 export function readLintFindings(reportRoot, { projectRoot }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
-    return [];
+    return lintNotRun(reportRoot);
   }
   const unique = createIdentityCounter();
   return parseLintWarnings(readFileSync(report, 'utf8'))

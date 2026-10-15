@@ -1,6 +1,5 @@
 def pinned = project.ext.nitpickerPinned
 def reportDir = layout.buildDirectory.dir('nitpicker')
-def kotlinPreset = gradle.startParameter.projectProperties['nitpicker.kotlin'] == 'true'
 def rulesDir = new File(buildscript.sourceFile.parentFile, '../rules')
 def javaHome = new File(System.getProperty('java.home'))
 
@@ -11,9 +10,23 @@ dependencies {
     nitpickerForbiddenApis "de.thetaphi:forbiddenapis:${pinned.forbiddenapis}"
 }
 
-def analyzedClassDirs = {
-    kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
-        : sourceSets.main.output.classesDirs.files
+def analyzedClassDirs = project.ext.nitpickerAnalyzedClassDirs
+def pairedOptions = ['-Xmaxwarns', '-Xmaxerrs', '-processor', '-processorpath', '--processor-path',
+                     '--processor-module-path', '--module-path', '-p', '-d', '-s', '-h']
+def lintCompatible = { List<String> arguments ->
+    def kept = []
+    def skipNext = false
+    arguments.each { argument ->
+        if (skipNext) {
+            skipNext = false
+        } else if (argument in pairedOptions) {
+            skipNext = true
+        } else if (!(argument == '-Werror' || argument.startsWith('-Xlint') || argument.startsWith('-Xdoclint')
+            || argument.startsWith('-proc:') || argument.startsWith('-implicit:'))) {
+            kept << argument
+        }
+    }
+    kept
 }
 
 tasks.register('nitpickerForbiddenApis', JavaExec) {
@@ -45,13 +58,23 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     }
 }
 
+def compileInChildProcess = { File javac, File argumentFile, File directory ->
+    def process = new ProcessBuilder([javac.absolutePath, "@${argumentFile.absolutePath}".toString()])
+        .directory(directory).redirectErrorStream(true).start()
+    def log = process.inputStream.getText('UTF-8')
+    [code: process.waitFor(), log: log]
+}
+
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
     dependsOn tasks.named('compileJava')
     doLast {
         reportDir.get().asFile.mkdirs()
         def output = reportDir.get().file('javac-lint.txt').asFile
-        def sources = sourceSets.main.allJava.files.findAll { it.name.endsWith('.java') && it.exists() }.sort()
+        def failure = reportDir.get().file('javac-lint-failed.txt').asFile
+        project.delete(output, failure)
+        def sources = sourceSets.main.allJava.files
+            .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() }.sort()
         if (sources.isEmpty()) {
             output.text = ''
             return
@@ -59,14 +82,13 @@ tasks.register('nitpickerLint') {
         def compile = tasks.named('compileJava').get()
         def compilerPath = compile.javaCompiler.orNull?.executablePath?.asFile
         def javac = compilerPath ?: new File(javaHome, 'bin/javac')
-        def processors = (compile.options.annotationProcessorPath?.files ?: []).findAll { it.exists() }
+        def lombok = (compile.options.annotationProcessorPath?.files ?: []).findAll { it.exists() && it.name.startsWith('lombok') }
         def release = compile.options.release.orNull
         def encoding = compile.options.encoding ?: 'UTF-8'
         def staged = new File(temporaryDir, 'sources')
         def classes = new File(temporaryDir, 'classes')
-        def generated = new File(temporaryDir, 'generated')
-        project.delete(staged, classes, generated)
-        [staged, classes, generated]*.mkdirs()
+        project.delete(staged, classes)
+        [staged, classes]*.mkdirs()
         def relativeNames = sources.collect { source ->
             def relative = projectDir.toPath().relativize(source.toPath()).toString().replace('\\', '/')
             def target = new File(staged, relative)
@@ -76,22 +98,24 @@ tasks.register('nitpickerLint') {
             }, encoding)
             relative
         }
+        def classpath = [compile.destinationDirectory.get().asFile] + compile.classpath.files
         def flags = ['-Xlint:rawtypes,unchecked,deprecation,removal,cast', '-Xmaxwarns', '100000', '-Xmaxerrs', '100',
-                     '-encoding', encoding, '-d', classes.absolutePath, '-s', generated.absolutePath,
-                     '-cp', compile.classpath.files.findAll { it.exists() }.collect { it.absolutePath }.join(File.pathSeparator)] +
-            (processors.isEmpty() ? ['-proc:none'] : ['-processorpath', processors.collect { it.absolutePath }.join(File.pathSeparator)]) +
+                     '-implicit:none', '-XDshould-stop.ifNoError=FLOW', '-encoding', encoding,
+                     '-d', classes.absolutePath,
+                     '-cp', classpath.findAll { it.exists() }.collect { it.absolutePath }.join(File.pathSeparator)] +
+            (lombok.isEmpty() ? ['-proc:none'] : ['-processorpath', lombok.collect { it.absolutePath }.join(File.pathSeparator)]) +
             (release == null ? [] : ['--release', release.toString()]) +
-            (compile.options.compilerArgs.contains('--enable-preview') ? ['--enable-preview'] : [])
+            lintCompatible(compile.options.allCompilerArgs.collect { it.toString() })
         def argumentFile = new File(temporaryDir, 'javac.args')
-        argumentFile.text = (flags + relativeNames)
+        argumentFile.text = (flags + relativeNames.collect { new File(staged, it).absolutePath })
             .collect { '"' + it.replace('\\', '\\\\').replace('"', '\\"') + '"' }.join('\n')
-        def process = new ProcessBuilder([javac.absolutePath, "@${argumentFile.absolutePath}".toString()])
-            .directory(staged).redirectErrorStream(true).start()
-        def log = process.inputStream.getText('UTF-8')
-        if (process.waitFor() != 0) {
-            throw new GradleException("javac lint failed: ${log.trim()}")
+        def result = compileInChildProcess(javac, argumentFile, staged)
+        def log = result.log.replace(staged.absolutePath + File.separator, '')
+        if (result.code == 0) {
+            output.text = log
+        } else {
+            failure.text = log
         }
-        output.text = log
     }
 }
 

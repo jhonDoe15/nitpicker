@@ -16,7 +16,7 @@ tasks.register('nitpickerCpd', JavaExec) {
         standardOutput = new FileOutputStream(report.get().asFile)
         errorOutput = errors
         args(['cpd', '--minimum-tokens', '100', '--ignore-identifiers', '--ignore-literals', '--language', 'java',
-              '--format', 'xml', '--no-fail-on-error', '--relativize-paths-with', projectDir.absolutePath] +
+              '--format', 'xml', '--no-fail-on-error'] +
             sourceDirectories().collectMany { ['--dir', it.absolutePath] })
     }
     doLast {

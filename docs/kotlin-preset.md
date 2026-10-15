@@ -59,6 +59,9 @@ properties.
 | PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
 | Structure limits, CRAP, jscpd duplicates | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
 | jdeps (stability direction)              | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
+| javac lint, PMD CPD                      | yes          | no             | The Java guards on the module's Java files, main and test; see the Java preset's Guards section.                        |
+| forbiddenapis                            | yes          | no             | Reads the classes compiled from Java only, like SpotBugs.                                                               |
+| Package cycles, unused dependencies      | yes          | yes            | Read the Java and the Kotlin classes of the module together, like jdeps.                                                |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so nothing is lost: it
 keeps running on the Java files of a mixed module. SpotBugs analyzes bytecode, and on

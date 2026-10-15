@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { cpdClones, isAccessorOnly, readCpdFindings } from './cpd-duplicates.mjs';
+import { cpdClones, isAccessorOnly, isDataTable, readCpdFindings } from './cpd-duplicates.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -86,6 +86,18 @@ public class Customer {
   });
 });
 
+describe('isDataTable', () => {
+  it('treats enum constants and argument rows as data, and logic as code', () => {
+    const constants =
+      'enum Country {\n  AT("Austria", 43),\n  BE("Belgium", 32),\n  CH("Switzerland", 41);';
+    const rows = 'Arguments.of("a", 1, true),\nArguments.of("b", 2, false),\n{"c", 3},';
+
+    expect(isDataTable(constants)).toBe(true);
+    expect(isDataTable(rows)).toBe(true);
+    expect(isDataTable(LOGIC)).toBe(false);
+  });
+});
+
 describe('cpdClones', () => {
   it('pairs the first file of a clone with each other file and reads the source text', () => {
     const { root } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
@@ -116,8 +128,8 @@ describe('readCpdFindings', () => {
       path.join(reportRoot, 'cpd.xml'),
       report(
         duplication(8, [
-          [MAIN_A, 2, 9],
-          [MAIN_B, 2, 9],
+          [path.join(root, MAIN_A), 2, 9],
+          [path.join(root, MAIN_B), 2, 9],
         ]),
       ),
     );
@@ -244,5 +256,58 @@ describe('readCpdFindings', () => {
 
     expect(readCpdFindings(reportRoot, options(root))).toEqual([]);
     expect(readCpdFindings(path.join(root, 'nothing'), options(root))).toEqual([]);
+  });
+
+  it('reports overlapping windows of one file pair once and drops a copy of itself', () => {
+    const { root, reportRoot } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
+    writeFileSync(
+      path.join(reportRoot, 'cpd.xml'),
+      report(
+        duplication(8, [
+          [MAIN_A, 2, 9],
+          [MAIN_B, 2, 9],
+        ]),
+        duplication(8, [
+          [MAIN_A, 3, 10],
+          [MAIN_B, 3, 10],
+        ]),
+        duplication(6, [
+          [MAIN_A, 3, 8],
+          [MAIN_A, 5, 10],
+        ]),
+      ),
+    );
+
+    const findings = readCpdFindings(reportRoot, options(root));
+
+    expect(findings.map((finding) => [finding.path, finding.location])).toEqual([
+      [MAIN_A, { line: 2 }],
+    ]);
+  });
+
+  it('skips enum tables and keeps a clone whose source it cannot read', () => {
+    const table = Array.from(
+      { length: 12 },
+      (_, index) => `  C${String(index)}("n${String(index)}", ${String(index)}),`,
+    );
+    const enumWith = (name) => `enum ${name} {\n${table.join('\n')}\n  ;\n}\n`;
+    const { root, reportRoot } = project({ [MAIN_A]: enumWith('A'), [MAIN_B]: enumWith('B') });
+    writeFileSync(
+      path.join(reportRoot, 'cpd.xml'),
+      report(
+        duplication(12, [
+          [MAIN_A, 2, 13],
+          [MAIN_B, 2, 13],
+        ]),
+        duplication(8, [
+          ['src/main/java/demo/Gone.java', 2, 9],
+          ['src/main/java/demo/Lost.java', 2, 9],
+        ]),
+      ),
+    );
+
+    const findings = readCpdFindings(reportRoot, options(root));
+
+    expect(findings.map((finding) => finding.path)).toEqual(['src/main/java/demo/Gone.java']);
   });
 });
