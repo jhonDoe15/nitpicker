@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { comparisonKey } from '../../../core/diff/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
@@ -197,10 +198,12 @@ describe('pit', () => {
 
   it('identifies mutants by class, method, mutator and description, never by line', () => {
     expect(findings.slice(0, 2).map((finding) => finding.identity)).toEqual([
-      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
-      'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
+      'Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+      'Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
     ]);
-    expect(findings[2].identity).toContain('replaced return value with "" for demo/Greeter::shout');
+    expect(findings[2].identity).toBe(
+      'Greeter|shout(LString;)LString;|EmptyObjectReturnValsMutator|replaced return value with "" for Greeter::shout#1',
+    );
     expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
   });
 
@@ -219,6 +222,20 @@ describe('pit', () => {
 
     expect(identityAtLine(swapped, 5)).toBe(identityAtLine(fixture('pit-mutations.xml'), 5));
     expect(identityAtLine(swapped, 9)).toBe(identityAtLine(fixture('pit-mutations.xml'), 9));
+  });
+
+  it('matches the mutants of a class moved to another package, as a git rename', () => {
+    const report = (packageName) =>
+      `<mutations><mutation detected='false' status='NO_COVERAGE'><sourceFile>AuditService.java</sourceFile><mutatedClass>shop.${packageName}.AuditService</mutatedClass><mutatedMethod>agent</mutatedMethod><methodDescription>(Lshop/${packageName}/Request;)Ljava/lang/String;</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${packageName}/AuditService::agent</description></mutation></mutations>`;
+    const keys = (packageName, renames) =>
+      ingestPit(report(packageName), { resolvePath: resolveJavaPath })
+        .findings.filter((finding) => finding.rule === 'mutant-nocoverage')
+        .map((finding) => comparisonKey(finding, renames));
+    const moved = 'src/main/java/shop/audit/AuditService.java';
+
+    expect(
+      keys('service', new Map([['src/main/java/shop/service/AuditService.java', moved]])),
+    ).toEqual(keys('audit'));
   });
 
   it('summarizes status counts as descriptive metrics and skips unresolvable sources', () => {
