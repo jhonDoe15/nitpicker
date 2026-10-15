@@ -118,12 +118,9 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
       expect(result.failed).toBe(true);
       expect(ofFile(result, 'Bad.java')).toEqual([
-        ...[
-          'blocks.EmptyCatchBlockCheck',
-          'indentation.IndentationCheck',
-          'regexp.RegexpSinglelineJavaCheck',
-          'whitespace.EmptyLineSeparatorCheck',
-        ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        ...['blocks.EmptyCatchBlockCheck'].map(
+          (check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`,
+        ),
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java',
         'pmd EmptyCatchBlock Bad.java',

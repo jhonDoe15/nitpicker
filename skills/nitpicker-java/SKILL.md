@@ -14,7 +14,8 @@ start; the gate is a backstop.
 
 1. Run the project's tests (`./gradlew test`). Failing tests or compile errors make the gate exit 2.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
-   `--replace`). `npx nitpicker --fix` does not touch Java.
+   `--replace`, plus `--aosp` when the project's style is aosp). `npx nitpicker --fix` does not
+   touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
    code. It runs Gradle on the merge base and on head and takes minutes. It uses the project's
    `./gradlew` when there is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides
@@ -34,8 +35,12 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format, 100 columns (Checkstyle's line length). Indent like the files around you:
-  nitpicker follows the project's majority, 2 spaces (Google style) or 4 (`--aosp`).
+- Style is google-java-format, 100 columns (Checkstyle's line length; Java keeps 100, not the
+  general 120). Indent like the files around you: nitpicker follows the project's majority, 2
+  spaces (Google style) or 4 (`--aosp`, 8 for a continuation line). Never reformat existing files
+  to the other one. Layout is google-java-format's alone: a misformatted file is one
+  `google-java-format` finding, and Checkstyle's indentation, whitespace, wrapping, import-order
+  and blank-line checks are off, so fix layout by running the formatter, not by hand.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
@@ -82,7 +87,11 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A method in main sources: at most 50 lines, 15 statements, control nesting 2, 3 parameters (lambda bodies count
   toward the method). Return early instead of nesting; past 3 parameters, pass a `record`.
 - A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
-  test files directly in it; group the rest into sub-packages.
+  test files directly in it; group the rest into sub-packages, at most 4 levels below the root
+  package (the package all the code shares): group by responsibility, don't nest.
+- A class in main sources: at most 20 methods (getters and setters count), 10 instance fields
+  (record components count) and 3 superclasses (a library superclass counts as one). Split by
+  responsibility, group fields into a record, and prefer holding a collaborator to extending one.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
@@ -106,8 +115,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A method already over a size limit may be edited but must not get worse: the gate then prints
   a note ("allowed because base was 4"). Adding a parameter, statement or nesting level fails
   (`Legacy.total grew from 4 to 5 parameters`). Put new logic in a new method and call it once.
-- A file or folder already over its limit must not grow: put the new code in a new class, and a
-  new file in a new package.
+- A file, folder, class or package already over its limit must not grow: put the new code in a new
+  class, and a new file in a new package. A class right for its size (a generated mapping, say) gets a
+  reviewed `exceptions` entry for `class-methods-limit`, `class-fields-limit`,
+  `inheritance-depth-limit` or `folder-depth-limit`; the failure message spells it out.
 - A line you touch must have its branches covered, even if it was uncovered before.
 - Existing PMD, SpotBugs and Checkstyle findings stay baselined while their message is unchanged;
   adding another of the same kind in the file is new. Don't rename or move a file that has

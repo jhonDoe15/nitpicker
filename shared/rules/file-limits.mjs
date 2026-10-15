@@ -28,7 +28,7 @@ import { hash, nextOccurrence } from './finding-helpers.mjs';
 
 export const FILE_LIMIT_CHECKS = ['fileLines', 'lineLength', 'folderFiles'];
 
-const TEST_DATA_FOLDER = /(?:^|\/)(?:__)?fixtures(?:__)?\//u;
+export const TEST_DATA_FOLDER = /(?:^|\/)(?:__)?fixtures(?:__)?\//u;
 const IMPORT_LINES = [
   /^import\s[^;]*;?$/u,
   /^export\s+(?:type\s+)?(?:\*|\{[^}]*\})(?:\s+as\s+[\w$]+)?\s+from\s+['"][^'"]*['"];?$/u,
@@ -78,7 +78,7 @@ export function evaluateFileLimits(files, options) {
   ];
 }
 
-function exceptionMatcher(exceptions) {
+export function exceptionMatcher(exceptions) {
   const matchers = exceptions.map(({ rule, paths, glob }) => ({
     rule,
     patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
@@ -91,7 +91,7 @@ function exceptionMatcher(exceptions) {
     );
 }
 
-function exceptionText(rule, glob) {
+export function exceptionText(rule, glob) {
   return JSON.stringify({ rule, paths: [glob], reason: '...' });
 }
 
@@ -187,7 +187,7 @@ function folderFinding(context, { key, value, limit }) {
   });
 }
 
-function messagesFor(name, values) {
+export function messagesFor(name, values) {
   return {
     message: renderMessage(MESSAGES[name], values),
     worseMessage: renderMessage(GREW_MESSAGES[name], values),
@@ -195,9 +195,9 @@ function messagesFor(name, values) {
   };
 }
 
-function ratchetedFinding(
+export function ratchetedFinding(
   context,
-  { rule, path: findingPath, identity, key, value, messages, pathIsFolder },
+  { rule, path: findingPath, identity, key, value, messages, pathIsFolder, folderFiles },
 ) {
   return {
     tool: context.analyzerName,
@@ -212,6 +212,7 @@ function ratchetedFinding(
       worseMessage: messages.worseMessage,
       heldMessage: messages.heldMessage,
       ...(pathIsFolder ? { pathIsFolder } : {}),
+      ...(folderFiles === undefined ? {} : { folderFiles }),
     },
   };
 }

@@ -4,6 +4,7 @@ import { globToRegExp } from '../../../shared/glob.mjs';
 import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
+import { javaFolderDepthFindings } from './size/folder-depth.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
@@ -67,12 +68,18 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
     }),
     ...codeFiles(projectRoot, { roots: rootsOf(manifest, 'test', kotlin), kind: 'test', kotlin }),
   ].filter((entry) => !excluders.some((matcher) => matcher.test(entry.path)));
-  return collectFileLimitFindings(projectRoot, entries, {
+  const options = {
     analyzerName: STRUCTURE_TOOL,
     thresholds: policy.thresholds,
     exceptions: policy.exceptions,
-    checks: ['fileLines', 'folderFiles'],
-  });
+  };
+  return [
+    ...collectFileLimitFindings(projectRoot, entries, {
+      ...options,
+      checks: ['fileLines', 'folderFiles'],
+    }),
+    ...javaFolderDepthFindings(entries, options),
+  ];
 }
 
 function codeFiles(projectRoot, { roots, kind, kotlin }) {
@@ -82,6 +89,10 @@ function codeFiles(projectRoot, { roots, kind, kotlin }) {
     .flatMap((root) =>
       readdirSync(path.join(projectRoot, root), { recursive: true })
         .filter((file) => extensions.includes(path.extname(file)))
-        .map((file) => ({ path: path.posix.join(root, file.split(path.sep).join('/')), kind })),
+        .map((file) => ({
+          path: path.posix.join(root, file.split(path.sep).join('/')),
+          packagePath: path.posix.dirname(file.split(path.sep).join('/')).replace(/^\.$/u, ''),
+          kind,
+        })),
     );
 }

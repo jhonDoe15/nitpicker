@@ -205,6 +205,42 @@ describe('Java file limits', () => {
     ).toEqual([[RULE_IDS.folderFiles, 'src/main/kotlin/demo', 'folder-files:source:5']]);
   });
 
+  it('fails a package more than 4 levels below the root package', () => {
+    writeClasses('src/main/java/demo', 1);
+    writeClasses('src/main/java/demo/a/b/c/d', 1);
+    writeClasses('src/main/java/demo/a/b/c/d/e', 1);
+    writeClasses('src/test/java/demo/a/b/c/d/e', 1);
+
+    const found = (options) =>
+      summary(readJavaFileLimitFindings(projectRoot, { manifest, ...options })).map(
+        ([rule, findingPath, identity]) => [rule, findingPath, identity],
+      );
+
+    expect(found({})).toEqual([
+      [RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d/e', 'folder-depth:source:5'],
+      [RULE_IDS.folderDepth, 'src/test/java/demo/a/b/c/d/e', 'folder-depth:test:5'],
+    ]);
+    expect(found({ policy: { thresholds: { folderDepth: 5 } } })).toEqual([]);
+    expect(
+      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', glob: '**/e/**' }] } }),
+    ).toEqual([]);
+  });
+
+  it('checks the packages of Kotlin sources the same way', () => {
+    mkdirSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e'), { recursive: true });
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/Top.kt'), 'class Top\n');
+    writeFileSync(path.join(projectRoot, 'src/main/kotlin/demo/a/b/c/d/e/Deep.kt'), 'class Deep\n');
+
+    expect(
+      summary(
+        readJavaFileLimitFindings(projectRoot, {
+          manifest: { ...manifest, kotlinSourceRoots: ['src/main/kotlin'] },
+          kotlin: true,
+        }),
+      ).map(([rule, findingPath]) => [rule, findingPath]),
+    ).toEqual([[RULE_IDS.folderDepth, 'src/main/kotlin/demo/a/b/c/d/e']]);
+  });
+
   it('skips generated roots under build/ and roots outside the project', () => {
     writeClasses('build/generated/src', 7);
     writeClasses('src/main/java/demo', 2);

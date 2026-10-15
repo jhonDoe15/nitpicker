@@ -9,19 +9,35 @@ import {
 } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
 import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import {
+  JAVA_LINE_LENGTH,
+  JAVA_NATIVE_RULES,
+  JAVA_SIZE_RULES,
+  SHARED_EXCEPTION_RULES,
+} from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { javaStyleArguments } from './style/java-style.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
-const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
+const FILE_LIMIT_THRESHOLDS = [
+  'fileLines',
+  'testFileLines',
+  'lineLength',
+  'folderFiles',
+  'folderDepth',
+  'classMethods',
+  'classFields',
+  'inheritanceDepth',
+];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
-  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
+  java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps, and Checkstyle checks it; to change what Checkstyle checks, set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }`,
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
 };
-const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
-  (rule) => !JAVA_NATIVE_RULES.includes(rule),
-);
+const JAVA_EXCEPTION_RULES = [
+  ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
+  ...JAVA_SIZE_RULES,
+];
 
 export function validateJavaConfig(config) {
   const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
@@ -63,6 +79,7 @@ function javaAdapterArguments({
   exclude = [],
   exceptions = [],
   kotlin = {},
+  conventions,
   tools = {},
 }) {
   const fileLimits = fileLimitThresholds(thresholds);
@@ -73,6 +90,7 @@ function javaAdapterArguments({
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
+    ...javaStyleArguments(conventions),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...[...PROJECT_TOOL_CONFIGS.keys()]
