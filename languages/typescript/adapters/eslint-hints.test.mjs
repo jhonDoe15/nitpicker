@@ -234,3 +234,52 @@ describe('eslintMessageWithHint', () => {
     ).toBe('Unexpected debugger.');
   });
 });
+
+describe('hints for the production policy rules', () => {
+  const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
+  const ROUTE = 'add an exception for this rule in nitpicker.config.json';
+
+  it('names the awaited form instead of the rule wording that recommends .catch', () => {
+    const message = hint(
+      '@typescript-eslint/no-floating-promises',
+      'Promises must be awaited, end with a call to .catch, or end with a call to .then with a rejection handler.',
+    );
+
+    expect(message).toBe(
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several. \`void\`, \`.then()\` and \`.catch()\` do not count. If the work is deliberately not awaited, ${ROUTE}.`,
+    );
+  });
+
+  it('keeps the rule wording of other floating-promise messages and adds the route', () => {
+    expect(
+      hint('@typescript-eslint/no-floating-promises', 'An array of Promises may be unintentional.'),
+    ).toBe(`An array of Promises may be unintentional. ${ROUTE}.`);
+  });
+
+  it('names a constant and the allowed numbers for a magic number', () => {
+    expect(hint('@typescript-eslint/no-magic-numbers', 'No magic number: 86400.')).toBe(
+      `No magic number: 86400. Name it with a constant, e.g. \`const SECONDS_PER_DAY = 86400;\` (-1, 0, 1 and 2 are allowed). If the number is clear where it is, ${ROUTE}.`,
+    );
+  });
+
+  it('names the allowed casing for a naming-convention finding', () => {
+    expect(
+      hint('@typescript-eslint/naming-convention', 'Function name `a_b` must match camelCase'),
+    ).toBe(
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE. If an external API forces the name, ${ROUTE}.`,
+    );
+  });
+
+  it.each([
+    ['no-eval', 'eval can be harmful.', 'look it up in a table keyed by name'],
+    ['no-param-reassign', "Assignment to function parameter 'n'.", 'Declare a new const'],
+    ['no-duplicate-imports', "'a' import is duplicated.", 'single import statement'],
+    [
+      'regexp/no-super-linear-backtracking',
+      'Unsafe quantifier.',
+      'without nested or overlapping quantifiers',
+    ],
+  ])('rewrites %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toContain(expected);
+  });
+});

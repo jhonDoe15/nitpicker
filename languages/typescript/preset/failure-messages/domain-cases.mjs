@@ -85,12 +85,12 @@ export const domainFailureMessageCases = [
   domainCase(
     'unknown parameter names the zod schema in adapters/',
     'export function run(input: unknown) { return input; }',
-    'zod schema in adapters/',
+    'adapters/ parses the input with a zod schema',
   ),
   domainCase(
-    'unknown property names the parsed type',
+    'unknown property names a readonly type in domain/',
     'export type Row = { readonly payload: unknown };',
-    'z.infer<typeof schema>',
+    'Write a readonly type for this value in domain/',
   ),
   domainCase('mutable property names readonly', 'type Invoice = { total: number };', 'readonly'),
 ];

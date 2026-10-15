@@ -70,7 +70,7 @@ If your change edits a function that existed before it, read
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
   returns -1, 1 or 0 from `<` and `>`, with its own unit test (a sort reads only the sign). Chain
   keys on its result: `const byMonth = compareText(a.month, b.month); if (byMonth !== 0) return byMonth;`.
-- `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
+- `for...of` is the only loop, and no recursion (mutual recursion included): a retry is `for...of` over attempt numbers.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
@@ -79,6 +79,31 @@ If your change edits a function that existed before it, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+
+## Production rules
+
+- `process.env`, `process.argv` and `process.exit` live only in the composition root and the entry
+  point; pass values in. Config values, clocks and IDs arrive as parameters.
+- Name numbers: a numeric literal other than -1, 0, 1, 2 is a `const LIMIT = 30` (UPPER_CASE) at module level.
+  Types are PascalCase, functions and parameters camelCase, constants camelCase or UPPER_CASE.
+- Always use braces (`curly`); never reassign a parameter; no `eval`; one `import` per module
+  (`import type` may sit beside it); `export { a, b }` names its exports, never `export * from`.
+- Await every promise. `void promise` still fails (React event handlers may use it); `await Promise.allSettled(...)` and read the result.
+- Shell commands use `execFile(command, [args])`, never a command string. Join a request-supplied
+  path with `resolve` and check it stays under the base. Tokens come from `node:crypto`, not `Math.random`.
+- No module-level `let`/`Map`/`Set`/array that gets mutated outside `domain/`: create state in a
+  factory and pass it in. Nothing with an effect at import time (`await`, timers, `fetch`, `Date.now()`).
+- Create clients, servers, pools and queues (`new Pool()`, `createClient()`, `axios.create()`) only in
+  `src/main/composition-root.ts` (or `src/main/main.ts`, `server.ts`, `composition-root/`); nothing
+  else lives directly under `src/main/` except `features/` and `shared/`.
+- `console` and `process.stdout.write` only in the composition root; use the project's logger elsewhere.
+- Wrapping a caught error: `new AppError(message, { cause: error })`, for any `*Error` subclass.
+- Zod: `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` need validated element schemas, no
+  `z.unknown()`, `z.any()`, `z.custom()` without a validator, `.passthrough()`, `.loose()`.
+- Parameter types in `domain/` are readonly types you declare there, not the adapters' `z.infer` type
+  and not `unknown`. A type guard on `unknown` input is a zod parse in `adapters/`.
+- Regexes avoid nested or overlapping repeats (`(a+)+`, `\s*\s*`): super-linear backtracking fails.
+- Legitimate exceptions go in `nitpicker.config.json` `exceptions` (rule, paths, reason), never inline.
 
 ## domain/ is deeply readonly
 

@@ -1,4 +1,5 @@
-import { readLayout } from '../head-policy.mjs';
+import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { layoutFeatures } from './strict-layout.mjs';
 
 const layout = readLayout();
@@ -15,7 +16,32 @@ const publicIndex = publicIndexFor(layout);
 const { featureRoot, feature, shared, compositionRoot } = layoutFeatures;
 const codeFile = '\\.[cm]?[jt]sx?$';
 
-const pureNodeModules = ['path', 'url', 'util', 'assert', 'buffer', 'events', 'string_decoder'];
+const EXCEPTION_ROUTE =
+  ' If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).';
+
+const pureNodeModules = [
+  'path',
+  'url',
+  'util',
+  'assert',
+  'buffer',
+  'events',
+  'string_decoder',
+  'punycode',
+  'querystring',
+];
+const clockAndIdLibraries = [
+  'uuid',
+  'nanoid',
+  'cuid',
+  '@paralleldrive/cuid2',
+  'ulid',
+  'dayjs',
+  'moment',
+  'luxon',
+  'date-fns-tz',
+  '@faker-js/faker',
+];
 const networkAndDatabaseClients = [
   'axios',
   'node-fetch',
@@ -41,9 +67,36 @@ const networkAndDatabaseClients = [
 ];
 const loggers = ['pino', 'winston', 'bunyan', 'log4js', 'loglevel', 'consola', 'debug'];
 
+const pureNodeModulePattern = `^(?:node:)?(?:${pureNodeModules.join('|')})(?:/(?:posix|win32|strict|types))?$`;
+
+const nodeIoModules = [
+  'fs',
+  'child_process',
+  'net',
+  'http',
+  'https',
+  'http2',
+  'tls',
+  'dgram',
+  'dns',
+  'cluster',
+  'worker_threads',
+  'os',
+  'readline',
+  'crypto',
+  'perf_hooks',
+  'timers',
+  'zlib',
+];
+
+const reachableIoPatterns = [
+  `^(?:node:)?(?:${nodeIoModules.join('|')})(?:$|/)`,
+  `(?:^|/)node_modules/(?:${[...networkAndDatabaseClients, ...loggers].join('|')})(?:/|$)`,
+];
+
 const domain = { path: `${feature}/domain/` };
 
-export const strictBoundaryRules = [
+const baseBoundaryRules = [
   {
     name: 'feature-internals-only-through-index',
     severity: 'error',
@@ -89,11 +142,11 @@ export const strictBoundaryRules = [
     name: 'domain-does-not-import-node-io',
     severity: 'error',
     comment:
-      'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder). Do the I/O in adapters/ and pass the result in as a parameter.',
+      'domain/ may import only pure Node modules (path, url, util, assert, buffer, events, string_decoder, punycode, querystring, and their subpaths such as path/posix). Do the I/O in adapters/ and pass the result in as a parameter.',
     from: domain,
     to: {
       dependencyTypes: ['core'],
-      pathNot: `^(?:node:)?(?:${pureNodeModules.join('|')})$`,
+      pathNot: pureNodeModulePattern,
     },
   },
   {
@@ -128,4 +181,42 @@ export const strictBoundaryRules = [
       path: [`(?:^|/)state/`, `(?:^|/)[^/]*[.-](?:state|store)${codeFile}`],
     },
   },
+  {
+    name: 'domain-does-not-import-clock-or-id-libraries',
+    severity: 'error',
+    comment:
+      'domain/ may not import ID or clock libraries (uuid, nanoid, dayjs, moment, luxon, and similar). Take the time or ID as a parameter from adapters/.',
+    from: domain,
+    to: { path: `(?:^|/)(?:node_modules/)?(?:${clockAndIdLibraries.join('|')})(?:/|$)` },
+  },
+  {
+    name: 'domain-does-not-reach-io-through-shared',
+    severity: 'error',
+    comment:
+      'domain/ reaches Node I/O or a client through a shared/ module it imports. Move that dependency out of the shared module, or do the work in adapters/ and pass the result into domain/ as a parameter.',
+    from: domain,
+    to: { path: reachableIoPatterns, reachable: true },
+  },
 ];
+
+const withExceptionRoute = (rule) =>
+  rule.name.startsWith('domain-')
+    ? { ...rule, comment: `${rule.comment}${EXCEPTION_ROUTE}` }
+    : rule;
+
+function withExceptions(rule, exceptions) {
+  const lifted = exceptions
+    .filter((exception) => exception.rule === rule.name)
+    .flatMap(({ paths }) => paths.map(globToRegExpSource));
+  if (lifted.length === 0) {
+    return rule;
+  }
+  const existing = [rule.from.pathNot ?? []].flat();
+  return { ...rule, from: { ...rule.from, pathNot: [...existing, ...lifted] } };
+}
+
+export function strictBoundaryRulesFor(exceptions) {
+  return baseBoundaryRules.map(withExceptionRoute).map((rule) => withExceptions(rule, exceptions));
+}
+
+export const strictBoundaryRules = strictBoundaryRulesFor(readHeadPolicy().exceptions);

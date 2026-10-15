@@ -1,4 +1,9 @@
+import { variableNamed } from './ancestry.mjs';
+
 const OBJECT_SCHEMA_FACTORIES = new Set(['object', 'strictObject', 'looseObject']);
+const CONTAINER_FACTORIES = new Set(['record', 'array', 'set', 'map', 'tuple']);
+const LOOSE_OBJECT_METHODS = new Set(['passthrough', 'loose']);
+const MAX_ALIAS_DEPTH = 3;
 const UNVALIDATED_FACTORIES = new Set(['unknown', 'any']);
 const NON_VALIDATING_METHODS = new Set([
   'optional',
@@ -12,6 +17,7 @@ const NON_VALIDATING_METHODS = new Set([
   'readonly',
   'brand',
 ]);
+const CUSTOM_FACTORY = new Set(['custom']);
 const ZOD_NAMES = new Set(['z', 'zod']);
 
 function memberName(callee) {
@@ -45,7 +51,14 @@ function isZodCall(sourceCode, node, names) {
   );
 }
 
-function unvalidatedRoot(sourceCode, expression) {
+function constantInitializer(sourceCode, identifier) {
+  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
+  return definition?.type === 'Variable' && definition.parent.kind === 'const'
+    ? (definition.node.init ?? undefined)
+    : undefined;
+}
+
+function unvalidatedRoot(sourceCode, expression, depth = 0) {
   const pending = [expression];
   for (const current of pending) {
     if (
@@ -55,7 +68,35 @@ function unvalidatedRoot(sourceCode, expression) {
       pending.push(current.callee.object);
     }
   }
-  return pending.find((current) => isZodCall(sourceCode, current, UNVALIDATED_FACTORIES));
+  const root = pending.at(-1);
+  if (root.type === 'Identifier' && depth < MAX_ALIAS_DEPTH) {
+    const initializer = constantInitializer(sourceCode, root);
+    return initializer && unvalidatedRoot(sourceCode, initializer, depth + 1);
+  }
+  if (isZodCall(sourceCode, root, UNVALIDATED_FACTORIES)) {
+    return root;
+  }
+  if (isZodCall(sourceCode, root, CUSTOM_FACTORY) && root.arguments.length === 0) {
+    return root;
+  }
+  return isZodCall(sourceCode, root, CONTAINER_FACTORIES)
+    ? root.arguments
+        .map((argument) => unvalidatedRoot(sourceCode, argument, depth + 1))
+        .find((found) => found !== undefined)
+    : undefined;
+}
+
+function chainRoot(expression) {
+  const chain = [expression];
+  for (const current of chain) {
+    if (current.type === 'CallExpression') {
+      chain.push(current.callee);
+    }
+    if (current.type === 'MemberExpression') {
+      chain.push(current.object);
+    }
+  }
+  return chain.at(-1);
 }
 
 export const rule = {
@@ -68,13 +109,43 @@ export const rule = {
     messages: {
       unvalidatedField:
         '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). If the field is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+      customWithoutValidator:
+        'z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+      looseObject:
+        'z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. If the extra keys are genuinely opaque, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     const sourceCode = context.sourceCode;
 
+    function isLooseCall(node) {
+      const name = memberName(node.callee);
+      const onZod = () => {
+        const root = chainRoot(node);
+        return root.type === 'Identifier' && isZod(sourceCode, root);
+      };
+      if (name === 'looseObject') {
+        return isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES);
+      }
+      if (LOOSE_OBJECT_METHODS.has(name)) {
+        return onZod();
+      }
+      return (
+        name === 'catchall' &&
+        onZod() &&
+        unvalidatedRoot(sourceCode, node.arguments[0]) !== undefined
+      );
+    }
+
+    function reportLooseObject(node) {
+      if (isLooseCall(node)) {
+        context.report({ node, messageId: 'looseObject' });
+      }
+    }
+
     return {
       CallExpression(node) {
+        reportLooseObject(node);
         const [shape] = node.arguments;
         if (
           !isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES) ||
@@ -88,7 +159,10 @@ export const rule = {
           if (root !== undefined) {
             context.report({
               node: property.value,
-              messageId: 'unvalidatedField',
+              messageId:
+                memberName(root.callee) === 'custom'
+                  ? 'customWithoutValidator'
+                  : 'unvalidatedField',
               data: { factory: `z.${memberName(root.callee)}` },
             });
           }

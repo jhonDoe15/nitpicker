@@ -1,4 +1,43 @@
 import { ancestorsOf } from './ancestry.mjs';
+
+const ERROR_SUBCLASS_NAME = /Error$/;
+const SUBCLASS_WRAPPER = { optionsIndex: undefined };
+
+function propertyName(property) {
+  return property.key.name ?? property.key.value;
+}
+
+function hasCauseProperty(options, referencesCatch) {
+  return (
+    options?.type === 'ObjectExpression' &&
+    options.properties.some(
+      (property) =>
+        property.type === 'Property' &&
+        propertyName(property) === 'cause' &&
+        referencesCatch(property.value),
+    )
+  );
+}
+
+function wrapperFor(wrappers, name) {
+  const configured = wrappers.find((candidate) => candidate.name === name);
+  if (configured !== undefined) {
+    return configured;
+  }
+  return ERROR_SUBCLASS_NAME.test(name) ? SUBCLASS_WRAPPER : undefined;
+}
+
+function preservesCause(wrapper, node, referencesCatch) {
+  if (wrapper.optionsIndex !== undefined) {
+    return hasCauseProperty(node.arguments[wrapper.optionsIndex], referencesCatch);
+  }
+  return node.arguments.some(
+    (argument) =>
+      hasCauseProperty(argument, referencesCatch) ||
+      (argument.type === 'Identifier' && referencesCatch(argument)),
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -26,7 +65,7 @@ export const rule = {
     ],
     messages: {
       lostCause:
-        'Preserve the original cause when wrapping an unclassified caught failure, or use the error normalization boundary.',
+        'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
     },
   },
   create(context) {
@@ -34,7 +73,7 @@ export const rule = {
     return {
       NewExpression(node) {
         if (node.callee.type !== 'Identifier') return;
-        const wrapper = wrappers.find((candidate) => candidate.name === node.callee.name);
+        const wrapper = wrapperFor(wrappers, node.callee.name);
         if (
           !wrapper ||
           (wrapper.classificationIndex !== undefined &&
@@ -56,17 +95,7 @@ export const rule = {
         if (wrapper.classificationIndex === undefined) {
           if (!referencesCatch(node)) return;
         }
-        const options = node.arguments[wrapper.optionsIndex];
-        if (
-          options?.type === 'ObjectExpression' &&
-          options.properties.some(
-            (property) =>
-              property.type === 'Property' &&
-              (property.key.name ?? property.key.value) === 'cause' &&
-              referencesCatch(property.value),
-          )
-        )
-          return;
+        if (preservesCause(wrapper, node, referencesCatch)) return;
         context.report({ node, messageId: 'lostCause' });
       },
     };

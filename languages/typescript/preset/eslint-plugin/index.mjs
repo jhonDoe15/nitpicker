@@ -38,6 +38,12 @@ import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-deriv
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 
+import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
+import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
+import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
+import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
+import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
+
 export const nitpickerRules = {
   meta: {
     name: 'nitpicker',
@@ -58,6 +64,11 @@ export const nitpickerRules = {
     'no-managed-resource-construction-outside-composition-roots':
       noManagedResourceConstructionOutsideCompositionRoots,
     'no-module-level-let': noModuleLevelLet,
+    'no-module-level-mutable-state': noModuleLevelMutableState,
+    'no-process-access-outside-composition-root': noProcessAccessOutsideCompositionRoot,
+    'no-shell-string-command': noShellStringCommand,
+    'no-unknown-main-folder': noUnknownMainFolder,
+    'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
     'no-comments': noComments,

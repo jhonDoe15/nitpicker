@@ -1,4 +1,6 @@
 import ts from 'typescript';
+import { ERROR_CLASS_HINT, KINDS, TYPE_NAME_KINDS } from './immutable-hints/kinds.mjs';
+import { typeParameterFinding, untypedFinding } from './immutable-hints/untyped-finding.mjs';
 
 const GENERIC_HINT = 'Type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`.';
 
@@ -9,6 +11,7 @@ const MUTABLE_CLASSES = new Set([
   'AbortSignal',
   'ArrayBuffer',
   'Buffer',
+  'Error',
   'EventTarget',
   'Headers',
   'URL',
@@ -17,53 +20,6 @@ const MUTABLE_CLASSES = new Set([
   'WeakMap',
   'WeakSet',
 ]);
-
-const ARRAY_PRODUCING_METHODS = new Set([
-  'concat',
-  'filter',
-  'flat',
-  'flatMap',
-  'map',
-  'slice',
-  'split',
-  'toReversed',
-  'toSorted',
-  'toSpliced',
-  'with',
-]);
-
-const ARRAY_PRODUCING_STATICS = new Set([
-  'Array.from',
-  'Array.of',
-  'Object.entries',
-  'Object.keys',
-  'Object.values',
-]);
-
-const KINDS = {
-  array: { label: 'array', hint: 'Type it `readonly T[]`.' },
-  set: {
-    label: 'Set',
-    hint: 'Type it `ReadonlySet<T>`, or build it inline: `[...new Set(xs)]`.',
-  },
-  map: { label: 'Map', hint: 'Type it `ReadonlyMap<K, readonly V[]>`.' },
-  execArray: {
-    label: 'RegExpExecArray',
-    hint: 'Destructure the match in the same statement, or use `.test`.',
-  },
-  date: {
-    label: 'Date',
-    hint: 'Type it `Readonly<Date>`, or keep it unbound like `new Date(ms).getUTCHours()`.',
-  },
-  schema: {
-    label: 'zod schema',
-    hint: 'Zod schemas are always mutable: keep them in adapters/, or inline the call where it is used.',
-  },
-  regexp: {
-    label: 'RegExp',
-    hint: 'RegExp objects are always mutable: keep them in adapters/, or write the literal inline where it is used.',
-  },
-};
 
 export function immutableTypesMessage({ kind, node, sourceFile }) {
   const declaration = node === undefined ? undefined : declarationOf(kind, node);
@@ -93,9 +49,12 @@ function hintOf(finding) {
   if (finding?.kind === undefined) {
     return GENERIC_HINT;
   }
-  return finding.kind === 'class'
-    ? `${finding.label} is a class and always mutable: keep it in adapters/ and pass domain code a plain value.`
-    : KINDS[finding.kind].hint;
+  if (finding.kind !== 'class') {
+    return KINDS[finding.kind].hint;
+  }
+  return finding.label === 'Error'
+    ? ERROR_CLASS_HINT
+    : `${finding.label} is a class and always mutable: keep it in adapters/ and pass domain code a plain value.`;
 }
 
 function declarationOf(kind, node) {
@@ -123,20 +82,15 @@ function functionNameNode(declaration) {
   return parent !== undefined && ts.isVariableDeclaration(parent) ? parent.name : undefined;
 }
 
-function hasInitializedType(node) {
-  return ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node);
-}
-
 function flaggedPart(declaration, sourceFile) {
   const typeNode = declaration.type;
-  if (typeNode !== undefined) {
-    return describeTypePart(mutablePart(typeNode, sourceFile), sourceFile);
+  if (typeNode === undefined) {
+    return untypedFinding(declaration);
   }
-  if (!hasInitializedType(declaration) || declaration.initializer === undefined) {
-    return undefined;
-  }
-  const kind = kindOfExpression(declaration.initializer);
-  return kind === undefined ? undefined : { kind, label: KINDS[kind].label };
+  return (
+    describeTypePart(mutablePart(typeNode, sourceFile), sourceFile) ??
+    typeParameterFinding(declaration, sourceFile)
+  );
 }
 
 function describeTypePart(part, sourceFile) {
@@ -168,16 +122,6 @@ function kindOfType(typeNode, sourceFile) {
   }
   return MUTABLE_CLASSES.has(name) ? { kind: 'class', label: name } : {};
 }
-
-const TYPE_NAME_KINDS = new Map([
-  ['Array', 'array'],
-  ['Set', 'set'],
-  ['Map', 'map'],
-  ['Date', 'date'],
-  ['RegExp', 'regexp'],
-  ['RegExpExecArray', 'execArray'],
-  ['RegExpMatchArray', 'execArray'],
-]);
 
 const MAX_ALIAS_DEPTH = 4;
 
@@ -262,64 +206,4 @@ function membersAsItems(members, item, sourceFile) {
         (modifier) => modifier.kind === ts.SyntaxKind.ReadonlyKeyword,
       ),
     }));
-}
-
-function unwrapExpression(expression) {
-  const chain = [expression];
-  for (const current of chain) {
-    if (
-      ts.isParenthesizedExpression(current) ||
-      ts.isAsExpression(current) ||
-      ts.isSatisfiesExpression(current) ||
-      ts.isNonNullExpression(current) ||
-      ts.isAwaitExpression(current)
-    ) {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
-}
-
-function kindOfExpression(expression) {
-  const unwrapped = unwrapExpression(expression);
-  if (ts.isArrayLiteralExpression(unwrapped)) {
-    return 'array';
-  }
-  if (ts.isRegularExpressionLiteral(unwrapped)) {
-    return 'regexp';
-  }
-  if (ts.isNewExpression(unwrapped)) {
-    return TYPE_NAME_KINDS.get(unwrapped.expression.getText());
-  }
-  return ts.isCallExpression(unwrapped) ? kindOfCall(unwrapped) : undefined;
-}
-
-function kindOfCall(call) {
-  const callee = call.expression;
-  if (!ts.isPropertyAccessExpression(callee)) {
-    return undefined;
-  }
-  const method = callee.name.text;
-  const callText = `${callee.expression.getText()}.${method}`;
-  if (callText === 'Map.groupBy') {
-    return 'map';
-  }
-  if (method === 'exec' || method === 'match') {
-    return 'execArray';
-  }
-  if (ARRAY_PRODUCING_STATICS.has(callText) || ARRAY_PRODUCING_METHODS.has(method)) {
-    return 'array';
-  }
-  return rootIdentifier(callee) === 'z' ? 'schema' : undefined;
-}
-
-function rootIdentifier(expression) {
-  const chain = [expression];
-  for (const current of chain) {
-    if (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
-      chain.push(current.expression);
-    }
-  }
-  const root = chain.at(-1);
-  return ts.isIdentifier(root) ? root.text : undefined;
 }

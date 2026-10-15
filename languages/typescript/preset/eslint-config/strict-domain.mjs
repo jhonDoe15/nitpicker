@@ -9,6 +9,28 @@ export function domainGlobsFor(sourceRoots) {
 
 export const domainGlobs = domainGlobsFor(['src']);
 
+const CLOCK_AND_RANDOM_MESSAGE =
+  'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.';
+const IO_GLOBAL_MESSAGE =
+  'domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter.';
+const MUTATION_MESSAGE =
+  'domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field }.';
+
+const MUTATION_CALLS = ['set', 'defineProperty', 'deleteProperty', 'setPrototypeOf'];
+const IO_GLOBALS = [
+  'process',
+  'fetch',
+  'setTimeout',
+  'setInterval',
+  'setImmediate',
+  'queueMicrotask',
+  'performance',
+  'XMLHttpRequest',
+  'WebSocket',
+  'localStorage',
+  'sessionStorage',
+];
+
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
 const TRANSFORMS =
@@ -49,9 +71,8 @@ export const domainRestrictedSyntax = [
   },
   {
     selector:
-      "CallExpression[callee.object.name='Date'][callee.property.name='now'], NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.object.name='Math'][callee.property.name='random'], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
-    message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
+      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
+    message: CLOCK_AND_RANDOM_MESSAGE,
   },
   {
     selector:
@@ -80,6 +101,24 @@ export const domainRestrictedSyntax = [
   },
 ];
 
+export const domainPurityRules = {
+  'no-restricted-globals': [
+    'error',
+    ...IO_GLOBALS.map((name) => ({ name, message: IO_GLOBAL_MESSAGE })),
+  ],
+  'no-restricted-properties': [
+    'error',
+    { object: 'Date', property: 'now', message: CLOCK_AND_RANDOM_MESSAGE },
+    { object: 'Math', property: 'random', message: CLOCK_AND_RANDOM_MESSAGE },
+    { object: 'performance', property: 'now', message: CLOCK_AND_RANDOM_MESSAGE },
+    ...MUTATION_CALLS.map((property) => ({
+      object: 'Reflect',
+      property,
+      message: MUTATION_MESSAGE,
+    })),
+  ],
+};
+
 export const domainFunctionalRules = {
   'functional/no-let': 'error',
   'functional/no-classes': 'error',
@@ -98,6 +137,7 @@ export const strictDomainConfig = [
     plugins: { functional, nitpicker: nitpickerRules },
     rules: {
       ...domainFunctionalRules,
+      ...domainPurityRules,
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],
       'nitpicker/no-self-recursion': 'error',
       'nitpicker/no-throw': 'error',

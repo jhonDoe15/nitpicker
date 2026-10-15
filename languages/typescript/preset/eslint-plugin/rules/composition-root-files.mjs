@@ -1,4 +1,5 @@
-const DEFAULT_COMPOSITION_ROOT_PATTERN = '(?:^|/)(?:main|server|composition-root)\\.ts$';
+const DEFAULT_COMPOSITION_ROOT_PATTERN =
+  '(?:^|/)main/(?:(?:main|server|composition-root)\\.[cm]?[jt]sx?|composition-root/.+)$';
 
 export const compositionRootOptionsSchema = [
   {

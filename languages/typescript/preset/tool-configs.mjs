@@ -49,7 +49,21 @@ function tsconfigRewrite(javascriptOptions) {
   };
 }
 
-export const layoutTsconfig = tsconfigRewrite({ ...JAVASCRIPT_COMPILER_OPTIONS, noEmit: true });
+const TYPESCRIPT_ONLY_OPTIONS = {
+  exactOptionalPropertyTypes: true,
+  noPropertyAccessFromIndexSignature: true,
+  noUncheckedSideEffectImports: true,
+};
+
+const JAVASCRIPT_RELAXED_OPTIONS = Object.fromEntries(
+  Object.keys(TYPESCRIPT_ONLY_OPTIONS).map((option) => [option, false]),
+);
+
+export const layoutTsconfig = tsconfigRewrite({
+  ...JAVASCRIPT_COMPILER_OPTIONS,
+  ...JAVASCRIPT_RELAXED_OPTIONS,
+  noEmit: true,
+});
 
 const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS);
 
@@ -226,6 +240,7 @@ function projectLayeredTsconfig(extended, base, layout) {
     compilerOptions: {
       ...NO_EMIT_ANALYSIS_OPTIONS,
       ...POLICY_COMPILER_OPTIONS,
+      ...(layout.javascript ? {} : TYPESCRIPT_ONLY_OPTIONS),
       ...javascriptOptions,
     },
     include: layered.include,

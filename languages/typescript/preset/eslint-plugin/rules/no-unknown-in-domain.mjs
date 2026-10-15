@@ -3,7 +3,7 @@ import {
   unknownMemberTags,
   withJsdoc,
 } from '../../../../javascript/preset/jsdoc.mjs';
-import { ancestorsOf } from './ancestry.mjs';
+import { ancestorsOf, variableNamed } from './ancestry.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
 
@@ -42,6 +42,29 @@ function isCaughtErrorSlot(node, annotation) {
   );
 }
 
+function aliasedType(sourceCode, reference) {
+  if (reference.typeName.type !== 'Identifier') {
+    return undefined;
+  }
+  const definition = variableNamed(sourceCode, reference.typeName)?.defs.find(
+    ({ type }) => type === 'Type',
+  );
+  return definition?.node.type === 'TSTypeAliasDeclaration' && !definition.node.typeParameters
+    ? definition.node.typeAnnotation
+    : undefined;
+}
+
+function resolvesToUnknown(sourceCode, node, seen = new Set()) {
+  if (node.type === 'TSUnknownKeyword') {
+    return true;
+  }
+  const target = node.type === 'TSTypeReference' ? aliasedType(sourceCode, node) : undefined;
+  if (target === undefined || seen.has(target)) {
+    return false;
+  }
+  return resolvesToUnknown(sourceCode, target, new Set([...seen, target]));
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -51,23 +74,29 @@ export const rule = {
     schema: jsdocOptionSchema,
     messages: {
       unknownType:
-        'domain/ code takes typed values, not unknown. Parse the input with a zod schema in adapters/ and give this parameter or property the parsed type (z.infer<typeof schema>). A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        'domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (a zod output is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
+    function check(node) {
+      const chain = [node, ...ancestorsOf(node)];
+      const memberAt = chain.findIndex(
+        (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
+      );
+      const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
+      if (
+        memberAt !== -1 &&
+        (typeParameterAt === -1 || memberAt < typeParameterAt) &&
+        !isCaughtErrorSlot(node, chain[memberAt])
+      ) {
+        context.report({ node, messageId: 'unknownType' });
+      }
+    }
     const visitors = {
-      TSUnknownKeyword(node) {
-        const chain = [node, ...ancestorsOf(node)];
-        const memberAt = chain.findIndex(
-          (current) => current.type === 'TSTypeAnnotation' && isAnnotatedMember(current),
-        );
-        const typeParameterAt = chain.findIndex((current) => current.type === 'TSTypeParameter');
-        if (
-          memberAt !== -1 &&
-          (typeParameterAt === -1 || memberAt < typeParameterAt) &&
-          !isCaughtErrorSlot(node, chain[memberAt])
-        ) {
-          context.report({ node, messageId: 'unknownType' });
+      TSUnknownKeyword: check,
+      TSTypeReference(node) {
+        if (node.typeName.type === 'Identifier' && resolvesToUnknown(context.sourceCode, node)) {
+          check(node);
         }
       },
     };
