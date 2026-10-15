@@ -1,4 +1,3 @@
-import { expectedOutput19_19 } from '../diff/fixtures/expected-output/core-configure-analyzers.mjs';
 import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
@@ -17,7 +16,25 @@ describe('configureAnalyzers', () => {
     const names = configured.map(({ name }) => name);
 
     expect(names).not.toContain('duplicates');
-    expect([...new Set(names)].sort()).toEqual(expectedOutput19_19());
+    expect([...new Set(names)].sort()).toEqual([
+      'coding-standards',
+      'coupling',
+      'coverage',
+      'crap',
+      'dead-code',
+      'dependency-architecture',
+      'entry-points',
+      'eslint-errors',
+      'eslint-lint',
+      'eslint-logging',
+      'eslint-module-effects',
+      'house-rules',
+      'mutation',
+      'prettier-format',
+      'structure',
+      'test-runtime',
+      'typescript-typecheck',
+    ]);
     expect(configured.find(({ name }) => name === 'coding-standards').legacyInventory).toBe(
       'config/legacy.json',
     );
