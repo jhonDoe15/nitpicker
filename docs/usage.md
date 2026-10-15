@@ -21,23 +21,26 @@ tool error.
 
 ### From a GitHub release
 
-Each release also attaches the same package as a tarball, `nitpicker-<version>.tgz`, with a
-`SHA256SUMS` file. Install it when you want a version that is not on npm. Keep the tarball in your
-repository, so teammates and CI install the same file without access to the release:
+A release made by following [the release steps](releasing.md) also attaches the package as a
+tarball, `nitpicker-<version>.tgz`, with a `SHA256SUMS` file. Install it when you want a version that
+is not on npm. Keep the tarball in your repository, so teammates and CI install the same file
+without access to the release:
 
 ```sh
-mkdir -p vendor
-gh release download v0.1.0-rc.1 --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --dir vendor
-npm install --save-dev ./vendor/nitpicker-0.1.0-rc.1.tgz vitest @vitest/coverage-v8 typescript @types/node
+VERSION=0.1.0-rc.1
+gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
+(cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
 ```
 
-`package.json` then records `"nitpicker": "file:vendor/nitpicker-0.1.0-rc.1.tgz"`. `gh` signs in
-with your GitHub account, which a private repository needs. On a public repository, `npm install`
-takes the asset URL directly:
+`package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
+TypeScript preset's; for another preset, install the tarball with the peers its guide lists, if any.
+`gh` signs in with your GitHub account, which a private repository needs. On a public repository,
+`npm install` takes the asset URL directly:
 `https://github.com/jhonDoe15/nitpicker/releases/download/v<version>/nitpicker-<version>.tgz`.
 
-The tarball carries the agent skills, so install the one for your preset from it:
-`npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`.
+The tarball carries the agent skills; install the one for your preset from `./node_modules/nitpicker`
+as the [README](../README.md) describes.
 
 ## First run
 
