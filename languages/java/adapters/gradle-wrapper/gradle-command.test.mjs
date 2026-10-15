@@ -96,12 +96,12 @@ describe('gradleTarget on Windows', () => {
     });
   });
 
-  it('runs the gradle fallback through a shell, since it is gradle.bat', () => {
+  it('runs the gradle fallback through a shell with quoted words, since it is gradle.bat', () => {
     expect(
       gradleTarget({ projectRoot: project(), configured: undefined, args, platform: 'win32' }),
     ).toEqual({
       command: 'gradle',
-      args,
+      args: ['"-I"', '"C:\\a b\\init.gradle"'],
       shell: true,
     });
   });
