@@ -8,9 +8,6 @@ const PRIMITIVES = {
   S: 'short',
   Z: 'boolean',
 };
-const PRIMITIVE_NAMES = new Set(Object.values(PRIMITIVES));
-const TYPE_VARIABLE = /^[A-Z][A-Z0-9]?$/u;
-const ARRAY_SUFFIX = /(?:\[\])+$/u;
 
 const DESCRIPTOR_TYPE = /(\[*)(?:L([^;]+);|([BCDFIJSZ]))/gu;
 
@@ -30,19 +27,6 @@ export function simpleClassName(internalName) {
   return internalName.split('/').at(-1).split('$').at(-1).replace(/^\d+/u, '');
 }
 
-function compatible(declared, actual) {
-  if (declared === actual) {
-    return true;
-  }
-  const declaredBase = declared.replace(ARRAY_SUFFIX, '');
-  const actualBase = actual.replace(ARRAY_SUFFIX, '');
-  return (
-    TYPE_VARIABLE.test(declaredBase) &&
-    declared.length - declaredBase.length === actual.length - actualBase.length &&
-    !PRIMITIVE_NAMES.has(actual)
-  );
-}
-
 export function sameConstructor(method, fn) {
   const actual = method.constructorTypes;
   const declared = fn.parameterTypes;
@@ -50,5 +34,5 @@ export function sameConstructor(method, fn) {
     return false;
   }
   const tail = actual.slice(actual.length - declared.length);
-  return declared.every((type, position) => compatible(type, tail[position]));
+  return declared.every((type, position) => type === tail[position]);
 }

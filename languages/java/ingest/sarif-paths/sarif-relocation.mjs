@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeUri } from '../../ingest/sarif.mjs';
+import { normalizeUri } from '../sarif.mjs';
 
 export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
   return {

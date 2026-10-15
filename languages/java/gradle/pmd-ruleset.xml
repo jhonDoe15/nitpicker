@@ -16,14 +16,14 @@
     <exclude name="AssignmentInOperand"/>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
-        message="Field {0} has the same name as a method. Rename one of them; an accessor named exactly like its field, without parameters, is allowed. If it is right here, add an exception for pmd/AvoidFieldNameMatchingMethodName in nitpicker.config.json.">
+        message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed. If it is right here, add an exception for pmd/AvoidFieldNameMatchingMethodName in nitpicker.config.json.">
     <properties>
       <property name="xpath">
         <value><![CDATA[
 //FieldDeclaration[not(pmd-java:modifiers() = 'static' and pmd-java:modifiers() = 'final')]/VariableDeclarator/VariableId
     [some $method in ../../..[self::ClassBody or self::EnumBody]/MethodDeclaration
      satisfies lower-case(@Name) = lower-case($method/@Name)
-       and not(@Name = $method/@Name and $method/FormalParameters[@Size = 0])]
+       and not(@Name = $method/@Name and $method/FormalParameters[@Size < 2])]
 ]]></value>
       </property>
     </properties>
@@ -32,18 +32,13 @@
         message="Use a named constant instead of this literal in the condition (-1, 0, 1 and 2 are allowed). If it is not a magic number, add an exception for pmd/AvoidLiteralsInIfCondition in nitpicker.config.json.">
     <properties>
       <property name="ignoreMagicNumbers" value="-1,0,1,2"/>
+      <property name="violationSuppressXPath" value=".[self::StringLiteral or self::CharLiteral]"/>
     </properties>
   </rule>
   <rule ref="category/java/errorprone.xml/AssignmentInOperand"
         message="Assign first, then use the variable. An assignment in a while condition is allowed. If it is right here, add an exception for pmd/AssignmentInOperand in nitpicker.config.json.">
     <properties>
       <property name="allowWhile" value="true"/>
-    </properties>
-  </rule>
-  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
-    <properties>
-      <property name="testClassPattern"
-                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml">
@@ -70,6 +65,16 @@
     <properties>
       <property name="logLevels" value="trace,debug,finest,finer,fine"/>
       <property name="guardsMethods" value="isTraceEnabled,isDebugEnabled,isLoggable"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+./MethodCall[ArgumentList/*[1][self::StringLiteral]]
+  [not(ArgumentList/*[position() > 1][not(
+     self::VariableAccess or self::FieldAccess or self::ThisExpression or self::StringLiteral
+     or self::NumericLiteral or self::BooleanLiteral or self::CharLiteral or self::NullLiteral
+     or (self::MethodCall[ArgumentList[@Size = 0]]
+         [*[1][self::VariableAccess or self::FieldAccess or self::ThisExpression]]))])]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -96,7 +101,7 @@
       <property name="xpath">
         <value><![CDATA[
 //(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
-  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+  /ModifierList/Annotation[@SimpleName = 'Generated']
 ]]></value>
       </property>
     </properties>

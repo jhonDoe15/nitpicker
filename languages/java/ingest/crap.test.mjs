@@ -139,8 +139,8 @@ describe('ingestCrap', () => {
       ]);
     });
 
-    it('joins generic, array, primitive and type-variable parameters', () => {
-      const declared = ['List', 'int[]', 'T', 'Entry'];
+    it('joins generic, array, primitive and erased type-variable parameters', () => {
+      const declared = ['List', 'int[]', 'Object', 'Entry'];
       const descriptor = '(Ljava/util/List;[ILjava/lang/Object;Ljava/util/Map$Entry;)V';
 
       expect(
@@ -171,8 +171,8 @@ describe('ingestCrap', () => {
       expect(findings.map((f) => f.rule)).toEqual(['crap-coverage-unknown']);
     });
 
-    it('does not join a primitive to a type variable', () => {
-      const findings = ingest([constructor(['T'])], jacocoConstructor('(I)V', 12));
+    it('does not join a primitive to an erased type variable', () => {
+      const findings = ingest([constructor(['Object'])], jacocoConstructor('(I)V', 12));
 
       expect(findings.map((f) => f.rule)).toEqual(['crap-coverage-unknown']);
     });
