@@ -23,20 +23,9 @@ import {
   WIDE_REFORMATTED,
   STABILITY_FILES,
   stabilityClass,
-  CHECKSTYLE_ON_BAD,
-  CHECKSTYLE_PREFIX,
   repeated,
 } from './fixtures/java-preset-data.mjs';
 import { runJavaDiff } from './java-diff.mjs';
-import {
-  expectedOutput395_51,
-  expectedOutput411_51,
-  expectedOutput434_51,
-  expectedOutput519_89,
-  expectedOutput523_53,
-  expectedOutput537_51,
-  expectedOutput567_51,
-} from '../../../core/diff/fixtures/expected-output/languages-java-adapters-java-preset.e2e.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
 // access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), and
@@ -64,6 +53,8 @@ function git(...args) {
       GIT_AUTHOR_EMAIL: 'test@example.com',
       GIT_COMMITTER_NAME: 'test',
       GIT_COMMITTER_EMAIL: 'test@example.com',
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
     },
   });
   if (result.status !== 0) {
@@ -82,6 +73,66 @@ function branchWith(name, files) {
   git('add', '-A');
   git('commit', '-q', '-m', name);
 }
+
+const BASELINED_FINDINGS = [
+  'coupling coupling .',
+  'coupling module-coupling Branchy.java',
+  'coupling module-coupling Greeter.java',
+  'coupling module-coupling Legacy.java',
+  'coupling module-coupling Wide.java',
+  'coupling package-coupling .',
+  'jacoco changed-branch-coverage Branchy.java',
+  'jacoco line-coverage Branchy.java',
+  'jacoco line-coverage Greeter.java',
+  'jacoco line-coverage Legacy.java',
+  'jacoco line-coverage Wide.java',
+  'jacoco uncovered-method Branchy.java',
+  'jacoco uncovered-method Greeter.java',
+  'jacoco uncovered-method Legacy.java',
+  'jacoco uncovered-method Wide.java',
+  'pit mutant-nocoverage Branchy.java',
+  'pit mutant-nocoverage Greeter.java',
+  'pit mutant-nocoverage Legacy.java',
+  'pit mutant-nocoverage Wide.java',
+  'pit mutation-summary .',
+  'pmd UnusedPrivateField Legacy.java',
+  'spotbugs UUF_UNUSED_FIELD Legacy.java',
+  'structure function-parameters-limit Wide.java',
+];
+
+const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
+  'coupling coupling .',
+  'coupling module-coupling Branchy.java',
+  'coupling module-coupling Greeter.java',
+  'coupling module-coupling Legacy.java',
+  'coupling module-coupling Wide.java',
+  'coupling package-coupling .',
+  'jacoco changed-branch-coverage Branchy.java',
+  'jacoco line-coverage Branchy.java',
+  'jacoco line-coverage Legacy.java',
+  'jacoco line-coverage Wide.java',
+  'jacoco uncovered-method Branchy.java',
+  'jacoco uncovered-method Greeter.java',
+  'jacoco uncovered-method Legacy.java',
+  'jacoco uncovered-method Wide.java',
+  'pit mutant-nocoverage Branchy.java',
+  'pit mutant-nocoverage Greeter.java',
+  'pit mutant-nocoverage Legacy.java',
+  'pit mutant-nocoverage Wide.java',
+  'pit mutation-summary .',
+  'pmd UnusedPrivateField Legacy.java',
+  'spotbugs UUF_UNUSED_FIELD Legacy.java',
+  'structure function-parameters-limit Wide.java',
+];
+
+const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
+
+const CHECKSTYLE_ON_BAD = [
+  'blocks.EmptyCatchBlockCheck',
+  'indentation.IndentationCheck',
+  'regexp.RegexpSinglelineJavaCheck',
+  'whitespace.EmptyLineSeparatorCheck',
+];
 
 const summarize = (findings) =>
   findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
@@ -148,7 +199,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(false);
       expect(summarize(result.newEnforceable)).toEqual([]);
       expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(
-        expectedOutput395_51(),
+        BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE,
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -163,9 +214,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newFindings.filter((finding) => finding.tool !== 'jacoco'))).toEqual(
         [],
       );
-      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(
-        expectedOutput411_51(),
-      );
+      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -183,9 +232,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'pmd EmptyCatchBlock Bad.java',
         'spotbugs DM_DEFAULT_ENCODING Bad.java',
       ]);
-      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(
-        expectedOutput434_51(),
-      );
+      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -269,11 +316,11 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(survivor.failed).toBe(true);
       expect(summarize(survivor.newEnforceable)).toEqual(['pit mutant-survived Calc.java']);
       expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit').message).toEqual(
-        expectedOutput519_89(),
+        'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       );
       // The legacy uncovered mutants (Greeter.shout, Legacy.value) stay baselined.
       expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
-        expectedOutput523_53(),
+        BASELINED_FINDINGS,
       );
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -286,9 +333,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(false);
       expect(summarize(result.newEnforceable)).toEqual([]);
-      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(
-        expectedOutput537_51(),
-      );
+      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -316,9 +361,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
         'jacoco changed-branch-coverage Branchy.java',
         ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
       ]);
-      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(
-        expectedOutput567_51(),
-      );
+      expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
