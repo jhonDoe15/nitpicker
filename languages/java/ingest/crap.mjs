@@ -32,45 +32,49 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const counters = new Map();
-  const sameSourceByFile = new Map();
-  const functions = [];
-
-  for (const fn of parsed) {
+  const state = { options, limit, resolve, counters: new Map(), sameSourceByFile: new Map() };
+  const functions = parsed.flatMap((fn) => {
     const filePath = normalizeReportPath(fn.file, options.root);
-    if (filePath === undefined) {
-      continue;
-    }
-    const { coverage, name = fn.longName } = resolve(fn, filePath);
-    const unique = counters.get(filePath) ?? createIdentityCounter();
-    counters.set(filePath, unique);
-    const sameSource = sameSourceByFile.get(filePath) ?? new Map();
-    sameSourceByFile.set(filePath, sameSource);
-    const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
-    const sourceHash =
-      coverage === undefined
-        ? undefined
-        : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
-    const key =
-      fn.numberedAmongSameSource === true
-        ? keyAmongSameSource(sameSource, {
-            name,
-            sourceHash,
-            over: crap === undefined || crap >= limit,
-          })
-        : unique(`function:${name}`);
-    functions.push({
-      path: filePath,
-      name,
-      identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
-      ratchetKey: `${key}:crap`,
-      line: fn.start,
-      crap,
-    });
-  }
+    return filePath === undefined ? [] : [crapRow(fn, filePath, state)];
+  });
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceByFile }) {
+  const { coverage, name = fn.longName } = resolve(fn, filePath);
+  const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
+  const sourceHash =
+    coverage === undefined
+      ? undefined
+      : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+  const key =
+    fn.numberedAmongSameSource === true
+      ? keyAmongSameSource(
+          perFile(sameSourceByFile, filePath, () => new Map()),
+          {
+            name,
+            sourceHash,
+            over: crap === undefined || crap >= limit,
+          },
+        )
+      : perFile(counters, filePath, createIdentityCounter)(`function:${name}`);
+  return {
+    path: filePath,
+    name,
+    identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
+    ratchetKey: `${key}:crap`,
+    line: fn.start,
+    crap,
+  };
+}
+
+function perFile(byFile, filePath, create) {
+  if (!byFile.has(filePath)) {
+    byFile.set(filePath, create());
+  }
+  return byFile.get(filePath);
 }
 
 function keyAmongSameSource(seen, { name, sourceHash, over }) {
