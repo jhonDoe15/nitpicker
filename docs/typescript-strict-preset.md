@@ -440,6 +440,10 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   lifted have their own rule ids, `nitpicker/no-default-export`, `nitpicker/no-null` and
   `nitpicker/no-promise-chain`, built from the same `{ selector, message }` lists, so an exception
   for one of them leaves the other bans on.
+- Upgrade note: these three bans, and the UI framework ban in `domain/`
+  (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
+  `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
+  same paths.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The

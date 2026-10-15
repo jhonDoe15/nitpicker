@@ -55,6 +55,20 @@ describe('strict rule exceptions', () => {
     await expect(ruleSeverity(config, 'src/fresh/new.ts', silentCatch)).resolves.toBe(2);
   });
 
+  it.each([
+    'nitpicker/no-default-export',
+    'nitpicker/no-null',
+    'nitpicker/no-promise-chain',
+    'nitpicker/no-ui-framework-in-domain',
+  ])('keeps %s on under a no-restricted-syntax exception', async (name) => {
+    const config = applyRuleExceptions(presetConfig, [
+      { rule: 'no-restricted-syntax', paths: ['src/main/**'], reason: 'Legacy rewrite' },
+    ]);
+    const file = 'src/main/features/billing/domain/invoice.ts';
+    await expect(ruleSeverity(config, file, 'no-restricted-syntax')).resolves.toBe(0);
+    await expect(ruleSeverity(config, file, name)).resolves.toBe(2);
+  });
+
   it('travels through the head policy', () => {
     expect(resolveHeadPolicy({ exceptions: [exception] }).exceptions).toEqual([exception]);
   });

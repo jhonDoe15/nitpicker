@@ -479,6 +479,10 @@ new and touched code must comply.
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths;
   default exports, `null` and promise chains have their own rules (`nitpicker/no-default-export`,
   `nitpicker/no-null`, `nitpicker/no-promise-chain`) so a framework convention lifts only one of them.
+  When upgrading, an existing `no-restricted-syntax` exception no longer lifts those three bans or
+  the UI framework ban in `domain/`: add an entry for `nitpicker/no-default-export`,
+  `nitpicker/no-null`, `nitpicker/no-promise-chain` or `nitpicker/no-ui-framework-in-domain` with
+  the same paths.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
 
 A small project that follows all of this is kept in `languages/typescript/preset/fixtures/strict-clean` of the nitpicker
