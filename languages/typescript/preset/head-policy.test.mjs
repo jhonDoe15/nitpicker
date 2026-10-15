@@ -1,4 +1,7 @@
-import { createGitTemplate, copyGitTemplate } from '../../../core/diff/fixtures/git-repository.mjs';
+import {
+  createGitTemplate,
+  copyGitTemplate,
+} from '../../../core/diff/git/test-support/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,

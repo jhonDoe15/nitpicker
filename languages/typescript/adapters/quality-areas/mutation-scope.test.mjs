@@ -1,11 +1,10 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  createGitRepository,
   fixtureGit,
-  removeGitRepositories,
-} from '../../../../core/diff/fixtures/git-repository.mjs';
+  useGitFixtures,
+} from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { isSourceFile } from '../../preset/layout.mjs';
 import { mutationTargets } from './runners/mutation-scope.mjs';
 
@@ -17,7 +16,7 @@ const BASE_SOURCE = [
   '',
 ];
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 function writeFile(root, relativePath, contents) {
   const filePath = path.join(root, relativePath);

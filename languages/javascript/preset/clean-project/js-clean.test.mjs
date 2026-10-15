@@ -1,7 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/fixtures/git-repository.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import {
   createCleanProject,
   git,

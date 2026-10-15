@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/fixtures/git-repository.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { createCleanProject, readReport, runNitpicker } from './test-support/clean-project.mjs';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/react-project');

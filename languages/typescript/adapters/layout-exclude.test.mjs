@@ -1,11 +1,14 @@
-import { createGitTemplate, copyGitTemplate } from '../../../core/diff/fixtures/git-repository.mjs';
+import {
+  createGitTemplate,
+  copyGitTemplate,
+} from '../../../core/diff/git/test-support/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../core/diff/fixtures/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
