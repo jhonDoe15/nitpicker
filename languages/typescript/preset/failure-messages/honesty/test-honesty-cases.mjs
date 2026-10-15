@@ -97,6 +97,12 @@ export const testHonestyFailureMessageCases = [
     'test/setup.ts',
   ),
   honestyCase(
+    'a test helper in production source names the test folder',
+    'export const labels = [1, -1, 0];',
+    'Move it to the test folder',
+    'src/main/features/labels/testing/make-labels.ts',
+  ),
+  honestyCase(
     'inline eslint disable in a test names the config exception',
     "/* eslint-disable */\nit('x', () => {});",
     'nitpicker config file',

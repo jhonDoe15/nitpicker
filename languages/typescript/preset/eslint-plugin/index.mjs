@@ -38,6 +38,7 @@ import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-deriv
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 import { testAssertionRules } from './test-assertions/rules.mjs';
+import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { testIsolationRules } from './test-isolation/rules.mjs';
 import { testQualityRules } from './test-quality/rules.mjs';
 
@@ -87,6 +88,7 @@ export const nitpickerRules = {
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-test-helpers-in-source': noTestHelpersInSource,
     ...testAssertionRules,
     ...testIsolationRules,
     ...testQualityRules,

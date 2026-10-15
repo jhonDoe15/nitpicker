@@ -10,8 +10,10 @@ files (`sourceGlobs` from `languages/typescript/preset/layout.mjs`), minus the s
 every test glob. It uses the vitest runner with the TypeScript checker, `perTest` coverage analysis,
 and `thresholds.break: null`, so Stryker itself never fails the run. The differential gate runs it
 through `languages/typescript/adapters/quality-areas-runner.mjs`, which rewrites the config, forces the `json`
-reporter, and turns `Survived` and `NoCoverage` mutants into findings. `nitpicker --all` mutates
-that whole area.
+reporter, and turns `Survived` and `NoCoverage` mutants into findings. A mutant that a `Stryker
+disable` comment would hide is reported as an enforceable `mutant-ignored` finding too, so the comment
+cannot be used to switch mutation off, not even for a path with a `nitpicker/no-comments` exception.
+`nitpicker --all` mutates that whole area.
 
 ## Scope in a comparison
 

@@ -4,6 +4,7 @@ export const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
 const UNHANDLED_HEADER = /^⎯+ (Unhandled Rejection|Uncaught Exception|Unhandled Error) ⎯+$/gmu;
 const ORIGIN_PATTERN = /This error originated in "([^"]+)" test file/u;
 const MAX_MESSAGE_LENGTH = 200;
+const SNAPSHOT_MISMATCH = /^(?:\w*Error: )?Snapshot `.*` mismatched/u;
 
 export function timeoutText(assertion) {
   const [first] = assertion.failureMessages ?? [];
@@ -47,4 +48,10 @@ export function unhandledErrorText(errors) {
   const where = first.file === undefined ? '' : ` from ${first.file}`;
   const more = errors.length > 1 ? ` (and ${String(errors.length - 1)} more)` : '';
   return `Vitest caught an ${first.kind}${where}: ${first.message}${more}. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.`;
+}
+
+export function withSnapshotAdvice(line) {
+  return SNAPSHOT_MISMATCH.test(line)
+    ? `${line}. A new snapshot must be committed: run \`vitest -u\` locally and commit the .snap file.`
+    : line;
 }

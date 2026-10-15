@@ -114,9 +114,17 @@ describe('test honesty rules', () => {
 
   it('hold test helpers to the same rules and leave production code alone', () => {
     expect(messages('export let counter = 0;', 'test/helpers/state.ts')).toHaveLength(1);
-    expect(messages('export let counter = 0;', 'src/main/state.ts')).toEqual([
-      'No matching configuration found for src/main/state.ts.',
-    ]);
+    expect(messages('export let counter = 0;', 'src/main/state.ts')).toEqual([]);
+  });
+
+  it('keep test helpers out of production source and name the test folder', () => {
+    const code = 'export const labels = [1, -1, 0];';
+
+    expect(messages(code, 'src/main/features/labels/testing/make-labels.ts').join('\n')).toContain(
+      'Move it to the test folder',
+    );
+    expect(messages(code, 'src/main/features/labels/domain/labels.ts')).toEqual([]);
+    expect(messages(code, 'test/support/make-labels.ts')).toEqual([]);
   });
 
   it('keep the real network out of unit tests only', () => {

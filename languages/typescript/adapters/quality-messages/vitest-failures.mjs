@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { ANSI_PATTERN, timeoutText } from './failure-text.mjs';
+import { ANSI_PATTERN, timeoutText, withSnapshotAdvice } from './failure-text.mjs';
 
 const MAX_LISTED_FAILURES = 5;
 const MAX_ASSERTION_LINE_LENGTH = 200;
@@ -18,7 +18,9 @@ export function vitestFailures(report, projectRoot) {
         name: vitestAssertionName(assertion),
         assertion:
           timeoutText(assertion) ??
-          firstLine(assertion.failureMessages?.find((message) => typeof message === 'string')),
+          withSnapshotAdvice(
+            firstLine(assertion.failureMessages?.find((message) => typeof message === 'string')),
+          ),
       });
     }
     if (failedAssertions.length === 0 && testResult?.status === 'failed') {

@@ -44,6 +44,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-plugin/rules',
   'languages/typescript/preset/eslint-plugin/test-assertions',
   'languages/typescript/preset/eslint-plugin/test-isolation',
+  'languages/typescript/preset/eslint-plugin/test-placement',
   'languages/typescript/preset/eslint-plugin/test-quality',
   'shared',
 ];

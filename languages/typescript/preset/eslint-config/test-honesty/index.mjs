@@ -42,6 +42,12 @@ export function testHonestyConfigFor(layout, { setupFiles = [] } = {}) {
       rules: { 'nitpicker/no-real-time-random-or-network': ['error', { network: true }] },
     },
     {
+      files: layout.sourceGlobs,
+      ignores: [...layout.excludedGlobs, ...files],
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-test-helpers-in-source': 'error' },
+    },
+    {
       files,
       ignores: [...layout.excludedGlobs, `**/*.{test,spec}.${codeExtensions}`],
       plugins: { nitpicker: nitpickerRules },

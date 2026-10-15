@@ -123,6 +123,14 @@ If your change edits a function that existed before it, read
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
+- Tests pin values: no `toBeDefined`, `toBeTruthy`, `not.toBeNull`, bare `toHaveBeenCalled()` (pass the
+  arguments), `toThrow()` without a message, `toMatch` of a fragment or `expect(true)`. Keep state in
+  the test or `beforeEach`, not in a `let` shared by tests. Never skip, `todo` or `fails` a test. No
+  `Date.now()`, `new Date()` or `Math.random()` without a fake clock or spy, no network in unit tests,
+  no `vi.spyOn` on a namespace import (`import * as`) of production code, no mention of
+  `__stryker__`, and no `eslint-disable`, `@ts-*` or coverage-ignore comment in tests. Tests live in `*.test.ts` files, and a setup file
+  imports no production code. The gate runs Vitest without retries and never writes snapshots: commit
+  the `.snap` file, or assert with `toEqual`.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
