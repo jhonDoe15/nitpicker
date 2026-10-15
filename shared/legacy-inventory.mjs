@@ -72,9 +72,14 @@ export function applyInventoryToFindings(findings, sites) {
  */
 export function withLegacyInventory(analyzer, legacyInventory) {
   const packageHash = analyzer.packageConfigurationHash ?? analyzer.configurationHash;
+  const resolvePackageHash =
+    analyzer.legacyInventory === undefined
+      ? analyzer.resolveConfigurationHash
+      : analyzer.resolvePackageConfigurationHash;
   return {
     ...analyzer,
     packageConfigurationHash: packageHash,
+    resolvePackageConfigurationHash: resolvePackageHash,
     legacyInventory,
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
@@ -82,9 +87,13 @@ export function withLegacyInventory(analyzer, legacyInventory) {
     },
     resolveConfigurationHash: (projectRoot) => {
       const inventory = path.join(projectRoot, legacyInventory);
+      const configurationHash = resolvePackageHash?.(projectRoot) ?? packageHash;
       return existsSync(inventory)
-        ? createHash('sha256').update(packageHash).update(readFileSync(inventory)).digest('hex')
-        : packageHash;
+        ? createHash('sha256')
+            .update(configurationHash)
+            .update(readFileSync(inventory))
+            .digest('hex')
+        : configurationHash;
     },
   };
 }

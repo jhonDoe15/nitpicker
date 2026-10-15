@@ -1,15 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
-import {
-  PACKAGE_ROOT,
-  resolveTool,
-  SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
 import {
   linkPolicyFile,
   lstatIfExists,
@@ -17,13 +12,13 @@ import {
 } from '../../../core/tooling/policy-links.mjs';
 import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
+import { runLintEngine } from './lint-engine/lint-engine.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from './static-checks-runner.mjs';
 
-const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 
@@ -75,68 +70,17 @@ function runEslint(options) {
       });
     }
     installedPolicyFiles = installPolicyFiles(options);
-    const installedProjectConfig = installedPolicyFiles.at(0)?.targetPath;
-    const eslintCliPath =
-      options.eslintCliPath ?? resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath;
-    const wrapperConfigPath = path.join(import.meta.dirname, 'eslint-config-wrapper.mjs');
-    const policyConfigPath = validatedContainedFile(
-      options.policyRoot,
-      options.configRelativePath,
-      '--config',
-    ).canonicalPath;
-    const result = spawnSync(
-      process.execPath,
-      [
-        eslintCliPath,
+    const value = runLintEngine({
+      options,
+      projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
+      policyConfigPath: validatedContainedFile(
+        options.policyRoot,
+        options.configRelativePath,
         '--config',
-        wrapperConfigPath,
-        '--format',
-        'json',
-        '--no-color',
-        '--no-error-on-unmatched-pattern',
-        ...options.patterns,
-      ],
-      {
-        cwd: options.projectRoot,
-        env: {
-          ...process.env,
-          ...options.environment,
-          NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
-          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
-          NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: installedProjectConfig ?? '',
-        },
-        encoding: 'utf8',
-        maxBuffer: MAX_ESLINT_OUTPUT_BYTES,
-        timeout: options.timeoutMs,
-        killSignal: 'SIGTERM',
-      },
-    );
-
-    if (result.error !== undefined) {
-      if (result.error.code === 'ETIMEDOUT') {
-        throw new Error(`ESLint timed out after ${String(options.timeoutMs)} ms`, {
-          cause: result.error,
-        });
-      }
-      throw result.error;
-    }
-    if (result.status !== 0 && result.status !== 1) {
-      const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-      throw new Error(`ESLint exited with ${String(result.status)}: ${detail}`);
-    }
-
-    let eslintResults;
-    try {
-      eslintResults = JSON.parse(result.stdout);
-    } catch (error) {
-      const detail = result.stderr.trim();
-      const suffix = detail.length === 0 ? '' : `: ${detail}`;
-      throw new Error(`ESLint did not produce valid JSON${suffix}`, {
-        cause: error,
-      });
-    }
+      ).canonicalPath,
+    });
     return normalizeEslintResults({
-      value: eslintResults,
+      value,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
     });
