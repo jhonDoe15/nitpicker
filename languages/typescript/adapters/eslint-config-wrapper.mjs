@@ -10,11 +10,35 @@ if (!Array.isArray(policyModule.default)) {
   throw new TypeError(`ESLint policy ${policyConfigPath} must export a flat configuration array`);
 }
 
+const selectedRules = selectedRuleIds(process.env.NITPICKER_DIFF_ESLINT_ONLY_RULES);
+
 export default policyModule.default.map((entry) =>
   rebaseTypeScriptProject(entry, projectRoot, projectConfigPath),
 );
 
-function rebaseTypeScriptProject(entry, root, configPath) {
+function selectedRuleIds(selection) {
+  return selection === undefined || selection.length === 0
+    ? undefined
+    : new Set(JSON.parse(selection));
+}
+
+function withSelectedRules(entry) {
+  if (selectedRules === undefined || entry?.rules === undefined) {
+    return entry;
+  }
+  return {
+    ...entry,
+    rules: Object.fromEntries(
+      Object.entries(entry.rules).map(([ruleId, setting]) => [
+        ruleId,
+        selectedRules.has(ruleId) ? setting : 'off',
+      ]),
+    ),
+  };
+}
+
+function rebaseTypeScriptProject(policyEntry, root, configPath) {
+  const entry = withSelectedRules(policyEntry);
   const parserOptions = entry?.languageOptions?.parserOptions;
   if (parserOptions?.tsconfigRootDir === undefined) {
     return entry;
