@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
-import { detectJavaBuild } from '../maven/maven-build.mjs';
+import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';

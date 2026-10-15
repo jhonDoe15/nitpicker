@@ -112,24 +112,32 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     () => {
       const project = copyOf(path.join(fixtures, 'multi-module'));
       const findings = collectJavaFindings(project, { maven, policy: {} });
-      const fanIn = findings.find(
-        (finding) =>
-          finding.path === 'core/src/main/java/demo/core/Adder.java' &&
-          finding.metric?.name === 'fanIn',
-      );
+      const metrics = (file) =>
+        findings
+          .filter((finding) => finding.path === file && finding.metric !== undefined)
+          .map(({ tool, metric }) => `${tool} ${metric.name} ${String(metric.value)}`)
+          .sort();
 
       expect(
         findings
           .filter((finding) => finding.tool === 'pmd')
           .map(({ rule, path: file }) => `${rule} ${file}`),
       ).toEqual(['SystemPrintln app/src/main/java/demo/app/Main.java']);
-      expect(fanIn?.metric.value).toBe(1);
-      expect(
-        findings.find(
-          (finding) => finding.rule === 'line-coverage' && finding.path.startsWith('core/'),
-        )?.metric.value,
-      ).toBe(100);
-      expect(findings.some((finding) => finding.path.startsWith('src/'))).toBe(false);
+      expect(metrics('core/src/main/java/demo/core/Adder.java')).toEqual([
+        'coupling fanIn 1',
+        'coupling fanOut 0',
+        'coupling instability 0',
+        'coupling totalCoupling 1',
+        'jacoco line-coverage 100',
+      ]);
+      expect([...new Set(findings.map((finding) => finding.path))].sort()).toEqual([
+        '.',
+        'app',
+        'app/src/main/java/demo/app/Main.java',
+        'checks/src/test/java/demo/checks/AdderIT.java',
+        'core',
+        'core/src/main/java/demo/core/Adder.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

@@ -2,9 +2,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
-import { INIT_SCRIPT } from './java-diff.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { readPinnedTools } from '../maven/maven-tools.mjs';
+import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
@@ -14,6 +13,7 @@ export const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
+  'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-coupling.mjs',
   'languages/java/adapters/java-diff.mjs',
@@ -31,7 +31,8 @@ export const CONFIGURATION_FILES = [
   'languages/java/maven/maven-project.mjs',
   'languages/java/maven/maven-tests.mjs',
   'languages/java/maven/maven-tools.mjs',
-  'languages/java/multi-module/java-modules.mjs',
+  'languages/java/builds/java-build.mjs',
+  'languages/java/builds/java-modules.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
   'languages/java/adapters/kotlin-metrics.mjs',
   'languages/java/adapters/kotlin-options.mjs',

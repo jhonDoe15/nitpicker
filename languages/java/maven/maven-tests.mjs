@@ -47,6 +47,10 @@ function freshReports(directory, since) {
     : [];
 }
 
+function suiteNameOf(report) {
+  return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
+}
+
 function failedCases(file) {
   const root = parseXml(readFileSync(file, 'utf8'));
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
@@ -72,14 +76,14 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
   const archunitDir = path.join(reportDir, 'archunit');
   const failures = [];
   for (const report of reports) {
-    const suiteName = path.basename(report).replace(/^TEST-|\.xml$/gu, '');
-    if (isArchunit(suiteName)) {
+    if (isArchunit(suiteNameOf(report))) {
       mkdirSync(archunitDir, { recursive: true });
       copyFileSync(report, path.join(archunitDir, path.basename(report)));
     } else {
       failures.push(...failedCases(report));
     }
   }
+  requireArchunitRun(module, reports, isArchunit);
   if (failures.length > 0) {
     const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
     const more =
@@ -94,12 +98,26 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
       ].join('\n'),
     );
   }
+  return reports.length > 0;
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFile, since }) {
+function requireArchunitRun(module, reports, isArchunit) {
+  const archunitClasses = topLevelClasses(module.testOutputDirectory).filter(isArchunit);
+  if (archunitClasses.length > 0 && !reports.some((report) => isArchunit(suiteNameOf(report)))) {
+    throw new Error(
+      `maven-surefire-plugin ran none of the ArchUnit classes in ${module.basedir} (${archunitClasses.join(', ')}). Let surefire run them (its <includes>, no skipTests) so nitpicker can read their results`,
+    );
+  }
+}
+
+export function runJacocoReport({ module, reportDir, tools, execFile, since, testsRan }) {
+  const report = path.join(reportDir, 'jacoco.xml');
+  if (classFiles(module.outputDirectory).length === 0) {
+    writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
+    return;
+  }
   const fresh = existsSync(execFile) && statSync(execFile).mtimeMs >= since;
-  const testClasses = classFiles(module.testOutputDirectory).length > 0;
-  if (!fresh && testClasses) {
+  if (!fresh && testsRan) {
     throw new Error(
       `JaCoCo recorded no coverage in ${module.basedir}: the tests ran without its agent. If maven-surefire-plugin sets <argLine>, start it with @{argLine} so the agent stays attached`,
     );
@@ -117,7 +135,7 @@ export function runJacocoReport({ module, reportDir, tools, execFile, since }) {
         .filter((root) => existsSync(root))
         .flatMap((root) => ['--sourcefiles', root]),
       '--xml',
-      path.join(reportDir, 'jacoco.xml'),
+      report,
       '--quiet',
     ],
     cwd: module.basedir,
@@ -153,19 +171,21 @@ export function pitTargets(classDirectory) {
   return [...targets].sort();
 }
 
-export function pitTests(testClassDirectory, isArchunit) {
+function topLevelClasses(classDirectory) {
   return [
     ...new Set(
-      classFiles(testClassDirectory)
-        .map((file) =>
-          file
-            .replace(/\.class$/u, '')
-            .replaceAll('/', '.')
-            .replace(/\$.*$/u, ''),
-        )
-        .filter((name) => !isArchunit(name)),
+      classFiles(classDirectory).map((file) =>
+        file
+          .replace(/\.class$/u, '')
+          .replaceAll('/', '.')
+          .replace(/\$.*$/u, ''),
+      ),
     ),
   ];
+}
+
+export function pitTests(testClassDirectory, isArchunit) {
+  return topLevelClasses(testClassDirectory).filter((name) => !isArchunit(name));
 }
 
 export function junitLauncherVersion(classpath) {

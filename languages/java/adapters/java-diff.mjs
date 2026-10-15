@@ -16,12 +16,12 @@ import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { REPORT_DIRECTORY, requireGradleReports } from './java-reports.mjs';
-import { detectJavaBuild, MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
-import { readModuleFindings } from '../multi-module/java-modules.mjs';
+import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
+import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
+import { readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
-export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 

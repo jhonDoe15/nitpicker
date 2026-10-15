@@ -4,6 +4,7 @@ import { childrenNamed, parseXml } from '../ingest/common.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
+const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
@@ -46,7 +47,7 @@ function helperRoots(plugin, goal, basedir) {
     ? []
     : executionsWithGoal(plugin, goal).flatMap((execution) =>
         all(execution, 'configuration', 'sources', 'source').map((source) =>
-          path.resolve(basedir, source.text ?? ''),
+          path.resolve(basedir, source.text ?? '.'),
         ),
       );
 }
@@ -60,40 +61,50 @@ function jacocoDestFile(plugin) {
         textAt(plugin, 'configuration', 'destFile'));
 }
 
+function resolvedText(build, basedir, name) {
+  const value = textAt(build, name);
+  return value === undefined ? undefined : path.resolve(basedir, value);
+}
+
 function describeModule(project, basedir) {
   const build = child(project, 'build');
   const plugins = pluginsOf(project);
-  const buildDirectory = textAt(build, 'directory') ?? path.join(basedir, 'target');
+  const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
+  const reports = surefire && textAt(surefire, 'configuration', 'reportsDirectory');
+  const destFile = jacocoDestFile(plugins.get(JACOCO));
   return {
     basedir,
     coordinates: coordinates(project),
     packaging: textAt(project, 'packaging') ?? 'jar',
     buildDirectory,
-    outputDirectory: textAt(build, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
+    outputDirectory:
+      resolvedText(build, basedir, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
     testOutputDirectory:
-      textAt(build, 'testOutputDirectory') ?? path.join(buildDirectory, 'test-classes'),
+      resolvedText(build, basedir, 'testOutputDirectory') ??
+      path.join(buildDirectory, 'test-classes'),
     sourceRoots: [
-      textAt(build, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
+      resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
     ],
     testSourceRoots: [
-      textAt(build, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
+      resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
     ],
     resourceRoots: all(build, 'resources', 'resource')
       .map((resource) => textAt(resource, 'directory'))
-      .filter(Boolean),
-    surefireReports:
-      (surefire && textAt(surefire, 'configuration', 'reportsDirectory')) ??
-      path.join(buildDirectory, 'surefire-reports'),
-    jacocoDestFile: jacocoDestFile(plugins.get(JACOCO)),
+      .filter((directory) => directory !== undefined)
+      .map((directory) => path.resolve(basedir, directory)),
+    surefireReports: reports
+      ? path.resolve(basedir, reports)
+      : path.join(buildDirectory, 'surefire-reports'),
+    jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
   };
 }
 
 function rawCoordinates(pomFile) {
-  return coordinates(parseXml(readFileSync(pomFile, 'utf8')));
+  return existsSync(pomFile) ? coordinates(parseXml(readFileSync(pomFile, 'utf8'))) : undefined;
 }
 
 function pomFileOf(directory, module) {
@@ -101,25 +112,66 @@ function pomFileOf(directory, module) {
   return target.endsWith('.xml') ? target : path.join(target, 'pom.xml');
 }
 
+function depth(relative) {
+  return relative.split(path.sep).length;
+}
+
+function insideOf(directory, file) {
+  const relative = path.relative(directory, file);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function matchProject(pomFile, candidates) {
+  const wanted = rawCoordinates(pomFile);
+  const exact = candidates.find((project) => coordinates(project) === wanted);
+  if (exact !== undefined) {
+    return exact;
+  }
+  const basedir = path.dirname(pomFile);
+  const [nearest] = candidates
+    .map((project) => ({ project, build: textAt(project, 'build', 'directory') }))
+    .filter(({ build }) => build !== undefined && insideOf(basedir, build))
+    .sort(
+      (left, right) =>
+        depth(path.relative(basedir, left.build)) - depth(path.relative(basedir, right.build)),
+    );
+  if (nearest === undefined) {
+    throw new Error(
+      `Maven module ${pomFile} is not in the effective POM; nitpicker cannot read it`,
+    );
+  }
+  return nearest.project;
+}
+
+function moduleDirectory(projectRoot, pomFile, modules) {
+  const basedir = path.dirname(pomFile);
+  if (basedir !== projectRoot && !insideOf(projectRoot, basedir)) {
+    throw new Error(
+      `Maven module ${basedir} lies outside ${projectRoot}; run nitpicker from a directory that holds every module`,
+    );
+  }
+  if (modules.some((module) => module.basedir === basedir)) {
+    throw new Error(
+      `${basedir} holds more than one Maven module; nitpicker reads one module per directory`,
+    );
+  }
+  return basedir;
+}
+
 export function readReactor(projectRoot, effectivePom) {
   const document = parseXml(effectivePom);
-  const projects = document.name === 'projects' ? childrenNamed(document, 'project') : [document];
-  const byCoordinates = new Map(projects.map((project) => [coordinates(project), project]));
+  const candidates = document.name === 'projects' ? childrenNamed(document, 'project') : [document];
   const modules = [];
   const pending = [path.join(projectRoot, 'pom.xml')];
   for (const pomFile of pending) {
-    const project = existsSync(pomFile) ? byCoordinates.get(rawCoordinates(pomFile)) : undefined;
-    if (
-      project === undefined ||
-      modules.some((module) => module.basedir === path.dirname(pomFile))
-    ) {
-      continue;
-    }
-    const basedir = path.dirname(pomFile);
+    const basedir = moduleDirectory(projectRoot, pomFile, modules);
+    const project = matchProject(pomFile, candidates);
+    candidates.splice(candidates.indexOf(project), 1);
     modules.push(describeModule(project, basedir));
-    pending.push(
-      ...all(project, 'modules', 'module').map((module) => pomFileOf(basedir, module.text ?? '')),
-    );
+    const children = all(project, 'modules', 'module')
+      .filter((module) => module.text !== undefined)
+      .map((module) => pomFileOf(basedir, module.text));
+    pending.push(...children.filter((file) => !pending.includes(file)));
   }
   return modules;
 }
@@ -135,18 +187,23 @@ export function parseDependencyList(text) {
     )
     .flatMap((line) => {
       const parts = line.split(':');
-      const index = parts.findIndex((part, position) => position >= 3 && SCOPES.has(part));
-      return index === -1 || index === parts.length - 1
+      const index = [5, 4].find(
+        (position) => SCOPES.has(parts[position]) && position < parts.length - 1,
+      );
+      return index === undefined
         ? []
         : [{ scope: parts[index], file: parts.slice(index + 1).join(':') }];
     });
 }
 
+function filesIn(dependencies, scopes) {
+  return dependencies.filter((entry) => scopes.has(entry.scope)).map((entry) => entry.file);
+}
+
 export function moduleClasspaths(module, dependencies) {
   return {
-    mainCompile: dependencies
-      .filter((entry) => MAIN_COMPILE_SCOPES.has(entry.scope))
-      .map((entry) => entry.file),
+    mainCompile: filesIn(dependencies, MAIN_COMPILE_SCOPES),
+    testCompile: filesIn(dependencies, TEST_COMPILE_SCOPES),
     testRuntime: [
       module.testOutputDirectory,
       module.outputDirectory,

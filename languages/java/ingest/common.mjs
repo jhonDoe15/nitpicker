@@ -117,10 +117,24 @@ function closeElement(stack, { name, text, end, contentStarts }) {
   if (stack.length === 1 || current.name !== name) {
     throw new TypeError(`XML closing tag </${name}> does not match an open element`);
   }
-  if (current.children.length === 0) {
-    current.text = decodeEntities(text.slice(contentStarts.get(current), end).trim());
+  const content =
+    current.children.length === 0 ? elementText(text.slice(contentStarts.get(current), end)) : '';
+  if (content !== '') {
+    current.text = content;
   }
   stack.pop();
+}
+
+function elementText(raw) {
+  return raw
+    .split(/(<!\[CDATA\[[\s\S]*?\]\]>)/u)
+    .map((part) =>
+      part.startsWith('<![CDATA[')
+        ? part.slice('<![CDATA['.length, -']]>'.length)
+        : decodeEntities(part.replace(/<!--[\s\S]*?-->/gu, '')),
+    )
+    .join('')
+    .trim();
 }
 
 function openElement(stack, { name, rest, selfClosing, contentStart, contentStarts }) {
