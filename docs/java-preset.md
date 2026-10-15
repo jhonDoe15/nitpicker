@@ -476,7 +476,8 @@ resolved plus a new finding, as in the TypeScript check.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time.
+  its slowest time. Gradle builds only: the Maven side does not copy surefire's reports there yet,
+  so a Maven build reports no slow tests.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
   method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
