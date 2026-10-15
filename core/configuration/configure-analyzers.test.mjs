@@ -4,6 +4,7 @@ import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 describe('configureAnalyzers', () => {
   it('applies disable, custom analyzers and the legacy inventory in one place', () => {
     const config = {
@@ -12,7 +13,7 @@ describe('configureAnalyzers', () => {
       legacyInventory: 'config/legacy.json',
     };
 
-    const configured = configureAnalyzers(configuredAnalyzers, config, resolveHeadPolicy(config));
+    const configured = configureAnalyzers(packageAnalyzers, config, resolveHeadPolicy(config));
     const names = configured.map(({ name }) => name);
 
     expect(names).not.toContain('duplicates');
@@ -73,7 +74,7 @@ describe('configureAnalyzers', () => {
   it('leaves the mutation analyzer of another preset alone', () => {
     const config = { preset: 'typescript', exclude: ['gen/**'] };
 
-    const configured = configureAnalyzers(configuredAnalyzers, config, resolveHeadPolicy(config));
+    const configured = configureAnalyzers(packageAnalyzers, config, resolveHeadPolicy(config));
     const mutation = configured.find(({ name }) => name === 'mutation');
     const context = { projectRoot: '/p', policyRoot: '/p', toolRoot: '/t', snapshot: 'head' };
 

@@ -14,6 +14,7 @@ import {
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 const { createRepository } = useStaticCheckFixtures();
 
 describe('static differential adapters', () => {
@@ -138,7 +139,7 @@ describe('static differential adapters', () => {
     expect(first[0].path).toBe(second[0].path);
     expect(first[0].path).toBe('src/main/a.ts');
   });
-  it.each([['single-command', configuredAnalyzers]])(
+  it.each([['single-command', packageAnalyzers]])(
     'includes all deterministic static checks in the %s analyzer catalog',
     (_dial, analyzers) => {
       expect([...new Set(analyzers.map(({ name }) => name))].sort()).toEqual([

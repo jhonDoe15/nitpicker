@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONFIGURATION_FILES } from './java-analyzer.mjs';
+import { configurationFiles } from './java-analyzer.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
@@ -18,7 +18,7 @@ function staticImports(file) {
 }
 
 function hashedAmong(expected) {
-  return CONFIGURATION_FILES.filter((file) => expected.includes(file));
+  return configurationFiles().filter((file) => expected.includes(file));
 }
 
 describe('Java analyzer configuration files', () => {
@@ -35,10 +35,11 @@ describe('Java analyzer configuration files', () => {
   });
 
   it('hash every module that a hashed module imports', () => {
-    const modules = CONFIGURATION_FILES.filter((file) => file.endsWith('.mjs'));
+    const hashed = configurationFiles();
+    const modules = hashed.filter((file) => file.endsWith('.mjs'));
     const missing = modules.flatMap((file) =>
       staticImports(file)
-        .filter((imported) => !CONFIGURATION_FILES.includes(imported))
+        .filter((imported) => !hashed.includes(imported))
         .map((imported) => `${file} imports ${imported}`),
     );
 

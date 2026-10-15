@@ -12,6 +12,7 @@ import { configuredAnalyzers } from '../../../../languages/typescript/preset/dif
 import { runAnalyzers } from '../../execution/run-analyzers.mjs';
 import { fileURLToPath } from 'node:url';
 
+const packageAnalyzers = configuredAnalyzers();
 const packageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), '../..');
 
 describe('entry-point differential adapter', () => {
@@ -109,7 +110,7 @@ describe('entry-point differential adapter', () => {
   });
 
   it('includes entry-point bypasses in the production differential analyzers', () => {
-    expect([...new Set(configuredAnalyzers.map(({ name }) => name))].sort()).toEqual([
+    expect([...new Set(packageAnalyzers.map(({ name }) => name))].sort()).toEqual([
       'coding-standards',
       'coupling',
       'coverage',
