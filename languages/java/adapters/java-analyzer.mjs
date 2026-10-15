@@ -34,6 +34,7 @@ export const CONFIGURATION_FILES = [
   'languages/java/adapters/kotlin-tools.mjs',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/gradle/KotlinMutationFacts.java',
   'languages/java/adapters/suppressions/java-suppressions.mjs',
   'languages/java/adapters/spring/spring-config-files.mjs',
   'languages/java/adapters/spring/spring-config-parser.mjs',
@@ -57,6 +58,9 @@ export const CONFIGURATION_FILES = [
   'languages/java/ingest/jacoco.mjs',
   'languages/java/ingest/jacoco-branches.mjs',
   'languages/java/ingest/kotlin-branches.mjs',
+  'languages/java/ingest/kotlin-mutants/facts.mjs',
+  'languages/java/ingest/kotlin-mutants/generated-filter.mjs',
+  'languages/java/ingest/kotlin-mutants/rules.mjs',
   'languages/java/ingest/pit.mjs',
   'languages/java/ingest/sarif.mjs',
 ];

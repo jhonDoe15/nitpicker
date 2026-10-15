@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
+import { createGeneratedFilter } from '../ingest/kotlin-mutants/generated-filter.mjs';
 import { ingestSarif } from '../ingest/sarif.mjs';
 import { readKotlinDuplicateFindings } from './kotlin-duplicates.mjs';
 import {
@@ -15,6 +16,7 @@ const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
 const KTLINT_REPORT = 'ktlint.sarif';
 const KTFMT_REPORT = 'ktfmt.txt';
+const MUTATION_FACTS_REPORT = 'kotlin-mutation-facts.json';
 const KTLINT_PREFIX = 'ktlint.';
 const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 
@@ -64,6 +66,26 @@ function declaredKotlinFiles(projectRoot, sourceRoots) {
 
 function declaredPackage(file) {
   return PACKAGE_DECLARATION.exec(readFileSync(file, 'utf8'))?.[1].replaceAll('`', '') ?? '';
+}
+
+export function kotlinGeneratedFilter({ reportRoot, projectRoot, manifest }) {
+  const facts = JSON.parse(readFileSync(path.join(reportRoot, MUTATION_FACTS_REPORT), 'utf8'));
+  return createGeneratedFilter(
+    facts,
+    generatedSourceKeys(projectRoot, manifest.kotlinGeneratedSourceRoots ?? []),
+  );
+}
+
+function generatedSourceKeys(projectRoot, roots) {
+  return new Set(
+    roots
+      .filter((root) => existsSync(path.join(projectRoot, root)))
+      .flatMap((root) =>
+        readdirSync(path.join(projectRoot, root), { recursive: true })
+          .filter((entry) => /\.(?:kt|java)$/.test(entry))
+          .map((entry) => entry.replaceAll('\\', '/')),
+      ),
+  );
 }
 
 export function reportOnlyKotlinMutants(findings) {
