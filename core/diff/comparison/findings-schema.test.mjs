@@ -23,9 +23,6 @@ const schema = JSON.parse(
   ),
 );
 
-// No JSON Schema validator is a declared dependency (ajv is only present transitively), so this is
-// a minimal validator covering exactly the draft 2020-12 keywords spec/findings.schema.json uses.
-// It throws on any keyword it does not implement so the schema cannot silently outgrow it.
 const SUPPORTED_KEYWORDS = new Set([
   '$schema',
   '$id',
@@ -49,32 +46,41 @@ const SUPPORTED_KEYWORDS = new Set([
   'then',
 ]);
 
-function validate(value, node = schema, errors = [], at = '$') {
+function assertSupportedKeywords(node) {
   for (const keyword of Object.keys(node)) {
     if (!SUPPORTED_KEYWORDS.has(keyword)) {
       throw new Error(`Validator does not support schema keyword: ${keyword}`);
     }
   }
-  if (node.$ref !== undefined) {
-    const target = node.$ref
-      .replace(/^#\//, '')
-      .split('/')
-      .reduce((current, key) => current[key], schema);
-    validate(value, target, errors, at);
+}
+
+function validateReference(value, node, errors, at) {
+  if (node.$ref === undefined) {
+    return;
   }
-  checkType(value, node, errors, at);
-  if (typeof value === 'string') {
-    checkString(value, node, errors, at);
-  }
+  const target = node.$ref
+    .replace(/^#\//, '')
+    .split('/')
+    .reduce((current, key) => current[key], schema);
+  validate(value, target, errors, at);
+}
+
+function checkNumber(value, node, errors, at) {
   if (typeof value === 'number' && node.minimum !== undefined && value < node.minimum) {
     errors.push(`${at} must be >= ${String(node.minimum)}`);
   }
+}
+
+function checkAllowedValues(value, node, errors, at) {
   if (node.enum !== undefined && !node.enum.includes(value)) {
     errors.push(`${at} must be one of ${node.enum.join(', ')}`);
   }
   if (node.const !== undefined && value !== node.const) {
     errors.push(`${at} must equal ${String(node.const)}`);
   }
+}
+
+function checkCombinators(value, node, errors, at) {
   for (const part of node.allOf ?? []) {
     validate(value, part, errors, at);
   }
@@ -84,6 +90,18 @@ function validate(value, node = schema, errors = [], at = '$') {
   if (node.if !== undefined && validate(value, node.if, [], at).length === 0 && node.then) {
     validate(value, node.then, errors, at);
   }
+}
+
+function validate(value, node = schema, errors = [], at = '$') {
+  assertSupportedKeywords(node);
+  validateReference(value, node, errors, at);
+  checkType(value, node, errors, at);
+  if (typeof value === 'string') {
+    checkString(value, node, errors, at);
+  }
+  checkNumber(value, node, errors, at);
+  checkAllowedValues(value, node, errors, at);
+  checkCombinators(value, node, errors, at);
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
   }

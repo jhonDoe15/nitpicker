@@ -1,4 +1,3 @@
-import { expectedOutput333_22 } from '../fixtures/expected-output/core-diff-moves-diff.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -16,10 +15,6 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createBaseSetupResolver } from '../../configuration/base-setup.mjs';
 import { reportFromAnalyzerOutput } from '../execution/process.mjs';
 import { runQualityDiff } from '../comparison/run-diff.mjs';
-
-// A gate that follows moves: repositories are rearranged between base and head and the comparison
-// must report only what the change adds. The probe analyzer reads the policy file the runner hands
-// it, so each snapshot is analysed with the layout of its own config, like the real analyzers.
 
 const repositories = [];
 
@@ -39,7 +34,6 @@ function probeAnalyzer() {
   };
 }
 
-/** Finds `// FINDING <json>` lines under the source roots of the policy the snapshot runs with. */
 function runProbe(tasks, policyFile) {
   const policy = policyFile === undefined ? {} : JSON.parse(readFileSync(policyFile, 'utf8'));
   const sourceRoots = policy.layout?.sourceRoots ?? ['src'];
@@ -331,7 +325,9 @@ describe('a config that changed between base and head', () => {
     const root = createRepository({ 'nitpicker.config.json': '{not json' });
 
     expect(resolve({ baseProjectRoot: root, analyzers: [probeAnalyzer()] })).toEqual({});
-    expect(warnings).toEqual(expectedOutput333_22());
+    expect(warnings).toEqual([
+      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config.",
+    ]);
     expect(resolve({ baseProjectRoot: path.join(root, 'missing'), analyzers: [] })).toEqual({});
     expect(warnings).toHaveLength(1);
   });

@@ -1,8 +1,3 @@
-import {
-  expectedOutput26_42,
-  expectedOutput32_36,
-  expectedOutput104_57,
-} from '../../fixtures/expected-output/core-diff-entry-points-diff-policy.mjs';
 import path from 'node:path';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -28,8 +23,26 @@ describe('entry-point differential adapter', () => {
       headFindings: toEntryPointDiffFindings(headReport),
     });
 
-    expect(comparison.unchangedFindings).toEqual(expectedOutput26_42());
-    expect(comparison.newFindings).toEqual(expectedOutput32_36());
+    expect(comparison.unchangedFindings).toEqual([
+      {
+        tool: 'entry-points',
+        rule: 'public-alternative-bypass',
+        path: 'src/main/alpha/existing.ts',
+        identity: 'target:src/main/beta/internal.ts',
+        message: 'Import src/main/beta/internal.ts through src/main/beta/index.ts (runtime)',
+        classification: 'enforceable',
+      },
+    ]);
+    expect(comparison.newFindings).toEqual([
+      {
+        tool: 'entry-points',
+        rule: 'public-alternative-bypass',
+        path: 'src/main/gamma/introduced.ts',
+        identity: 'target:src/main/beta/internal.ts',
+        message: 'Import src/main/beta/internal.ts through src/main/beta/index.ts (runtime)',
+        classification: 'enforceable',
+      },
+    ]);
     expect(comparison.resolvedFindings).toEqual([]);
   });
 
@@ -95,9 +108,25 @@ describe('entry-point differential adapter', () => {
   });
 
   it('includes entry-point bypasses in the production differential analyzers', () => {
-    expect([...new Set(configuredAnalyzers.map(({ name }) => name))].sort()).toEqual(
-      expectedOutput104_57(),
-    );
+    expect([...new Set(configuredAnalyzers.map(({ name }) => name))].sort()).toEqual([
+      'coding-standards',
+      'coupling',
+      'coverage',
+      'crap',
+      'dead-code',
+      'dependency-architecture',
+      'duplicates',
+      'entry-points',
+      'eslint-errors',
+      'eslint-lint',
+      'eslint-logging',
+      'eslint-module-effects',
+      'mutation',
+      'prettier-format',
+      'structure',
+      'test-runtime',
+      'typescript-typecheck',
+    ]);
   });
 });
 

@@ -1,102 +1,43 @@
+import { exactText } from '../fixtures/output-expectations.mjs';
 import { createGitTemplate, copyGitTemplate } from '../fixtures/git-repository.mjs';
-import {
-  expectedOutput129_79,
-  expectedOutput157_79,
-  expectedOutput302_31,
-  expectedOutput303_31,
-  expectedOutput304_31,
-  expectedOutput305_31,
-  expectedOutput371_31,
-  expectedOutput372_31,
-  expectedOutput373_31,
-} from '../fixtures/expected-output/core-diff-aggregate-shards.mjs';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-import { aggregateShardReports, runAggregateCli } from './aggregate-shards.mjs';
+import { aggregateShardReports } from './aggregate-shards.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import {
+  analyzer,
+  createFixture,
+  readJson,
+  removeFixtures,
+  writeShard,
+} from './shard-fixtures.mjs';
 
-const temporaryDirectories = [];
+afterEach(removeFixtures);
 
-afterEach(() => {
-  for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true });
-  }
-});
+const HELD_STRUCTURE_NOTE = [
+  'structure/function-lines-limit src/main/invoice.ts',
+  'computeInvoice has 68 lines; limit is 50',
+  '(allowed because base was 68; any increase fails)',
+].join(' ');
 
-function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
-  return {
-    name,
-    version: '1.0.0',
-    configurationHash: `hash-${name}`,
-    exclusions: ['generated/**'],
-    dependencies,
-    shardWeight,
-  };
-}
-
-function createFixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'quality-shards-'));
-  temporaryDirectories.push(root);
-  return {
-    inputRoot: path.join(root, 'shards'),
-    outputRoot: path.join(root, 'combined'),
-  };
-}
-
-function writeShard(
-  inputRoot,
-  index,
-  {
-    tools,
-    headSha = 'head',
-    findings = [],
-    held,
-    toolErrors = [],
-    toolVersions = {},
-    configurationHashes = {},
-    overallStatus = 'completed',
-    elapsedMs = 10,
-  },
-) {
-  const shardRoot = path.join(inputRoot, String(index));
-  mkdirSync(shardRoot, { recursive: true });
-  writeJson(path.join(shardRoot, 'summary.json'), {
-    requestedBaseRef: 'origin/master',
-    resolvedBaseSha: 'base',
-    mergeBaseSha: 'merge-base',
-    headSha,
-    policyHash: `shard-${String(index)}`,
-    tools: tools.map((name) => ({
-      name,
-      version: toolVersions[name] ?? '1.0.0',
-      configurationHash: configurationHashes[name] ?? `hash-${name}`,
-      base: 0,
-      head: 0,
-      new: findings.filter(({ tool }) => tool === name).length,
-      resolved: 0,
-      unchanged: 0,
-      changedMetrics: 0,
-      baseElapsedMs: 3,
-      headElapsedMs: 5,
-      elapsedMs: 8,
-    })),
-    exclusions: ['generated/**'],
-    renamedPaths: 0,
-    elapsedMs,
-    overallStatus,
-    newEnforceableFindings: findings.length,
+function runGitCommand(repositoryRoot, arguments_) {
+  const result = spawnSync('git', arguments_, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
   });
-  writeJson(path.join(shardRoot, 'new-findings.json'), findings);
-  writeJson(path.join(shardRoot, 'resolved-findings.json'), []);
-  writeJson(path.join(shardRoot, 'changed-metrics.json'), []);
-  if (held !== undefined) {
-    writeJson(path.join(shardRoot, 'held-findings.json'), held);
+  if (result.status !== 0) {
+    throw new Error(result.stderr || result.error?.message || 'git command failed');
   }
-  writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
+  return result.stdout.trim();
 }
+
+const gitTemplate = { root: undefined };
+beforeAll(() => {
+  gitTemplate.root = createGitTemplate();
+});
 
 describe('quality shard aggregation', () => {
   it('merges complete shards into one ordered report and final gate', () => {
@@ -139,10 +80,30 @@ describe('quality shard aggregation', () => {
     expect(report.newFindings).toEqual([finding]);
     expect(readJson(fixture.outputRoot, 'summary.json')).toEqual(report.summary);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toEqual(
-      expectedOutput129_79(),
+      expect.stringMatching(exactText`Nitpicker quality diff
+Base ref: origin/master
+Merge base: merge-base
+Head: head
+Status: completed
+New enforceable findings: 1
+New findings: 1
+Resolved findings: 0
+Unchanged findings: 0
+Changed metrics: 0
+Tool errors: 0
+
+Per-tool counts:
+largest: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+coverage: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+crap: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+medium: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+small: base=0 head=0 new=1 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+
+New findings:
+small/example src/main/example.ts example finding
+`),
     );
   });
-
   it('carries the held findings of every shard into the report and its note', () => {
     const fixture = createFixture();
     const held = {
@@ -167,10 +128,27 @@ describe('quality shard aggregation', () => {
     expect(report.unchangedFindings).toEqual([held]);
     expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([held]);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toEqual(
-      expectedOutput157_79(),
+      expect.stringMatching(exactText`Nitpicker quality diff
+Base ref: origin/master
+Merge base: merge-base
+Head: head
+Status: completed
+New enforceable findings: 0
+New findings: 0
+Resolved findings: 0
+Unchanged findings: 0
+Changed metrics: 0
+Tool errors: 0
+
+Per-tool counts:
+structure: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+other: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+
+Touched, still over limit (not failing):
+${HELD_STRUCTURE_NOTE}
+`),
     );
   });
-
   it('uses the shard head policy when the live inventory has uncommitted changes', () => {
     const fixture = createFixture();
     const repositoryRoot = path.join(path.dirname(fixture.inputRoot), 'repository');
@@ -207,7 +185,6 @@ describe('quality shard aggregation', () => {
     expect(report.summary.overallStatus).toBe('completed');
     expect(report.summary.tools[0].configurationHash).toBe(headPolicyHash);
   });
-
   it('records shard-classified analyzer tool errors without aborting aggregation', () => {
     const fixture = createFixture();
     const error = {
@@ -238,7 +215,6 @@ describe('quality shard aggregation', () => {
     expect(report.summary.tools[0].version).toBe('unknown');
     expect(report.toolErrors).toEqual([error]);
   });
-
   it('rejects a missing shard instead of silently reducing analyzer coverage', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('a'), analyzer('b')];
@@ -252,7 +228,6 @@ describe('quality shard aggregation', () => {
       }),
     ).toThrow(/shard 1.*summary\.json/i);
   });
-
   it('rejects misassigned shard reports', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('a'), analyzer('b')];
@@ -267,7 +242,6 @@ describe('quality shard aggregation', () => {
       }),
     ).toThrow(/expected analyzers b/i);
   });
-
   it('rejects shard reports produced from different commits', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('a'), analyzer('b')];
@@ -282,181 +256,4 @@ describe('quality shard aggregation', () => {
       }),
     ).toThrow(/shard 1 headSha does not match shard 0/i);
   });
-
-  it('returns the combined enforceable gate status', () => {
-    const fixture = createFixture();
-    const analyzers = [analyzer('only')];
-    writeShard(fixture.inputRoot, 0, {
-      tools: ['only'],
-      findings: [
-        {
-          tool: 'only',
-          rule: 'example',
-          path: 'src/main/example.ts',
-          identity: 'example',
-          message: 'example finding',
-          classification: 'enforceable',
-        },
-      ],
-    });
-    const output = captureOutput();
-
-    const exitCode = runAggregateCli({
-      arguments_: ['--input-root', 'shards', '--shard-count', '1', '--output', 'combined'],
-      currentProjectRoot: path.dirname(fixture.inputRoot),
-      analyzers,
-      stdout: output.stdout,
-      stderr: output.stderr,
-      environment: {},
-    });
-
-    expect(exitCode).toBe(1);
-    expect(output.stdoutText).toEqual(expectedOutput302_31({ fixture }));
-    expect(output.stdoutText).toEqual(expectedOutput303_31({ fixture }));
-    expect(output.stdoutText).toEqual(expectedOutput304_31({ fixture }));
-    expect(output.stdoutText).toEqual(expectedOutput305_31({ fixture }));
-    expect(output.stdoutText).not.toContain('Per-tool counts:');
-    expect(output.stderrText).toBe('');
-  });
-
-  it.each([
-    ['findings plus a tool error', true, true, 1],
-    ['a tool error only', false, true, 2],
-    ['findings only', true, false, 1],
-    ['a clean run', false, false, 0],
-  ])('exits per the combined result for %s', (_name, withFinding, withToolError, expected) => {
-    const fixture = createFixture();
-    const analyzers = [analyzer('only')];
-    writeShard(fixture.inputRoot, 0, {
-      tools: ['only'],
-      findings: withFinding
-        ? [
-            {
-              tool: 'only',
-              rule: 'example',
-              path: 'src/main/example.ts',
-              identity: 'example',
-              message: 'example finding',
-              classification: 'enforceable',
-            },
-          ]
-        : [],
-      toolErrors: withToolError
-        ? [{ tool: 'only', rule: 'tool-error', path: '', identity: 'boom', message: 'boom' }]
-        : [],
-      overallStatus: withToolError ? 'tool-error' : 'completed',
-    });
-    const output = captureOutput();
-
-    const exitCode = runAggregateCli({
-      arguments_: ['--input-root', 'shards', '--shard-count', '1', '--output', 'combined'],
-      currentProjectRoot: path.dirname(fixture.inputRoot),
-      analyzers,
-      stdout: output.stdout,
-      stderr: output.stderr,
-      environment: {},
-    });
-
-    expect(exitCode).toBe(expected);
-    const summary = JSON.parse(
-      readFileSync(path.join(path.dirname(fixture.inputRoot), 'combined/summary.json'), 'utf8'),
-    );
-    expect(summary.overallStatus).toBe(withToolError ? 'tool-error' : 'completed');
-  });
-
-  it('supports a concise color-free success summary', () => {
-    const fixture = createFixture();
-    const analyzers = [analyzer('only')];
-    writeShard(fixture.inputRoot, 0, { tools: ['only'] });
-    const output = captureOutput();
-
-    const exitCode = runAggregateCli({
-      arguments_: ['--input-root', 'shards', '--shard-count', '1', '--output', 'combined'],
-      currentProjectRoot: path.dirname(fixture.inputRoot),
-      analyzers,
-      stdout: output.stdout,
-      stderr: output.stderr,
-      environment: { NO_COLOR: '1' },
-    });
-
-    expect(exitCode).toBe(0);
-    expect(output.stdoutText).toEqual(expectedOutput371_31({ fixture }));
-    expect(output.stdoutText).toEqual(expectedOutput372_31({ fixture }));
-    expect(output.stdoutText).toEqual(expectedOutput373_31({ path, fixture }));
-    expect(output.stdoutText).not.toContain('\u001B[');
-    expect(output.stderrText).toBe('');
-  });
-
-  it('starts without importing any development dependency', () => {
-    const fixture = createFixture();
-    const loaderPath = path.join(path.dirname(fixture.inputRoot), 'block-packages-loader.mjs');
-    writeFileSync(
-      loaderPath,
-      [
-        'export function resolve(specifier, context, nextResolve) {',
-        "  if (!specifier.startsWith('.') && !specifier.startsWith('/') &&",
-        "      !specifier.startsWith('file:') && !specifier.startsWith('node:')) {",
-        '    throw new Error(`Blocked external package: ${specifier}`);',
-        '  }',
-        '  return nextResolve(specifier, context);',
-        '}',
-      ].join('\n'),
-    );
-
-    const result = spawnSync(
-      process.execPath,
-      [
-        '--experimental-loader',
-        loaderPath,
-        new URL('./aggregate-shards.mjs', import.meta.url).pathname,
-        '--help',
-      ],
-      { encoding: 'utf8' },
-    );
-
-    expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toBe(
-      'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory> --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
-    );
-  });
-});
-
-function runGitCommand(repositoryRoot, arguments_) {
-  const result = spawnSync('git', arguments_, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.error?.message || 'git command failed');
-  }
-  return result.stdout.trim();
-}
-
-function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function readJson(root, name) {
-  return JSON.parse(readFileSync(path.join(root, name), 'utf8'));
-}
-
-function captureOutput() {
-  let stdoutText = '';
-  let stderrText = '';
-  return {
-    stdout: { write: (value) => (stdoutText += value) },
-    stderr: { write: (value) => (stderrText += value) },
-    get stdoutText() {
-      return stdoutText;
-    },
-    get stderrText() {
-      return stderrText;
-    },
-  };
-}
-
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
 });
