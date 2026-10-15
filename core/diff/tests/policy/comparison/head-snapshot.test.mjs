@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   commitFiles,
   comparisonOptions,
-  createRepository,
+  useQualityDiffRepositories,
+} from '../test-support/quality-diff-harness.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import {
   finding,
   findingLine,
-  git,
   policy,
-  registerRepositoryLifecycle,
-  writeFiles,
-} from '../quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+} from '../../../execution/test-support/analyzer-findings.mjs';
+import { fixtureGit } from '../../../git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
-registerRepositoryLifecycle();
+const { createRepository } = useQualityDiffRepositories();
 
 describe('quality diff head snapshot', () => {
   it('uses the head policy for both snapshots', () => {
@@ -69,6 +70,6 @@ describe('quality diff head snapshot', () => {
     const report = runQualityDiff(comparisonOptions(repository));
 
     expect(report.newFindings).toEqual([]);
-    expect(report.summary.headSha).toBe(git(repository.root, ['rev-parse', 'HEAD']).trim());
+    expect(report.summary.headSha).toBe(fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim());
   });
 });

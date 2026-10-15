@@ -2,7 +2,7 @@ import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } fro
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runTasksInProcess } from '../fixtures/in-process-analyzers.mjs';
+import { runTasksInProcess } from './test-support/in-process-analyzers.mjs';
 import {
   cachedLine,
   createProgressReporter,

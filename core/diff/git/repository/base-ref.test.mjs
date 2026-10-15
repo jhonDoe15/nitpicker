@@ -1,13 +1,9 @@
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
 import { resolveBase } from './base-ref.mjs';
-import {
-  createGitRepository,
-  fixtureGit,
-  removeGitRepositories,
-} from '../../fixtures/git-repository.mjs';
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 describe('resolveBase', () => {
   it('prefers an explicit base over CI, config, and remote HEAD', () => {
@@ -136,7 +132,7 @@ describe('resolveBase', () => {
     addRemote(repositoryRoot, 'origin');
     setRemoteBranch(repositoryRoot, 'origin', 'main');
     setRemoteBranch(repositoryRoot, 'origin', 'other');
-    git(repositoryRoot, ['branch', '--set-upstream-to=origin/other', 'main']);
+    fixtureGit(repositoryRoot, ['branch', '--set-upstream-to=origin/other', 'main']);
 
     expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
       baseRef: 'origin/main',
@@ -156,22 +152,18 @@ function createRepository() {
 }
 
 function addRemote(repositoryRoot, remote) {
-  git(repositoryRoot, ['remote', 'add', remote, path.join(repositoryRoot, `${remote}.git`)]);
+  fixtureGit(repositoryRoot, ['remote', 'add', remote, path.join(repositoryRoot, `${remote}.git`)]);
 }
 
 function setRemoteBranch(repositoryRoot, remote, branch) {
-  git(repositoryRoot, ['update-ref', `refs/remotes/${remote}/${branch}`, 'HEAD']);
+  fixtureGit(repositoryRoot, ['update-ref', `refs/remotes/${remote}/${branch}`, 'HEAD']);
 }
 
 function setRemoteHead(repositoryRoot, remote, branch) {
   setRemoteBranch(repositoryRoot, remote, branch);
-  git(repositoryRoot, [
+  fixtureGit(repositoryRoot, [
     'symbolic-ref',
     `refs/remotes/${remote}/HEAD`,
     `refs/remotes/${remote}/${branch}`,
   ]);
-}
-
-function git(repositoryRoot, arguments_) {
-  return fixtureGit(repositoryRoot, arguments_);
 }

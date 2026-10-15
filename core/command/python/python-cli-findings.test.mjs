@@ -3,18 +3,11 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-duplicates.mjs';
-import {
-  callsLog,
-  commit,
-  LEGACY_VIOLATION,
-  pythonRepository,
-  run,
-  temporaryRoot,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
 const FAILING_SUMMARY = [
   'Base: comparison-base (argument)',
@@ -36,7 +29,7 @@ function summaryOf({ output }) {
 describe('nitpicker with "preset": "python"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = pythonRepository();
-    write(root, { 'src/demo/a.py': 'import os\n\n\n\ndef value():\n    return 1\n' });
+    writeFiles(root, { 'src/demo/a.py': 'import os\n\n\n\ndef value():\n    return 1\n' });
     commit(root, 'move only');
 
     const result = run(root);
@@ -53,7 +46,7 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('fails on a new lint finding and a new unformatted file in every report format', () => {
     const root = pythonRepository();
-    write(root, {
+    writeFiles(root, {
       'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|Do not use mutable data structures for argument defaults\n`,
       'unformatted.txt': 'src/demo/a.py\n',
     });
@@ -92,7 +85,7 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('fails on a type error, a one-way rule and an inline ignore, each naming the allowed form', () => {
     const root = pythonRepository();
-    write(root, {
+    writeFiles(root, {
       'type-errors.txt':
         'src/demo/a.py:4: error: Incompatible return value type (got "int", expected "str")  [return-value]\n',
       'rules.json': JSON.stringify([
@@ -129,7 +122,7 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('lifts a rule for some paths with python.exceptions and lists the exception', () => {
     const root = pythonRepository();
-    write(root, {
+    writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
         python: {
@@ -151,7 +144,7 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('keeps a rule that an exception for other paths does not lift', () => {
     const root = pythonRepository();
-    write(root, {
+    writeFiles(root, {
       'nitpicker.config.json': JSON.stringify({
         preset: 'python',
         python: { exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'scripts' }] },
@@ -173,7 +166,7 @@ describe('nitpicker with "preset": "python"', () => {
   it('uses the type checker the project configures, pyright here', () => {
     const calls = callsLog();
     const root = pythonRepository({ 'pyrightconfig.json': '{}\n' });
-    write(root, {
+    writeFiles(root, {
       'pyright.json': JSON.stringify({
         generalDiagnostics: [
           {
@@ -216,7 +209,7 @@ describe('nitpicker with "preset": "python"', () => {
       writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
     vi.stubEnv('PATH', `${broken}${path.delimiter}${process.env.PATH}`);
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
+    writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
     commit(root, 'change');
 
     const result = run(root);

@@ -1,19 +1,13 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
-import {
-  captureOutput,
-  createRepository,
-  fakeAnalyzer,
-  makeOutputRoot,
-  makeTemporaryRoot,
-  policy,
-  runCli,
-  useCliFixtures,
-} from '../diff/fixtures/cli-harness.mjs';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { resolveRunLockPath } from './run-lock.mjs';
 
-useCliFixtures(nitpickerCli);
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
 
 describe('nitpicker progress and run lock', () => {
   function setup() {

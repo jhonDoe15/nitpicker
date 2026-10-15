@@ -2,22 +2,21 @@ import { readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  commit,
   commitFiles,
   COMMON_EXCLUSIONS,
   comparisonOptions,
-  createRepository,
+  useQualityDiffRepositories,
+} from '../test-support/quality-diff-harness.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { commit, fixtureGit } from '../../../git/test-support/git-repository.mjs';
+import {
   finding,
   findingLine,
-  git,
   policy,
-  registerRepositoryLifecycle,
-  renameFile,
-  writeFiles,
-} from '../quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+} from '../../../execution/test-support/analyzer-findings.mjs';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
-registerRepositoryLifecycle();
+const { createRepository } = useQualityDiffRepositories();
 
 function removeWorkingTreeFiles(repositoryRoot) {
   for (const entry of readdirSync(repositoryRoot)) {
@@ -37,9 +36,9 @@ describe('quality diff Git comparison', () => {
       'src/main/stable.ts': findingLine(finding({ identity: 'stable' })),
     });
     const mergeBaseSha = repository.baseSha;
-    git(repository.root, ['checkout', '-q', '-b', 'upstream']);
+    fixtureGit(repository.root, ['checkout', '-q', '-b', 'upstream']);
     commitFiles(repository.root, { 'upstream-only.txt': 'upstream\n' }, 'upstream change');
-    git(repository.root, ['checkout', '-q', 'main']);
+    fixtureGit(repository.root, ['checkout', '-q', 'main']);
     commitFiles(repository.root, { 'head-only.txt': 'head\n' }, 'head change');
 
     const report = runQualityDiff(comparisonOptions(repository, 'upstream'));
@@ -144,9 +143,9 @@ describe('quality diff Git comparison', () => {
         location: { line: 1, column: 48 },
       },
     ]);
-    expect(git(repository.root, ['diff', '--name-only', repository.baseSha, 'HEAD']).trim()).toBe(
-      'dependency.graph',
-    );
+    expect(
+      fixtureGit(repository.root, ['diff', '--name-only', repository.baseSha, 'HEAD']).trim(),
+    ).toBe('dependency.graph');
   });
   it('reports descriptive value changes only as metric deltas', () => {
     const baseMetric = finding({
@@ -233,9 +232,14 @@ describe('quality diff Git comparison', () => {
       'quality-policy.json': policy(),
       'src/main/base.ts': 'export const base = true;\n',
     });
-    git(repository.root, ['remote', 'add', 'upstream', 'https://example.invalid/example.git']);
-    git(repository.root, ['update-ref', 'refs/remotes/upstream/base', repository.baseSha]);
-    git(repository.root, ['checkout', '-q', '--orphan', 'unrelated']);
+    fixtureGit(repository.root, [
+      'remote',
+      'add',
+      'upstream',
+      'https://example.invalid/example.git',
+    ]);
+    fixtureGit(repository.root, ['update-ref', 'refs/remotes/upstream/base', repository.baseSha]);
+    fixtureGit(repository.root, ['checkout', '-q', '--orphan', 'unrelated']);
     removeWorkingTreeFiles(repository.root);
     writeFiles(repository.root, {
       'quality-policy.json': policy(),

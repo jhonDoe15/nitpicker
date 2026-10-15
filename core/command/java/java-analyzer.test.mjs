@@ -3,18 +3,11 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
 import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import {
-  commit,
-  fakeGradle,
-  git,
-  kotlinRepository,
-  run,
-  temporaryRoot,
-  useGradleFixtures,
-  write,
-} from '../../diff/fixtures/java-cli-harness.mjs';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
+import { fakeGradle, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-useGradleFixtures(nitpickerCli);
+const { kotlinRepository, run, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
 describe('Gradle failures of the kotlin analyzer', () => {
   const kotlinToolError = (snapshot) => [
@@ -27,7 +20,7 @@ describe('Gradle failures of the kotlin analyzer', () => {
   ];
   it('reports a Gradle failure on head as a kotlin tool error', () => {
     const root = kotlinRepository();
-    write(root, { GRADLE_FAIL: 'compileKotlin failed\n' });
+    writeFiles(root, { GRADLE_FAIL: 'compileKotlin failed\n' });
     commit(root, 'break the build');
 
     const result = run(root);
@@ -37,7 +30,7 @@ describe('Gradle failures of the kotlin analyzer', () => {
   });
   it('reports a Gradle failure on base as a kotlin tool error', () => {
     const root = kotlinRepository({ GRADLE_FAIL: 'compileKotlin failed\n' });
-    git(root, ['rm', '-q', 'GRADLE_FAIL']);
+    fixtureGit(root, ['rm', '-q', 'GRADLE_FAIL']);
     commit(root, 'fix the build');
 
     const result = run(root);
@@ -59,7 +52,7 @@ describe('Kotlin analyzer', () => {
   });
   it('maps a failing Gradle run to one tool-error finding of the kotlin analyzer', () => {
     const root = temporaryRoot('nitpicker-kotlin-unit-');
-    write(root, { GRADLE_FAIL: 'detekt crashed\n' });
+    writeFiles(root, { GRADLE_FAIL: 'detekt crashed\n' });
 
     const { findings } = analyzeJavaSnapshot(root, {
       gradle: fakeGradle,
@@ -84,7 +77,7 @@ describe('a root project without Nitpicker reports', () => {
     ['java', 'java'],
   ])('is a tool error naming the plugin for the %s preset', (preset, plugin) => {
     const root = temporaryRoot('nitpicker-no-reports-');
-    write(root, { NO_REPORTS: '' });
+    writeFiles(root, { NO_REPORTS: '' });
 
     const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle, policy: { preset } });
 
@@ -100,27 +93,35 @@ describe('a root project without Nitpicker reports', () => {
     ]);
   });
 });
+const PINNED_TOOLS = [
+  'pmd',
+  'spotbugs',
+  'googleJavaFormat',
+  'jacoco',
+  'checkstyle',
+  'lizard',
+  'pitest',
+  'pitestJunit5',
+  'detekt',
+  'detektKotlin',
+  'ktlint',
+  'ktfmt',
+  'kotlinCompiler',
+  'jscpd',
+];
+
 describe('Java analyzer', () => {
   it('records the pinned tool versions and a stable configuration hash', () => {
     const analyzer = createJavaAnalyzer();
 
     expect(analyzer.version).toMatch(
-      new RegExp(
-        [
-          '^pmd@[\\d.]+;spotbugs@[\\d.]+;googleJavaFormat@[\\d.]+;jac',
-          'oco@[\\d.]+;checkstyle@[\\d.]+;lizard@[\\d.]+;pitest@[\\d.]',
-          '+;pitestJunit5@[\\d.]+;detekt@[\\d.]+;detektKotlin@[\\d.]+',
-          ';ktlint@[\\d.]+;ktfmt@[\\d.]+;kotlinCompiler@[\\d.]+;jscpd',
-          '@[\\d.]+$',
-        ].join(''),
-        '',
-      ),
+      new RegExp(`^${PINNED_TOOLS.map((tool) => `${tool}@[\\d.]+`).join(';')}$`),
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
   it('maps a failing Gradle run to one tool-error finding', () => {
     const root = temporaryRoot('nitpicker-java-unit-');
-    write(root, { GRADLE_FAIL: 'tool crashed\n' });
+    writeFiles(root, { GRADLE_FAIL: 'tool crashed\n' });
 
     const { findings } = analyzeJavaSnapshot(root, { gradle: fakeGradle });
 

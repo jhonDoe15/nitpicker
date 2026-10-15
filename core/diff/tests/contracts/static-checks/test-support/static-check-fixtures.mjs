@@ -1,27 +1,31 @@
-import { copyGitTemplate, createGitTemplate } from '../../../fixtures/git-repository.mjs';
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, beforeAll } from 'vitest';
-import { createStaticCheckAnalyzer } from '../../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
-import { fileURLToPath } from 'node:url';
+import { createStaticCheckAnalyzer } from '../../../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
+import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mjs';
+import { useGitFixtures } from '../../../../git/test-support/git-repository.mjs';
 
-export const toolRoot = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)), '../..');
+export const toolRoot = PACKAGE_ROOT;
 
-const temporaryRoots = [];
+const COMPARISON_BASE_REF = 'comparison-base';
 
-const gitTemplate = { root: undefined };
+export function useStaticCheckFixtures() {
+  const git = useGitFixtures();
 
-export function registerStaticRepositoryLifecycle() {
-  beforeAll(() => {
-    gitTemplate.root = createGitTemplate();
-  });
-  afterEach(() => {
-    for (const temporaryRoot of temporaryRoots.splice(0)) {
-      rmSync(temporaryRoot, { recursive: true, force: true });
-    }
-  });
+  function createRepository(initialFiles) {
+    const { root, baseRef } = git.createGitRepository(initialFiles, {
+      prefix: 'static-quality-diff-',
+      baseRef: COMPARISON_BASE_REF,
+    });
+    return { root, baseRef };
+  }
+
+  function generatedSnapshot() {
+    const root = path.join(git.temporaryRoot('nitpicker-diff-'), 'base');
+    mkdirSync(root);
+    return root;
+  }
+
+  return { temporaryDirectory: git.temporaryRoot, createRepository, generatedSnapshot };
 }
 
 export function fixtureAnalyzers() {
@@ -116,52 +120,4 @@ export function architectureReport(cycle, from = 'src/main/a.ts') {
       ],
     },
   };
-}
-
-export function createRepository(initialFiles) {
-  const root = mkdtempSync(path.join(tmpdir(), 'static-quality-diff-'));
-  temporaryRoots.push(root);
-  copyGitTemplate(gitTemplate.root, root);
-  git(root, ['config', 'user.name', 'Static Diff Fixture']);
-  git(root, ['config', 'user.email', 'static-diff@example.invalid']);
-  writeFiles(root, initialFiles);
-  commit(root, 'base');
-  const baseRef = 'comparison-base';
-  git(root, ['branch', baseRef, 'HEAD']);
-  return { root, baseRef };
-}
-
-export function temporaryDirectory(prefix) {
-  const root = mkdtempSync(path.join(tmpdir(), prefix));
-  temporaryRoots.push(root);
-  return root;
-}
-
-export function generatedSnapshot() {
-  const temporaryRoot = temporaryDirectory('nitpicker-diff-');
-  const root = path.join(temporaryRoot, 'base');
-  mkdirSync(root);
-  return root;
-}
-
-export function writeFiles(repositoryRoot, files) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    const filePath = path.join(repositoryRoot, relativePath);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, contents);
-  }
-}
-
-export function commit(repositoryRoot, message) {
-  git(repositoryRoot, ['add', '-A']);
-  git(repositoryRoot, ['commit', '-q', '-m', message]);
-}
-
-function git(repositoryRoot, arguments_) {
-  return execFileSync('git', arguments_, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
-  });
 }

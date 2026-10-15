@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  commit,
-  kotlinConfig,
-  kotlinRepository,
-  run,
-  useGradleFixtures,
-  write,
-} from '../../diff/fixtures/java-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-useGradleFixtures(nitpickerCli);
+const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin"', () => {
   const branchReport = (...lines) =>
@@ -27,7 +22,9 @@ describe('nitpicker with "preset": "kotlin"', () => {
   const surchargeSource = `${feeSource}\nfun surcharge(weight: Int): Int = if (weight > 10) 5 else 0\n\nval numbers = sequence {\n    yield(1)\n}\n`;
   it('passes when the change adds no finding and keeps the legacy detekt finding baselined', () => {
     const root = kotlinRepository();
-    write(root, { 'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n' });
+    writeFiles(root, {
+      'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n',
+    });
     commit(root, 'move only');
 
     const result = run(root);
@@ -37,7 +34,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('fails on a new detekt finding and reports it in text and SARIF', () => {
     const root = kotlinRepository();
-    write(root, { 'detekt.txt': 'Legacy magic number\nAdded magic number\n' });
+    writeFiles(root, { 'detekt.txt': 'Legacy magic number\nAdded magic number\n' });
     commit(root, 'add a detekt finding');
 
     const result = run(root);
@@ -62,7 +59,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('fails on a newly violated ktlint rule of a project that uses ktlint, naming rule and exception', () => {
     const root = kotlinRepository({ '.editorconfig': 'ktlint_code_style = ktlint_official\n' });
-    write(root, { 'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n' });
+    writeFiles(root, { 'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n' });
     commit(root, 'add a wildcard import');
 
     const result = run(root);
@@ -83,7 +80,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('fails on a newly unformatted file with the configured ktfmt and names kotlin.formatter', () => {
     const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig('ktfmt') });
-    write(root, { 'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n' });
+    writeFiles(root, { 'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n' });
     commit(root, 'misformat a file');
 
     const result = run(root);
@@ -105,7 +102,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
       'src/main/kotlin/demo/K.kt': feeSource,
       'jacoco.xml': branchReport(),
     });
-    write(root, {
+    writeFiles(root, {
       'src/main/kotlin/demo/K.kt': surchargeSource,
       'jacoco.xml': branchReport([5, 1, 1], [7, 1, 1], [8, 1, 1]),
     });
@@ -131,8 +128,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
       'src/main/kotlin/demo/K.kt': surchargeSource,
       'jacoco.xml': branchReport([5, 1, 1]),
     });
-    write(root, { 'src/main/kotlin/demo/K.kt': `// moved\n${surchargeSource}` });
-    write(root, { 'jacoco.xml': branchReport([6, 1, 1]) });
+    writeFiles(root, { 'src/main/kotlin/demo/K.kt': `// moved\n${surchargeSource}` });
+    writeFiles(root, { 'jacoco.xml': branchReport([6, 1, 1]) });
     commit(root, 'insert a line above it');
 
     const result = run(root);
@@ -141,7 +138,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('reports a surviving Kotlin mutant without failing', () => {
     const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
-    write(root, { 'mutations.xml': pitReport('demo.KKt', 'K.kt') });
+    writeFiles(root, { 'mutations.xml': pitReport('demo.KKt', 'K.kt') });
     commit(root, 'a mutant survives');
 
     const result = run(root);
@@ -163,7 +160,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
   });
   it('still fails a surviving mutant in a Java class of a Kotlin project', () => {
     const root = kotlinRepository();
-    write(root, { 'mutations.xml': pitReport('demo.A', 'A.java') });
+    writeFiles(root, { 'mutations.xml': pitReport('demo.A', 'A.java') });
     commit(root, 'a Java mutant survives');
 
     const result = run(root);

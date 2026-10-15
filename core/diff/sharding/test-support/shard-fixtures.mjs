@@ -1,13 +1,19 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { useGitFixtures } from '../../git/test-support/git-repository.mjs';
 
-const temporaryDirectories = [];
+export function useShardFixtures() {
+  const { temporaryRoot } = useGitFixtures();
 
-export function removeFixtures() {
-  for (const directory of temporaryDirectories.splice(0)) {
-    rmSync(directory, { recursive: true, force: true });
+  function createFixture() {
+    const root = temporaryRoot('quality-shards-');
+    return {
+      inputRoot: path.join(root, 'shards'),
+      outputRoot: path.join(root, 'combined'),
+    };
   }
+
+  return { createFixture };
 }
 
 export function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
@@ -18,15 +24,6 @@ export function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
     exclusions: ['generated/**'],
     dependencies,
     shardWeight,
-  };
-}
-
-export function createFixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'quality-shards-'));
-  temporaryDirectories.push(root);
-  return {
-    inputRoot: path.join(root, 'shards'),
-    outputRoot: path.join(root, 'combined'),
   };
 }
 
@@ -104,23 +101,4 @@ export function writeShard(
 
 function writeJson(filePath, value) {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-export function readJson(root, name) {
-  return JSON.parse(readFileSync(path.join(root, name), 'utf8'));
-}
-
-export function captureOutput() {
-  let stdoutText = '';
-  let stderrText = '';
-  return {
-    stdout: { write: (value) => (stdoutText += value) },
-    stderr: { write: (value) => (stderrText += value) },
-    get stdoutText() {
-      return stdoutText;
-    },
-    get stderrText() {
-      return stderrText;
-    },
-  };
 }
