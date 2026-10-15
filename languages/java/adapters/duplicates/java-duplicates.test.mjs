@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../../shared/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readDuplicateFindings, runJavaDuplicates } from '../java-duplicates.mjs';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin-duplicates.mjs';
 
@@ -14,14 +14,17 @@ afterEach(() => {
   }
 });
 
-const MESSAGE = new RegExp(
-  [
-    String.raw`^This code repeats src/main/java/demo/Two\.java:\d+ \(\d+ lines\)\. `,
-    String.raw`Keep one copy and call it from both places\. `,
-    String.raw`If the repetition is intended, add src/main/java/demo/One\.java `,
-    String.raw`or src/main/java/demo/Two\.java to "exclude" in nitpicker\.config\.json\.$`,
-  ].join(''),
-);
+const ONE_TWO_CLONE = {
+  tool: 'duplicates',
+  rule: 'duplicate-clone',
+  path: 'src/main/java/demo/One.java',
+  identity:
+    'pair:src/main/java/demo/One.java|src/main/java/demo/Two.java:fragment:1b3aec1f1526b01ef1c1a869:occurrence:1',
+  message:
+    'This code repeats src/main/java/demo/Two.java:5 (13 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/java/demo/One.java or src/main/java/demo/Two.java to "exclude" in nitpicker.config.json.',
+  classification: 'enforceable',
+  location: { line: 5 },
+};
 
 const BODY = [
   'public int run(int a, int b) {',
@@ -109,9 +112,7 @@ describe('duplicates in Java sources', () => {
       'src/main/java/demo/Two.java': javaFile('Two', '', BODY),
     });
 
-    expect(clones(projectRoot).map(({ message }) => message)).toEqual([
-      expect.stringMatching(MESSAGE),
-    ]);
+    expect(clones(projectRoot)).toEqual([ONE_TWO_CLONE]);
   });
 
   it('drops the clone when an exclude matches only the second file of the pair', () => {
@@ -120,13 +121,15 @@ describe('duplicates in Java sources', () => {
       'src/main/java/demo/Two.java': javaFile('Two', '', BODY),
     });
     runJavaDuplicates(projectRoot);
-    const found = readDuplicateFindings(path.join(projectRoot, 'build/nitpicker'));
+    const found = readDuplicateFindings(path.join(projectRoot, 'build/nitpicker')).filter(
+      ({ rule }) => rule === 'duplicate-clone',
+    );
 
-    expect(found.length).toBeGreaterThan(0);
+    expect(found).toEqual([ONE_TWO_CLONE]);
     expect(applyFindingPolicy(found, { exclude: ['src/main/java/demo/Two.java'] })).toEqual([]);
     expect(applyFindingPolicy(found, { exclude: ['src/main/java/demo/One.java'] })).toEqual([]);
-    expect(applyFindingPolicy(found, { exclude: ['src/main/java/demo/Three.java'] })).toHaveLength(
-      found.length,
+    expect(applyFindingPolicy(found, { exclude: ['src/main/java/demo/Three.java'] })).toEqual(
+      found,
     );
   });
 
@@ -142,6 +145,20 @@ describe('duplicates in Java sources', () => {
     expect(
       clones(projectRoot, { skippedFolders: ['generated'] }).map(({ path: file }) => file),
     ).toEqual(['src/main/java/demo/build/One.java']);
+  });
+});
+
+describe('an empty folder list for the Java duplicate scan', () => {
+  it('scans every folder, build and generated included', () => {
+    const projectRoot = project({
+      'src/main/java/demo/build/One.java': javaFile('One', '', BODY),
+      'src/main/java/demo/build/Two.java': javaFile('Two', '', BODY),
+    });
+
+    expect(clones(projectRoot)).toEqual([]);
+    expect(clones(projectRoot, { skippedFolders: [] }).map(({ path: file }) => file)).toEqual([
+      'src/main/java/demo/build/One.java',
+    ]);
   });
 });
 

@@ -83,11 +83,11 @@ export function validateDuplicates(duplicates) {
 function validateSkippedFolders(folders) {
   validateStringArray(folders, 'duplicates.skippedFolders');
   const invalid = folders.find(
-    (name) => !/^[^/\\*?{}[\]]+$/.test(name) || ['.', '..'].includes(name),
+    (name) => !/^[^/\\*?{}[\],]+$/.test(name) || name.startsWith('!') || ['.', '..'].includes(name),
   );
   if (invalid !== undefined) {
     throw configError(
-      `"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: ${invalid}`,
+      `"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": ${invalid}`,
     );
   }
   if (new Set(folders).size !== folders.length) {

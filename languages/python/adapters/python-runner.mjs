@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import {
   trackTemporaryPath,
@@ -116,7 +116,7 @@ export function parsePythonArguments(arguments_) {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared);
+  const { projectRoot, policy } = parseRunnerArguments(shared, { runner: 'python-runner.mjs' });
   const part = own.get('--part') ?? PYTHON_ANALYZER_NAME;
   if (!(part in UNEXPECTED_FAILURE_RULES)) {
     throw new Error(`--part must be one of: ${Object.keys(UNEXPECTED_FAILURE_RULES).join(', ')}`);

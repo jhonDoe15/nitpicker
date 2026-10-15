@@ -183,6 +183,16 @@ describe('duplicates rule on neutral clones', () => {
     expect(failures[0].location).toEqual({ line: 8 });
   });
 
+  it('names the file once when a file repeats itself', () => {
+    const [failure] = byRule(
+      evaluateDuplicates([clone('a.java', 'a.java')], 'duplicates'),
+      'duplicate-clone',
+    );
+    expect(failure.message).toBe(
+      'This code repeats a.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java to "exclude" in nitpicker.config.json.',
+    );
+  });
+
   it('adds size metrics and omits a location for an unusable line', () => {
     const findings = evaluateDuplicates(
       [clone('a.java', 'b.java', { first: { file: 'a.java' } })],

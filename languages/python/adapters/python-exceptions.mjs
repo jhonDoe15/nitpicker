@@ -1,4 +1,4 @@
-import { findingPaths } from '../../../shared/finding-policy.mjs';
+import { findingPaths } from '../../../shared/findings/finding-policy.mjs';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 

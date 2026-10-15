@@ -47,8 +47,7 @@ function jscpdArguments({ jscpd, paths, config, format, output, ignore, together
     '--output',
     output,
     '--silent',
-    '--ignore',
-    ignore.join(','),
+    ...(ignore.length > 0 ? ['--ignore', ignore.join(',')] : []),
     ...(together ? ['--absolute'] : []),
   ];
 }

@@ -49,7 +49,7 @@ export const CONFIGURATION_FILES = [
   'core/tooling/jscpd/jscpd-clones.mjs',
   'core/tooling/jscpd/run-jscpd.mjs',
   'core/tooling/jscpd/skipped-folders.mjs',
-  'shared/finding-policy.mjs',
+  'shared/findings/finding-policy.mjs',
   'shared/rules/duplicates.mjs',
   'shared/glob.mjs',
   'shared/legacy-inventory.mjs',
