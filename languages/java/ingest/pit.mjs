@@ -1,6 +1,9 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from './common.mjs';
 
+const pitWayOut = (tool) =>
+  `If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for ${tool}/mutant-survived in nitpicker.config.json.`;
+
 const STATUS_NAMES = {
   KILLED: 'Killed',
   SURVIVED: 'Survived',
@@ -23,7 +26,7 @@ export function ingestPit(xml, options = {}) {
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts } = groupMutants(mutants, resolvePath);
-  const findings = mutantFindings(neutralMutants(groups), { tool });
+  const findings = mutantFindings(neutralMutants(groups), { tool, wayOut: pitWayOut(tool) });
   findings.push(...statusSummaries(statusCounts, tool));
   return { findings };
 }

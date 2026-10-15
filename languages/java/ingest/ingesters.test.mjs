@@ -195,6 +195,17 @@ describe('pit', () => {
     ]);
   });
 
+  it('names the equivalent-mutant cases and the exception route in a survived mutant', () => {
+    expect(findings[0].message).toContain(
+      'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
+    );
+    const named = ingestPit(fixture('pit-mutations.xml'), {
+      tool: 'custom',
+      resolvePath: resolveMainPath,
+    });
+    expect(named.findings[0].message).toContain('exception for custom/mutant-survived');
+  });
+
   it('identifies mutants by class, method, mutator and description, never by line', () => {
     expect(findings.slice(0, 2).map((finding) => finding.identity)).toEqual([
       'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
