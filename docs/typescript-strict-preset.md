@@ -333,6 +333,10 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
 - The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
   dependency-cruiser config used by the `dependency-architecture` analyzer.
+- `no-import-outside-roots` (`languages/typescript/preset/architecture/outside-roots/`) fails production code that
+  imports a project file under no source or test root. Packages, Node built-ins, `.json` files and
+  excluded paths are not counted. Its message names the three ways out: move the file under a
+  source root, add its folder to `layout.sourceRoots`, or list it in `exclude`.
 - `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
