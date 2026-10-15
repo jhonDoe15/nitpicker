@@ -6,7 +6,7 @@ import {
   removeProjects,
   resource,
   sourceRoots,
-} from '../../fixtures/spring-config-projects.mjs';
+} from '../test-support/spring-config-projects.mjs';
 import { readSpringConfigFindings } from '../java-spring.mjs';
 
 afterEach(removeProjects);
