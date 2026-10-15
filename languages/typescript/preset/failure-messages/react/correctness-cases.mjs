@@ -1,8 +1,12 @@
 import { exceptionCase, panel, reactCase } from './react-case.mjs';
 
-const listPanel = (row) =>
-  `export const List = ({ items }) => <ul>{items.map((item) => ${row})}</ul>;`;
-const stateful = (body) => panel(`const [list, setList] = useState([]); ${body}`);
+function listPanel(row) {
+  return `export const List = ({ items }) => <ul>{items.map((item) => ${row})}</ul>;`;
+}
+
+function stateful(body) {
+  return panel(`const [list, setList] = useState([]); ${body}`);
+}
 
 const cases = [
   [

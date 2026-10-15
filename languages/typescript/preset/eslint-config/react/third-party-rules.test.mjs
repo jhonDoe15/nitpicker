@@ -90,8 +90,9 @@ describe('rules from the React plugins', () => {
     expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
       'react-x/no-leaked-conditional-rendering',
     ]);
-    expect(result.messages[0].message).toContain('count > 0 &&');
-    expect(result.messages[0].message).toContain('nitpicker.config.json');
+    expect(result.messages[0].message).toBe(
+      'Potential leaked value count that might cause unintentionally rendered values or rendering crashes. Compare explicitly (`count > 0 && <Badge />`) or use a ternary. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+    );
   });
 
   it('lets a JSX handler return a void call and still flags other shorthand returns', async () => {

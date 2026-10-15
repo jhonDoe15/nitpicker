@@ -55,11 +55,7 @@ export function createStaticCheckAnalyzer({
       for (const pattern of patterns) {
         args.push('--pattern', pattern);
       }
-      return {
-        command: process.execPath,
-        args,
-        cwd: toolRoot,
-      };
+      return { command: process.execPath, args, cwd: toolRoot };
     },
   };
 }

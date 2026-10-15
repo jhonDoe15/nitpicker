@@ -1,6 +1,8 @@
 import { rule as reactControlledInput } from './react-controlled-input.mjs';
 import { rule as reactFieldHasLabel } from './react-field-has-label.mjs';
-import { filename, tester } from '../tester.mjs';
+import { createReactRuleTester, filename } from '../tester.mjs';
+
+const tester = createReactRuleTester();
 
 function valid(code) {
   return { filename, code };
