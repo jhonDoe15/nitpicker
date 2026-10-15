@@ -18,7 +18,7 @@ import { GRADLE_PRESETS } from '../languages/java/adapters/gradle-presets.mjs';
 import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
-import { validateTools } from './tooling/tool-settings.mjs';
+import { validateTools } from './config/tool-settings.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
