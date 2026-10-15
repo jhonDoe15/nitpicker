@@ -32,7 +32,7 @@ describe('ingestCrap', () => {
     );
     expect(findings[0].path).toBe('src/main/java/demo/Calc.java');
     expect(findings[0].message).toEqual(
-      'Calc.classify(int, int, String) has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+      'Calc.classify has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
@@ -133,9 +133,9 @@ describe('ingestCrap', () => {
         key: 'function:Calc.classify(int, int, String):crap',
         value: expect.any(Number),
         worseMessage:
-          'Calc.classify(int, int, String) CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests.',
+          'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         heldMessage:
-          'Calc.classify(int, int, String): CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
+          'Calc.classify: CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
       });
     });
 

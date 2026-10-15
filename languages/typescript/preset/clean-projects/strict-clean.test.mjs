@@ -21,7 +21,7 @@ const BANNED_FORM_OUTPUT = [
   'eslint-lint: total=1 enforceable=1 descriptive=0',
   '',
   'Enforceable findings:',
-  'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:29 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+  'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:29 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If a reviewer agrees this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -154,7 +154,7 @@ describe('the strict-clean fixture project', () => {
           'Quality gate summary',
           '✖ 1 new enforceable violation',
           '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
-          '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+          '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If a reviewer agrees this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',
         ].join('\n'),

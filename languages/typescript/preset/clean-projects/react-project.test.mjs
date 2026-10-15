@@ -127,7 +127,7 @@ describe('the react-project fixture', () => {
           'Style with styled components (styled-components or Emotion), not an inline `style` object.',
           "Pass a runtime value as a CSS custom property, `style={{ '--progress': percent }}`,",
           "typed once with `declare module 'csstype' { interface Properties { '--progress'?: number } }`.",
-          'For a one-off, add an exception for this rule in nitpicker.config.json.',
+          'If a reviewer agrees this is intended, add {"rule":"nitpicker/react-single-styling-approach","paths":["src/main/ui/inline-style.tsx"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         ].join(' '),
       );
     },

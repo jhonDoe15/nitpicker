@@ -102,15 +102,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const [finding] = kotlinFindings(root, 'detekt');
 
     expect(finding.identity).toBe('fp:nitpicker/subject=Calling !! on a nullable type will throw.');
-    expect(finding.message).toMatch(
-      new RegExp(
-        [
-          '^Calling !! on a nullable type will throw\\. Handle null with `value \\?: return`',
-          '.*checkNotNull\\(value\\).*"exceptions" entry for rule',
-          ' detekt\\.potential-bugs\\.UnsafeCallOnNullableType in nitpicker\\.config\\.json\\.$',
-        ].join(''),
-        '',
-      ),
+    expect(finding.message).toBe(
+      'Calling !! on a nullable type will throw. Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug. If a reviewer agrees this is intended, add {"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
   it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
