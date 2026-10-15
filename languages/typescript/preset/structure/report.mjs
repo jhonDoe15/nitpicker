@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { analyzeProductionFiles } from './analyze.mjs';
@@ -18,11 +19,13 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(
-  JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+process.stdout.write(
+  formatOutput(
+    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+  ) + '\n',
 );
 for (const [name, entries] of Object.entries(report.rankings)) {
-  console.log(`\n${name}:`);
+  process.stdout.write(formatOutput(`\n${name}:`) + '\n');
   for (const entry of entries.slice(0, 10)) {
     const displayName = entry.function ?? entry.class;
     const metric =
@@ -36,6 +39,9 @@ for (const [name, entries] of Object.entries(report.rankings)) {
           classMembers: 'members',
         }[name]
       ];
-    console.log(`${String(metric)}\t${entry.source}:${String(entry.start)}\t${displayName}`);
+    process.stdout.write(
+      formatOutput(`${String(metric)}\t${entry.source}:${String(entry.start)}\t${displayName}`) +
+        '\n',
+    );
   }
 }

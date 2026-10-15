@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../adapters/java-diff.mjs';
-import { runJavaDuplicates } from '../adapters/java-duplicates.mjs';
-import { readJavaFindings } from '../adapters/java-reports.mjs';
+import { runJavaDuplicates } from '../adapters/metrics/java-duplicates.mjs';
+import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

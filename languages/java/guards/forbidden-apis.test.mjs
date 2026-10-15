@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseForbiddenApiUses, readForbiddenApiFindings } from './forbidden-apis.mjs';
 
 const roots = [];
