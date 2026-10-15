@@ -41,6 +41,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
+  File limits and coupling (with the stability direction) are evaluated once over all projects, as
+  for Maven modules, so a package dependency from one project to another counts. Their findings
+  carry no project suffix, and a one-project build reads its own jdeps reports unmerged.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -109,7 +112,7 @@ field by field. Per snapshot:
   are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
-  (`languages/java/builds/java-modules.mjs`, build-neutral). Duplicate detection runs per module, so
+  (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate detection runs per module, so
   a clone between two modules is not found, as a clone between two source roots is not.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
