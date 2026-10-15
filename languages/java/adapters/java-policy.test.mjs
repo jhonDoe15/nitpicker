@@ -424,3 +424,31 @@ describe('applyJavaPolicy', () => {
     ]);
   });
 });
+
+describe('createJavaAnalyzer', () => {
+  it('records the pinned tool versions and a stable configuration hash', () => {
+    const tools = [
+      'pmd',
+      'forbiddenapis',
+      'spotbugs',
+      'googleJavaFormat',
+      'jacoco',
+      'checkstyle',
+      'lizard',
+      'pitest',
+      'pitestJunit5',
+      'detekt',
+      'detektKotlin',
+      'ktlint',
+      'ktfmt',
+      'kotlinCompiler',
+      'jscpd',
+    ];
+    const analyzer = createJavaAnalyzer();
+
+    expect(analyzer.version).toMatch(
+      new RegExp(`^${tools.map((tool) => `${tool}@[\\d.]+`).join(';')}$`, 'u'),
+    );
+    expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
+  });
+});
