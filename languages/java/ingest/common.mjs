@@ -91,12 +91,9 @@ export function parseXml(text) {
   const tokens = new RegExp(XML_TOKEN_PARTS.join('|'), 'gi');
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
+  const contentStarts = new Map();
   for (const match of text.matchAll(tokens)) {
-    const [, closing, name, rest, selfClosing] = match;
-    if (name === undefined) {
-      continue;
-    }
-    consumeXmlTag({ closing, name, rest, selfClosing }, stack);
+    consumeXmlTag(match, { stack, text, contentStarts });
   }
   if (stack.length !== 1) {
     throw new TypeError(`XML element <${stack.at(-1).name}> is not closed`);
@@ -106,6 +103,40 @@ export function parseXml(text) {
     throw new TypeError('XML document has no root element');
   }
   return documentElement;
+}
+
+function closeElement(stack, { name, text, end, contentStarts }) {
+  const current = stack.at(-1);
+  if (stack.length === 1 || current.name !== name) {
+    throw new TypeError(`XML closing tag </${name}> does not match an open element`);
+  }
+  const content =
+    current.children.length === 0 ? elementText(text.slice(contentStarts.get(current), end)) : '';
+  if (content !== '') {
+    current.text = content;
+  }
+  stack.pop();
+}
+
+function elementText(raw) {
+  return raw
+    .split(/(<!\[CDATA\[[\s\S]*?\]\]>)/u)
+    .map((part) =>
+      part.startsWith('<![CDATA[')
+        ? part.slice('<![CDATA['.length, -']]>'.length)
+        : decodeEntities(part.replace(/<!--[\s\S]*?-->/gu, '')),
+    )
+    .join('')
+    .trim();
+}
+
+function openElement(stack, { name, rest, selfClosing, contentStart, contentStarts }) {
+  const element = { name, attrs: parseAttributes(rest), children: [] };
+  stack.at(-1).children.push(element);
+  if (selfClosing !== '/') {
+    contentStarts.set(element, contentStart);
+    stack.push(element);
+  }
 }
 
 function parseAttributes(source) {
@@ -120,18 +151,20 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
-function consumeXmlTag({ closing, name, rest, selfClosing }, stack) {
-  const current = stack.at(-1);
-  if (closing === '/') {
-    if (stack.length === 1 || current.name !== name) {
-      throw new TypeError(`XML closing tag </${name}> does not match an open element`);
-    }
-    stack.pop();
+function consumeXmlTag(match, { stack, text, contentStarts }) {
+  const [, closing, name, rest, selfClosing] = match;
+  if (name === undefined) {
     return;
   }
-  const element = { name, attrs: parseAttributes(rest), children: [] };
-  current.children.push(element);
-  if (selfClosing !== '/') {
-    stack.push(element);
+  if (closing === '/') {
+    closeElement(stack, { name, text, end: match.index, contentStarts });
+    return;
   }
+  openElement(stack, {
+    name,
+    rest,
+    selfClosing,
+    contentStart: match.index + match[0].length,
+    contentStarts,
+  });
 }
