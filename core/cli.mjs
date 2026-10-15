@@ -6,8 +6,8 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../languages/typescript/adapters/static-checks-runner.mjs';
-import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { createBaseSetupResolver } from './base-setup.mjs';
+import { publishHeadPolicy, runHeadPolicy } from './conventions/resolve.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
@@ -109,7 +109,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
+  const headPolicy = runHeadPolicy({ cli, config, projectRoot: currentProjectRoot });
   const analyzers = configureAnalyzers(
     presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
     config,
@@ -132,6 +132,7 @@ function runConfigured(cli) {
       analyzers,
       resolveBaseSetup: createBaseSetupResolver({
         headConfig: config,
+        conventions: headPolicy.conventions,
         injectedAnalyzers: cli.analyzers,
         warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
       }),
@@ -162,7 +163,7 @@ function runCacheCommand({
   const projectRoot =
     currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
   const config = loadConfig(projectRoot);
-  const headPolicy = resolveHeadPolicy(config, projectRoot);
+  const headPolicy = publishHeadPolicy(config, projectRoot);
   const configured = configureAnalyzers(presetAnalyzers(config, analyzers), config, headPolicy);
   const selected =
     shardCount === undefined

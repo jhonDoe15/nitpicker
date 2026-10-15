@@ -6,7 +6,12 @@ import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 
-export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = () => undefined }) {
+export function createBaseSetupResolver({
+  headConfig,
+  conventions,
+  injectedAnalyzers,
+  warn = () => undefined,
+}) {
   return ({ baseProjectRoot, analyzers }) => {
     if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
       return {};
@@ -15,6 +20,7 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
       return baseSetupFromConfig({
         baseConfig: loadConfig(baseProjectRoot),
         headConfig,
+        conventions,
         injectedAnalyzers,
         analyzers,
       });
@@ -27,11 +33,20 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
   };
 }
 
-function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
+function baseSetupFromConfig({
+  baseConfig,
+  headConfig,
+  conventions,
+  injectedAnalyzers,
+  analyzers,
+}) {
   if (JSON.stringify(baseConfig) === JSON.stringify(headConfig)) {
     return {};
   }
-  const baseHeadPolicy = resolveHeadPolicy(baseConfig);
+  const baseHeadPolicy = {
+    ...resolveHeadPolicy(baseConfig),
+    ...(conventions === undefined ? {} : { conventions }),
+  };
   const configured = new Map(
     configureAnalyzers(
       presetAnalyzers(baseConfig, injectedAnalyzers),
