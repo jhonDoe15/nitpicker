@@ -21,7 +21,7 @@ afterAll(() => {
 const preset = path.join(packageRoot, 'languages/typescript/preset');
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
-  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react-scope.mjs`)};`,
+  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react/react-scope.mjs`)};`,
   `import { strictSyntaxConfigFor } from ${JSON.stringify(`${preset}/eslint-config/strict.mjs`)};`,
   `import { resolveLayout } from ${JSON.stringify(`${preset}/layout.mjs`)};`,
   'const parserOptions = { project: true, tsconfigRootDir: import.meta.dirname };',

@@ -1,4 +1,4 @@
-import { attributeNamed, elementName, hasSpread, literalValueOf } from '../jsx.mjs';
+import { attributeNamed, elementName, hasSpread, literalValueOf } from './jsx.mjs';
 
 const fields = new Set(['input', 'textarea', 'select']);
 const readOnlyValueTypes = new Set([

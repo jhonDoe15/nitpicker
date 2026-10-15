@@ -1,5 +1,5 @@
-import { ancestorsOf } from '../../ancestry.mjs';
-import { attributeNamed, elementName, hasSpread, literalValueOf } from '../jsx.mjs';
+import { ancestorsOf } from '../../analysis/ancestry.mjs';
+import { attributeNamed, elementName, hasSpread, literalValueOf } from './jsx.mjs';
 
 const fields = new Set(['input', 'textarea', 'select']);
 const buttonLikeTypes = new Set(['hidden', 'submit', 'reset', 'button', 'image']);

@@ -21,7 +21,11 @@ describe('callback protocol architecture rules', () => {
   it('applies configured callback roles independently of API or consumer names', () => {
     expect(
       rules(`class Arbitrary {
-      store = new WorkLoop({produce: () => this.read(), settled: (result) => consume(result), externalCommit: () => publish()});
+      store = new WorkLoop({
+        produce: () => this.read(),
+        settled: (result) => consume(result),
+        externalCommit: () => publish()
+      });
       read() { return this.store.snapshot(); }
     }`),
     ).toEqual([
@@ -69,7 +73,10 @@ describe('callback protocol architecture rules', () => {
   it('does not infer callback roles from method names or reject accepted metadata reads', () => {
     expect(
       rules(`class Arbitrary {
-      store = new WorkLoop({produce: () => this.source.snapshot(this.store.get('accepted-etag')), settled: (result, correlation) => this.accept(result, correlation)});
+      store = new WorkLoop({
+        produce: () => this.source.snapshot(this.store.get('accepted-etag')),
+        settled: (result, correlation) => this.accept(result, correlation)
+      });
       loadAnything() { return this.store.snapshot(); }
       accept(result, correlation) { use(result, correlation); }
     }`),

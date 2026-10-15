@@ -1,15 +1,19 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
+import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/harness.mjs';
-import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/no-raised-test-timeout.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
 import { strictPresetConfig } from './strict.mjs';
-import strictTestsConfig, {
+import {
   strictTestConfigFor,
   strictTestHelperRules,
   strictTestRules,
+  strictTestsConfig,
 } from './strict-tests.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
@@ -30,11 +34,33 @@ function messages(code, filename, config = strictTestsConfig) {
   return failureMessagesFor({ config, filename, code });
 }
 
+function timeoutSettings(file) {
+  const source = ts.createSourceFile(
+    file,
+    readFileSync(path.join(packageRoot, file), 'utf8'),
+    ts.ScriptTarget.Latest,
+  );
+  const settings = [];
+  for (const node of depthFirst(source, syntaxChildren)) {
+    if (ts.isPropertyAssignment(node) && node.name.getText(source) === 'testTimeout') {
+      settings.push(['testTimeout', Number(node.initializer.getText(source).replaceAll('_', ''))]);
+    }
+    if (ts.isArrayLiteralExpression(node)) {
+      const values = node.elements.map((element) =>
+        ts.isStringLiteral(element) ? element.text : undefined,
+      );
+      const index = values.indexOf('--testTimeout');
+      if (index !== -1) settings.push(['--testTimeout', Number(values[index + 1])]);
+    }
+  }
+  return settings;
+}
+
 describe('strict test rules', () => {
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
       expect(messages(raisedTimeout, file)).toEqual([
-        expect.stringContaining('Make the test faster'),
+        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.',
       ]);
     }
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
@@ -51,7 +77,7 @@ describe('strict test rules', () => {
 
   it('hold helper and fixture scripts, not test files, to the main guard', () => {
     expect(messages(moduleLevelArgv, 'tests/fixtures/fake-cli.ts')).toEqual([
-      expect.stringContaining('main guard'),
+      'A test helper or fixture script may use process.argv only inside a main guard such as `if (import.meta.main)`. Export a function that takes the arguments and returns the exit code, and call it from the main guard, so tests can import it instead of spawning it.',
     ]);
     expect(messages(moduleLevelArgv, 'tests/helpers/cli.mjs')).toHaveLength(1);
     expect(messages(moduleLevelArgv, 'tests/cli.test.ts')).toEqual([]);
@@ -108,16 +134,11 @@ describe('strict test rules', () => {
   });
 
   it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
-    for (const config of ['languages/typescript/preset/defaults/vitest.quality.config.ts']) {
-      const text = readFileSync(path.join(packageRoot, config), 'utf8');
-      expect(text).toContain(
-        `testTimeout: ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
-      );
-    }
-    const runner = readFileSync(
-      path.join(packageRoot, 'languages/typescript/adapters/quality-areas-runner.mjs'),
-      'utf8',
-    );
-    expect(runner).toContain(`'--testTimeout',\n        '${String(TEST_TIMEOUT_CEILING_MS)}'`);
+    expect(
+      timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
+    ).toEqual([['testTimeout', TEST_TIMEOUT_CEILING_MS]]);
+    expect(
+      timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs'),
+    ).toEqual([['--testTimeout', TEST_TIMEOUT_CEILING_MS]]);
   });
 });
