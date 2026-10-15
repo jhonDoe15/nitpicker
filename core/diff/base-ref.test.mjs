@@ -85,6 +85,33 @@ describe('resolveBase', () => {
     });
   });
 
+  it('rejects a configured base that is the commit being checked', () => {
+    const repositoryRoot = createRepository();
+    const sha = git(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+
+    expect(() => resolveBase({ repositoryRoot, configuredBase: sha, environment: {} })).toThrow(
+      /compared with itself/,
+    );
+    expect(() =>
+      resolveBase({ repositoryRoot, configuredBase: sha.slice(0, 8), environment: {} }),
+    ).toThrow(/compared with itself/);
+  });
+
+  it('accepts a configured commit id that is not the checked commit, and an explicit base at HEAD', () => {
+    const repositoryRoot = createRepository();
+    const sha = git(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+    git(repositoryRoot, ['commit', '--allow-empty', '-m', 'next']);
+
+    expect(resolveBase({ repositoryRoot, configuredBase: sha, environment: {} })).toEqual({
+      baseRef: sha,
+      source: 'config',
+    });
+    expect(resolveBase({ repositoryRoot, explicitBase: 'HEAD', environment: {} })).toEqual({
+      baseRef: 'HEAD',
+      source: 'argument',
+    });
+  });
+
   it('prefers the upstream remote HEAD over origin remote HEAD', () => {
     const repositoryRoot = createRepository();
     addRemote(repositoryRoot, 'origin');

@@ -715,10 +715,10 @@ describe('nitpicker config file', () => {
   });
 
   it('uses base from the config file', () => {
-    const { exitCode, output } = runWithConfig({ base: 'HEAD' }, { extraArguments: [] });
+    const { exitCode, output } = runWithConfig({ base: 'comparison-base' }, { extraArguments: [] });
 
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toContain('Base: HEAD (config)');
+    expect(output.stdoutText).toContain('Base: comparison-base (config)');
   });
 
   it('lets an explicit --base win over the config base', () => {

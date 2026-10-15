@@ -19,6 +19,8 @@ import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { validateTools } from './config/tool-settings.mjs';
+import { rejectHeadBase, rejectUnreadableSources } from './config-checks/project-config.mjs';
+import { validateLayout } from './config-checks/layout.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
@@ -37,8 +39,6 @@ const KEYS = [
   'tools',
   'kotlin',
 ];
-const LAYOUT_KEYS = ['sourceRoots', 'testRoots', 'excludedGlobs', 'entryPoints'];
-const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
@@ -55,7 +55,9 @@ export function loadConfig(projectRoot) {
       `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  return validateConfig(parsed);
+  const config = validateConfig(parsed);
+  rejectUnreadableSources(config, projectRoot);
+  return config;
 }
 
 export function validateConfig(config) {
@@ -82,6 +84,7 @@ function validateScalars(config) {
   if (config.base !== undefined && !isNonEmptyString(config.base)) {
     throw configError('"base" must be a non-empty string');
   }
+  rejectHeadBase(config.base);
   if (config.preset !== undefined && !SUPPORTED_PRESETS.includes(config.preset)) {
     throw configError(`"preset" must be one of: ${SUPPORTED_PRESETS.join(', ')}`);
   }
@@ -196,44 +199,6 @@ function validateReact(react) {
   if (react.styling !== undefined && !stylingApproaches.includes(react.styling)) {
     throw configError(`"react.styling" must be one of: ${stylingApproaches.join(', ')}`);
   }
-}
-
-function validateLayout(layout) {
-  if (!isPlainObject(layout)) {
-    throw configError('"layout" must be an object');
-  }
-  for (const [key, value] of Object.entries(layout)) {
-    if (!LAYOUT_KEYS.includes(key)) {
-      throw configError(
-        `unknown layout key "${key}". Allowed layout keys: ${LAYOUT_KEYS.join(', ')}`,
-      );
-    }
-    validateStringArray(value, `layout.${key}`);
-    if (GLOB_LAYOUT_KEYS.includes(key)) {
-      continue;
-    }
-    if (value.length === 0) {
-      throw configError(`"layout.${key}" must not be empty`);
-    }
-    for (const root of value) {
-      if (!isProjectRelativeDirectory(root)) {
-        throw configError(
-          `"layout.${key}" entries must be directories inside the project: ${root}`,
-        );
-      }
-    }
-  }
-}
-
-function isProjectRelativeDirectory(root) {
-  const normalized = root.replaceAll('\\', '/');
-  return (
-    !path.isAbsolute(normalized) &&
-    !/^[A-Za-z]:/.test(normalized) &&
-    !/[*?{}[\]]/.test(normalized) &&
-    !normalized.split('/').includes('..') &&
-    normalized.replace(/^\.\/?|\/$/g, '').length > 0
-  );
 }
 
 function validateCustomAnalyzers(analyzers) {

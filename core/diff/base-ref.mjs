@@ -1,4 +1,7 @@
+import { configError } from '../../shared/config.mjs';
 import { GitCommandError, runGit } from './git.mjs';
+
+const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
 
 export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
   if (isNonEmpty(explicitBase)) {
@@ -18,6 +21,7 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
   }
 
   if (isNonEmpty(configuredBase)) {
+    rejectCheckedOutCommit(repositoryRoot, configuredBase);
     return { baseRef: configuredBase, source: 'config' };
   }
 
@@ -48,6 +52,20 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
   }
 
   throw new Error('No base could be determined. Use --base <ref>.');
+}
+
+function rejectCheckedOutCommit(repositoryRoot, configuredBase) {
+  if (!COMMIT_ID.test(configuredBase)) {
+    return;
+  }
+  const commitOf = (ref) =>
+    gitOrUndefined(repositoryRoot, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])?.trim();
+  const base = commitOf(configuredBase);
+  if (base !== undefined && base === commitOf('HEAD')) {
+    throw configError(
+      `"base" is ${configuredBase}, the commit you are on, so the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
+    );
+  }
 }
 
 function isNonEmpty(value) {

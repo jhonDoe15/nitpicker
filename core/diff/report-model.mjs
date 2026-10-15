@@ -23,6 +23,10 @@ export function policyHash(analyzers, configOverrides = []) {
   return createHash('sha256').update(JSON.stringify(hashed)).digest('hex');
 }
 
+export function summaryFields(configOverrides, shardSummary) {
+  return { configOverrides, policyChanges: shardSummary.policyChanges ?? [] };
+}
+
 export function sortByToolAndPath(entries) {
   return entries.sort(
     (left, right) =>
