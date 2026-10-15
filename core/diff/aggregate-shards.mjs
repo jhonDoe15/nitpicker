@@ -37,19 +37,10 @@ function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }
     : realpathSync(path.resolve(currentProjectRoot, optionsPolicyRoot));
 }
 
-export function aggregateShardReports({
-  inputRoot,
-  outputRoot,
-  analyzers = configuredAnalyzers,
-  shardCount,
-  liveProjectRoot,
-  policyRoot,
-  configOverrides = [],
-}) {
-  const plan = planAnalyzerShards(analyzers, shardCount);
-  const analyzerResolutionErrors = [];
-  resolveAnalyzerVersions(analyzers, liveProjectRoot, analyzerResolutionErrors);
-
+function resolveConfigurationHashes(
+  { analyzers, policyRoot, liveProjectRoot, inputRoot },
+  analyzerResolutionErrors,
+) {
   if (policyRoot !== undefined) {
     resolveAnalyzerConfigurationHashes(analyzers, policyRoot, analyzerResolutionErrors);
   } else if (
@@ -69,6 +60,25 @@ export function aggregateShardReports({
       }
     }
   }
+}
+
+export function aggregateShardReports({
+  inputRoot,
+  outputRoot,
+  analyzers = configuredAnalyzers,
+  shardCount,
+  liveProjectRoot,
+  policyRoot,
+  configOverrides = [],
+}) {
+  const plan = planAnalyzerShards(analyzers, shardCount);
+  const analyzerResolutionErrors = [];
+  resolveAnalyzerVersions(analyzers, liveProjectRoot, analyzerResolutionErrors);
+
+  resolveConfigurationHashes(
+    { analyzers, policyRoot, liveProjectRoot, inputRoot },
+    analyzerResolutionErrors,
+  );
   const shardReports = plan.map((shardAnalyzers, index) =>
     readAndValidateShard(inputRoot, index, shardAnalyzers),
   );

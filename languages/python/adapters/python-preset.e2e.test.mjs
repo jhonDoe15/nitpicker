@@ -5,17 +5,19 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   command,
   commitBranch,
+  createGate,
   createVirtualEnvironment,
-  gate,
   git,
   write,
 } from './fixtures/e2e-harness.mjs';
+import { runCli } from '../../../core/cli.mjs';
 
 // End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
 // ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
 // environments), so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const gate = createGate(runCli);
 const fixture = path.resolve(import.meta.dirname, 'fixtures/python-project');
 
 const enforceable = (result) =>

@@ -88,95 +88,99 @@ function diffOf(root, branch, policy) {
   return runJavaDiff({ repositoryRoot: root, requestedBaseRef: 'red-base', gradle, policy });
 }
 
-function describeRedBase({ title, enabled, setup, policy, expected }) {
-  describe.skipIf(!enabled)(title, () => {
-    let root;
+function redBaseCases({ setup, policy, expected }) {
+  let root;
 
-    beforeAll(() => {
-      root = setup();
+  beforeAll(() => {
+    root = setup();
+  });
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('does not block a change that repairs the failing base tests, and keeps comparing the other checks with the base', () => {
+    const result = diffOf(root, 'repaired', policy);
+
+    expect({
+      failed: result.failed,
+      newEnforceable: summarize(result.newEnforceable),
+      notes: result.notes.map(({ tool, rule }) => `${tool} ${rule}`),
+      legacy: summarize(result.unchangedFindings).filter((entry) => entry === expected.legacy),
+    }).toEqual({
+      failed: false,
+      newEnforceable: [],
+      notes: [`${policy.preset} tests-failed`],
+      legacy: [expected.legacy],
     });
+  });
 
-    afterAll(() => {
-      rmSync(root, { recursive: true, force: true });
-    });
+  it('still fails a new violation next to a failing base', () => {
+    const result = diffOf(root, 'repaired-with-violation', policy);
 
-    it('does not block a change that repairs the failing base tests, and keeps comparing the other checks with the base', () => {
-      const result = diffOf(root, 'repaired', policy);
-
-      expect({
-        failed: result.failed,
-        newEnforceable: summarize(result.newEnforceable),
-        notes: result.notes.map(({ tool, rule }) => `${tool} ${rule}`),
-        legacy: summarize(result.unchangedFindings).filter((entry) => entry === expected.legacy),
-      }).toEqual({
-        failed: false,
-        newEnforceable: [],
-        notes: [`${policy.preset} tests-failed`],
-        legacy: [expected.legacy],
-      });
-    });
-
-    it('still fails a new violation next to a failing base', () => {
-      const result = diffOf(root, 'repaired-with-violation', policy);
-
-      expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual({
-        failed: true,
-        newEnforceable: expected.violation,
-      });
+    expect({ failed: result.failed, newEnforceable: summarize(result.newEnforceable) }).toEqual({
+      failed: true,
+      newEnforceable: expected.violation,
     });
   });
 }
 
-describeRedBase({
-  title: 'Java preset on a base whose tests fail',
-  enabled: process.env.NITPICKER_JAVA_E2E === '1',
-  policy: { preset: 'java' },
-  setup: () => {
-    const root = createRepository({
-      fixture: 'gradle-project',
-      ignored: 'build/\n.gradle/\n',
-      files: { 'src/main/java/demo/Legacy.java': JAVA_LEGACY },
+describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
+  'Java preset on a base whose tests fail',
+  () => {
+    redBaseCases({
+      policy: { preset: 'java' },
+      setup: () => {
+        const root = createRepository({
+          fixture: 'gradle-project',
+          ignored: 'build/\n.gradle/\n',
+          files: { 'src/main/java/demo/Legacy.java': JAVA_LEGACY },
+        });
+        addRedBaseBranches(root, {
+          testPath: 'src/test/java/demo/GreeterTest.java',
+          bad: { 'src/main/java/demo/Bad.java': JAVA_BAD },
+        });
+        return root;
+      },
+      expected: {
+        legacy: 'pmd UnusedPrivateField Legacy.java',
+        violation: [
+          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck Bad.java',
+          'pit mutant-nocoverage Bad.java',
+          'pmd EmptyCatchBlock Bad.java',
+          'spotbugs DM_DEFAULT_ENCODING Bad.java',
+        ],
+      },
     });
-    addRedBaseBranches(root, {
-      testPath: 'src/test/java/demo/GreeterTest.java',
-      bad: { 'src/main/java/demo/Bad.java': JAVA_BAD },
-    });
-    return root;
   },
-  expected: {
-    legacy: 'pmd UnusedPrivateField Legacy.java',
-    violation: [
-      'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck Bad.java',
-      'pit mutant-nocoverage Bad.java',
-      'pmd EmptyCatchBlock Bad.java',
-      'spotbugs DM_DEFAULT_ENCODING Bad.java',
-    ],
-  },
-});
+);
 
-describeRedBase({
-  title: 'Kotlin preset on a base whose tests fail',
-  enabled: process.env.NITPICKER_KOTLIN_E2E === '1',
-  policy: { preset: 'kotlin' },
-  setup: () => {
-    const root = createRepository({
-      fixture: 'kotlin-project',
-      ignored: '/build/\n/.gradle/\n/.kotlin/\n',
-      files: {},
+describe.skipIf(process.env.NITPICKER_KOTLIN_E2E !== '1')(
+  'Kotlin preset on a base whose tests fail',
+  () => {
+    redBaseCases({
+      policy: { preset: 'kotlin' },
+      setup: () => {
+        const root = createRepository({
+          fixture: 'kotlin-project',
+          ignored: '/build/\n/.gradle/\n/.kotlin/\n',
+          files: {},
+        });
+        addRedBaseBranches(root, {
+          testPath: 'src/test/kotlin/demo/GreeterTest.kt',
+          bad: { 'src/main/kotlin/demo/Bad.kt': KOTLIN_BAD },
+        });
+        return root;
+      },
+      expected: {
+        legacy: 'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+        violation: [
+          'jacoco changed-branch-coverage Bad.kt',
+          'ktlint ktlint.standard:function-signature Bad.kt',
+          'ktlint ktlint.standard:function-signature Bad.kt',
+          'ktlint ktlint.standard:function-signature Bad.kt',
+        ],
+      },
     });
-    addRedBaseBranches(root, {
-      testPath: 'src/test/kotlin/demo/GreeterTest.kt',
-      bad: { 'src/main/kotlin/demo/Bad.kt': KOTLIN_BAD },
-    });
-    return root;
   },
-  expected: {
-    legacy: 'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-    violation: [
-      'jacoco changed-branch-coverage Bad.kt',
-      'ktlint ktlint.standard:function-signature Bad.kt',
-      'ktlint ktlint.standard:function-signature Bad.kt',
-      'ktlint ktlint.standard:function-signature Bad.kt',
-    ],
-  },
-});
+);

@@ -2,7 +2,6 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runCli } from '../../../../core/cli.mjs';
 
 const gitEnvironment = {
   ...process.env,
@@ -39,28 +38,30 @@ export function commitBranch(root, name, files, from = 'main') {
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, extra = [], base = 'main') {
-  git(root, 'checkout', '-q', branch);
-  const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
-  const output = { text: '' };
-  const exitCode = runCli({
-    arguments_: ['--base', base, '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: {
-      write: (value) => {
-        output.text += value;
+export function createGate(runCli) {
+  return function gate(root, branch, extra = [], base = 'main') {
+    git(root, 'checkout', '-q', branch);
+    const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
+    const output = { text: '' };
+    const exitCode = runCli({
+      arguments_: ['--base', base, '--output', reports, ...extra],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: root,
+      stdout: {
+        write: (value) => {
+          output.text += value;
+        },
       },
-    },
-    stderr: {
-      write: (value) => {
-        output.text += value;
+      stderr: {
+        write: (value) => {
+          output.text += value;
+        },
       },
-    },
-    progress: { write: () => undefined },
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, json, text: output.text, reports };
+      progress: { write: () => undefined },
+    });
+    const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+    return { exitCode, json, text: output.text, reports };
+  };
 }
 
 export function createVirtualEnvironment(root) {

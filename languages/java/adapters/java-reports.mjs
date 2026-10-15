@@ -30,10 +30,7 @@ import {
 export const REPORT_DIRECTORY = 'build/nitpicker';
 const LINE_NUMBER = /\bline \d+\b/g;
 
-export function readJavaFindings(
-  projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
-) {
+function readContext(projectRoot, preset) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
   requireGradleReports(projectRoot, preset);
@@ -41,7 +38,7 @@ export function readJavaFindings(
   if (kotlin) {
     requireKotlinManifest(manifest);
   }
-  const context = {
+  return {
     projectRoot,
     reportRoot,
     manifest,
@@ -54,7 +51,14 @@ export function readJavaFindings(
         ? undefined
         : readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
-  const { jacoco } = context;
+}
+
+export function readJavaFindings(
+  projectRoot,
+  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+) {
+  const context = readContext(projectRoot, preset);
+  const { jacoco, reportRoot, manifest, kotlin } = context;
   return {
     findings: [
       ...sarifFindings(context),

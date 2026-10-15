@@ -108,7 +108,7 @@ function withoutEmittedToolErrors(findings, snapshot, toolErrors) {
   });
 }
 
-export function emptyComparison() {
+function emptyComparison() {
   return {
     newFindings: [],
     resolvedFindings: [],

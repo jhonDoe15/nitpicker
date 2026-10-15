@@ -61,7 +61,7 @@ function collectMutationFindings(options) {
   );
 }
 
-function readFindings({ projectRoot, liveRoot, settings, policy }, reportRoot, { testsFailed }) {
+function readFindings({ projectRoot, settings, policy }, reportRoot, { testsFailed }) {
   const { findings } = readPythonFindings({
     projectRoot,
     reportRoot,

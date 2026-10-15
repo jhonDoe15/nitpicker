@@ -2,34 +2,56 @@ import { createHash } from 'node:crypto';
 import { comparisonKey } from '../fingerprint.mjs';
 import { escapeXml, singleLine } from './text-format.mjs';
 
+function passedCase(name, seconds) {
+  return `  <testcase classname="quality.diff" name="${escapeXml(name)}" time="${seconds}"></testcase>`;
+}
+
+function failedCase({ classname, name, summary, type, message }) {
+  const typeAttribute = type === undefined ? '' : ` type="${escapeXml(type)}"`;
+  const failure = `<failure message="${escapeXml(summary)}"${typeAttribute}>${escapeXml(message)}</failure>`;
+  return `  <testcase classname="${classname}" name="${escapeXml(name)}" time="0">${failure}</testcase>`;
+}
+
+function findingCase(finding) {
+  const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
+  return failedCase({
+    classname: 'quality.diff.new-findings',
+    name: `${finding.tool}/${finding.rule} ${finding.path}${location}`,
+    summary: singleLine(finding.message),
+    type: `${finding.tool}/${finding.rule}`,
+    message: finding.message,
+  });
+}
+
+function toolErrorCase(error) {
+  return failedCase({
+    classname: 'quality.diff',
+    name: `${error.tool}:${error.snapshot}`,
+    summary: error.message,
+    message: error.message,
+  });
+}
+
 export function renderJunitReport(report) {
-  const testCases = report.summary.tools.map(
-    (tool) =>
-      `  <testcase classname="quality.diff" name="${escapeXml(tool.name)}" time="${((tool.elapsedMs ?? 0) / 1000).toFixed(3)}"></testcase>`,
-  );
   const violations = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
-  for (const finding of violations) {
-    const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
-    const name = `${finding.tool}/${finding.rule} ${finding.path}${location}`;
-    testCases.push(
-      `  <testcase classname="quality.diff.new-findings" name="${escapeXml(name)}" time="0"><failure message="${escapeXml(singleLine(finding.message))}" type="${escapeXml(`${finding.tool}/${finding.rule}`)}">${escapeXml(finding.message)}</failure></testcase>`,
-    );
-  }
-  for (const error of report.toolErrors) {
-    testCases.push(
-      `  <testcase classname="quality.diff" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
-    );
-  }
+  const testCases = [
+    ...report.summary.tools.map((tool) =>
+      passedCase(tool.name, ((tool.elapsedMs ?? 0) / 1000).toFixed(3)),
+    ),
+    ...violations.map((finding) => findingCase(finding)),
+    ...report.toolErrors.map((error) => toolErrorCase(error)),
+  ];
   if (testCases.length === 0) {
-    testCases.push('  <testcase classname="quality.diff" name="framework" time="0"></testcase>');
+    testCases.push(passedCase('framework', '0'));
   }
-  const failures = violations.length + report.toolErrors.length;
-  const tests = testCases.length;
+  const failures = String(violations.length + report.toolErrors.length);
+  const seconds = (report.summary.elapsedMs / 1000).toFixed(3);
+  const tests = String(testCases.length);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.diff" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    `<testsuite name="quality.diff" tests="${tests}" failures="${failures}" errors="0" time="${seconds}">`,
     ...testCases,
     '</testsuite>',
     '',
@@ -39,54 +61,58 @@ export function renderJunitReport(report) {
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
 
+function sarifResult(finding, rules) {
+  const ruleId = `${finding.tool}/${finding.rule}`;
+  if (!rules.has(ruleId)) {
+    rules.set(ruleId, { id: ruleId, name: finding.rule });
+  }
+  const physicalLocation = { artifactLocation: { uri: finding.path } };
+  if (finding.location !== undefined) {
+    physicalLocation.region = {
+      startLine: finding.location.line,
+      ...(finding.location.column === undefined ? {} : { startColumn: finding.location.column }),
+    };
+  }
+  return {
+    ruleId,
+    level: finding.classification === 'enforceable' ? 'error' : 'note',
+    message: { text: finding.message },
+    locations: [{ physicalLocation }],
+    partialFingerprints: {
+      [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(comparisonKey(finding)).digest('hex'),
+    },
+  };
+}
+
+function sarifRun(report, rules, results) {
+  return {
+    tool: {
+      driver: {
+        name: 'nitpicker',
+        informationUri: 'https://github.com/jhonDoe15/nitpicker',
+        rules: [...rules.values()],
+      },
+    },
+    invocations: [
+      {
+        executionSuccessful: report.toolErrors.length === 0,
+        toolExecutionNotifications: report.toolErrors.map((error) => ({
+          level: 'error',
+          message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+        })),
+      },
+    ],
+    results,
+  };
+}
+
 export function renderSarifReport(report) {
   const rules = new Map();
-  const results = report.newFindings.map((finding) => {
-    const ruleId = `${finding.tool}/${finding.rule}`;
-    if (!rules.has(ruleId)) {
-      rules.set(ruleId, { id: ruleId, name: finding.rule });
-    }
-    const physicalLocation = { artifactLocation: { uri: finding.path } };
-    if (finding.location !== undefined) {
-      physicalLocation.region = {
-        startLine: finding.location.line,
-        ...(finding.location.column === undefined ? {} : { startColumn: finding.location.column }),
-      };
-    }
-    return {
-      ruleId,
-      level: finding.classification === 'enforceable' ? 'error' : 'note',
-      message: { text: finding.message },
-      locations: [{ physicalLocation }],
-      partialFingerprints: {
-        [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(comparisonKey(finding)).digest('hex'),
-      },
-    };
-  });
+  const results = report.newFindings.map((finding) => sarifResult(finding, rules));
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: 'nitpicker',
-            informationUri: 'https://github.com/jhonDoe15/nitpicker',
-            rules: [...rules.values()],
-          },
-        },
-        invocations: [
-          {
-            executionSuccessful: report.toolErrors.length === 0,
-            toolExecutionNotifications: report.toolErrors.map((error) => ({
-              level: 'error',
-              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
-            })),
-          },
-        ],
-        results,
-      },
-    ],
+    runs: [sarifRun(report, rules, results)],
   };
   return `${JSON.stringify(log, null, 2)}\n`;
 }
