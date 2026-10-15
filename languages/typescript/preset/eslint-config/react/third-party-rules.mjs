@@ -1,7 +1,5 @@
 import { EXCEPTION_HINT, GENERAL_HINT } from './hints.mjs';
 
-const REACT_19 = `On React 18, ${EXCEPTION_HINT}`;
-
 export const reactXHints = {
   immutability: ` Copy instead: \`setList([...list, item])\`, \`items.toSorted()\`.${GENERAL_HINT}`,
   purity: ` Pass the value in as a prop or state, or read it in an event handler or an effect.${GENERAL_HINT}`,
@@ -15,8 +13,8 @@ export const reactXHints = {
   'no-leaked-conditional-rendering': ` Compare explicitly (\`count > 0 && <Badge />\`) or use a ternary.${GENERAL_HINT}`,
   'no-unstable-context-value': ` Wrap the value in \`useMemo\` or hoist it.${GENERAL_HINT}`,
   'no-unstable-default-props': ` Hoist the default to a module-level constant.${GENERAL_HINT}`,
-  'no-forward-ref': ` Take \`ref\` as a prop. ${REACT_19}`,
-  'no-context-provider': ` Render \`<Context value={...}>\`. ${REACT_19}`,
+  'no-forward-ref': ` Take \`ref\` as a prop.${GENERAL_HINT}`,
+  'no-context-provider': ` Render \`<Context value={...}>\`.${GENERAL_HINT}`,
 };
 
 export const reactDomHints = {
@@ -37,6 +35,8 @@ export const reactWebApiHints = {
 };
 
 export const typedReactXRules = ['no-leaked-conditional-rendering'];
+
+export const react19RuleIds = ['react-x/no-forward-ref', 'react-x/no-context-provider'];
 
 function ids(prefix, hints) {
   return Object.keys(hints).map((name) => `${prefix}/${name}`);

@@ -1,6 +1,6 @@
 import { ESLint } from 'eslint';
 import accessibility from 'eslint-plugin-jsx-a11y-x';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -148,6 +148,32 @@ describe('the styling approach', () => {
 });
 
 describe('the React scope config', () => {
+  it.each([
+    ['a React 18 range', { dependencies: { react: '^18.2.0' } }, undefined, false],
+    ['an installed React 18', { dependencies: { react: '*' } }, '18.3.1', false],
+    [
+      'an installed React 18 under a React 19 range',
+      { dependencies: { react: '^19.0.0' } },
+      '18.3.1',
+      false,
+    ],
+    ['React 19', { dependencies: { react: '19.0.0' } }, undefined, true],
+    ['an unreadable version', { dependencies: { react: 'latest' } }, undefined, true],
+  ])('applies the React 19 rules for %s: %s', async (_name, fields, installed, applied) => {
+    const projectRoot = projectWith(manifestWith(fields));
+    if (installed !== undefined) {
+      mkdirSync(path.join(projectRoot, 'node_modules/react'), { recursive: true });
+      writeFileSync(
+        path.join(projectRoot, 'node_modules/react/package.json'),
+        JSON.stringify({ name: 'react', version: installed }),
+      );
+    }
+    const [{ rules }] = await reactScopeConfigFor(layout, {}, projectRoot);
+    const react19 = ['react-x/no-forward-ref', 'react-x/no-context-provider'];
+
+    expect(react19.filter((id) => id in rules)).toEqual(applied ? react19 : []);
+  });
+
   it('configures exactly the listed React rule ids', async () => {
     const [production, tests, typed] = await reactScopeConfigFor(layout);
     const typedReactRules = Object.keys(typed.rules).filter((id) => id.startsWith('react-x/'));

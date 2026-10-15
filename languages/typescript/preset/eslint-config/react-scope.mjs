@@ -11,18 +11,39 @@ import {
   testingLibrarySettings,
 } from './react-rules.mjs';
 import { nitpickerReactRuleIds } from './react/nitpicker-rules.mjs';
-import { thirdPartyReactRuleIds, typedReactXRules } from './react/third-party-rules.mjs';
+import {
+  react19RuleIds,
+  thirdPartyReactRuleIds,
+  typedReactXRules,
+} from './react/third-party-rules.mjs';
 
 const REACT_PACKAGE = 'react';
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
-function readManifest(projectRoot) {
+function readJson(file) {
   try {
-    return JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
+    return JSON.parse(readFileSync(file, 'utf8'));
   } catch {
     return {};
   }
+}
+
+function readManifest(projectRoot) {
+  return readJson(path.join(projectRoot, 'package.json'));
+}
+
+function reactMajorOf(projectRoot) {
+  const installed = readJson(path.join(projectRoot, 'node_modules/react/package.json'))?.version;
+  const manifest = readManifest(projectRoot);
+  const declared = manifest?.dependencies?.react ?? manifest?.devDependencies?.react;
+  const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));
+  return major === null ? undefined : Number(major[0]);
+}
+
+function ruleIdsForReact(major) {
+  const before19 = major !== undefined && major < 19;
+  return untypedThirdPartyRuleIds.filter((id) => !before19 || !react19RuleIds.includes(id));
 }
 
 function readDependencyNames(projectRoot) {
@@ -79,7 +100,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'react-x/no-class-component': 'error',
         'react-x/no-array-index-key': 'error',
         ...Object.fromEntries(
-          [...nitpickerReactRuleIds, ...untypedThirdPartyRuleIds].map((id) => [id, 'error']),
+          [...nitpickerReactRuleIds, ...ruleIdsForReact(react.major)].map((id) => [id, 'error']),
         ),
         ...accessibilityRuleOptions,
         'nitpicker/react-no-effect-derived-state': 'error',
@@ -126,8 +147,9 @@ async function reactTypedConfigFor(layout) {
 export async function reactScopeConfigFor(layout, react = {}, projectRoot = analyzedProjectRoot()) {
   const styling = stylingApproachFor({ projectRoot, react });
   const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
+  const major = reactMajorOf(projectRoot);
   return [
-    ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
+    ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative, major })),
     ...(await reactTypedConfigFor(layout)),
   ];
 }
