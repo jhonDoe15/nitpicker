@@ -68,7 +68,10 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
 - **Mutation testing** in a comparison mutates, for TypeScript, only the source lines the change
-  adds or edits on the head side, so every surviving mutant it reports is new. Python's mutmut
+  adds or edits on the head side, so every surviving mutant it reports is new. When the change
+  edits or deletes a test, the production modules that test imports are mutated whole on head, and
+  a mutant there fails only if the base tests caught it and head's tests no longer do ("This change
+  weakened the tests of ..."). Python's mutmut
   works per function, not per line: head reuses the base results for the modules the change did
   not edit and that import no edited module, and runs every other mutant (all of them when a test
   or any other file changed). Only mutants that are new on head fail, whichever way the results

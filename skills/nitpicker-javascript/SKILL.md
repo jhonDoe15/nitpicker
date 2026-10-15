@@ -173,6 +173,9 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
+- Editing or deleting a test reruns mutation testing on the modules it imports: a mutant the base
+  tests caught must still be caught. Keep an assertion unless another test covers the same
+  behaviour.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not

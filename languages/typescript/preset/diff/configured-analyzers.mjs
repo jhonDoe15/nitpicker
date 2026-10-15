@@ -68,6 +68,8 @@ const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/adapters/quality-messages/crap-unknown-message.mjs',
   'languages/typescript/adapters/quality-messages/failure-text.mjs',
   'languages/typescript/adapters/quality-messages/vitest-failures.mjs',
+  'languages/typescript/adapters/test-weakening/tested-modules.mjs',
+  'languages/typescript/adapters/test-weakening/weakened-mutants.mjs',
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
