@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
 import { ingestPythonCrap } from './crap.mjs';
 

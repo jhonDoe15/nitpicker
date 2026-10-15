@@ -19,17 +19,23 @@ describe('common layout', () => {
     const stryker = readConfig('tsconfig.stryker.json');
     const duplicates = readConfig('jscpd.json');
     const knip = readConfig('knip.json');
-    for (const root of [sourceRoot, ...testRoots]) {
-      expect(typecheck.include).toContain(`${root}/**/*`);
-      expect(stryker.include).toContain(`${root}/**/*`);
+    const roots = [sourceRoot, ...testRoots];
+    const includes = roots.map((root) => `${root}/**/*`);
+    expect([...typecheck.include].sort()).toEqual([...includes, 'vitest*.ts'].sort());
+    expect([...stryker.include].sort()).toEqual([...includes, 'stryker.vitest.config.ts'].sort());
+    for (const root of roots) {
       expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
     }
     expect(duplicates.path).toContain(sourceRoot);
     expect(duplicates.path).toContain(testRoots[0]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
-    expect(sourceGlobs).toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(testGlobs).toContain('test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+    expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
+    expect([...new Set(testGlobs)].sort()).toEqual([
+      'src/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
     for (const file of ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts']) {
       expect(isTestFile(file)).toBe(true);
       expect(isSourceFile(file)).toBe(false);
