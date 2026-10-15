@@ -8,7 +8,7 @@ export const reactXHints = {
   'set-state-in-render': ` Compute the value during render, or set state in an event handler or an effect.${GENERAL_HINT}`,
   refs: ` Read and write \`ref.current\` in event handlers and effects; keep what renders in state.${GENERAL_HINT}`,
   'no-nested-component-definitions': ` Declare the component at module level and pass data as props.${GENERAL_HINT}`,
-  'static-components': ` Declare the component at module level.${GENERAL_HINT}`,
+  'static-components': ` Create it once at module level, e.g. \`const ThemedPanel = withTheme(Panel)\` outside the component.${GENERAL_HINT}`,
   'no-nested-lazy-component-declarations': ` Declare \`lazy(...)\` at module level.${GENERAL_HINT}`,
   'no-missing-key': ` Add \`key={item.id}\`, a stable id from the item.${GENERAL_HINT}`,
   'no-duplicate-key': ` Give every sibling a distinct stable id.${GENERAL_HINT}`,

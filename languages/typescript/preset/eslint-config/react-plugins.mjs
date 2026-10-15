@@ -14,6 +14,7 @@ import {
 import { accessibilityOptionOverrides } from './react/accessibility-rules.mjs';
 import { reactDomHints, reactWebApiHints, reactXHints } from './react/third-party-rules.mjs';
 import { withHint, withoutFixes } from './rule-hints.mjs';
+import { createdByCallOnly } from './react/static-components.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
@@ -40,7 +41,15 @@ export const reactPlugins = {
   'react-web-api': { rules: hintedRules(reactWebApi, reactWebApiHints) },
   'react-x': {
     rules: {
-      ...hintedRules(reactX, reactXHints),
+      ...hintedRules(
+        {
+          rules: {
+            ...reactX.rules,
+            'static-components': createdByCallOnly(reactX.rules['static-components']),
+          },
+        },
+        reactXHints,
+      ),
       'no-class-component': withHint(reactX.rules['no-class-component'], GENERAL_HINT),
       'no-array-index-key': withHint(
         reactX.rules['no-array-index-key'],

@@ -283,7 +283,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   analysis and can flag legitimate code, so each message names the exception.
 - **Components are declared at module level** (`react-x/no-nested-component-definitions`,
   `react-x/static-components`, `react-x/no-nested-lazy-component-declarations`): a component
-  declared inside another remounts, and loses its state, on every render.
+  declared inside another remounts, and loses its state, on every render. A nested function or
+  class is reported by the first rule; `static-components` reports only a component built by a
+  call during render (`const Themed = withTheme(Panel)`), so each case gets one message.
 - **One form per construct.** `{count && <p />}` renders `0` for a number, so compare
   (`count > 0 && ...`) or use a ternary (`react-x/no-leaked-conditional-rendering`, needs type
   information). A context value, and a default prop, that is an object, array or function literal
