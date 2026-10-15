@@ -80,6 +80,10 @@ field by field. Per snapshot:
    JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
    auxiliary classpath is the main and test compile classpaths plus both class directories). The
    versions are read from the init script's `pinned` map, so both builds always run the same tools.
+   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
+   runs the Spring architecture rules: ArchUnit is resolved with the other tools, the rule classes
+   are compiled once into the same private cache directory (keyed like Gradle's) and run in one
+   extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
 
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
@@ -618,9 +622,8 @@ JVM per side (base and head), a few seconds. The compiled rule classes are cache
 user home (`caches/nitpicker/spring-arch/<hash>`, keyed by the rule sources, the ArchUnit version
 and the JDK), so `javac` runs only the first time. The report is `build/nitpicker/spring-arch.json`
 (format in [internals.md](internals.md)); the manifest then says `springArch: true`, and a
-manifest that says so without the report is a tool error. Maven builds do not run these rules yet:
-their manifest has no `springArch`, so a Maven Spring project gets the PMD Spring rules and the
-configuration-file checks but no `archunit/spring-*` findings.
+manifest that says so without the report is a tool error. Maven builds run these rules too (see
+[Maven builds](#maven-builds)) and write the report to `target/nitpicker/spring-arch.json`.
 
 Findings print as `archunit/<rule>`, one per rule, offending class and dependency, on the class's
 source file (a nested class counts as its outermost class). The identity is the simple class name

@@ -21,6 +21,7 @@ import {
   runPit,
 } from './maven-tests.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
@@ -142,6 +143,7 @@ function writeManifest({ module, reportDir, pinned, spring }) {
       testSourceRoots: relativeRoots(module, module.testSourceRoots),
       resourceRoots: relativeRoots(module, module.resourceRoots),
       spring,
+      springArch: spring,
     }),
   );
 }
@@ -167,6 +169,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
   runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
+  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring });
   writeManifest({ module, reportDir, pinned, spring });
 }
 

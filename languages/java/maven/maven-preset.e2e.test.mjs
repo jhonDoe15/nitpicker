@@ -1,9 +1,11 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
+import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
@@ -15,6 +17,7 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const fixtures = path.join(import.meta.dirname, 'fixtures');
 const gradleFixture = path.join(import.meta.dirname, '../adapters/fixtures/gradle-project');
+const springFixture = path.join(import.meta.dirname, '../adapters/fixtures/spring-arch-project');
 const temporary = [];
 
 const DATED = `package demo;
@@ -66,6 +69,27 @@ function copyOf(...sources) {
   return root;
 }
 
+function withoutRunnableTests(root) {
+  const tests = path.join(root, 'src/test/java');
+  for (const entry of readdirSync(tests, { recursive: true, withFileTypes: true })) {
+    const file = path.join(entry.parentPath, entry.name);
+    if (entry.isFile()) {
+      writeFileSync(file, readFileSync(file, 'utf8').replaceAll(/^\s*@Test\r?\n/gmu, ''));
+    }
+  }
+}
+
+function runGradleTask(root, task) {
+  const result = spawnSync(gradle, ['--console=plain', '--quiet', '-I', INIT_SCRIPT, task], {
+    cwd: root,
+    encoding: 'utf8',
+    timeout: GRADLE_STEP_TIMEOUT_MS,
+  });
+  if (result.status !== 0) {
+    throw new Error(`Gradle ${task} failed: ${result.stderr}`);
+  }
+}
+
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 afterAll(() => {
@@ -103,6 +127,32 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'spotbugs',
         'structure',
       ]);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'reports the Spring architecture violations Gradle reports',
+    () => {
+      const gradleProject = copyOf(springFixture);
+      const mavenProject = copyOf(springFixture, path.join(fixtures, 'spring-arch'));
+      for (const name of ['build.gradle', 'settings.gradle']) {
+        rmSync(path.join(mavenProject, name));
+      }
+      for (const root of [gradleProject, mavenProject]) {
+        withoutRunnableTests(root);
+      }
+      runGradleTask(gradleProject, 'nitpickerSpringArch');
+      const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
+      const report = (root, directory, name) =>
+        JSON.parse(readFileSync(path.join(root, directory, 'nitpicker', name), 'utf8'));
+      const fromMaven = report(mavenProject, 'target', 'spring-arch.json');
+
+      expect(fromMaven.violations.length).toBeGreaterThan(0);
+      expect(fromMaven).toEqual(report(gradleProject, 'build', 'spring-arch.json'));
+      const manifest = report(mavenProject, 'target', 'manifest.json');
+      expect([manifest.spring, manifest.springArch]).toEqual([true, true]);
+      expect(findings.some((finding) => finding.rule === 'spring-layout')).toBe(true);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
