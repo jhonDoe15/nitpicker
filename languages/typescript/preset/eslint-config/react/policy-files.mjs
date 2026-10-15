@@ -3,6 +3,7 @@ export const reactPolicyFiles = [
   'languages/typescript/preset/eslint-config/react/accessibility-rules.mjs',
   'languages/typescript/preset/eslint-config/react/hints.mjs',
   'languages/typescript/preset/eslint-config/react/nitpicker-rules.mjs',
+  'languages/typescript/preset/eslint-config/react/static-components.mjs',
   'languages/typescript/preset/eslint-config/react/third-party-rules.mjs',
   'languages/typescript/preset/eslint-config/react-rules.mjs',
   'languages/typescript/preset/eslint-config/react-scope.mjs',
