@@ -12,7 +12,7 @@ import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
 import { withRunLock } from './command/run-lock.mjs';
 import { runSnapshotCli } from './command/snapshot.mjs';
-import { createBaseSetupResolver } from './configuration/base-setup.mjs';
+import { createBaseSetupResolver } from './command/policy-review/base-setup.mjs';
 import { noticeDescriber } from './command/policy-review/notices.mjs';
 import { policyAcceptance } from './command/policy-review/policy-acceptance.mjs';
 import { runGit } from './diff/git/repository/command.mjs';

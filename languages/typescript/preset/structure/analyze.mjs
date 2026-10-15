@@ -123,8 +123,9 @@ export function analyzeSource(source, filename) {
 
 function productionFiles(root, displayRoot, layout) {
   if (!existsSync(root)) return [];
-  const projectRelative = (absolute) =>
-    normalizePath(path.join(displayRoot, path.relative(root, absolute)));
+  function projectRelative(absolute) {
+    return normalizePath(path.join(displayRoot, path.relative(root, absolute)));
+  }
   function skipDirectory(absolute, entry) {
     return isExcludedPath(projectRelative(absolute)) || entry.name === '__tests__';
   }

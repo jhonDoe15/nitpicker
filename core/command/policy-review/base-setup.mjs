@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
-import { resolveHeadPolicy } from '../../shared/head-policy.mjs';
-import { configureAnalyzers } from './configure-analyzers.mjs';
-import { describeConfigOverrides, readConfigFile } from './config.mjs';
-import { baseConfigCoveringHead } from '../policy-changes/base-coverage.mjs';
-import { policyChangeFields } from '../policy-changes/describe-policy-changes.mjs';
-import { excludedFileNotices } from '../policy-changes/excluded-files.mjs';
-import { readPolicyScope } from '../policy-changes/policy-scope.mjs';
-import { presetAnalyzers } from './preset-analyzers.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
+import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
+import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
+import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
+import { excludedFileNotices } from '../../policy-changes/excluded-files.mjs';
+import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 
 function readBaseConfig(baseProjectRoot, warn) {
   if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {

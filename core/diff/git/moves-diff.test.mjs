@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from '../../configuration/base-setup.mjs';
+import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mjs';
 import { reportFromAnalyzerOutput } from '../execution/process.mjs';
 import { runQualityDiff } from '../comparison/run-diff.mjs';
 
