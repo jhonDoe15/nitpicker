@@ -18,7 +18,7 @@ function ruleIds(filename, code) {
 describe('strict adapters syntactic rules', () => {
   it.each([
     'for (const item of items) { run(item); }',
-    'async function f() { try { await run(); } catch (error) { logger.error({ err: error }, "x"); } }',
+    'async function f() { try { await run(); } catch (error) { logger.error({ err: error }, "x"); throw error; } }',
     'async function f() { await Promise.all(items.map((item) => run(item))); }',
     'class StoreError extends Error {} function f() { throw new StoreError("x"); }',
     'function f(error) { throw error; }',
@@ -42,6 +42,10 @@ describe('strict adapters syntactic rules', () => {
     ['try { run(); } catch (error) {}', 'no-empty'],
     ['try { run(); } catch {}', 'no-empty'],
     ['try { run(); } catch (error) { cleanup(); }', 'nitpicker/no-silent-catch'],
+    [
+      'try { run(); } catch (error) { logger.error({ err: error }, "x"); }',
+      'nitpicker/no-silent-catch',
+    ],
     [
       'try { run(); } catch (error) { throw new Error(String(error)); }',
       'nitpicker/preserve-error-cause',

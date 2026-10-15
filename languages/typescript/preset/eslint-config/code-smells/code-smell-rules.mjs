@@ -1,0 +1,13 @@
+const ERROR = 'error';
+
+export const codeSmellProductionRules = {
+  'nitpicker/no-accumulator-spread-in-reduce': ERROR,
+  'nitpicker/no-boolean-flag-parameter': ERROR,
+  'nitpicker/no-duplicate-string-literals': ERROR,
+  'nitpicker/no-generic-names': ERROR,
+  'nitpicker/no-io-in-loop': ERROR,
+};
+
+export const secretProductionRules = {
+  'nitpicker/no-hardcoded-secret': ERROR,
+};

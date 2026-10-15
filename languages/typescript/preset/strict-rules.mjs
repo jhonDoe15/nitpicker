@@ -15,6 +15,7 @@ export const strictEslintRuleIds = [
   'nitpicker/hermetic-git-in-tests',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
+  'nitpicker/no-hardcoded-secret',
   'nitpicker/no-first-test-charged-setup',
   'nitpicker/no-git-repository-per-test',
   'nitpicker/no-handwritten-boundary-guard',

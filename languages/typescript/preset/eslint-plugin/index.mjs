@@ -37,6 +37,12 @@ import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
+import { rule as noDuplicateStringLiterals } from './rules/code-smells/duplicate-string-literals.mjs';
+import { rule as noGenericNames } from './rules/code-smells/generic-names.mjs';
+import { rule as noHardcodedSecret } from './rules/code-smells/hardcoded-secret.mjs';
+import { rule as noBooleanFlagParameter } from './rules/code-smells/boolean-flag-parameter.mjs';
+import { rule as noIoInLoop } from './rules/loops/no-io-in-loop.mjs';
+import { rule as noAccumulatorSpreadInReduce } from './rules/loops/no-accumulator-spread-in-reduce.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -84,5 +90,11 @@ export const nitpickerRules = {
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    'no-duplicate-string-literals': noDuplicateStringLiterals,
+    'no-generic-names': noGenericNames,
+    'no-hardcoded-secret': noHardcodedSecret,
+    'no-boolean-flag-parameter': noBooleanFlagParameter,
+    'no-io-in-loop': noIoInLoop,
+    'no-accumulator-spread-in-reduce': noAccumulatorSpreadInReduce,
   },
 };
