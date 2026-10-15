@@ -1,20 +1,27 @@
 import { execFileSync } from 'node:child_process';
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
+
+const TEST_ONLY_PATH = /(?:^|\/)(?:fixtures|test-support)\/|\.test\.mjs$/u;
+
+function isTestOnly(relative) {
+  return TEST_ONLY_PATH.test(relative);
+}
 
 function sourceFiles(directory) {
   return readdirSync(path.join(root, directory), {
     withFileTypes: true,
   }).flatMap((entry) => {
     const relative = `${directory}/${entry.name}`;
+    if (isTestOnly(`${relative}${entry.isDirectory() ? '/' : ''}`)) return [];
     if (entry.isDirectory()) {
-      return entry.name === 'fixtures' ? [] : sourceFiles(relative);
+      return sourceFiles(relative);
     }
-    if (entry.name.endsWith('.test.mjs') || entry.name === 'README.md') return [];
+    if (entry.name === 'README.md') return [];
     return statSync(path.join(root, relative)).isFile() ? [relative] : [];
   });
 }
@@ -29,13 +36,9 @@ function assertRuntimeFiles(files) {
 }
 
 describe('npm package contents', () => {
-  it('fails when a runtime file is omitted from files', () => {
-    const files = new Set(['package.json']);
-    expect(() => {
-      assertRuntimeFiles(files);
-    }).toThrow('missing runtime file');
-  });
-  it('ships the complete runtime tree without tests, fixtures, or the lockfile', () => {
+  let packedFiles;
+
+  beforeAll(() => {
     let listing;
     try {
       listing = JSON.parse(
@@ -49,26 +52,52 @@ describe('npm package contents', () => {
         cause: error,
       });
     }
-    const files = new Set(listing[0].files.map(({ path: file }) => file));
-    assertRuntimeFiles(files);
-    expect(files.has('core/fix/run-fix.mjs')).toBe(true);
-    expect(files.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
-    expect(files.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
-    expect(files.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
-    expect(files.has('languages/python/adapters/python-runner.mjs')).toBe(true);
-    expect(files.has('languages/python/ingest/coverage-json.mjs')).toBe(true);
-    expect(files.has('languages/java/gradle/checkstyle-suppressions.xml')).toBe(true);
-    expect(files.has('languages/python/rules/nitpicker_rules.py')).toBe(true);
-    expect(files.has('languages/python/rules/rule-hints.mjs')).toBe(true);
-    expect(files.has('languages/python/metrics/structure_metrics.py')).toBe(true);
-    expect(files.has('languages/python/adapters/import-scan.py')).toBe(true);
-    expect(files.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
-    expect(files.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
+
+    packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
+  });
+
+  it('fails when a runtime file is omitted from files', () => {
+    const files = new Set(['package.json']);
+    expect(() => {
+      assertRuntimeFiles(files);
+    }).toThrow('missing runtime file');
+  });
+  it('classifies test-only paths by folder and file name', () => {
     expect(
-      [...files].filter(
-        (file) =>
-          file.endsWith('.test.mjs') || file.includes('/fixtures/') || file === 'package-lock.json',
-      ),
+      [
+        'core/cli.mjs',
+        'core/cli.test.mjs',
+        'core/diff/fixtures/fake-eslint-cli.mjs',
+        'core/command/test-support/cli-harness.mjs',
+        'languages/java/adapters/fixtures/fake-gradle.mjs',
+        'core/diff/execution/analyzer-scheduler.mjs',
+      ].filter(isTestOnly),
+    ).toEqual([
+      'core/cli.test.mjs',
+      'core/diff/fixtures/fake-eslint-cli.mjs',
+      'core/command/test-support/cli-harness.mjs',
+      'languages/java/adapters/fixtures/fake-gradle.mjs',
+    ]);
+  });
+  it('ships the complete runtime tree without tests, fixtures, test support, or the lockfile', () => {
+    assertRuntimeFiles(packedFiles);
+    expect(packedFiles.has('core/fix/run-fix.mjs')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
+    expect(packedFiles.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
+    expect(packedFiles.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
+    expect(packedFiles.has('languages/python/adapters/python-runner.mjs')).toBe(true);
+    expect(packedFiles.has('languages/python/ingest/coverage-reports/coverage-json.mjs')).toBe(
+      true,
+    );
+    expect(packedFiles.has('languages/java/gradle/checkstyle-suppressions.xml')).toBe(true);
+    expect(packedFiles.has('languages/python/rules/nitpicker_rules.py')).toBe(true);
+    expect(packedFiles.has('languages/python/rules/rule-hints.mjs')).toBe(true);
+    expect(packedFiles.has('languages/python/metrics/structure_metrics.py')).toBe(true);
+    expect(packedFiles.has('languages/python/adapters/import-scan.py')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
+    expect(
+      [...packedFiles].filter((file) => isTestOnly(file) || file === 'package-lock.json'),
     ).toEqual([]);
   });
 });

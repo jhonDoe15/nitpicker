@@ -1,3 +1,5 @@
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -34,92 +36,124 @@ function accessedSymbol(checker, node) {
   return symbol;
 }
 
+function implementedContracts(statement, { checker, sourceRoot }) {
+  const types = (statement.heritageClauses ?? [])
+    .filter((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword)
+    .flatMap((clause) => [...clause.types])
+    .map((heritage) => checker.getTypeAtLocation(heritage));
+  return types
+    .map((type) => ({
+      type,
+      declaration: type.symbol?.declarations?.find(ts.isInterfaceDeclaration),
+    }))
+    .filter(
+      ({ declaration }) =>
+        declaration &&
+        isExported(declaration) &&
+        isProductionSource(declaration.getSourceFile(), sourceRoot),
+    );
+}
+
+function contractMethods(type, checker) {
+  const declaration = type.symbol.declarations.find(ts.isInterfaceDeclaration);
+  return new Map(
+    type
+      .getProperties()
+      .filter(
+        (member) =>
+          checker.getTypeOfSymbolAtLocation(member, declaration).getCallSignatures().length > 0,
+      )
+      .map((member) => [
+        member.name,
+        { declarations: new Set(member.declarations), implementations: new Set(), used: false },
+      ]),
+  );
+}
+
+function registerImplementation(statement, contract, { contracts, checker }) {
+  const methods = contracts.get(contract.declaration) ?? contractMethods(contract.type, checker);
+  contracts.set(contract.declaration, methods);
+  const implementation = checker.getTypeAtLocation(statement);
+  for (const [name, method] of methods) {
+    method.implementations.add(statement);
+    for (const declaration of implementation.getProperty(name)?.declarations ?? [])
+      method.declarations.add(declaration);
+  }
+}
+
+function collectContracts(sources, context) {
+  const contracts = new Map();
+  const statements = sources
+    .flatMap((source) => [...source.statements])
+    .filter(ts.isClassDeclaration);
+  for (const statement of statements) {
+    for (const contract of implementedContracts(statement, context)) {
+      registerImplementation(statement, contract, { contracts, checker: context.checker });
+    }
+  }
+  return contracts;
+}
+
+function indexMethodDeclarations(contracts) {
+  const index = new Map();
+  const methods = [...contracts.values()].flatMap((contract) => [...contract.values()]);
+  for (const method of methods) {
+    for (const declaration of method.declarations) {
+      const consumers = index.get(declaration) ?? new Set();
+      consumers.add(method);
+      index.set(declaration, consumers);
+    }
+  }
+  return index;
+}
+
+function recordSymbolUse(symbol, currentClass, index) {
+  const methods = (symbol?.declarations ?? []).flatMap((declaration) => [
+    ...(index.get(declaration) ?? []),
+  ]);
+  for (const method of methods.filter((candidate) => !candidate.implementations.has(currentClass)))
+    method.used = true;
+}
+
+function classChildren({ node, containingClass }) {
+  const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
+  return syntaxChildren(node).map((child) => ({ node: child, containingClass: currentClass }));
+}
+
+function recordUses(sources, checker, index) {
+  for (const source of sources) {
+    for (const { node, containingClass } of depthFirst(
+      { node: source, containingClass: undefined },
+      classChildren,
+    )) {
+      const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
+      recordSymbolUse(accessedSymbol(checker, node), currentClass, index);
+    }
+  }
+}
+
+function unusedMethods(contracts, sourceRoot) {
+  return [...contracts].flatMap(([contract, methods]) =>
+    [...methods]
+      .filter(([, usage]) => !usage.used)
+      .map(([method]) => ({
+        file: path.relative(sourceRoot, contract.getSourceFile().fileName),
+        contract: contract.name.text,
+        method,
+      })),
+  );
+}
+
 export function findUnusedPublicContractMethods(program, { sourceRoot }) {
   const checker = program.getTypeChecker();
   const sources = program
     .getSourceFiles()
     .filter((source) => isProductionSource(source, sourceRoot));
-  const contracts = new Map();
-  for (const source of sources) {
-    for (const statement of source.statements) {
-      if (!ts.isClassDeclaration(statement)) continue;
-      for (const clause of statement.heritageClauses ?? []) {
-        if (clause.token !== ts.SyntaxKind.ImplementsKeyword) continue;
-        for (const heritage of clause.types) {
-          const contractType = checker.getTypeAtLocation(heritage);
-          const declaration = contractType.symbol?.declarations?.find(ts.isInterfaceDeclaration);
-          if (
-            !declaration ||
-            !isExported(declaration) ||
-            !isProductionSource(declaration.getSourceFile(), sourceRoot)
-          )
-            continue;
-          if (!contracts.has(declaration)) {
-            const methods = new Map();
-            for (const member of contractType.getProperties()) {
-              if (
-                checker.getTypeOfSymbolAtLocation(member, declaration).getCallSignatures()
-                  .length === 0
-              )
-                continue;
-              methods.set(member.name, {
-                declarations: new Set(member.declarations),
-                implementations: new Set(),
-                used: false,
-              });
-            }
-            contracts.set(declaration, methods);
-          }
-          const implementationType = checker.getTypeAtLocation(statement);
-          for (const [name, method] of contracts.get(declaration)) {
-            method.implementations.add(statement);
-            for (const memberDeclaration of implementationType.getProperty(name)?.declarations ??
-              []) {
-              method.declarations.add(memberDeclaration);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const methodsByDeclaration = new Map();
-  for (const methods of contracts.values()) {
-    for (const method of methods.values()) {
-      for (const declaration of method.declarations) {
-        const consumers = methodsByDeclaration.get(declaration) ?? new Set();
-        consumers.add(method);
-        methodsByDeclaration.set(declaration, consumers);
-      }
-    }
-  }
-  for (const source of sources) {
-    function visit(node, containingClass) {
-      const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
-      const symbol = accessedSymbol(checker, node);
-      for (const declaration of symbol?.declarations ?? []) {
-        for (const method of methodsByDeclaration.get(declaration) ?? []) {
-          if (!method.implementations.has(currentClass)) method.used = true;
-        }
-      }
-      ts.forEachChild(node, (child) => {
-        visit(child, currentClass);
-      });
-    }
-    visit(source, undefined);
-  }
-  const findings = [];
-  for (const [contract, methods] of contracts) {
-    for (const [method, usage] of methods) {
-      if (!usage.used)
-        findings.push({
-          file: path.relative(sourceRoot, contract.getSourceFile().fileName),
-          contract: contract.name.text,
-          method,
-        });
-    }
-  }
-  return findings.sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  const contracts = collectContracts(sources, { checker, sourceRoot });
+  recordUses(sources, checker, indexMethodDeclarations(contracts));
+  return unusedMethods(contracts, sourceRoot).sort((left, right) =>
+    JSON.stringify(left).localeCompare(JSON.stringify(right)),
+  );
 }
 
 export function analyzePublicContractUsage(configPath) {

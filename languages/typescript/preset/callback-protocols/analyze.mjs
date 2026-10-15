@@ -1,203 +1,92 @@
-import ts from 'typescript';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
 import { callbackProtocolContracts } from './contracts.mjs';
+import ts from 'typescript';
+import {
+  unwrap,
+  invokedReadName,
+  accessPath,
+  resolveCallback,
+  callbackBindings,
+  functionLike,
+  calleeName,
+  optionProperties,
+  constructedTarget,
+} from './bindings.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 
-function chainOf(start, next) {
-  return start ? [start, ...chainOf(next(start), next)] : [];
+function createReporter(tree, file, findings) {
+  const emitted = new Set();
+  return (rule, node, callee) => {
+    const key = `${rule}:${node.getStart(tree)}`;
+    if (emitted.has(key)) return;
+    emitted.add(key);
+    const location = tree.getLineAndCharacterOfPosition(node.getStart(tree));
+    findings.push({ rule, file, line: location.line + 1, column: location.character + 1, callee });
+  };
 }
 
-function unwrap(node) {
-  return chainOf(node, (current) =>
-    ts.isParenthesizedExpression(current) ||
-    ts.isAsExpression(current) ||
-    ts.isSatisfiesExpression(current) ||
-    ts.isNonNullExpression(current)
-      ? current.expression
-      : undefined,
-  ).at(-1);
+function calledFrame(frame) {
+  if (!ts.isCallExpression(frame.node)) return [];
+  const fn = resolveCallback(unwrap(frame.node.expression), frame.bindings);
+  if (!fn?.body || frame.active.has(fn)) return [];
+  return [
+    {
+      node: fn.body,
+      bindings: callbackBindings(fn, frame.node, frame.bindings),
+      active: new Set([...frame.active, fn]),
+    },
+  ];
 }
 
-function ancestorsOf(node) {
-  return chainOf(node.parent, (current) => current.parent);
+function callbackChildren(frame) {
+  const nested = calledFrame(frame);
+  const children = functionLike(frame.node) ? [] : syntaxChildren(frame.node);
+  return [...nested, ...children.map((node) => ({ ...frame, node }))];
 }
 
-function callbackBindings(fn, call, bindings) {
-  const next = new Map(bindings);
-  for (const [index, parameter] of fn.parameters.entries()) {
-    const argument = call.arguments.at(index);
-    if (argument) next.set(parameter, argument);
-  }
-  return next;
-}
-
-function memberName(node) {
-  if (ts.isIdentifier(node) || ts.isStringLiteral(node)) return node.text;
-  if (ts.isComputedPropertyName(node) && ts.isStringLiteral(node.expression))
-    return node.expression.text;
-  return undefined;
-}
-
-function functionLike(node) {
-  return (
-    node &&
-    (ts.isArrowFunction(node) ||
-      ts.isFunctionExpression(node) ||
-      ts.isFunctionDeclaration(node) ||
-      ts.isMethodDeclaration(node))
-  );
-}
-
-function invokedReadName(invoked) {
-  if (ts.isPropertyAccessExpression(invoked)) return invoked.name.text;
-  return ts.isElementAccessExpression(invoked) && ts.isStringLiteral(invoked.argumentExpression)
-    ? invoked.argumentExpression.text
-    : undefined;
-}
-
-function containingClass(node) {
-  return ancestorsOf(node).find(
-    (parent) => ts.isClassDeclaration(parent) || ts.isClassExpression(parent),
-  );
-}
-
-function declarationFor(identifier) {
-  for (const scope of ancestorsOf(identifier)) {
-    if (functionLike(scope)) {
-      const parameter = scope.parameters.find((item) => memberName(item.name) === identifier.text);
-      if (parameter) return parameter;
-    }
-    if (ts.isBlock(scope) || ts.isSourceFile(scope)) {
-      for (const statement of scope.statements) {
-        if (ts.isVariableStatement(statement)) {
-          const declaration = statement.declarationList.declarations.find(
-            (item) => memberName(item.name) === identifier.text,
-          );
-          if (declaration) return declaration;
-        }
-        if (
-          (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
-          statement.name?.text === identifier.text
-        )
-          return statement;
-        if (ts.isImportDeclaration(statement)) {
-          const clause = statement.importClause;
-          if (clause?.name?.text === identifier.text) return clause;
-          if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
-            const item = clause.namedBindings.elements.find(
-              (element) => element.name.text === identifier.text,
-            );
-            if (item) return item;
-          }
-        }
-      }
+function inspectSource(callback, { target, contract }, report) {
+  if (!callback.body) return;
+  const root = { node: callback.body, bindings: new Map(), active: new Set([callback]) };
+  for (const { node, bindings } of depthFirst(root, callbackChildren)) {
+    if (!ts.isCallExpression(node)) continue;
+    const invoked = unwrap(node.expression);
+    const readName = invokedReadName(invoked);
+    if (
+      readName &&
+      contract.snapshotReadMethods.includes(readName) &&
+      accessPath(invoked.expression, bindings) === target
+    ) {
+      report('source-loader-does-not-merge-published-state', node, contract.callee);
     }
   }
-  return undefined;
 }
 
-function resolveValue(expression, bindings = new Map(), seen = new Set()) {
-  const node = unwrap(expression);
-  if (!node || seen.has(node)) return node;
-  seen.add(node);
-  if (ts.isIdentifier(node)) {
-    const declaration = declarationFor(node);
-    if (bindings.has(declaration)) return resolveValue(bindings.get(declaration), bindings, seen);
-    if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer)
-      return resolveValue(declaration.initializer, bindings, seen);
-    if (declaration && functionLike(declaration)) return declaration;
+function inspectProperty(property, { contract, target }, report) {
+  if (contract.externalPublicationCallbacks.includes(property.name)) {
+    report('publication-owner-does-not-commit-external-state', property.node, contract.callee);
   }
-  if (ts.isPropertyAccessExpression(node) && node.expression.kind === ts.SyntaxKind.ThisKeyword) {
-    const member = containingClass(node)?.members.find(
-      (item) => item.name && memberName(item.name) === node.name.text,
-    );
-    if (member && ts.isPropertyDeclaration(member) && member.initializer)
-      return resolveValue(member.initializer, bindings, seen);
-    if (member && functionLike(member)) return member;
+  const correlated = contract.correlatedCallbacks.find((item) => item.name === property.name);
+  const callback = resolveCallback(property.value, new Map());
+  if (correlated && callback && callback.parameters.length <= correlated.inputIndex) {
+    report('correlated-callback-declares-correlation-input', property.node, contract.callee);
   }
-  return node;
+  if (callback && target && contract.sourceCallbacks.includes(property.name))
+    inspectSource(callback, { target, contract }, report);
 }
 
-function resolveCallback(expression, bindings) {
-  const node = resolveValue(expression, bindings);
-  if (functionLike(node)) return node;
-  if (
-    node &&
-    ts.isCallExpression(node) &&
-    ts.isPropertyAccessExpression(node.expression) &&
-    node.expression.name.text === 'bind'
-  ) {
-    return resolveCallback(node.expression.expression, bindings);
+function inspectInvocation(node, contracts, report) {
+  if (!ts.isNewExpression(node) && !ts.isCallExpression(node)) return;
+  const contract = contracts.find((item) => item.callee === calleeName(node.expression));
+  if (!contract) return;
+  const options = node.arguments?.[contract.optionsArgument];
+  const target = constructedTarget(node);
+  for (const property of options ? optionProperties(options, new Map()) : []) {
+    inspectProperty(property, { contract, target }, report);
   }
-  return undefined;
-}
-
-function accessPath(expression, bindings, seen = new Set()) {
-  const node = unwrap(expression);
-  if (!node || seen.has(node)) return undefined;
-  seen.add(node);
-  if (node.kind === ts.SyntaxKind.ThisKeyword) return 'this';
-  if (ts.isIdentifier(node)) {
-    const declaration = declarationFor(node);
-    const value =
-      bindings.get(declaration) ??
-      (declaration && ts.isVariableDeclaration(declaration) ? declaration.initializer : undefined);
-    if (value && !ts.isNewExpression(unwrap(value))) return accessPath(value, bindings, seen);
-    return node.text;
-  }
-  if (ts.isPropertyAccessExpression(node)) {
-    const receiver = accessPath(node.expression, bindings, seen);
-    return receiver && `${receiver}.${node.name.text}`;
-  }
-  if (ts.isElementAccessExpression(node) && ts.isStringLiteral(node.argumentExpression)) {
-    const receiver = accessPath(node.expression, bindings, seen);
-    return receiver && `${receiver}.${node.argumentExpression.text}`;
-  }
-  return undefined;
-}
-
-function constructedTarget(node) {
-  const parent = ancestorsOf(node).find(
-    (candidate) => !ts.isParenthesizedExpression(candidate) && !ts.isAsExpression(candidate),
-  );
-  if (
-    parent &&
-    ts.isBinaryExpression(parent) &&
-    parent.operatorToken.kind === ts.SyntaxKind.EqualsToken
-  )
-    return accessPath(parent.left, new Map());
-  if (parent && ts.isVariableDeclaration(parent)) return memberName(parent.name);
-  if (parent && ts.isPropertyDeclaration(parent)) return `this.${memberName(parent.name)}`;
-  return undefined;
-}
-
-function calleeName(expression) {
-  const node = unwrap(expression);
-  if (ts.isIdentifier(node)) {
-    const declaration = declarationFor(node);
-    if (declaration && ts.isImportSpecifier(declaration))
-      return declaration.propertyName?.text ?? declaration.name.text;
-    return node.text;
-  }
-  return ts.isPropertyAccessExpression(node) ? node.name.text : undefined;
-}
-
-function optionProperties(object, bindings, seen = new Set()) {
-  const resolved = resolveValue(object, bindings);
-  if (!resolved || !ts.isObjectLiteralExpression(resolved) || seen.has(resolved)) return [];
-  seen.add(resolved);
-  return resolved.properties.flatMap((property) => {
-    if (ts.isSpreadAssignment(property))
-      return optionProperties(property.expression, bindings, seen);
-    if (ts.isPropertyAssignment(property))
-      return [{ name: memberName(property.name), value: property.initializer, node: property }];
-    if (ts.isShorthandPropertyAssignment(property))
-      return [{ name: property.name.text, value: property.name, node: property }];
-    if (ts.isMethodDeclaration(property))
-      return [{ name: memberName(property.name), value: property, node: property }];
-    return [];
-  });
 }
 
 export function analyzeCallbackProtocols(
@@ -206,73 +95,8 @@ export function analyzeCallbackProtocols(
 ) {
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
   const findings = [];
-  const emitted = new Set();
-  function report(rule, node, callee) {
-    const key = `${rule}:${node.getStart(tree)}`;
-    if (emitted.has(key)) return;
-    emitted.add(key);
-    const location = tree.getLineAndCharacterOfPosition(node.getStart(tree));
-    findings.push({ rule, file, line: location.line + 1, column: location.character + 1, callee });
-  }
-  function inspectSource(callback, target, contract) {
-    const active = new Set();
-    function inspectFunction(fn, bindings) {
-      if (!fn?.body || active.has(fn)) return;
-      active.add(fn);
-      function walk(node) {
-        if (ts.isCallExpression(node)) {
-          const invoked = unwrap(node.expression);
-          const readName = invokedReadName(invoked);
-          if (
-            readName &&
-            contract.snapshotReadMethods.includes(readName) &&
-            accessPath(invoked.expression, bindings) === target
-          ) {
-            report('source-loader-does-not-merge-published-state', node, contract.callee);
-          }
-          const fn = resolveCallback(invoked, bindings);
-          if (fn) {
-            inspectFunction(fn, callbackBindings(fn, node, bindings));
-          }
-        }
-        if (!functionLike(node)) ts.forEachChild(node, walk);
-      }
-      walk(fn.body);
-      active.delete(fn);
-    }
-    inspectFunction(callback, new Map());
-  }
-  function visit(node) {
-    if (ts.isNewExpression(node) || ts.isCallExpression(node)) {
-      const contract = contracts.find((item) => item.callee === calleeName(node.expression));
-      if (contract) {
-        const options = node.arguments?.[contract.optionsArgument];
-        for (const property of options ? optionProperties(options, new Map()) : []) {
-          if (contract.externalPublicationCallbacks.includes(property.name))
-            report(
-              'publication-owner-does-not-commit-external-state',
-              property.node,
-              contract.callee,
-            );
-          const correlated = contract.correlatedCallbacks.find(
-            (item) => item.name === property.name,
-          );
-          const callback = resolveCallback(property.value, new Map());
-          if (correlated && callback && callback.parameters.length <= correlated.inputIndex)
-            report(
-              'correlated-callback-declares-correlation-input',
-              property.node,
-              contract.callee,
-            );
-          const target = constructedTarget(node);
-          if (callback && target && contract.sourceCallbacks.includes(property.name))
-            inspectSource(callback, target, contract);
-        }
-      }
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(tree);
+  const report = createReporter(tree, file, findings);
+  for (const node of depthFirst(tree, syntaxChildren)) inspectInvocation(node, contracts, report);
   return findings;
 }
 
@@ -282,22 +106,20 @@ export function analyzeProductionCallbacks({
   displayRoot = sourceRoot,
   contracts = callbackProtocolContracts,
 } = {}) {
-  function sources(directory) {
-    return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-      const fullPath = path.join(directory, entry.name);
-      if (entry.isDirectory())
-        return /^(?:__tests__|tests|dist|build|node_modules)$/.test(entry.name)
-          ? []
-          : sources(fullPath);
-      const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
-      return entry.isFile() &&
-        layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
-        !layout.isExcluded(path.posix.join(displayRoot.replaceAll('\\', '/'), relative))
-        ? [fullPath]
-        : [];
-    });
+  function skipDirectory(_absolute, entry) {
+    return /^(?:__tests__|tests|dist|build|node_modules)$/.test(entry.name);
   }
-  const files = existsSync(sourceRoot) ? sources(sourceRoot).sort() : [];
+  const files = existsSync(sourceRoot)
+    ? [...filesUnder(sourceRoot, { skipDirectory })]
+        .filter((fullPath) => {
+          const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
+          return (
+            layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+            !layout.isExcluded(path.posix.join(displayRoot.replaceAll('\\', '/'), relative))
+          );
+        })
+        .sort()
+    : [];
   const findings = files.flatMap((file) =>
     analyzeCallbackProtocols(readFileSync(file, 'utf8'), { file, contracts }),
   );

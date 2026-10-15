@@ -83,11 +83,25 @@ describe('runtime dependency boundaries', () => {
   });
 
   it('reports unresolved dynamic dependencies instead of silently skipping the boundary', () => {
-    expect(inspect('void import(pluginName);')).toMatchObject([
-      { rule: 'unresolved-runtime-dependency', target: 'import' },
+    expect(inspect('void import(pluginName);')).toEqual([
+      {
+        source: 'domain/decision-policy.ts',
+        role: 'decision-policy',
+        rule: 'unresolved-runtime-dependency',
+        target: 'import',
+        line: 1,
+        column: 6,
+      },
     ]);
-    expect(inspect('require(moduleName);')).toMatchObject([
-      { rule: 'unresolved-runtime-dependency', target: 'require' },
+    expect(inspect('require(moduleName);')).toEqual([
+      {
+        source: 'domain/decision-policy.ts',
+        role: 'decision-policy',
+        rule: 'unresolved-runtime-dependency',
+        target: 'require',
+        line: 1,
+        column: 1,
+      },
     ]);
   });
 

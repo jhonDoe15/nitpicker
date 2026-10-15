@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { checkFailureMessageCase } from './harness.mjs';
-import { failureMessageCases } from './cases.mjs';
-import { codeSmellFailureMessageCases } from './code-smells/code-smell-cases.mjs';
-
-const allCases = [...failureMessageCases, ...codeSmellFailureMessageCases];
+import { checkFailureMessageCase } from './test-support/harness.mjs';
+import { failureMessageCases } from './test-support/cases.mjs';
 
 describe('banned forms name the allowed form in their failure message', () => {
-  it.each(allCases.map((testCase) => [testCase.name, testCase]))('%s', (_name, testCase) => {
-    const result = checkFailureMessageCase(testCase);
-    expect(result.ok, `${result.reason}; messages: ${JSON.stringify(result.messages)}`).toBe(true);
-  });
+  it.each(failureMessageCases.map((testCase) => [testCase.name, testCase]))(
+    '%s',
+    (_name, testCase) => {
+      const result = checkFailureMessageCase(testCase);
+      expect(result.ok, `${result.reason}; messages: ${JSON.stringify(result.messages)}`).toBe(
+        true,
+      );
+    },
+  );
 
   it('coverage ignore comment names testing the code', () => {
     const base = failureMessageCases.find(({ name }) => name.startsWith('ts-nocheck'));

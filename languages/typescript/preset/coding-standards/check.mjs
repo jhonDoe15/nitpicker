@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -22,7 +23,7 @@ export async function collectSignals(root = projectRoot, policyRoot = root, layo
     cwd: root,
     overrideConfigFile: path.join(
       policyRoot,
-      'languages/typescript/preset/eslint-config/coding-standards.mjs',
+      'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
     ),
     allowInlineConfig: false,
   });
@@ -59,19 +60,23 @@ export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath) 
   return readOptionalInventory(path.dirname(inventoryPath), path.basename(inventoryPath));
 }
 
-export async function check() {
+async function check() {
   const baseline = readLegacyInventory();
   const signals = [...(await collectSignals()), ...collectArchitectureSignals()];
   const regressions = compareSignals(signals, baseline.sites);
   if (regressions.length > 0) {
     for (const item of regressions)
-      console.error(item.file, item.rule, item.source, 'count:', item.count);
-    console.error(
-      'Coding standards failed. Fix the new sites; do not expand the legacy allowance.',
+      process.stderr.write(
+        formatOutput(item.file, item.rule, item.source, 'count:', item.count) + '\n',
+      );
+    process.stderr.write(
+      formatOutput(
+        'Coding standards failed. Fix the new sites; do not expand the legacy allowance.',
+      ) + '\n',
     );
     return 1;
   }
-  console.log('Coding standards passed.');
+  process.stdout.write(formatOutput('Coding standards passed.') + '\n');
   return 0;
 }
 
@@ -119,7 +124,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
   try {
     process.exitCode = await check();
   } catch (error) {
-    console.error(error);
+    process.stderr.write(formatOutput(error) + '\n');
     process.exitCode = 2;
   }
 }

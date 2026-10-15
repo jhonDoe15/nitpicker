@@ -11,13 +11,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import {
-  installStrykerTsconfig,
-  mutationSkipFor,
-  normalizeStructure,
-  parseArguments,
-  runQualityArea,
-} from './quality-areas-runner.mjs';
+import { installStrykerTsconfig, mutationSkipFor } from './quality-areas/runners/mutation.mjs';
+import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
+import { parseArguments } from './quality-areas/arguments.mjs';
+import { runQualityArea } from './quality-areas-runner.mjs';
 
 const temporaryRoots = [];
 
@@ -71,11 +68,14 @@ describe('crap runner without a coverage report', () => {
     const findings = await runKind('crap', projectRoot);
 
     expect(findings).toEqual([
-      expect.objectContaining({
+      {
         tool: 'crap',
         rule: 'tests-failed-skipped',
+        path: '.',
+        identity: 'tests-failed-skipped',
+        message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
         classification: 'tool-error',
-      }),
+      },
     ]);
   });
 });

@@ -1,42 +1,24 @@
-import { spawnSync } from 'node:child_process';
+import { eslintChecks, staticChecks } from '../../languages/typescript/preset/quality-checks.mjs';
+import {
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+  headPolicyEnvironment,
+  usesProjectConfig,
+  prettierPrecedence,
+} from '../../languages/typescript/preset/head-policy.mjs';
+import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
+import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
+import { prettierExtensions, prettierExclusions, typescriptExtensions } from './extensions.mjs';
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
-import { eslintChecks, staticChecks } from '../../languages/typescript/preset/quality-checks.mjs';
-import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
-import {
-  headPolicyEnvironment,
-  prettierPrecedence,
-  resolveHeadPolicy,
-  usesProjectConfig,
-  withHeadPolicyFile,
-} from '../../languages/typescript/preset/head-policy.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
+import { spawnSync } from 'node:child_process';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
+
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
-const typescriptExtensions = new Set(['.ts', '.mts', '.cts', '.tsx']);
-const prettierExtensions = new Set([
-  ...typescriptExtensions,
-  '.js',
-  '.jsx',
-  '.mjs',
-  '.cjs',
-  '.json',
-  '.yaml',
-  '.yml',
-  '.md',
-  '.mdx',
-  '.graphql',
-  '.gql',
-  '.html',
-  '.css',
-  '.scss',
-  '.less',
-]);
-const prettierExclusions = [/^(?:coverage|reports|\.stryker-tmp)\//, /^src\/main\/dist\//];
 
 export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options }) {
   return withHeadPolicyFile(headPolicy, (policyFile) =>
@@ -124,28 +106,28 @@ function removeLinkedFile(linked) {
 }
 
 function runEslintFix({ projectRoot, policyEnvironment, executeFixCommand }, eslintFiles, linked) {
-  run(
-    'eslint-fix',
-    resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
-    [
+  run({
+    operation: 'eslint-fix',
+    script: resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
+    args: [
       '--config',
-      path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-config-wrapper.mjs'),
+      path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-wrapper.config.mjs'),
       '--fix',
       '--no-warn-ignored',
       '--',
       ...eslintFiles.map(({ path: name }) => `./${name}`),
     ],
-    projectRoot,
-    [0, 1],
-    {
+    cwd: projectRoot,
+    acceptedStatuses: [0, 1],
+    environment: {
       ...policyEnvironment,
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
     },
-    undefined,
+    input: undefined,
     executeFixCommand,
-  );
+  });
 }
 
 function prettierFixErrors(settings, prettierFiles, mergeBaseSha) {
@@ -175,14 +157,14 @@ function runBaseCheck(
   existing,
   baseSources,
 ) {
-  return run(
-    'prettier-base-check',
-    path.join(import.meta.dirname, 'prettier-base-runner.mjs'),
-    [path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath)],
-    projectRoot,
-    [0],
-    policyEnvironment,
-    JSON.stringify({
+  return run({
+    operation: 'prettier-base-check',
+    script: path.join(import.meta.dirname, 'prettier-base-runner.mjs'),
+    args: [path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath)],
+    cwd: projectRoot,
+    acceptedStatuses: [0],
+    environment: policyEnvironment,
+    input: JSON.stringify({
       liveProjectRoot: projectRoot,
       files: existing.map((file) => ({
         path: file.path,
@@ -191,7 +173,7 @@ function runBaseCheck(
       })),
     }),
     executeFixCommand,
-  );
+  });
 }
 
 function parseBaseCheck(result, expectedCount) {
@@ -225,26 +207,26 @@ function writePrettier(settings, safeFiles) {
 }
 
 function writeLayeredPrettier({ projectRoot, policyEnvironment, executeFixCommand }, safeFiles) {
-  run(
-    'prettier-fix',
-    path.join(import.meta.dirname, 'prettier-write-runner.mjs'),
-    [
+  run({
+    operation: 'prettier-fix',
+    script: path.join(import.meta.dirname, 'prettier-write-runner.mjs'),
+    args: [
       path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
       path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
     ],
-    projectRoot,
-    [0],
-    policyEnvironment,
-    JSON.stringify({ projectRoot, files: safeFiles.map(({ path: name }) => name) }),
+    cwd: projectRoot,
+    acceptedStatuses: [0],
+    environment: policyEnvironment,
+    input: JSON.stringify({ projectRoot, files: safeFiles.map(({ path: name }) => name) }),
     executeFixCommand,
-  );
+  });
 }
 
 function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand }, safeFiles) {
-  run(
-    'prettier-fix',
-    resolveTool('prettier', { bin: 'bin/prettier.cjs' }).binPath,
-    [
+  run({
+    operation: 'prettier-fix',
+    script: resolveTool('prettier', { bin: 'bin/prettier.cjs' }).binPath,
+    args: [
       '--config',
       path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
       '--ignore-path',
@@ -253,15 +235,15 @@ function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand
       '--',
       ...safeFiles.map(({ path: name }) => `./${name}`),
     ],
-    projectRoot,
-    [0],
-    policyEnvironment,
-    undefined,
+    cwd: projectRoot,
+    acceptedStatuses: [0],
+    environment: policyEnvironment,
+    input: undefined,
     executeFixCommand,
-  );
+  });
 }
 
-function run(
+function run({
   operation,
   script,
   args,
@@ -270,7 +252,7 @@ function run(
   environment = {},
   input,
   executeFixCommand,
-) {
+}) {
   const invocation = {
     operation,
     command: process.execPath,

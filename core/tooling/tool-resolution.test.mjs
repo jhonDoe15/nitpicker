@@ -1,3 +1,4 @@
+import { createGitTemplate, copyGitTemplate } from '../diff/git/test-support/git-repository.mjs';
 import {
   mkdtempSync,
   mkdirSync,
@@ -10,15 +11,15 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, it } from 'vitest';
+import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT, resolveProjectRoot, resolveTool } from './tool-resolution.mjs';
 import {
   applyLegacyInventory,
   configuredAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
-import { execFileSync } from 'node:child_process';
 
+const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots = [];
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -49,8 +50,8 @@ it('records the TypeScript version imported by structure instead of the consumer
   const importedTypeScriptVersion = JSON.parse(
     readFileSync(structureRequire.resolve('typescript/package.json'), 'utf8'),
   ).version;
-  const structure = configuredAnalyzers.find(({ name }) => name === 'structure');
-  const typecheck = configuredAnalyzers.find(({ name }) => name === 'typescript-typecheck');
+  const structure = packageAnalyzers.find(({ name }) => name === 'structure');
+  const typecheck = packageAnalyzers.find(({ name }) => name === 'typescript-typecheck');
   const report = runQualitySnapshot({
     analyzers: [
       {
@@ -150,7 +151,7 @@ it('rejects a snapshot tool symlink that points outside the temporary root', () 
 it('includes a project-owned coding inventory in the selected policy hash', () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-inventory-')));
   temporaryRoots.push(root);
-  const analyzer = configuredAnalyzers.find(({ name }) => name === 'coding-standards');
+  const analyzer = packageAnalyzers.find(({ name }) => name === 'coding-standards');
   const resolveHash = /** @type {{ resolveConfigurationHash: (root: string) => string }} */ (
     analyzer
   ).resolveConfigurationHash;
@@ -162,7 +163,7 @@ it('includes a project-owned coding inventory in the selected policy hash', () =
 it('reads the legacy inventory from the configured path and ignores the old internal one', () => {
   const root = createTemporaryRoot('nitpicker-inventory-path-');
   const [analyzer] = applyLegacyInventory(
-    configuredAnalyzers.filter(({ name }) => name === 'coding-standards'),
+    packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
     'config/legacy.json',
   );
   const original = analyzer.resolveConfigurationHash(root);
@@ -225,21 +226,29 @@ function writeManifest(packageRoot, manifest) {
   writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify(manifest));
 }
 
-it('finds the nearest package or nitpicker config bounded by the git repository', () => {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
-  temporaryRoots.push(root);
-  execFileSync('git', ['init', '-q'], { cwd: root });
-  writeFileSync(path.join(root, 'package.json'), '{}');
-  mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
-  writeFileSync(path.join(root, 'packages/package.json'), '{}');
-  expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
-  mkdirSync(path.join(root, 'service/src'), { recursive: true });
-  writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
-  expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
-  const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
-  temporaryRoots.push(emptyRoot);
-  execFileSync('git', ['init', '-q'], { cwd: emptyRoot });
-  expect(() => resolveProjectRoot(emptyRoot)).toThrow(
-    'No package.json or nitpicker.config.json found',
-  );
+describe('project root resolution', () => {
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
+  it('finds the nearest package or nitpicker config bounded by the git repository', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
+    temporaryRoots.push(root);
+    copyGitTemplate(gitTemplateRoot, root);
+    writeFileSync(path.join(root, 'package.json'), '{}');
+    mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
+    writeFileSync(path.join(root, 'packages/package.json'), '{}');
+    expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
+    mkdirSync(path.join(root, 'service/src'), { recursive: true });
+    writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
+    expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
+    const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
+    temporaryRoots.push(emptyRoot);
+    copyGitTemplate(gitTemplateRoot, emptyRoot);
+    expect(() => resolveProjectRoot(emptyRoot)).toThrow(
+      'No package.json or nitpicker.config.json found',
+    );
+  });
 });

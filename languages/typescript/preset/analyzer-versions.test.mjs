@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { describe, expect, it } from 'vitest';
-import { policyHash } from '../../../core/diff/report-model.mjs';
+import { policyHash } from '../../../core/diff/reporting/report-model.mjs';
 import { ESLINT_PLUGIN_PACKAGES, resolveAnalyzerVersion } from './analyzer-versions.mjs';
 
 function fakeResolver(overrides = {}) {
@@ -17,10 +19,11 @@ describe('ESLint analyzer versions', () => {
   it('records every ESLint plugin version and the nitpicker plugin version', () => {
     const version = resolveAnalyzerVersion('coding-standards', '/project', fakeResolver());
 
-    for (const plugin of ESLINT_PLUGIN_PACKAGES) {
-      expect(version).toContain(`${plugin}@1.0.0`);
-    }
-    expect(version).toMatch(/nitpicker-plugin@\d/);
+    const packageVersion = JSON.parse(readFileSync(`${PACKAGE_ROOT}/package.json`, 'utf8')).version;
+    const plugins = ESLINT_PLUGIN_PACKAGES.map((plugin) => `${plugin}@1.0.0`);
+    expect(version).toBe(
+      `eslint@1.0.0;typescript@1.0.0;plugins:${[...plugins, `nitpicker-plugin@${packageVersion}`].join(',')}`,
+    );
   });
 
   it.each(ESLINT_PLUGIN_PACKAGES)('changes the policy hash when %s changes version', (plugin) => {

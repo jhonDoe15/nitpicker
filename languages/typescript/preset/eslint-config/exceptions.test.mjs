@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import presetConfig from '../defaults/eslint.config.mjs';
-import errorsConfig from './errors.mjs';
+import errorsConfig from './policies/errors.config.mjs';
 import { applyMatchingRuleExceptions, applyRuleExceptions } from './exceptions.mjs';
 
 const rule = 'nitpicker/preserve-error-cause';

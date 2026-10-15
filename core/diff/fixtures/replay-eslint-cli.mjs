@@ -2,12 +2,12 @@
 //
 // Re-record after changing a fixture source, a policy config, or upgrading ESLint, typescript-eslint
 // or a plugin (the replay refuses with exit code 2 until you do), from the repository root:
-//   node core/diff/fixtures/record-eslint-reports.mjs
+//   npm run test:record-eslint
 //
 // A recording is replayed only for the exact snapshot it was captured from: the installed versions
 // of the tracked packages, the policy config hash and every src/main TypeScript file hash must match.
 // With NITPICKER_DIFF_RECORD_DIR set this script instead runs the real ESLint and records its report
-// there; record-eslint-reports.mjs drives that and merges the records.
+// there; scripts/record-eslint-reports.mjs drives that and merges the records.
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,7 +18,7 @@ import {
   installedVersions,
   sameKey,
   snapshotKey,
-} from './eslint-recording-key.mjs';
+} from '../tests/analysis/eslint/test-support/eslint-recording-key.mjs';
 
 const projectRoot = process.cwd();
 const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');
@@ -38,7 +38,7 @@ function replay() {
   if (changedVersions.length > 0) {
     process.stderr.write(
       `Recorded ESLint reports are stale: installed versions changed (${changedVersions.join(', ')}). ` +
-        'Re-record with: node core/diff/fixtures/record-eslint-reports.mjs\n',
+        'Re-record with: npm run test:record-eslint\n',
     );
     process.exitCode = 2;
     return;
@@ -48,7 +48,7 @@ function replay() {
     process.stderr.write(
       `No recorded ESLint report matches policy ${policyConfigPath} with the current src/main files ` +
         `(a fixture source or policy config changed). ` +
-        'Re-record with: node core/diff/fixtures/record-eslint-reports.mjs\n',
+        'Re-record with: npm run test:record-eslint\n',
     );
     process.exitCode = 2;
     return;

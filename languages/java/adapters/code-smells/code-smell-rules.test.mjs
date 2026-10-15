@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CONFIGURATION_FILES } from '../java-analyzer.mjs';
-import { expectedViolations } from '../fixtures/violation-markers.mjs';
-import { codeSmellRules } from './code-smell-rules.mjs';
+import { configurationFiles } from '../java-analyzer.mjs';
+import { expectedViolations } from '../test-support/violation-markers.mjs';
+import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'code-smells-project', 'src');
@@ -49,7 +49,7 @@ describe('the Java code smell ruleset', () => {
     expect({
       inScript: shipped.filter((file) => script.includes(`'${file}'`)),
       shipped: shipped.filter((file) =>
-        CONFIGURATION_FILES.includes(`languages/java/gradle/${file}`),
+        configurationFiles().includes(`languages/java/gradle/${file}`),
       ),
     }).toEqual({ inScript: shipped, shipped });
   });

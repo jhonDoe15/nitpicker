@@ -1,4 +1,5 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
@@ -24,6 +25,74 @@ const layouts = [undefined, 'nested', 'linked'];
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
+
+const expectedDirtyFindings = [
+  {
+    tool: 'eslint-lint',
+    rule: 'no-debugger',
+    path: 'src/main/example.ts',
+    identity:
+      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
+    message: '`debugger` statement is not allowed',
+    classification: 'enforceable',
+    symbol: 'example',
+    location: { line: 2, column: 3 },
+    ratchet: {
+      key: 'count:`debugger` statement is not allowed',
+      value: 1,
+      existingCodeOnly: true,
+    },
+  },
+  {
+    tool: 'prettier-format',
+    rule: 'prettier/prettier',
+    path: 'src/main/example.ts',
+    identity: 'format-diff:3021261b8c9abc3d63b74d13',
+    message: 'Format these lines with Prettier',
+    classification: 'enforceable',
+    location: { line: 1, endLine: 1 },
+  },
+  {
+    tool: 'prettier-format',
+    rule: 'prettier/prettier',
+    path: 'src/main/example.ts',
+    identity: 'format-diff:92772ea69de4f061a708c457',
+    message: 'Format these lines with Prettier',
+    classification: 'enforceable',
+    location: { line: 3, endLine: 3 },
+  },
+];
+const expectedSnapshotOutput = [
+  'Nitpicker quality snapshot',
+  'Status: violations',
+  'Enforceable findings: 2',
+  'Descriptive findings: 0',
+  'Tool errors: 0',
+  '',
+  'Per-tool counts:',
+  'prettier-format: total=2 enforceable=2 descriptive=0',
+  '',
+  'Enforceable findings:',
+  'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
+  'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
+  'nitpicker: head: running 1 analyzer',
+  '',
+].join('\n');
+
+function expectedDirtyOutput(root) {
+  return `Base: main (argument)
+
+Quality gate summary
+✖ 3 new enforceable violations
+  eslint-lint/no-debugger src/main/example.ts:2
+    \`debugger\` statement is not allowed
+  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
+    Format these lines with Prettier
+Full diagnostics: ${root}/reports/dirty/report.txt
+nitpicker: base 2 analyzers cached
+nitpicker: head: running 2 analyzers
+`;
+}
 
 function command(cwd, executable, args) {
   const result = spawnSync(executable, args, {
@@ -82,7 +151,8 @@ suite('packed nitpicker in a separate consumer', () => {
     packRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-packed-'));
     checked(packageRoot, 'npm', ['pack', '--pack-destination', packRoot]);
     const tarballs = readdirSync(packRoot).filter((file) => file.endsWith('.tgz'));
-    expect(tarballs).toHaveLength(1);
+    if (tarballs.length !== 1)
+      throw new Error(`Expected one packed tarball, received ${String(tarballs.length)}`);
     tarball = path.join(packRoot, tarballs[0]);
   }, 180_000);
   afterAll(() => {
@@ -90,7 +160,7 @@ suite('packed nitpicker in a separate consumer', () => {
   });
 
   for (const strategy of layouts) {
-    describe(strategy ?? 'hoisted', () => {
+    describe(`dependency layout: ${strategy ?? 'hoisted'}`, () => {
       let root;
       let before;
       let clean;
@@ -108,7 +178,7 @@ suite('packed nitpicker in a separate consumer', () => {
         JSON.parse(readFileSync(path.join(reports(name), 'new-findings.json')));
 
       beforeAll(() => {
-        root = mkdtempSync(path.join(tmpdir(), `nitpicker-consumer-${strategy ?? 'hoisted'}-`));
+        root = mkdtempSync(path.join(tmpdir(), `nitpicker consumer-${strategy ?? 'hoisted'}-`));
         checked(root, 'git', ['init', '-b', 'main']);
         write(root, '.gitignore', 'node_modules/\nreports/\n');
         write(
@@ -236,32 +306,22 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(
           existsSync(path.join(packageLocation, 'languages/java/gradle/nitpicker.init.gradle')),
         ).toBe(true);
-        if (!strategy) {
-          const eslint = path.dirname(
-            execFileSync(
-              process.execPath,
-              ['-p', 'require.resolve("eslint/package.json", {paths: [process.cwd()]})'],
-              { cwd: root, encoding: 'utf8' },
-            ).trim(),
+      });
+      it.skipIf(strategy !== undefined)(
+        'resolves the hoisted ESLint installation from the consumer',
+        () => {
+          const eslint = realpathSync(
+            createRequire(path.join(root, 'package.json')).resolve('eslint/package.json'),
           );
           expect(eslint.startsWith(realpathSync(packageLocation) + path.sep)).toBe(false);
-        }
-      });
+        },
+      );
       it('exits zero on clean branch and reports both new findings on dirty branch', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ tool: 'prettier-format', path: 'src/main/example.ts' }),
-            expect.objectContaining({
-              tool: 'eslint-lint',
-              rule: 'no-debugger',
-              path: 'src/main/example.ts',
-            }),
-          ]),
-        );
-        expect(dirty.output).toContain('example.ts');
+        expect(findings('dirty')).toEqual(expectedDirtyFindings);
+        expect(dirty.output).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -280,7 +340,8 @@ suite('packed nitpicker in a separate consumer', () => {
         ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
           `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript};` +
-            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')}`,
+            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
+            `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`,
         );
         for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
           const installed = JSON.parse(
@@ -307,7 +368,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toContain('src/main/example.ts');
+        expect(snapshot.output).toEqual(expectedSnapshotOutput);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);

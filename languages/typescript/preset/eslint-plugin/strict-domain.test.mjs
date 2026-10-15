@@ -1,11 +1,11 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { lintFixture } from '../failure-messages/harness.mjs';
-import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
-import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
-import { rule as noThrow } from './rules/no-throw.mjs';
-import { rule as noUnknownInDomain } from './rules/no-unknown-in-domain.mjs';
+import { lintFixture } from '../failure-messages/test-support/harness.mjs';
+import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
+import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
+import { rule as noThrow } from './rules/errors/no-throw.mjs';
+import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 
 Object.assign(RuleTester, {
   afterAll,

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { CONFIGURATION_FILES, createJavaAnalyzer } from './java-analyzer.mjs';
+import { configurationFiles, createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
 import { baselineProperties, toolConfigProperties } from './java-diff.mjs';
@@ -55,11 +55,18 @@ describe('configureJavaAnalyzer', () => {
     const parsed = parseRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
-    expect(parsed.policy).toMatchObject({
+    expect(parsed.policy).toEqual({
       crapLimit: 12,
+      fileLimits: undefined,
       exclude: ['a/**', 'b/*.java'],
+      exceptions: [],
       legacyInventory: 'legacy.json',
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
       snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
     });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
@@ -122,7 +129,24 @@ describe('configureJavaAnalyzer', () => {
 
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
-    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+    expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
+      'archunit',
+      'checkstyle',
+      'comments',
+      'coupling',
+      'crap',
+      'dependencies',
+      'duplicates',
+      'forbiddenapis',
+      'google-java-format',
+      'jacoco',
+      'javac',
+      'pit',
+      'pmd',
+      'spotbugs',
+      'spring',
+      'structure',
+    ]);
   });
 });
 
@@ -478,7 +502,7 @@ describe('createJavaAnalyzer', () => {
               .replaceAll(path.sep, '/'),
           ),
       )
-      .filter((file) => !CONFIGURATION_FILES.includes(file));
+      .filter((file) => !configurationFiles().includes(file));
 
     expect(listed).toEqual([]);
   });
