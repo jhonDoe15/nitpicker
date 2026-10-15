@@ -23,7 +23,7 @@ const FAILING_SUMMARY = [
   'Quality gate summary',
   '✖ 2 new enforceable violations',
   '  ruff/B006 src/demo/a.py:2',
-  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
+  '    Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
   '  ruff-format/format src/demo/a.py',
   '    File is not formatted with ruff (detected; set "python.formatter" if wrong)',
   'Full diagnostics: <path>',
@@ -116,7 +116,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'fp:nitpicker/subject=Do not use mutable data structures for argument defaults',
         message:
-          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. To allow it for some paths, add a "python.exceptions" entry for B006 in nitpicker.config.json.',
+          'Do not use mutable data structures for argument defaults. Default to `None` and create the value inside the function, or use an immutable default such as a tuple. If a reviewer agrees this is intended, add {"rule":"B006","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2, column: 1 },
       },
@@ -160,17 +160,17 @@ describe('nitpicker with "preset": "python"', () => {
       [
         'mypy/return-value',
         'Incompatible return value type (got "int", expected "str")',
-        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for return-value in nitpicker.config.json.',
+        'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/frozen-dataclass',
         'Order',
-        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. To allow it for some paths, add a "python.exceptions" entry for frozen-dataclass in nitpicker.config.json.',
+        'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If a reviewer agrees this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
       ],
       [
         'python-rules/no-inline-suppression',
         'noqa',
-        'Inline suppression `# noqa`. Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
+        'Inline suppression `# noqa`. Remove the comment and fix the code. If a reviewer agrees this is intended, add {"rule":"no-inline-suppression","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -215,7 +215,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
       [
         'T201',
-        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. To allow it for some paths, add a "python.exceptions" entry for T201 in nitpicker.config.json.',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If a reviewer agrees this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
       ],
     ]);
   });
@@ -248,7 +248,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'Bad',
         message:
-          'Bad. Fix the type; inline ignores are banned. To allow it for some paths, add a "python.exceptions" entry for reportReturnType in nitpicker.config.json.',
+          'Bad. Fix the type; inline ignores are banned. If a reviewer agrees this is intended, add {"rule":"reportReturnType","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -329,7 +329,7 @@ describe('nitpicker with "preset": "python"', () => {
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
           message:
-            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
@@ -369,7 +369,7 @@ describe('nitpicker with "preset": "python"', () => {
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
           message:
-            'NoCoverage number: no test runs this code. Add a test that reaches it. If a reviewer agrees this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+            'NoCoverage number: no test runs this code. Add a test that reaches it. If a reviewer agrees this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
@@ -801,7 +801,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'contract:Layers:demo.a -> demo.b',
         message:
-          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If a reviewer agrees this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -869,7 +869,7 @@ describe('nitpicker with "preset": "python"', () => {
         'mutation: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
-        'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
+        'ruff/F401 src/demo/a.py:1 `os` imported but unused. If a reviewer agrees this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         '',
         'Descriptive findings:',
         'coupling/coupling . dependencies summary',
@@ -983,7 +983,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     expect(
       failing
         .json('new-findings.json')
-        .map(({ symbol, message }) => [symbol, message.match(/If this is intended.*$/)?.[0]]),
+        .map(({ symbol, message }) => [symbol, message.match(/If a reviewer.*$/)?.[0]]),
     ).toEqual([
       [
         'value',

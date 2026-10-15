@@ -487,7 +487,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'demo.A#fee(I)I',
         location: { line: 3 },
@@ -562,7 +562,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.output.err).toBe(
-        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml\n`,
+        `nitpicker failed: nitpicker.config.json: "exceptions[0].rule" is "detekt.style.MagicNumber", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')}). Tune any other detekt rule in config/detekt/detekt.yml\n`,
       );
     });
   });
