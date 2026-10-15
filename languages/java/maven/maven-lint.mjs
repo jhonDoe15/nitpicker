@@ -10,11 +10,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { escapeRegExp } from '../../../shared/glob.mjs';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 
-const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
+export const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
+const TREE_WALKER = '<module name="TreeWalker">';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
   'SuppressWarningsHolder',
@@ -36,85 +36,6 @@ export function javaFiles(roots) {
         .map((entry) => path.join(entry.parentPath, entry.name)),
     )
     .sort();
-}
-
-function escapeXml(text) {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
-function springMainRuleset(testRoots) {
-  const excludes = testRoots.map(
-    (root) =>
-      `  <exclude-pattern>${escapeXml(`${escapeRegExp(root + path.sep)}.*`)}</exclude-pattern>`,
-  );
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-    "  <description>Nitpicker's Spring rules on main sources only.</description>",
-    ...excludes,
-    `  <rule ref="${escapeXml(path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml'))}"/>`,
-    '</ruleset>',
-    '',
-  ].join('\n');
-}
-
-function writeAuxClasspath({ module, reportDir, classpaths }) {
-  const file = path.join(reportDir, 'pmd-aux-classpath.txt');
-  const entries = new Set([
-    ...classpaths.mainCompile,
-    ...classpaths.testCompile,
-    module.outputDirectory,
-    module.testOutputDirectory,
-  ]);
-  writeFileSync(file, [...entries].filter((entry) => existsSync(entry)).join('\n'));
-  return file;
-}
-
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
-  const report = path.join(reportDir, 'pmd.sarif');
-  const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
-    existsSync(root),
-  );
-  if (linted.length === 0) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
-  }
-  const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const springRuleset = path.join(reportDir, 'pmd-spring-main.xml');
-  writeFileSync(springRuleset, springMainRuleset(module.testSourceRoots));
-  const rulesets = [
-    ...(configs.pmd.nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
-    ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(configs.pmd.nitpicker && spring ? [springRuleset] : []),
-  ];
-  runJava({
-    tool: 'PMD',
-    classpath: tools.pmd,
-    mainClass: 'net.sourceforge.pmd.cli.PmdCli',
-    args: [
-      'check',
-      '--no-cache',
-      '--no-progress',
-      '--format',
-      'sarif',
-      '--report-file',
-      report,
-      '--rulesets',
-      rulesets.join(','),
-      '--aux-classpath',
-      `file:${auxClasspath}`,
-      '--suppress-marker',
-      'NITPICKER-NO-INLINE-SUPPRESSION',
-      '--dir',
-      linted.join(','),
-    ],
-    cwd: module.basedir,
-    accept: () => existsSync(report),
-  });
 }
 
 export function runSpotbugs({ module, reportDir, tools }) {
@@ -199,6 +120,19 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
+function checkstyleRuleModules(file) {
+  const text = readFileSync(path.join(GRADLE_DIRECTORY, 'rules', file), 'utf8');
+  return /<modules>([\s\S]*)<\/modules>/u.exec(text)[1];
+}
+
+export function withGuardChecks(config, files) {
+  if (!config.includes(TREE_WALKER)) {
+    throw new Error('nitpicker could not find TreeWalker in google_checks.xml');
+  }
+  const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
+  return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
+}
+
 function checkstyleSetup({ reportDir, tools, configs, pinned }) {
   const directory = path.join(reportDir, 'checkstyle-config');
   mkdirSync(directory, { recursive: true });
@@ -208,13 +142,16 @@ function checkstyleSetup({ reportDir, tools, configs, pinned }) {
       properties,
       propertiesLine('config_loc', path.dirname(configs.checkstyle.project)),
     );
-    return { config: configs.checkstyle.project, properties };
+    return { main: configs.checkstyle.project, test: configs.checkstyle.project, properties };
   }
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  const config = path.join(directory, 'checkstyle.xml');
-  writeFileSync(config, nitpickerCheckstyleConfig(bundledGoogleChecks(jar)));
+  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar));
+  const main = path.join(directory, 'checkstyle.xml');
+  const test = path.join(directory, 'checkstyle-test.xml');
+  writeFileSync(main, withGuardChecks(bundled, ['checkstyle-all.xml', 'checkstyle-main.xml']));
+  writeFileSync(test, withGuardChecks(bundled, ['checkstyle-all.xml']));
   writeFileSync(
     properties,
     propertiesLine(
@@ -222,10 +159,10 @@ function checkstyleSetup({ reportDir, tools, configs, pinned }) {
       path.join(GRADLE_DIRECTORY, 'checkstyle-suppressions.xml'),
     ),
   );
-  return { config, properties };
+  return { main, test, properties };
 }
 
-function checkstyleReport({ module, setup, tools, pinned, roots, report, always }) {
+function checkstyleReport({ module, config, setup, tools, pinned, roots, report, always }) {
   const files = javaFiles(roots);
   if (files.length === 0) {
     if (always) {
@@ -237,7 +174,7 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always 
     tool: 'Checkstyle',
     classpath: tools.checkstyle,
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',
-    args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
+    args: ['-c', config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
     cwd: module.basedir,
     accept: () => existsSync(report),
   });
@@ -252,12 +189,14 @@ export function runCheckstyle({ module, reportDir, tools, configs, pinned }) {
   };
   checkstyleReport({
     ...context,
+    config: context.setup.main,
     roots: module.sourceRoots,
     report: path.join(reportDir, 'checkstyle.xml'),
     always: true,
   });
   checkstyleReport({
     ...context,
+    config: context.setup.test,
     roots: module.testSourceRoots,
     report: path.join(reportDir, 'checkstyle-test.xml'),
     always: false,

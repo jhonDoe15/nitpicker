@@ -101,6 +101,31 @@ field by field. Per snapshot:
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
   (`languages/java/builds/java-modules.mjs`, build-neutral). Duplicate detection runs per module, so
   a clone between two modules is not found, as a clone between two source roots is not.
+- **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
+  (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
+  lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
+  `target`, `encoding`, `compilerArgs`, `compilerArgument`, `enablePreview`, the `default-compile`
+  execution's configuration first, then the plugin's, then the `maven.compiler.*` properties; a
+  value still holding an unresolved `${...}` counts as unset). It compiles with the `javac` of
+  `JAVA_HOME` (or the PATH), not a Maven toolchain, against the main compile classpath (compile,
+  provided and system scopes), takes Lombok from it, and reads the sources in the project's
+  encoding. A POM that sets no release, source or target is linted as Java 8, the compiler
+  plugin's default. Sources under a root outside the module directory (a `build-helper` root such
+  as `../shared/src`) are not linted; their classes are on the class path. On the head it reuses
+  the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
+  output directory (`target/classes` unless the POM moves it) against the main compile classpath
+  and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
+  the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
+  16 PMD rules are skipped below release 16, with the same Java 8 default. The dependency check
+  reads the dependencies the module's own `pom.xml` declares with compile scope (no `<scope>` or
+  `compile`) and not `<optional>`; `provided`, `runtime`, `test` and `system` are not checked,
+  nor are dependencies on other modules of the reactor or dependencies a parent POM declares (the
+  parent has no classes to compare with). A jar that registers an annotation processor
+  (`META-INF/services/javax.annotation.processing.Processor`, such as `mapstruct-processor`)
+  counts as used. Each dependency's own jar comes from `dependency:list`, and the finding sits on
+  the module's `pom.xml` with Maven's scopes as the alternatives. The end-to-end suite compares
+  Gradle and Maven on the guards fixture and lints a reactor with a javac plug-in, preview
+  features, a module descriptor and an older release.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
@@ -515,7 +540,7 @@ nothing. The rules read base and head the same way, so only a pattern a change a
 | Constant names; magic numbers                                                                                                                    | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                    | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                             |
 | Unused imports                                                                                                                                   | `pmd/UnnecessaryImport`                                                                                                                                                | Remove the import                                                                                                  |
 | Duplicates with renamed names, and in test sources                                                                                               | `duplicates/duplicate-clone`                                                                                                                                           | One shared method; a helper or `@ParameterizedTest` in tests                                                       |
-| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `runtimeOnly` or `compileOnly`                                                            |
+| Declared but unused dependencies                                                                                                                 | `dependencies/unused-declared-dependency`                                                                                                                              | Remove it, or declare it `runtimeOnly` or `compileOnly` (Maven: `test`, `runtime` or `provided` scope)                                                  |
 | Test honesty                                                                                                                                     | `pmd/TestSleep`, `DisabledTest`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `TestOrderDependence` | See Tests below                                                                                                    |
 
 A Checkstyle rule prints as its full check class, for example
@@ -625,7 +650,8 @@ A Checkstyle rule prints as its full check class, for example
   a library used only for its annotations counts as used. A dependency with artifacts and no
   reference is `unused-declared-dependency`; starters, BOMs and platforms are never reported, and
   `runtimeOnly`, `compileOnly` and test configurations are not checked. The finding sits on the
-  build file. Versions are not checked: how a project pins its versions is its own choice.
+  build file. On a Maven build see [Maven builds](#maven-builds) for which dependencies count.
+  Versions are not checked: how a project pins its versions is its own choice.
 - **Tests.** The test rules run on test sources only. `TestSleep` (`Thread.sleep` and
   `TimeUnit.sleep`), `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
   assertion or `verify` inside an `if` or `switch` of a test method; a loop over results and an

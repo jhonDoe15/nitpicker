@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -14,7 +14,9 @@ const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const maven = process.env.NITPICKER_MAVEN;
 const fixtures = path.join(import.meta.dirname, 'fixtures');
-const gradleFixture = path.join(import.meta.dirname, '../adapters/fixtures/gradle-project');
+const gradleFixtures = path.join(import.meta.dirname, '../adapters/fixtures');
+const gradleFixture = path.join(gradleFixtures, 'gradle-project');
+const BUILD_FILES = new Set(['build.gradle', 'pom.xml']);
 const temporary = [];
 
 const DATED = `package demo;
@@ -68,6 +70,21 @@ function copyOf(...sources) {
 
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
+function withoutGradle(root) {
+  for (const name of readdirSync(root, { recursive: true })) {
+    if (/(?:^|[/\\])(?:build|settings)\.gradle$/u.test(name)) {
+      rmSync(path.join(root, name));
+    }
+  }
+  return root;
+}
+
+function onEitherBuildFile(findings) {
+  return findings.map((finding) =>
+    BUILD_FILES.has(finding.path) ? { ...finding, path: 'build file', message: '' } : finding,
+  );
+}
+
 afterAll(() => {
   for (const root of temporary.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -105,6 +122,70 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'finds exactly the guard findings the Gradle build of the same sources finds',
+    () => {
+      const guards = path.join(gradleFixtures, 'guards-project');
+      const gradleProject = copyOf(guards);
+      const mavenProject = withoutGradle(copyOf(guards, path.join(fixtures, 'guards')));
+      const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
+      const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
+
+      expect(comparable(onEitherBuildFile(fromMaven))).toEqual(
+        comparable(onEitherBuildFile(fromGradle)),
+      );
+      expect(
+        fromMaven
+          .filter((finding) => finding.tool === 'dependencies')
+          .map(({ path: file, identity, message }) => [file, identity, message.split('. ')[0]]),
+      ).toEqual([
+        [
+          'pom.xml',
+          'unused:org.apache.commons:commons-text',
+          'Dependency org.apache.commons:commons-text has compile scope but no main class uses it',
+        ],
+      ]);
+      expect(
+        ['javac', 'forbiddenapis', 'duplicates', 'coupling'].map((tool) =>
+          fromMaven.some(
+            (finding) => finding.tool === tool && finding.classification === 'enforceable',
+          ),
+        ),
+      ).toEqual([true, true, true, true]);
+    },
+    2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'lints modules with a javac plug-in, preview features or a module descriptor, and an older release',
+    () => {
+      const project = withoutGradle(
+        copyOf(
+          path.join(gradleFixtures, 'guards-compile-modes'),
+          path.join(fixtures, 'guards-compile-modes'),
+        ),
+      );
+      const findings = collectJavaFindings(project, { maven, policy: {} });
+      const watched = new Set(['OptionalGet', 'InstanceofThenCast', 'CollectorsToList']);
+
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'javac' || finding.toolNotRun === true)
+          .map(({ path: file, rule, location }) => `${file}:${String(location?.line)} ${rule}`),
+      ).toEqual([
+        'plugged/src/main/java/plugged/Names.java:7 rawtypes',
+        'preview/src/main/java/preview/Names.java:7 rawtypes',
+        'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+      ]);
+      expect(
+        findings
+          .filter((finding) => finding.path.startsWith('legacy/') && watched.has(finding.rule))
+          .map((finding) => finding.rule),
+      ).toEqual(['OptionalGet']);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(
