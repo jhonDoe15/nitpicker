@@ -34,13 +34,19 @@ import {
   stabilityFiles,
 } from '../fixtures/kotlin-preset-data.mjs';
 import {
+  commitBranch,
+  commitFromStructureBase,
   createKotlinProject,
+  diffOf,
   fromTool,
+  git,
   gradle,
+  initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
   kotlinSources,
   onlyTools,
+  removeProject,
   rulesOf,
 } from './kotlin-e2e-project.mjs';
 
@@ -48,22 +54,22 @@ const project = createKotlinProject();
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to end', () => {
   beforeAll(() => {
-    project.initialize();
-    project.commitBranch('one-sided-branch', {
+    initializeProject(project);
+    commitBranch(project, 'one-sided-branch', {
       [`${kotlinSources}/Label.kt`]: LABEL,
       'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,
     });
-    project.commitBranch('multiline-branch', {
+    commitBranch(project, 'multiline-branch', {
       [`${kotlinSources}/Spread.kt`]: SPREAD,
       'src/test/kotlin/demo/SpreadTest.kt': SPREAD_TEST,
       'src/main/kotlin/Offset.kt': OFFSET,
     });
-    project.commitBranch('generated-branches', {
+    commitBranch(project, 'generated-branches', {
       [`${kotlinSources}/Generated.kt`]: GENERATED,
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
-    project.commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
-    project.commitBranch('structure-base', {
+    commitBranch(project, 'broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch(project, 'structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
       [`${kotlinSources}/Grown.kt`]: GROWN,
@@ -72,7 +78,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 9, { step: 7 }),
       ...stabilityFiles(''),
     });
-    project.commitFromStructureBase('head', {
+    commitFromStructureBase(project, 'head', {
       [`${kotlinSources}/Wide.kt`]: WIDE_MOVED,
       [`${kotlinSources}/Grown.kt`]: GROWN_WIDER,
       'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
@@ -95,10 +101,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     });
   });
   afterAll(() => {
-    project.remove();
+    removeProject(project);
   });
   it('fails a changed Kotlin branch that no test takes and only reports its mutants', () => {
-    const result = project.diffOf('one-sided-branch');
+    const result = diffOf(project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
     expect(fromTool(result.newEnforceable, 'jacoco')).toEqual([
@@ -118,7 +124,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     ).not.toEqual([]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
-    const result = project.diffOf('multiline-branch');
+    const result = diffOf(project, 'multiline-branch');
 
     expect(result.failed).toBe(true);
     expect(
@@ -129,7 +135,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
   });
   it('does not ask for coverage of branches the Kotlin compiler generated', () => {
-    project.git('checkout', '-q', 'generated-branches');
+    git(project, 'checkout', '-q', 'generated-branches');
     const findings = collectJavaFindings(project.root, { gradle, policy: kotlinPolicy });
     const report = readFileSync(path.join(project.root, 'build/nitpicker/jacoco.xml'), 'utf8');
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
@@ -141,7 +147,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
-    const result = project.diffOf('head', kotlinPolicy, 'structure-base');
+    const result = diffOf(project, 'head', { base: 'structure-base' });
     const messageOf = (rule, symbol) =>
       onlyTools(result.newEnforceable, 'structure', 'crap').find(
         (finding) => finding.rule === rule && finding.symbol === symbol,
@@ -206,7 +212,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     ).toEqual(['package-edge:stable->churn']);
   });
   it('reports a Gradle failure as a tool error instead of throwing', () => {
-    project.git('checkout', '-q', 'broken');
+    git(project, 'checkout', '-q', 'broken');
 
     const { findings } = analyzeJavaSnapshot(project.root, { gradle, policy: kotlinPolicy });
 

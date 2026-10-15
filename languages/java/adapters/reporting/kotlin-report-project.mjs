@@ -5,6 +5,8 @@ import { readJavaFindings } from './java-reports.mjs';
 
 const temporaryRoots = [];
 
+const DETEKT_SARIF = path.resolve(import.meta.dirname, '../../ingest/fixtures/detekt.sarif');
+
 export function removeTemporaryProjects() {
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -58,40 +60,49 @@ const MIXED_SOURCE = 'package demo\n\nfun pick(flag: Boolean) = if (flag) 1 else
 const JAVA_SOURCE =
   'package demo;\n\nclass Legacy {\n  int pick(boolean flag) { return flag ? 1 : 2; }\n}\n';
 
-export const mutation = (
-  status,
-  className,
-  sourceFile,
-  line,
-) => `<mutation detected='false' status='${status}'>
+export function mutation({ status, className, sourceFile, line }) {
+  return `<mutation detected='false' status='${status}'>
   <sourceFile>${sourceFile}</sourceFile><mutatedClass>${className}</mutatedClass>
   <mutatedMethod>compute</mutatedMethod><methodDescription>(II)I</methodDescription>
   <lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator>
   <description>Replaced integer addition with subtraction</description></mutation>`;
+}
 
 const PIT = `<mutations>${[
-  mutation('SURVIVED', 'demo.Bad', 'Bad.kt', 7),
-  mutation('NO_COVERAGE', 'demo.BadKt$lambda$1', 'Bad.kt', 8),
-  mutation('SURVIVED', 'demo.Legacy', 'Legacy.java', 4),
-  mutation('KILLED', 'demo.Bad', 'Bad.kt', 9),
-  mutation('SURVIVED', 'kotlin.properties.Delegates', 'Delegates.kt', 3),
+  mutation({ status: 'SURVIVED', className: 'demo.Bad', sourceFile: 'Bad.kt', line: 7 }),
+  mutation({
+    status: 'NO_COVERAGE',
+    className: 'demo.BadKt$lambda$1',
+    sourceFile: 'Bad.kt',
+    line: 8,
+  }),
+  mutation({ status: 'SURVIVED', className: 'demo.Legacy', sourceFile: 'Legacy.java', line: 4 }),
+  mutation({ status: 'KILLED', className: 'demo.Bad', sourceFile: 'Bad.kt', line: 9 }),
+  mutation({
+    status: 'SURVIVED',
+    className: 'kotlin.properties.Delegates',
+    sourceFile: 'Delegates.kt',
+    line: 3,
+  }),
 ].join('\n')}</mutations>`;
 
 const EMPTY_SARIF = JSON.stringify({ version: '2.1.0', runs: [] });
 
-const ktlintResult = (ruleId, text, line) => ({
-  ruleId,
-  level: 'error',
-  message: { text },
-  locations: [
-    {
-      physicalLocation: {
-        artifactLocation: { uri: 'src/main/kotlin/demo/Bad.kt' },
-        region: { startLine: line, startColumn: 1 },
+function ktlintResult(ruleId, text, line) {
+  return {
+    ruleId,
+    level: 'error',
+    message: { text },
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: 'src/main/kotlin/demo/Bad.kt' },
+          region: { startLine: line, startColumn: 1 },
+        },
       },
-    },
-  ],
-});
+    ],
+  };
+}
 
 const KTLINT_SARIF = JSON.stringify({
   runs: [
@@ -106,21 +117,24 @@ const KTLINT_SARIF = JSON.stringify({
   ],
 });
 
+function writeFiles(root, files) {
+  for (const [relative, content] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+    writeFileSync(path.join(root, relative), content);
+  }
+}
+
 export function projectWithKotlinReports({
   manifest = {},
   formatList = 'src/main/kotlin/demo/Bad.kt\n',
 } = {}) {
   const root = temporaryProjectRoot();
-  const reports = path.join(root, 'build/nitpicker');
-  mkdirSync(reports, { recursive: true });
-  mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
-  mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
-  writeFileSync(path.join(root, 'src/main/kotlin/demo/Bad.kt'), KOTLIN_SOURCE);
-  writeFileSync(path.join(root, 'src/main/java/demo/Legacy.java'), JAVA_SOURCE);
-  writeFileSync(path.join(root, 'src/main/java/demo/Mixed.kt'), MIXED_SOURCE);
-  writeFileSync(
-    path.join(reports, 'manifest.json'),
-    JSON.stringify({
+  const reports = 'build/nitpicker';
+  writeFiles(root, {
+    'src/main/kotlin/demo/Bad.kt': KOTLIN_SOURCE,
+    'src/main/java/demo/Legacy.java': JAVA_SOURCE,
+    'src/main/java/demo/Mixed.kt': MIXED_SOURCE,
+    [`${reports}/manifest.json`]: JSON.stringify({
       versions: {},
       sourceRoots: ['src/main/java'],
       kotlin: true,
@@ -128,30 +142,23 @@ export function projectWithKotlinReports({
       kotlinFormatter: 'ktlint',
       ...manifest,
     }),
-  );
-  writeFileSync(path.join(reports, 'pmd.sarif'), EMPTY_SARIF);
-  writeFileSync(path.join(reports, 'spotbugs.sarif'), EMPTY_SARIF);
-  writeFileSync(path.join(reports, 'format.txt'), '');
-  writeFileSync(
-    path.join(reports, 'checkstyle.xml'),
-    '<checkstyle version="10.21.1"></checkstyle>',
-  );
-  writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
-  mkdirSync(path.join(reports, 'pit'));
-  writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
-  writeFileSync(path.join(reports, 'lizard.csv'), '');
-  writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
-  writeFileSync(
-    path.join(reports, 'detekt.sarif'),
-    readFileSync(
-      path.join(new URL('../', import.meta.url).pathname, '../ingest/fixtures/detekt.sarif'),
-      'utf8',
-    ),
-  );
-  writeFileSync(path.join(reports, 'ktfmt.txt'), formatList);
-  writeFileSync(path.join(reports, 'ktlint.sarif'), KTLINT_SARIF);
+    [`${reports}/pmd.sarif`]: EMPTY_SARIF,
+    [`${reports}/spotbugs.sarif`]: EMPTY_SARIF,
+    [`${reports}/format.txt`]: '',
+    [`${reports}/checkstyle.xml`]: '<checkstyle version="10.21.1"></checkstyle>',
+    [`${reports}/jacoco.xml`]: JACOCO,
+    [`${reports}/pit/mutations.xml`]: PIT,
+    [`${reports}/lizard.csv`]: '',
+    [`${reports}/duplicates.json`]: JSON.stringify({ runs: [] }),
+    [`${reports}/detekt.sarif`]: readFileSync(DETEKT_SARIF, 'utf8'),
+    [`${reports}/ktfmt.txt`]: formatList,
+    [`${reports}/ktlint.sarif`]: KTLINT_SARIF,
+  });
   return root;
 }
 
-export const kotlinFindings = (root, tool) =>
-  readJavaFindings(root, { preset: 'kotlin' }).findings.filter((finding) => finding.tool === tool);
+export function kotlinFindings(root, tool) {
+  return readJavaFindings(root, { preset: 'kotlin' }).findings.filter(
+    (finding) => finding.tool === tool,
+  );
+}

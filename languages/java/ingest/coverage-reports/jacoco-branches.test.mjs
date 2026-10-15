@@ -7,10 +7,12 @@ import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lin
 import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
 
-const xml = readFileSync(path.resolve(import.meta.dirname, '..', 'fixtures/jacoco-branches.xml'), 'utf8');
+const xml = readFileSync(
+  path.resolve(import.meta.dirname, '..', 'fixtures/jacoco-branches.xml'),
+  'utf8',
+);
 const FILE = 'src/main/java/com/acme/Pick.java';
 
-// Line 4 is half covered, 8 and 14 are uncovered (and identical text), 11 is fully covered.
 const SOURCE = [
   'package com.acme;',
   '',
@@ -40,25 +42,27 @@ describe('ingestJacocoBranches', () => {
   it('reports every line with branch coverage below 95%, and only those', () => {
     const findings = ingest();
 
-    expect(findings.map((f) => [f.location.line, f.message])).toEqual([
+    expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
       [4, 'Branch coverage is 50.00%; minimum is 95%'],
       [8, 'Branch coverage is 0.00%; minimum is 95%'],
       [14, 'Branch coverage is 0.00%; minimum is 95%'],
     ]);
     expect(
       findings.every(
-        (f) =>
-          f.tool === 'jacoco' &&
-          f.rule === 'changed-branch-coverage' &&
-          f.path === FILE &&
-          f.classification === 'enforceable',
+        (finding) =>
+          finding.tool === 'jacoco' &&
+          finding.rule === 'changed-branch-coverage' &&
+          finding.path === FILE &&
+          finding.classification === 'enforceable',
       ),
     ).toBe(true);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
   it('honors the minimum option and skips files without source', () => {
-    expect(ingest(SOURCE, { minimum: 40 }).map((f) => f.location.line)).toEqual([8, 14]);
+    expect(ingest(SOURCE, { minimum: 40 }).map((finding) => finding.location.line)).toEqual([
+      8, 14,
+    ]);
     expect(ingest(SOURCE, { sourceText: () => undefined })).toEqual([]);
     expect(() => ingestJacocoBranches('<x/>')).toThrow('<report>');
   });
@@ -73,12 +77,13 @@ describe('ingestJacocoBranches', () => {
       },
     ).findings;
 
-    expect(moved.map((f) => f.identity)).toEqual(before.map((f) => f.identity));
+    expect(moved.map((finding) => finding.identity)).toEqual(
+      before.map((finding) => finding.identity),
+    );
     expect(moved[0].location.line).toBe(before[0].location.line + 2);
     for (const finding of before) {
       expect(finding.identity).toMatch(/^branch-source:[0-9a-f]{16}(#\d+)?$/);
     }
-    // identical lines (8 and 14) are told apart by order
     expect(before[1].identity).not.toBe(before[2].identity);
   });
 });
@@ -111,10 +116,12 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -8 +8 @@')),
     });
 
-    expect(result.newFindings.map((f) => f.location.line)).toEqual([8]);
-    expect(result.unchangedFindings.map((f) => f.location.line).sort((a, b) => a - b)).toEqual([
-      4, 14,
-    ]);
+    expect(result.newFindings.map((finding) => finding.location.line)).toEqual([8]);
+    expect(
+      result.unchangedFindings
+        .map((finding) => finding.location.line)
+        .sort((left, right) => left - right),
+    ).toEqual([4, 14]);
   });
 
   it('fails a newly added uncovered branch and ignores moved ones', () => {
@@ -136,7 +143,7 @@ describe('changed-branch-coverage in the differential comparison', () => {
       headFindings: base,
       touchedCode: touched(diffFor('@@ -13,0 +14,3 @@')),
     });
-    expect(added.newFindings.map((f) => f.location.line)).toEqual([14]);
+    expect(added.newFindings.map((finding) => finding.location.line)).toEqual([14]);
   });
 
   it('applies to the Java coverage rule only, not to the TypeScript check of the same name', () => {

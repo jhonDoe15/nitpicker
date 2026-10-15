@@ -9,12 +9,17 @@ import {
 import { expectedMessage, fixturePath, kotlinRuleCases } from '../fixtures/kotlin-rules/cases.mjs';
 import { SUPPRESSION_RULE, addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
 import {
+  commitBranch,
   createKotlinProject,
   detektFindingsOf,
+  diffOf,
   fromTool,
+  git,
   gradle,
-  kotlinE2eEnabled,
+  initializeProject,
   kotlinPolicy,
+  kotlinE2eEnabled,
+  removeProject,
   summarize,
 } from './kotlin-e2e-project.mjs';
 
@@ -24,17 +29,17 @@ const results = new Map();
 
 const diffOnce = (branch) => {
   if (!results.has(branch)) {
-    results.set(branch, project.diffOf(branch));
+    results.set(branch, diffOf(project, branch));
   }
   return results.get(branch);
 };
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () => {
   beforeAll(() => {
-    project.initialize();
-    project.commitBranch('one-way-banned', ruleFixtures('banned'));
-    project.commitBranch('one-way-allowed', ruleFixtures('allowed'));
-    project.commitBranch('one-way-hostile-config', {
+    initializeProject(project);
+    commitBranch(project, 'one-way-banned', ruleFixtures('banned'));
+    commitBranch(project, 'one-way-allowed', ruleFixtures('allowed'));
+    commitBranch(project, 'one-way-hostile-config', {
       ...ruleFixtures('banned'),
       'config/detekt/detekt.yml': HOSTILE_DETEKT_CONFIG,
       ...Object.fromEntries(
@@ -46,7 +51,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     });
   });
   afterAll(() => {
-    project.remove();
+    removeProject(project);
   });
   it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
     'fails the banned form %s with a message that names the allowed form',
@@ -137,7 +142,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     ]);
   });
   it('lifts a rule for the paths of an exception in nitpicker.config.json only', () => {
-    project.git('checkout', '-q', 'one-way-banned');
+    git(project, 'checkout', '-q', 'one-way-banned');
     const exception = (testCase) => ({
       rule: testCase.rule,
       glob: fixturePath(testCase, 'banned'),

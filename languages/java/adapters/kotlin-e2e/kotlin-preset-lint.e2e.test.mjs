@@ -11,23 +11,52 @@ import {
   DANGER,
   MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
   META,
-  LEGACY_FINDINGS,
-  BAD_DETEKT_FINDINGS,
-  BAD_BRANCH_FINDINGS,
-  BAD_KTLINT_RULES,
-  BAD_FINDINGS,
 } from '../fixtures/kotlin-preset-data.mjs';
 import {
+  commitBranch,
   createKotlinProject,
+  diffOf,
   fromTool,
+  git,
   gradle,
+  initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
   kotlinSources,
   ktlintOf,
   ktlintRules,
+  removeProject,
   summarize,
+  writeAll,
 } from './kotlin-e2e-project.mjs';
+
+const BAD_DETEKT_FINDINGS = [
+  ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
+  'detekt detekt.style.UnusedPrivateProperty Bad.kt',
+];
+
+const BAD_BRANCH_FINDINGS = ['jacoco changed-branch-coverage Bad.kt'];
+
+const BAD_FINDINGS = [...BAD_DETEKT_FINDINGS, ...BAD_BRANCH_FINDINGS];
+
+const BAD_KTLINT_RULES = [
+  'ktlint.standard:blank-line-before-declaration',
+  'ktlint.standard:colon-spacing',
+  'ktlint.standard:comma-spacing',
+  'ktlint.standard:function-expression-body',
+  'ktlint.standard:function-return-type-spacing',
+  'ktlint.standard:function-signature',
+  'ktlint.standard:if-else-wrapping',
+  'ktlint.standard:no-wildcard-imports',
+  'ktlint.standard:op-spacing',
+  'ktlint.standard:parameter-list-spacing',
+  'ktlint.standard:statement-wrapping',
+];
+
+const LEGACY_FINDINGS = [
+  'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
+  'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+];
 
 const project = createKotlinProject();
 
@@ -35,41 +64,44 @@ const kotlinOnlyProject = createKotlinProject();
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end to end', () => {
   beforeAll(() => {
-    kotlinOnlyProject.initialize();
+    initializeProject(kotlinOnlyProject);
     rmSync(path.join(kotlinOnlyProject.root, 'src/main/java'), { recursive: true });
-    kotlinOnlyProject.writeAll({
+    writeAll(kotlinOnlyProject, {
       'src/test/kotlin/demo/GreeterTest.kt': GREETER_TEST_WITHOUT_JAVA,
     });
-    kotlinOnlyProject.git('add', '-A');
-    kotlinOnlyProject.git('commit', '-q', '-m', 'Kotlin only');
-    kotlinOnlyProject.commitBranch('kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
-    project.initialize();
-    project.commitBranch('clean', {
+    git(kotlinOnlyProject, 'add', '-A');
+    git(kotlinOnlyProject, 'commit', '-q', '-m', 'Kotlin only');
+    commitBranch(kotlinOnlyProject, 'kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
+    initializeProject(project);
+    commitBranch(project, 'clean', {
       [`${kotlinSources}/Farewell.kt`]: FAREWELL,
       'src/test/kotlin/demo/FarewellTest.kt': FAREWELL_TEST,
       [`${kotlinSources}/Legacy.kt`]: LEGACY_WITH_COMMENT,
     });
-    project.commitBranch('violation', { [`${kotlinSources}/Bad.kt`]: BAD });
-    project.commitBranch('java-in-kotlin-module', { 'src/main/java/demo/Danger.java': DANGER });
-    project.commitBranch('detekt-config', {
+    commitBranch(project, 'violation', { [`${kotlinSources}/Bad.kt`]: BAD });
+    commitBranch(project, 'java-in-kotlin-module', { 'src/main/java/demo/Danger.java': DANGER });
+    commitBranch(project, 'detekt-config', {
       [`${kotlinSources}/Bad.kt`]: BAD,
       'config/detekt.yml': MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
     });
-    project.commitBranch('no-formatter', { [`${kotlinSources}/Bad.kt`]: BAD }, ['.editorconfig']);
-    project.commitBranch('ktfmt', {
+    commitBranch(project, 'no-formatter', {
+      [`${kotlinSources}/Bad.kt`]: BAD,
+      '.editorconfig': null,
+    });
+    commitBranch(project, 'ktfmt', {
       [`${kotlinSources}/Bad.kt`]: BAD,
       [`${kotlinSources}/Meta.kt`]: META,
     });
-    project.commitBranch('ktfmt-named', {
+    commitBranch(project, 'ktfmt-named', {
       'build.gradle.kts': `${readFileSync(path.join(project.root, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
     });
   });
   afterAll(() => {
-    project.remove();
-    kotlinOnlyProject.remove();
+    removeProject(project);
+    removeProject(kotlinOnlyProject);
   });
   it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
-    const result = project.diffOf('clean');
+    const result = diffOf(project, 'clean');
 
     expect(result.failed).toBe(false);
     expect(summarize(result.newEnforceable)).toEqual([]);
@@ -77,7 +109,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
   });
   it('fails new detekt and ktlint findings (ktlint detected from .editorconfig) in Kotlin code', () => {
-    const result = project.diffOf('violation');
+    const result = diffOf(project, 'violation');
 
     expect(result.failed).toBe(true);
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
@@ -90,13 +122,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     );
   });
   it('does not lint generated sources registered from the build directory', () => {
-    const result = project.diffOf('clean');
+    const result = diffOf(project, 'clean');
 
     expect(result.unchangedFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
     expect(result.newFindings.some(({ path: file }) => file.endsWith('Api.kt'))).toBe(false);
   });
   it('still gates Java sources of a Kotlin module with the Java tools', () => {
-    const result = project.diffOf('java-in-kotlin-module');
+    const result = diffOf(project, 'java-in-kotlin-module');
 
     expect(result.failed).toBe(true);
     expect(fromTool(result.newEnforceable, 'pmd')).toEqual(['pmd EmptyCatchBlock Danger.java']);
@@ -107,7 +139,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     ).toEqual([]);
   });
   it("runs detekt with the project's config laid over the defaults", () => {
-    const result = project.diffOf('detekt-config');
+    const result = diffOf(project, 'detekt-config');
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([
       'detekt detekt.style.UnusedPrivateProperty Bad.kt',
@@ -116,13 +148,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
   });
   it('runs no format check for a project that names no formatter', () => {
-    const result = project.diffOf('no-formatter');
+    const result = diffOf(project, 'no-formatter');
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
     expect(result.newFindings.filter(({ tool }) => ['ktlint', 'ktfmt'].includes(tool))).toEqual([]);
   });
   it('checks formatting with ktfmt when configured, accepting code in its style', () => {
-    const result = project.diffOf('ktfmt', { preset: 'kotlin', kotlinFormatter: 'ktfmt' });
+    const result = diffOf(project, 'ktfmt', {
+      policy: { preset: 'kotlin', kotlinFormatter: 'ktfmt' },
+    });
 
     expect(summarize(result.newEnforceable)).toEqual(
       [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
@@ -133,7 +167,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     ]);
   });
   it('detects ktfmt from the build files when the project names it', () => {
-    project.git('checkout', '-q', 'ktfmt-named');
+    git(project, 'checkout', '-q', 'ktfmt-named');
     const findings = collectJavaFindings(project.root, { gradle, policy: kotlinPolicy });
     const formatters = new Set(
       findings.filter(({ rule }) => rule === 'format').map(({ tool }) => tool),
@@ -143,7 +177,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     expect(formatters.has('ktlint')).toBe(false);
   });
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {
-    const result = kotlinOnlyProject.diffOf('kotlin-only-violation');
+    const result = diffOf(kotlinOnlyProject, 'kotlin-only-violation');
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([...BAD_DETEKT_FINDINGS].sort());
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);

@@ -23,8 +23,6 @@ import {
   WIDE_REFORMATTED,
   STABILITY_FILES,
   stabilityClass,
-  CHECKSTYLE_ON_BAD,
-  CHECKSTYLE_PREFIX,
   repeated,
 } from './fixtures/java-preset-data.mjs';
 import { runJavaDiff } from './java-diff.mjs';
@@ -125,6 +123,15 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pmd UnusedPrivateField Legacy.java',
   'spotbugs UUF_UNUSED_FIELD Legacy.java',
   'structure function-parameters-limit Wide.java',
+];
+
+const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
+
+const CHECKSTYLE_ON_BAD = [
+  'blocks.EmptyCatchBlockCheck',
+  'indentation.IndentationCheck',
+  'regexp.RegexpSinglelineJavaCheck',
+  'whitespace.EmptyLineSeparatorCheck',
 ];
 
 const summarize = (findings) =>
