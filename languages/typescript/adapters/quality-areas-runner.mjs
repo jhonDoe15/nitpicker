@@ -505,19 +505,20 @@ async function runMutation(options) {
     changedCodeMutants(head.report, mutationScope),
     options.analyzerName,
   );
-  if (!hasWeakeningCandidates(head.report, mutationScope)) return changed;
+  return [...changed, ...(await weakenedTestsFindings(options, head.report, mutationScope))];
+}
+
+async function weakenedTestsFindings(options, headReport, mutationScope) {
+  if (!hasWeakeningCandidates(headReport, mutationScope)) return [];
   const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
-  const base = await mutationReport(baseOptions, baseMutationTargets(head.report, mutationScope));
-  if (base.skipped !== undefined) return [...changed, ...base.skipped];
-  return [
-    ...changed,
-    ...weakenedTestFindings({
-      headReport: head.report,
-      baseReport: base.report,
-      mutationScope,
-      analyzerName: options.analyzerName,
-    }),
-  ];
+  const base = await mutationReport(baseOptions, baseMutationTargets(headReport, mutationScope));
+  if (base.skipped !== undefined) return base.skipped;
+  return weakenedTestFindings({
+    headReport,
+    baseReport: base.report,
+    mutationScope,
+    analyzerName: options.analyzerName,
+  });
 }
 
 async function mutationReport(options, targets) {
