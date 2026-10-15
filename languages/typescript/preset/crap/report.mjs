@@ -1,49 +1,29 @@
+import { existsSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { existsSync } from 'node:fs';
 import config from '../defaults/crap.config.mjs';
 import { readLayout } from '../head-policy.mjs';
-import { analyzeWithFunctionMapFallback } from './analyze.mjs';
+import { measureCrap } from './measure.mjs';
+import { reportFunctionsOf } from './report-functions.mjs';
 
+const TYPESCRIPT_EXTENSIONS = ['ts', 'tsx', 'mts', 'cts'];
+
+const layout = readLayout();
 const projectRoot = path.resolve(
   process.env.NITPICKER_PROJECT_ROOT ?? path.resolve(import.meta.dirname, '../../../..'),
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
-const analysis = await analyzeWithFunctionMapFallback({
-  projectRoot: projectRoot,
-  explicitPaths: explicitPaths(),
-  coverageMode: 'existing-only',
-  coverageReportPath,
+const analysis = measureCrap(projectRoot, sourceFiles(), {
+  extensions: layout.javascript ? layout.extensions : TYPESCRIPT_EXTENSIONS,
   excludes: config.excludes,
+  coverageReportPath,
 });
 
-const functions = analysis.metrics
-  .map((metric) => ({
-    source: metric.relativePath,
-    function: metric.displayName,
-    lines: {
-      start: metric.startLine,
-      end: metric.endLine,
-    },
-    complexity: metric.complexity,
-    statementCoverage: metric.statementCoverage,
-    branchCoverage: metric.branchCoverage,
-    effectiveCoverage: metric.coverage,
-    crap: metric.crapScore,
-  }))
-  .sort((left, right) => {
-    if (left.crap === null) {
-      return right.crap === null ? 0 : 1;
-    }
-    if (right.crap === null) {
-      return -1;
-    }
-    return right.crap - left.crap;
-  });
+const functions = reportFunctionsOf(analysis.metrics);
 
 const report = {
-  analyzer: '@barney-media/crap-typescript',
+  analyzer: 'nitpicker-crap',
   policy: 'report-only',
   coverageReport: config.coverageReportPath,
   summary: {
@@ -67,13 +47,11 @@ for (const entry of functions.slice(0, 20)) {
   );
 }
 
-function explicitPaths() {
-  const layout = readLayout();
+function sourceFiles() {
   return config.sourcePaths
     .filter((sourcePath) => existsSync(path.resolve(projectRoot, sourcePath)))
     .flatMap((sourcePath) =>
-      path.basename(sourcePath) === 'src'
-        ? [sourcePath]
-        : layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
-    );
+      layout.projectCodeFiles(projectRoot, [sourcePath]).filter(layout.isSourceFile),
+    )
+    .map((file) => path.resolve(projectRoot, file));
 }
