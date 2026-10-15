@@ -7,6 +7,8 @@ import { testMethod } from './test-methods.mjs';
 
 const TEST_ROOT = 'src/test/java';
 const ORDER_TEST = `${TEST_ROOT}/shop/OrderTest.java`;
+const WAITS = 'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice';
+const EXCEPTIONS = 'to "exceptions" in nitpicker.config.json.';
 const temporaryRoots = [];
 
 const ORDER_SOURCE = `package shop;
@@ -209,10 +211,24 @@ describe('readSlowTestFindings', () => {
       },
     });
 
-    const budget = ({ message }) => /; (an? \w+) test may take (\d+) s/u.exec(message).slice(1);
-    expect(findings.map((finding) => [finding.identity, ...budget(finding)])).toEqual([
-      ['test:shop.Slow#crawls()', 'an integration', '30'],
-      ['test:shop.OrderTest#totals()', 'a unit', '5'],
+    expect(findings).toEqual([
+      {
+        tool: 'test-runtime',
+        rule: 'slow-test',
+        path: '.',
+        identity: 'test:shop.Slow#crawls()',
+        message: `Slow crawls() took 31.0 s; an integration test may take 30 s. ${WAITS}. If this is intended, add {"rule":"test-runtime/slow-test","paths":["."],"reason":"..."} ${EXCEPTIONS}`,
+        classification: 'enforceable',
+      },
+      {
+        tool: 'test-runtime',
+        rule: 'slow-test',
+        path: ORDER_TEST,
+        identity: 'test:shop.OrderTest#totals()',
+        location: { line: 5 },
+        message: `OrderTest totals() took 6.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        classification: 'enforceable',
+      },
     ]);
   });
 
@@ -230,10 +246,16 @@ describe('readSlowTestFindings', () => {
       });
 
     expect(run(ORDER_SOURCE)).toEqual([]);
-    const [finding] = run(edited);
-    expect(finding.path).toBe(ORDER_TEST);
-    expect(/"paths":\[[^\]]*\]/u.exec(finding.message)[0]).toBe(
-      `"paths":["${modulePath}/${ORDER_TEST}"]`,
-    );
+    expect(run(edited)).toEqual([
+      {
+        tool: 'test-runtime',
+        rule: 'slow-test',
+        path: ORDER_TEST,
+        identity: 'test:shop.OrderTest#totals()',
+        location: { line: 5 },
+        message: `OrderTest totals() took 9.0 s; a unit test may take 5 s. ${WAITS}, or move it to an integration test source set if it is one. If this is intended, add {"rule":"test-runtime/slow-test","paths":["${modulePath}/${ORDER_TEST}"],"reason":"..."} ${EXCEPTIONS}`,
+        classification: 'enforceable',
+      },
+    ]);
   });
 });

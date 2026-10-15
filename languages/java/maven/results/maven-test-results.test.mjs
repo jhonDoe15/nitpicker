@@ -75,6 +75,28 @@ describe('copyTestResults', () => {
     expect(copied(reportDir, 'surefire')).toEqual(['TEST-shop.OrderTest.xml']);
   });
 
+  it('leaves out the ArchUnit rule classes of Failsafe too', () => {
+    const failsafe = tree({ 'TEST-shop.ArchTest.xml': '<a/>', 'TEST-shop.OrderIT.xml': '<b/>' });
+    const reportDir = tree({});
+
+    copy({ surefireReports: path.join(reportDir, 'none'), failsafeReports: failsafe }, reportDir);
+
+    expect(copied(reportDir, 'failsafe')).toEqual(['TEST-shop.OrderIT.xml']);
+  });
+
+  it('copies a directory that surefire and failsafe share only as surefire', () => {
+    const shared = tree({ 'TEST-shop.OrderTest.xml': '<a/>' });
+    const reportDir = tree({});
+
+    copy(
+      { surefireReports: shared, failsafeReports: `${shared}/../${path.basename(shared)}` },
+      reportDir,
+    );
+
+    expect(readdirSync(path.join(reportDir, 'test-results'))).toEqual(['surefire']);
+    expect(copied(reportDir, 'surefire')).toEqual(['TEST-shop.OrderTest.xml']);
+  });
+
   it('writes nothing when no report directory exists', () => {
     const reportDir = tree({});
 
