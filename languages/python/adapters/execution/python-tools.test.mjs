@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createToolContext, runPythonTools } from './python-tools.mjs';
+import { createToolContext, runPythonTools } from '../python-tools.mjs';
 import {
   callsLog,
   contextFor,
@@ -11,7 +11,7 @@ import {
   restoreTemporaryState,
   setEnvironment,
   temporaryRoot,
-} from './python-tools-project.mjs';
+} from './test-support/python-tools-project.mjs';
 import { fileURLToPath } from 'node:url';
 
 afterEach(restoreTemporaryState);

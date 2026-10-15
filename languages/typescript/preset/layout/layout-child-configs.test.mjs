@@ -4,7 +4,7 @@ import {
   customPolicy as policy,
   loadConfig,
   removeTemporaryRoots,
-} from './layout-config-helpers.mjs';
+} from './test-support/layout-config-helpers.mjs';
 
 afterAll(removeTemporaryRoots);
 

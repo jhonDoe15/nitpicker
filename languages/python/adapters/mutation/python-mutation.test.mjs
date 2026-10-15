@@ -17,7 +17,7 @@ import {
   MUTATION_SKIPPED_RULE,
   mutationFindings,
 } from './python-mutation.mjs';
-import { createToolContext } from '../execution/python-tools.mjs';
+import { createToolContext } from '../python-tools.mjs';
 
 const roots = [];
 const savedEnvironment = new Map();

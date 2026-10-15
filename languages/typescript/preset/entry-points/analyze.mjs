@@ -109,8 +109,7 @@ function entryPointScope(graph, sourceRoot, options) {
   const sources = graph.modules.map((module) => normalizePath(module.source));
   const root = normalizedSourceRoot(sources, normalizePath(sourceRoot).replace(/\/$/, ''), layout);
   const productionModules = sources.filter(
-    (source) =>
-      source.startsWith([`${root}`, '/'].join('')) && isProductionModule(source, root, layout),
+    (source) => source.startsWith(`${root}/`) && isProductionModule(source, root, layout),
   );
   const components = new Set(
     productionModules

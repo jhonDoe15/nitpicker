@@ -20,12 +20,7 @@ import {
   pythonFileLimitFindings,
   readPythonStructureFindings,
 } from './analysis/python-structure.mjs';
-import {
-  COVERAGE_REPORT,
-  FORMAT_REPORT,
-  MANIFEST_REPORT,
-  RUFF_REPORT,
-} from './execution/python-tools.mjs';
+import { COVERAGE_REPORT, FORMAT_REPORT, MANIFEST_REPORT, RUFF_REPORT } from './python-tools.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { strictDomainConfig } from './strict-domain.mjs';
 
 function messagesFor(filename, code) {

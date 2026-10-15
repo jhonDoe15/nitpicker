@@ -2,10 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { resolveHeadPolicy } from '../head-policy.mjs';
-import { resolveLayout } from '../layout.mjs';
+import { resolveHeadPolicy } from '../../head-policy.mjs';
+import { resolveLayout } from '../../layout.mjs';
 
-export const defaults = path.join(fileURLToPath(new URL('../', import.meta.url)), 'defaults');
+export const defaults = path.join(fileURLToPath(new URL('../../', import.meta.url)), 'defaults');
 
 export const customPolicy = {
   exclude: ['lib/legacy/**'],
@@ -43,7 +43,7 @@ export async function loadConfig(relativePath, policy, read = (module) => module
   try {
     policyImports.count += 1;
     const url = pathToFileURL(
-      path.join(fileURLToPath(new URL('../', import.meta.url)), relativePath),
+      path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath),
     );
     url.search = `policy=${String(policyImports.count)}`;
     return read(await import(url.href));

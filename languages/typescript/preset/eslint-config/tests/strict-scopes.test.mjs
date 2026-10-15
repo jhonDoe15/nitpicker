@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../../failure-messages/harness.mjs';
-import strictSyntaxConfig from '../strict.config.mjs';
+import { failureMessagesFor } from '../../failure-messages/test-support/harness.mjs';
+import { strictSyntaxConfig } from '../strict.mjs';
 
 const asserted = 'export const value = input as string;';
 const loop = 'export function run(items) { for (const item of items) { use(item); } }';
