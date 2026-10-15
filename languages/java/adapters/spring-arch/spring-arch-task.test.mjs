@@ -13,15 +13,30 @@ describe('nitpickerSpringArch in the init script', () => {
   it('runs as part of nitpickerJava', () => {
     const dependsOn = /dependsOn ([^\n]+)/.exec(taskBody('nitpickerJava'))[1];
 
-    expect(dependsOn).toContain("'nitpickerSpringArch'");
+    expect(dependsOn.split(', ').map((task) => task.replaceAll("'", ''))).toEqual([
+      'nitpickerPmd',
+      'nitpickerSpotbugs',
+      'nitpickerFormat',
+      'nitpickerJacoco',
+      'checkstyleMain',
+      'checkstyleTest',
+      'nitpickerArchunit',
+      'nitpickerSpringArch',
+      'nitpickerStructure',
+      'nitpickerPit',
+    ]);
   });
 
   it('runs only for Spring projects, so other projects skip it', () => {
-    expect(taskBody('nitpickerSpringArch')).toContain('onlyIf { usesSpring() }');
+    expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
+      'onlyIf { usesSpring() }',
+    );
   });
 
-  it('pins the ArchUnit version it resolves', () => {
-    expect(script).toMatch(/archunit\s*: '\d+\.\d+\.\d+'/);
-    expect(script).toContain('"com.tngtech.archunit:archunit:${pinned.archunit}"');
+  it('resolves the pinned ArchUnit version', () => {
+    expect(/archunit\s*: '([^']+)'/.exec(script)[1]).toBe('1.5.1');
+    expect(/nitpickerSpringArch "([^"]+)"/.exec(script)[1]).toBe(
+      'com.tngtech.archunit:archunit:${pinned.archunit}',
+    );
   });
 });
