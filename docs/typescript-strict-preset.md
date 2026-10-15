@@ -299,7 +299,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
   a project on user-event v13, whose calls are synchronous, needs an exception for
   `await-async-events`. Create the user with `const user = userEvent.setup()`
-  (`testing-library/prefer-user-event-setup`). Check presence with `getBy*` and absence with
+  (`testing-library/prefer-user-event-setup`, for the default and the named `userEvent`
+  import alike). Check presence with `getBy*` and absence with
   `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
