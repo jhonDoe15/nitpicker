@@ -227,6 +227,9 @@ describe('nitpicker config file', () => {
     );
   });
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
+    const acceptedPolicyHeading =
+      'Policy changed in this change (nitpicker.config.json, head against base; ' +
+      'loosening accepted with --accept-policy-change):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
     const plain = runWithConfig(undefined, { analyzers });
     const disabled = runWithConfig(
@@ -257,7 +260,7 @@ Tool errors: 0
 Config overrides:
   disable: ["second-analyzer"]
 
-Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):
+${acceptedPolicyHeading}
   analyzer disabled: second-analyzer
 
 Per-tool counts:
