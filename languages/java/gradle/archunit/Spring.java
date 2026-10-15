@@ -47,10 +47,11 @@ final class Spring {
 
   static boolean isWebLayer(JavaClass type) {
     String name = type.getName();
-    return isController(type)
-        || type.isMetaAnnotatedWith(ADVICE)
-        || name.equals(RESPONSE_ENTITY)
-        || WEB_PACKAGES.stream().anyMatch(name::startsWith);
+    return isController(type) || type.isMetaAnnotatedWith(ADVICE) || WEB_PACKAGES.stream().anyMatch(name::startsWith);
+  }
+
+  static boolean isResponseEntity(JavaClass type) {
+    return type.getName().equals(RESPONSE_ENTITY);
   }
 
   static boolean isGenerated(JavaClass type) {

@@ -13,7 +13,7 @@
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
 //   build/nitpicker/checkstyle-test.xml  Checkstyle XML report (test sources; absent without any)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
-//   build/nitpicker/spring-arch.json nitpicker's own Spring architecture rules (Spring projects only; absent otherwise)
+//   build/nitpicker/spring-arch.json nitpicker's Spring architecture rules (Spring projects only)
 //   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters and cyclomatic
 //                                    complexity (the CRAP input) (languages/java/gradle/StructureMetrics.java)
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
@@ -267,7 +267,8 @@ allprojects {
             group = 'nitpicker'
             dependsOn tasks.named('classes'), tasks.named('testClasses')
             onlyIf { usesSpring() }
-            def ruleSources = new File(initScriptDir, 'archunit').listFiles().findAll { it.name.endsWith('.java') }.sort()
+            def ruleSources = new File(initScriptDir, 'archunit').listFiles()
+                .findAll { it.name.endsWith('.java') }.sort()
             doLast {
                 def directory = reportDir.get().dir('spring-arch').asFile
                 directory.deleteDir()
@@ -278,7 +279,6 @@ allprojects {
                 def libraries = existing(configurations.nitpickerSpringArch.files)
                 def projectPath = existing(mainClasses + testClasses
                     + sourceSets.main.compileClasspath.files + sourceSets.test.compileClasspath.files)
-                def classes = new File(directory, 'classes')
                 def argumentFile = { String name, Collection<File> entries ->
                     def file = new File(directory, name)
                     def joined = entries.unique()*.absolutePath.join(File.pathSeparator).replace('\\', '\\\\')
@@ -293,8 +293,27 @@ allprojects {
                     }
                 }
                 def bin = { String name -> new File(System.getProperty('java.home'), "bin/${name}").absolutePath }
-                run([bin('javac'), '-proc:none', '-nowarn', '-d', classes.absolutePath, argumentFile('compile.args', libraries)]
-                    + ruleSources*.absolutePath)
+                def digest = java.security.MessageDigest.getInstance('SHA-256')
+                ruleSources.each { digest.update(it.bytes) }
+                def jdk = "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"
+                digest.update("${pinned.archunit}|${jdk}".getBytes('UTF-8'))
+                def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/spring-arch')
+                def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
+                if (!classes.isDirectory()) {
+                    def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
+                    staging.mkdirs()
+                    run([bin('javac'), '-proc:none', '-nowarn', '-d', staging.absolutePath,
+                         argumentFile('compile.args', libraries)] + ruleSources*.absolutePath)
+                    try {
+                        java.nio.file.Files.move(staging.toPath(), classes.toPath(),
+                            java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+                    } catch (java.nio.file.FileSystemException raced) {
+                        staging.deleteDir()
+                        if (!classes.isDirectory()) {
+                            throw raced
+                        }
+                    }
+                }
                 def output = reportDir.get().file('spring-arch.json').asFile
                 output.delete()
                 run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath), 'ArchRules',

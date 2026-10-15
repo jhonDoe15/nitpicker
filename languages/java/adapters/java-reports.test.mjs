@@ -467,13 +467,13 @@ describe('readJavaFindings: Spring architecture rules', () => {
 
   it('attaches each violation to its main or test source file', () => {
     expect(architecture(readJavaFindings(withReport({ spring: true })).findings)).toEqual([
-      ['archunit', 'spring-layout', 'src/main/java/demo/Bad.java', 'demo.Bad'],
-      ['archunit', 'spring-test-placement', 'src/test/java/demo/BadTest.java', 'demo.BadTest'],
+      ['archunit', 'spring-layout', 'src/main/java/demo/Bad.java', 'Bad'],
+      ['archunit', 'spring-test-placement', 'src/test/java/demo/BadTest.java', 'BadTest'],
     ]);
   });
 
-  it.each([{ spring: false }, {}])('ignores the report unless Spring is on (%j)', (manifest) => {
-    expect(architecture(readJavaFindings(withReport(manifest)).findings)).toEqual([]);
+  it.each([true, false])('ignores the report unless Spring is on (written: %s)', (written) => {
+    expect(architecture(readJavaFindings(withReport({}, written)).findings)).toEqual([]);
   });
 
   it('fails when a Spring project has no report, instead of passing unchecked', () => {

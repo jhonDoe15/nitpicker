@@ -12,13 +12,17 @@ Layout (package by feature; the root package is the one of the `@SpringBootAppli
   `@Configuration` classes and `@ConfigurationProperties` records.
 - The classes directly in a feature package are its public face. Another feature uses those only,
   never a sub-package such as `orders.internal`. What two features need goes to `<root>.shared`.
+  Every root sub-package except `shared` counts as a feature here, technical ones too (`web`,
+  `config`, `security`): keep what others use directly in that package.
 - `<root>.shared` holds pure utilities: no beans, no entities, no dependency on any feature.
 - Controllers call services, never repositories, and take and return records, never an `@Entity`
-  (also not inside `List<...>`). Services and repositories know nothing of the web layer: no
+  (also not inside `List<...>`, in `@ModelAttribute` methods, or in a generated API interface the
+  controller implements). Services and repositories know nothing of the web layer: no
   controller, `ResponseEntity` or servlet type.
 - A test that starts a Spring context (`@SpringBootTest`, `@DataJpaTest`, `@WebMvcTest`, any
   slice test, `@ExtendWith(SpringExtension.class)`) lives in a package named `integration` or `it`
-  (`com.shop.orders.integration`). A unit test of a service is `new OrderService(mock(...))`. No
+  (`com.shop.orders.integration`), also when it inherits the annotation from a base class or uses a
+  composed annotation. A unit test of a service is `new OrderService(mock(...))`. No
   `@DirtiesContext`.
 - When one of these is right for a class, add an `exceptions` entry for `archunit/<rule>` with its
   paths and a reason; do not move code around the rule.

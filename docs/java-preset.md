@@ -538,41 +538,49 @@ the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0
 `pinned` map) into its own configuration, compiles the rule classes in
 [`languages/java/gradle/archunit/`](../languages/java/gradle/archunit/) with the JDK that runs Gradle
 and runs them once, in one separate JVM, over the compiled main and test classes. That is one extra
-JVM per side (base and head), a few seconds. The report is `build/nitpicker/spring-arch.json`
+JVM per side (base and head), a few seconds. The compiled rule classes are cached in the Gradle
+user home (`caches/nitpicker/spring-arch/<hash>`, keyed by the rule sources, the ArchUnit version
+and the JDK), so `javac` runs only the first time. The report is `build/nitpicker/spring-arch.json`
 (format in [internals.md](internals.md)); a Spring project without it is a tool error.
 
 Findings print as `archunit/<rule>`, one per rule, offending class and dependency, on the class's
-source file (a nested class counts as its outermost class). The identity is the class plus the
-dependency or method involved, never a line, so a second bad dependency in an already violating
-class is new, and moving code is not. Every message names the allowed form and ends with the
+source file (a nested class counts as its outermost class). The identity is the simple class name
+plus the simple name of the dependency or method involved, never a package or a line: a second bad
+dependency in an already violating class is new, while moving code, or moving the file to another
+package (the move `spring-layout` asks for, tracked as a rename), keeps its legacy findings matched. Every message names the allowed form and ends with the
 exception route: `{ "rule": "archunit/<rule>", "paths": [...], "reason": "..." }` in
 `nitpicker.config.json`.
 
 **Layout: package by feature, as in the TypeScript preset.** The root package is the package of the
 `@SpringBootApplication` class (the common prefix when there are several; without one the layout
 rules are skipped and the rest still runs). Its direct sub-packages are features, plus `shared` for
-pure utilities. The layout mirrors the TypeScript one: `features/<f>/` with an `index.ts` becomes
+pure utilities. Every root sub-package that is not `shared` and not a layer name counts as a
+feature, including technical ones such as `web`, `config`, `security` or `exception`: their
+sub-packages are internal to them, and messages name the package ("another root package
+`com.shop.web`") rather than calling it a feature. The layout mirrors the TypeScript one: `features/<f>/` with an `index.ts` becomes
 `<root>.<feature>` whose top-level classes are the feature's public face, and `shared` is the
 TypeScript `shared/` folder.
 
-| Rule                      | Fails when                                                                                                                                                                                                                                                                                                         |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `spring-layout`           | a class sits directly in the root package (only `@SpringBootApplication`, `@Configuration` and `@ConfigurationProperties` classes may), or in a root sub-package named by layer: `controller(s)`, `service(s)`, `repository`/`repositories`, `entity`/`entities`, `model(s)`, `dto(s)`, `dao`, `util(s)`, `common` |
-| `spring-feature-boundary` | a feature class uses a class from a sub-package of another feature (`orders.internal.X` from `billing`); the top-level classes of the other feature are fine                                                                                                                                                       |
-| `spring-shared-pure`      | a `shared` class is a Spring bean (`@Component` and its stereotypes, `@Configuration`) or an `@Entity`, or depends on any feature class                                                                                                                                                                            |
+| Rule                      | Fails when                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-layout`           | a class sits directly in the root package (only `@SpringBootApplication`, `@Configuration` and `@ConfigurationProperties` classes and a `SpringBootServletInitializer` subclass may), or in a root sub-package named by layer: `controller(s)`, `service(s)`, `repository`/`repositories`, `entity`/`entities`, `model(s)`, `dto(s)`, `dao`, `util(s)`, `common` |
+| `spring-feature-boundary` | a class uses a class from a sub-package of another root package (`orders.internal.X` from `billing`); the classes directly in the other package are fine                                                                                                                                                                                                         |
+| `spring-shared-pure`      | a `shared` class is a Spring bean (`@Component` and its stereotypes, `@Configuration`) or an `@Entity`, or depends on a class in any other root package                                                                                                                                                                                                          |
 
 **Layering.**
 
-| Rule                           | Fails when                                                                                                                                                                                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`), in a field, parameter, return type or call                                                                                                 |
-| `spring-controller-entity`     | a request-mapping method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`                                                                                                                                              |
-| `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity`, or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet` or `org.springframework.web.multipart` packages |
+| Rule                           | Fails when                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`), in a field, parameter, return type or call                                                                                                                                                                                                             |
+| `spring-controller-entity`     | a request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count                                                                                                                |
+| `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet` or `org.springframework.web.multipart` packages |
 
-**Tests that start a Spring context.** A test class counts when it, or an enclosing class, is
-annotated with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
+**Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
+one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
+through a composed annotation, with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
 `@BootstrapWith`), `@ContextConfiguration`, `@SpringJUnitConfig`, `@Testcontainers`, or
-`@ExtendWith(SpringExtension.class)`.
+`@ExtendWith(SpringExtension.class)`. Annotation types (a composed `@IntegrationTest`) and abstract
+base classes are not tests themselves and are never placed.
 
 | Rule                        | Fails when                                                                                                                                  |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -584,7 +592,11 @@ source set and are not read at all. A test that sleeps is covered by the test-ho
 Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
-finding can be placed). Only classes of the `main` and `test` source sets are checked, and only in
+finding can be placed), and a use of another package's compile-time constant (`static final` of a
+primitive or `String`) is invisible, because `javac` inlines its value. A controller that uses the
+`EntityManager` directly is not a repository use for `spring-controller-repository`, and a service
+reaching the request through the static `RequestContextHolder` is not caught by
+`spring-service-web`. Only classes of the `main` and `test` source sets are checked, and only in
 the root project. Kotlin modules run the same rules on their compiled classes.
 
 ## Spring configuration files

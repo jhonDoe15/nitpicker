@@ -46,9 +46,9 @@ describe('readSpringArchFindings messages', () => {
       violation(
         'spring-feature-boundary',
         'com.shop.billing.Rules',
-        'com.shop.orders.internal.Limit',
+        'com.shop.web.internal.Formats',
       ),
-      "Rules uses Limit, inside another feature. Depend only on classes in the other feature's top package, or move what both need to com.shop.shared.",
+      'Rules uses Formats from com.shop.web.internal, inside another root package com.shop.web. Depend only on the classes directly in com.shop.web, or move what both need to com.shop.shared.',
     ],
     [
       violation('spring-shared-pure', 'com.shop.shared.Slug'),
@@ -56,7 +56,7 @@ describe('readSpringArchFindings messages', () => {
     ],
     [
       violation('spring-shared-pure', 'com.shop.shared.Slug', 'com.shop.orders.Total'),
-      'Slug depends on Total, a feature class. shared holds pure utilities and depends on no feature; move the code into the feature that uses it.',
+      'Slug depends on Total in com.shop.orders. shared holds pure utilities and depends on no other root package; move the code into the package that uses it.',
     ],
     [
       violation(
@@ -99,6 +99,7 @@ describe('readSpringArchFindings findings', () => {
     const findings = read([
       violation('spring-service-web', 'com.shop.core.Svc', 'a.Web'),
       violation('spring-service-web', 'com.shop.core.Svc', 'b.Web'),
+      violation('spring-controller-entity', 'com.shop.web.Ctrl', 'all:com.shop.data.Customer'),
       violation('spring-layout', 'com.shop.Helper'),
     ]);
 
@@ -116,28 +117,48 @@ describe('readSpringArchFindings findings', () => {
         tool: 'archunit',
         rule: 'spring-service-web',
         file: 'src/com.shop.core.Svc.java',
-        identity: 'com.shop.core.Svc|a.Web',
-        symbol: 'com.shop.core.Svc',
+        identity: 'Svc|Web',
+        symbol: 'Svc',
         classification: 'enforceable',
       },
       {
         tool: 'archunit',
         rule: 'spring-service-web',
         file: 'src/com.shop.core.Svc.java',
-        identity: 'com.shop.core.Svc|b.Web',
-        symbol: 'com.shop.core.Svc',
+        identity: 'Svc|Web#2',
+        symbol: 'Svc',
+        classification: 'enforceable',
+      },
+      {
+        tool: 'archunit',
+        rule: 'spring-controller-entity',
+        file: 'src/com.shop.web.Ctrl.java',
+        identity: 'Ctrl|all:Customer',
+        symbol: 'Ctrl',
         classification: 'enforceable',
       },
       {
         tool: 'archunit',
         rule: 'spring-layout',
         file: 'src/com.shop.Helper.java',
-        identity: 'com.shop.Helper',
-        symbol: 'com.shop.Helper',
+        identity: 'Helper',
+        symbol: 'Helper',
         classification: 'enforceable',
       },
     ]);
     expect(parseAnalyzerReport({ findings }, 'java').findings).toEqual(findings);
+  });
+
+  it('keeps the identity when the class and its dependency move to other packages', () => {
+    const identity = (className, detail) =>
+      read([violation('spring-service-web', className, detail)]).map((finding) => [
+        finding.identity,
+        finding.symbol,
+      ]);
+
+    expect(identity('com.shop.audit.AuditService', 'com.shop.web.AuditController')).toEqual(
+      identity('com.shop.service.AuditService', 'com.shop.controller.AuditController'),
+    );
   });
 
   it('asks the resolver for the file name the class was compiled from, or none', () => {

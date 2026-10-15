@@ -2,6 +2,8 @@ import com.tngtech.archunit.core.domain.JavaAnnotation;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.core.domain.JavaModifier;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -24,7 +26,7 @@ final class TestRules {
   static void check(JavaClasses test, Set<Found> sink) {
     for (JavaClass type : test) {
       JavaClass owner = Spring.owner(type);
-      if (startsContext(type) && !inIntegrationPackage(owner)) {
+      if (isConcreteClass(type) && startsContext(type) && !inIntegrationPackage(owner)) {
         Found.add(sink, PLACEMENT, type, "");
       }
       if (dirtiesContext(type)) {
@@ -33,7 +35,18 @@ final class TestRules {
     }
   }
 
+  private static boolean isConcreteClass(JavaClass type) {
+    return !type.isAnnotation() && !type.isInterface() && !type.getModifiers().contains(JavaModifier.ABSTRACT);
+  }
+
   private static boolean startsContext(JavaClass type) {
+    List<JavaClass> hierarchy = new ArrayList<>();
+    hierarchy.add(type);
+    hierarchy.addAll(type.getAllRawSuperclasses());
+    return hierarchy.stream().anyMatch(TestRules::declaresContext);
+  }
+
+  private static boolean declaresContext(JavaClass type) {
     return CONTEXT_ANNOTATIONS.stream().anyMatch(type::isMetaAnnotatedWith) || extendsWithSpring(type);
   }
 
