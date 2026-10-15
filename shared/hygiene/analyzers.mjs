@@ -1,29 +1,24 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { importClosure } from '../modules/import-closure.mjs';
 import { REPOSITORY_HYGIENE_TOOL } from './files/repository-files.mjs';
 
 const sharedRoot = path.resolve(import.meta.dirname, '..');
 const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
 const ANALYZER_VERSION = '1';
 
-function sourceFiles(directory) {
-  return readdirSync(directory, { withFileTypes: true })
-    .flatMap((entry) => {
-      const entryPath = path.join(directory, entry.name);
-      if (entry.isDirectory()) {
-        return sourceFiles(entryPath);
-      }
-      return entry.name.endsWith('.mjs') && !entry.name.endsWith('.test.mjs') ? [entryPath] : [];
-    })
+export function configurationFiles() {
+  return importClosure(runnerPath)
+    .map((file) => path.relative(sharedRoot, file))
     .sort();
 }
 
 function hashConfiguration() {
   const hash = createHash('sha256');
-  for (const file of [...sourceFiles(import.meta.dirname), path.join(sharedRoot, 'glob.mjs')]) {
-    hash.update(`${path.relative(sharedRoot, file)}\0`);
-    hash.update(readFileSync(file));
+  for (const file of configurationFiles()) {
+    hash.update(`${file}\0`);
+    hash.update(readFileSync(path.join(sharedRoot, file)));
   }
   return hash.digest('hex');
 }

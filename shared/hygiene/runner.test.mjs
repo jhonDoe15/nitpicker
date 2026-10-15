@@ -8,7 +8,7 @@ import {
   removeGitRepositories,
 } from '../../core/diff/fixtures/git-repository.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
-import { createHygieneAnalyzers } from './analyzers.mjs';
+import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseHygieneArguments, runHygieneCheck } from './runner.mjs';
 
 const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
@@ -109,5 +109,20 @@ describe('createHygieneAnalyzers', () => {
       args: [runnerPath, '--check', 'repository-hygiene', '--project-root', '/head'],
       cwd: '/tool',
     });
+  });
+});
+
+describe('the hygiene configuration hash', () => {
+  it('covers every module the runner loads', () => {
+    expect(configurationFiles()).toEqual([
+      'glob.mjs',
+      'head-policy.mjs',
+      'hygiene/files/env-files.mjs',
+      'hygiene/files/known-files.mjs',
+      'hygiene/files/repository-files.mjs',
+      'hygiene/rules.mjs',
+      'hygiene/runner.mjs',
+      'hygiene/tracked-files.mjs',
+    ]);
   });
 });

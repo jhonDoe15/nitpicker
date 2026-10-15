@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { importClosure } from '../../../../shared/modules/import-closure.mjs';
 import {
   DEFAULT_LEGACY_INVENTORY,
   withLegacyInventory,
@@ -10,6 +12,14 @@ import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
 import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { createQualityChecks, eslintVersion, hashFiles } from '../quality-checks.mjs';
 
+const packageRoot = path.resolve(import.meta.dirname, '../../../..');
+
+function moduleClosure(entry) {
+  return importClosure(path.join(packageRoot, entry)).map((file) =>
+    path.relative(packageRoot, file).split(path.sep).join('/'),
+  );
+}
+
 const ANALYZER_RUNTIME_FILES = [
   'core/diff/analyzer-scheduler.mjs',
   'core/diff/report-model.mjs',
@@ -21,7 +31,7 @@ const PROJECT_DEPENDENCY_GRAPH_FILES = [
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
-const ESLINT_ADAPTER_FILES = [
+export const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint.mjs',
@@ -38,8 +48,9 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/oxlint/stage/oxlint-directives.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-inline-config.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-stage.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/dependencies/no-dev-dependency-in-production.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/dependencies/package-manifest.mjs',
+  ...moduleClosure(
+    'languages/typescript/preset/eslint-plugin/rules/dependencies/no-dev-dependency-in-production.mjs',
+  ),
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
@@ -60,13 +71,12 @@ const STATIC_CHECK_ADAPTER_FILES = [
   'shared/glob.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
-const QUALITY_AREA_ADAPTER_FILES = [
+export const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
-  'languages/typescript/adapters/dead-code/normalize.mjs',
-  'shared/hygiene/rules.mjs',
+  ...moduleClosure('languages/typescript/adapters/dead-code/normalize.mjs'),
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
