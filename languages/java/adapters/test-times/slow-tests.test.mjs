@@ -209,9 +209,10 @@ describe('readSlowTestFindings', () => {
       },
     });
 
-    expect(findings.map(({ identity, message }) => [identity, message.split(';')[1]])).toEqual([
-      ['test:shop.Slow#crawls()', expect.stringContaining(' an integration test may take 30 s')],
-      ['test:shop.OrderTest#totals()', expect.stringContaining(' a unit test may take 5 s')],
+    const budget = ({ message }) => /; (an? \w+) test may take (\d+) s/u.exec(message).slice(1);
+    expect(findings.map((finding) => [finding.identity, ...budget(finding)])).toEqual([
+      ['test:shop.Slow#crawls()', 'an integration', '30'],
+      ['test:shop.OrderTest#totals()', 'a unit', '5'],
     ]);
   });
 
@@ -231,6 +232,8 @@ describe('readSlowTestFindings', () => {
     expect(run(ORDER_SOURCE)).toEqual([]);
     const [finding] = run(edited);
     expect(finding.path).toBe(ORDER_TEST);
-    expect(finding.message).toContain(`"paths":["${modulePath}/${ORDER_TEST}"]`);
+    expect(/"paths":\[[^\]]*\]/u.exec(finding.message)[0]).toBe(
+      `"paths":["${modulePath}/${ORDER_TEST}"]`,
+    );
   });
 });
