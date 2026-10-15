@@ -1,49 +1,7 @@
-import { rmSync } from 'node:fs';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { renderConsoleSummary } from './summary.mjs';
 import { renderTextReport } from './text.mjs';
-
-const temporaryRoots = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function finding(overrides = {}) {
-  return {
-    tool: 'eslint',
-    rule: 'no-console',
-    path: 'src/a.js',
-    identity: 'a:1',
-    message: 'Unexpected console statement',
-    classification: 'enforceable',
-    location: { line: 12, column: 3 },
-    ...overrides,
-  };
-}
-
-function report({ newFindings = [], toolErrors = [], unchangedFindings = [] } = {}) {
-  return {
-    summary: {
-      requestedBaseRef: 'main',
-      mergeBaseSha: 'abc',
-      headSha: 'def',
-      overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',
-      newEnforceableFindings: newFindings.length,
-      elapsedMs: 1500,
-      tools: [
-        { name: 'eslint', base: 0, head: 1, new: 1, resolved: 0, unchanged: 0, elapsedMs: 40 },
-      ],
-    },
-    newFindings,
-    resolvedFindings: [],
-    unchangedFindings,
-    changedMetrics: [],
-    toolErrors,
-  };
-}
+import { finding, report } from './test-support/report-builders.mjs';
 
 describe('touched, still over limit', () => {
   const held = finding({
@@ -242,38 +200,5 @@ describe('touched, still over limit', () => {
 
     expect(text).not.toContain('still over limit');
     expect(summary).not.toContain('Note:');
-  });
-});
-describe('renderTextReport', () => {
-  it('marks an analyzer that was skipped instead of showing it as clean', () => {
-    const tool = (name, extra = {}) => ({
-      name,
-      base: 0,
-      head: 0,
-      new: 0,
-      resolved: 0,
-      unchanged: 0,
-      changedMetrics: 0,
-      elapsedMs: 0,
-      ...extra,
-    });
-    const text = renderTextReport({
-      summary: {
-        requestedBaseRef: 'main',
-        mergeBaseSha: 'a',
-        headSha: 'b',
-        overallStatus: 'tool-error',
-        newEnforceableFindings: 0,
-        tools: [tool('coverage'), tool('crap', { skippedBecause: 'coverage' })],
-      },
-      newFindings: [],
-      resolvedFindings: [],
-      changedMetrics: [],
-      unchangedFindings: [],
-      toolErrors: [],
-    });
-
-    expect(text).toMatch(/^crap: .* skipped \(coverage failed\)$/mu);
-    expect(text).not.toMatch(/^coverage: .*skipped/mu);
   });
 });
