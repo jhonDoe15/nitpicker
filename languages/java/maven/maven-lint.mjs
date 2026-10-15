@@ -13,7 +13,7 @@ import path from 'node:path';
 import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 
-const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
+export const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const TREE_WALKER = '<module name="TreeWalker">';
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
@@ -129,10 +129,8 @@ export function withGuardChecks(config, files) {
   if (!config.includes(TREE_WALKER)) {
     throw new Error('nitpicker could not find TreeWalker in google_checks.xml');
   }
-  return config.replace(
-    TREE_WALKER,
-    `${TREE_WALKER}\n${files.map((file) => checkstyleRuleModules(file)).join('\n')}`,
-  );
+  const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
+  return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
 }
 
 function checkstyleSetup({ reportDir, tools, configs, pinned }) {

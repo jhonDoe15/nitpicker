@@ -3,8 +3,7 @@ import path from 'node:path';
 
 const UTF8 = 1;
 const CLASS = 7;
-const LONG = 5;
-const DOUBLE = 6;
+const WIDE_CONSTANTS = new Set([5, 6]);
 const CONSTANT_SIZES = {
   3: 4,
   4: 4,
@@ -23,52 +22,101 @@ const CONSTANT_SIZES = {
   20: 2,
 };
 
+function decodeStep(state, byte) {
+  if (state.left > 0) {
+    return { ...state, value: (state.value << 6) | (byte & 0x3f), left: state.left - 1 };
+  }
+  if (state.value !== undefined) {
+    state.units.push(state.value);
+  }
+  if (byte >> 5 === 0b110) {
+    return { units: state.units, value: byte & 0x1f, left: 1 };
+  }
+  if (byte >> 4 === 0b1110) {
+    return { units: state.units, value: byte & 0x0f, left: 2 };
+  }
+  return { units: state.units, value: byte, left: 0 };
+}
+
+function modifiedUtf8(bytes) {
+  const state = [...bytes].reduce(decodeStep, { units: [], value: undefined, left: 0 });
+  const units = state.value === undefined ? state.units : [...state.units, state.value];
+  return String.fromCharCode(...units);
+}
+
 function classReader(buffer) {
-  let offset = 0;
-  const u1 = () => buffer.readUInt8((offset += 1) - 1);
-  const u2 = () => buffer.readUInt16BE((offset += 2) - 2);
-  const u4 = () => buffer.readUInt32BE((offset += 4) - 4);
-  const skip = (bytes) => {
-    offset += bytes;
+  const position = { offset: 0 };
+  function take(bytes) {
+    position.offset += bytes;
+    return position.offset - bytes;
+  }
+  return {
+    u1: () => buffer.readUInt8(take(1)),
+    u2: () => buffer.readUInt16BE(take(2)),
+    u4: () => buffer.readUInt32BE(take(4)),
+    skip: take,
+    utf: () => {
+      const length = buffer.readUInt16BE(take(2));
+      const start = take(length);
+      return modifiedUtf8(buffer.subarray(start, start + length));
+    },
   };
-  const utf = () => {
-    const length = u2();
-    skip(length);
-    return buffer.toString('utf8', offset - length, offset);
-  };
-  return { u1, u2, u4, skip, utf };
+}
+
+function readConstant(reader, { pool, index }) {
+  const tag = reader.u1();
+  if (tag === UTF8) {
+    pool.utf.set(index, reader.utf());
+  } else if (tag === CLASS) {
+    pool.classes.set(index, reader.u2());
+  } else {
+    reader.skip(CONSTANT_SIZES[tag]);
+  }
+  return WIDE_CONSTANTS.has(tag);
 }
 
 function readConstantPool(reader) {
   const count = reader.u2();
-  const utf = new Map();
-  const classes = new Map();
-  for (let index = 1; index < count; index += 1) {
-    const tag = reader.u1();
-    if (tag === UTF8) {
-      utf.set(index, reader.utf());
-    } else if (tag === CLASS) {
-      classes.set(index, reader.u2());
-    } else {
-      reader.skip(CONSTANT_SIZES[tag]);
-    }
-    if (tag === LONG || tag === DOUBLE) {
-      index += 1;
+  const pool = { utf: new Map(), classes: new Map() };
+  const wideSlots = new Set();
+  for (const index of Array.from({ length: count - 1 }, (_, slot) => slot + 1)) {
+    if (!wideSlots.has(index) && readConstant(reader, { pool, index })) {
+      wideSlots.add(index + 1);
     }
   }
-  return { utf, className: (index) => utf.get(classes.get(index)) };
+  return { utf: pool.utf, className: (index) => pool.utf.get(pool.classes.get(index)) };
+}
+
+function skipAttribute(reader) {
+  reader.skip(2);
+  reader.skip(reader.u4());
+  return reader;
+}
+
+function skipAttributes(reader) {
+  Array.from({ length: reader.u2() }).reduce(skipAttribute, reader);
+  return reader;
+}
+
+function skipMember(reader) {
+  reader.skip(6);
+  return skipAttributes(reader);
 }
 
 function skipMembers(reader) {
-  const members = reader.u2();
-  for (let member = 0; member < members; member += 1) {
-    reader.skip(6);
-    const attributes = reader.u2();
-    for (let attribute = 0; attribute < attributes; attribute += 1) {
-      reader.skip(2);
-      reader.skip(reader.u4());
+  Array.from({ length: reader.u2() }).reduce(skipMember, reader);
+}
+
+function readPermitted(reader, pool) {
+  return Array.from({ length: reader.u2() }).flatMap(() => {
+    const name = pool.utf.get(reader.u2());
+    const length = reader.u4();
+    if (name !== 'PermittedSubclasses') {
+      reader.skip(length);
+      return [];
     }
-  }
+    return Array.from({ length: reader.u2() }, () => pool.className(reader.u2()));
+  });
 }
 
 export function permittedSubclasses(buffer) {
@@ -81,26 +129,12 @@ export function permittedSubclasses(buffer) {
   reader.skip(2 * reader.u2());
   skipMembers(reader);
   skipMembers(reader);
-  const permitted = [];
-  const attributes = reader.u2();
-  for (let attribute = 0; attribute < attributes; attribute += 1) {
-    const name = pool.utf.get(reader.u2());
-    const length = reader.u4();
-    if (name === 'PermittedSubclasses') {
-      const count = reader.u2();
-      for (let index = 0; index < count; index += 1) {
-        permitted.push(pool.className(reader.u2()));
-      }
-    } else {
-      reader.skip(length);
-    }
-  }
-  return permitted.map(
+  return readPermitted(reader, pool).map(
     (subclass) => `${self.replaceAll('/', '.')} -> ${subclass.replaceAll('/', '.')}`,
   );
 }
 
-function classFiles(directory) {
+export function classFiles(directory) {
   return existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
@@ -113,8 +147,5 @@ export function runPermits({ module, reportDir }) {
   const lines = classFiles(module.outputDirectory).flatMap((file) =>
     permittedSubclasses(readFileSync(file)),
   );
-  writeFileSync(
-    path.join(reportDir, 'permits.txt'),
-    lines.map((line) => `${line}\n`).join(''),
-  );
+  writeFileSync(path.join(reportDir, 'permits.txt'), lines.map((line) => `${line}\n`).join(''));
 }

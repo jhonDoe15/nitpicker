@@ -147,9 +147,13 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
           'Dependency org.apache.commons:commons-text has compile scope but no main class uses it',
         ],
       ]);
-      expect(['javac', 'forbiddenapis', 'duplicates', 'coupling'].map((tool) =>
-        fromMaven.some((finding) => finding.tool === tool && finding.classification === 'enforceable'),
-      )).toEqual([true, true, true, true]);
+      expect(
+        ['javac', 'forbiddenapis', 'duplicates', 'coupling'].map((tool) =>
+          fromMaven.some(
+            (finding) => finding.tool === tool && finding.classification === 'enforceable',
+          ),
+        ),
+      ).toEqual([true, true, true, true]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );

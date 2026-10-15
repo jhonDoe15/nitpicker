@@ -2,9 +2,9 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { runJava } from '../maven-command.mjs';
+import { EMPTY_SARIF } from '../maven-lint.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 
-const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
 const PATTERN_MATCHING_RULES = ['InstanceofThenCast', 'CollectorsToList'];
 const PATTERN_MATCHING_RELEASE = 16;
 const MAVEN_DEFAULT_RELEASE = 8;
@@ -70,10 +70,14 @@ function guardRulesets(module, reportDir) {
   const guards = writeRuleset(
     reportDir,
     'pmd-guards-main.xml',
-    scopedRuleset('nitpicker-guards-main', path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml'), {
-      directories: module.testSourceRoots,
-      skipped,
-    }),
+    scopedRuleset(
+      'nitpicker-guards-main',
+      path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml'),
+      {
+        directories: module.testSourceRoots,
+        skipped,
+      },
+    ),
   );
   const tests = module.testSourceRoots.filter((root) => existsSync(root));
   if (tests.length === 0) {
