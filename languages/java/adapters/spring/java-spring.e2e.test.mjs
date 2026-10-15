@@ -1,53 +1,15 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../java-diff.mjs';
+import { expectedViolations, reportedViolations } from '../fixtures/violation-markers.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixture = path.join(import.meta.dirname, '..', 'fixtures', 'spring-project');
 const SPRING_RULE = /^(?:Spring|Jpa)/;
-const VIOLATION_MARKER = /\/\/ violation: (.*)$/;
-
-function javaFiles(root) {
-  return readdirSync(root, { recursive: true })
-    .filter((name) => name.endsWith('.java'))
-    .map((name) => path.join(root, name));
-}
-
-function expectedViolations(sourceRoot) {
-  return javaFiles(sourceRoot)
-    .flatMap((file) =>
-      readFileSync(file, 'utf8')
-        .split('\n')
-        .flatMap((line, index) => {
-          const marker = VIOLATION_MARKER.exec(line);
-          return marker === null
-            ? []
-            : marker[1]
-                .split(',')
-                .map(
-                  (rule) =>
-                    `${path.relative(sourceRoot, file).split(path.sep).join('/')}:${String(index + 1)} ${rule.trim()}`,
-                );
-        }),
-    )
-    .sort();
-}
-
-function reportedViolations(sarifFile, sourceRoot) {
-  const [run] = JSON.parse(readFileSync(sarifFile, 'utf8')).runs;
-  return run.results
-    .filter((result) => SPRING_RULE.test(result.ruleId))
-    .map((result) => {
-      const { artifactLocation, region } = result.locations[0].physicalLocation;
-      const file = path.relative(sourceRoot, new URL(artifactLocation.uri).pathname);
-      return `${file.split(path.sep).join('/')}:${String(region.startLine)} ${result.ruleId}`;
-    })
-    .sort();
-}
 
 describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   let projectRoot;
@@ -77,7 +39,11 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   it('reports exactly the violations marked in the fixture sources', () => {
     const sourceRoot = path.join(projectRoot, 'src', 'main', 'java');
     expect(
-      reportedViolations(path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'), sourceRoot),
+      reportedViolations(
+        path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'),
+        sourceRoot,
+        (rule) => SPRING_RULE.test(rule),
+      ),
     ).toEqual(expectedViolations(sourceRoot));
   });
 
