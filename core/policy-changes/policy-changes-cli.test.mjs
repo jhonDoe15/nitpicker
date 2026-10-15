@@ -1,24 +1,15 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
-import {
-  createGitRepository,
-  fixtureGit,
-  removeGitRepositories,
-} from '../diff/fixtures/git-repository.mjs';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
+import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 
-const fakeAnalyzerPath = path.resolve(import.meta.dirname, '../diff/fixtures/fake-analyzer.mjs');
-const outputRoots = [];
-
-afterEach(() => {
-  removeGitRepositories();
-  for (const root of outputRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const fakeAnalyzerPath = path.resolve(
+  import.meta.dirname,
+  '../diff/execution/test-support/fake-analyzer.mjs',
+);
+const { createGitRepository, temporaryRoot } = useGitFixtures();
 
 function fakeAnalyzer(name = 'fake-quality-analyzer') {
   return {
@@ -71,9 +62,7 @@ function prepareRepository({ baseConfig, headConfig, headMoves = [], commitHead 
 }
 
 function temporaryOutput() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-output-'));
-  outputRoots.push(root);
-  return path.join(root, 'reports');
+  return path.join(temporaryRoot('nitpicker-policy-output-'), 'reports');
 }
 
 function readReports(outputRoot) {
