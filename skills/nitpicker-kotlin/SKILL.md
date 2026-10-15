@@ -37,15 +37,20 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - Null: no `!!`, no `as String` on a nullable. Use `value ?: return`, `?.let`, or
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
-  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`.
+  (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged. Where equality by value is wrong (a JPA `@Entity`), the project
   narrows `UseDataClass` with detekt's own `excludeAnnotatedClasses` in its `detekt.yml`.
+- Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
+  in tests. detekt's own exclusions for tests stay off there: magic numbers, `lateinit`, many functions,
+  duplicated string literals, spread operators and function names in backticks are not findings in a test.
+  A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`) instead of
+  catching `Exception`.
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports, and no `TODO:` or
   `FIXME:` comments. Catch and throw specific exceptions, never `Exception`, `RuntimeException` or
-  `Throwable`, and pass the caught exception on as the cause (`SwallowedException`). Use
+  `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
   members and parameters.

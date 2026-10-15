@@ -33,6 +33,13 @@ potential-bugs:
     ignoreAnnotated: ['Marker']
   CastNullableToNonNullableType:
     excludes: ['**/*.kt']
+exceptions:
+  active: false
+  excludes: ['**/*.kt']
+  TooGenericExceptionCaught:
+    active: false
+    excludes: ['**/*.kt']
+    exceptionNames: []
 `;
 
 export const JDK_PROBE = `
