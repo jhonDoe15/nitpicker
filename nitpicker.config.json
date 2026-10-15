@@ -9,6 +9,8 @@
       "core/fix/prettier-write-runner.mjs",
       "languages/typescript/adapters/entry-points-runner.mjs",
       "languages/typescript/adapters/eslint-config-wrapper.mjs",
+      "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
+      "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
       "languages/typescript/preset/defaults/stryker.config.mjs",
