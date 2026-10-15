@@ -52,13 +52,13 @@ export function commitBranch(project, name, files) {
   commitFiles(project, name, files);
 }
 
-export function commitFromBranch(project, name, from, files) {
+export function commitFromBranch(project, { name, from, files }) {
   git(project, 'checkout', '-q', '-b', name, from);
   commitFiles(project, name, files);
 }
 
 export function commitFromStructureBase(project, name, files) {
-  commitFromBranch(project, name, 'structure-base', files);
+  commitFromBranch(project, { name, from: 'structure-base', files });
 }
 
 export function initializeProject() {

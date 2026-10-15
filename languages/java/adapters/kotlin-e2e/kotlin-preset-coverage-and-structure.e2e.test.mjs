@@ -76,8 +76,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
       'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
     });
-    commitFromBranch(project, 'init-inserted', 'init-base', {
-      [`${kotlinSources}/boxes/Box.kt`]: boxes(true),
+    commitFromBranch(project, {
+      name: 'init-inserted',
+      from: 'init-base',
+      files: { [`${kotlinSources}/boxes/Box.kt`]: boxes(true) },
     });
     commitBranch(project, 'structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
