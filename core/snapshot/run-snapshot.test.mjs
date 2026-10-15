@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mjs';
 
 // Most tests here are about snapshot report logic, so the analyzer task graph and the fixture
@@ -11,7 +11,10 @@ import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-
 const runQualitySnapshot = (options) =>
   runQualitySnapshotWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
-const fakeAnalyzerPath = path.join(import.meta.dirname, '../diff/fixtures/fake-analyzer.mjs');
+const fakeAnalyzerPath = path.join(
+  import.meta.dirname,
+  '../diff/execution/test-support/fake-analyzer.mjs',
+);
 const temporaryRoots = [];
 
 afterEach(() => {
@@ -45,15 +48,25 @@ describe('quality snapshot run', () => {
     expect(report.summary.overallStatus).toBe('violations');
     expect(report.summary.enforceableFindings).toBe(1);
     expect(report.findings).toEqual([
-      expect.objectContaining({ identity: 'existing', classification: 'enforceable' }),
+      {
+        tool: 'fake-quality-analyzer',
+        rule: 'fixture-rule',
+        path: 'src/main/existing.ts',
+        identity: 'existing',
+        message: 'Fixture finding',
+        classification: 'enforceable',
+        location: { line: 1, column: 4 },
+      },
     ]);
     expect(report.summary.tools).toEqual([
-      expect.objectContaining({
+      {
         name: 'fake-quality-analyzer',
+        version: '1.0.0',
+        configurationHash: 'fixture-policy',
         total: 1,
         enforceable: 1,
         descriptive: 0,
-      }),
+      },
     ]);
   });
 
@@ -89,7 +102,13 @@ describe('quality snapshot run', () => {
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.findings).toEqual([]);
     expect(report.toolErrors).toEqual([
-      expect.objectContaining({ tool: 'fake-quality-analyzer', message: 'partial analysis' }),
+      {
+        tool: 'fake-quality-analyzer',
+        snapshot: 'head',
+        rule: 'fixture-rule',
+        path: 'src/main/broken.ts',
+        message: 'partial analysis',
+      },
     ]);
   });
 
