@@ -45,3 +45,24 @@ it('hashes import cycles once regardless of input ordering or repeated roots', (
     hashFiles(['b.mjs', 'a.mjs'], ['setting'], { root }),
   );
 });
+
+it('follows static, side-effect and dynamic relative imports without loading TypeScript', () => {
+  const root = fixture({
+    'policy.mjs': [
+      "import { a } from './a.mjs';",
+      "import './b.mjs';",
+      'export { c } from "./c.mjs";',
+      "const d = await import('./d.mjs');",
+      "import path from 'node:path';",
+    ].join('\n'),
+    'a.mjs': 'export const a = 1;',
+    'b.mjs': 'globalThis.b = 1;',
+    'c.mjs': 'export const c = 1;',
+    'd.mjs': 'export const d = 1;',
+  });
+  for (const name of ['a.mjs', 'b.mjs', 'c.mjs', 'd.mjs']) {
+    const before = hashFiles(['policy.mjs'], [], { root });
+    writeFileSync(path.join(root, name), 'export const changed = true;');
+    expect(hashFiles(['policy.mjs'], [], { root })).not.toBe(before);
+  }
+});
