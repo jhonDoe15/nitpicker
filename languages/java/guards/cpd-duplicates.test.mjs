@@ -141,10 +141,12 @@ describe('readCpdFindings', () => {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: MAIN_A,
-        identity: expect.any(String),
+        identity: expect.stringMatching(/^cpd:pair:/),
         location: { line: 2 },
         classification: 'enforceable',
-        message: `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places.`,
+        message:
+          `This code repeats ${MAIN_B}:2 (8 lines). Keep one copy and call it from both places. ` +
+          'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
@@ -168,7 +170,8 @@ describe('readCpdFindings', () => {
     const [finding] = readCpdFindings(reportRoot, options(root));
 
     expect(finding.message).toBe(
-      `This code repeats ${TEST_B}:2 (8 lines). Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places.`,
+      `This code repeats ${TEST_B}:2 (8 lines). Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places. ` +
+        'If it is right here, add an exception for duplicates/duplicate-clone in nitpicker.config.json.',
     );
   });
 

@@ -33,6 +33,12 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
+export function baselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.baselineRoot=${baselineRoot}`]
+    : [];
+}
+
 export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
   return [...PROJECT_TOOL_CONFIGS].flatMap(([tool, file]) => {
     const precedence = toolPrecedence[tool] ?? ['nitpicker'];
@@ -59,6 +65,7 @@ function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy =
       '--no-configuration-cache',
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
+      ...baselineProperties(policy),
       '-I',
       initScript,
       'nitpickerJava',
@@ -141,5 +148,8 @@ export function runJavaDiff({
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
-  return { comparison, ...result, newEnforceable, failed: newEnforceable.length > 0 };
+  const failed =
+    newEnforceable.length > 0 ||
+    result.newFindings.some((finding) => finding.classification === 'tool-error');
+  return { comparison, ...result, newEnforceable, failed };
 }

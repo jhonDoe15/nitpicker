@@ -9,7 +9,10 @@ import { readJavaFindings } from '../adapters/java-reports.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const fixture = path.join(import.meta.dirname, '..', 'adapters', 'fixtures', 'guards-project');
+const fixtures = path.join(import.meta.dirname, '..', 'adapters', 'fixtures');
+const OPTIONAL_GET_MESSAGE =
+  'Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(). ' +
+  'If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.';
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
@@ -79,7 +82,6 @@ function isGuard({ tool, rule, classification }) {
 }
 
 function reportedViolations(root) {
-  runJavaDuplicates(root);
   return readJavaFindings(root)
     .findings.filter((finding) => isGuard(finding))
     .map(({ tool, rule, path: file, location }) =>
@@ -90,39 +92,60 @@ function reportedViolations(root) {
     .sort();
 }
 
+function gradleTask(fixture, task) {
+  const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
+  cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
+  const result = spawnSync(
+    gradle,
+    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, task],
+    { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
+  );
+  if (result.status !== 0) {
+    throw new Error(`Gradle failed: ${result.stderr}`);
+  }
+  return projectRoot;
+}
+
+function pmdRules(projectRoot) {
+  const sarif = JSON.parse(
+    readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'), 'utf8'),
+  );
+  return [...new Set(sarif.runs.flatMap((run) => run.results.map((result) => result.ruleId)))];
+}
+
 describe.skipIf(!enabled)('Java guards on a fixture project', () => {
-  let projectRoot;
+  const roots = [];
 
   beforeAll(
     () => {
-      projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), 'guards');
-      cpSync(fixture, projectRoot, { recursive: true });
-      const result = spawnSync(
-        gradle,
-        [
-          '--console=plain',
-          '--quiet',
-          '--no-configuration-cache',
-          '-I',
-          INIT_SCRIPT,
-          'nitpickerJava',
-        ],
-        { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
-      );
-      if (result.status !== 0) {
-        throw new Error(`Gradle failed: ${result.stderr}`);
-      }
+      roots.push(gradleTask('guards-project', 'nitpickerJava'));
+      runJavaDuplicates(roots[0]);
+      roots.push(gradleTask('guards-release-11', 'nitpickerPmd'));
     },
-    16 * 60 * 1000,
+    30 * 60 * 1000,
   );
 
   afterAll(() => {
-    if (projectRoot !== undefined) {
-      rmSync(path.dirname(projectRoot), { recursive: true, force: true });
+    for (const root of roots) {
+      rmSync(path.dirname(root), { recursive: true, force: true });
     }
   });
 
   it('reports exactly the guard violations marked in the fixture, and none on the clean samples', () => {
-    expect(reportedViolations(projectRoot)).toEqual(expectedViolations(projectRoot));
+    expect(reportedViolations(roots[0])).toEqual(expectedViolations(roots[0]));
+  });
+
+  it('ends a guard message with its exception route', () => {
+    const optionalGet = readJavaFindings(roots[0]).findings.find(
+      (finding) => finding.rule === 'OptionalGet',
+    );
+
+    expect(optionalGet.message).toBe(OPTIONAL_GET_MESSAGE);
+  });
+
+  it('skips the Java 16 rules on a project compiled for an older release', () => {
+    const watched = ['OptionalGet', 'InstanceofThenCast', 'CollectorsToList'];
+
+    expect(pmdRules(roots[1]).filter((rule) => watched.includes(rule))).toEqual(['OptionalGet']);
   });
 });

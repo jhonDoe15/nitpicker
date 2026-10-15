@@ -1,3 +1,5 @@
+import { exceptionRoute } from './exception-route.mjs';
+
 const ALLOWED_FORMS = {
   AddEmptyString: 'Use String.valueOf(value).',
   AppendCharacterWithChar: "Append a char literal ('c').",
@@ -41,6 +43,6 @@ export function withPmdAdvice(finding) {
   const advice = allowed === undefined ? '' : ` ${allowed}`;
   return {
     ...finding,
-    message: `${sentence(finding.message)}${advice} If it is right here, add an exception for pmd/${finding.rule} in nitpicker.config.json.`,
+    message: `${sentence(finding.message)}${advice} ${exceptionRoute('pmd', finding.rule)}`,
   };
 }

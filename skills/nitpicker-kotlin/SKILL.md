@@ -8,10 +8,7 @@ description: Use before writing or changing Kotlin in a project that runs nitpic
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 Java sources in the same project follow the `nitpicker-java` skill; if it isn't installed, install
-it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`. Its Java guards (javac lint,
-forbidden APIs, copy-paste detection) cover those Java files only. Package cycles and unused declared
-dependencies cover the Kotlin classes too: keep packages free of cycles and remove a dependency no class
-uses.
+it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 
 ## Finish with the gate
 

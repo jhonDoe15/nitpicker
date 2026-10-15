@@ -36,6 +36,9 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     mainClass = 'de.thetaphi.forbiddenapis.cli.CliMain'
     ignoreExitValue = true
     def report = reportDir.map { it.file('forbidden-apis.txt') }
+    inputs.files({ analyzedClassDirs() }, sourceSets.main.compileClasspath, new File(rulesDir, 'forbidden-apis.txt'))
+        .withPropertyName('classes')
+    outputs.file(report).withPropertyName('report')
     def log = new ByteArrayOutputStream()
     onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
     doFirst {
@@ -65,32 +68,76 @@ def compileInChildProcess = { File javac, File argumentFile, File directory ->
     [code: process.waitFor(), log: log]
 }
 
+def relativeTo = { File root, File file -> root.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
+def baselineDir = project.ext.nitpickerBaselineDir
+def baselineReport = {
+    def report = baselineDir == null ? null
+        : new File(baselineDir, relativeTo(projectDir, reportDir.get().file('javac-lint.txt').asFile))
+    report?.isFile() ? report : null
+}
+def unchangedSince = { Collection<File> sources ->
+    sources.findAll { source ->
+        def relative = relativeTo(projectDir, source)
+        def before = new File(baselineDir, relative)
+        !relative.startsWith('..') && before.isFile() && before.length() == source.length() && before.bytes == source.bytes
+    }.collect { relativeTo(projectDir, it) } as Set
+}
+def warningsOf = { File report, Set<String> files ->
+    report.readLines('UTF-8').findAll { line ->
+        def match = line =~ /^(.+\.java):\d+: warning: \[/
+        match.find() && match.group(1) in files
+    }.collect { it + '\n' }.join('')
+}
+def languageLevel = { compile, List<String> arguments ->
+    def release = compile.options.release.orNull
+    if (release != null) {
+        return ['--release', release.toString()]
+    }
+    if (arguments.any { it == '--release' || it.startsWith('--release=') }) {
+        return []
+    }
+    (arguments.contains('-source') || arguments.contains('--source') ? [] : ['-source', compile.sourceCompatibility]) +
+        (arguments.contains('-target') || arguments.contains('--target') ? [] : ['-target', compile.targetCompatibility])
+}
+
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
     dependsOn tasks.named('compileJava')
+    def mainSources = sourceSets.main.allJava
+    inputs.files(mainSources).withPropertyName('sources')
+    inputs.files(tasks.named('compileJava')).withPropertyName('classes')
+    inputs.files(sourceSets.main.compileClasspath).withPropertyName('classpath')
+    inputs.files({ baselineReport() ?: [] }).withPropertyName('baselineReport')
+    inputs.property('baseline', baselineDir?.absolutePath ?: '')
+    outputs.files(reportDir.map { it.file('javac-lint.txt') }, reportDir.map { it.file('javac-lint-failed.txt') })
+        .withPropertyName('reports')
     doLast {
         reportDir.get().asFile.mkdirs()
         def output = reportDir.get().file('javac-lint.txt').asFile
         def failure = reportDir.get().file('javac-lint-failed.txt').asFile
         project.delete(output, failure)
-        def sources = sourceSets.main.allJava.files
+        def all = mainSources.files
             .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() }.sort()
+        def reused = baselineReport()
+        Set<String> unchanged = reused == null ? new HashSet<String>() : unchangedSince(all)
+        def kept = reused == null ? '' : warningsOf(reused, unchanged)
+        def sources = all.findAll { !(relativeTo(projectDir, it) in unchanged) }
+        logger.info("nitpickerLint: linting ${sources.size()} of ${all.size()} source files")
         if (sources.isEmpty()) {
-            output.text = ''
+            output.text = kept
             return
         }
         def compile = tasks.named('compileJava').get()
         def compilerPath = compile.javaCompiler.orNull?.executablePath?.asFile
         def javac = compilerPath ?: new File(javaHome, 'bin/javac')
         def lombok = (compile.options.annotationProcessorPath?.files ?: []).findAll { it.exists() && it.name.startsWith('lombok') }
-        def release = compile.options.release.orNull
         def encoding = compile.options.encoding ?: 'UTF-8'
         def staged = new File(temporaryDir, 'sources')
         def classes = new File(temporaryDir, 'classes')
         project.delete(staged, classes)
         [staged, classes]*.mkdirs()
         def relativeNames = sources.collect { source ->
-            def relative = projectDir.toPath().relativize(source.toPath()).toString().replace('\\', '/')
+            def relative = relativeTo(projectDir, source)
             def target = new File(staged, relative)
             target.parentFile.mkdirs()
             target.setText(source.getText(encoding).replaceAll(/@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/) { match ->
@@ -104,7 +151,7 @@ tasks.register('nitpickerLint') {
                      '-d', classes.absolutePath,
                      '-cp', classpath.findAll { it.exists() }.collect { it.absolutePath }.join(File.pathSeparator)] +
             (lombok.isEmpty() ? ['-proc:none'] : ['-processorpath', lombok.collect { it.absolutePath }.join(File.pathSeparator)]) +
-            (release == null ? [] : ['--release', release.toString()]) +
+            languageLevel(compile, compile.options.allCompilerArgs.collect { it.toString() }) +
             lintCompatible(compile.options.allCompilerArgs.collect { it.toString() })
         def argumentFile = new File(temporaryDir, 'javac.args')
         argumentFile.text = (flags + relativeNames.collect { new File(staged, it).absolutePath })
@@ -112,7 +159,7 @@ tasks.register('nitpickerLint') {
         def result = compileInChildProcess(javac, argumentFile, staged)
         def log = result.log.replace(staged.absolutePath + File.separator, '')
         if (result.code == 0) {
-            output.text = log
+            output.text = kept + log
         } else {
             failure.text = log
         }

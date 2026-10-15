@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { exceptionRoute } from './advice/exception-route.mjs';
 
 const DEPENDENCIES_TOOL = 'dependencies';
 const UNUSED_RULE = 'unused-declared-dependency';
@@ -21,7 +22,7 @@ function unusedFinding(entry, buildFile) {
       `Dependency ${id} is declared in ${entry.configuration} but no main class uses it. ` +
       'Remove it, declare it runtimeOnly if it is only needed at run time, ' +
       'or compileOnly if only its source annotations are needed. ' +
-      `If it is right here, add an exception for ${DEPENDENCIES_TOOL}/${UNUSED_RULE} in nitpicker.config.json.`,
+      exceptionRoute(DEPENDENCIES_TOOL, UNUSED_RULE),
     classification: 'enforceable',
   };
 }

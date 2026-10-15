@@ -82,6 +82,9 @@ allprojects {
     plugins.withId('java') {
         project.ext.nitpickerPinned = pinned
         project.ext.nitpickerKotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def baselineRoot = nitpickerArgument('nitpicker.baselineRoot')
+        project.ext.nitpickerBaselineDir = baselineRoot == null ? null
+            : new File(baselineRoot.toString(), rootDir.toPath().relativize(projectDir.toPath()).toString())
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 

@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, permits.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -495,14 +495,27 @@ A Checkstyle rule prints as its full check class, for example
   `-Xlint:rawtypes,unchecked,deprecation,removal,cast` and writes the warnings to
   `build/nitpicker/javac-lint.txt` (tool `javac`, rule = lint category). It compiles a copy in
   which every `@SuppressWarnings(...)` is blanked out (same lines and columns), with the project's
-  compiler, release and compiler arguments (without `-Werror`, `-Xlint` and processor options),
+  compiler, release (or `-source`/`-target` from the source and target compatibility when no
+  release is set) and compiler arguments (without `-Werror`, `-Xlint` and processor options),
   and with the main classes on the classpath, so it runs only Lombok of the annotation processors
   (the classes other processors generate are already compiled) and stops after flow analysis
   without writing classes. `module-info.java` is left out and the sources compile on the class
-  path. When the lint compile fails the run goes on: the report says so in a descriptive
-  `javac/lint-not-run` notice, and javac warnings are not checked in that run. When only the base
-  failed, the head's javac findings are reported but do not fail the gate: with no base report,
-  nothing tells which of them the change added, and each one says so.
+  path. On the head, when the base produced a lint report in the same run, only the source files
+  whose content differs from the base are compiled; the base's warnings for the unchanged files
+  are kept, so the report matches a full lint. The cost: a warning that appears in an unchanged
+  file only because a changed file changed (a method the change deprecated, called from an
+  unchanged file) is not reported. Without a base report (the base came from the findings cache,
+  or its lint failed) the head lints every file. When the lint compile fails the run goes on: the
+  report says so in a descriptive `javac/lint-not-run` notice, and javac warnings are not checked
+  in that run. When only the base failed, the head's javac findings are reported but do not fail
+  the gate: with no base report, nothing tells which of them the change added, and each one says
+  so. When only the head failed, the run fails with a tool error: the change broke the lint
+  compile.
+- **Run time.** The lint, forbiddenapis, CPD, dependency and permits tasks declare their inputs
+  and outputs, so Gradle skips them when nothing they read changed. Measured on the hx repro (31
+  main files, Lombok and MapStruct, load about 40), the lint task took 22.0 s before and 13.1 s
+  with a one-file change; on the java-base sandbox, 6.2 s before and 3.9 s. Most of what is left is
+  starting javac with the processor and class path.
 - **forbiddenapis.** [forbiddenapis](https://github.com/policeman-tools/forbidden-apis) 3.10
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
@@ -515,8 +528,10 @@ A Checkstyle rule prints as its full check class, for example
   windows of one file pair are one finding, a block that overlaps its own copy is dropped, and so
   are clones made only of getters, setters, field declarations and field-assigning constructors
   or only of data rows (enum constants, `Arguments.of(...)` rows, literal lists). Findings use the
-  same tool and rule as jscpd (`duplicates/duplicate-clone`); between two test files the message
-  points at a helper or a `@ParameterizedTest`.
+  same tool and rule as jscpd (`duplicates/duplicate-clone`), with identities starting `cpd:` so
+  they never match a jscpd finding; between two test files the message points at a helper or a
+  `@ParameterizedTest`. The message ends with the exception route for
+  `duplicates/duplicate-clone`.
 - **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. Each package in a
   strongly connected set of packages is one `package-cycle` finding, identified by the package
   name and placed on its first file, so growing a legacy cycle adds a finding for the new package
@@ -548,7 +563,12 @@ A Checkstyle rule prints as its full check class, for example
 - **Fixture.** `languages/java/guards/guards.e2e.test.mjs` runs the Gradle tasks on
   `languages/java/adapters/fixtures/guards-project`, whose sources hold one violating and one clean
   sample per rule with a `// violation: <tool>/<rule>` marker, and expects exactly the marked
-  findings (part of `npm run test:java`).
+  findings (part of `npm run test:java`). The clean samples include a `@RequestParam Optional`
+  parameter, an `HttpSecurity` bean method that throws `Exception`, a main-code rule in a test and
+  a test rule's pattern in main code. The test also checks one message's exception route, and runs
+  PMD on `guards-release-11`, compiled for Java 11, where `InstanceofThenCast` and
+  `CollectorsToList` must not fire. The `lint-not-run` path is unit-tested only: a source that
+  breaks the lint compile breaks `compileJava` first.
 - **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
   JPA entity is common enough that blocking it needs its own decision), `java.util.Random`
   (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the

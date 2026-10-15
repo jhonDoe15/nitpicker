@@ -492,7 +492,9 @@ The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jd
 class directory (the Java and the Kotlin one, so references in both directions between the languages
 count) and the Nitpicker side builds the package graph as for Java (see the
 [Java preset](java-preset.md#coupling-and-stability-ticket-sh6)): a package depending on a less stable
-package fails with `stability-direction`, with the report-only coupling metrics beside it.
+package fails with `stability-direction`, with the report-only coupling metrics beside it. Packages
+in a dependency cycle fail with `package-cycle`, one finding per package, from the same graph (see the
+Java preset's Guards section).
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin
 metrics step lists the JVM class names of each file: its top-level classes, objects and interfaces and
