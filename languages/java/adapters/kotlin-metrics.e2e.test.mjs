@@ -15,7 +15,7 @@ import {
   NESTING,
   ROOT_PACKAGE,
   UNITS,
-} from './fixtures/kotlin-metrics/sources.mjs';
+} from './test-support/kotlin-metrics-sources.mjs';
 
 // Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
 // files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
