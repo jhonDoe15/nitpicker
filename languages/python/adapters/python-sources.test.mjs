@@ -159,13 +159,27 @@ describe('listing production modules', () => {
       '**/*_test.py',
       '**/conftest.py',
     ]);
-    expect(nonProductionGlobs(['.'], []).slice(-4)).toEqual([
+    expect(nonProductionGlobs(['.'], [])).toEqual([
+      '**/__pycache__/**',
+      '**/venv/**',
+      '**/node_modules/**',
+      '**/site-packages/**',
+      '**/.git/**',
+      '**/.venv/**',
+      '**/.tox/**',
+      '**/.nox/**',
+      '**/.eggs/**',
+      '**/.mypy_cache/**',
+      '**/.ruff_cache/**',
+      '**/.pytest_cache/**',
+      '**/test_*.py',
+      '**/*_test.py',
+      '**/conftest.py',
       'docs/**',
       'doc/**',
       'examples/**',
       'scripts/**',
     ]);
-    expect(nonProductionGlobs(['src'], [])).not.toContain('**/build/**');
   });
 
   it('gives the duplicate scan the same exclusions', () => {

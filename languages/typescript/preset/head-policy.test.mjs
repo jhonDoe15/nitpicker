@@ -228,7 +228,12 @@ function git(cwd, arguments_) {
 
 describe('head policy duplicates key', () => {
   it('is left out of the policy until the config sets it and read back as an empty object', () => {
-    expect(resolveHeadPolicy({})).not.toHaveProperty('duplicates');
+    expect(resolveHeadPolicy({})).toEqual({
+      exclude: [],
+      layout: {},
+      exceptions: [],
+      thresholds: {},
+    });
     withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
       expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({});
       expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toBeUndefined();

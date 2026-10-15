@@ -376,7 +376,6 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     rmSync(repository, { recursive: true, force: true });
   });
 

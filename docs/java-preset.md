@@ -287,10 +287,17 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
-  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in `core/tooling/jscpd/run-jscpd.mjs`, shared with Python) (the one the TypeScript
-  `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
-  per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring the folders named `build`, `generated`, `target` and `out` at any depth (the config key `duplicates.skippedFolders` replaces this list; it reaches the runner as `--duplicate-skipped-folders`). Clones made only of `package` and `import` lines (the clone may end on the line where the following declaration starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
+  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (`runJscpd` in
+  `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
+  check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
+  main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's
+  `.jscpd.json` is not read). It ignores the folders named `build`, `generated`, `target` and `out`
+  at any depth; the config key `duplicates.skippedFolders` replaces this list (an empty list
+  ignores nothing) and reaches the runner as `--duplicate-skipped-folders`. Clones made only of
+  `package` and `import` lines (the clone may end on the line where the following declaration
+  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). The message names
+  both files and tells to add either to `exclude`, and a glob that matches either file of the pair
+  lifts the finding. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
   `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name

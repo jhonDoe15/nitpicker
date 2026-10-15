@@ -7,8 +7,12 @@ Before adding, loosening or removing a rule, read [docs/mindset.md](docs/mindset
 One npm package (`nitpicker`) serves every language; the package root is the repository root.
 
 - `core/`: the engine (base/head comparison, fingerprinting, scheduling, reports, the CLI) and the
-  tool helpers every language shares (`core/tooling/`).
-- `shared/`: language-neutral policy and custom rules. It imports neither `core/` nor `languages/`.
+  tool helpers every language shares (`core/tooling/`: jscpd, the git base diff, the runner
+  arguments).
+- `shared/`: language-neutral policy and custom rules (`rules/`), the finding policy that applies
+  `exclude`, exceptions and the legacy inventory (`findings/`) and the report readers every
+  language shares (`ingest/`: SARIF, format checks, lizard CRAP, structure reports). It imports
+  neither `core/` nor `languages/`.
 - `languages/typescript/`: the ESLint/strict preset (`preset/`) and the TypeScript analyzers
   (`adapters/`).
 - `languages/javascript/`: what the JavaScript preset changes in the TypeScript pipeline (JSDoc
@@ -18,7 +22,7 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
   with Kotlin tools added (`kotlin-*.mjs`).
 - `languages/python/`: the nitpicker-owned ruff config (`ruff/`), the Python analyzer (`adapters/`)
   and the coverage.py report ingester (`ingest/`); it reuses the generic ingesters in
-  `languages/java/ingest/`.
+  `shared/ingest/`.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
