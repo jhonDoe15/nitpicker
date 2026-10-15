@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
+import { exceptionRoute } from './advice/exception-route.mjs';
 
 const FORBIDDEN_APIS_TOOL = 'forbiddenapis';
 const FORBIDDEN_REPORT = 'forbidden-apis.txt';
@@ -45,7 +46,7 @@ function useFinding(use, file, unique) {
     rule: use.rule,
     path: file,
     identity: unique(hashIdentity('forbidden', [use.rule, file, use.className, use.signature])),
-    message: `${use.text} Found: ${shortName(use.signature)}. If it is right here, add an exception for ${FORBIDDEN_APIS_TOOL}/${use.rule} in nitpicker.config.json.`,
+    message: `${use.text} Found: ${shortName(use.signature)}. ${exceptionRoute(FORBIDDEN_APIS_TOOL, use.rule)}`,
     classification: 'enforceable',
     location: { line: use.line },
   };

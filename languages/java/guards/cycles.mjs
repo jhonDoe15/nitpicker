@@ -1,4 +1,5 @@
 import { RULE_IDS } from '../../../shared/policy.mjs';
+import { exceptionRoute } from './advice/exception-route.mjs';
 
 const PACKAGE_CYCLE_RULE = RULE_IDS.packageCycle;
 const LISTED_MEMBERS = 5;
@@ -109,7 +110,7 @@ function memberFinding({ tool, member, others, path }) {
     message:
       `Package ${member} is in a dependency cycle with ${listed(others)}. ` +
       'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
-      `If it is right here, add an exception for ${tool}/${PACKAGE_CYCLE_RULE} in nitpicker.config.json.`,
+      exceptionRoute(tool, PACKAGE_CYCLE_RULE),
     classification: 'enforceable',
   };
 }

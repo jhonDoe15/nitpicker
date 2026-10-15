@@ -3,6 +3,7 @@ import path from 'node:path';
 import { jscpdClones } from '../../../core/tooling/jscpd-clones.mjs';
 import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { exceptionRoute } from './advice/exception-route.mjs';
 
 const CPD_REPORT = 'cpd.xml';
 const JSCPD_REPORT = 'duplicates.json';
@@ -161,5 +162,10 @@ export function readCpdFindings(reportRoot, { projectRoot, testRoots }) {
   }
   return evaluateDuplicates(clones, DUPLICATES_TOOL)
     .filter((finding) => finding.classification === 'enforceable')
-    .map((finding) => withTestAdvice(finding, inTests));
+    .map((finding) => withTestAdvice(finding, inTests))
+    .map((finding) => ({
+      ...finding,
+      identity: `cpd:${finding.identity}`,
+      message: `${finding.message} ${exceptionRoute(DUPLICATES_TOOL, finding.rule)}`,
+    }));
 }

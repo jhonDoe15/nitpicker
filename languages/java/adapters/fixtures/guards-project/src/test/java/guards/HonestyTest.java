@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
@@ -80,5 +81,14 @@ class HonestyTest {
     task.run();
     verify(task).run();
     assertEquals(0, values.size());
+  }
+
+  @Test
+  void readsAnOptional() {
+    assertEquals("ada", orEmpty(Optional.of("ada")));
+  }
+
+  private static String orEmpty(Optional<String> value) {
+    return value.orElse("");
   }
 }

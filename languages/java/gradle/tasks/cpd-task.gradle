@@ -11,6 +11,8 @@ tasks.register('nitpickerCpd', JavaExec) {
         (sourceSets.main.allJava.sourceDirectories.files + sourceSets.test.allJava.sourceDirectories.files).findAll { it.exists() }
     }
     onlyIf { !sourceDirectories().isEmpty() }
+    inputs.files(sourceSets.main.allJava, sourceSets.test.allJava).withPropertyName('sources')
+    outputs.file(report).withPropertyName('report')
     doFirst {
         reportDir.get().asFile.mkdirs()
         standardOutput = new FileOutputStream(report.get().asFile)
