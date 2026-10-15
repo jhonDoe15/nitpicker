@@ -32,11 +32,21 @@ const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+  {
+    crapLimit,
+    preset = 'java',
+    fileLimits,
+    exclude,
+    exceptions,
+    reportDirectory = REPORT_DIRECTORY,
+    projectWide = true,
+  } = {},
 ) {
   const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
-  requireGradleReports(projectRoot, preset);
+  const reportRoot = path.join(projectRoot, reportDirectory);
+  if (reportDirectory === REPORT_DIRECTORY) {
+    requireGradleReports(projectRoot, preset);
+  }
   const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   if (kotlin) {
     requireKotlinManifest(manifest);
@@ -62,17 +72,21 @@ export function readJavaFindings(
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...readJavaFileLimitFindings(projectRoot, {
-        manifest,
-        kotlin,
-        policy: { thresholds: fileLimits, exclude, exceptions },
-      }),
+      ...(projectWide
+        ? readJavaFileLimitFindings(projectRoot, {
+            manifest,
+            kotlin,
+            policy: { thresholds: fileLimits, exclude, exceptions },
+          })
+        : []),
       ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, {
-        projectRoot,
-        sourceRoots: context.sourceRoots,
-        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-      }),
+      ...(projectWide
+        ? readCouplingFindings(reportRoot, {
+            projectRoot,
+            sourceRoots: context.sourceRoots,
+            kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+          })
+        : []),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
