@@ -370,7 +370,13 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
-    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
+    ).toEqual([
+      {
+        message:
+          'Branch coverage is 50.00%; minimum is 95%. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/Label.kt"],"function":"Label.larger","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        location: { line: 4 },
+      },
+    ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(
@@ -460,6 +466,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
         const recorded = addOneWayHint({
           tool: 'detekt',
           rule: testCase.rule,
+          path: finding.path,
           message: expectedMessage(testCase, 'banned'),
         });
 
@@ -660,13 +667,13 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'structure function-statements-limit rank',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
-      'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
+      'depth nests control flow 3 deep (limit 2). Return early instead of nesting. If a reviewer agrees this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/change/Deep.kt"],"function":"depth","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(messageOf('function-parameters-limit', 'product')).toBe(
-      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Grown.kt"],"function":"product","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(messageOf('crap-score-limit', 'classify2')).toBe(
-      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Complex2.kt"],"function":"classify2","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',
@@ -686,7 +693,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       {
         rule: 'stability-direction',
         identity: 'package-edge:stable2->churn2',
-        message: 'stable2 depends on less stable package churn2',
+        message:
+          'stable2 depends on less stable package churn2. If a reviewer agrees this is intended, add {"rule":"stability-direction","paths":["stable2"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       },
     ]);
     const stable = onlyTools(result.newFindings, 'coupling').find(

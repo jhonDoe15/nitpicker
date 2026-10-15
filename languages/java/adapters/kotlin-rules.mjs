@@ -1,4 +1,5 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../shared/exceptions/sentence.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const BANNED_SUPPRESSIONS = [
@@ -57,10 +58,6 @@ export const ONE_WAY_RULE_IDS = ONE_WAY_RULES.map(({ id }) => id);
 
 export function isBannedSuppression(token) {
   return DETEKT_RULESETS.has(token) || BANNED_SUPPRESSIONS.some((banned) => banned.test(token));
-}
-
-function appendSentence(message, sentence) {
-  return `${message.replace(/\.?\s*$/, '')}. ${sentence}`;
 }
 
 export function addOneWayHint(finding) {
