@@ -1,3 +1,5 @@
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import ts from 'typescript';
@@ -25,7 +27,7 @@ function sourceEvidence(sourceText) {
   );
   const dynamicImports = new Set();
 
-  function visit(node) {
+  for (const node of depthFirst(sourceFile, syntaxChildren)) {
     if (
       ts.isCallExpression(node) &&
       node.expression.kind === ts.SyntaxKind.ImportKeyword &&
@@ -34,9 +36,7 @@ function sourceEvidence(sourceText) {
     ) {
       dynamicImports.add(node.arguments[0].text);
     }
-    ts.forEachChild(node, visit);
   }
-  visit(sourceFile);
   return { dynamicImports };
 }
 
@@ -86,26 +86,27 @@ function dependencyMap(graph, sourceTexts) {
   );
 }
 
+function unvisitedRuntimeTargets(edges, visited) {
+  return edges
+    .filter((edge) => edge.kind === 'runtime' && !visited.has(edge.target))
+    .map((edge) => edge.target);
+}
+
 function runtimeReachability(source, dependencies) {
   const direct = dependencies.get(source)?.filter((edge) => edge.kind === 'runtime') ?? [];
   const visited = new Set();
   const pending = direct.map((edge) => edge.target);
-  while (pending.length > 0) {
-    const current = pending.shift();
+  for (const current of pending) {
     if (visited.has(current)) {
       continue;
     }
     visited.add(current);
-    for (const edge of dependencies.get(current) ?? []) {
-      if (edge.kind === 'runtime' && !visited.has(edge.target)) {
-        pending.push(edge.target);
-      }
-    }
+    pending.push(...unvisitedRuntimeTargets(dependencies.get(current) ?? [], visited));
   }
   return { direct, visited };
 }
 
-function typeOnlyProductionReachability(source, dependencies, productionRoots, layout) {
+function typeOnlyProductionReachability({ source, dependencies, productionRoots, layout }) {
   const visited = new Set();
   const production = new Set();
   const pending = (dependencies.get(source) ?? []).map((edge) => ({
@@ -113,8 +114,7 @@ function typeOnlyProductionReachability(source, dependencies, productionRoots, l
     usedTypeOnlyEdge: edge.kind === 'type-only',
   }));
 
-  while (pending.length > 0) {
-    const current = pending.shift();
+  for (const current of pending) {
     const key = `${current.target}\0${String(current.usedTypeOnlyEdge)}`;
     if (visited.has(key)) {
       continue;
@@ -229,12 +229,12 @@ function classifyTest(source, { layout, dependencies, sourceTexts, bridges, prod
     .filter((target) => isProduction(target, productionRoots, layout))
     .sort();
   const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
-  const typeOnlyProductionModules = typeOnlyProductionReachability(
+  const typeOnlyProductionModules = typeOnlyProductionReachability({
     source,
     dependencies,
     productionRoots,
     layout,
-  );
+  });
   return {
     test: source,
     category: categoryOf({

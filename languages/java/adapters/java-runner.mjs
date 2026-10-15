@@ -4,7 +4,7 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
