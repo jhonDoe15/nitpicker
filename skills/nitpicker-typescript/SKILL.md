@@ -60,8 +60,9 @@ If your change edits a function that existed before it, read
 
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
-- `type`, never `interface`; string-literal unions, never `enum`; no classes except `Error`
-  subclasses.
+- `type`, never `interface` (except to merge into a `declare module`/`declare global` augmentation or
+  a global `.d.ts` such as `vite-env.d.ts`); string-literal unions, never `enum`; no classes except
+  `Error` subclasses.
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)

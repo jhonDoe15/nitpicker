@@ -114,10 +114,13 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
-- `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
-  can only merge interfaces. No `enum` (use unions of string literals) and no `namespace`.
+- `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
+  the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in
+  `vite-env.d.ts`), which can only merge interfaces. No `enum` (use unions of string literals) and
+  no `namespace`.
 - Classes only for `Error` subclasses.
-- Named exports only; config files are exempt.
+- Named exports only; config files and `declare module` blocks (`declare module '*.svg'`) are
+  exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
 - No `as`, `any`, or non-null assertions.

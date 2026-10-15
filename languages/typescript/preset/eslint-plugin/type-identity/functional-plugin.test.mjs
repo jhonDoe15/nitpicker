@@ -41,30 +41,40 @@ writeFileSync(
   }),
 );
 
-const eslint = new ESLint({
-  cwd: root,
-  overrideConfigFile: true,
-  overrideConfig: [
-    {
-      files: ['**/*.ts'],
-      languageOptions: {
-        parser: tseslint.parser,
-        parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
+function createLinter() {
+  return new ESLint({
+    cwd: root,
+    overrideConfigFile: true,
+    overrideConfig: [
+      {
+        files: ['**/*.ts'],
+        languageOptions: {
+          parser: tseslint.parser,
+          parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
+        },
+        plugins: { functional: functionalPlugin },
+        rules: { 'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }] },
       },
-      plugins: { functional: functionalPlugin },
-      rules: { 'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }] },
-    },
-  ],
-});
+    ],
+  });
+}
+
+async function lintInOrder(names) {
+  const eslint = createLinter();
+  const found = {};
+  for (const name of names) {
+    const [result] = await eslint.lintFiles([path.join(directory, name)]);
+    found[name] = result.messages.map((message) => message.message);
+  }
+  return found;
+}
+
+const orders = [Object.keys(fixtures), Object.keys(fixtures).toReversed()];
 
 async function mutableParameters() {
-  const results = await eslint.lintFiles([path.join(directory, '*.ts')]);
-  return Object.fromEntries(
-    results.map((result) => [
-      path.basename(result.filePath),
-      result.messages.map((message) => message.message),
-    ]),
-  );
+  const [forward, backward] = await Promise.all(orders.map(lintInOrder));
+  expect(backward).toEqual(forward);
+  return forward;
 }
 
 afterAll(() => {
