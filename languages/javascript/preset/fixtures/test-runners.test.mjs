@@ -132,7 +132,7 @@ describe('a project that mixes test runners', () => {
       const { exitCode, stderrText } = run(createProject(fixtureRoot, mixed), ['--all']);
 
       expect(stderrText).toBe(
-        'nitpicker.config.json: found several test runners (Jest: "jest" in package.json dependencies; node:test: test/greeting.test.js imports node:test). Choose one with "tools": { "tests": { "runner": "vitest" | "jest" | "node-test" } } in nitpicker.config.json.\n',
+        'nitpicker failed: nitpicker.config.json: found several test runners (Jest: "jest" in package.json dependencies; node:test: test/greeting.test.js imports node:test). Choose one with "tools": { "tests": { "runner": "vitest" | "jest" | "node-test" } } in nitpicker.config.json.\n',
       );
       expect(exitCode).toBe(2);
     },

@@ -8,12 +8,29 @@ import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runn
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
+  ['typescript', ['engine']],
   ['tests', ['runner']],
+]);
+const ENGINES = new Map([
+  [
+    'eslint',
+    {
+      values: ['oxlint', 'eslint'],
+      meaning: '"oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint',
+    },
+  ],
+  [
+    'typescript',
+    {
+      values: ['native', 'project'],
+      meaning:
+        '"native" type checks with TypeScript 7 (the default); "project" uses the project\'s own TypeScript',
+    },
+  ],
 ]);
 const GRADLE_TOOL_SETTING_KEYS = new Map(
   [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
 );
-const LINT_ENGINES = ['oxlint', 'eslint'];
 const SINGLE_CONFIG_TOOLS = ['checkstyle'];
 const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
@@ -46,8 +63,8 @@ function validateToolSettings(name, settings, toolSettingKeys) {
       `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
     );
   }
-  if (name === 'eslint') {
-    validateLintEngine(settings.engine);
+  if (ENGINES.has(name)) {
+    validateEngine(name, settings.engine);
     return;
   }
   if (name === 'tests') {
@@ -62,11 +79,10 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
 }
 
-function validateLintEngine(engine) {
-  if (engine !== undefined && !LINT_ENGINES.includes(engine)) {
-    throw configError(
-      `"tools.eslint.engine" must be "oxlint" or "eslint". "oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint`,
-    );
+function validateEngine(name, engine) {
+  const { values, meaning } = ENGINES.get(name);
+  if (engine !== undefined && !values.includes(engine)) {
+    throw configError(`"tools.${name}.engine" must be "${values.join('" or "')}". ${meaning}`);
   }
 }
 

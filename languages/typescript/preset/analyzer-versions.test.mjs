@@ -34,6 +34,16 @@ describe('ESLint analyzer versions', () => {
   it('leaves non-ESLint analyzer versions free of plugin versions', () => {
     expect(resolveAnalyzerVersion('prettier-format', '/project', fakeResolver())).toBe('1.0.0');
   });
+
+  it('records both TypeScript versions for the type check, whichever engine runs', () => {
+    expect(
+      resolveAnalyzerVersion(
+        'typescript-typecheck',
+        '/project',
+        fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' }),
+      ),
+    ).toBe('5.9.3;typescript-native@7.0.2');
+  });
 });
 
 describe('test runner analyzer versions', () => {
