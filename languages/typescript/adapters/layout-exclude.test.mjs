@@ -16,6 +16,7 @@ import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs
 // copies of the same violation (the exclusion is honored).
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
+const TOOL_TIMEOUT_MS = 60_000;
 const temporaryRoots = [];
 
 const customConfig = {
@@ -44,21 +45,16 @@ afterAll(() => {
   }
 });
 
-const analyzerRuns = new Map();
-
-function runOf(name) {
-  if (!analyzerRuns.has(name)) {
-    analyzerRuns.set(name, analyze([name], fixtureFiles()));
-  }
-  return analyzerRuns.get(name);
-}
-
 describe('custom layout and exclude across runners and tools', () => {
-  it.each(ANALYZER_NAMES)('runs %s without a tool error', (name) => {
-    const run = runOf(name);
+  let run;
 
+  beforeAll(() => {
+    run = analyze(ANALYZER_NAMES, fixtureFiles());
+  }, TOOL_TIMEOUT_MS);
+
+  it('runs every analyzer without a tool error', () => {
     expect(run.toolErrors).toEqual([]);
-    expect([...run.reports.keys()]).toEqual([name]);
+    expect([...run.reports.keys()].sort()).toEqual([...ANALYZER_NAMES].sort());
   });
 
   it.each([
@@ -73,15 +69,15 @@ describe('custom layout and exclude across runners and tools', () => {
     ['duplicates', 'spec/live/copy-a.test.ts'],
     ['test-runtime', 'spec/live.test.ts'],
   ])('%s analyzes the custom lib/ and spec/ roots', (name, expectedPath) => {
-    expect(findingPaths(runOf(name), name)).toContain(expectedPath);
+    expect(findingPaths(run, name)).toContain(expectedPath);
   });
 
   it.each(ANALYZER_NAMES)('%s reports nothing from excluded paths', (name) => {
-    expect(findingPaths(runOf(name), name).filter(isExcludedPath)).toEqual([]);
+    expect(findingPaths(run, name).filter(isExcludedPath)).toEqual([]);
   });
 
   it('reports coupling metrics for the custom root only', () => {
-    const paths = findingPaths(runOf('coupling'), 'coupling', { includeDescriptive: true }).filter(
+    const paths = findingPaths(run, 'coupling', { includeDescriptive: true }).filter(
       (findingPath) => findingPath !== '.',
     );
     expect([...new Set(paths)].sort()).toEqual([
@@ -201,11 +197,20 @@ describe('custom layout and exclude for tools that need project dependencies', (
 });
 
 describe('custom layout through the command line', () => {
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
   it('reads layout and exclude from nitpicker.config.json for a full snapshot run', () => {
-    const projectRoot = createGitProject({
-      ...fixtureFiles(),
-      'nitpicker.config.json': `${JSON.stringify(customConfig)}\n`,
-    });
+    const projectRoot = createGitProject(
+      {
+        ...fixtureFiles(),
+        'nitpicker.config.json': `${JSON.stringify(customConfig)}\n`,
+      },
+      gitTemplateRoot,
+    );
     const chunks = [];
     const exitCode = runCli({
       arguments_: ['--all', '--analyzer', 'dependency-architecture', '--output', 'out'],
@@ -389,7 +394,7 @@ function createProject(files) {
   return projectRoot;
 }
 
-function createGitProject(files) {
+function createGitProject(files, templateRoot) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-cli-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'repo');
@@ -399,7 +404,7 @@ function createGitProject(files) {
       cwd: projectRoot,
       env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
     });
-  copyGitTemplate(gitTemplate.root, projectRoot);
+  copyGitTemplate(templateRoot, projectRoot);
   git('config', 'user.name', 'Layout Fixture');
   git('config', 'user.email', 'layout@example.invalid');
   git('add', '-A');
@@ -414,8 +419,3 @@ function writeFiles(root, files) {
     writeFileSync(filePath, contents);
   }
 }
-
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
-});

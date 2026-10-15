@@ -154,12 +154,18 @@ describe('head policy reader', () => {
 });
 
 describe('head policy delivery', () => {
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
   it('shows the head policy to a runner child process on both the base and head runs', () => {
     const root = realpathSync(temporaryDirectory());
     const logPath = path.join(root, 'probe.log');
     const repository = path.join(root, 'repo');
     mkdirSync(repository);
-    copyGitTemplate(gitTemplate.root, repository);
+    copyGitTemplate(gitTemplateRoot, repository);
     git(repository, ['config', 'user.name', 'Policy Fixture']);
     git(repository, ['config', 'user.email', 'policy@example.invalid']);
     writeFileSync(path.join(repository, 'a.txt'), 'base\n');
@@ -232,8 +238,3 @@ const gitFixtureEnvironment = {
 function git(cwd, arguments_) {
   return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
 }
-
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
-});
