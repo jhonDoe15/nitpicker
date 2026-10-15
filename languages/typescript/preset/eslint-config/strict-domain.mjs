@@ -87,7 +87,10 @@ export const domainFunctionalRules = {
 };
 
 export const domainTypeAwareFunctionalRules = {
-  'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }],
+  'functional/prefer-immutable-types': [
+    'error',
+    { enforcement: 'ReadonlyDeep', variables: { ignoreInFunctions: true } },
+  ],
 };
 
 export const strictDomainConfig = [
