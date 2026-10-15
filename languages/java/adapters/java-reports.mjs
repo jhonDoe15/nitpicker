@@ -7,6 +7,7 @@ import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from './spring/java-spring.mjs';
+import { readSpringArchFindings } from './spring-arch/spring-arch.mjs';
 import {
   methodText,
   readJavaFileLimitFindings,
@@ -76,6 +77,7 @@ export function readJavaFindings(
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
+      ...springArchFindings(context),
     ],
   };
 }
@@ -97,6 +99,16 @@ function springFindings({ projectRoot, manifest, sourceRoots }) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
     : [];
+}
+
+function springArchFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
+  if (manifest.spring !== true) {
+    return [];
+  }
+  const locate = sourceLocator(projectRoot, [...sourceRoots, ...(manifest.testSourceRoots ?? [])]);
+  return readSpringArchFindings(reportRoot, {
+    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
+  });
 }
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {

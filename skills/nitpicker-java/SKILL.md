@@ -126,7 +126,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
-  `*ArchTest` class with Gradle to read the full violation, and fix the code.
+  `*ArchTest` class with Gradle to read the full violation, and fix the code. In a Spring
+  project nitpicker's own `archunit/spring-...` rules apply too; their message says what to change
+  (see [spring.md](spring.md)).
 
 ## Kotlin projects
 

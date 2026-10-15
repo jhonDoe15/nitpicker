@@ -393,6 +393,10 @@ describe('readJavaFindings: Spring configuration', () => {
       path.join(root, 'build/nitpicker/manifest.json'),
       JSON.stringify({ sourceRoots: ['src/main/java'], ...manifest }),
     );
+    writeFileSync(
+      path.join(root, 'build/nitpicker/spring-arch.json'),
+      JSON.stringify({ root: 'demo', violations: [] }),
+    );
   }
 
   it('reads application files from the default and the manifest resource roots', () => {
@@ -425,6 +429,56 @@ describe('readJavaFindings: Spring configuration', () => {
     writeManifest(root, { spring: true });
 
     expect(spring(readJavaFindings(root).findings)).toEqual([]);
+  });
+});
+
+describe('readJavaFindings: Spring architecture rules', () => {
+  const violations = [
+    { rule: 'spring-layout', className: 'demo.Bad', fileName: 'Bad.java', detail: '' },
+    {
+      rule: 'spring-test-placement',
+      className: 'demo.BadTest',
+      fileName: 'BadTest.java',
+      detail: '',
+    },
+  ];
+
+  function withReport(manifest, report = { root: 'demo', violations }) {
+    const root = projectWithReports();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/manifest.json'),
+      JSON.stringify({
+        sourceRoots: ['src/main/java'],
+        testSourceRoots: ['src/test/java'],
+        ...manifest,
+      }),
+    );
+    mkdirSync(path.join(root, 'src/test/java/demo'), { recursive: true });
+    writeFileSync(path.join(root, 'src/test/java/demo/BadTest.java'), 'class BadTest {}\n');
+    if (report !== null) {
+      writeFileSync(path.join(root, 'build/nitpicker/spring-arch.json'), JSON.stringify(report));
+    }
+    return root;
+  }
+
+  const architecture = (findings) =>
+    identities(findings.filter((finding) => finding.rule.startsWith('spring-')));
+
+  it('attaches each violation to its main or test source file', () => {
+    expect(architecture(readJavaFindings(withReport({ spring: true })).findings)).toEqual([
+      ['archunit', 'spring-layout', 'src/main/java/demo/Bad.java', 'demo.Bad'],
+      ['archunit', 'spring-test-placement', 'src/test/java/demo/BadTest.java', 'demo.BadTest'],
+    ]);
+  });
+
+  it.each([{ spring: false }, {}])('ignores the report unless Spring is on (%j)', (manifest) => {
+    expect(architecture(readJavaFindings(withReport(manifest)).findings)).toEqual([]);
+  });
+
+  it('fails when a Spring project has no report, instead of passing unchecked', () => {
+    expect(() => readJavaFindings(withReport({ spring: true }, null))).toThrow(
+      'The Spring architecture report spring-arch.json is missing',
+    );
   });
 });
 

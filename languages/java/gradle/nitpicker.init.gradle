@@ -13,6 +13,7 @@
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
 //   build/nitpicker/checkstyle-test.xml  Checkstyle XML report (test sources; absent without any)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
+//   build/nitpicker/spring-arch.json nitpicker's own Spring architecture rules (Spring projects only; absent otherwise)
 //   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters and cyclomatic
 //                                    complexity (the CRAP input) (languages/java/gradle/StructureMetrics.java)
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
@@ -48,6 +49,7 @@ def pinned = [
     lizard          : '1.24.1',
     pitest          : '1.17.4',
     pitestJunit5    : '1.2.1',
+    archunit        : '1.5.1',
     detekt          : '1.23.8',
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
@@ -87,6 +89,7 @@ allprojects {
             nitpickerSpotbugs { canBeConsumed = false }
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
+            nitpickerSpringArch { canBeConsumed = false }
         }
         repositories { mavenCentral() }
         dependencies {
@@ -94,6 +97,7 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
+            nitpickerSpringArch "com.tngtech.archunit:archunit:${pinned.archunit}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -259,6 +263,46 @@ allprojects {
             }
         }
 
+        tasks.register('nitpickerSpringArch') {
+            group = 'nitpicker'
+            dependsOn tasks.named('classes'), tasks.named('testClasses')
+            onlyIf { usesSpring() }
+            def ruleSources = new File(initScriptDir, 'archunit').listFiles().findAll { it.name.endsWith('.java') }.sort()
+            doLast {
+                def directory = reportDir.get().dir('spring-arch').asFile
+                directory.deleteDir()
+                directory.mkdirs()
+                def existing = { Collection<File> files -> files.findAll { it.exists() } }
+                def mainClasses = existing(sourceSets.main.output.classesDirs.files)
+                def testClasses = existing(sourceSets.test.output.classesDirs.files)
+                def libraries = existing(configurations.nitpickerSpringArch.files)
+                def projectPath = existing(mainClasses + testClasses
+                    + sourceSets.main.compileClasspath.files + sourceSets.test.compileClasspath.files)
+                def classes = new File(directory, 'classes')
+                def argumentFile = { String name, Collection<File> entries ->
+                    def file = new File(directory, name)
+                    def joined = entries.unique()*.absolutePath.join(File.pathSeparator).replace('\\', '\\\\')
+                    file.text = "-cp\n\"${joined}\"\n"
+                    "@${file.absolutePath}".toString()
+                }
+                def run = { List<String> command ->
+                    def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
+                    def log = process.inputStream.getText('UTF-8')
+                    if (process.waitFor() != 0) {
+                        throw new GradleException("Spring architecture rules failed: ${log.trim()}")
+                    }
+                }
+                def bin = { String name -> new File(System.getProperty('java.home'), "bin/${name}").absolutePath }
+                run([bin('javac'), '-proc:none', '-nowarn', '-d', classes.absolutePath, argumentFile('compile.args', libraries)]
+                    + ruleSources*.absolutePath)
+                def output = reportDir.get().file('spring-arch.json').asFile
+                output.delete()
+                run([bin('java'), argumentFile('run.args', [classes] + libraries + projectPath), 'ArchRules',
+                     output.absolutePath, mainClasses*.absolutePath.join(File.pathSeparator),
+                     testClasses*.absolutePath.join(File.pathSeparator)])
+            }
+        }
+
         // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
         // JUnit 4) against each mutant. It needs a green test run to start, so a failing test suite
         // fails the task like it fails `test`. Everything under the main classes is a target.
@@ -366,7 +410,7 @@ allprojects {
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
             description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
