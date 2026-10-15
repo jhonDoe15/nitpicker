@@ -152,6 +152,7 @@ describe('magic numbers and other basics', () => {
       'a number in a function inside a constant',
       'export const timers = { wait() { return sleep(5000); } };',
     ],
+    ['a number in a module-level statement', 'schedule(86400);'],
     [
       'a status-sized number elsewhere',
       'export function f(xs: readonly number[]) { return xs.at(404); }',

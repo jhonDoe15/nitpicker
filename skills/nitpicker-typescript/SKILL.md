@@ -62,9 +62,7 @@ If your change edits a function that existed before it, read
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
-  may be `undefined`: check the value you got. Read an index-signature key with brackets
-  (`env['PORT']`, `styles['card']`); an optional field a caller passes `undefined` into is
-  `title?: string | undefined`.
+  may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions.
 - Template literals take strings only: `${String(count)}`.
@@ -72,7 +70,7 @@ If your change edits a function that existed before it, read
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
   returns -1, 1 or 0 from `<` and `>`, with its own unit test (a sort reads only the sign). Chain
   keys on its result: `const byMonth = compareText(a.month, b.month); if (byMonth !== 0) return byMonth;`.
-- `for...of` is the only loop, and no recursion (mutual recursion included): a retry is `for...of` over attempt numbers.
+- `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
@@ -80,43 +78,16 @@ If your change edits a function that existed before it, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
-- Exported functions declare their return type: `export function total(rows: readonly Row[]): number`;
-  a component returns `ReactElement` (`import type { ReactElement } from 'react'`).
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules
 
-- `process.env`, `process.argv` and `process.exit` live only in the composition root and the entry
-  point; pass values in. A React project may read `import.meta.env` anywhere. Config values,
-  clocks and IDs arrive as parameters.
-- Name numbers: a numeric literal other than -1, 0, 1, 2, 10, 100, 1000 is a module-level
-  `const LIMIT = 30` (any arithmetic in its initializer is fine: `const DAY_MS = 24 * 60 * 60 * 1000`).
-  HTTP statuses in `res.status(404)` and `toFixed(2)` digits are fine.
-  Types are PascalCase, functions and parameters camelCase, constants camelCase or UPPER_CASE; a zod
-  schema constant may be PascalCase (`const Order = z.object(...)`).
-- Always use braces (`curly`); never reassign a parameter; no `eval`; one `import` per module
-  (`import type` may sit beside it); `export { a, b }` names its exports, never `export * from`.
-- Await every promise; deliberate fire-and-forget is `void job();`. `await Promise.allSettled(...)`
-  and read the result.
-- Shell commands use `execFile(command, [args])`, never a command string built from a variable.
-  Join a request-supplied path into a variable with `resolve` and check that variable stays under
-  the base (`full.startsWith(base + path.sep)`). Tokens come from `node:crypto`, not `Math.random`.
-- No module-level `let`/`Map`/`Set`/array that gets mutated outside `domain/`, and no exported
-  `Map`/`Set`: build lookup tables inside a function and return them, create state in a factory and
-  pass it in. Nothing with an effect at import time (`await`, timers, `fetch`, `Date.now()`).
-- Create clients, servers, pools and queues (`new Pool()`, `createClient()`, `axios.create()`) only in
-  `src/main/composition-root.ts` (or `src/main/main.ts`, `server.ts`, `composition-root/`, or
-  `src/main.ts`, `src/server.ts`); nothing else lives directly under `src/main/` except `features/`,
-  `shared/` and `index.ts`.
-- No `console` in production code; use the project's logger. Program output is
-  `process.stdout.write` in the composition root.
-- Any `*Error` thrown in a `catch` passes the caught error: `new AppError(message, { cause: error })`.
-- Zod: `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` need validated element schemas, no
-  `z.unknown()`, `z.any()`, `z.custom()` without a validator, `.passthrough()`, `.loose()`.
-- Parameter types in `domain/` are readonly types you declare there, not the adapters' `z.infer` type
-  and not `unknown`. A type guard on `unknown` input is a zod parse in `adapters/`.
-- Regexes avoid nested or overlapping repeats (`(a+)+`, `\s*\s*`): super-linear backtracking fails.
-- Legitimate exceptions go in `nitpicker.config.json` `exceptions` (rule, paths, reason), never inline.
+- Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
+  `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
+- Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
+- Run programs with `execFile(command, [args])`, never a command string.
+- Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
+  `exceptions` (rule, paths, reason), never inline.
 
 ## domain/ is deeply readonly
 
