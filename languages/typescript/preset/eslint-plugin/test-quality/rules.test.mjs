@@ -119,6 +119,13 @@ tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
     "it('fake', () => { vi.useFakeTimers(); try { run(); } finally { vi.useRealTimers(); } });",
     "import { vi as mocks } from 'vitest'; afterEach(() => mocks.useRealTimers()); mocks.useFakeTimers();",
     "describe('x', () => { afterEach(() => { vi.useRealTimers(); }); it('a', () => { vi.useFakeTimers(); }); });",
+    "afterEach(vi.useRealTimers); it('a', () => { vi.useFakeTimers(); });",
+    "it('a', ({ onTestFinished }) => { vi.useFakeTimers(); onTestFinished(() => vi.useRealTimers()); });",
+    "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
+    {
+      code: "afterEach(vi.unstubAllGlobals); afterEach(() => { vi.unstubAllEnvs(); }); it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
+      options: [{ stubs: true }],
+    },
   ],
   invalid: [
     {
@@ -143,6 +150,11 @@ tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
         "it('clicks', async () => { vi.useFakeTimers(); await userEvent.setup().click(button); });",
       ),
       errors: [{ messageId: 'unrestoredWithUserEvent' }],
+    },
+    {
+      code: "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); vi.useRealTimers(); });",
+      options: [{ stubs: true }],
+      errors: [{ messageId: 'unrestoredGlobal' }, { messageId: 'unrestoredEnv' }],
     },
   ],
 });

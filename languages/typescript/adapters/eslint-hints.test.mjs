@@ -233,10 +233,45 @@ describe('eslintMessageWithHint', () => {
       );
     });
 
-    it('leaves its other messages as they were', () => {
-      const text = 'Test is missing function argument';
+    it.each(['Disabled test', 'Disabled test suite', 'Test is missing function argument'])(
+      'adds the route to the short text oxlint reports: "%s"',
+      (text) => {
+        expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+          `${text}${hint}`,
+        );
+      },
+    );
+  });
 
-      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(text);
+  describe('vitest matchers with a nitpicker message under either lint engine', () => {
+    const relativePath = 'test/a.test.ts';
+    const defined =
+      '`toBeDefined` passes for any value but undefined. Assert the value itself with `toBe` or `toEqual`. If the value cannot be pinned, add an exception for vitest/no-restricted-matchers in nitpicker.config.json.';
+
+    it.each([
+      ['Use of `toBeDefined` is disallowed', defined],
+      ['Use of `resolves.toBeDefined` is disallowed', defined],
+      [defined, defined],
+      ['Use of `toHaveLength` is disallowed', 'Use of `toHaveLength` is disallowed'],
+    ])('names the allowed form for no-restricted-matchers: "%s"', (text, expected) => {
+      expect(
+        eslintMessageWithHint({ ruleId: 'vitest/no-restricted-matchers', text, relativePath }),
+      ).toBe(expected);
+    });
+
+    it.each([
+      [
+        'vitest/prefer-called-with',
+        'Suggest using `toBeCalledWith()` or `toHaveBeenCalledWith()`.',
+        'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. If the arguments cannot be pinned, add an exception for vitest/prefer-called-with in nitpicker.config.json.',
+      ],
+      [
+        'vitest/require-to-throw-message',
+        'Require a message for "toThrow".',
+        "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. If the message cannot be pinned, add an exception for vitest/require-to-throw-message in nitpicker.config.json.",
+      ],
+    ])('replaces the native text of %s', (ruleId, text, expected) => {
+      expect(eslintMessageWithHint({ ruleId, text, relativePath })).toBe(expected);
     });
   });
 

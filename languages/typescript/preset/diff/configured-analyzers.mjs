@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { importClosure } from '../../../../shared/modules/import-closure.mjs';
 import {
   DEFAULT_LEGACY_INVENTORY,
   withLegacyInventory,
@@ -10,6 +12,14 @@ import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
 import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { TEST_HONESTY_POLICY_FILES } from '../eslint-config/test-honesty/policy-files.mjs';
 import { createQualityChecks, eslintVersion, hashFiles } from '../quality-checks.mjs';
+
+const packageRoot = path.resolve(import.meta.dirname, '../../../..');
+
+function moduleClosure(entry) {
+  return importClosure(path.join(packageRoot, entry)).map((file) =>
+    path.relative(packageRoot, file).split(path.sep).join('/'),
+  );
+}
 
 const ANALYZER_RUNTIME_FILES = [
   'core/diff/analyzer-scheduler.mjs',
@@ -60,17 +70,11 @@ const STATIC_CHECK_ADAPTER_FILES = [
   'shared/glob.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
-const QUALITY_AREA_ADAPTER_FILES = [
+export const QUALITY_AREA_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas.mjs',
-  'languages/typescript/adapters/quality-areas-runner.mjs',
-  'languages/typescript/adapters/quality-messages/crap-unknown-message.mjs',
-  'languages/typescript/adapters/quality-messages/failure-text.mjs',
-  'languages/typescript/adapters/quality-messages/vitest-failures.mjs',
-  'languages/typescript/adapters/test-weakening/module-resolution.mjs',
-  'languages/typescript/adapters/test-weakening/tested-modules.mjs',
-  'languages/typescript/adapters/test-weakening/weakened-mutants.mjs',
+  ...moduleClosure('languages/typescript/adapters/quality-areas-runner.mjs'),
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];

@@ -11,7 +11,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 
 const REPLACEMENT_LIMIT = 80;
 const HIDDEN_BY_COMMENT =
-  'an ignore comment hides this code from mutation testing. Remove the comment and test the code; mutation ignore comments are not an exception route.';
+  'an ignore comment hides this code from mutation testing. Remove the comment and test the code. Ignore comments are not an exception route: if this code must stay out of mutation testing, add an exception for mutant-ignored with its path in nitpicker.config.json.';
 const EQUIVALENT_MUTANT_WAY_OUT =
   'If no input can tell the two apart, simplify the code so this mutant disappears.';
 

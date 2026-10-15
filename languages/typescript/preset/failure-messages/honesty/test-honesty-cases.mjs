@@ -66,11 +66,6 @@ const HONESTY_ROWS = [
   ],
   ['todo tests name writing the test', "it.todo('later');", 'write the test'],
   [
-    'fails names the correct behaviour',
-    "it.fails('x', () => { expect(run()).toBe(2); });",
-    'assert the correct behaviour',
-  ],
-  [
     'skipIf(true) names the platform condition',
     "it.skipIf(true)('x', () => {});",
     'process.platform',

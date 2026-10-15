@@ -1,10 +1,7 @@
 import { isTestFunctionChain } from '../test-quality/test-calls.mjs';
 
 const CONDITIONAL_SKIPS = new Set(['skipIf', 'runIf']);
-const TOKEN_MESSAGES = new Map([
-  ['todo', 'todo'],
-  ['fails', 'fails'],
-]);
+const TOKEN_MESSAGES = new Map([['todo', 'todo']]);
 
 function isBooleanLiteral(node) {
   return node?.type === 'Literal' && typeof node.value === 'boolean';
@@ -13,12 +10,10 @@ function isBooleanLiteral(node) {
 export const rule = {
   meta: {
     type: 'problem',
-    docs: { description: 'Ban test forms that switch a test off or invert its result' },
+    docs: { description: 'Ban test forms that switch a test off' },
     schema: [],
     messages: {
       todo: 'Do not leave a `todo` test: write the test, or delete the stub. A justified exception goes in nitpicker.config.json.',
-      fails:
-        'Do not use `fails`: the test passes when its assertion fails. Fix the code and assert the correct behaviour. A justified exception goes in nitpicker.config.json.',
       literalCondition:
         'A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === "win32"` is allowed. A justified exception goes in nitpicker.config.json.',
     },

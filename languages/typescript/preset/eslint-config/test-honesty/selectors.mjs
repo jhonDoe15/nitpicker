@@ -11,13 +11,13 @@ export const testHonestySelectors = [
   {
     selector: "CallExpression[callee.name='expect'][arguments.0.type='Literal']",
     message:
-      'A literal passed to `expect` can never fail. Pass the value the code under test returns.',
+      'A literal passed to `expect` can never fail. Pass the value the code under test returns. A justified exception for no-restricted-syntax goes in nitpicker.config.json.',
   },
   {
     selector:
       "CallExpression[callee.object.name='expect'][callee.property.name='soft'][arguments.0.type='Literal']",
     message:
-      'A literal passed to `expect.soft` can never fail. Pass the value the code under test returns.',
+      'A literal passed to `expect.soft` can never fail. Pass the value the code under test returns. A justified exception for no-restricted-syntax goes in nitpicker.config.json.',
   },
   { selector: `Identifier[name=${STRYKER_NAME}]`, message: strykerMessage },
   { selector: `Literal[value=${STRYKER_TEXT}]`, message: strykerMessage },

@@ -32,26 +32,18 @@ import { branchCoverageFindings } from '../../../shared/rules/branch-coverage.mj
 import { crapFindings } from '../../../shared/rules/crap.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { existingRoots } from '../preset/layout.mjs';
-import { readLayout } from '../preset/head-policy.mjs';
+import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
-import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
-import { testedSourceModules } from './test-weakening/tested-modules.mjs';
-import {
-  baseMutationTargets,
-  changedCodeMutants,
-  hasWeakeningCandidates,
-  mutationTargetsWithTestedModules,
-  weakenedTestFindings,
-} from './test-weakening/weakened-mutants.mjs';
+import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
+import { runScopedMutation } from './test-weakening/scoped-mutation.mjs';
 import { crapUnknownMessage } from './quality-messages/crap-unknown-message.mjs';
 import { unhandledErrors, unhandledErrorText } from './quality-messages/failure-text.mjs';
 import { formatVitestFailures, vitestFailures } from './quality-messages/vitest-failures.mjs';
 
-export { formatVitestFailures };
 import {
   layoutJscpdConfig,
   layoutKnipConfig,
@@ -490,34 +482,12 @@ function runCrap(options) {
   );
 }
 
-async function runMutation(options) {
-  const layout = readLayout();
-  const targets = mutationTargets(options, layout);
-  const testedModules = testedSourceModules(options, layout);
-  if (targets?.length === 0 && testedModules.length === 0) return [];
-  const mutationScope = { targets: targets ?? [], testedModules };
-  const head = await mutationReport(
-    options,
-    targets && mutationTargetsWithTestedModules(targets, testedModules),
-  );
-  if (head.skipped !== undefined) return head.skipped;
-  const changed = normalizeMutation(
-    changedCodeMutants(head.report, mutationScope),
-    options.analyzerName,
-  );
-  return [...changed, ...(await weakenedTestsFindings(options, head.report, mutationScope))];
-}
-
-async function weakenedTestsFindings(options, headReport, mutationScope) {
-  if (!hasWeakeningCandidates(headReport, mutationScope)) return [];
-  const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
-  const base = await mutationReport(baseOptions, baseMutationTargets(headReport, mutationScope));
-  if (base.skipped !== undefined) return base.skipped;
-  return weakenedTestFindings({
-    headReport,
-    baseReport: base.report,
-    mutationScope,
-    analyzerName: options.analyzerName,
+function runMutation(options) {
+  return runScopedMutation(options, {
+    layout: readLayout(),
+    exceptions: readHeadPolicy().exceptions,
+    mutationReport,
+    normalize: normalizeMutation,
   });
 }
 
@@ -554,21 +524,27 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
     createdFiles,
   );
-  const config = {
-    ...rebaseMutationConfig(sourceConfig, {
-      tsconfigFile: tsconfigPath && relativeProjectPath(options.projectRoot, tsconfigPath),
-      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
-    }),
-    ...(targets === undefined ? {} : { mutate: targets }),
-    ...(typeChecked ? {} : { checkers: [] }),
-    reporters: ['json'],
-    jsonReporter: { fileName: MUTATION_REPORT_PATH },
-  };
+  const config = strykerRunConfig(sourceConfig, {
+    snapshot: options.snapshot,
+    targets,
+    tsconfigFile: tsconfigPath && relativeProjectPath(options.projectRoot, tsconfigPath),
+    vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+  });
   writeTemporaryFile(
     configPath,
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+}
+
+export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) {
+  return {
+    ...rebaseMutationConfig(sourceConfig, files),
+    ...(targets === undefined ? {} : { mutate: targets }),
+    ...(snapshot === 'base' ? { checkers: [] } : {}),
+    reporters: ['json'],
+    jsonReporter: { fileName: MUTATION_REPORT_PATH },
+  };
 }
 
 const SKIP_MESSAGES = {

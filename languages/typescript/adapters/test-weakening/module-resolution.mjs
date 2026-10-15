@@ -1,10 +1,11 @@
-import { existsSync, realpathSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 
 const PROJECT_CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];
+const MAX_RE_EXPORT_DEPTH = 3;
 
-function isFile(filePath) {
+export function isFile(filePath) {
   return existsSync(filePath) && statSync(filePath).isFile();
 }
 
@@ -57,4 +58,34 @@ export function resolveProjectModule({ root, compilerOptions, fromFile }, specif
       ),
     )
     .find((modulePath) => modulePath !== undefined);
+}
+
+function reExportSpecifiers(root, modulePath) {
+  const text = readFileSync(path.join(root, modulePath), 'utf8');
+  return ts
+    .createSourceFile(modulePath, text, ts.ScriptTarget.Latest)
+    .statements.filter(
+      (statement) =>
+        ts.isExportDeclaration(statement) &&
+        statement.moduleSpecifier !== undefined &&
+        ts.isStringLiteral(statement.moduleSpecifier),
+    )
+    .map((statement) => statement.moduleSpecifier.text);
+}
+
+export function withReExportedModules({ root, compilerOptions }, modulePaths, isSourceFile) {
+  const found = new Set(modulePaths);
+  const pending = modulePaths.map((modulePath) => ({ modulePath, depth: 0 }));
+  for (const { modulePath, depth } of pending) {
+    if (depth >= MAX_RE_EXPORT_DEPTH) continue;
+    const context = { root, compilerOptions, fromFile: modulePath };
+    const reExported = reExportSpecifiers(root, modulePath)
+      .map((specifier) => resolveProjectModule(context, specifier))
+      .filter((target) => target !== undefined && isSourceFile(target) && !found.has(target));
+    for (const target of reExported) {
+      found.add(target);
+      pending.push({ modulePath: target, depth: depth + 1 });
+    }
+  }
+  return [...found];
 }

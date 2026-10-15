@@ -110,7 +110,7 @@ describe('strict test rules', () => {
     for (const config of ['languages/typescript/preset/defaults/vitest.quality.config.ts']) {
       const text = readFileSync(path.join(packageRoot, config), 'utf8');
       expect(text).toContain(
-        `testTimeout: ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
+        `MINIMUM_TIMEOUT = ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
       );
     }
     const runner = readFileSync(

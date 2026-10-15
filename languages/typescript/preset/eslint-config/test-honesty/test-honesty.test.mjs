@@ -54,6 +54,15 @@ describe('test honesty rules', () => {
     expect(messages(code)).toEqual([]);
   });
 
+  it('require restoring a global stubbed in a test file, not in a setup file', () => {
+    const stub = "vi.stubGlobal('ResizeObserver', class {});";
+
+    expect(messages(stub, 'test/setup.ts')).toEqual([]);
+    expect(messages(`it('x', () => { ${stub} expect(run()).toBe(1); });`)).toEqual([
+      'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file. A justified exception goes in nitpicker.config.json.',
+    ]);
+  });
+
   it('hold test helpers to the same rules and leave production code alone', () => {
     expect(messages('export let counter = 0;', 'test/helpers/state.ts')).toHaveLength(1);
     expect(messages('export let counter = 0;', 'src/main/state.ts')).toEqual([]);

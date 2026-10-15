@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, globSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
 import { loadConfigFromFile, type Plugin } from 'vite';
 import { configDefaults, defineConfig, type TestProjectConfiguration } from 'vitest/config';
 
@@ -39,12 +40,19 @@ function projectConfigInWorkingDirectory() {
 const perProjectPins = {
   retry: 0,
   allowOnly: false,
-  testTimeout: 10_000,
-  hookTimeout: 10_000,
   restoreMocks: true,
-  unstubEnvs: true,
-  unstubGlobals: true,
 };
+
+const MINIMUM_TIMEOUT = 10_000;
+
+type Timeouts = { testTimeout?: number; hookTimeout?: number };
+
+function timeoutPins(test: Timeouts | undefined) {
+  return {
+    testTimeout: Math.max(test?.testTimeout ?? 0, MINIMUM_TIMEOUT),
+    hookTimeout: Math.max(test?.hookTimeout ?? 0, MINIMUM_TIMEOUT),
+  };
+}
 
 const globalPins = {
   bail: 0,
@@ -69,11 +77,78 @@ const stripCoverageIgnoreHints: Plugin = {
   },
 };
 
-function pinnedProject(entry: TestProjectConfiguration): TestProjectConfiguration {
-  if (typeof entry !== 'object' || entry instanceof Promise || typeof entry === 'function') {
-    return entry;
+type InlineProject = Exclude<
+  TestProjectConfiguration,
+  string | Promise<unknown> | ((...parameters: never[]) => unknown)
+>;
+
+const PROJECT_CONFIG_FILE = /^vite(?:st)?(?:\.[\w-]+)?\.config\./u;
+const GLOB_CHARACTERS = /[*?[\]{}]/u;
+
+function pinnedInline(entry: InlineProject, extended: Timeouts = {}): InlineProject {
+  return {
+    ...entry,
+    plugins: [...(entry.plugins ?? []), stripCoverageIgnoreHints],
+    test: { ...entry.test, ...perProjectPins, ...timeoutPins({ ...extended, ...entry.test }) },
+  };
+}
+
+function directoryConfig(directory: string) {
+  const files = new Set(readdirSync(directory));
+  const name = PROJECT_CONFIG_NAMES.find((candidate) => files.has(candidate));
+  return name === undefined ? undefined : path.join(directory, name);
+}
+
+async function projectAt(projectPath: string): Promise<InlineProject> {
+  const isFile = statSync(projectPath).isFile();
+  const configFile = isFile ? projectPath : directoryConfig(projectPath);
+  const root = isFile ? path.dirname(projectPath) : projectPath;
+  if (configFile === undefined) {
+    return pinnedInline({ root });
   }
-  return 'test' in entry ? { ...entry, test: { ...entry.test, ...perProjectPins } } : entry;
+  const loaded = await loadConfigFromFile({ command: 'serve', mode: 'test' }, configFile);
+  return pinnedInline({ extends: configFile, root }, loaded?.config.test);
+}
+
+function isProjectMatch(match: string) {
+  return statSync(match).isDirectory() || PROJECT_CONFIG_FILE.test(path.basename(match));
+}
+
+function isNegatedBy(negated: readonly string[], match: string) {
+  return negated.some((pattern) => path.matchesGlob(path.relative(process.cwd(), match), pattern));
+}
+
+function projectPaths(patterns: readonly string[]) {
+  const negated = patterns
+    .filter((pattern) => pattern.startsWith('!'))
+    .map((pattern) => pattern.slice(1));
+  return patterns
+    .filter((pattern) => !pattern.startsWith('!'))
+    .flatMap((pattern) =>
+      GLOB_CHARACTERS.test(pattern)
+        ? globSync(pattern, { exclude: (entry) => entry.includes('node_modules') })
+            .map((match) => path.resolve(match))
+            .filter(isProjectMatch)
+        : [path.resolve(pattern)],
+    )
+    .filter((match) => !isNegatedBy(negated, match));
+}
+
+function pinnedProjects(entries: readonly TestProjectConfiguration[]): TestProjectConfiguration[] {
+  const paths = entries
+    .filter((entry) => typeof entry === 'string')
+    .map((entry) => entry.replace('<rootDir>', process.cwd()));
+  return [
+    ...[...new Set(projectPaths(paths))].map(projectAt),
+    ...entries.flatMap((entry): TestProjectConfiguration[] => {
+      if (typeof entry === 'string') return [];
+      if (entry instanceof Promise) return [entry.then(pinnedInline)];
+      if (typeof entry === 'function') {
+        return [async (environment) => pinnedInline(await entry(environment))];
+      }
+      return [pinnedInline(entry)];
+    }),
+  ];
 }
 
 const coverage = {
@@ -101,24 +176,22 @@ const configWithoutProjectConfig = {
     ...globalPins,
     maxWorkers: 4,
     projects: [
-      {
+      pinnedInline({
         test: {
           name: 'quality-unit',
           root: '.',
           include: sourceRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
-          ...perProjectPins,
         },
-      },
-      {
+      }),
+      pinnedInline({
         test: {
           name: 'quality-integration',
           root: '.',
           include: testRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
-          ...perProjectPins,
         },
-      },
+      }),
     ],
     coverage,
   },
@@ -132,7 +205,7 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
     plugins: [...(project.plugins ?? []), stripCoverageIgnoreHints],
     test: {
       ...project.test,
-      projects: project.test?.projects?.map(pinnedProject),
+      projects: project.test?.projects && pinnedProjects(project.test.projects),
       include: [
         ...(project.test?.include ?? []),
         ...[...sourceRoots, ...testRoots].flatMap(testFiles),
@@ -142,6 +215,7 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
       maxWorkers: 4,
       ...globalPins,
       ...perProjectPins,
+      ...timeoutPins(project.test),
       coverage,
     },
   };

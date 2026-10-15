@@ -14,7 +14,6 @@ import { planAnalyzerShards } from './sharding.mjs';
 import {
   coverageFailureFindings,
   describeUncoveredArms,
-  formatVitestFailures,
   normalizeBaselineExpansions,
   normalizeCoupling,
   normalizeCoverage,
@@ -27,6 +26,7 @@ import {
   sourceSnippet,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
 import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
+import { formatVitestFailures } from '../../languages/typescript/adapters/quality-messages/vitest-failures.mjs';
 
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',

@@ -131,6 +131,7 @@ tester.run('no-uncollected-tests', noUncollectedTests, {
   valid: [
     { filename: '/repo/test/orders.test.ts', code: "it('x', () => {});" },
     { filename: '/repo/src/orders.spec.ts', code: "describe('x', () => { it('y', () => {}); });" },
+    { filename: '/repo/test/orders.test-d.ts', code: "it('types', () => {});" },
     { filename: helperFile, code: 'export function build() { return 1; }' },
     {
       filename: helperFile,

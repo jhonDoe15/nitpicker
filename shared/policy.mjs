@@ -55,6 +55,12 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.folderFiles,
 ];
 
+export const MUTATION_EXCEPTION_RULES = [
+  'mutant-ignored',
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
+];
+
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
