@@ -182,7 +182,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
     finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
     the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit` and `folder-files-limit` rules are named as they are. Each exception is listed
+    `file-lines-limit` and `folder-files-limit` rules and the
+    [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
     in the report and changes the configuration hash.
   - `layout` and `tools` configure TypeScript source roots and tool configs; they have no Java
     meaning and stay a config error with `"preset": "java"` instead of being ignored.

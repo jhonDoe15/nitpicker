@@ -55,6 +55,12 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`; switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 
+## Repository files
+
+- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries
+  (the Gradle wrapper jar is fine), or a file over 1 MB. If one is really needed, stop and ask:
+  the project adds an `exceptions` entry (rule, paths, reason) to `nitpicker.config.json`.
+
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;

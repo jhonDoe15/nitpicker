@@ -514,8 +514,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
-[one-way rules](#one-way-rules) and the file limits `file-lines-limit` and `folder-files-limit` per
-path. `layout` is a config error.
+[one-way rules](#one-way-rules), the file limits `file-lines-limit` and `folder-files-limit` and the
+[dependency and repository checks](usage.md#dependency-and-repository-checks) per path. `layout` is a config error.
 
 ## File limits
 

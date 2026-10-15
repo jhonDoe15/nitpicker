@@ -83,6 +83,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   Carry the caught value only where something reads it; a field added just so the binding is read
   is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
   reported. A deliberately dropped error needs an exception in the config file.
+- `nitpicker/no-dev-dependency-in-production` (all production code): a value import (`import`,
+  `export ... from`, `import()`, `require`) of a package that package.json lists only under
+  `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
+  are not reported. A project that bundles everything into one file can lift the rule with an
+  exception in the config file. Unlisted packages and unused dependencies are reported by the
+  `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
   `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the

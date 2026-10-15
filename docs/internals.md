@@ -25,6 +25,14 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
 
 Findings follow `spec/findings.schema.json`. Identity (the part of the comparison key beyond rule and path) never contains line numbers, so edits above a finding do not change it.
 
+## Dependency and repository hygiene (`shared/hygiene/`)
+
+`repository-hygiene` is added to every preset's analyzers by `core/preset-analyzers.mjs` (injected analyzers still replace the whole set). It runs `runner.mjs --check repository-hygiene --project-root <root>`, lists files with `git ls-files -z` and reads the head policy file for `exclude` and `exceptions`: an excepted finding is dropped inside the runner, by rule id and project-relative path.
+
+- **Identities.** `file:<path>`, so a file already on the base stays unchanged and only an added one is new.
+- **Key blocks.** `git grep -l -I -E` finds the private-key header in any tracked text file.
+- **Package rules.** `languages/typescript/adapters/dead-code/normalize.mjs` maps knip's `dependencies` and `devDependencies` to `unused-dependency`, `unlisted` to `unlisted-dependency` and `unresolved` to `unresolved-import`, keyed by package name or specifier. Their exceptions come from the head policy file like the rules above. `knip.json` lists `ignoreDependencies` for the packages nitpicker itself needs. `nitpicker/no-dev-dependency-in-production` (in `eslint-lint`) reads the nearest `package.json` and flags value imports of a package that is only in `devDependencies`.
+
 ## TypeScript preset (`languages/typescript/`)
 
 - **Strict preset assembly.** Flat config replaces rather than merges a rule's options when several entries match a file, so each scope in `strict.mjs` carries its full `no-restricted-syntax` list: the everywhere selectors plus the scope's own. Add a selector to its scope's list, never as a separate entry for a narrower glob. `domain/` has its own loop and forEach selectors, so it takes only the promise-chain selectors from the production set. The standalone `strict-*.mjs` configs exist so the failure-message harness can lint one rule family alone; the typed ones need `parserOptions` (e.g. `{ project: './tsconfig.quality.json', tsconfigRootDir }`) and later entries win.
