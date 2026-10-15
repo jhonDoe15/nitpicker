@@ -203,7 +203,9 @@ describe('the analyzers that could not read JavaScript', () => {
       );
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.js:1');
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.cjs:1');
-      expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/unformatted.ts:1');
+      expect(stdoutText).toContain(
+        'prettier-format/prettier/prettier src/main/format/unformatted.ts:1',
+      );
       expect(stdoutText).toContain('eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1');
       expect(stdoutText).toContain('duplicates/duplicate-clone src/main/dup/a.js:5');
       expect(stdoutText).toContain(
@@ -213,6 +215,29 @@ describe('the analyzers that could not read JavaScript', () => {
       expect(stdoutText).toContain('eslint-lint/nitpicker/no-comments src/main/lint/banned.js:1');
       expect(stdoutText).toContain('eslint-lint/no-var src/main/lint/banned.js:');
       expect(exitCode).toBe(1);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
+  it(
+    'leaves the React rule scope off even when package.json lists react',
+    () => {
+      const root = createProject({
+        'package.json': JSON.stringify({
+          name: 'js-clean-fixture',
+          private: true,
+          type: 'module',
+          devDependencies: { vitest: '4.1.11' },
+          dependencies: { react: '19.0.0' },
+        }),
+        'src/main/ui/panel.js':
+          "import { Component } from 'react';\n\nexport class Panel extends Component {}\n",
+      });
+
+      const { stdoutText } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
+
+      expect(stdoutText).toContain('Tool errors: 0');
+      expect(stdoutText.match(/\breact[\w-]*\/[\w-]+/g) ?? []).toEqual([]);
     },
     FIXTURE_TIMEOUT_MS,
   );

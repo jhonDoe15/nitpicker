@@ -21,7 +21,11 @@ import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 const policy = readHeadPolicy();
 
 const layout = readLayout();
-const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const react = isReactProject({
+  projectRoot: analyzedProjectRoot(),
+  react: policy.react,
+  javascript: layout.javascript,
+});
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
