@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { RULE_CASES } from './fixtures/cases.mjs';
+import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,

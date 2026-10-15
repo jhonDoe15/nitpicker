@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../core/diff/compare.mjs';
-import { parseFinding } from '../../core/diff/finding-schema.mjs';
+import { compareFindings } from '../../core/diff/comparison/compare.mjs';
+import { parseFinding } from '../../core/diff/comparison/finding-schema.mjs';
 import { collectFileLimitFindings, evaluateFileLimits } from './file-limits.mjs';
 
 const lines = (count, text = 'x') => `${Array.from({ length: count }, () => text).join('\n')}\n`;
