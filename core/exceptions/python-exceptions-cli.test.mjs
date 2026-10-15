@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { validateConfig } from '../config.mjs';
 import { RULE_IDS } from '../../shared/policy.mjs';
 import {
   commit,
@@ -12,7 +13,8 @@ import {
 usePythonCli();
 
 describe('exceptions with "preset": "python"', () => {
-  const config = (...entries) => `${JSON.stringify({ preset: 'python', exceptions: entries })}\n`;
+  const config = (...entries) =>
+    `${JSON.stringify(validateConfig({ preset: 'python', exceptions: entries }))}\n`;
   const lifted = {
     rule: RULE_IDS.functionParameters,
     paths: ['src/demo/a.py'],
@@ -79,7 +81,7 @@ describe('exceptions with "preset": "python"', () => {
 
   it('keeps a legacy print unchanged when the change removes the python.exceptions entry that lifted it', () => {
     const lintedConfig = (...entries) =>
-      `${JSON.stringify({ preset: 'python', python: { exceptions: entries } })}\n`;
+      `${JSON.stringify(validateConfig({ preset: 'python', python: { exceptions: entries } }))}\n`;
     const root = pythonRepository({
       'nitpicker.config.json': lintedConfig({
         rule: 'T201',

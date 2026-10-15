@@ -1,6 +1,15 @@
 const CLASS_HEADER = /\b(?:class|interface|enum|record)\s+([A-Za-z_$][\w$]*)/u;
 const COMMENTS_AND_LITERALS =
   /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/gu;
+const TOKEN = /(?<![=!<>])=(?!=)|[(){};]/gu;
+const INITIALIZERS = new Map([
+  ['', '<init>'],
+  ['static', '<clinit>'],
+]);
+const BRACE_DEPTH = new Map([
+  ['{', 1],
+  ['}', -1],
+]);
 
 function blank(text) {
   return text.replaceAll(COMMENTS_AND_LITERALS, (match) => match.replaceAll(/[^\n]/gu, ' '));
@@ -16,130 +25,135 @@ function lineStarts(text) {
   return starts;
 }
 
-function lineOf(starts, offset) {
-  let low = 0;
-  let high = starts.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if (starts[middle] <= offset) {
-      low = middle;
-    } else {
-      high = middle - 1;
-    }
+function firstCode(text, from) {
+  const pattern = /\S/gu;
+  pattern.lastIndex = from;
+  return pattern.exec(text)?.index ?? from;
+}
+
+function fieldName(declaration) {
+  return /([A-Za-z_$][\w$]*)\s*(?:\[\s*\]\s*)*$/u.exec(declaration)?.[1];
+}
+
+function bodyFrame(name, memberStart) {
+  return { name, memberStart, parentheses: 0, equals: -1, braces: 0 };
+}
+
+function startMember(frame, memberStart) {
+  Object.assign(frame, { memberStart, parentheses: 0, equals: -1, braces: 0 });
+}
+
+function addUnit(state, name, { from, to }) {
+  const { starts } = state;
+  const lineOf = (offset) => starts.findLastIndex((start) => start <= offset) + 1;
+  state.units.push({ file: state.file, name, start: lineOf(from), end: lineOf(to) });
+}
+
+function onSemicolon(state, frame, offset) {
+  if (frame.parentheses !== 0 || frame.braces !== 0) {
+    return;
   }
-  return low + 1;
-}
-
-function isAssignment(text, index) {
-  return text[index] === '=' && text[index + 1] !== '=' && !'=!<>'.includes(text[index - 1] ?? '');
-}
-
-function scanMember(text, start) {
-  let parentheses = 0;
-  let braces = 0;
-  let equals = -1;
-  for (let index = start; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '(') {
-      parentheses += 1;
-    } else if (character === ')') {
-      parentheses -= 1;
-    } else if (parentheses === 0 && equals < 0 && isAssignment(text, index)) {
-      equals = index;
-    } else if (character === '{') {
-      if (equals < 0 && braces === 0) {
-        return { kind: 'block', at: index, header: text.slice(start, index).trim() };
-      }
-      braces += 1;
-    } else if (character === '}') {
-      if (braces === 0) {
-        return { kind: 'close', at: index };
-      }
-      braces -= 1;
-    } else if (character === ';' && parentheses === 0 && braces === 0) {
-      return { kind: 'statement', at: index, equals, header: text.slice(start, index) };
-    }
+  const declaration = state.text.slice(frame.memberStart, frame.equals);
+  const name = frame.equals < 0 ? undefined : fieldName(declaration);
+  if (name !== undefined && frame.name !== undefined) {
+    const from = firstCode(state.text, frame.memberStart);
+    addUnit(state, `${frame.name}.${name}`, { from, to: offset });
   }
-  return undefined;
+  startMember(frame, offset + 1);
 }
 
-function skipBlock(text, open) {
-  let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    if (text[index] === '{') {
-      depth += 1;
-    } else if (text[index] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        return index + 1;
-      }
-    }
+function onOpenBrace(state, frame, offset) {
+  if (frame.parentheses !== 0 || frame.equals >= 0 || frame.braces !== 0) {
+    frame.braces += 1;
+    return;
   }
-  return text.length;
-}
-
-function fieldName(header, equalsOffset) {
-  return /([A-Za-z_$][\w$]*)\s*(?:\[\s*\]\s*)*$/u.exec(header.slice(0, equalsOffset))?.[1];
-}
-
-function parseBody(context, start, className) {
-  const { text, starts, file, units } = context;
-  let index = start;
-  while (index < text.length) {
-    const member = scanMember(text, index);
-    if (member === undefined || member.kind === 'close') {
-      return member === undefined ? text.length : member.at + 1;
-    }
-    const first = text.slice(index).search(/\S/u) + index;
-    if (member.kind === 'statement') {
-      const name = member.equals < 0 ? undefined : fieldName(member.header, member.equals - index);
-      if (name !== undefined && className !== undefined) {
-        units.push({
-          file,
-          name: `${className}.${name}`,
-          start: lineOf(starts, first),
-          end: lineOf(starts, member.at),
-        });
-      }
-      index = member.at + 1;
-      continue;
-    }
-    const end = skipOrParse(context, member, className);
-    const initializer =
-      member.header === '' ? '<init>' : member.header === 'static' ? '<clinit>' : undefined;
-    if (initializer !== undefined && className !== undefined) {
-      units.push({
-        file,
-        name: `${className}.${initializer}`,
-        start: lineOf(starts, first),
-        end: lineOf(starts, end - 1),
-      });
-    }
-    index = end;
-  }
-  return text.length;
-}
-
-function skipOrParse(context, member, className) {
-  const declared = CLASS_HEADER.exec(member.header)?.[1];
+  const header = state.text.slice(frame.memberStart, offset).trim();
+  const declared = CLASS_HEADER.exec(header)?.[1];
   if (declared === undefined) {
-    return skipBlock(context.text, member.at);
+    const from = firstCode(state.text, frame.memberStart);
+    state.skip = { depth: 1, header, from };
+    return;
   }
-  return parseBody(
-    context,
-    member.at + 1,
-    className === undefined ? declared : `${className}.${declared}`,
-  );
+  const name = frame.name === undefined ? declared : `${frame.name}.${declared}`;
+  state.frames.push(bodyFrame(name, offset + 1));
 }
 
-/**
- * The parts of a Java file that run without being a method: field initializers (`Class.field`,
- * lambdas included), `static { }` blocks (`Class.<clinit>`) and instance initializer blocks
- * (`Class.<init>`), as `{ file, name, start, end }` line ranges. Lizard reports the methods.
- */
+function onCloseBrace(state, frame, offset) {
+  if (frame.braces > 0) {
+    frame.braces -= 1;
+    return;
+  }
+  state.frames.pop();
+  const parent = state.frames.at(-1);
+  if (parent !== undefined) {
+    startMember(parent, offset + 1);
+  }
+}
+
+function skipToken(state, token, offset) {
+  const { skip } = state;
+  skip.depth += BRACE_DEPTH.get(token) ?? 0;
+  if (skip.depth > 0) {
+    return;
+  }
+  state.skip = undefined;
+  const frame = state.frames.at(-1);
+  const initializer = INITIALIZERS.get(skip.header);
+  if (initializer !== undefined && frame.name !== undefined) {
+    addUnit(state, `${frame.name}.${initializer}`, { from: skip.from, to: offset });
+  }
+  startMember(frame, offset + 1);
+}
+
+const HANDLERS = new Map([
+  [
+    '(',
+    (state, frame) => {
+      frame.parentheses += 1;
+    },
+  ],
+  [
+    ')',
+    (state, frame) => {
+      frame.parentheses -= 1;
+    },
+  ],
+  [
+    '=',
+    (state, frame, offset) => {
+      if (frame.parentheses === 0 && frame.equals < 0) {
+        frame.equals = offset;
+      }
+    },
+  ],
+  ['{', onOpenBrace],
+  ['}', onCloseBrace],
+  [';', onSemicolon],
+]);
+
+function step(state, token, offset) {
+  if (state.skip !== undefined) {
+    skipToken(state, token, offset);
+    return;
+  }
+  const frame = state.frames.at(-1);
+  if (frame !== undefined) {
+    HANDLERS.get(token)?.(state, frame, offset);
+  }
+}
+
 export function javaDeclarationUnits(file, source) {
   const text = blank(source);
-  const units = [];
-  parseBody({ text, starts: lineStarts(text), file, units }, 0, undefined);
-  return units;
+  const state = {
+    text,
+    starts: lineStarts(text),
+    file,
+    units: [],
+    frames: [bodyFrame(undefined, 0)],
+    skip: undefined,
+  };
+  for (const match of text.matchAll(TOKEN)) {
+    step(state, match[0], match.index);
+  }
+  return state.units;
 }

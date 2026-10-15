@@ -26,19 +26,23 @@ function textOf(sourceFile, name) {
 }
 
 function inner(node) {
-  let current = node;
-  while (WRAPPERS.some((is) => is(current))) {
-    current = current.expression;
+  const chain = [node];
+  for (const current of chain) {
+    if (WRAPPERS.some((is) => is(current))) {
+      chain.push(current.expression);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 function unwrap(node) {
-  let current = node;
-  while (current.parent !== undefined && WRAPPERS.some((is) => is(current.parent))) {
-    current = current.parent;
+  const chain = [node];
+  for (const current of chain) {
+    if (current.parent !== undefined && WRAPPERS.some((is) => is(current.parent))) {
+      chain.push(current.parent);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 function bindingName(sourceFile, node) {
@@ -85,52 +89,86 @@ function lineRange(sourceFile, node) {
   };
 }
 
-function walk(sourceFile, node, scope, result) {
-  let childScope = scope;
-  if (ts.isClassLike(node)) {
-    childScope = [...scope, node.name?.text ?? bindingName(sourceFile, node) ?? ANONYMOUS];
-  } else if (ts.isObjectLiteralExpression(node)) {
-    const name = bindingName(sourceFile, node);
-    childScope = name === undefined ? scope : [...scope, name];
-  } else if (isFunctionLike(node)) {
-    childScope = [...scope, localName(sourceFile, node)];
-    result.names.set(node, childScope.join('.'));
-    result.units.push({
-      name: childScope.join('.'),
-      kind: 'function',
-      ...lineRange(sourceFile, node),
-    });
-  } else if (
-    ts.isPropertyDeclaration(node) &&
-    node.initializer !== undefined &&
-    !isFunctionLike(inner(node.initializer))
-  ) {
-    childScope = [...scope, textOf(sourceFile, node.name)];
-    result.units.push({
-      name: childScope.join('.'),
-      kind: 'initializer',
-      ...lineRange(sourceFile, node.initializer),
-    });
-  } else if (ts.isClassStaticBlockDeclaration(node)) {
-    childScope = [...scope, '<static>'];
-    result.units.push({
-      name: childScope.join('.'),
-      kind: 'initializer',
-      ...lineRange(sourceFile, node),
-    });
+function classScope(sourceFile, node, scope) {
+  if (!ts.isClassLike(node)) {
+    return undefined;
   }
-  ts.forEachChild(node, (child) => {
-    walk(sourceFile, child, childScope, result);
-  });
+  return { scope: [...scope, node.name?.text ?? bindingName(sourceFile, node) ?? ANONYMOUS] };
 }
 
-/**
- * The qualified name of every function of a source file (`Store.save`, `outer.inner`, `arrow`,
- * `obj.prop`, `default`, `run.<anonymous>`) by node, and the units a branch can belong to: the
- * functions and the initializers of class fields and static blocks.
- */
+function objectScope(sourceFile, node, scope) {
+  if (!ts.isObjectLiteralExpression(node)) {
+    return undefined;
+  }
+  const name = bindingName(sourceFile, node);
+  return { scope: name === undefined ? scope : [...scope, name] };
+}
+
+function functionScope(sourceFile, node, scope) {
+  if (!isFunctionLike(node)) {
+    return undefined;
+  }
+  return {
+    scope: [...scope, localName(sourceFile, node)],
+    unit: { kind: 'function', range: node },
+  };
+}
+
+function fieldScope(sourceFile, node, scope) {
+  if (
+    !ts.isPropertyDeclaration(node) ||
+    node.initializer === undefined ||
+    isFunctionLike(inner(node.initializer))
+  ) {
+    return undefined;
+  }
+  return {
+    scope: [...scope, textOf(sourceFile, node.name)],
+    unit: { kind: 'initializer', range: node.initializer },
+  };
+}
+
+function staticBlockScope(sourceFile, node, scope) {
+  if (!ts.isClassStaticBlockDeclaration(node)) {
+    return undefined;
+  }
+  return { scope: [...scope, '<static>'], unit: { kind: 'initializer', range: node } };
+}
+
+const SCOPES = [classScope, objectScope, functionScope, fieldScope, staticBlockScope];
+
+function enter(sourceFile, node, scope) {
+  for (const scopeOf of SCOPES) {
+    const entered = scopeOf(sourceFile, node, scope);
+    if (entered !== undefined) {
+      return entered;
+    }
+  }
+  return { scope };
+}
+
 export function functionUnits(sourceFile) {
-  const result = { names: new Map(), units: [] };
-  walk(sourceFile, sourceFile, [], result);
-  return result;
+  const names = new Map();
+  const found = [];
+  const pending = [{ node: sourceFile, scope: [] }];
+  for (const { node, scope } of pending) {
+    const { scope: childScope, unit } = enter(sourceFile, node, scope);
+    if (unit !== undefined) {
+      const name = childScope.join('.');
+      found.push({
+        at: node.getStart(sourceFile),
+        name,
+        kind: unit.kind,
+        ...lineRange(sourceFile, unit.range),
+      });
+      if (unit.kind === 'function') {
+        names.set(node, name);
+      }
+    }
+    ts.forEachChild(node, (child) => {
+      pending.push({ node: child, scope: childScope });
+    });
+  }
+  const units = found.toSorted((left, right) => left.at - right.at).map(({ at, ...unit }) => unit);
+  return { names, units };
 }

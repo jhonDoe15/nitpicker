@@ -712,8 +712,7 @@ export function normalizeDeadCode(report, analyzerName) {
         if (typeof name !== 'string' || name.length === 0) {
           continue;
         }
-        const key = `${issue.file}\0${category}\0${name}`;
-        const occurrence = nextOccurrence(occurrences, key);
+        const occurrence = nextOccurrence(occurrences, `${issue.file}\0${category}\0${name}`);
         findings.push({
           tool: analyzerName,
           rule: category,

@@ -141,7 +141,7 @@ const NO_ROUTE_RULES = new Set([
 ]);
 
 /** `text` with the sentence that names the config entry which turns `rule` off for `path`. */
-export function withEslintRoute(text, { rule, path: relativePath }) {
+function withEslintRoute(text, { rule, path: relativePath }) {
   return NO_ROUTE_RULES.has(rule)
     ? text
     : appendSentence(text, exceptionRoute({ rule, path: relativePath }));

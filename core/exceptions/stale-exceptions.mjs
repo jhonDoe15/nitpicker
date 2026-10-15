@@ -24,7 +24,6 @@ function headFiles(projectRoot) {
     .filter((file) => file !== '' && existsSync(path.join(projectRoot, file)));
 }
 
-/** The exceptions of `config` whose paths match no file of the project, one line each. */
 export function staleExceptionLines(config, projectRoot) {
   const listed = listedExceptions(config).filter(
     ({ entry }) =>
@@ -49,7 +48,6 @@ export function staleExceptionLines(config, projectRoot) {
     );
 }
 
-/** The `--rule` section, then a non-failing note for each exception that matches no file. */
 export function renderClosingSections({ options, config, currentProjectRoot }, report) {
   const lines = staleExceptionLines(config, currentProjectRoot);
   const note =
