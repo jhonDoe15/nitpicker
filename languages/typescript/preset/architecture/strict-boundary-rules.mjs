@@ -86,9 +86,13 @@ const nodeIoModules = [
   'zlib',
 ];
 
+function npmPackagePattern(names) {
+  return `(?:^|(?:^|/)node_modules/)(?:${names.join('|')})(?:/|$)`;
+}
+
 const reachableIoPatterns = [
   `^(?:node:)?(?:${nodeIoModules.join('|')})(?:$|/)`,
-  `(?:^|/)(?:node_modules/)?(?:${[...networkAndDatabaseClients, ...loggers].join('|')})(?:/|$)`,
+  npmPackagePattern([...networkAndDatabaseClients, ...loggers]),
 ];
 
 const domain = { path: `${feature}/domain/` };
@@ -152,7 +156,7 @@ const baseBoundaryRules = [
     comment:
       'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter.',
     from: domain,
-    to: { path: `(?:^|/)(?:node_modules/)?(?:${networkAndDatabaseClients.join('|')})(?:/|$)` },
+    to: { path: npmPackagePattern(networkAndDatabaseClients) },
   },
   {
     name: 'domain-does-not-import-the-logger',
@@ -162,7 +166,7 @@ const baseBoundaryRules = [
     from: domain,
     to: {
       path: [
-        `(?:^|/)(?:node_modules/)?(?:${loggers.join('|')})(?:/|$)`,
+        npmPackagePattern(loggers),
         `(?:^|/)(?:logger|logging|log)(?:/index)?${codeFile}`,
         '(?:^|/)(?:logger|logging)/',
       ],
@@ -184,7 +188,7 @@ const baseBoundaryRules = [
     comment:
       'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/.',
     from: domain,
-    to: { path: `(?:^|/)(?:node_modules/)?(?:${idAndRandomLibraries.join('|')})(?:/|$)` },
+    to: { path: npmPackagePattern(idAndRandomLibraries) },
   },
   {
     name: 'domain-does-not-reach-io-through-shared',

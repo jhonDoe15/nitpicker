@@ -96,7 +96,7 @@ describe('dependency architecture rules', () => {
           'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
-          path: '(?:^|/)(?:node_modules/)?(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
+          path: '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+)(?:/|$)',
         },
       },
       {
@@ -107,7 +107,7 @@ describe('dependency architecture rules', () => {
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
           path: [
-            '(?:^|/)(?:node_modules/)?(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+            '(?:^|(?:^|/)node_modules/)(?:pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
             '(?:^|/)(?:logger|logging|log)(?:/index)?\\.[cm]?[jt]sx?$',
             '(?:^|/)(?:logger|logging)/',
           ],
@@ -128,7 +128,7 @@ describe('dependency architecture rules', () => {
           'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json (paths are the importing files).',
         from: { path: '(?:^|/)(?:src)/main/features/[^/]+/domain/' },
         to: {
-          path: '(?:^|/)(?:node_modules/)?(?:uuid|nanoid|cuid|@paralleldrive/cuid2|ulid|@faker-js/faker|faker)(?:/|$)',
+          path: '(?:^|(?:^|/)node_modules/)(?:uuid|nanoid|cuid|@paralleldrive/cuid2|ulid|@faker-js/faker|faker)(?:/|$)',
         },
       },
       {
@@ -140,7 +140,7 @@ describe('dependency architecture rules', () => {
         to: {
           path: [
             '^(?:node:)?(?:fs|child_process|net|http|https|http2|tls|dgram|dns|cluster|worker_threads|os|readline|crypto|perf_hooks|timers|zlib)(?:$|/)',
-            '(?:^|/)(?:node_modules/)?(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+            '(?:^|(?:^|/)node_modules/)(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
           ],
           reachable: true,
         },
