@@ -20,7 +20,9 @@ const PACKAGE_RULES = new Map([
 export function normalizeDeadCode(report, analyzerName, { exceptions = [] } = {}) {
   const occurrences = new Map();
   const findings = [
-    ...(report.files ?? []).flatMap((file) => unusedFileFinding(file, analyzerName)),
+    ...(report.files ?? []).flatMap((file) =>
+      unusedFileFinding(file, analyzerName).map((finding) => ({ finding })),
+    ),
     ...(report.issues ?? []).flatMap((issue) =>
       Object.entries(issue).flatMap(([category, entries]) =>
         category === 'file' || !Array.isArray(entries)
@@ -31,7 +33,9 @@ export function normalizeDeadCode(report, analyzerName, { exceptions = [] } = {}
       ),
     ),
   ];
-  return findings.filter((finding) => !isExcepted(exceptions, finding.rule, finding.path));
+  return findings
+    .filter(({ finding, name }) => !isExcepted(exceptions, finding.rule, finding.path, name))
+    .map(({ finding }) => finding);
 }
 
 function unusedFileFinding(file, analyzerName) {
@@ -65,19 +69,22 @@ function entryFinding({ issue, category, entry, analyzerName, occurrences }) {
   const occurrence = nextOccurrence(occurrences, `${issue.file}\0${rule}\0${name}`);
   return [
     {
-      tool: analyzerName,
-      rule,
-      path: issue.file,
-      identity: `name:${name}|occurrence:${String(occurrence)}${
-        DECLARATION_CATEGORIES.has(category)
-          ? `|source:${entry?.sourceHash ?? hash(issue.file)}`
-          : ''
-      }`,
-      message: deadCodeMessage({ category, name, entry, file: issue.file }),
-      classification: enforced ? 'enforceable' : 'descriptive',
-      ...(positiveInteger(entry?.line) === undefined
-        ? {}
-        : { location: { line: entry.line, column: positiveInteger(entry.col) ?? 1 } }),
+      name,
+      finding: {
+        tool: analyzerName,
+        rule,
+        path: issue.file,
+        identity: `name:${name}|occurrence:${String(occurrence)}${
+          DECLARATION_CATEGORIES.has(category)
+            ? `|source:${entry?.sourceHash ?? hash(issue.file)}`
+            : ''
+        }`,
+        message: deadCodeMessage({ category, name, entry, file: issue.file }),
+        classification: enforced ? 'enforceable' : 'descriptive',
+        ...(positiveInteger(entry?.line) === undefined
+          ? {}
+          : { location: { line: entry.line, column: positiveInteger(entry.col) ?? 1 } }),
+      },
     },
   ];
 }
@@ -85,7 +92,7 @@ function entryFinding({ issue, category, entry, analyzerName, occurrences }) {
 function deadCodeMessage({ category, name, entry, file }) {
   const rule = PACKAGE_RULES.get(category);
   if (rule !== undefined) {
-    return `${packageMessage(rule, name, file)} ${exceptionHint(rule, file)}`;
+    return `${packageMessage(rule, name, file)} ${exceptionHint(rule, file, name)}`;
   }
   if (category === 'files') {
     return unusedFileMessage(name);

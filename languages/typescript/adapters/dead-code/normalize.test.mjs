@@ -37,19 +37,22 @@ describe('dependency findings', () => {
 
     expect(unused).toBe(
       'Unused dependency left-pad: nothing imports or runs it. Remove it from package.json. ' +
-        'If this is intended, add {"rule":"unused-dependency","paths":["package.json"],"reason":"..."} ' +
+        'If this is intended, add {"rule":"unused-dependency","paths":["package.json"],' +
+        '"packages":["left-pad"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
     expect(unlisted).toBe(
       'Package commander is imported but not listed in package.json. ' +
         'Add it to dependencies (devDependencies for tests and tooling). ' +
-        'If this is intended, add {"rule":"unlisted-dependency","paths":["src/main/a.ts"],"reason":"..."} ' +
+        'If this is intended, add {"rule":"unlisted-dependency","paths":["src/main/a.ts"],' +
+        '"packages":["commander"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
     expect(unresolved).toBe(
       'Import ./missing.js resolves to no file or package. ' +
         'Fix the path, or install the package and list it in package.json. ' +
-        'If this is intended, add {"rule":"unresolved-import","paths":["src/main/a.ts"],"reason":"..."} ' +
+        'If this is intended, add {"rule":"unresolved-import","paths":["src/main/a.ts"],' +
+        '"packages":["./missing.js"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -87,6 +90,33 @@ describe('dependency findings', () => {
     expect(
       normalizeDeadCode(manifestReport, 'dead-code', { exceptions }).map(({ rule }) => rule),
     ).toEqual(['binaries', 'unlisted-dependency', 'unresolved-import']);
+  });
+
+  it('lifts only the listed packages when the exception names them', () => {
+    const exceptions = [
+      {
+        rule: 'unused-dependency',
+        paths: ['package.json'],
+        packages: ['ms', 'other'],
+        reason: 'loaded by a plugin',
+      },
+      {
+        rule: 'unresolved-import',
+        paths: ['src/**'],
+        packages: ['./missing.js'],
+        reason: 'generated',
+      },
+    ];
+
+    expect(
+      normalizeDeadCode(manifestReport, 'dead-code', { exceptions }).map(
+        ({ rule, identity }) => `${rule} ${identity}`,
+      ),
+    ).toEqual([
+      'unused-dependency name:left-pad|occurrence:1',
+      'binaries name:docker|occurrence:1',
+      'unlisted-dependency name:commander|occurrence:1',
+    ]);
   });
 });
 
