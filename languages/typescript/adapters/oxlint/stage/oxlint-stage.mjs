@@ -3,7 +3,6 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
-  readFileSync,
   realpathSync,
   symlinkSync,
   unlinkSync,
@@ -12,9 +11,8 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
-import { withRelativePaths } from './tsconfig-paths.mjs';
+import { lintTypeScriptConfig } from './tsconfig/lint-tsconfig.mjs';
 
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
@@ -54,33 +52,6 @@ export function createStage(projectRoot, projectConfigPath) {
   }
   mkdirSync(path.join(stage, STAGE_DIRECTORY));
   return stage;
-}
-
-function lintTypeScriptConfig(projectConfigPath) {
-  const { config, error } = ts.parseConfigFileTextToJson(
-    projectConfigPath,
-    readFileSync(projectConfigPath, 'utf8'),
-  );
-  if (error !== undefined) {
-    throw new Error(`Lint TypeScript config ${projectConfigPath} is not valid JSON`);
-  }
-  const directory = path.dirname(projectConfigPath);
-  const staged = {
-    ...config,
-    ...(config.extends === undefined ? {} : { extends: rebasedExtends(config.extends, directory) }),
-    compilerOptions: { ...config.compilerOptions, noEmit: true },
-  };
-  return JSON.stringify(withRelativePaths(staged, directory));
-}
-
-function rebasedExtends(value, directory) {
-  return Array.isArray(value)
-    ? value.map((entry) => rebasedExtend(entry, directory))
-    : rebasedExtend(value, directory);
-}
-
-function rebasedExtend(value, directory) {
-  return value.startsWith('./') || value.startsWith('../') ? path.resolve(directory, value) : value;
 }
 
 export function writeStageConfigs({ stage, projectRoot, sampleFile, translation }) {

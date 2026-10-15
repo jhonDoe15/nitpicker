@@ -22,6 +22,14 @@ describe('configureAnalyzers', () => {
     );
   });
 
+  it('links snapshot dependencies for the whole run when lint or type check reads them', () => {
+    const declared = ['eslint-lint', 'typescript-typecheck'].map(
+      (name) => configuredAnalyzers.find((analyzer) => analyzer.name === name).requiresDependencies,
+    );
+
+    expect(declared).toEqual([true, true]);
+  });
+
   it('hands the exclude globs and the snapshot to both Python analyzers', () => {
     const config = { preset: 'python', exclude: ['gen/**'] };
     const context = { projectRoot: '/p', toolRoot: '/t', liveProjectRoot: '/p', snapshot: 'base' };

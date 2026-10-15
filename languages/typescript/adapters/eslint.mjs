@@ -24,6 +24,7 @@ export function createEslintAnalyzer({
     timeoutMs,
     shardWeight,
     concurrencyGroup: 'eslint-snapshot-dependencies',
+    requiresDependencies: true,
     createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
       const args = [
         runnerPath,
@@ -56,11 +57,7 @@ export function createEslintAnalyzer({
       for (const policyFile of policyFiles) {
         args.push('--policy-file', policyFile);
       }
-      return {
-        command: process.execPath,
-        args,
-        cwd: toolRoot,
-      };
+      return { command: process.execPath, args, cwd: toolRoot };
     },
   };
 }

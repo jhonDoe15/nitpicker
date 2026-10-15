@@ -40,16 +40,6 @@
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
-      "rule": "@typescript-eslint/no-deprecated",
-      "paths": ["languages/typescript/adapters/oxlint/stage/tsconfig-paths.mjs"],
-      "reason": "The lint stage reads the baseUrl option TypeScript 7 removed, in order to drop it from the config tsgolint reads."
-    },
-    {
-      "rule": "no-restricted-syntax",
-      "paths": ["languages/typescript/adapters/oxlint/stage/tsconfig-paths.mjs"],
-      "reason": "A tsconfig unsets an inherited option only with null; the staged config writes baseUrl: null."
-    },
-    {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
