@@ -30,6 +30,16 @@ describe('withoutToolNoise', () => {
     expect(withoutToolNoise(text)).toBe('12:50:44 PM PIT >> ERROR : minion exited abnormally');
   });
 
+  it('drops the SLF4J warnings a tool without a logging provider prints', () => {
+    const text = [
+      'SLF4J(W): No SLF4J providers were found.',
+      'SLF4J(W): Defaulting to no-operation (NOP) logger implementation',
+      'Handler.java:44: error: cannot find symbol',
+    ].join('\n');
+
+    expect(withoutToolNoise(text)).toBe('Handler.java:44: error: cannot find symbol');
+  });
+
   it('keeps a line that only mentions the variable', () => {
     expect(withoutToolNoise('set JAVA_TOOL_OPTIONS to fix it')).toBe(
       'set JAVA_TOOL_OPTIONS to fix it',
