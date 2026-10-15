@@ -17,5 +17,8 @@ export const JAVA_TOOLS = [
   'pit',
   'structure',
   'coupling',
+  'javac',
+  'forbiddenapis',
+  'dependencies',
   'spring',
 ];

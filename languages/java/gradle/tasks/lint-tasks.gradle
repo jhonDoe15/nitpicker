@@ -1,0 +1,98 @@
+def pinned = project.ext.nitpickerPinned
+def reportDir = layout.buildDirectory.dir('nitpicker')
+def kotlinPreset = gradle.startParameter.projectProperties['nitpicker.kotlin'] == 'true'
+def rulesDir = new File(buildscript.sourceFile.parentFile, '../rules')
+def javaHome = new File(System.getProperty('java.home'))
+
+configurations {
+    nitpickerForbiddenApis { canBeConsumed = false }
+}
+dependencies {
+    nitpickerForbiddenApis "de.thetaphi:forbiddenapis:${pinned.forbiddenapis}"
+}
+
+def analyzedClassDirs = {
+    kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
+        : sourceSets.main.output.classesDirs.files
+}
+
+tasks.register('nitpickerForbiddenApis', JavaExec) {
+    group = 'nitpicker'
+    dependsOn tasks.named('classes')
+    classpath = configurations.nitpickerForbiddenApis
+    mainClass = 'de.thetaphi.forbiddenapis.cli.CliMain'
+    ignoreExitValue = true
+    def report = reportDir.map { it.file('forbidden-apis.txt') }
+    def log = new ByteArrayOutputStream()
+    onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
+    doFirst {
+        reportDir.get().asFile.mkdirs()
+        standardOutput = log
+        errorOutput = log
+        def classDirs = analyzedClassDirs().findAll { it.exists() }
+        def libraries = sourceSets.main.compileClasspath.files.findAll { it.exists() }
+        args(classDirs.collectMany { ['-d', it.absolutePath] } +
+            ['-c', libraries.collect { it.absolutePath }.join(File.pathSeparator),
+             '-f', new File(rulesDir, 'forbidden-apis.txt').absolutePath,
+             '--allowmissingclasses'])
+    }
+    doLast {
+        def code = executionResult.get().exitValue
+        report.get().asFile.text = log.toString('UTF-8')
+        if (!(code in [0, 1])) {
+            throw new GradleException("forbiddenapis failed with exit code ${code}: ${log.toString('UTF-8').trim()}")
+        }
+    }
+}
+
+tasks.register('nitpickerLint') {
+    group = 'nitpicker'
+    dependsOn tasks.named('compileJava')
+    doLast {
+        reportDir.get().asFile.mkdirs()
+        def output = reportDir.get().file('javac-lint.txt').asFile
+        def sources = sourceSets.main.allJava.files.findAll { it.name.endsWith('.java') && it.exists() }.sort()
+        if (sources.isEmpty()) {
+            output.text = ''
+            return
+        }
+        def compile = tasks.named('compileJava').get()
+        def compilerPath = compile.javaCompiler.orNull?.executablePath?.asFile
+        def javac = compilerPath ?: new File(javaHome, 'bin/javac')
+        def processors = (compile.options.annotationProcessorPath?.files ?: []).findAll { it.exists() }
+        def release = compile.options.release.orNull
+        def encoding = compile.options.encoding ?: 'UTF-8'
+        def staged = new File(temporaryDir, 'sources')
+        def classes = new File(temporaryDir, 'classes')
+        def generated = new File(temporaryDir, 'generated')
+        project.delete(staged, classes, generated)
+        [staged, classes, generated]*.mkdirs()
+        def relativeNames = sources.collect { source ->
+            def relative = projectDir.toPath().relativize(source.toPath()).toString().replace('\\', '/')
+            def target = new File(staged, relative)
+            target.parentFile.mkdirs()
+            target.setText(source.getText(encoding).replaceAll(/@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/) { match ->
+                match.replaceAll(/[^\n]/, ' ')
+            }, encoding)
+            relative
+        }
+        def flags = ['-Xlint:rawtypes,unchecked,deprecation,removal,cast', '-Xmaxwarns', '100000', '-Xmaxerrs', '100',
+                     '-encoding', encoding, '-d', classes.absolutePath, '-s', generated.absolutePath,
+                     '-cp', compile.classpath.files.findAll { it.exists() }.collect { it.absolutePath }.join(File.pathSeparator)] +
+            (processors.isEmpty() ? ['-proc:none'] : ['-processorpath', processors.collect { it.absolutePath }.join(File.pathSeparator)]) +
+            (release == null ? [] : ['--release', release.toString()]) +
+            (compile.options.compilerArgs.contains('--enable-preview') ? ['--enable-preview'] : [])
+        def argumentFile = new File(temporaryDir, 'javac.args')
+        argumentFile.text = (flags + relativeNames)
+            .collect { '"' + it.replace('\\', '\\\\').replace('"', '\\"') + '"' }.join('\n')
+        def process = new ProcessBuilder([javac.absolutePath, "@${argumentFile.absolutePath}".toString()])
+            .directory(staged).redirectErrorStream(true).start()
+        def log = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            throw new GradleException("javac lint failed: ${log.trim()}")
+        }
+        output.text = log
+    }
+}
+
+tasks.named('nitpickerJava') { dependsOn 'nitpickerForbiddenApis', 'nitpickerLint' }
