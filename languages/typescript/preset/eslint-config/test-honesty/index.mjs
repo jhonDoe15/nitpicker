@@ -43,7 +43,21 @@ function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
   );
 }
 
-export function testHonestyConfigFor(layout, { setupFiles = [], stubRestores = [] } = {}) {
+function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
+  const options =
+    testRootsOnDisk.length === 0 ? { colocated: true } : { testRoot: testRootsOnDisk[0] };
+  return {
+    files: layout.sourceGlobs,
+    ignores: [...layout.excludedGlobs, ...testAreaGlobs],
+    plugins: { nitpicker: nitpickerRules },
+    rules: { 'nitpicker/no-test-helpers-in-source': ['error', options] },
+  };
+}
+
+export function testHonestyConfigFor(
+  layout,
+  { setupFiles = [], stubRestores = [], testRootsOnDisk = layout.testRoots } = {},
+) {
   const files = testAreaGlobsFor(layout);
   return [
     {
@@ -69,12 +83,7 @@ export function testHonestyConfigFor(layout, { setupFiles = [], stubRestores = [
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-real-time-random-or-network': ['error', { network: true }] },
     },
-    {
-      files: layout.sourceGlobs,
-      ignores: [...layout.excludedGlobs, ...files],
-      plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-test-helpers-in-source': 'error' },
-    },
+    testPlacementBlock(layout, { testAreaGlobs: files, testRootsOnDisk }),
     ...stubRestoreConfigFor(layout, { setupFiles, stubRestores }),
     {
       files,

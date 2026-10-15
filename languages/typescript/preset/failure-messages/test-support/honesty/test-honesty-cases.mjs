@@ -103,9 +103,9 @@ const HONESTY_ROWS = [
     'test/setup.ts',
   ],
   [
-    'a test helper in production source names the test folder',
+    'a test helper in production source names the test-support folder under the test root',
     'export const labels = [1, -1, 0];\n',
-    'Move it to the test folder',
+    'move it to a test-support/ folder there (test/test-support/)',
     'src/main/features/labels/testing/make-labels.ts',
   ],
   [

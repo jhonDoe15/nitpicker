@@ -187,7 +187,7 @@ line) is a finding.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
-- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
+- A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a

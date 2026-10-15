@@ -279,8 +279,12 @@ alone.
 - `nitpicker/no-test-helpers-in-source`: a file under a source root that sits in a `testing/`,
   `test-utils/`, `test-helpers/`, `test-support/`, `fixtures/` or `__mocks__/` folder, or is named
   `test-utils`, `test-helpers`, `test-support` or `*.fixtures`, is a test helper. Placed in
-  production source it is mutation-tested and shipped; keep it in the test folder (for example
-  `test/support/`).
+  production source it is mutation-tested and shipped. When the project has a test root on disk
+  (`layout.testRoots`, `test/` or `tests/` by default), move it under that root, for example
+  `test/test-support/`; a `test-support/` folder under a source root is reported too. When no test
+  root exists and the tests sit next to the code, a `test-support/` folder beside the code it
+  serves is the allowed place for test-only modules and is not reported; the other helper folders
+  and names are.
 - `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
   (`import * as domain`) of production code.
 - `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
