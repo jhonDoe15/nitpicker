@@ -26,13 +26,24 @@ export const rule = {
       }
     }
     return {
-      ImportDeclaration: (node) => check(node, literalSource(node.source)),
-      ImportExpression: (node) => check(node, literalSource(node.source)),
-      ExportNamedDeclaration: (node) => check(node, literalSource(node.source)),
-      ExportAllDeclaration: (node) => check(node, literalSource(node.source)),
-      TSImportEqualsDeclaration: (node) =>
-        check(node, literalSource(node.moduleReference.expression)),
-      CallExpression: (node) => check(node, requiredSource(node)),
+      ImportDeclaration(node) {
+        check(node, literalSource(node.source));
+      },
+      ImportExpression(node) {
+        check(node, literalSource(node.source));
+      },
+      ExportNamedDeclaration(node) {
+        check(node, literalSource(node.source));
+      },
+      ExportAllDeclaration(node) {
+        check(node, literalSource(node.source));
+      },
+      TSImportEqualsDeclaration(node) {
+        check(node, literalSource(node.moduleReference.expression));
+      },
+      CallExpression(node) {
+        check(node, requiredSource(node));
+      },
     };
   },
 };

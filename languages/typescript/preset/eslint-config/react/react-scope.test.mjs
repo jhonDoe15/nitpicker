@@ -41,6 +41,14 @@ function projectWith(manifest) {
   return root;
 }
 
+function installReact(projectRoot, version) {
+  mkdirSync(path.join(projectRoot, 'node_modules/react'), { recursive: true });
+  writeFileSync(
+    path.join(projectRoot, 'node_modules/react/package.json'),
+    JSON.stringify({ name: 'react', version }),
+  );
+}
+
 function manifestWith(fields) {
   return JSON.stringify({ name: 'app', ...fields });
 }
@@ -150,24 +158,20 @@ describe('the styling approach', () => {
 
 describe('the React scope config', () => {
   it.each([
-    ['a React 18 range', { dependencies: { react: '^18.2.0' } }, undefined, false],
-    ['an installed React 18', { dependencies: { react: '*' } }, '18.3.1', false],
+    ['a React 18 range', { dependencies: { react: '^18.2.0' } }, [], false],
+    ['an installed React 18', { dependencies: { react: '*' } }, ['18.3.1'], false],
     [
       'an installed React 18 under a React 19 range',
       { dependencies: { react: '^19.0.0' } },
-      '18.3.1',
+      ['18.3.1'],
       false,
     ],
-    ['React 19', { dependencies: { react: '19.0.0' } }, undefined, true],
-    ['an unreadable version', { dependencies: { react: 'latest' } }, undefined, true],
+    ['React 19', { dependencies: { react: '19.0.0' } }, [], true],
+    ['an unreadable version', { dependencies: { react: 'latest' } }, [], true],
   ])('applies the React 19 rules for %s: %s', async (_name, fields, installed, applied) => {
     const projectRoot = projectWith(manifestWith(fields));
-    if (installed !== undefined) {
-      mkdirSync(path.join(projectRoot, 'node_modules/react'), { recursive: true });
-      writeFileSync(
-        path.join(projectRoot, 'node_modules/react/package.json'),
-        JSON.stringify({ name: 'react', version: installed }),
-      );
+    for (const version of installed) {
+      installReact(projectRoot, version);
     }
     const [{ rules }] = await reactScopeConfigFor(layout, {}, projectRoot);
     const react19 = ['react-x/no-forward-ref', 'react-x/no-context-provider'];
