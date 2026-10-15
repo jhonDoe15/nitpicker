@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -10,8 +11,8 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 function cruiseFixture(name) {
   const fixture = path.join(projectRoot, 'languages/typescript/preset/architecture/fixtures', name);
   return cruiseWithConfig(config, {
-    baseDir: projectRoot,
-    paths: [fixture],
+    baseDir: fixture,
+    paths: ['src', 'tests'].filter((entry) => existsSync(path.join(fixture, entry))),
     outputType: 'err-long',
   });
 }

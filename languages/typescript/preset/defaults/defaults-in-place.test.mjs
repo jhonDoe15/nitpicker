@@ -34,6 +34,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
   'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
   'languages/typescript/preset/architecture/strict-layout.mjs',
   'languages/typescript/preset/dependency-graph',

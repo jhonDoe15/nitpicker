@@ -23,6 +23,7 @@ import {
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
+import { architectureMessage } from '../preset/architecture/outside-roots/outside-roots.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import {
   prettierPrecedence,
@@ -324,10 +325,7 @@ export function normalizeArchitectureViolations(report, analyzerName) {
       rule,
       path: canonicalPath,
       identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-      message:
-        cycle === undefined
-          ? `${from} must not depend on ${to}`
-          : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
+      message: architectureMessage(rule, { from, to, cycle }),
       classification: severity === 'error' ? 'enforceable' : 'descriptive',
     };
   });
