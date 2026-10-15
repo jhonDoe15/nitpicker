@@ -16,10 +16,12 @@ import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
+import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
+import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
 import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
-export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
@@ -34,20 +36,32 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
-export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
-  return [...PROJECT_TOOL_CONFIGS].flatMap(([tool, file]) => {
-    const precedence = toolPrecedence[tool] ?? ['nitpicker'];
-    const projectConfig = path.join(policyRoot ?? projectRoot, file);
-    if (precedence.includes('project') && !existsSync(projectConfig)) {
-      throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
-    }
-    return [
-      ...(precedence.includes('project')
-        ? [`-Pnitpicker.${tool}.projectConfig=${projectConfig}`]
-        : []),
-      ...(precedence.includes('nitpicker') ? [] : [`-Pnitpicker.${tool}.nitpickerConfig=false`]),
-    ];
-  });
+function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
+  return Object.fromEntries(
+    [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
+      const precedence = toolPrecedence[tool] ?? ['nitpicker'];
+      const projectConfig = path.join(policyRoot ?? projectRoot, file);
+      if (precedence.includes('project') && !existsSync(projectConfig)) {
+        throw new Error(`"tools.${tool}.precedence" lists "project" but ${file} is missing`);
+      }
+      return [
+        tool,
+        {
+          nitpicker: precedence.includes('nitpicker'),
+          project: precedence.includes('project') ? projectConfig : undefined,
+        },
+      ];
+    }),
+  );
+}
+
+export function toolConfigProperties(projectRoot, policy = {}) {
+  return Object.entries(toolConfigChoices(projectRoot, policy)).flatMap(([tool, choice]) => [
+    ...(choice.project === undefined
+      ? []
+      : [`-Pnitpicker.${tool}.projectConfig=${choice.project}`]),
+    ...(choice.nitpicker ? [] : [`-Pnitpicker.${tool}.nitpickerConfig=false`]),
+  ]);
 }
 
 function runJavaPreset(
@@ -94,34 +108,35 @@ function withoutReportBase(error, reportBase) {
     : error;
 }
 
-export function collectJavaFindings(projectRoot, options = {}) {
+function readOptions(policy = {}) {
+  return {
+    crapLimit: policy.crapLimit,
+    preset: policy.preset ?? 'java',
+    fileLimits: policy.fileLimits,
+    exclude: policy.exclude,
+    exceptions: policy.exceptions,
+    testSeconds: policy.testSeconds,
+    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
+  };
+}
+
+function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
+  runJavaPreset(projectRoot, { ...options, reportBase });
+  const report = readReportModules(reportBase, preset);
+  runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
+  if (preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: report.manifest });
+  }
+  return readJavaFindings(projectRoot, { ...readOptions(options.policy), reportBase, report })
+    .findings;
+}
+
+function withGradleReports(projectRoot, options) {
   const reportBase =
     options.reportDirectory ?? mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
   try {
-    runJavaPreset(projectRoot, { ...options, reportBase });
-    const modules = readReportModules(reportBase, preset);
-    runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: modules.manifest });
-    if (preset === 'kotlin') {
-      runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: modules.manifest });
-    }
-    const { findings } = parseAnalyzerReport(
-      readJavaFindings(projectRoot, {
-        reportBase,
-        crapLimit: options.policy?.crapLimit,
-        preset,
-        fileLimits: options.policy?.fileLimits,
-        exclude: options.policy?.exclude,
-        exceptions: options.policy?.exceptions,
-        testSeconds: options.policy?.testSeconds,
-        baseline: {
-          snapshot: options.policy?.snapshot,
-          baselineRoot: options.policy?.baselineRoot,
-        },
-      }),
-      preset,
-    );
-    return applyJavaPolicy(findings, options.policy);
+    return gradleFindings(projectRoot, options, reportBase);
   } catch (error) {
     throw withoutReportBase(error, reportBase);
   } finally {
@@ -131,12 +146,39 @@ export function collectJavaFindings(projectRoot, options = {}) {
   }
 }
 
+function mavenFindings(projectRoot, options) {
+  const moduleDirs = runMavenPreset(projectRoot, {
+    maven: options.maven,
+    policy: options.policy,
+    configs: toolConfigChoices(projectRoot, options.policy),
+  });
+  for (const moduleDir of moduleDirs) {
+    const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
+    runJavaDuplicates(moduleDir, { reportRoot: reportBase, manifest: report.manifest });
+  }
+  return readModuleFindings(projectRoot, moduleDirs, {
+    ...readOptions(options.policy),
+    reportDirectory: MAVEN_REPORT_DIRECTORY,
+  });
+}
+
+export function collectJavaFindings(root, options = {}) {
+  const projectRoot = path.resolve(root);
+  const findings =
+    detectJavaBuild(projectRoot) === 'maven'
+      ? mavenFindings(projectRoot, options)
+      : withGradleReports(projectRoot, options);
+  const preset = options.policy?.preset ?? 'java';
+  return applyJavaPolicy(parseAnalyzerReport({ findings }, preset).findings, options.policy);
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
   requestedBaseRef,
   includeWorkingTree = false,
   gradle,
+  maven,
   initScript,
   policy,
 }) {
@@ -150,7 +192,7 @@ export function runJavaDiff({
     headSha: comparison.headSha,
     projectRelativePath,
   });
-  const options = { gradle, initScript, policy };
+  const options = { gradle, maven, initScript, policy };
   function collectAt(sha) {
     return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
       collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),
