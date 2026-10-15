@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { installFakeToolchain } from '../fixtures/fake-toolchain.mjs';
-import { createToolContext } from './python-tools.mjs';
+import { createToolContext } from '../python-tools.mjs';
 
 const roots = [];
 

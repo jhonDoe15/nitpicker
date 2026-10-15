@@ -165,8 +165,8 @@ alone.
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
   `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`,
-  `stryker.vitest.config.ts` and the coverage runner's `--testTimeout`; a test keeps them in step).
+  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.

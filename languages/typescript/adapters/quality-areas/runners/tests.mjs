@@ -1,4 +1,4 @@
-import { runNodeTool, parseReportJson } from '../tooling.mjs';
+import { runNodeTool, parseReportJson } from './tooling.mjs';
 import path from 'node:path';
 import { existsSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';

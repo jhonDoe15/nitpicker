@@ -3,7 +3,7 @@ import {
   parseReportJson,
   runDependencyCruiser,
   runNodeTool,
-} from '../tooling.mjs';
+} from './tooling.mjs';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import {
   normalizeBaselineExpansions,

@@ -5,7 +5,7 @@ import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRenameMap } from '../../../core/diff/git/paths.mjs';
+import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
