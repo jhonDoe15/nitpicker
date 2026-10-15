@@ -43,7 +43,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
       {
         tool: 'coupling',
         rule: 'stability-direction',
-        path: '.',
+        path: 'stable',
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'enforceable',
@@ -62,7 +62,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
       {
         tool: 'coupling',
         rule: 'stability-direction',
-        path: '.',
+        path: 'stable',
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'enforceable',
@@ -182,6 +182,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         message:
           'Export unusedValue is never imported. Remove `export`, or the declaration if nothing uses it.',
         classification: 'enforceable',
+        symbol: 'unusedValue',
         location: { line: 4, column: 14 },
       },
       {
@@ -192,6 +193,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         message:
           'Exported type UnusedType is never imported. Remove `export`, or the type if nothing uses it.',
         classification: 'enforceable',
+        symbol: 'UnusedType',
         location: { line: 8, column: 13 },
       },
     ]);

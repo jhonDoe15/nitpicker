@@ -46,7 +46,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/added.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/added.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'added',
         location: { line: 2, column: 3 },
@@ -60,7 +61,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/resolved.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/resolved.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'resolved',
         location: { line: 2, column: 3 },
@@ -75,7 +77,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/moved.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/moved.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'moved',
         location: { line: 5, column: 3 },
@@ -87,7 +90,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/new-name.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/new-name.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'renamed',
         location: { line: 2, column: 3 },
@@ -99,7 +103,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/stable.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/stable.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'stable',
         location: { line: 2, column: 3 },
@@ -155,7 +160,8 @@ describe('ESLint finding comparison', () => {
         rule: 'no-empty-function',
         path: 'src/main/source.ts',
         identity: 'message:unexpected|node:Block|syntax:e09c6922783880b96df5adb1|occurrence:1',
-        message: "Unexpected empty function 'empty'.",
+        message:
+          'Unexpected empty function \'empty\'. If a reviewer agrees this is intended, add {"rule":"no-empty-function","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'empty',
         location: { line: 2, column: 25 },
@@ -167,7 +173,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1, column: 1 },
       },
@@ -177,7 +184,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
@@ -189,7 +197,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:unexpected|node:PropertyAccessExpression|syntax:1f69dad8fea4eca83bc663c3|occurrence:1',
-        message: 'Unexpected console statement.',
+        message:
+          'Unexpected console statement. If a reviewer agrees this is intended, add {"rule":"no-console","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3, column: 1 },
       },
@@ -199,7 +208,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:unreachableCode|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: 'Unreachable code.',
+        message:
+          'Unreachable code. If a reviewer agrees this is intended, add {"rule":"no-unreachable","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
@@ -246,7 +256,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/repeated.ts',
         identity:
           'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:3',
-        message: "Unexpected 'debugger' statement.",
+        message:
+          'Unexpected \'debugger\' statement. If a reviewer agrees this is intended, add {"rule":"no-debugger","paths":["src/main/repeated.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'repeated',
         location: { line: 7, column: 3 },
@@ -290,7 +301,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:noNewStatement|node:NewExpression|syntax:781ba9e6489825f815e42f33|occurrence:1',
-        message: "Do not use 'new' for side effects.",
+        message:
+          'Do not use \'new\' for side effects. If a reviewer agrees this is intended, add {"rule":"no-new","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4, column: 1 },
       },
@@ -352,7 +364,8 @@ describe('ESLint finding comparison', () => {
         path: 'src/main/source.ts',
         identity:
           'message:unexpected|node:PropertyAccessExpression|syntax:1f69dad8fea4eca83bc663c3|occurrence:1',
-        message: 'Unexpected console statement.',
+        message:
+          'Unexpected console statement. If a reviewer agrees this is intended, add {"rule":"no-console","paths":["src/main/source.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 2, column: 1 },
       },

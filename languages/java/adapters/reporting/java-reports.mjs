@@ -9,6 +9,7 @@ import { readInlineSuppressionFindings } from '../suppressions/java-suppressions
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import {
   methodText,
+  readStructureFunctions,
   readJavaFileLimitFindings,
   readJavaStructureFindings,
 } from '../metrics/java-structure.mjs';
