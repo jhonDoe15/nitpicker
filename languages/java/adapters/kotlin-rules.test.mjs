@@ -33,7 +33,7 @@ describe('one-way rule messages', () => {
         id: testCase.id,
         namesAllowedForm: message.toLowerCase().includes(testCase.allowedForm.toLowerCase()),
         namesExceptionRoute: message.endsWith(
-          `"exceptions" entry for rule ${testCase.rule} in nitpicker.config.json.`,
+          ` If a reviewer agrees this is intended, add {"rule":"${testCase.rule}","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
         ),
         keepsDetektText: message.startsWith(expectedMessage(testCase, 'banned').replace(/\.$/, '')),
       };
@@ -63,7 +63,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.UnnecessaryLet in nitpicker.config.json.',
+      'let expression can be omitted. Call the member directly; `let` is for `value?.let { ... }`. If a reviewer agrees this is intended, add {"rule":"detekt.style.UnnecessaryLet","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 
@@ -76,7 +76,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(message).toBe(
-      'The class A defines no functionality and only holds data. Consider converting it to a data class. To allow it on specific paths, add an "exceptions" entry for rule detekt.style.UseDataClass in nitpicker.config.json.',
+      'The class A defines no functionality and only holds data. Consider converting it to a data class. If a reviewer agrees this is intended, add {"rule":"detekt.style.UseDataClass","paths":["src/main/kotlin/demo/A.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 

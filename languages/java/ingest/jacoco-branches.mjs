@@ -29,7 +29,11 @@ function sourcefileFindings(sourcefile, pkg, { options, tool, minimum }) {
   return fileFindings(
     sourcefile,
     { path: filePath, lines: text.split(/\r?\n/) },
-    { tool, minimum, functions: options.functions ?? [] },
+    {
+      tool,
+      minimum,
+      functions: [...(options.functions ?? []), ...(options.units?.(filePath, text) ?? [])],
+    },
   );
 }
 

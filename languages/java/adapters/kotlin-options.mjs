@@ -4,6 +4,7 @@ import {
   validateProjectRelativePath,
 } from '../../../shared/config.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { ONE_WAY_RULE_IDS } from './kotlin-rules.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
@@ -20,16 +21,20 @@ function validateKotlinExceptions(config) {
   }
   for (const [index, entry] of config.exceptions.entries()) {
     const rule = isPlainObject(entry) ? entry.rule : undefined;
-    if (
-      typeof rule === 'string' &&
-      rule !== '' &&
-      !KOTLIN_EXCEPTION_RULES.includes(canonicalRule(rule))
-    ) {
+    if (typeof rule === 'string' && rule !== '' && !isKotlinExceptionRule(rule)) {
       throw configError(
-        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}. Tune any other detekt rule in config/detekt/detekt.yml`,
+        `"exceptions[${String(index)}].rule" is "${rule}", which is not a rule with exceptions. Rules with exceptions for the kotlin preset: ${KOTLIN_EXCEPTION_RULES.join(', ')}, and, for the Java sources of the project, a finding as it is printed, "<tool>/<rule>" (for example "pmd/UnusedPrivateField"; tools: ${JAVA_TOOLS.join(', ')}). Tune any other detekt rule in config/detekt/detekt.yml`,
       );
     }
   }
+}
+
+function isKotlinExceptionRule(rule) {
+  const [tool] = rule.split('/');
+  return (
+    KOTLIN_EXCEPTION_RULES.includes(canonicalRule(rule)) ||
+    (JAVA_TOOLS.includes(tool) && rule.length > tool.length + 1)
+  );
 }
 
 export function validateKotlinOptions(config) {

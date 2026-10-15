@@ -519,8 +519,8 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
       );
 
-      const exception =
-        ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
+      const exception = (file) =>
+        ` If a reviewer agrees this is intended, add {"rule":"detekt.style.ForbiddenMethodCall","paths":["${file}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
       const runBlocking =
         'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
 
@@ -529,20 +529,22 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
       expect(
         forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
-      ).toEqual([
-        ['Annotated.kt', `${run}${exception}`],
-        ['Banned.kt', `${run}${exception}`],
+      ).toEqual(
         [
-          'Printer.kt',
-          `The method \`kotlin.io.println\` has been forbidden in the detekt config.${exception}`,
-        ],
-        ['Qualified.kt', `${runBlocking}${exception}`],
-        [
-          'Sleeper.kt',
-          `The method \`java.lang.Thread.sleep\` has been forbidden: Use a scheduler or a test clock instead of sleeping.${exception}`,
-        ],
-        ['Wildcard.kt', `${runBlocking}${exception}`],
-      ]);
+          ['Annotated.kt', run],
+          ['Banned.kt', run],
+          ['Printer.kt', 'The method `kotlin.io.println` has been forbidden in the detekt config.'],
+          ['Qualified.kt', runBlocking],
+          [
+            'Sleeper.kt',
+            'The method `java.lang.Thread.sleep` has been forbidden: Use a scheduler or a test clock instead of sleeping.',
+          ],
+          ['Wildcard.kt', runBlocking],
+        ].map(([name, text]) => {
+          const file = forbidden.find(({ path: found }) => path.basename(found) === name).path;
+          return [name, `${text}${exception(file)}`];
+        }),
+      );
     });
 
     it('does not analyze a Kotlin script among the sources', () => {

@@ -5,6 +5,7 @@ import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseChangedLines } from '../../../core/diff/git.mjs';
 import { isStrictRule } from '../../typescript/preset/strict-rules.mjs';
+import { javaDeclarationUnits } from './declarations/java-declaration-units.mjs';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
 
 const xml = readFileSync(path.resolve(import.meta.dirname, 'fixtures/jacoco-branches.xml'), 'utf8');
@@ -82,6 +83,19 @@ describe('ingestJacocoBranches', () => {
     ]);
     expect(findings[1].message).toBe(
       'Branch coverage is 0.00%; minimum is 95%. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.pick","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+    );
+  });
+
+  it('names the field whose initializer holds a branch no method holds', () => {
+    const findings = ingest(SOURCE, { units: javaDeclarationUnits });
+
+    expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
+      [4, 'Pick.a'],
+      [8, 'Pick.x'],
+      [14, 'Pick.x'],
+    ]);
+    expect(findings[0].message).toBe(
+      'Branch coverage is 50.00%; minimum is 95%. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/com/acme/Pick.java"],"function":"Pick.a","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
   });
 

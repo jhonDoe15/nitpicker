@@ -37,7 +37,7 @@ export function finding({ rule, file, identity, message, line }) {
     rule,
     path: file,
     identity,
-    message: `${message} To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`,
+    message: `${message} If a reviewer agrees this is intended, add {"rule":"spring/${rule}","paths":["${file}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
     classification: 'enforceable',
     ...(line === undefined ? {} : { location: { line } }),
   };

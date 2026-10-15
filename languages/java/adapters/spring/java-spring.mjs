@@ -1,3 +1,4 @@
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
@@ -121,8 +122,8 @@ function exposesAll(value) {
     .some((item) => item.trim() === '*');
 }
 
-function allowance(rule) {
-  return `To allow it here, add an exception for spring/${rule} in nitpicker.config.json.`;
+function allowance(rule, path) {
+  return exceptionRoute({ rule: `${SPRING_TOOL}/${rule}`, path });
 }
 
 export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resourceRoots } = {}) {
@@ -200,7 +201,7 @@ function buildFinding({ rule, document, entry, key, message, occurrences }) {
     rule,
     path: document.path,
     identity: occurrence === 1 ? key : `${key}#${String(occurrence)}`,
-    message: `${message} ${allowance(rule)}`,
+    message: `${message} ${allowance(rule, document.path)}`,
     classification: 'enforceable',
     ...(entry === undefined ? {} : { location: { line: entry.line } }),
   };

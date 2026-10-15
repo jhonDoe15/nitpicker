@@ -21,15 +21,27 @@ function narrowing(finding) {
     : {};
 }
 
-/** Appends the exception entry that accepts each enforceable finding of a routed rule. */
-export function withExceptionRoutes(findings, rules = ROUTED_RULES) {
-  const isRouted = typeof rules === 'function' ? rules : (rule) => rules.includes(rule);
-  return findings.map((finding) =>
-    finding.classification === 'enforceable' && isRouted(finding.rule)
-      ? {
+/** The rule an `exceptions` entry names for a finding of a rule nitpicker adds, if it has a route. */
+export function sharedRouteRule(finding) {
+  return ROUTED_RULES.includes(finding.rule) ? finding.rule : undefined;
+}
+
+/**
+ * Appends the exception entry that accepts each enforceable finding that `routeRule(finding)`
+ * gives a rule for (a list of routed rule ids works too).
+ */
+export function withExceptionRoutes(findings, routeRule = sharedRouteRule) {
+  const ruleOf =
+    typeof routeRule === 'function'
+      ? routeRule
+      : (finding) => (routeRule.includes(finding.rule) ? finding.rule : undefined);
+  return findings.map((finding) => {
+    const rule = finding.classification === 'enforceable' ? ruleOf(finding) : undefined;
+    return rule === undefined
+      ? finding
+      : {
           ...finding,
-          message: `${sentence(finding.message)} ${exceptionRoute({ rule: finding.rule, path: finding.path, ...narrowing(finding) })}`,
-        }
-      : finding,
-  );
+          message: `${sentence(finding.message)} ${exceptionRoute({ rule, path: finding.path, ...narrowing(finding) })}`,
+        };
+  });
 }

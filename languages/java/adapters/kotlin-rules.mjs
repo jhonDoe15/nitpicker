@@ -1,3 +1,5 @@
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+
 const DETEKT_TOOL = 'detekt';
 const BANNED_SUPPRESSIONS = [
   /^all$/i,
@@ -66,7 +68,7 @@ export function addOneWayHint(finding) {
   if (finding.tool !== DETEKT_TOOL || rule === undefined) {
     return finding;
   }
-  const exception = `To allow it on specific paths, add an "exceptions" entry for rule ${rule.id} in nitpicker.config.json.`;
+  const exception = exceptionRoute({ rule: rule.id, path: finding.path });
   const withAllowed =
     rule.allowed === undefined ? finding.message : appendSentence(finding.message, rule.allowed);
   return { ...finding, message: appendSentence(withAllowed, exception) };

@@ -24,7 +24,12 @@ const finding = (file, identity = 'id') => ({
   rule: 'Rule',
   path: file,
   identity,
+  message: 'Rule violated.',
   classification: 'enforceable',
+});
+const routed = (item, rule = `${item.tool}/${item.rule}`) => ({
+  ...item,
+  message: `${item.message} If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${item.path}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
 });
 const allow = (file, count, source = 'id') => ({ file, rule: 'Rule', source, count });
 
@@ -252,8 +257,10 @@ describe('applyJavaPolicy', () => {
   it('drops findings under excluded globs only', () => {
     const findings = [finding('src/main/java/gen/A.java'), finding('src/main/java/app/B.java')];
 
-    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([findings[1]]);
-    expect(applyJavaPolicy(findings, {})).toEqual(findings);
+    expect(applyJavaPolicy(findings, { exclude: ['src/main/java/gen/**'] })).toEqual([
+      routed(findings[1]),
+    ]);
+    expect(applyJavaPolicy(findings, {})).toEqual(findings.map((item) => routed(item)));
   });
 
   it('drops only the findings of the excepted rule under the excepted globs', () => {
@@ -268,12 +275,13 @@ describe('applyJavaPolicy', () => {
       applyJavaPolicy(findings, {
         exceptions: [{ rule: 'detekt.style.ForbiddenMethodCall', paths: ['src/Main.kt'] }],
       }),
-    ).toEqual([findings[1], findings[2]]);
+    ).toEqual([routed(findings[1]), routed(findings[2])]);
   });
 
   it('drops a finding of a function exception only inside that function', () => {
     const at = (symbol) => ({
       ...finding('src/Store.java'),
+      tool: 'jacoco',
       rule: 'changed-branch-coverage',
       symbol,
     });
@@ -282,7 +290,7 @@ describe('applyJavaPolicy', () => {
     expect(
       applyJavaPolicy(findings, {
         exceptions: [
-          { rule: 'changed-branch-coverage', paths: ['src/Store.java'], function: 'save' },
+          { rule: 'changed-branch-coverage', paths: ['src/Store.java'], function: 'Store.save' },
         ],
       }),
     ).toEqual([findings[1], findings[2]]);
@@ -300,7 +308,7 @@ describe('applyJavaPolicy', () => {
       applyJavaPolicy(findings, {
         exceptions: [{ rule: 'pmd/Rule', paths: ['src/main/java/legacy/**'] }],
       }),
-    ).toEqual([findings[1], findings[2], findings[3]]);
+    ).toEqual([routed(findings[1]), routed(findings[2]), routed(findings[3])]);
   });
 
   it('baselines inventory sites on both snapshots, using the head inventory', () => {
@@ -313,7 +321,7 @@ describe('applyJavaPolicy', () => {
         policyRoot: headRoot,
         snapshot: 'base',
       }),
-    ).toEqual([findings[1], findings[2]]);
+    ).toEqual([routed(findings[1]), routed(findings[2])]);
   });
 
   it('reports baseline-expansion on head when the allowance rose over base', () => {

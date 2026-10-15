@@ -14,6 +14,7 @@ import {
   readStructureFunctions,
 } from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
+import { javaDeclarationUnits } from '../ingest/declarations/java-declaration-units.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
@@ -182,6 +183,7 @@ function branchFindings(context, jacoco) {
       ...readStructureFunctions(reportRoot),
       ...(context.kotlin ? readKotlinMetrics(reportRoot).functions : []),
     ],
+    units: (file, text) => (file.endsWith('.java') ? javaDeclarationUnits(file, text) : []),
     locate: sourceLocator(projectRoot, jacocoSourceRoots(context)),
     sourceText: (file) => {
       const absolute = path.join(projectRoot, file);
