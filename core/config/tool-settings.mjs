@@ -1,26 +1,38 @@
+import {
+  GRADLE_PRESETS,
+  PROJECT_TOOL_CONFIGS,
+} from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
 ]);
+const GRADLE_TOOL_SETTING_KEYS = new Map(
+  [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
+);
 const LINT_ENGINES = ['oxlint', 'eslint'];
+const SINGLE_CONFIG_TOOLS = ['checkstyle'];
+const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
-export function validateTools(tools) {
+export function validateTools(tools, preset) {
+  const toolSettingKeys = GRADLE_PRESETS.includes(preset)
+    ? GRADLE_TOOL_SETTING_KEYS
+    : TOOL_SETTING_KEYS;
   if (!isPlainObject(tools)) {
     throw configError('"tools" must be an object keyed by tool name');
   }
   for (const [name, settings] of Object.entries(tools)) {
-    validateToolSettings(name, settings);
+    validateToolSettings(name, settings, toolSettingKeys);
   }
 }
 
-function validateToolSettings(name, settings) {
-  const allowedKeys = TOOL_SETTING_KEYS.get(name);
+function validateToolSettings(name, settings, toolSettingKeys) {
+  const allowedKeys = toolSettingKeys.get(name);
   if (allowedKeys === undefined) {
     throw configError(
-      `"tools" names unknown tool "${name}". Supported tools: ${[...TOOL_SETTING_KEYS.keys()].join(', ')}`,
+      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
     );
   }
   if (!isPlainObject(settings)) {
@@ -37,6 +49,11 @@ function validateToolSettings(name, settings) {
     return;
   }
   validatePrecedence(settings.precedence, name);
+  if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
+    throw configError(
+      `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
+    );
+  }
 }
 
 function validateLintEngine(engine) {
@@ -55,7 +72,7 @@ function validatePrecedence(precedence, name) {
     new Set(precedence).size === precedence.length;
   if (!isValid) {
     throw configError(
-      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once, highest precedence first. For example ["project", "nitpicker"] merges both and lets the project's config win`,
+      `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once${ORDERED_PRECEDENCE_TOOLS.includes(name) ? ', highest first' : ''}`,
     );
   }
 }

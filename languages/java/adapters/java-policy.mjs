@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { globToRegExp } from '../../../shared/glob.mjs';
 import {
   applyInventoryToFindings,
@@ -6,7 +8,7 @@ import {
   withLegacyInventory,
 } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
-import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
 import { sharedRouteRule, withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
@@ -17,7 +19,7 @@ import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
 const NATIVE_LINE_LENGTH = {
-  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml',
+  java: 'Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
   kotlin: 'detekt checks Kotlin line length; set style>MaxLineLength in config/detekt/detekt.yml',
 };
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
@@ -25,12 +27,14 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
 );
 
 export function validateJavaConfig(config) {
-  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');
+  const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter(
+    (key) => !['exceptions', 'tools'].includes(key),
+  );
   const unsupported = typescriptOnly.filter((key) => config[key] !== undefined);
   if (unsupported.length > 0) {
     const preset = config.preset;
     throw configError(
-      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout, React rules and tool configs, which the ${preset} preset does not have. Not supported with ${preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
+      `"${unsupported[0]}" is not supported with "preset": "${preset}": it describes the TypeScript source layout and React rules, which the ${preset} preset does not have. Not supported with ${preset}: ${typescriptOnly.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
     );
   }
   if (config.preset === 'java' && Array.isArray(config.exceptions)) {
@@ -61,33 +65,50 @@ function validateJavaExceptionRule(rule, label) {
   }
 }
 
-export function configureJavaAnalyzer(
-  analyzer,
-  { thresholds = {}, exclude = [], exceptions = [], legacyInventory, kotlin = {} },
-) {
+function javaAdapterArguments({
+  thresholds = {},
+  exclude = [],
+  exceptions = [],
+  kotlin = {},
+  tools = {},
+}) {
   const fileLimits = fileLimitThresholds(thresholds);
-  if (
-    fileLimits === undefined &&
-    thresholds.crapLimit === undefined &&
-    exclude.length === 0 &&
-    exceptions.length === 0 &&
-    legacyInventory === undefined &&
-    kotlin.formatter === undefined &&
-    kotlin.detektConfig === undefined
-  ) {
-    return analyzer;
-  }
-  const adapterArguments = [
+  return [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
     ...exceptions.flatMap((exception) => ['--exception', exceptionArgument(exception)]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
+    ...[...PROJECT_TOOL_CONFIGS.keys()]
+      .filter((tool) => tools[tool] !== undefined)
+      .flatMap((tool) => [`--${tool}-precedence`, tools[tool].precedence.join(',')]),
   ];
+}
+
+export function configureJavaAnalyzer(analyzer, options) {
+  const { exceptions = [], legacyInventory, tools = {} } = options;
+  const adapterArguments = javaAdapterArguments(options);
+  if (adapterArguments.length === 0 && exceptions.length === 0 && legacyInventory === undefined) {
+    return analyzer;
+  }
+  const configurationHash = hashWithArguments(analyzer.configurationHash, adapterArguments);
+  const projectConfigDirectories = [...PROJECT_TOOL_CONFIGS]
+    .filter(([tool]) => tools[tool]?.precedence.includes('project'))
+    .map(([, file]) => path.dirname(file));
   const configured = {
     ...analyzer,
-    configurationHash: hashWithArguments(analyzer.configurationHash, adapterArguments),
+    configurationHash,
+    ...(projectConfigDirectories.length === 0
+      ? {}
+      : {
+          resolveConfigurationHash: (policyRoot) =>
+            hashWithProjectConfigDirectories(
+              configurationHash,
+              policyRoot,
+              projectConfigDirectories,
+            ),
+        }),
     createInvocation: (context) => {
       const invocation = analyzer.createInvocation(context);
       return {
@@ -116,6 +137,26 @@ function exceptionArgument({ rule, paths, function: functionName }) {
     paths,
     ...(functionName === undefined ? {} : { function: functionName }),
   });
+}
+
+function hashWithProjectConfigDirectories(configurationHash, policyRoot, directories) {
+  const hash = createHash('sha256').update(configurationHash);
+  for (const file of directories.flatMap((directory) => filesUnder(policyRoot, directory))) {
+    const content = readFileSync(path.join(policyRoot, file));
+    hash.update(`${file}\0${String(content.length)}\0`).update(content);
+  }
+  return hash.digest('hex');
+}
+
+function filesUnder(root, directory) {
+  const absolute = path.join(root, directory);
+  if (!existsSync(absolute)) {
+    return [];
+  }
+  return readdirSync(absolute, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)))
+    .sort();
 }
 
 function fileLimitThresholds(thresholds) {

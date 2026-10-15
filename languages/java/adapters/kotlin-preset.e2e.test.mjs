@@ -68,7 +68,7 @@ import {
 } from './fixtures/kotlin-e2e/detekt-fixtures.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs
-// Java 21, Gradle, lizard (see java-preset.e2e.test.mjs) and network access to Maven Central and
+// Java 21, Gradle and network access to Maven Central and
 // the Gradle plugin portal (the Kotlin Gradle plugin, detekt, ktlint and ktfmt are downloaded on
 // the first run), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`).
 // NITPICKER_GRADLE overrides `gradle`. The script raises the test timeout to 15 minutes per step.

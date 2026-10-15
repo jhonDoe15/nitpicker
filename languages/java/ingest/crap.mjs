@@ -9,8 +9,8 @@ export function calculateCrap(complexity, coveragePercent) {
   return complexity * complexity * uncovered ** 3 + complexity;
 }
 
-export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+export function ingestCrap(structure, jacocoXml, options = {}) {
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -32,8 +32,8 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const unique = createIdentityCounter();
-  const sameSource = new Map();
+  const counters = new Map();
+  const sameSourceByFile = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -42,6 +42,10 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
+    const sameSource = sameSourceByFile.get(filePath) ?? new Map();
+    sameSourceByFile.set(filePath, sameSource);
     const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
     const sourceHash =
       coverage === undefined
@@ -80,6 +84,27 @@ function keyAmongSameSource(seen, { name, sourceHash, over }) {
   }
   const occurrence = nextOccurrence(seen, `${base}\0${String(sourceHash)}`);
   return occurrence === 1 ? base : `${base}#${String(occurrence)}`;
+}
+
+function structureFunctions(entries) {
+  return entries
+    .filter((entry) => entry.privateEmptyConstructor !== true)
+    .map((entry) => {
+      if (!Number.isInteger(entry.complexity)) {
+        throw new TypeError(`Structure entry without complexity: ${entry.name}`);
+      }
+      if (typeof entry.signature !== 'string') {
+        throw new TypeError(`Structure entry without signature: ${entry.name}`);
+      }
+      return {
+        ccn: entry.complexity,
+        file: entry.file,
+        name: entry.name.split('.').at(-1),
+        longName: entry.signature,
+        start: entry.start,
+        end: entry.end,
+      };
+    });
 }
 
 export function parseLizardCsv(text) {
@@ -141,7 +166,12 @@ function jacocoMethods(report) {
   for (const pkg of childrenNamed(report, 'package')) {
     for (const cls of childrenNamed(pkg, 'class')) {
       const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const simpleName = (cls.attrs.name ?? '').split('/').at(-1).split('$').at(-1);
+      const simpleName = (cls.attrs.name ?? '')
+        .split('/')
+        .at(-1)
+        .split('$')
+        .at(-1)
+        .replace(/^\d+/u, '');
       for (const method of childrenNamed(cls, 'method')) {
         const line = Number.parseInt(method.attrs.line, 10);
         if (!Number.isInteger(line)) {
@@ -175,9 +205,8 @@ function counter(element, type) {
 }
 
 function selectNamedMethods(fn, candidates) {
-  const methodName = fn.name.split('::').at(-1);
   return candidates.filter(
-    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
   );
 }
 

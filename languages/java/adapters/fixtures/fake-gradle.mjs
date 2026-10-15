@@ -114,7 +114,7 @@ if (existsSync('mutations.xml')) {
   mkdirSync('build/nitpicker/pit', { recursive: true });
   writeFileSync('build/nitpicker/pit/mutations.xml', readFileSync('mutations.xml'));
 }
-if (existsSync('structure.json')) {
-  writeFileSync('build/nitpicker/structure.json', readFileSync('structure.json'));
-}
-writeFileSync('build/nitpicker/lizard.csv', '');
+writeFileSync(
+  'build/nitpicker/structure.json',
+  existsSync('structure.json') ? readFileSync('structure.json') : '[]',
+);
