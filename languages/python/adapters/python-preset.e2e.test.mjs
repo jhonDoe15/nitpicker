@@ -288,7 +288,9 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(result.text).toMatch(/Declare records as `@dataclass\(frozen=True\)`/);
     expect(result.text).toMatch(/Use `pathlib\.Path`/);
     expect(result.text).toMatch(/Remove the comment and fix the code/);
-    expect(result.text).toMatch(/entry for PTH118 in nitpicker\.config\.json/);
+    expect(result.text).toMatch(
+      /add \{"rule":"PTH118","paths":\["src\/demo\/rules\.py"\],"reason":"<why this is intended>"\} to "python\.exceptions" in nitpicker\.config\.json\./,
+    );
   });
 
   it('passes the same code when python.exceptions lifts its rules', () => {
@@ -356,7 +358,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       path: 'src/demo/pricing.py',
       identity: 'discount|-→+#1',
       message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"function":"discount","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'discount',
       location: { line: 2 },
