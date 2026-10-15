@@ -1,96 +1,96 @@
 import { RULE_IDS } from '../../../shared/policy.mjs';
-import { hash } from '../../../shared/rules/finding-helpers.mjs';
 
 const PACKAGE_CYCLE_RULE = RULE_IDS.packageCycle;
-const CLASS_CYCLE_RULE = RULE_IDS.classCycle;
 const LISTED_MEMBERS = 5;
 
-function adjacencyOf(edges) {
+function adjacencyOf(edges, from, to) {
   const adjacency = new Map();
-  for (const { source, target } of edges) {
-    adjacency.set(source, [...(adjacency.get(source) ?? []), target]);
+  for (const edge of edges) {
+    adjacency.set(edge[from], [...(adjacency.get(edge[from]) ?? []), edge[to]]);
   }
   return adjacency;
 }
 
-function visit(state, node) {
-  state.index.set(node, state.counter);
-  state.low.set(node, state.counter);
-  state.counter += 1;
-  state.stack.push(node);
-  state.onStack.add(node);
-  state.work.push({ node, next: 0 });
-}
-
-function lower(state, node, value) {
-  state.low.set(node, Math.min(state.low.get(node), value));
-}
-
-function advance(state, frame) {
-  const target = (state.adjacency.get(frame.node) ?? [])[frame.next];
-  frame.next += 1;
-  if (!state.index.has(target)) {
-    visit(state, target);
-  } else if (state.onStack.has(target)) {
-    lower(state, frame.node, state.index.get(target));
+function decrement(degree, node, queue) {
+  const left = degree.get(node) - 1;
+  degree.set(node, left);
+  if (left === 0) {
+    queue.push(node);
   }
 }
 
-function close(state, frame) {
-  state.work.pop();
-  if (state.low.get(frame.node) === state.index.get(frame.node)) {
-    const component = state.stack.splice(state.stack.lastIndexOf(frame.node));
-    for (const member of component) {
-      state.onStack.delete(member);
-    }
-    state.components.push(component);
+function release(graph, node) {
+  if (!graph.remaining.delete(node)) {
+    return;
   }
-  const parent = state.work.at(-1);
-  if (parent !== undefined) {
-    lower(state, parent.node, state.low.get(frame.node));
+  for (const next of graph.forward.get(node) ?? []) {
+    decrement(graph.inDegree, next, graph.queue);
+  }
+  for (const previous of graph.backward.get(node) ?? []) {
+    decrement(graph.outDegree, previous, graph.queue);
   }
 }
 
-function openFrames(state) {
-  return {
-    [Symbol.iterator]: () => ({
-      next: () =>
-        state.work.length > 0 ? { done: false, value: state.work.at(-1) } : { done: true },
-    }),
+function inLoops(nodes, forward, backward) {
+  const inDegree = new Map(nodes.map((node) => [node, (backward.get(node) ?? []).length]));
+  const outDegree = new Map(nodes.map((node) => [node, (forward.get(node) ?? []).length]));
+  const graph = {
+    forward,
+    backward,
+    inDegree,
+    outDegree,
+    remaining: new Set(nodes),
+    queue: nodes.filter((node) => inDegree.get(node) === 0 || outDegree.get(node) === 0),
   };
+  for (const node of graph.queue) {
+    release(graph, node);
+  }
+  return graph.remaining;
 }
 
-function explore(state, root) {
-  visit(state, root);
-  for (const frame of openFrames(state)) {
-    if (frame.next < (state.adjacency.get(frame.node) ?? []).length) {
-      advance(state, frame);
-    } else {
-      close(state, frame);
+function reachable(adjacency, start, allowed) {
+  const seen = new Set([start]);
+  const queue = [start];
+  for (const current of queue) {
+    const fresh = (adjacency.get(current) ?? []).filter(
+      (next) => allowed.has(next) && !seen.has(next),
+    );
+    for (const next of fresh) {
+      seen.add(next);
+      queue.push(next);
     }
   }
+  return seen;
+}
+
+function collectComponent(state, node) {
+  if (state.assigned.has(node)) {
+    return;
+  }
+  const ahead = reachable(state.forward, node, state.core);
+  const component = [...reachable(state.backward, node, state.core)]
+    .filter((member) => ahead.has(member))
+    .sort();
+  for (const member of component) {
+    state.assigned.add(member);
+  }
+  state.components.push(component);
 }
 
 export function cyclicComponents(nodes, edges) {
+  const forward = adjacencyOf(edges, 'source', 'target');
+  const backward = adjacencyOf(edges, 'target', 'source');
   const state = {
-    adjacency: adjacencyOf(edges),
-    index: new Map(),
-    low: new Map(),
-    onStack: new Set(),
-    stack: [],
-    work: [],
+    forward,
+    backward,
+    core: inLoops([...new Set(nodes)], forward, backward),
+    assigned: new Set(),
     components: [],
-    counter: 0,
   };
-  for (const node of [...nodes].sort()) {
-    if (!state.index.has(node)) {
-      explore(state, node);
-    }
+  for (const node of [...state.core].sort()) {
+    collectComponent(state, node);
   }
-  return state.components
-    .filter((component) => component.length > 1)
-    .map((component) => component.sort())
-    .sort((left, right) => left[0].localeCompare(right[0]));
+  return state.components.filter((component) => component.length > 1);
 }
 
 function listed(members) {
@@ -100,64 +100,42 @@ function listed(members) {
     : shown;
 }
 
-function cycleFinding({ tool, rule, kind, members, path }) {
-  const fix =
-    rule === PACKAGE_CYCLE_RULE
-      ? 'Move the shared types down into one of them, or invert one dependency behind an interface.'
-      : 'Break the loop: pass what is needed as a parameter, or invert one dependency behind an interface.';
+function memberFinding({ tool, member, others, path }) {
   return {
     tool,
-    rule,
+    rule: PACKAGE_CYCLE_RULE,
     path,
-    identity: `cycle:${hash(members.join('\0'))}`,
-    message: `${kind} ${listed(members)} depend on each other. ${fix} If it is right here, add an exception for ${tool}/${rule} in nitpicker.config.json.`,
+    identity: `cycle:${member}`,
+    message:
+      `Package ${member} is in a dependency cycle with ${listed(others)}. ` +
+      'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
+      `If it is right here, add an exception for ${tool}/${PACKAGE_CYCLE_RULE} in nitpicker.config.json.`,
     classification: 'enforceable',
   };
 }
 
-function distinctEdges(edges, keyOf) {
+function packageEdges(edges, packageOf) {
   const seen = new Map();
   for (const edge of edges) {
-    const mapped = { source: keyOf(edge.source), target: keyOf(edge.target) };
-    if (mapped.source !== mapped.target) {
-      seen.set(`${mapped.source}\0${mapped.target}`, mapped);
-    }
+    const mapped = { source: packageOf(edge.source), target: packageOf(edge.target) };
+    seen.set(`${mapped.source}\0${mapped.target}`, mapped);
   }
-  return [...seen.values()];
+  return [...seen.values()].filter((edge) => edge.source !== edge.target);
 }
 
 export function cycleFindings({ modules, edges, packageOf, fileOf }, tool) {
   const known = new Set(modules);
   const internal = edges.filter((edge) => known.has(edge.source) && known.has(edge.target));
-  const classCycles = cyclicComponents(
-    modules,
-    distinctEdges(internal, (name) => name),
-  );
-  const packageCycles = cyclicComponents(
-    modules.map(packageOf),
-    distinctEdges(internal, packageOf),
-  );
-  function firstFile(inside) {
-    return fileOf([...modules].sort().find(inside));
-  }
-  return [
-    ...packageCycles.map((members) =>
-      cycleFinding({
+  const sorted = [...modules].sort();
+  const components = cyclicComponents(modules.map(packageOf), packageEdges(internal, packageOf));
+  return components.flatMap((members) =>
+    members.map((member) =>
+      memberFinding({
         tool,
-        rule: PACKAGE_CYCLE_RULE,
-        kind: 'Packages',
-        members,
-        path: firstFile((name) => packageOf(name) === members[0]),
+        member,
+        others: members.filter((other) => other !== member),
+        path: fileOf(sorted.find((name) => packageOf(name) === member)),
       }),
     ),
-    ...classCycles.map((members) =>
-      cycleFinding({
-        tool,
-        rule: CLASS_CYCLE_RULE,
-        kind: 'Classes',
-        members,
-        path: firstFile((name) => name === members[0]),
-      }),
-    ),
-  ];
+  );
 }

@@ -245,33 +245,38 @@ describe('Kotlin classes', () => {
 });
 
 describe('cycles', () => {
-  it('reports a package cycle and a class cycle from the jdeps graph', () => {
+  function cycleRules(jdeps, permits) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cycle-coupling-'));
     temporaryRoots.push(root);
     const reportRoot = path.join(root, 'build/nitpicker');
     mkdirSync(reportRoot, { recursive: true });
-    writeFileSync(
-      path.join(reportRoot, 'jdeps.txt'),
-      `classes -> java.base
-   cyc.a.Alpha    -> cyc.b.Beta     classes
-   cyc.b.Beta     -> cyc.a.Alpha    classes
-   cyc.b.Beta     -> java.lang.Object    java.base
-`,
-    );
+    writeFileSync(path.join(reportRoot, 'jdeps.txt'), `classes -> java.base\n${jdeps}`);
     writeFileSync(path.join(reportRoot, 'jdeps-classes.txt'), 'cyc.a.Alpha\ncyc.b.Beta\n');
+    if (permits !== undefined) {
+      writeFileSync(path.join(reportRoot, 'permits.txt'), permits);
+    }
+    return readCouplingFindings(reportRoot, { projectRoot: root, sourceRoots: ['src/main/java'] })
+      .filter((finding) => finding.classification === 'enforceable')
+      .map(({ rule, path: file, identity }) => ({ rule, path: file, identity }));
+  }
 
-    const findings = readCouplingFindings(reportRoot, {
-      projectRoot: root,
-      sourceRoots: ['src/main/java'],
-    });
+  it('reports each package of a cycle from the jdeps graph', () => {
+    const findings = cycleRules(
+      '   cyc.a.Alpha    -> cyc.b.Beta     classes\n   cyc.b.Beta     -> cyc.a.Alpha    classes\n',
+    );
 
-    expect(
-      findings
-        .filter((finding) => finding.classification === 'enforceable')
-        .map(({ rule, path: file }) => ({ rule, path: file })),
-    ).toEqual([
-      { rule: 'package-cycle', path: 'src/main/java/cyc/a/Alpha.java' },
-      { rule: 'class-cycle', path: 'src/main/java/cyc/a/Alpha.java' },
+    expect(findings).toEqual([
+      { rule: 'package-cycle', path: 'src/main/java/cyc/a/Alpha.java', identity: 'cycle:cyc.a' },
+      { rule: 'package-cycle', path: 'src/main/java/cyc/b/Beta.java', identity: 'cycle:cyc.b' },
     ]);
+  });
+
+  it('ignores the edge from a sealed type to the subtypes it permits', () => {
+    const findings = cycleRules(
+      '   cyc.a.Alpha    -> cyc.b.Beta     classes\n   cyc.b.Beta     -> cyc.a.Alpha    classes\n',
+      'cyc.a.Alpha -> cyc.b.Beta\n',
+    );
+
+    expect(findings).toEqual([]);
   });
 });
