@@ -4,7 +4,8 @@ import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
-import { JAVA_STYLES } from './style/java-style.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 const MAX_MESSAGE_LENGTH = 4000;
@@ -39,7 +40,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--java-style google|aosp] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -90,10 +91,6 @@ export function parseRunnerArguments(arguments_) {
   if (preset !== undefined && !GRADLE_PRESETS.includes(preset)) {
     throw new Error(`--preset must be one of: ${GRADLE_PRESETS.join(', ')}`);
   }
-  const javaStyle = values.get('--java-style');
-  if (javaStyle !== undefined && !JAVA_STYLES.includes(javaStyle)) {
-    throw new Error(`--java-style must be one of: ${JAVA_STYLES.join(', ')}`);
-  }
   if (kotlinFormatter !== undefined && !KOTLIN_FORMATTERS.includes(kotlinFormatter)) {
     throw new Error(`--kotlin-formatter must be one of: ${KOTLIN_FORMATTERS.join(', ')}`);
   }
@@ -110,7 +107,6 @@ export function parseRunnerArguments(arguments_) {
       snapshot: values.get('--snapshot') ?? 'head',
       preset,
       kotlinFormatter,
-      javaStyle,
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       toolPrecedence: toolPrecedence(values),
     },
@@ -142,7 +138,6 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--kotlin-detekt-config',
-  '--java-style',
   '--pmd-precedence',
   '--checkstyle-precedence',
   '--file-limits',
@@ -163,8 +158,14 @@ function realpathOptional(directory) {
   return directory === undefined ? undefined : realpathSync(directory);
 }
 
-function main(arguments_) {
+export function readRunnerPolicy(arguments_, environment = process.env) {
   const { projectRoot, policy } = parseRunnerArguments(arguments_);
+  const { conventions } = readHeadPolicyFile(environment);
+  return { projectRoot, policy: { ...policy, javaStyle: javaStyle(conventions) } };
+}
+
+function main(arguments_) {
+  const { projectRoot, policy } = readRunnerPolicy(arguments_);
   process.stdout.write(
     `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
   );

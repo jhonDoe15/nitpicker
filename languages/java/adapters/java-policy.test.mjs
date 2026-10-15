@@ -68,20 +68,13 @@ describe('configureJavaAnalyzer', () => {
     expect(configured.legacyInventory).toBe('legacy.json');
   });
 
-  it('hands the aosp style and the size thresholds to the runner and changes the hash', () => {
+  it('hands the size thresholds to the runner', () => {
     const analyzer = createJavaAnalyzer();
     const policyOf = (options) =>
       parseRunnerArguments(
         configureJavaAnalyzer(analyzer, options).createInvocation(context()).args.slice(1),
       ).policy;
 
-    const indentedBy = (width) => ({ conventions: { 'java.indentation': width } });
-    expect(policyOf(indentedBy('4')).javaStyle).toBe('aosp');
-    expect(policyOf(indentedBy('2')).javaStyle).toBeUndefined();
-    expect(configureJavaAnalyzer(analyzer, indentedBy('2'))).toBe(analyzer);
-    expect(configureJavaAnalyzer(analyzer, indentedBy('4')).configurationHash).not.toBe(
-      analyzer.configurationHash,
-    );
     expect(
       policyOf({
         thresholds: { classMethods: 25, classFields: 12, inheritanceDepth: 4, folderDepth: 5 },
@@ -344,9 +337,6 @@ describe('parseRunnerArguments', () => {
     expect(() =>
       parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
     ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--java-style', 'tabs'])).toThrow(
-      '--java-style must be one of: google, aosp',
-    );
   });
 });
 
