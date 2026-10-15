@@ -33,8 +33,12 @@ describe('exceptions with "preset": "java"', () => {
         statements: 1,
         maxControlNesting: 0,
         parameters: 4,
+        complexity: 1,
+        signature: 'Wide.sum(int, int, int, int)',
       },
     ])}\n`;
+    const jacoco =
+      '<report name="demo"><package name="demo"><class name="demo/Wide" sourcefilename="Wide.java"><method name="sum" desc="(IIII)I" line="4"><counter type="LINE" missed="0" covered="3"/></method></class><sourcefile name="Wide.java"><line nr="4" mi="0" ci="3"/><counter type="LINE" missed="0" covered="3"/></sourcefile></package></report>';
     const configWith = (...exceptions) => `${JSON.stringify({ preset: 'java', exceptions })}\n`;
     const entry = (functionName, rule = 'function-parameters-limit') => ({
       rule,
@@ -48,6 +52,7 @@ describe('exceptions with "preset": "java"', () => {
         'nitpicker.config.json': config,
         'src/main/java/demo/Wide.java': WIDE_SOURCE,
         'structure.json': structure,
+        'jacoco.xml': jacoco,
       });
       commit(root, 'add a wide method');
       return run(root, [], { subprocess: true });
@@ -58,7 +63,10 @@ describe('exceptions with "preset": "java"', () => {
 
       expect(result.exitCode, result.output.out + result.output.err).toBe(1);
       expect(
-        result.json('new-findings.json').map(({ symbol, message }) => [symbol, message]),
+        result
+          .json('new-findings.json')
+          .filter(({ classification }) => classification === 'enforceable')
+          .map(({ symbol, message }) => [symbol, message]),
       ).toEqual([
         [
           'Wide.sum',
