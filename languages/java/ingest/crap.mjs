@@ -107,32 +107,42 @@ export function parseLizardCsv(text) {
   return functions;
 }
 
-function splitCsvLine(line) {
-  const fields = [];
-  let current = '';
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (quoted) {
-      if (char === '"' && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else if (char === '"') {
-        quoted = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"') {
-      quoted = true;
-    } else if (char === ',') {
-      fields.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
+function consumeQuotedCharacter(state, { char, next }, characters) {
+  if (char === '"' && next === '"') {
+    state.current += '"';
+    characters.next();
+    return;
   }
-  fields.push(current);
-  return fields;
+  if (char === '"') {
+    state.quoted = false;
+    return;
+  }
+  state.current += char;
+}
+
+function consumeCsvCharacter(state, token, characters) {
+  if (state.quoted) {
+    consumeQuotedCharacter(state, token, characters);
+    return;
+  }
+  if (token.char === '"') {
+    state.quoted = true;
+    return;
+  }
+  if (token.char === ',') {
+    state.fields.push(state.current);
+    state.current = '';
+    return;
+  }
+  state.current += token.char;
+}
+
+function splitCsvLine(line) {
+  const state = { fields: [], current: '', quoted: false };
+  const characters = line.split('').entries();
+  for (const [index, char] of characters)
+    consumeCsvCharacter(state, { char, next: line[index + 1] }, characters);
+  return [...state.fields, state.current];
 }
 
 function jacocoMethod(method, cls) {
@@ -159,15 +169,10 @@ function jacocoMethods(xml) {
     throw new TypeError('JaCoCo report root element must be <report>');
   }
   const byFile = new Map();
-  for (const pkg of childrenNamed(report, 'package')) {
-    for (const cls of childrenNamed(pkg, 'class')) {
-      const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const methods = childrenNamed(cls, 'method').flatMap((method) => jacocoMethod(method, cls));
-      if (methods.length > 0) {
-        byFile.set(file, [...(byFile.get(file) ?? []), ...methods]);
-      }
-    }
-  }
+  const classes = childrenNamed(report, 'package').flatMap((pkg) =>
+    childrenNamed(pkg, 'class').map((cls) => ({ pkg, cls })),
+  );
+  for (const entry of classes) addClassMethods(entry, byFile);
   return byFile;
 }
 
@@ -222,4 +227,12 @@ function lowestCoverage(matches) {
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
   return percents.length === 0 ? undefined : Math.min(...percents);
+}
+
+function addClassMethods({ pkg, cls }, byFile) {
+  const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
+  const methods = childrenNamed(cls, 'method').flatMap((method) => jacocoMethod(method, cls));
+  if (methods.length > 0) {
+    byFile.set(file, [...(byFile.get(file) ?? []), ...methods]);
+  }
 }
