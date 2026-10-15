@@ -5,9 +5,6 @@
 //
 //   java StructureMetrics.java <structure.json> <classes.json> <projectDir> <sourceRoot>...
 //
-// The same parse also writes classes.json: per-class methods, instance fields and superclass, and the
-// package and imports of each file.
-//
 // Metrics follow the TypeScript structure analyzer so both languages enforce the same limits:
 //   lines              last line - first line + 1 (annotations and modifiers included, Javadoc not)
 //   statements         every statement below the body except blocks

@@ -1,6 +1,3 @@
-// The size limits added for classes and folders: rule ids, default limits, the Java line length
-// and the failure-message templates. `shared/policy.mjs` merges them into its own tables.
-
 export const SIZE_RULE_IDS = {
   folderDepth: 'folder-depth-limit',
   classMethods: 'class-methods-limit',
