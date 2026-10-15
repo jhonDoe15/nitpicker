@@ -36,6 +36,20 @@ tester.run('no-module-level-mutable-state', noModuleLevelMutableState, {
       filename: adapter,
       code: 'export function table() { const byId = new Map(); byId.set(1, 2); return byId; }',
     },
+    {
+      filename: adapter,
+      code: 'const http = { get, delete: (url) => send(url) }; export function drop(u) { http.delete(u); }',
+    },
+    {
+      filename: adapter,
+      code: 'const api = Object.create(base); export function reset() { api.clear(); }',
+    },
+    { filename: adapter, code: 'export const byId: ReadonlyMap<string, number> = new Map();' },
+    { filename: adapter, code: 'export const seen: ReadonlySet<string> = new Set(["a"]);' },
+    {
+      filename: adapter,
+      code: 'export const bytes: readonly number[] = new Uint8Array(2);',
+    },
   ],
   invalid: [
     {
@@ -67,6 +81,21 @@ tester.run('no-module-level-mutable-state', noModuleLevelMutableState, {
       filename: adapter,
       code: 'export const registry = new Map();',
       errors: [{ messageId: 'exportedState', data: { name: 'registry' } }],
+    },
+    {
+      filename: adapter,
+      code: 'export const registry: Map<string, number> = new Map();',
+      errors: [{ messageId: 'exportedState', data: { name: 'registry' } }],
+    },
+    {
+      filename: adapter,
+      code: 'const http = { get }; export function drop(u) { delete http.get; }',
+      errors: [{ messageId: 'moduleState', data: { name: 'http' } }],
+    },
+    {
+      filename: adapter,
+      code: 'const table = { a: 1 }; export function fill(x) { Object.assign(table, x); }',
+      errors: [{ messageId: 'moduleState', data: { name: 'table' } }],
     },
     {
       filename: adapter,

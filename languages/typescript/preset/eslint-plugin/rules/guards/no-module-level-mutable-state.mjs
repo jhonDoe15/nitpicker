@@ -70,6 +70,11 @@ function isCollection(initializer) {
   return isObjectCreate(expression) || isConstructed(expression, COLLECTION_CONSTRUCTORS);
 }
 
+function hasMutatingMethods(initializer) {
+  const expression = unwrap(initializer);
+  return expression.type === 'ArrayExpression' || isConstructed(expression, CONTAINER_CONSTRUCTORS);
+}
+
 function isContainer(initializer) {
   const expression = unwrap(initializer);
   if (expression.type === 'ArrayExpression' || expression.type === 'ObjectExpression') {
@@ -88,7 +93,7 @@ function outermostMember(identifier) {
   return chain.at(-1);
 }
 
-function isMutatedBy(identifier) {
+function isMutatedBy(identifier, ownMethodsMutate) {
   const member = outermostMember(identifier);
   const { parent } = member;
   if (member === identifier) {
@@ -103,7 +108,8 @@ function isMutatedBy(identifier) {
   const mutatingCall =
     parent.type === 'CallExpression' &&
     parent.callee === member &&
-    MUTATING_METHODS.has(member.property.name);
+    MUTATING_METHODS.has(member.property.name) &&
+    (ownMethodsMutate || member.object !== identifier);
   return (
     mutatingCall ||
     (parent.type === 'AssignmentExpression' && parent.left === member) ||
@@ -125,9 +131,25 @@ function moduleLevelConstants(program) {
     );
 }
 
+const READONLY_TYPES = new Set(['ReadonlyMap', 'ReadonlySet', 'ReadonlyArray']);
+
+function isReadonlyAnnotation(declarator) {
+  const annotation = declarator.id.typeAnnotation?.typeAnnotation;
+  if (annotation?.type === 'TSTypeOperator') {
+    return annotation.operator === 'readonly';
+  }
+  return (
+    annotation?.type === 'TSTypeReference' &&
+    annotation.typeName.type === 'Identifier' &&
+    READONLY_TYPES.has(annotation.typeName.name)
+  );
+}
+
 function isExportedCollection(declarator) {
   return (
-    declarator.parent.parent.type === 'ExportNamedDeclaration' && isCollection(declarator.init)
+    declarator.parent.parent.type === 'ExportNamedDeclaration' &&
+    isCollection(declarator.init) &&
+    !isReadonlyAnnotation(declarator)
   );
 }
 
@@ -136,7 +158,8 @@ function stateReport(context, declarator) {
     return 'exportedState';
   }
   const variable = context.sourceCode.getDeclaredVariables(declarator).at(0);
-  return variable?.references.some(({ identifier }) => isMutatedBy(identifier))
+  const ownMethodsMutate = hasMutatingMethods(declarator.init);
+  return variable?.references.some(({ identifier }) => isMutatedBy(identifier, ownMethodsMutate))
     ? 'moduleState'
     : undefined;
 }
