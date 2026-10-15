@@ -1,4 +1,4 @@
-import { realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
@@ -6,28 +6,30 @@ import { escapeRegExp } from '../../../../shared/glob.mjs';
 import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
-let ts;
-
 export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  if (ts === undefined) {
-    const root = resolveTool('typescript', { projectRoot }).root;
-    ts = createRequire(import.meta.url)(path.join(root, 'lib/typescript.js'));
+  const root = resolveTool('typescript', { projectRoot }).root;
+  const libraryPath = path.join(root, 'lib/typescript.js');
+  if (!existsSync(libraryPath)) {
+    throw new Error(
+      `The type check reads source files with the project's typescript package, which must be 5.7 to 6.x: ` +
+        `${root} has no JavaScript API, which TypeScript 7 does not ship yet.`,
+    );
   }
-  return ts;
+  return createRequire(import.meta.url)(libraryPath);
 }
 
-export async function preEmitDiagnostics({ engine, configPath, projectRoot }) {
+export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }) {
   if (engine === 'native') {
     const native = await nativeDiagnostics({ ts, configPath, projectRoot });
-    if (native.unsupportedConfig !== true) return native.diagnostics;
+    if (native.unsupported !== true) return native.diagnostics;
   }
-  return projectDiagnostics(configPath, projectRoot);
+  return projectDiagnostics(ts, configPath, projectRoot);
 }
 
-function projectDiagnostics(configPath, projectRoot) {
+function projectDiagnostics(ts, configPath, projectRoot) {
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    throw new Error(formatDiagnostic(configFile.error));
+    throw new Error(formatDiagnostic(ts, configFile.error));
   }
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
@@ -42,7 +44,7 @@ function projectDiagnostics(configPath, projectRoot) {
   )
     return [];
   if (parsedConfig.errors.length > 0) {
-    throw new Error(parsedConfig.errors.map(formatDiagnostic).join('\n'));
+    throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'));
   }
   const program = ts.createProgram({
     rootNames: parsedConfig.fileNames,
@@ -52,21 +54,16 @@ function projectDiagnostics(configPath, projectRoot) {
   return ts.getPreEmitDiagnostics(program);
 }
 
-export function formatDiagnostic(diagnostic) {
+export function formatDiagnostic(ts, diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
 
 export function withoutProjectRoot(message, projectRoot) {
   const roots = [...new Set([projectRoot, realpathSync(projectRoot)])]
-    .map((root) => root.replaceAll('\\', '/'))
+    .map((root) => escapeRegExp(root.replaceAll('\\', '/')))
     .sort((left, right) => right.length - left.length);
-  return roots.reduce(
-    (text, root) =>
-      text
-        .replaceAll(`${root}/`, '')
-        .replaceAll(new RegExp(`${escapeRegExp(root)}(?![\\w-]|\\.\\w)`, 'gu'), '.'),
-    message,
-  );
+  const pattern = new RegExp(`(?<![\\w.\\-/])(?:${roots.join('|')})(?:/|(?![\\w-]|\\.\\w))`, 'gu');
+  return message.replaceAll(pattern, (match) => (match.endsWith('/') ? '' : '.'));
 }
 
 function nodeChain(node) {
@@ -77,7 +74,7 @@ function nodeChain(node) {
   return chain;
 }
 
-function deepestNodeAt(sourceFile, position) {
+function deepestNodeAt(ts, sourceFile, position) {
   const pending = [sourceFile];
   for (const candidate of pending) {
     ts.forEachChild(candidate, (child) => {
@@ -87,8 +84,8 @@ function deepestNodeAt(sourceFile, position) {
   return pending.at(-1);
 }
 
-export function enclosingSymbol(sourceFile, position) {
-  const names = nodeChain(deepestNodeAt(sourceFile, position))
+export function enclosingSymbol(ts, sourceFile, position) {
+  const names = nodeChain(deepestNodeAt(ts, sourceFile, position))
     .filter(
       (current) =>
         (ts.isFunctionDeclaration(current) ||

@@ -26,8 +26,8 @@ import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import {
   prettierPrecedence,
-  readHeadPolicy,
   readLayout,
+  typecheckEngine,
   usesProjectConfig,
 } from '../preset/head-policy.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
@@ -202,18 +202,20 @@ async function formattingFindingsOf(options, unformattedFiles, configPath) {
 }
 
 async function runTypecheck(options) {
-  loadTypeScript(options.liveProjectRoot);
+  const ts = loadTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig;
   try {
     installedConfig = installTypeScriptConfig(options);
     const diagnostics = await preEmitDiagnostics({
-      engine: readHeadPolicy().tools.typescript?.engine ?? 'native',
+      ts,
+      engine: typecheckEngine(),
       configPath: installedConfig.targetPath,
       projectRoot: options.projectRoot,
     });
     const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
+      ts,
       diagnostics: diagnostics.filter(
         (diagnostic) =>
           diagnostic.file === undefined ||
@@ -253,15 +255,15 @@ function runArchitecture(options) {
 }
 
 export function normalizeTypeScriptDiagnostics({
+  ts,
   diagnostics,
   projectRoot,
   analyzerName,
   configRelativePath,
 }) {
-  loadTypeScript();
   const occurrences = new Map();
   return diagnostics.map((diagnostic) => {
-    const message = withoutProjectRoot(formatDiagnostic(diagnostic), projectRoot);
+    const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
     const relativePath =
       diagnostic.file === undefined
         ? configRelativePath
@@ -269,7 +271,7 @@ export function normalizeTypeScriptDiagnostics({
     const symbol =
       diagnostic.file === undefined || diagnostic.start === undefined
         ? undefined
-        : enclosingSymbol(diagnostic.file, diagnostic.start);
+        : enclosingSymbol(ts, diagnostic.file, diagnostic.start);
     const semanticKey = JSON.stringify([diagnostic.code, relativePath, symbol ?? '', message]);
     const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
     occurrences.set(semanticKey, occurrence);
