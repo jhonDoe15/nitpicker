@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides, validateConfig } from '../config.mjs';
-import { policyHash } from '../diff/report-model.mjs';
 
 describe('tool precedence', () => {
   it('accepts every ordering of the project and nitpicker configs', () => {
