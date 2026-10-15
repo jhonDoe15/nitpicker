@@ -63,36 +63,43 @@ function sortFindings(entries) {
   );
 }
 
+function toSnapshotToolError(finding) {
+  return {
+    tool: finding.tool,
+    snapshot: 'head',
+    rule: finding.rule,
+    path: finding.path,
+    message: finding.message,
+  };
+}
+
+function summarizeAnalyzer(analyzer, name, analyzerFindings) {
+  return {
+    name,
+    version: analyzerMetadata(analyzer, 'version'),
+    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
+    total: analyzerFindings.length,
+    enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
+      .length,
+    descriptive: analyzerFindings.filter((finding) => finding.classification === 'descriptive')
+      .length,
+  };
+}
+
 function collectSnapshotFindings(analyzers, reports, toolErrors) {
   const findings = [];
   const tools = [];
   for (const [index, analyzer] of analyzers.entries()) {
     const name = analyzerName(analyzer, index);
-    const analyzerFindings = [];
-    for (const finding of reports.get(analyzer.name)?.findings ?? []) {
-      if (finding.classification === 'tool-error') {
-        toolErrors.push({
-          tool: finding.tool,
-          snapshot: 'head',
-          rule: finding.rule,
-          path: finding.path,
-          message: finding.message,
-        });
-        continue;
-      }
-      analyzerFindings.push(finding);
-    }
+    const reported = reports.get(analyzer.name)?.findings ?? [];
+    toolErrors.push(
+      ...reported
+        .filter((finding) => finding.classification === 'tool-error')
+        .map(toSnapshotToolError),
+    );
+    const analyzerFindings = reported.filter((finding) => finding.classification !== 'tool-error');
     findings.push(...analyzerFindings);
-    tools.push({
-      name,
-      version: analyzerMetadata(analyzer, 'version'),
-      configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
-      total: analyzerFindings.length,
-      enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
-        .length,
-      descriptive: analyzerFindings.filter((finding) => finding.classification === 'descriptive')
-        .length,
-    });
+    tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
   }
 
   return { findings, tools };

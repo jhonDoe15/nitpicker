@@ -14,13 +14,13 @@ export function renderJunitReport(report) {
     testCases.push(
       [
         '  <testcase classname="quality.diff.new-findings" name="',
-        `${escapeXml(name)}`,
+        escapeXml(name),
         '" time="0"><failure message="',
-        `${escapeXml(singleLine(finding.message))}`,
+        escapeXml(singleLine(finding.message)),
         '" type="',
-        `${escapeXml(`${finding.tool}/${finding.rule}`)}`,
+        escapeXml(`${finding.tool}/${finding.rule}`),
         '">',
-        `${escapeXml(finding.message)}`,
+        escapeXml(finding.message),
         '</failure></testcase>',
       ].join(''),
     );

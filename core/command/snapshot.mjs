@@ -35,30 +35,15 @@ export function runSnapshotCli({
   }
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
-  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) => {
-    const snapshotRoot = path.join(worktreeRoot, relativeProjectPath);
-    const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
-    const dependencies = needsDependencies
-      ? prepareSnapshotDependencies({
-          projectRoot: snapshotRoot,
-          liveProjectRoot: currentProjectRoot,
-          toolRoot: PACKAGE_ROOT,
-        })
-      : undefined;
-    try {
-      return runQualitySnapshot({
-        analyzers: selectedAnalyzers,
-        projectRoot: snapshotRoot,
-        policyRoot: snapshotRoot,
-        toolRoot: PACKAGE_ROOT,
-        liveProjectRoot: currentProjectRoot,
-        headPolicy,
-        runTasks,
-      });
-    } finally {
-      removeSnapshotDependencies(dependencies);
-    }
-  });
+  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
+    runInSnapshotWorktree({
+      snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
+      selectedAnalyzers,
+      currentProjectRoot,
+      headPolicy,
+      runTasks,
+    }),
+  );
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
@@ -66,6 +51,36 @@ export function runSnapshotCli({
     return 1;
   }
   return report.summary.overallStatus === 'tool-error' ? 2 : 0;
+}
+
+function runInSnapshotWorktree({
+  snapshotRoot,
+  selectedAnalyzers,
+  currentProjectRoot,
+  headPolicy,
+  runTasks,
+}) {
+  const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
+  const dependencies = needsDependencies
+    ? prepareSnapshotDependencies({
+        projectRoot: snapshotRoot,
+        liveProjectRoot: currentProjectRoot,
+        toolRoot: PACKAGE_ROOT,
+      })
+    : undefined;
+  try {
+    return runQualitySnapshot({
+      analyzers: selectedAnalyzers,
+      projectRoot: snapshotRoot,
+      policyRoot: snapshotRoot,
+      toolRoot: PACKAGE_ROOT,
+      liveProjectRoot: currentProjectRoot,
+      headPolicy,
+      runTasks,
+    });
+  } finally {
+    removeSnapshotDependencies(dependencies);
+  }
 }
 
 function captureSnapshot(currentProjectRoot) {

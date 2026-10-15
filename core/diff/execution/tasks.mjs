@@ -13,6 +13,20 @@ function validateTask(task) {
   if (!Number.isInteger(task.concurrencyWeight) || task.concurrencyWeight < 1) {
     throw new TypeError(`${task.name} concurrencyWeight must be a positive integer`);
   }
+  validateOptionalTaskFields(task);
+  if (!Number.isInteger(task.timeoutMs) || task.timeoutMs < 1) {
+    throw new TypeError(`${task.name} timeoutMs must be a positive integer`);
+  }
+  if (
+    !Array.isArray(task.acceptedExitCodes) ||
+    task.acceptedExitCodes.some((status) => !Number.isInteger(status) || status < 0)
+  ) {
+    throw new TypeError(`${task.name} acceptedExitCodes must be non-negative integers`);
+  }
+  validateTaskInvocation(task);
+}
+
+function validateOptionalTaskFields(task) {
   if (
     task.concurrencyGroup !== undefined &&
     (typeof task.concurrencyGroup !== 'string' || task.concurrencyGroup.length === 0)
@@ -25,16 +39,6 @@ function validateTask(task) {
   ) {
     throw new TypeError(`${task.name} executionPriority must be a non-negative safe integer`);
   }
-  if (!Number.isInteger(task.timeoutMs) || task.timeoutMs < 1) {
-    throw new TypeError(`${task.name} timeoutMs must be a positive integer`);
-  }
-  if (
-    !Array.isArray(task.acceptedExitCodes) ||
-    task.acceptedExitCodes.some((status) => !Number.isInteger(status) || status < 0)
-  ) {
-    throw new TypeError(`${task.name} acceptedExitCodes must be non-negative integers`);
-  }
-  validateTaskInvocation(task);
 }
 
 function validateTaskInvocation(task) {
