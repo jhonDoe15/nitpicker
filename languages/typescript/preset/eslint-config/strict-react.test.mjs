@@ -112,7 +112,8 @@ describe('null in a React project', () => {
     const [message] = nullMessages(reactConfig, 'export const value = null;');
 
     expect(message).toBe(
-      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.' +
+      'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. ' +
+        '`null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.' +
         ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     );
   });

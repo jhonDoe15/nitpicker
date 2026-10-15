@@ -302,7 +302,7 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `addEventListener` is paired with `removeEventListener` of the same named function, and a
   `setInterval`, `setTimeout`, `ResizeObserver` or `IntersectionObserver` is cleared or
   disconnected in the returned cleanup. Fetching in an effect is covered by the data-fetching rule
-  below.
+  above.
 - **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
   JSX. `document.getElementById`/`querySelector`/`querySelectorAll`, `getElementsBy*`, assignments
   to `.innerHTML`, `.innerText`, `.textContent`, `.className` or `.style.*`, and `classList.add`,
@@ -400,8 +400,11 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
-  the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
-  control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
+  the `domain` and `adapters` lists contain the `source` list plus their own selectors. Default
+  exports, `null`, promise chains and the domain/ UI-framework ban left these lists for rules of
+  their own (`nitpicker/no-default-export`, `nitpicker/no-null`, `nitpicker/no-promise-chain`,
+  `nitpicker/no-ui-framework-in-domain`). The loop and `forEach` selectors live in
+  `strict-control-flow.mjs` and are part of `source`; `domain` drops
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
@@ -411,7 +414,8 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
-  control-flow selectors of `strict-control-flow.mjs`, whose loop message also names `it.each`.
+  loop and `forEach` selectors of `strict-control-flow.mjs`, whose loop message also names
+  `it.each`; promise chains in tests are `nitpicker/no-promise-chain`.
   `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
   detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
