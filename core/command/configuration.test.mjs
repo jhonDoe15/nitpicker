@@ -1,171 +1,30 @@
-import { createGitTemplate, copyGitTemplate } from '../diff/fixtures/git-repository.mjs';
+import { execFileSync } from 'node:child_process';
 import {
-  expectedOutput644_31,
-  expectedOutput721_31,
-  expectedOutput727_31,
-  expectedOutput742_80,
-  expectedOutput751_31,
-  expectedOutput810_20,
-  expectedOutput811_33,
-  expectedOutput834_33,
-} from '../diff/fixtures/expected-output/core-cli.mjs';
-import {
+  existsSync,
   mkdirSync,
-  mkdtempSync,
+  readFileSync,
   realpathSync,
-  rmSync,
   symlinkSync,
   writeFileSync,
-  readFileSync,
-  existsSync,
 } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, beforeAll, afterEach, expect, it } from 'vitest';
-import { runCli as runCliWithSubprocesses } from '../cli.mjs';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
-import { policyHash } from '../diff/reporting/report-model.mjs';
+import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from '../configuration/config.mjs';
+import { policyHash } from '../diff/reporting/report-model.mjs';
+import { exactText } from '../diff/fixtures/output-expectations.mjs';
+import {
+  captureOutput,
+  createRepository,
+  fakeAnalyzer,
+  makeOutputRoot,
+  makeTemporaryRoot,
+  policy,
+  runCli,
+  useCliFixtures,
+  writeFiles,
+} from './cli-harness.mjs';
 
-// Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
-// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
-// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts). Progress lines are
-// discarded unless a test passes `progress`.
-const discardedProgress = { write() {} };
-
-const runCli = (options) =>
-  runCliWithSubprocesses({ runTasks: runTasksInProcess, progress: discardedProgress, ...options });
-
-const fakeAnalyzerPath = path.join(
-  new URL('../', import.meta.url).pathname,
-  'diff/fixtures/fake-analyzer.mjs',
-);
-
-const temporaryRoots = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function createRepository(initialFiles) {
-  const root = realpathSync(makeTemporaryRoot('nitpicker-cli-repo-'));
-  copyGitTemplate(gitTemplate.root, root);
-  writeFiles(root, {
-    'package.json': '{"name":"cli-fixture","version":"1.0.0"}\n',
-    'package-lock.json': '{"name":"cli-fixture","lockfileVersion":3}\n',
-    '.gitignore': 'node_modules/\n',
-    ...initialFiles,
-  });
-  commit(root, 'base');
-  const baseSha = git(root, ['rev-parse', 'HEAD']).trim();
-  const baseRef = 'comparison-base';
-  git(root, ['branch', baseRef, baseSha]);
-  return { root, baseSha, baseRef };
-}
-
-function fakeAnalyzer(name = 'fake-quality-analyzer') {
-  return {
-    name,
-    version: '1.0.0',
-    configurationHash: 'fixture-policy',
-    exclusions: [],
-    findingExitCodes: [1],
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
-      return {
-        command: process.execPath,
-        args: [
-          fakeAnalyzerPath,
-          '--root',
-          projectRoot,
-          '--policy-root',
-          policyRoot,
-          '--tool-root',
-          toolRoot,
-        ],
-        cwd: policyRoot,
-      };
-    },
-  };
-}
-
-function policy() {
-  return `${JSON.stringify({ marker: 'QUALITY_FINDING' }, null, 2)}\n`;
-}
-
-function writeFiles(root, files) {
-  for (const [relativePath, contents] of Object.entries(files)) {
-    const filePath = path.join(root, relativePath);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, contents);
-  }
-}
-
-function commit(root, message) {
-  git(root, ['add', '-A']);
-  git(root, ['commit', '-q', '-m', message]);
-}
-
-// Identity is passed per call, so fixture repositories need no `git config` spawns. The global and
-// system config is ignored too: a developer's commit signing (`commit.gpgsign`) adds about 120 ms
-// to every fixture commit, and the fixtures must not depend on it.
-const gitFixtureEnvironment = {
-  ...process.env,
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-function git(root, arguments_) {
-  return execFileSync(
-    'git',
-    [
-      '-c',
-      'user.name=Nitpicker CLI Fixture',
-      '-c',
-      'user.email=nitpicker-cli@example.invalid',
-      ...arguments_,
-    ],
-    {
-      cwd: root,
-      encoding: 'utf8',
-      maxBuffer: 10 * 1024 * 1024,
-      env: gitFixtureEnvironment,
-    },
-  );
-}
-
-function makeTemporaryRoot(prefix) {
-  const root = mkdtempSync(path.join(tmpdir(), prefix));
-  temporaryRoots.push(root);
-  return root;
-}
-
-function makeOutputRoot() {
-  return path.join(makeTemporaryRoot('nitpicker-cli-output-'), 'reports');
-}
-
-function captureOutput() {
-  const output = { stdoutText: '', stderrText: '' };
-  output.stdout = {
-    write(value) {
-      output.stdoutText += value;
-    },
-  };
-  output.stderr = {
-    write(value) {
-      output.stderrText += value;
-    },
-  };
-  return output;
-}
-
-const gitTemplate = { root: undefined };
-
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
-});
+useCliFixtures();
 
 const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
 const mode = process.argv[2];
@@ -263,7 +122,13 @@ describe('nitpicker CLI', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toEqual(expectedOutput644_31({ root }));
+    expect(output.stdoutText).toEqual(`
+Quality gate summary
+✖ 1 new enforceable violation
+  second/example src/main/example.ts
+    example finding
+Full diagnostics: ${root}/combined/report.txt
+`);
     expect(output.stderrText).toBe('');
     const summary = JSON.parse(readFileSync(path.join(root, 'combined', 'summary.json'), 'utf8'));
     expect(summary.tools.map(({ name }) => name)).toEqual(['first', 'second']);
@@ -325,6 +190,38 @@ describe('nitpicker config file', () => {
       : undefined;
     return { exitCode, output, summary, outputRoot };
   }
+  it('reports a strict exception and changes the policy hash', () => {
+    const exception = {
+      rule: 'nitpicker/preserve-error-cause',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy module until migration',
+    };
+    const plain = runWithConfig(undefined).summary.policyHash;
+    const { summary, exitCode } = runWithConfig({ exceptions: [exception] });
+    expect(exitCode).toBe(0);
+    expect(summary.configOverrides).toEqual([`exception: ${JSON.stringify(exception)}`]);
+    expect(summary.policyHash).not.toBe(plain);
+  });
+  it.each([
+    [{ unknownKey: true }, /unknown key "unknownKey"/],
+    [{ preset: 'strict' }, /"preset" must be one of: typescript/],
+    [{ thresholds: { crapLimit: 'x' } }, /positive number/],
+    [{ thresholds: { other: 1 } }, /unknown threshold "other"/],
+    [
+      { legacyInventory: '/abs/legacy.json' },
+      /"legacyInventory" must be a path inside the project/,
+    ],
+    [{ legacyInventory: '../legacy.json' }, /"legacyInventory" must be a path inside the project/],
+    [{ legacyInventory: '' }, /"legacyInventory" must be a non-empty string/],
+    [{ base: '' }, /"base" must be a non-empty string/],
+    [{ analyzers: [{ name: 'a' }] }, /needs a non-empty "name" and "command"/],
+    ['{not json', /not valid JSON/],
+  ])('fails for an invalid config %j', (config, message) => {
+    const { exitCode, output } = runConfigOnly(config);
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toMatch(message);
+  });
   it('works with no config and reports no overrides', () => {
     const { exitCode, summary } = runWithConfig(undefined);
 
@@ -335,12 +232,26 @@ describe('nitpicker config file', () => {
     const { exitCode, output } = runWithConfig({ base: 'HEAD' }, { extraArguments: [] });
 
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toEqual(expectedOutput721_31());
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: HEAD (config)
+
+\u001b[1m\u001b[32mQuality gate summary\u001b[0m
+\u001b[32m✓ No new enforceable violations\u001b[0m
+\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+`),
+    );
   });
   it('lets an explicit --base win over the config base', () => {
     const { output } = runWithConfig({ base: 'does-not-exist' });
 
-    expect(output.stdoutText).toEqual(expectedOutput727_31());
+    expect(output.stdoutText).toEqual(
+      expect.stringMatching(exactText`Base: HEAD (argument)
+
+\u001b[1m\u001b[32mQuality gate summary\u001b[0m
+\u001b[32m✓ No new enforceable violations\u001b[0m
+\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+`),
+    );
   });
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
@@ -355,14 +266,33 @@ describe('nitpicker config file', () => {
     expect(disabled.summary.configOverrides).toEqual(['disable: ["second-analyzer"]']);
     expect(disabled.summary.policyHash).not.toBe(plain.summary.policyHash);
     expect(readFileSync(path.join(disabled.outputRoot, 'report.txt'), 'utf8')).toEqual(
-      expectedOutput742_80(),
+      expect.stringMatching(exactText`Nitpicker quality diff
+Base ref: HEAD
+Merge base: ${/[a-f0-9]{40}/}
+Head: ${/[a-f0-9]{40}/}
+Status: completed
+New enforceable findings: 0
+New findings: 0
+Resolved findings: 0
+Unchanged findings: 0
+Changed metrics: 0
+Tool errors: 0
+
+Config overrides:
+  disable: ["second-analyzer"]
+
+Per-tool counts:
+fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+`),
     );
   });
   it('rejects disabling an unknown analyzer', () => {
     const { exitCode, output } = runConfigOnly({ disable: ['nope'] });
 
     expect(exitCode).toBe(2);
-    expect(output.stderrText).toEqual(expectedOutput751_31());
+    expect(output.stderrText).toEqual(
+      'nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: fake-quality-analyzer\n',
+    );
   });
   it('reports every parsed key and changes the policy hash for each', () => {
     // Keys in describeConfigOverrides order. One run covers the CLI wiring for most of them.
@@ -422,8 +352,28 @@ describe('nitpicker config file', () => {
       const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
       const tool = summary.tools.find(({ name }) => name === 'custom');
       expect(exitCode).toBe(1);
-      expect(tool).toEqual(expectedOutput810_20());
-      expect(output.stdoutText).toEqual(expectedOutput811_33({ repository, outputRoot }));
+      expect(tool).toEqual({
+        name: 'custom',
+        version: 'custom',
+        configurationHash: expect.stringMatching(exactText`${/[a-f0-9]{64}/}`),
+        base: 1,
+        head: 2,
+        new: 1,
+        resolved: 0,
+        unchanged: 1,
+        changedMetrics: 0,
+        baseElapsedMs: expect.any(Number),
+        headElapsedMs: expect.any(Number),
+        elapsedMs: expect.any(Number),
+      });
+      expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
+
+\u001b[1m\u001b[31mQuality gate summary\u001b[0m
+\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
+  \u001b[33mcustom/text-file\u001b[0m src/main/new.txt
+    Text file new.txt
+\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+`);
     });
     it.each([
       ['json', /custom did not produce valid JSON/],
@@ -444,7 +394,9 @@ describe('nitpicker config file', () => {
       });
 
       expect(exitCode).toBe(2);
-      expect(output.stderrText).toEqual(expectedOutput834_33());
+      expect(output.stderrText).toEqual(
+        'nitpicker failed: nitpicker.config.json: analyzers entry "fake-quality-analyzer" clashes with another analyzer name\n',
+      );
     });
   });
 });
