@@ -1,3 +1,7 @@
+import {
+  createGitTemplate,
+  copyGitTemplate,
+} from '../../../core/diff/git/test-support/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
@@ -10,8 +14,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { runQualityDiff } from '../../../core/diff/run-diff.mjs';
+import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
 import {
   defaultLayout,
   prettierPrecedence,
@@ -153,12 +157,18 @@ describe('head policy reader', () => {
 });
 
 describe('head policy delivery', () => {
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
   it('shows the head policy to a runner child process on both the base and head runs', () => {
     const root = realpathSync(temporaryDirectory());
     const logPath = path.join(root, 'probe.log');
     const repository = path.join(root, 'repo');
     mkdirSync(repository);
-    git(repository, ['init', '-q', '-b', 'main']);
+    copyGitTemplate(gitTemplateRoot, repository);
     git(repository, ['config', 'user.name', 'Policy Fixture']);
     git(repository, ['config', 'user.email', 'policy@example.invalid']);
     writeFileSync(path.join(repository, 'a.txt'), 'base\n');

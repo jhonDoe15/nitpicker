@@ -1,71 +1,60 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeGitPath, resolveComparison, runGit } from '../diff/git.mjs';
+import { normalizeGitPath } from '../diff/git/normalize.mjs';
+import { resolveComparison } from '../diff/git/repository/git.mjs';
+import { runGit } from '../diff/git/repository/command.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+
+function nameStatusSources(comparison, projectRepositoryPath) {
+  const rename = ['--find-renames', '--name-status', '-z'];
+  return [
+    {
+      source: 'committed',
+      args: [
+        'diff',
+        ...rename,
+        `${comparison.mergeBaseSha}...${comparison.headSha}`,
+        '--',
+        projectRepositoryPath,
+      ],
+    },
+    {
+      source: 'staged',
+      args: ['diff', '--cached', ...rename, comparison.headSha, '--', projectRepositoryPath],
+    },
+    { source: 'unstaged', args: ['diff', ...rename, '--', projectRepositoryPath] },
+  ];
+}
+
+function addUntrackedChanges({ repositoryRoot, projectRepositoryPath, changesByRepositoryPath }) {
+  const output = runGit(repositoryRoot, [
+    'ls-files',
+    '--others',
+    '--exclude-standard',
+    '-z',
+    '--',
+    projectRepositoryPath,
+  ]);
+  for (const repositoryPath of splitNullTerminated(output)) {
+    addChange(changesByRepositoryPath, { repositoryPath, status: '?', source: 'untracked' });
+  }
+}
 
 export function collectWorkingTreeChanges({ repositoryRoot, projectRoot, baseRef }) {
   const comparison = resolveComparison(repositoryRoot, baseRef);
   const projectRepositoryPath = normalizeGitPath(path.relative(repositoryRoot, projectRoot) || '.');
   const changesByRepositoryPath = new Map();
 
-  addNameStatusChanges({
-    output: runGit(repositoryRoot, [
-      'diff',
-      '--find-renames',
-      '--name-status',
-      '-z',
-      `${comparison.mergeBaseSha}...${comparison.headSha}`,
-      '--',
-      projectRepositoryPath,
-    ]),
-    source: 'committed',
-    changesByRepositoryPath,
-  });
-  addNameStatusChanges({
-    output: runGit(repositoryRoot, [
-      'diff',
-      '--cached',
-      '--find-renames',
-      '--name-status',
-      '-z',
-      comparison.headSha,
-      '--',
-      projectRepositoryPath,
-    ]),
-    source: 'staged',
-    changesByRepositoryPath,
-  });
-  addNameStatusChanges({
-    output: runGit(repositoryRoot, [
-      'diff',
-      '--find-renames',
-      '--name-status',
-      '-z',
-      '--',
-      projectRepositoryPath,
-    ]),
-    source: 'unstaged',
-    changesByRepositoryPath,
-  });
-
-  for (const repositoryPath of splitNullTerminated(
-    runGit(repositoryRoot, [
-      'ls-files',
-      '--others',
-      '--exclude-standard',
-      '-z',
-      '--',
-      projectRepositoryPath,
-    ]),
-  )) {
-    addChange(changesByRepositoryPath, {
-      repositoryPath,
-      status: '?',
-      source: 'untracked',
+  for (const { source, args } of nameStatusSources(comparison, projectRepositoryPath)) {
+    addNameStatusChanges({
+      output: runGit(repositoryRoot, args),
+      source,
+      changesByRepositoryPath,
     });
   }
+  addUntrackedChanges({ repositoryRoot, projectRepositoryPath, changesByRepositoryPath });
 
   const basePaths = finalBasePaths({
     repositoryRoot,
@@ -112,31 +101,33 @@ export function readBaseFiles({ repositoryRoot, mergeBaseSha, files }) {
   return parseBatchObjects({ output: result.stdout, files, objectNames });
 }
 
-export function parseNameStatus(output) {
-  const fields = output.split('\0');
+function requireStatusPath(value, status, description) {
+  if (value === undefined || value.length === 0) {
+    throw new Error(`Malformed git status output for ${status}: missing ${description}`);
+  }
+  return value;
+}
+
+function parseStatusRecord(status, remaining) {
+  const firstPath = requireStatusPath(remaining.next().value, status, 'path');
+  if (!status.startsWith('R') && !status.startsWith('C')) {
+    return { status, repositoryPath: normalizeGitPath(firstPath) };
+  }
+  const secondPath = requireStatusPath(remaining.next().value, status, 'destination');
+  return {
+    status,
+    previousRepositoryPath: normalizeGitPath(firstPath),
+    repositoryPath: normalizeGitPath(secondPath),
+  };
+}
+
+function parseNameStatus(output) {
   const records = [];
-  const remaining = fields.values();
+  const remaining = output.split('\0').values();
   for (const status of remaining) {
-    if (status.length === 0) {
-      continue;
+    if (status.length > 0) {
+      records.push(parseStatusRecord(status, remaining));
     }
-    const firstPath = remaining.next().value;
-    if (firstPath === undefined || firstPath.length === 0) {
-      throw new Error(`Malformed git status output for ${status}: missing path`);
-    }
-    if (status.startsWith('R') || status.startsWith('C')) {
-      const secondPath = remaining.next().value;
-      if (secondPath === undefined || secondPath.length === 0) {
-        throw new Error(`Malformed git status output for ${status}: missing destination`);
-      }
-      records.push({
-        status,
-        previousRepositoryPath: normalizeGitPath(firstPath),
-        repositoryPath: normalizeGitPath(secondPath),
-      });
-      continue;
-    }
-    records.push({ status, repositoryPath: normalizeGitPath(firstPath) });
   }
   return records;
 }
@@ -230,31 +221,42 @@ function splitNullTerminated(output) {
     .map((value) => normalizeGitPath(value));
 }
 
+function readBatchHeader(output, offset) {
+  const lineEnd = output.indexOf(10, offset);
+  if (lineEnd === -1) {
+    throw new Error('Malformed git cat-file output: missing object header');
+  }
+  return { header: output.subarray(offset, lineEnd).toString('utf8'), next: lineEnd + 1 };
+}
+
+function parseBlobSize(header) {
+  const fields = header.split(' ');
+  const size = Number(fields[2]);
+  if (fields.length !== 3 || fields[1] !== 'blob' || !Number.isSafeInteger(size) || size < 0) {
+    throw new Error(`Malformed git cat-file object header: ${header}`);
+  }
+  return size;
+}
+
+function readBatchObject({ output, offset, file, objectName }) {
+  const { header, next } = readBatchHeader(output, offset);
+  if (header === `${objectName} missing`) {
+    return { content: undefined, next };
+  }
+  const contentEnd = next + parseBlobSize(header);
+  if (contentEnd >= output.length || output[contentEnd] !== 10) {
+    throw new Error(`Malformed git cat-file content for ${file.baseRepositoryPath}`);
+  }
+  return { content: output.subarray(next, contentEnd).toString('utf8'), next: contentEnd + 1 };
+}
+
 function parseBatchObjects({ output, files, objectNames }) {
   const contents = new Map();
   let offset = 0;
   for (const [index, file] of files.entries()) {
-    const lineEnd = output.indexOf(10, offset);
-    if (lineEnd === -1) {
-      throw new Error('Malformed git cat-file output: missing object header');
-    }
-    const header = output.subarray(offset, lineEnd).toString('utf8');
-    offset = lineEnd + 1;
-    if (header === `${objectNames[index]} missing`) {
-      contents.set(file.path, undefined);
-      continue;
-    }
-    const fields = header.split(' ');
-    const size = Number(fields[2]);
-    if (fields.length !== 3 || fields[1] !== 'blob' || !Number.isSafeInteger(size) || size < 0) {
-      throw new Error(`Malformed git cat-file object header: ${header}`);
-    }
-    const contentEnd = offset + size;
-    if (contentEnd >= output.length || output[contentEnd] !== 10) {
-      throw new Error(`Malformed git cat-file content for ${file.baseRepositoryPath}`);
-    }
-    contents.set(file.path, output.subarray(offset, contentEnd).toString('utf8'));
-    offset = contentEnd + 1;
+    const object = readBatchObject({ output, offset, file, objectName: objectNames[index] });
+    contents.set(file.path, object.content);
+    offset = object.next;
   }
   if (offset !== output.length) {
     throw new Error('Malformed git cat-file output: unexpected trailing data');

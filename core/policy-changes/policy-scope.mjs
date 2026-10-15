@@ -1,6 +1,6 @@
 import { globToRegExp } from '../../shared/glob.mjs';
-import { runGit } from '../diff/git.mjs';
-import { detectSourceRoots } from '../../languages/python/adapters/python-project.mjs';
+import { runGit } from '../diff/git/repository/command.mjs';
+import { detectSourceRoots } from '../../languages/python/adapters/execution/python-project.mjs';
 import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];

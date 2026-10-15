@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cruiseWithConfig } from '../fixtures/strict-cruise.mjs';
+import { cruiseWithConfig } from '../test-support/strict-cruise.mjs';
 import { createQualityChecks } from '../../quality-checks.mjs';
 import {
   NO_IMPORT_OUTSIDE_ROOTS,

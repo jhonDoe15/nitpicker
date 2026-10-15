@@ -1,3 +1,4 @@
+import { chainOf } from '../../shared/traversal.mjs';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { findPackageJSON } from 'node:module';
@@ -12,6 +13,12 @@ const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
 export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT } = {}) {
+  const { owningManifest, owningPeers, from } = owningTool(name, { projectRoot, packageRoot });
+  const { root, installed } = installedTool(name, { owningManifest, owningPeers, from });
+  return { root, version: installed.version, binPath: toolBinary(name, root, bin) };
+}
+
+function owningTool(name, { projectRoot, packageRoot }) {
   const trustedPackageRoot = realpathSync(packageRoot);
   const owningManifest =
     trustedPackageRoot === PACKAGE_ROOT
@@ -19,17 +26,17 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
       : readManifest(path.join(trustedPackageRoot, 'package.json'));
   const owningPeers = new Set(Object.keys(owningManifest.peerDependencies ?? {}));
   const from = owningPeers.has(name) ? projectRoot : trustedPackageRoot;
-  if (from === undefined) {
-    throw new Error(`Project root is required to resolve peer tool ${name}`);
-  }
+  if (from === undefined) throw new Error(`Project root is required to resolve peer tool ${name}`);
+  return { owningManifest, owningPeers, from };
+}
+
+function installedTool(name, { owningManifest, owningPeers, from }) {
   const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
-  if (packageFile === undefined) {
+  if (packageFile === undefined)
     throw new Error(`Required tool ${name} is not installed from ${from}`);
-  }
   const root = realpathSync(path.dirname(packageFile));
-  if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root)) {
+  if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
-  }
   const installed = readManifest(path.join(root, 'package.json'));
   assertDeclaredPackage({
     name,
@@ -37,20 +44,22 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
     declared: declaredPackage(name, owningManifest.dependencies?.[name]),
     isPeer: owningPeers.has(name),
   });
-  let binPath;
-  if (bin !== undefined) {
-    binPath = realpathSync(path.join(root, bin));
-    const relative = path.relative(root, binPath);
-    if (
-      relative === '..' ||
-      relative.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(relative) ||
-      !statSync(binPath).isFile()
-    ) {
-      throw new Error(`Tool ${name} binary must stay inside its package`);
-    }
+  return { root, installed };
+}
+
+function toolBinary(name, root, bin) {
+  if (bin === undefined) return undefined;
+  const binPath = realpathSync(path.join(root, bin));
+  const relative = path.relative(root, binPath);
+  if (
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative) ||
+    !statSync(binPath).isFile()
+  ) {
+    throw new Error(`Tool ${name} binary must stay inside its package`);
   }
-  return { root, version: installed.version, binPath };
+  return binPath;
 }
 
 function assertDeclaredPackage({ name, installed, declared, isPeer }) {
@@ -86,13 +95,11 @@ export function resolveProjectRoot(cwd = process.cwd()) {
       encoding: 'utf8',
     }).trim(),
   );
-  function directoriesUpTo(directory) {
+  const directories = chainOf(current, (directory) => {
     const parent = path.dirname(directory);
-    return directory === repositoryRoot || directory === parent
-      ? [directory]
-      : [directory, ...directoriesUpTo(parent)];
-  }
-  const projectRoot = directoriesUpTo(current).find((directory) =>
+    return directory === repositoryRoot || directory === parent ? undefined : parent;
+  });
+  const projectRoot = directories.find((directory) =>
     PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
   );
   if (projectRoot !== undefined) return projectRoot;
