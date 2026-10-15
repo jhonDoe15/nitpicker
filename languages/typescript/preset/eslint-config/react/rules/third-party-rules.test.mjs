@@ -84,7 +84,7 @@ describe('rules from the React plugins', () => {
       {
         ruleId: 'react-x/refs',
         message:
-          'Cannot access refs during render Read and write `ref.current` in event handlers and effects (render may only run the lazy init `if (ref.current === null) ref.current = new X()`); keep what renders in state. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+          'Cannot access refs during render. Read and write `ref.current` in event handlers and effects (render may only run the lazy init `if (ref.current === null) ref.current = new X()`); keep what renders in state. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       },
     ]);
   });
