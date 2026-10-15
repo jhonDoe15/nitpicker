@@ -17,17 +17,21 @@ function staticImports(file) {
   );
 }
 
+function hashedAmong(expected) {
+  return CONFIGURATION_FILES.filter((file) => expected.includes(file));
+}
+
 describe('Java analyzer configuration files', () => {
   it('hash the runner, the analyzer and every resource the Gradle and detekt runs read', () => {
-    expect(CONFIGURATION_FILES).toEqual(
-      expect.arrayContaining([
-        'languages/java/adapters/java-runner.mjs',
-        'languages/java/adapters/java-analyzer.mjs',
-        'languages/java/adapters/kotlin/rules/kotlin-literals.mjs',
-        ...resourceFiles('languages/java/gradle'),
-        ...resourceFiles('languages/java/detekt'),
-      ]),
-    );
+    const expected = [
+      'languages/java/adapters/java-runner.mjs',
+      'languages/java/adapters/java-analyzer.mjs',
+      'languages/java/adapters/kotlin/rules/kotlin-literals.mjs',
+      ...resourceFiles('languages/java/gradle'),
+      ...resourceFiles('languages/java/detekt'),
+    ];
+
+    expect(hashedAmong(expected).sort()).toEqual(expected.sort());
   });
 
   it('hash every module that a hashed module imports', () => {
@@ -42,8 +46,8 @@ describe('Java analyzer configuration files', () => {
   });
 
   it('reach shared and core modules the runner uses', () => {
-    expect(CONFIGURATION_FILES).toEqual(
-      expect.arrayContaining(['shared/rules/structure.mjs', 'core/diff/git/paths.mjs']),
-    );
+    const expected = ['core/diff/git/paths.mjs', 'shared/rules/structure.mjs'];
+
+    expect(hashedAmong(expected).sort()).toEqual(expected);
   });
 });
