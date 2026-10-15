@@ -149,18 +149,14 @@ describe('config file', () => {
       });
     });
 
-    it('accepts an exception for a file limit and leaves line length to detekt', () => {
-      const fileLimit = { ...exception, rule: 'folder-files-limit' };
-      expect(validateConfig({ preset: 'kotlin', exceptions: [fileLimit] })).toEqual({
-        preset: 'kotlin',
-        exceptions: [fileLimit],
-      });
-      expect(() =>
-        validateConfig({
+    it('accepts an exception for a file limit and leaves the line length threshold to detekt', () => {
+      for (const rule of ['folder-files-limit', 'line-length-limit']) {
+        const lifted = { ...exception, rule };
+        expect(validateConfig({ preset: 'kotlin', exceptions: [lifted] })).toEqual({
           preset: 'kotlin',
-          exceptions: [{ ...exception, rule: 'line-length-limit' }],
-        }),
-      ).toThrow(/is not a rule with exceptions/u);
+          exceptions: [lifted],
+        });
+      }
       expect(() => validateConfig({ preset: 'kotlin', thresholds: { lineLength: 140 } })).toThrow(
         'detekt checks Kotlin line length',
       );
@@ -235,15 +231,17 @@ describe('config file', () => {
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
     ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
-    expect(() =>
-      validateConfig({
-        preset: 'java',
-        exceptions: [{ rule: 'line-length-limit', paths: ['src/**'], reason: 'Long names' }],
-      }),
-    ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
+    const longNames = {
+      rule: 'line-length-limit',
+      paths: ['src/**'],
+      reason: 'Long names',
+    };
+    expect(validateConfig({ preset: 'java', exceptions: [longNames] }).exceptions).toEqual([
+      longNames,
+    ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java keeps 100 characters per line, where google-java-format wraps, and Checkstyle checks it; to change what Checkstyle checks, set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java keeps 100 characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"',
       ),
     );
   });
