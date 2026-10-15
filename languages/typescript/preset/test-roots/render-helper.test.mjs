@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule as testMustUseProductionRuntime } from '../eslint-plugin/rules/test-must-use-production-runtime.mjs';
+import { rule as testMustUseProductionRuntime } from '../eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mjs';
 
 RuleTester.afterAll = afterAll;
 RuleTester.afterEach = afterEach;

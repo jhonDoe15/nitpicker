@@ -21,7 +21,7 @@ afterAll(() => {
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
   `import { nitpickerRules } from ${JSON.stringify(`${preset}/eslint-plugin/index.mjs`)};`,
-  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react-scope.mjs`)};`,
+  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react/react-scope.mjs`)};`,
   `import { resolveLayout } from ${JSON.stringify(`${preset}/layout.mjs`)};`,
   'export default [',
   "  { files: ['**/*.{ts,tsx}'], languageOptions: { parser: tseslint.parser } },",

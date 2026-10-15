@@ -2,7 +2,7 @@ import { RuleTester } from 'eslint';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { rule as testMustUseProductionRuntime } from '../eslint-plugin/rules/test-must-use-production-runtime.mjs';
+import { rule as testMustUseProductionRuntime } from '../eslint-plugin/rules/testing/assertions/test-must-use-production-runtime.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { analyzeTestRuntime } from '../test-runtime/analyze.mjs';
 

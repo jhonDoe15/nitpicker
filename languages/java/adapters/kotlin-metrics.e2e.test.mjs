@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from './java-diff.mjs';
+import { INIT_SCRIPT } from '../builds/java-build.mjs';
 
 // Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
 // files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
@@ -254,10 +254,13 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {
     const { status, log } = measure(writeSources('broken', { 'src/Broken.kt': BROKEN }));
 
-    const [, line, version] =
-      /^src\/Broken\.kt:(\d+): .*The sources compile, so the pinned Kotlin compiler (\S+) is too old to read them: bump kotlinCompiler in nitpicker\.init\.gradle\.$/m.exec(
-        log,
-      );
+    const [, line, version] = new RegExp(
+      [
+        '^src\\/Broken\\.kt:(\\d+): .*The sources compile, so the pinned Kotlin compiler (\\S+)',
+        ' is too old to read them: bump kotlinCompiler in nitpicker\\.init\\.gradle\\.$',
+      ].join(''),
+      'm',
+    ).exec(log);
     expect([status, line, version]).toEqual([1, '4', pinned]);
   });
 });
