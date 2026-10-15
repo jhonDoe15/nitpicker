@@ -5,6 +5,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/structure/analyze.mjs',
   'languages/typescript/preset/structure/check-files.mjs',
   'languages/typescript/preset/structure/file-limits.mjs',
+  'languages/typescript/preset/structure/workspace-tests.mjs',
   'shared/rules/file-limits.mjs',
   'shared/rules/finding-helpers.mjs',
   'shared/glob.mjs',

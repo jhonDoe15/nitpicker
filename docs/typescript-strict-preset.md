@@ -260,7 +260,14 @@ alone.
   `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
 - `nitpicker/no-uncollected-tests`: a file in the test area that is not named `*.test.*` or `*.spec.*`
   (or `*.test-d.*`/`*.spec-d.*`, Vitest's type tests) but defines `describe`/`it`/`test` at its top
-  level is never run by Vitest. Rename it.
+  level is never run by Vitest. Rename it. The structure check reports the same rule on the
+  `package.json` of a workspace package (npm, yarn or pnpm workspaces) that has test files but no
+  `test` script, when the root test config does not include it either: a root Vitest config's
+  `test.projects` (read as literals; a glob or a path to the package or its config counts), its
+  `test.include`, Jest's `projects`, or a root `test` script that runs Vitest or Jest itself. The
+  finding counts the package's test files and is held while the count does not grow, so a new
+  package or a new test file in such a package fails. Add a `test` script or a `projects` entry, or
+  add an exception for `nitpicker/no-uncollected-tests` with the package.json path.
 - `nitpicker/no-test-helpers-in-source`: a file under a source root that sits in a `testing/`,
   `test-utils/`, `test-helpers/`, `test-support/`, `fixtures/` or `__mocks__/` folder, or is named
   `test-utils`, `test-helpers`, `test-support` or `*.fixtures`, is a test helper. Placed in
