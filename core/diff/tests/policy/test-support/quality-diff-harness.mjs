@@ -6,7 +6,10 @@ import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
 export const IN_PROCESS_TASKS = { runTasks: runTasksInProcess };
 
-const fakeAnalyzerPath = path.resolve(import.meta.dirname, '../../../fixtures/fake-analyzer.mjs');
+const fakeAnalyzerPath = path.resolve(
+  import.meta.dirname,
+  '../../../execution/test-support/fake-analyzer.mjs',
+);
 
 const COMPARISON_BASE_REF = 'comparison-base';
 

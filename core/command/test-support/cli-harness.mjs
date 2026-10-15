@@ -4,7 +4,10 @@ import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 
 const discardedProgress = { write() {} };
 
-const fakeAnalyzerPath = path.join(import.meta.dirname, '../../diff/fixtures/fake-analyzer.mjs');
+const fakeAnalyzerPath = path.join(
+  import.meta.dirname,
+  '../../diff/execution/test-support/fake-analyzer.mjs',
+);
 
 const COMPARISON_BASE_REF = 'comparison-base';
 

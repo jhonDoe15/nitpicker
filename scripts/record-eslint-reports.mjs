@@ -1,15 +1,11 @@
-// Regenerates eslint-recorded-reports.json from real ESLint. Run from the repository root:
-//   node core/diff/fixtures/record-eslint-reports.mjs
-// It runs the compare-policy tests with the replay script in record mode (NITPICKER_DIFF_RECORD_DIR),
-// so every ESLint run those tests make is executed by the real ESLint and its report is captured.
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { installedVersions } from './eslint-recording-key.mjs';
+import { installedVersions } from '../core/diff/tests/analysis/eslint/test-support/eslint-recording-key.mjs';
 
-const toolRoot = path.resolve(import.meta.dirname, '../../..');
-const outputPath = path.join(import.meta.dirname, 'eslint-recorded-reports.json');
+const toolRoot = path.resolve(import.meta.dirname, '..');
+const outputPath = path.join(toolRoot, 'core/diff/fixtures/eslint-recorded-reports.json');
 const recordDirectory = mkdtempSync(path.join(tmpdir(), 'eslint-records-'));
 
 try {
@@ -46,7 +42,6 @@ try {
     outputPath,
     `${JSON.stringify({ versions: installedVersions(), snapshots: sorted }, null, 2)}\n`,
   );
-  // Keep the file in the repository's prettier format so regenerating it yields no formatting noise.
   const format = spawnSync(
     process.execPath,
     [path.join(toolRoot, 'node_modules/prettier/bin/prettier.cjs'), '--write', outputPath],

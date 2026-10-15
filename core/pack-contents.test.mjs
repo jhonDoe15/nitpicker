@@ -67,14 +67,14 @@ describe('npm package contents', () => {
       [
         'core/cli.mjs',
         'core/cli.test.mjs',
-        'core/diff/fixtures/fake-analyzer.mjs',
+        'core/diff/fixtures/fake-eslint-cli.mjs',
         'core/command/test-support/cli-harness.mjs',
         'languages/java/adapters/fixtures/fake-gradle.mjs',
         'core/diff/execution/analyzer-scheduler.mjs',
       ].filter(isTestOnly),
     ).toEqual([
       'core/cli.test.mjs',
-      'core/diff/fixtures/fake-analyzer.mjs',
+      'core/diff/fixtures/fake-eslint-cli.mjs',
       'core/command/test-support/cli-harness.mjs',
       'languages/java/adapters/fixtures/fake-gradle.mjs',
     ]);

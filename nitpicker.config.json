@@ -20,6 +20,7 @@
       "core/cli.mjs",
       "core/diff/sharding/aggregate-shards.mjs",
       "core/diff/execution/analyzer-scheduler.mjs",
+      "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
@@ -89,7 +90,7 @@
         "languages/typescript/preset/clean-projects/react-project.test.mjs",
         "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
       ],
-      "reason": "Each test runs real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project, which takes 10 to 50 seconds per run on an idle four-CPU machine."
+      "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },
     {
       "rule": "@typescript-eslint/no-unsafe-member-access",

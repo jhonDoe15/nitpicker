@@ -11,7 +11,10 @@ import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-
 const runQualitySnapshot = (options) =>
   runQualitySnapshotWithSubprocesses({ runTasks: runTasksInProcess, ...options });
 
-const fakeAnalyzerPath = path.join(import.meta.dirname, '../diff/fixtures/fake-analyzer.mjs');
+const fakeAnalyzerPath = path.join(
+  import.meta.dirname,
+  '../diff/execution/test-support/fake-analyzer.mjs',
+);
 const temporaryRoots = [];
 
 afterEach(() => {

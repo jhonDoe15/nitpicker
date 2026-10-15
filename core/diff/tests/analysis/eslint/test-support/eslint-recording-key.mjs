@@ -1,15 +1,10 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-// Shared by replay-eslint-cli.mjs and record-eslint-reports.mjs: what identifies the snapshot an
-// ESLint report was recorded from.
+const toolRoot = path.resolve(import.meta.dirname, '../../../../../..');
 
-const toolRoot = path.resolve(import.meta.dirname, '../../..');
-
-// Packages whose version changes what ESLint reports for the test policies. Add every ESLint plugin
-// a policy used by a replayed test loads (the tests' policies load only typescript-eslint).
-export const trackedPackages = [
+const trackedPackages = [
   'eslint',
   'typescript-eslint',
   '@typescript-eslint/parser',
@@ -67,13 +62,22 @@ function sourceHashes(projectRoot, directory) {
 }
 
 function typescriptFiles(directory) {
-  return readdirSync(directory).flatMap((entry) => {
-    const entryPath = path.join(directory, entry);
-    if (statSync(entryPath).isDirectory()) {
-      return typescriptFiles(entryPath);
-    }
-    return entryPath.endsWith('.ts') ? [entryPath] : [];
-  });
+  const files = [];
+  const directories = [directory];
+  for (const current of directories) {
+    const entries = readdirSync(current, { withFileTypes: true });
+    directories.push(
+      ...entries
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => path.join(current, entry.name)),
+    );
+    files.push(
+      ...entries
+        .filter((entry) => !entry.isDirectory() && entry.name.endsWith('.ts'))
+        .map((entry) => path.join(current, entry.name)),
+    );
+  }
+  return files.sort();
 }
 
 function sha256(contents) {
