@@ -19,9 +19,13 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
-export function exceptionHint(rule, glob, packageName) {
+export function exceptionEntry(rule, glob, packageName) {
   const packages = packageName === undefined ? {} : { packages: [packageName] };
-  const entry = JSON.stringify({ rule, paths: [glob], ...packages, reason: '...' });
+  return JSON.stringify({ rule, paths: [glob], ...packages, reason: '...' });
+}
+
+export function exceptionHint(rule, glob, packageName) {
+  const entry = exceptionEntry(rule, glob, packageName);
   return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
 }
 
@@ -35,7 +39,16 @@ export function isExcepted(exceptions, rule, filePath, packageName) {
 }
 
 export function withoutExcepted(findings, exceptions = []) {
-  return findings.filter((finding) => !isExcepted(exceptions, finding.rule, finding.path));
+  return findings
+    .filter(
+      (finding) =>
+        !(finding.exceptionPaths ?? [finding.path]).some((findingPath) =>
+          isExcepted(exceptions, finding.rule, findingPath),
+        ),
+    )
+    .map((finding) =>
+      Object.fromEntries(Object.entries(finding).filter(([key]) => key !== 'exceptionPaths')),
+    );
 }
 
 export function withoutExcluded(filePaths, exclude = []) {

@@ -163,6 +163,8 @@ describe('binaries and large files', () => {
 
 describe('committed build output', () => {
   const manifest = (value) => JSON.stringify(value);
+  const folders = (findings) =>
+    findings.map(({ rule, path: anchor, identity }) => `${rule} ${identity} at ${anchor}`);
 
   it('flags output folders next to a project manifest and framework caches anywhere, once each', () => {
     const findings = check({
@@ -171,7 +173,8 @@ describe('committed build output', () => {
       'dist/assets/index-1a2b.js': 'x',
       'coverage/lcov.info': 'x',
       'packages/web/package.json': manifest({ name: 'web' }),
-      'packages/web/build/main.js': 'x',
+      'packages/web/build/index.html': 'x',
+      'packages/web/build/static/js/main.3f2a9c1b.js': 'x',
       'apps/site/.next/cache/data': 'x',
       'docs/storybook-static/index.html': 'x',
       'services/api/pom.xml': '<project/>',
@@ -182,28 +185,73 @@ describe('committed build output', () => {
       'src/dist/index.ts': 'x',
     });
 
-    expect(summary(findings)).toEqual([
-      'committed-build-output apps/site/.next/',
-      'committed-build-output coverage/',
-      'committed-build-output dist/',
-      'committed-build-output docs/storybook-static/',
-      'committed-build-output packages/web/build/',
-      'committed-build-output services/api/target/',
+    expect(folders(findings)).toEqual([
+      'committed-build-output apps/site/.next|build-output at package.json',
+      'committed-build-output coverage|build-output at package.json',
+      'committed-build-output dist|build-output at package.json',
+      'committed-build-output docs/storybook-static|build-output at package.json',
+      'committed-build-output packages/web/build|build-output at packages/web/package.json',
+      'committed-build-output services/api/target|build-output at services/api/pom.xml',
     ]);
     expect(findings[2]).toEqual({
       tool: 'repository-hygiene',
       rule: 'committed-build-output',
-      path: 'dist/',
-      identity: 'folder:dist/',
+      path: 'package.json',
+      identity: 'dist|build-output',
       message:
-        'dist/ is build output tracked in git. Untrack it with `git rm -r --cached dist`, add `dist/` to ' +
-        '.gitignore, and let CI produce it. If this is intended, add ' +
-        '{"rule":"committed-build-output","paths":["dist/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'dist/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
+        '{"rule":"committed-build-output","paths":["dist/**"],"reason":"..."} to "exceptions" in ' +
+        'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached dist`, add ' +
+        '`dist/` to .gitignore, and let CI produce it.',
       classification: 'enforceable',
+      exceptionPaths: ['dist', 'dist/'],
     });
-    expect(
-      withoutExcepted(findings, [{ rule: 'committed-build-output', paths: ['**/dist/**'] }]),
-    ).toEqual(findings.filter(({ path: folder }) => folder !== 'dist/'));
+  });
+
+  it.each([['dist/**'], ['dist'], ['dist/'], ['**/dist/**']])(
+    'lifts the folder finding with the exception path %s',
+    (glob) => {
+      const findings = check({ 'package.json': manifest({ name: 'app' }), 'dist/a.js': 'x' });
+
+      expect(
+        withoutExcepted(findings, [{ rule: 'committed-build-output', paths: [glob] }]),
+      ).toEqual([]);
+    },
+  );
+
+  it('anchors a folder with no manifest above it to the folder itself', () => {
+    const findings = check({ 'site/.next/cache/data': 'x' });
+
+    expect(folders(findings)).toEqual([
+      'committed-build-output site/.next|build-output at site/.next/',
+    ]);
+  });
+
+  it('leaves build, out, target and coverage folders that hold sources or that the manifest runs', () => {
+    const findings = check({
+      'package.json': manifest({
+        name: 'app',
+        scripts: { build: 'node build/build.js' },
+        build: { directories: { buildResources: 'build' } },
+      }),
+      'build/build.js': 'x',
+      'build/index.html': 'x',
+      'build/icon.icns': 'x',
+      'svc/pyproject.toml': '[project]\nname = "svc"\n',
+      'svc/build/make_docs.py': 'x',
+      'svc/coverage/__init__.py': 'x',
+      'gradle/build.gradle.kts': 'plugins {}\n',
+      'gradle/build/convention/Conventions.kt': 'x',
+      'docs/package.json': manifest({ name: 'docs' }),
+      'docs/build/guide.md': 'x',
+      'docs/out/bundle.min.js': 'x',
+      'docs/target/types.d.ts': 'x',
+    });
+
+    expect(folders(findings)).toEqual([
+      'committed-build-output docs/out|build-output at docs/package.json',
+      'committed-build-output docs/target|build-output at docs/package.json',
+    ]);
   });
 
   it('leaves output that a GitHub Action or a package installed from git runs', () => {
@@ -227,9 +275,9 @@ describe('committed build output', () => {
       'web/dist/main.js': 'x',
     });
 
-    expect(summary(findings)).toEqual([
-      'committed-build-output built/dist/',
-      'committed-build-output web/dist/',
+    expect(folders(findings)).toEqual([
+      'committed-build-output built/dist|build-output at built/package.json',
+      'committed-build-output web/dist|build-output at web/package.json',
     ]);
   });
 });
