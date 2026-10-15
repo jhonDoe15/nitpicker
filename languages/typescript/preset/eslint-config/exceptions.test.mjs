@@ -39,6 +39,15 @@ describe('strict rule exceptions', () => {
     expect(applyRuleExceptions(presetConfig, [fileLimit])).toEqual(presetConfig);
   });
 
+  it('leaves exceptions for a dependency boundary rule to the architecture check', () => {
+    const boundary = {
+      rule: 'domain-does-not-import-node-io',
+      paths: ['src/legacy/**'],
+      reason: 'Legacy rewrite',
+    };
+    expect(applyRuleExceptions(presetConfig, [boundary])).toEqual(presetConfig);
+  });
+
   it('fails for a rule the preset does not define', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),

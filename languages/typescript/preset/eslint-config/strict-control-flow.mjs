@@ -31,10 +31,27 @@ export const promiseChainSelectors = [
   },
 ];
 
+const resolveOnly = "[callee.name='resolve']";
+
+export const promiseMisuseSelectors = [
+  {
+    selector:
+      "ExpressionStatement > AwaitExpression > CallExpression[callee.object.name='Promise'][callee.property.name='allSettled']",
+    message:
+      'Promise.allSettled with its result dropped hides every rejection. Read the results and handle the rejected ones, or use Promise.all to fail on the first rejection.',
+  },
+  {
+    selector: `NewExpression[callee.name='Promise'] > ArrowFunctionExpression[body.type='CallExpression'][body.callee.name='resolve'], NewExpression[callee.name='Promise'] > :matches(ArrowFunctionExpression, FunctionExpression) > BlockStatement[body.length=1] > ExpressionStatement > CallExpression${resolveOnly}`,
+    message:
+      'Do not wrap a value in `new Promise`. Return it from an async function, or use `Promise.resolve(value)`; `new Promise` is for callback APIs.',
+  },
+];
+
 export const controlFlowSelectors = [
   ...loopSelectors,
   ...forEachSelectors,
   ...promiseChainSelectors,
+  ...promiseMisuseSelectors,
 ];
 
 export const testControlFlowSelectors = [
@@ -45,4 +62,8 @@ export const testControlFlowSelectors = [
 
 export const controlFlowRules = { eqeqeq: ['error', 'always'] };
 
-export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };
+export function controlFlowTypedRulesFor(react) {
+  return { '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: react }] };
+}
+
+export const controlFlowTypedRules = controlFlowTypedRulesFor(false);

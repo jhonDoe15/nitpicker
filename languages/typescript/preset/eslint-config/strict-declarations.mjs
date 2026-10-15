@@ -76,6 +76,14 @@ export const defaultExportSelectors = [
   },
 ];
 
+export const moduleSurfaceSelectors = [
+  {
+    selector: 'ExportAllDeclaration',
+    message:
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public.",
+  },
+];
+
 const moduleAugmentation =
   ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
 

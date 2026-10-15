@@ -1,28 +1,59 @@
+import { compositionRootOptionsSchema, isCompositionRootFile } from './composition-root-files.mjs';
+
+function memberName(member) {
+  if (!member.computed) {
+    return member.property.type === 'Identifier' ? member.property.name : undefined;
+  }
+  return member.property.type === 'Literal' ? String(member.property.value) : undefined;
+}
+
+function isConsoleCall(callee) {
+  return (
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'console' &&
+    memberName(callee) !== undefined
+  );
+}
+
+function isStandardStreamWrite(callee) {
+  return (
+    callee.type === 'MemberExpression' &&
+    memberName(callee) === 'write' &&
+    callee.object.type === 'MemberExpression' &&
+    callee.object.object.type === 'Identifier' &&
+    callee.object.object.name === 'process' &&
+    ['stdout', 'stderr'].includes(memberName(callee.object))
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Keep production logging on the application logger path',
     },
-    schema: [],
+    schema: compositionRootOptionsSchema,
     messages: {
       consoleCall: 'Use the application logger instead of console.{{method}}().',
+      streamWrite:
+        'Use the application logger instead of process.{{stream}}.write(). Program output is written in the composition root. If this module prints the program output, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     return {
       CallExpression(node) {
-        if (
-          node.callee.type === 'MemberExpression' &&
-          !node.callee.computed &&
-          node.callee.object.type === 'Identifier' &&
-          node.callee.object.name === 'console' &&
-          node.callee.property.type === 'Identifier'
-        ) {
+        if (isConsoleCall(node.callee)) {
           context.report({
             node,
             messageId: 'consoleCall',
-            data: { method: node.callee.property.name },
+            data: { method: memberName(node.callee) },
+          });
+        } else if (isStandardStreamWrite(node.callee) && !isCompositionRootFile(context)) {
+          context.report({
+            node,
+            messageId: 'streamWrite',
+            data: { stream: memberName(node.callee.object) },
           });
         }
       },

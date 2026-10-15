@@ -70,6 +70,8 @@ describe('strict adapters type-aware rules', () => {
       'async function load(): Promise<number> { return 1; }\nasync function run() { load(); }\nexport { run };\n',
     'awaited.ts':
       'async function load(): Promise<number> { return 1; }\nasync function run() { await load(); }\nexport { run };\n',
+    'voided.ts':
+      'async function load(): Promise<number> { return 1; }\nasync function run() { void load(); }\nexport { run };\n',
     'throw.ts': 'export function run(value: number) { throw value; }\n',
   };
   for (const [name, code] of Object.entries(fixtures)) {
@@ -108,6 +110,13 @@ describe('strict adapters type-aware rules', () => {
       '@typescript-eslint/no-floating-promises',
     ]);
     expect(messages[0].message).toContain('awaited');
+  });
+
+  it('rejects a promise silenced with void', async () => {
+    const messages = await messagesFor('voided.ts');
+    expect(messages.map((message) => message.ruleId)).toEqual([
+      '@typescript-eslint/no-floating-promises',
+    ]);
   });
 
   it('accepts an awaited promise', async () => {

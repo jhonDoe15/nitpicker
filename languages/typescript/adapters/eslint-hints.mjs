@@ -54,6 +54,25 @@ const SWITCH_NOT_EXHAUSTIVE_HINT =
 const NODE_TEST_HINT =
   ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
 
+const EXCEPTION_ROUTE = 'add an exception for this rule in nitpicker.config.json';
+
+const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
+
+const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several. \`void\`, \`.then()\` and \`.catch()\` do not count. If the work is deliberately not awaited, ${EXCEPTION_ROUTE}.`;
+
+const MAGIC_NUMBER_HINT = ` Name it with a constant, e.g. \`const SECONDS_PER_DAY = 86400;\` (-1, 0, 1 and 2 are allowed). If the number is clear where it is, ${EXCEPTION_ROUTE}.`;
+
+const EVAL_MESSAGE = `Do not evaluate a string as code. Call the function directly, look it up in a table keyed by name, or parse the data with JSON.parse and a schema. If it is unavoidable, ${EXCEPTION_ROUTE}.`;
+
+const PARAM_REASSIGN_HINT =
+  ' Declare a new const with another name instead of reassigning the parameter.';
+
+const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE. If an external API forces the name, ${EXCEPTION_ROUTE}.`;
+
+const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. If the input is bounded and trusted, ${EXCEPTION_ROUTE}.`;
+
+const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
+
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
@@ -113,6 +132,16 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function floatingPromiseMessage({ text }) {
+  return FLOATING_PROMISE_TEXT.test(text)
+    ? FLOATING_PROMISE_MESSAGE
+    : `${text} ${EXCEPTION_ROUTE}.`;
+}
+
+function appendHint(hint) {
+  return ({ text }) => `${text}${hint}`;
+}
+
 function nodeTestMessage({ text }) {
   return `${text}${NODE_TEST_HINT}`;
 }
@@ -131,6 +160,13 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],
+  ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
+  ['@typescript-eslint/no-magic-numbers', appendHint(MAGIC_NUMBER_HINT)],
+  ['@typescript-eslint/naming-convention', appendHint(NAMING_HINT)],
+  ['no-eval', () => EVAL_MESSAGE],
+  ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
+  ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
+  ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
 ]);
 
 export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {

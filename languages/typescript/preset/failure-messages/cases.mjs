@@ -9,6 +9,7 @@ import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
 import { strictCompositionRootConfig } from '../eslint-config/strict-composition-root.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
+import { policyFailureMessageCases } from './policy/policy-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 
 const cognitiveComplexityConfig = [
@@ -326,6 +327,7 @@ export const failureMessageCases = [
     allowed: "use 'const'",
   },
   ...testFailureMessageCases,
+  ...policyFailureMessageCases,
   {
     name: 'cognitive complexity names smaller functions',
     config: cognitiveComplexityConfig,

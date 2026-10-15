@@ -11,18 +11,20 @@ import {
 import {
   declarationSelectorsFor,
   defaultExportSelectors,
+  moduleSurfaceSelectors,
   typeDefinitionSelectors,
   typedDeclarationRules,
 } from './strict-declarations.mjs';
 import {
   controlFlowRules,
   controlFlowSelectors,
-  controlFlowTypedRules,
+  controlFlowTypedRulesFor,
   forEachSelectors,
   loopSelectors,
 } from './strict-control-flow.mjs';
 import {
   domainFunctionalRules,
+  domainPurityRules,
   domainGlobsFor,
   domainRestrictedSyntax,
   domainTypeAwareFunctionalRules,
@@ -33,6 +35,7 @@ import {
   strictAdaptersTypedConfig,
 } from './strict-adapters.mjs';
 import { strictTestConfigFor } from './strict-tests.mjs';
+import { productionPolicyConfigFor } from './policy/production-policy.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
   const everywhereSelectors = [
@@ -43,6 +46,7 @@ export function restrictedSyntaxFor(options = {}) {
     ...everywhereSelectors,
     ...typeDefinitionSelectors,
     ...defaultExportSelectors,
+    ...moduleSurfaceSelectors,
     ...controlFlowSelectors,
   ];
   return {
@@ -95,6 +99,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
       plugins: { functional, nitpicker: nitpickerRules },
       rules: {
         ...domainFunctionalRules,
+        ...domainPurityRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
         'nitpicker/no-throw': 'error',
         'nitpicker/no-unknown-in-domain': 'error',
@@ -119,14 +124,14 @@ const strictSyntaxConfig = strictSyntaxConfigFor();
 
 export default strictSyntaxConfig;
 
-export function strictTypedConfigFor(layout, parserOptions) {
+export function strictTypedConfigFor(layout, parserOptions, options = {}) {
   return [
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin },
-      rules: { ...typedDeclarationRules, ...controlFlowTypedRules },
+      rules: { ...typedDeclarationRules, ...controlFlowTypedRulesFor(options.react === true) },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),
@@ -139,6 +144,7 @@ export function strictTypedConfigFor(layout, parserOptions) {
       ...entry,
       files: adapterGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
+      rules: { ...entry.rules, ...controlFlowTypedRulesFor(options.react === true) },
     })),
   ];
 }
@@ -160,8 +166,9 @@ export const strictProductionRules = {
 
 export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
+    ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
-    ...strictTypedConfigFor(layout, parserOptions),
+    ...strictTypedConfigFor(layout, parserOptions, options),
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),

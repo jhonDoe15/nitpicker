@@ -24,21 +24,53 @@ config file is an exception like any other.
   imports a feature only through that file. A new feature is a new directory, not a new branch in a
   shared entry point.
 - `features/<name>/domain/` holds pure logic: functional core, imperative shell, using hexagonal
-  architecture's folder names. It may not import `adapters/`, Node I/O modules, network or database
-  clients, the logger, or module state. Time, IDs, and randomness arrive as parameters.
+  architecture's folder names. It may not import `adapters/`, Node I/O modules (the pure ones
+  `path`, `url`, `util`, `assert`, `buffer`, `events`, `string_decoder`, `punycode`, `querystring`
+  and subpaths like `path/posix` and `assert/strict` are fine), network or database clients, the
+  logger, module state, or ID and clock libraries (`uuid`, `nanoid`, `dayjs`, `moment`, `luxon`).
+  It may not reach Node I/O or a client through a `shared/` module it imports
+  (`domain-does-not-reach-io-through-shared`). Time, IDs, and randomness arrive as parameters. A
+  dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
+  the rule (for example `domain-does-not-import-node-io`), where `paths` are the importing files.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with no I/O has no
   `adapters/` folder.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
+- Code under `src/main/` lives in `features/`, `shared/` or the composition root
+  (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
+  reported on every file, with the layout in the message. Put the code in the feature that uses it
+  (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several features need it. A React project's own UI folders are not reported.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
-  module-level `let`.
+  module-level `let`, and no module-level collection or object that the module mutates
+  (`nitpicker/no-module-level-mutable-state`: `const cache = new Map()` with `cache.set(...)`,
+  `const state = { count: 0 }` with `state.count++`, a `Set` with `add`, an array with `push`, and
+  `Object.assign` onto it). Create the store in the composition root and pass it in. `domain/` is
+  covered by `functional/prefer-immutable-types` instead.
+- The composition root is `src/main/composition-root.ts`, `src/main/main.ts` or
+  `src/main/server.ts` (`.mts`, `.js`, `.mjs` too) or a file under `src/main/composition-root/`.
+  A `server.ts` or `main.ts` in another folder is not a root. The `compositionRootPattern` option
+  adds roots to this list.
+- `nitpicker/no-managed-resource-construction-outside-composition-roots` reports `new` on names
+  that end in `Service`, `Client`, `Pool`, `Cache`, `Store`, `Scheduler`, `Transport`, `Adapter`,
+  `Server`, `Worker`, `Connection`, `Queue`, `Producer`, `Consumer`, `Broker`, `Gateway`, `Database`
+  or `Emitter`, on `Redis`, `Stripe`, `Octokit`, `OpenAI`, `Socket` and `WebSocket`, and the factory
+  calls `createServer`, `createClient`, `createPool`, `createConnection`, `createWorker` and
+  `axios.create`. Value types (`Map`, `Set`, `URL`, `Date`, `Error`, `RegExp`, `*Request`,
+  `*Response`, `*Command`) are fine anywhere.
+- `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
+  `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
+  schema, and the typed config is passed down. `process.exit` is called only in the composition
+  root or a main guard. Entry scripts listed in `layout.entryPoints` and config files
+  (`*.config.*`, `.*rc.*`) are exempt.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
-  functions that pass things in. It reports `if`, `?:`, `switch`, `??` and optional chaining (`?.`),
-  inside functions and at module level, except the main guard (an `if` whose condition uses
-  `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and branches in its
-  condition. `&&` and `||` are not reported. A lookup or missing-value
+  functions that pass things in. It reports `if`, `?:`, `switch`, `??`, optional chaining (`?.`),
+  loops, and `||` with a literal, object, array or call on its right (`env['PORT'] || 3000`, the
+  `??` swap), inside functions and at module level, except the main guard (an `if` whose condition
+  uses `import.meta` or `require.main`, as for `no-process-globals-outside-main-guard`) and
+  branches in its condition. `&&` and `||` between plain values, and `try`/`catch`, are not
+  reported. A lookup or missing-value
   check moves into the feature's `adapters/` (or `domain/`). Existing branches are baselined, and a
   function that gains one fails; a branch that belongs in the root needs an exception for this
   rule in `nitpicker.config.json`.
@@ -50,7 +82,13 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`.
+- No classes and no `this`. No reassigning a parameter (`no-param-reassign`).
+- No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
+  `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
+Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
+  `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`
+  and `sessionStorage` are restricted globals; `Reflect.set` and its mutating siblings are
+  restricted like `Object.assign`.
 - Expected failures are returned as discriminated unions, never thrown. TypeScript has no checked
   exceptions, so a result type is the only way the compiler forces every caller to handle a new
   failure case, which is the gate steering the author. It also keeps `domain/` pure. The cost is
@@ -59,7 +97,11 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `nitpicker/no-unknown-in-domain`: no `unknown` in a parameter or property type (including inside
   `readonly unknown[]`, `Record<string, unknown>` and index signatures). `domain/` receives values
   already parsed and typed; the zod schema that parses untrusted input lives in `adapters/`, and
-  `domain/` types the value as `z.infer<typeof schema>` or a hand-written type. `unknown` as a
+  `domain/` writes its own readonly type for the value. Do not write `z.infer<typeof schema>`
+  in `domain/`: importing the schema type from `adapters/` breaks the layer rule, and a schema
+  defined in `domain/` is itself mutable. A zod output is assignable to the readonly type, so
+  `adapters/` parses and passes the result in. An alias of `unknown` (`type Raw = unknown`) is
+  reported like `unknown`. `unknown` as a
   generic bound or default (`<T extends unknown>`, `<T = unknown>`), a return type, a variable or a
   `catch (error: unknown)` is not reported, and neither is a bare `cause: unknown` or `error: unknown`
   that carries a caught error through a failure result. An opaque value needs an exception in the
@@ -70,13 +112,23 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - Mutation is reported once per site by the `no-restricted-syntax` domain selectors (`push` and the
   other mutating array methods, property assignment and update, `delete`, and `Object.assign`,
   `defineProperty`, `defineProperties` or `setPrototypeOf` on anything but a fresh object literal).
+- When `functional/prefer-immutable-types` flags something, its message names the annotation that
+  fixes it: a callback that returns an object or array literal gets a return type
+  (`items.map((item): Summary => ({ ... }))`, `lines.map((line): readonly string[] => ...)`); an
+  intermediate `const` gets `const cheap: readonly Item[] = items.filter(...)`; the tail of a
+  destructured array is taken with an annotated `slice`; an `Object.groupBy` result is typed
+  `Readonly<Partial<Record<Key, readonly T[]>>>`; an `Error` field is typed `unknown` (as `error` or
+  `cause`) or replaced by `message: string`; a generic bound is written with readonly fields
+  (`<T extends { readonly id: string }>`).
   `functional/immutable-data` is not enabled because it reported the same sites a second time with
   a less helpful message.
 
 ## Inside `adapters/`
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
-  library exceptions into domain results at the boundary.
+  library exceptions into domain results at the boundary. `nitpicker/preserve-error-cause` checks
+  `Error` and every class whose name ends in `Error` (`new AppError(String(error))` in a `catch` is
+  reported): pass `{ cause: error }` as an option, or the caught value itself as an argument.
 - `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
   caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
   result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
@@ -88,24 +140,58 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
   field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
   (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
-  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported.
+  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported. The check looks through
+  `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` elements (`z.record(z.string(), z.unknown())`
+  as a field is reported) and through a same-file `const` (`const anything = z.any()`). `z.custom<T>()`
+  without a check function is a cast, and `z.looseObject()`, `.loose()`, `.passthrough()` and
+  `.catchall(z.unknown())` let unknown keys through: use `z.object({...})` or
+  `z.strictObject({...})`.
 - Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed.
+  data are not allowed (`nitpicker/no-handwritten-boundary-guard`, in `adapters/`, `shared/` and
+  the other layers outside `domain/`): a predicate whose parameter is `unknown`, `any`, `object`,
+  `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
+'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
+  predicate over a union (`(result): result is Ok => result.kind === 'ok'`) is fine, and so is
+  `error instanceof Error` on a caught value.
 
 ## Everywhere
 
-- `nitpicker/no-self-recursion`: no function that calls itself, in all production code (`domain/`,
-  `adapters/`, the composition root and shared code), not in tests. Allowed forms: a retry or poll
+- `nitpicker/no-self-recursion`: no function that calls itself or refers to itself
+  (`xs.flatMap(flatten)` inside `flatten`), and no functions of one file that call each other
+  (`evens` and `odds`), in all production code (`domain/`, `adapters/`, the composition root and
+  shared code), not in tests. Allowed forms: a retry or poll
   is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
   JSON) is a `for...of` over a worklist that each step pushes the node's children onto
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
-  `flatMap` or `Object.fromEntries`. `domain/` has no loops, so a walk there uses `map`/`flatMap` or
-  moves to `adapters/`.
+  `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
+  of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
-  left without being awaited (`@typescript-eslint/no-floating-promises`).
-- `===` and `!==` only (`eqeqeq`).
+  left without being awaited (`@typescript-eslint/no-floating-promises`, with `void` not counting as
+  handled outside React projects, where `void handler()` stays allowed). `await Promise.allSettled(...)` with its result dropped hides every rejection, and
+  `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
+  async function returns directly.
+- `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
+  statement per module (`no-duplicate-imports`; a separate `import type` is fine).
+- Identifier casing (`@typescript-eslint/naming-convention`): types and type parameters in
+  PascalCase; functions, variables and parameters in camelCase; constants may be UPPER_CASE; a
+  leading underscore is allowed. PascalCase functions and variables are allowed in a React project.
+  Names a destructuring takes from external data are not checked.
+- No magic numbers (`@typescript-eslint/no-magic-numbers`): name the number with a constant
+  (`const SECONDS_PER_DAY = 86400;`). `-1`, `0`, `1` and `2`, default parameter values, array
+  indexes, numeric literal types and object property values are allowed. Tests are exempt.
+- Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
+  that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
+  no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
+  and `execSync` take a string literal only, otherwise `execFile(program, [args])`, and `shell:
+true` is reported); no `Math.random` for ids or tokens (use `crypto.randomUUID()` or
+  `crypto.randomInt()`, or take the value as a parameter); no `fs` call on `path.join`/`path.resolve`
+  of a parameter without a containment check in the same function
+  (`nitpicker/no-unsafe-path-join`: `path.resolve(base, name)` then `full.startsWith(base +
+path.sep)`).
+- Named exports list their names: no `export *`, which makes every internal export of a feature's
+  `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
   Each `if`, ternary, `switch`, loop and `catch` costs 1 plus its nesting level; `else`, `else if`,
   labelled `break`/`continue` and each run of like `&&`/`||` cost 1. Unlike the published algorithm,
@@ -113,6 +199,13 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   outside any function is not scored. A function that must stay complex gets an exception for the
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
+- `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
+  initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
+  timers, any `...Sync` call such as `readFileSync`, any `process.*` call, `new Date()` with no
+  argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
+  (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine.
+- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
+  root, `process.stdout.write` and `process.stderr.write`.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, which
   can only merge interfaces. No `enum` (use unions of string literals) and no `namespace`.
@@ -300,6 +393,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
+Outside React, `eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking`.
+
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
@@ -337,7 +432,9 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
-  turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
+  turns that rule off for the listed paths. For a dependency-cruiser boundary rule (the `domain-*`
+  rules, for example `domain-does-not-import-node-io`), the rule id is the rule's name and the paths
+  are the importing files. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
