@@ -92,7 +92,7 @@ describe.skipIf(!enabled)('Python preset on a base whose tests fail', () => {
     const result = gate(project, 'still-red', [], 'red-base');
 
     expect(result.exitCode, result.text).toBe(2);
-    expect(result.json('notes.json')).toEqual([]);
+    expect(result.json('notes.json')).toEqual(['base tests-failed', 'head tests-failed']);
     expect(
       result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
     ).toEqual([]);
