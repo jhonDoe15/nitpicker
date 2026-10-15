@@ -10,8 +10,8 @@ import {
 } from '../../../../shared/policy.mjs';
 import { testMethod } from './test-methods.mjs';
 
-export const SLOW_TEST_TOOL = 'test-runtime';
-export const TEST_RESULTS_DIRECTORY = 'test-results';
+const SLOW_TEST_TOOL = 'test-runtime';
+const TEST_RESULTS_DIRECTORY = 'test-results';
 const UNIT_TEST_TASK = 'test';
 const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
 const SPRING_BOOT_TEST = /@SpringBootTest\b/u;

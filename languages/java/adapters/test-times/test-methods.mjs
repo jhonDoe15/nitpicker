@@ -2,6 +2,8 @@ const CALL = /^(.+?)\((?:[^()]|\([^()]*\))*\)(?:\[\d+\])?$/u;
 const DECLARED_NAME = String.raw`(\x60[^\x60]+\x60|[\p{L}_$][\p{L}\p{N}_$]*)`;
 const DECLARATION = new RegExp(String.raw`\b(?:void|fun)\s+${DECLARED_NAME}\s*\(`, 'gu');
 const ANNOTATION_LINE = /^\s*@/u;
+const BRACES_OUTSIDE_LITERALS = /"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[{}]/gu;
+const BRACE_DEPTH = { '{': 1, '}': -1 };
 
 function quoted(text) {
   return JSON.stringify(text).slice(1, -1);
@@ -19,26 +21,16 @@ function namedByDisplayName(text, name, found) {
   return annotation < 0 ? undefined : found.find((declaration) => declaration.index > annotation);
 }
 
-function skipLiteral(text, start) {
-  const quote = text[start];
-  let index = start + 1;
-  while (index < text.length && text[index] !== quote) {
-    index += text[index] === '\\' ? 2 : 1;
-  }
-  return index;
-}
-
 function closingBrace(text, from) {
+  const open = text.indexOf('{', from);
+  if (open < 0) {
+    return text.length - 1;
+  }
   let depth = 0;
-  for (let index = text.indexOf('{', from); index >= 0 && index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"' || character === "'") {
-      index = skipLiteral(text, index);
-    } else if (character === '{' || character === '}') {
-      depth += character === '{' ? 1 : -1;
-      if (depth === 0) {
-        return index;
-      }
+  for (const token of text.slice(open).matchAll(BRACES_OUTSIDE_LITERALS)) {
+    depth += BRACE_DEPTH[token[0]] ?? 0;
+    if (depth === 0) {
+      return open + token.index;
     }
   }
   return text.length - 1;

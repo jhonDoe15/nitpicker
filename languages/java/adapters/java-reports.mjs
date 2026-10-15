@@ -47,42 +47,16 @@ const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
 export function readJavaFindings(projectRoot, options = {}) {
-  const {
-    reportBase,
-    report,
-    crapLimit,
-    preset = 'java',
-    fileLimits,
-    exclude,
-    exceptions,
-  } = options;
+  const { reportBase, report, preset = 'java', fileLimits, exclude, exceptions } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
   if (kotlinPreset) {
     requireKotlinManifest(manifest);
   }
-  const roots = projectRoots(projectRoot);
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
-      withModuleIdentity(
-        readModuleFindings(
-          {
-            projectRoot,
-            roots,
-            reportRoot: module.reportRoot,
-            manifest: module.manifest,
-            sourceRoots: module.manifest.sourceRoots ?? [],
-            allSourceRoots: manifest.sourceRoots,
-            kotlin: kotlinPreset && module.manifest.kotlin === true,
-            jacoco: readModuleJacoco(module, preset),
-            mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
-            testTimes: { limits: options.testSeconds, baseline: options.baseline },
-          },
-          crapLimit,
-        ),
-        module,
-      ),
+      withModuleIdentity(moduleContextFindings(projectRoot, module, { manifest, options }), module),
     );
   return {
     findings: [
@@ -98,6 +72,25 @@ export function readJavaFindings(projectRoot, options = {}) {
       ...springFindings(projectRoot, manifest),
     ],
   };
+}
+
+function moduleContextFindings(projectRoot, module, { manifest, options }) {
+  const preset = options.preset ?? 'java';
+  return readModuleFindings(
+    {
+      projectRoot,
+      roots: projectRoots(projectRoot),
+      reportRoot: module.reportRoot,
+      manifest: module.manifest,
+      sourceRoots: module.manifest.sourceRoots ?? [],
+      allSourceRoots: manifest.sourceRoots,
+      kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
+      jacoco: readModuleJacoco(module, preset),
+      mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
+      testTimes: { limits: options.testSeconds, baseline: options.baseline },
+    },
+    options.crapLimit,
+  );
 }
 
 function readModuleFindings(context, crapLimit) {

@@ -113,6 +113,10 @@ export function runAnalyzers({
   }
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
+}
+
+function namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot }) {
   const snapshotRoot = projectRoot === liveProjectRoot ? undefined : { projectRoot, snapshot };
   return {
     reports: namedReports(scheduled.reports, snapshotRoot),
