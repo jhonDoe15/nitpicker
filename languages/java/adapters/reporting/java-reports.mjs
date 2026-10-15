@@ -2,7 +2,6 @@ import { withPmdAdvice } from '../../guards/advice/pmd-advice.mjs';
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readCouplingFindings } from '../metrics/java-coupling.mjs';
-import { readGuardFindings } from '../../guards/index.mjs';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
@@ -10,6 +9,7 @@ import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readCommentFindings } from '../comments/java-comments.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
+import { readGuardFindings } from '../../guards/index.mjs';
 import {
   methodText,
   readJavaFileLimitFindings,

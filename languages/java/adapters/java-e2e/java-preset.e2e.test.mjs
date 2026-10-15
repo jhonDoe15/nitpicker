@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { writeFileSync, mkdtempSync, cpSync, readFileSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
 import { tmpdir } from 'node:os';
 import {
@@ -14,6 +14,8 @@ import {
   STAMP,
   COMPLEX,
   clonedClass,
+  CALC,
+  CALC_TEST,
   BRANCHY_MOVED,
   BRANCHY_EDITED,
   BRANCHY_ADDED,
@@ -38,9 +40,6 @@ import {
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-
-const survivorSource = (file) =>
-  readFileSync(path.resolve(import.meta.dirname, '../fixtures/survivor', file), 'utf8');
 
 let repository;
 
@@ -140,10 +139,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
-    branchWith('survivor', {
-      'Calc.java': survivorSource('Calc.java'),
-      'src/test/java/demo/CalcTest.java': survivorSource('CalcTest.java'),
-    });
+    branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
     branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
