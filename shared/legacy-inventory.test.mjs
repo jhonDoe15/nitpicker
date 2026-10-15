@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import {
   applyInventoryToFindings,
   compareSignals,
   readOptionalInventory,
+  withLegacyInventory,
 } from './legacy-inventory.mjs';
 import { evaluateBaselineExpansions } from './rules/baseline-expansion.mjs';
 
@@ -73,5 +75,29 @@ describe('legacy inventory', () => {
       findings[3],
       findings[4],
     ]);
+  });
+});
+
+describe('withLegacyInventory', () => {
+  const sha256 = (...parts) =>
+    parts.reduce((hash, part) => hash.update(part), createHash('sha256')).digest('hex');
+  const analyzer = {
+    configurationHash: 'package',
+    resolveConfigurationHash: (root) => `resolved:${path.basename(root)}`,
+    createInvocation: () => ({ args: [] }),
+  };
+
+  it("chains the analyzer's own resolved hash with the inventory file, once per wrap", () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-inventory-hash-'));
+    roots.push(root);
+    const wrapped = withLegacyInventory(analyzer, 'legacy.json');
+    const resolved = `resolved:${path.basename(root)}`;
+
+    expect(wrapped.resolveConfigurationHash(root)).toBe(resolved);
+    writeFileSync(path.join(root, 'legacy.json'), '{"sites":[]}');
+    expect(wrapped.resolveConfigurationHash(root)).toBe(sha256(resolved, '{"sites":[]}'));
+    expect(withLegacyInventory(wrapped, 'legacy.json').resolveConfigurationHash(root)).toBe(
+      sha256(resolved, '{"sites":[]}'),
+    );
   });
 });

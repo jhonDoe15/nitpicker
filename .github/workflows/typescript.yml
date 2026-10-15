@@ -49,6 +49,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      # The StructureMetrics unit test runs Java on Java 21 sources, the version the Java preset needs.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
       # Vitest defaults to one worker on a 2-vCPU runner, and most tests wait on child processes, so a
       # second worker keeps both cores busy.
       - run: npm test -- --maxWorkers=2
