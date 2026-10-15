@@ -1,4 +1,9 @@
-import { inReactTestFilesOnly, isReactExpression, reactBindingNames } from './react-test-files.mjs';
+import {
+  descendants,
+  inReactTestFilesOnly,
+  isReactExpression,
+  reactBindingNames,
+} from './react-test-files.mjs';
 
 const instanceMethods = new Set([
   'instance',
@@ -19,7 +24,11 @@ const fiberProperties = new Set([
 ]);
 const fiberKeyPrefix = '__react';
 const globalReactNames = ['React', 'react'];
+const REACT_MODULE = 'react';
 const hookNamePattern = /^use[A-Z]/;
+const mockRunners = new Set(['vi', 'jest']);
+const mockMethods = new Set(['mock', 'doMock']);
+const mockedModules = new Set(['react', 'react-dom']);
 
 function literalTypeName(node) {
   const literal =
@@ -58,6 +67,37 @@ function spiedHook(node, reactNames) {
   return spies && onReact && hookNamePattern.test(name ?? '') ? name : undefined;
 }
 
+function mockedModule(node) {
+  const { callee } = node;
+  const isMock =
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    mockRunners.has(callee.object.name) &&
+    mockMethods.has(memberName(callee));
+  const [target] = node.arguments;
+  const source = target?.type === 'ImportExpression' ? target.source : target;
+  const name = source?.type === 'Literal' ? source.value : undefined;
+  return isMock && mockedModules.has(name) ? name : undefined;
+}
+
+function mockedHooks(node, visitorKeys) {
+  const factory = node.arguments[1];
+  const keys = factory === undefined ? [] : descendants(factory, visitorKeys);
+  return keys
+    .filter((key) => key.type === 'Property')
+    .map((key) => staticName(key.key))
+    .filter((name) => hookNamePattern.test(name ?? ''));
+}
+
+function reactMock(node, visitorKeys) {
+  const name = mockedModule(node);
+  const hooks = name === undefined ? [] : mockedHooks(node, visitorKeys);
+  if (hooks.length > 0) {
+    return hooks.join('`, `');
+  }
+  return name === REACT_MODULE ? name : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -70,6 +110,8 @@ export const rule = {
         'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       fiberInternals:
         'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+      reactMock:
+        'Do not replace `{{ name }}` with a module mock. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
       hookSpy:
         'Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
     },
@@ -82,6 +124,10 @@ export const rule = {
         const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
         if (method !== undefined && instanceMethods.has(method)) {
           context.report({ node, messageId: 'componentInternals', data: { name: `${method}()` } });
+        }
+        const mocked = reactMock(node, context.sourceCode.visitorKeys);
+        if (mocked !== undefined) {
+          context.report({ node, messageId: 'reactMock', data: { name: mocked } });
         }
         const hook = spiedHook(node, reactNames);
         if (hook !== undefined) {

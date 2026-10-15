@@ -22,7 +22,7 @@ function reactCase([name, banned, allowed, styling = 'class-names']) {
 
 const testFilename = 'test/ui/panel.test.tsx';
 const testingLibraryImport = [
-  "import { render, screen, fireEvent, waitFor } from '@testing-library/react';",
+  "import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';",
   "import userEvent from '@testing-library/user-event';",
   '',
 ].join('\n');
@@ -234,6 +234,42 @@ const reactTestCases = [
     'destructured query names the config exception',
     "const { getByRole } = render(<Panel />); getByRole('button');",
     'nitpicker.config.json',
+  ],
+  [
+    'react module mock names renderHook',
+    "vi.mock('react', () => ({ useState: vi.fn() }));",
+    '`renderHook`',
+  ],
+  [
+    'act around render names a direct call',
+    'act(() => { render(<Panel />); });',
+    'Call them directly',
+  ],
+  ['debug output names an assertion', 'screen.debug();', 'assert what you were looking for'],
+  [
+    'manual cleanup names Vitest globals',
+    "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
+    '`test.globals: true`',
+  ],
+  [
+    'manual cleanup names the setup file exception',
+    "import { cleanup } from '@testing-library/react'; afterEach(cleanup);",
+    'If a setup file must call it, add an exception',
+  ],
+  [
+    'queryBy for presence names getBy',
+    "expect(screen.queryByText('Saved')).toBeInTheDocument();",
+    "expect(screen.getByText('Saved')).toBeInTheDocument()",
+  ],
+  [
+    'getBy for absence names queryBy',
+    "expect(screen.getByText('Error')).not.toBeInTheDocument();",
+    "expect(screen.queryByText('Error')).not.toBeInTheDocument()",
+  ],
+  [
+    'userEvent without setup names the named import',
+    "await userEvent.click(screen.getByRole('button'));",
+    "import { userEvent } from '@testing-library/user-event'",
   ],
 ].map(reactTestCase);
 

@@ -285,9 +285,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 - **Component tests** (test files only: the test roots, which default to `test`, `tests`,
   `__tests__` and `e2e` at the repo root, `*.test.*` and `*.spec.*` files under the source roots,
   and `__tests__` directories under them). They need no particular test runner (Vitest or
-  Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
-  or another `react-*` package, `enzyme`, `react-test-renderer`, or a relative `test-utils`
-  module, so Playwright and domain tests in the same roots are left alone. Query by accessible
+  Jest), and report in every `.tsx` and `.jsx` test (except Playwright and Cypress component
+  tests), in a test that imports `@testing-library/*`, `react`, `react-dom` or another `react-*`
+  package, `enzyme` or `react-test-renderer`, and in a test that imports a project helper (such
+  as `test/support/render-app.tsx` or a `test-utils` file) which itself imports Testing Library,
+  so Playwright and domain tests in the same roots are left alone. Query by accessible
   role, not test ids (`testing-library/no-test-id-queries`) or DOM traversal, class selectors and
   `container` queries (`testing-library/no-node-access`): `screen.getByRole('button', { name: 'Save' })`,
   or `toHaveFocus()` for focus. Query through `screen`, not through queries destructured from
@@ -296,17 +298,32 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`testing-library/prefer-user-event`), and `await` every `userEvent` call, `findBy*` query and
   `waitFor` (`testing-library/await-async-events`, `await-async-queries`, `await-async-utils`);
   a project on user-event v13, whose calls are synchronous, needs an exception for
-  `await-async-events`. Do not test implementation details
+  `await-async-events`. Create the user with `const user = userEvent.setup()`
+  (`testing-library/prefer-user-event-setup`). Check presence with `getBy*` and absence with
+  `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
+  in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
+  output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
+  (`testing-library/no-manual-cleanup`). Do not test implementation details
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
   `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
   binding of `react`: a default, namespace, `{ default as R }`, `import = require`, `require`
   (anywhere in the file), `await import('react')` or `vi.importActual('react')` binding, or an
-  alias such as `const R = React`); Testing Library's guiding principle is to
+  alias such as `const R = React`), and no `vi.mock('react', ...)` or `jest.mock('react', ...)`
+  (nor a `react-dom` mock that replaces a hook); Testing Library's guiding principle is to
   test the way the software is used, so assert what the user sees, or test a custom hook with
   `renderHook`. An element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
+- **Component test setup.** A Vitest project needs four things before the first component
+  test passes: `test.environment: 'jsdom'` (or `happy-dom`) in the Vitest config;
+  `test.globals: true`, so Testing Library registers its `cleanup` after each test (without it
+  the second test that renders sees the first one's DOM; a setup file that calls
+  `afterEach(cleanup)` instead needs an exception for `testing-library/no-manual-cleanup`);
+  `import '@testing-library/jest-dom/vitest'` in a file listed in `test.setupFiles`, for
+  `toBeInTheDocument()` and the other DOM matchers; and the named import
+  `import { userEvent } from '@testing-library/user-event'`, because the default import has no
+  `setup()` under `module: NodeNext`.
 - **Snapshot-only tests are allowed.** No rule bans a test whose only assertion is
   `toMatchSnapshot()` or `toMatchInlineSnapshot()`. A snapshot can pin a rendered structure
   deliberately, and there is no general recommendation against it nor a weird pattern with a
