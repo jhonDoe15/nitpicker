@@ -63,6 +63,18 @@ function areaFindings({ root, parent }, exceptions, kind = 'structure') {
   );
 }
 
+const WIDE_ARGUMENTS = 'a: number, b: number, c: number, d: number';
+const SAME_NAMES = [
+  `class Store {\n  save(${WIDE_ARGUMENTS}): number {\n    return a + b + c + d;\n  }\n}`,
+  `class Other {\n  save(${WIDE_ARGUMENTS}): number {\n    return a + b + c + d;\n  }\n}`,
+  `function save(${WIDE_ARGUMENTS}): number {\n  return a + b + c + d;\n}`,
+  `const handlers = {\n  onSave: (${WIDE_ARGUMENTS}): number => a + b + c + d,\n};`,
+  `function run(callback: unknown): void {\n  [1].forEach((${WIDE_ARGUMENTS}) => callback);\n}`,
+  `[1].forEach((${WIDE_ARGUMENTS}) => a);`,
+  'export { Store, Other, save, handlers, run };',
+  '',
+].join('\n');
+
 const failures = (findings) =>
   findings.filter(({ classification }) => classification === 'enforceable');
 
@@ -91,13 +103,55 @@ describe('exceptions for structure findings in the TypeScript analyzers', () => 
 
   it('lifts a path-wide entry without a function, and nothing for another function or path', async () => {
     const files = project(WIDE);
+    const kept = [['function-parameters-limit', `wide has 4 parameters; limit is 3. ${ROUTE}`]];
+    const summary = (found) => found.map(({ rule, message }) => [rule, message]);
 
     expect(failures(await areaFindings(files, [{ ...entry, function: undefined }]))).toEqual([]);
-    expect(failures(await areaFindings(files, [{ ...entry, function: 'other' }]))).toHaveLength(1);
+    expect(summary(failures(await areaFindings(files, [{ ...entry, function: 'other' }])))).toEqual(
+      kept,
+    );
     expect(
-      failures(await areaFindings(files, [{ ...entry, paths: ['src/main/b.ts'] }])),
-    ).toHaveLength(1);
+      summary(failures(await areaFindings(files, [{ ...entry, paths: ['src/main/b.ts'] }]))),
+    ).toEqual(kept);
     expect(failures(await areaFindings(project(NARROW), []))).toEqual([]);
+  });
+
+  it('lifts a function by the qualified name its message prints and no other function of the file', async () => {
+    const files = project(SAME_NAMES);
+    const lifts = async (functionName) =>
+      failures(await areaFindings(files, [{ ...entry, function: functionName }])).map(
+        ({ symbol }) => symbol,
+      );
+
+    expect(failures(await areaFindings(files, [])).map(({ symbol }) => symbol)).toEqual([
+      'Store.save',
+      'Other.save',
+      'save',
+      'handlers.onSave',
+      'run.<anonymous>',
+      '<anonymous>',
+    ]);
+    expect(await lifts('save')).toEqual([
+      'Store.save',
+      'Other.save',
+      'handlers.onSave',
+      'run.<anonymous>',
+      '<anonymous>',
+    ]);
+    expect(await lifts('Store.save')).toEqual([
+      'Other.save',
+      'save',
+      'handlers.onSave',
+      'run.<anonymous>',
+      '<anonymous>',
+    ]);
+    expect(await lifts('run.<anonymous>')).toEqual([
+      'Store.save',
+      'Other.save',
+      'save',
+      'handlers.onSave',
+      '<anonymous>',
+    ]);
   });
 });
 
@@ -166,7 +220,7 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
       [
         'exports',
         'src/main/a.ts',
-        'Export unused is never imported. Remove `export`, or the declaration if nothing uses it. If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/main/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Export unused is never imported. Remove `export`, or the declaration if nothing uses it. If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/main/a.ts"],"name":"unused","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(after).toEqual([]);
@@ -175,6 +229,18 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
         ({ rule }) => rule,
       ),
     ).toEqual(['exports']);
+  });
+
+  it('lifts an unused export by its name and no other declaration of the file', async () => {
+    const files = deadCodeProject();
+    const named = (name) => ({ ...lift('exports', 'src/main/a.ts'), name });
+    const exportsOf = async (name) =>
+      failures(await areaFindings(files, [named(name)], 'dead-code'))
+        .filter(({ rule }) => rule === 'exports')
+        .map(({ symbol }) => symbol);
+
+    expect(await exportsOf('unused')).toEqual([]);
+    expect(await exportsOf('used')).toEqual(['unused']);
   });
 });
 
@@ -200,6 +266,7 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
       branchMap: { 0: { loc: { start: { line: 3 } } } },
       b: { 0: [1, 0] },
       branchSourceHashes: { 0: 'k' },
+      branchFunctions: { 0: 'risky' },
     },
   };
 
@@ -228,7 +295,9 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
   });
 
   it('points a branch outside every named function at exclude', () => {
-    const outside = { '/p/src/main/a.ts': { ...coverage['/p/src/main/a.ts'], fnMap: {} } };
+    const outside = {
+      '/p/src/main/a.ts': { ...coverage['/p/src/main/a.ts'], branchFunctions: {} },
+    };
 
     expect(
       failures(normalizeCoverage(outside, 'coverage', { projectRoot: '/p' })).map(

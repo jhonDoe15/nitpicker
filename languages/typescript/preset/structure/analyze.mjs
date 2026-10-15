@@ -3,6 +3,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { functionUnits, isFunctionLike } from './function-units.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(
@@ -27,31 +28,6 @@ function location(sourceFile, node) {
   return { start, end, lines: end - start + 1 };
 }
 
-function nodeName(sourceFile, node) {
-  if (node.name !== undefined) {
-    return node.name.getText(sourceFile);
-  }
-  if (ts.isConstructorDeclaration(node)) {
-    return 'constructor';
-  }
-  if (ts.isVariableDeclaration(node.parent) || ts.isPropertyDeclaration(node.parent)) {
-    return node.parent.name.getText(sourceFile);
-  }
-  return '<anonymous>';
-}
-
-function isFunctionNode(node) {
-  return (
-    ts.isFunctionDeclaration(node) ||
-    ts.isFunctionExpression(node) ||
-    ts.isArrowFunction(node) ||
-    ts.isMethodDeclaration(node) ||
-    ts.isConstructorDeclaration(node) ||
-    ts.isGetAccessorDeclaration(node) ||
-    ts.isSetAccessorDeclaration(node)
-  );
-}
-
 function isControlNode(node) {
   return (
     ts.isIfStatement(node) ||
@@ -70,7 +46,7 @@ function functionBodyMetrics(functionNode) {
   let maxControlNesting = 0;
 
   function visit(node, depth) {
-    if (node !== functionNode && isFunctionNode(node)) {
+    if (node !== functionNode && isFunctionLike(node)) {
       return;
     }
     if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) {
@@ -91,14 +67,15 @@ function functionBodyMetrics(functionNode) {
 
 export function analyzeSource(source, filename) {
   const sourceFile = parseSource(source, filename);
+  const { names } = functionUnits(sourceFile);
   const functions = [];
   const classes = [];
 
   function visit(node) {
-    if (isFunctionNode(node)) {
+    if (isFunctionLike(node)) {
       functions.push({
         source: normalizePath(filename),
-        function: nodeName(sourceFile, node),
+        function: names.get(node),
         ...location(sourceFile, node),
         parameters: node.parameters.length,
         ...functionBodyMetrics(node),
