@@ -12,18 +12,20 @@ const RUNNER_OWN_FLAG = /^--(?:test|experimental-test-coverage|watch)/u;
 const COMMAND_SEPARATOR = /&&|\|\||;|\|/u;
 const NODE_TEST_SEGMENT = /(?<![\w-])(node|tsx)\b(.*\s--test(?=\s|$).*)/u;
 
+function readToken(token, valueFor) {
+  if (valueFor !== undefined) return { keep: true, valueFor: undefined };
+  if (RUNNER_OWN_FLAG.test(token)) return { keep: false, valueFor: undefined };
+  return { keep: true, valueFor: FLAGS_WITH_VALUE.has(token) ? token : undefined };
+}
+
 function flagsOf(tokens) {
   const flags = [];
   let valueFor;
   for (const token of tokens) {
     if (valueFor === undefined && !token.startsWith('-')) break;
-    if (valueFor !== undefined) {
-      flags.push(token);
-      valueFor = undefined;
-    } else if (!RUNNER_OWN_FLAG.test(token)) {
-      flags.push(token);
-      valueFor = FLAGS_WITH_VALUE.has(token) ? token : undefined;
-    }
+    const read = readToken(token, valueFor);
+    if (read.keep) flags.push(token);
+    valueFor = read.valueFor;
   }
   return flags;
 }

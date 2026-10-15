@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import nitpickerTestReport, { buildReport } from './reporter.mjs';
+import nitpickerTestReport, { buildReport } from './reporter.config.mjs';
 
 const FILE = '/work/test/a.test.js';
 const CRASHED = '/work/test/crash.test.js';

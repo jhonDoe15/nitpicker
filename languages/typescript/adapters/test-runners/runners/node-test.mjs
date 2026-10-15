@@ -12,7 +12,7 @@ import {
   TEST_WORKERS,
 } from '../coverage-globs.mjs';
 
-const REPORTER_PATH = path.join(import.meta.dirname, '../node-test/reporter.mjs');
+const REPORTER_PATH = path.join(import.meta.dirname, '../node-test/reporter.config.mjs');
 
 function repeated(flag, values) {
   return values.map((value) => `${flag}=${value}`);
