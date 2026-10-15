@@ -87,9 +87,11 @@ If your change edits a function that existed before it, read
   value, `toSorted`. Text parsing (CSV lines, tokens) is domain logic too:
   `Array.from(line).reduce(step, initial)`; a value a schema can check (a date, a number) is
   checked by the schema in `adapters/`.
-- Annotate results as readonly (`const owing: readonly Total[] = rows.toSorted(byTotal);`), and
-  give a callback that returns an object or array literal a readonly return type. Return readonly
-  results as they are; don't spread-copy them.
+- Parameters, return types and module-level values are readonly (`readonly Total[]`); a local
+  inside a function needs no annotation, but still isn't mutated: build a new `Set`, `Map` or
+  `Date` instead of calling `add`, `set` or `setHours`. Give a callback that returns an object or
+  array literal a readonly return type. Return readonly results as they are; don't spread-copy
+  them.
 - No module-level `RegExp` or zod schema (both are mutable): write the regex literal inside the
   function; schemas live in `adapters/`. Dedupe with `[...new Set(xs)]` or a `ReadonlySet`.
 - A `Date` is mutable: use it in one expression (`new Date(ms).getUTCHours()`) or type it

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
-import { layeredPrettierOptions } from '../adapters/prettier-layers.mjs';
+import { layeredPrettierOptions } from '../adapters/prettier/prettier-layers.mjs';
 import { usesLayeredPrettier } from '../preset/head-policy.mjs';
 import { PRETTIER_CONVENTIONS, prettierConventionOptions } from './prettier-conventions.mjs';
 

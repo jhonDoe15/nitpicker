@@ -2,11 +2,13 @@ import path from 'node:path';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createGitRepository, removeGitRepositories } from '../diff/fixtures/git-repository.mjs';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
-import { cacheKey } from '../diff/findings-cache.mjs';
-import { baseSetupResolver } from '../base-setup.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
+import { cacheKey } from '../diff/cache/findings-cache.mjs';
+import { baseSetupResolver } from '../configuration/base-setup.mjs';
 import { runCli } from '../cli.mjs';
+
+const { createGitRepository } = useGitFixtures();
 
 const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -27,7 +29,6 @@ afterEach(() => {
   } else {
     process.env.NITPICKER_GRADLE = previousGradle;
   }
-  removeGitRepositories();
   for (const root of outputs.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
