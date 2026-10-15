@@ -62,6 +62,16 @@ export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 const EXCEPTION_HINT =
   'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
 
+/** The `exceptions` entry that lifts `rule` for `glob`, as JSON with a reason to fill in. */
+export function exceptionEntry(rule, glob) {
+  return JSON.stringify({ rule, paths: [glob], reason: '...' });
+}
+
+/** The sentence that tells how to lift a finding of `rule` at `glob`. */
+export function exceptionHint(rule, glob) {
+  return renderMessage(EXCEPTION_HINT, { exception: exceptionEntry(rule, glob) });
+}
+
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 

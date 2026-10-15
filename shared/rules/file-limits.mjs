@@ -22,6 +22,7 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
+  exceptionEntry,
   renderMessage,
 } from '../policy.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
@@ -91,10 +92,6 @@ function exceptionMatcher(exceptions) {
     );
 }
 
-function exceptionText(rule, glob) {
-  return JSON.stringify({ rule, paths: [glob], reason: '...' });
-}
-
 function lineCount(text) {
   const lines = text.split(/\r?\n/u);
   return lines.at(-1) === '' ? lines.length - 1 : lines.length;
@@ -106,7 +103,7 @@ function fileLineFindings(file, context) {
   if (value <= limit || context.isExcepted(RULE_IDS.fileLines, file.path)) {
     return [];
   }
-  const exception = exceptionText(RULE_IDS.fileLines, file.path);
+  const exception = exceptionEntry(RULE_IDS.fileLines, file.path);
   return [
     ratchetedFinding(context, {
       rule: RULE_IDS.fileLines,
@@ -124,7 +121,7 @@ function lineFindings(file, context) {
   if (context.isExcepted(RULE_IDS.lineLength, file.path)) {
     return [];
   }
-  const exception = exceptionText(RULE_IDS.lineLength, file.path);
+  const exception = exceptionEntry(RULE_IDS.lineLength, file.path);
   const occurrences = new Map();
   return file.text.split(/\r?\n/u).flatMap((text, index) => {
     const value = [...text].length;
@@ -175,7 +172,7 @@ function folderFindings(files, context) {
 function folderFinding(context, { key, value, limit }) {
   const [folder, kind] = key.split('\0');
   const glob = folder === '.' ? '*' : `${folder}/*`;
-  const exception = exceptionText(RULE_IDS.folderFiles, glob);
+  const exception = exceptionEntry(RULE_IDS.folderFiles, glob);
   return ratchetedFinding(context, {
     rule: RULE_IDS.folderFiles,
     path: folder,
