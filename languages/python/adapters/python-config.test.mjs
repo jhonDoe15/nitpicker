@@ -71,6 +71,17 @@ describe('python config validation', () => {
     }).toThrow('only supported with "preset": "python"');
   });
 
+  it('sends a ruff id in the top-level exceptions to python.exceptions', () => {
+    expect(() => {
+      validate({
+        preset: 'python',
+        exceptions: [{ rule: 'T201', paths: ['scripts/**'], reason: 'command line scripts' }],
+      });
+    }).toThrow(
+      '"exceptions" has rule "T201", which no top-level exception lifts in the python preset.',
+    );
+  });
+
   it.each(TYPESCRIPT_ONLY)('rejects %s instead of ignoring it', (key) => {
     expect(() => {
       validate({ preset: 'python', [key]: {} });

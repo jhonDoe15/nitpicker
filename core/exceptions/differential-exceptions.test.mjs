@@ -77,4 +77,18 @@ describe('exceptions in the differential gate', () => {
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual([['function-parameters-limit', 'wide']]);
   });
+
+  it('notes, without failing, an exception whose paths match no file', () => {
+    const root = typescriptRepository({
+      'src/main/a.ts': WIDE,
+      'nitpicker.config.json': config(lifted, { ...lifted, paths: ['src/old/**'] }),
+    });
+
+    const result = runTypescript(root, ['structure']);
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(result.text).toContain(
+      'Note: 1 exception matching no file (not failing; remove or fix it):\n  exceptions[1] (function-parameters-limit) matches no file: src/old/**\n',
+    );
+  });
 });

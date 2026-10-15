@@ -32,6 +32,12 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
     return;
   }
   const unsupported = typescriptOnlyKeys.filter((key) => config[key] !== undefined);
+  const stray = strayException(config.exceptions);
+  if (unsupported[0] === 'exceptions' && stray !== undefined) {
+    throw configError(
+      `"exceptions" has rule "${String(stray.rule)}", which no top-level exception lifts in the python preset. Top-level "exceptions" take only ${SHARED_EXCEPTION_RULES.join(', ')}; a ruff, type-checker or python-rules id goes in "python.exceptions"`,
+    );
+  }
   if (unsupported.length > 0) {
     throw configError(
       `"${unsupported[0]}" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: ${typescriptOnlyKeys.join(', ')}, except exceptions for ${SHARED_EXCEPTION_RULES.join(', ')}. Shared by all presets: thresholds, exclude, legacyInventory`,
@@ -40,6 +46,14 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
   if (config.python !== undefined) {
     validateSettings(config.python);
   }
+}
+
+function strayException(exceptions) {
+  return Array.isArray(exceptions)
+    ? exceptions.find(
+        (entry) => !SHARED_EXCEPTION_RULES.includes(canonicalRule(String(entry?.rule))),
+      )
+    : undefined;
 }
 
 function validateKnownKeys(settings) {
