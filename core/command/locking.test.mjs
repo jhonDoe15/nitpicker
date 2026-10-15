@@ -9,7 +9,7 @@ import {
   policy,
   runCli,
   useCliFixtures,
-} from './cli-harness.mjs';
+} from '../diff/fixtures/cli-harness.mjs';
 import { resolveRunLockPath } from './run-lock.mjs';
 
 useCliFixtures();

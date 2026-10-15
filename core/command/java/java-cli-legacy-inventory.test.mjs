@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exactText } from '../../diff/fixtures/output-expectations.mjs';
-import { commit, gradleRepository, run, useGradleFixtures, write } from './java-cli-harness.mjs';
+import { commit, gradleRepository, run, useGradleFixtures, write } from '../../diff/fixtures/java-cli-harness.mjs';
 
 useGradleFixtures();
 

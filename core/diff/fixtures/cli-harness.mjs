@@ -1,11 +1,11 @@
-import { createGitTemplate, copyGitTemplate } from '../diff/fixtures/git-repository.mjs';
+import { createGitTemplate, copyGitTemplate } from './git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll } from 'vitest';
-import { runCli as runCliWithSubprocesses } from '../cli.mjs';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
+import { runCli as runCliWithSubprocesses } from '../../cli.mjs';
+import { runTasksInProcess } from './in-process-analyzers.mjs';
 
 const discardedProgress = { write() {} };
 
@@ -17,10 +17,7 @@ export function runCli(options) {
   });
 }
 
-const fakeAnalyzerPath = path.join(
-  new URL('../', import.meta.url).pathname,
-  'diff/fixtures/fake-analyzer.mjs',
-);
+const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
 
 const temporaryRoots = [];
 

@@ -11,7 +11,7 @@ import {
   temporaryRoot,
   useGradleFixtures,
   write,
-} from './java-cli-harness.mjs';
+} from '../../diff/fixtures/java-cli-harness.mjs';
 
 useGradleFixtures();
 

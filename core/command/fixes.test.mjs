@@ -12,7 +12,7 @@ import {
   runCli,
   useCliFixtures,
   writeFiles,
-} from './cli-harness.mjs';
+} from '../diff/fixtures/cli-harness.mjs';
 
 useCliFixtures();
 
