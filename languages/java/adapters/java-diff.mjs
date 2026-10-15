@@ -98,6 +98,7 @@ export function collectJavaFindings(projectRoot, options = {}) {
       exclude: options.policy?.exclude,
       exceptions: options.policy?.exceptions,
       javaStyle: options.policy?.javaStyle,
+      baselineRoot: options.policy?.baselineRoot,
     }),
     preset,
   );

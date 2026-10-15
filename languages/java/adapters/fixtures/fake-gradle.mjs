@@ -115,3 +115,4 @@ if (existsSync('mutations.xml')) {
   writeFileSync('build/nitpicker/pit/mutations.xml', readFileSync('mutations.xml'));
 }
 writeFileSync('build/nitpicker/structure.json', '[]');
+writeFileSync('build/nitpicker/classes.json', '{"files":{},"classes":[]}');

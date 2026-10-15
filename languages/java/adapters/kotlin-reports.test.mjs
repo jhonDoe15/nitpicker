@@ -137,6 +137,7 @@ function projectWithKotlinReports({
   mkdirSync(path.join(reports, 'pit'));
   writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
   writeFileSync(path.join(reports, 'structure.json'), '[]');
+  writeFileSync(path.join(reports, 'classes.json'), JSON.stringify({ files: {}, classes: [] }));
   writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(
     path.join(reports, 'detekt.sarif'),
@@ -386,6 +387,27 @@ describe('readJavaFindings with the kotlin preset', () => {
         ['ktlint', 'ktfmt'].includes(tool),
       ),
     ).toEqual([]);
+  });
+
+  it('checks the class limits of the Java sources of a Kotlin project', () => {
+    const root = projectWithKotlinReports();
+    const legacy = 'src/main/java/demo/Legacy.java';
+    writeFileSync(
+      path.join(root, 'build/nitpicker/classes.json'),
+      JSON.stringify({
+        files: { [legacy]: { package: 'demo', imports: [] } },
+        classes: [{ file: legacy, name: 'Legacy', kind: 'class', start: 1, methods: 3, fields: 0 }],
+      }),
+    );
+    const rules = (fileLimits) =>
+      readJavaFindings(root, { preset: 'kotlin', fileLimits }).findings.filter(({ rule }) =>
+        rule.startsWith('class-'),
+      );
+
+    expect(rules({})).toEqual([]);
+    expect(rules({ classMethods: 2 }).map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['class-methods-limit', legacy],
+    ]);
   });
 
   it('reads JaCoCo coverage of Kotlin and Java files and gates the branches of both', () => {

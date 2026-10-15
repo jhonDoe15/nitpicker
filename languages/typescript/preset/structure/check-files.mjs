@@ -8,6 +8,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/structure/folder-depth.mjs',
   'shared/rules/size/folder-depth.mjs',
   'shared/policy.mjs',
+  'shared/policy-size.mjs',
   'shared/rules/file-limits.mjs',
   'shared/rules/finding-helpers.mjs',
   'shared/glob.mjs',

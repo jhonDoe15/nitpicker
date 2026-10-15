@@ -33,7 +33,7 @@ const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions, javaStyle } = {},
+  { crapLimit, preset = 'java', fileLimits, exclude, exceptions, javaStyle, baselineRoot } = {},
 ) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
@@ -64,7 +64,7 @@ export function readJavaFindings(
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...sizeFindings(context, { thresholds: fileLimits, exclude, exceptions }),
+      ...sizeFindings(context, { thresholds: fileLimits, exclude, exceptions, baselineRoot }),
       ...branchFindings(context, context.jacoco),
       ...readCouplingFindings(reportRoot, {
         projectRoot,
@@ -81,7 +81,7 @@ export function readJavaFindings(
 function sizeFindings({ projectRoot, reportRoot, manifest, kotlin }, policy) {
   return [
     ...readJavaFileLimitFindings(projectRoot, { manifest, kotlin, policy }),
-    ...(kotlin ? [] : readClassLimitFindings(reportRoot, policy)),
+    ...readClassLimitFindings(reportRoot, policy),
   ];
 }
 

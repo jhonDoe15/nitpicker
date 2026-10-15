@@ -153,11 +153,15 @@ function projectWith(files) {
 
 function measure(root) {
   const output = path.join(root, 'structure.json');
-  const result = spawnSync('java', [METRICS_SOURCE, output, root, SOURCE_ROOT], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 120_000,
-  });
+  const result = spawnSync(
+    'java',
+    [METRICS_SOURCE, output, path.join(root, 'classes.json'), root, SOURCE_ROOT],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+    },
+  );
   const stderr = result.stderr
     .split('\n')
     .filter((line) => !line.startsWith('Picked up '))

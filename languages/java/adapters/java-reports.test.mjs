@@ -96,6 +96,7 @@ function projectWithReports({ shift = 0 } = {}) {
       .replaceAll('@SOURCE@', sourceFile)
       .replace(/line="(\d+)"/g, (_, line) => `line="${Number(line) + shift}"`),
   );
+  writeFileSync(path.join(reports, 'classes.json'), JSON.stringify({ files: {}, classes: [] }));
   // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
   writeFileSync(
     path.join(reports, 'structure.json'),
@@ -203,7 +204,7 @@ describe('readJavaFindings', () => {
     ]);
   });
 
-  it('reports a class over the class limits from classes.json, in Java projects only', () => {
+  it('reports a class over the class limits from classes.json', () => {
     const root = projectWithReports();
     writeFileSync(
       path.join(root, 'build/nitpicker/classes.json'),
@@ -225,6 +226,15 @@ describe('readJavaFindings', () => {
         exceptions: [{ rule: 'class-methods-limit', glob: 'src/**' }],
       }),
     ).toEqual([]);
+  });
+
+  it('fails when the class report is missing, so a missing step cannot drop the class limits', () => {
+    const root = projectWithReports();
+    rmSync(path.join(root, 'build/nitpicker/classes.json'));
+
+    expect(() => readJavaFindings(root)).toThrow(
+      /The classes\.json report is missing from .*: the nitpickerStructure step did not write it/u,
+    );
   });
 
   it('applies the configured CRAP limit instead of the default', () => {
