@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  commit,
-  newFindings,
-  pythonRepository,
-  run,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 const BROKEN_CONTRACT = [
   'Layers BROKEN',
@@ -50,7 +45,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     };
     const root = pythonRepository({ ...modules, 'import-scan.json': scan(feature) });
     expect(run(root).exitCode).toBe(0);
-    write(root, {
+    writeFiles(root, {
       'import-scan.json': scan({ ...feature, 'src/base/core.py': [from('other', 'o')] }),
     });
     commit(root, 'depend on the volatile package');
@@ -75,7 +70,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
       '.importlinter': '[importlinter]\nroot_package = demo\n',
       'lint-imports.txt': 'Contracts: 1 kept, 0 broken.\n',
     });
-    write(root, { 'lint-imports.txt': BROKEN_CONTRACT });
+    writeFiles(root, { 'lint-imports.txt': BROKEN_CONTRACT });
     commit(root, 'break the contract');
 
     const result = run(root);
@@ -99,14 +94,14 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
       '.importlinter': '[importlinter]\nroot_package = demo\n',
       'nitpicker.config.json': '{ "preset": "python", "python": { "importLinter": false } }\n',
     });
-    write(root, { 'lint-imports.txt': BROKEN_CONTRACT });
+    writeFiles(root, { 'lint-imports.txt': BROKEN_CONTRACT });
     commit(root, 'break the contract');
 
     expect(run(root).exitCode).toBe(0);
   });
   it('reports an import-linter run that checked nothing as a tool error', () => {
     const root = pythonRepository({ '.importlinter': '[importlinter]\nroot_package = demo\n' });
-    write(root, { 'lint-imports.txt': 'Could not find .importlinter.\n' });
+    writeFiles(root, { 'lint-imports.txt': 'Could not find .importlinter.\n' });
     commit(root, 'make the tool fail');
 
     const result = run(root);

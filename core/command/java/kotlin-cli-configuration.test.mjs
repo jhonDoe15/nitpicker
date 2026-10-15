@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
-import {
-  commit,
-  kotlinConfig,
-  kotlinRepository,
-  run,
-  useGradleFixtures,
-  write,
-} from '../../diff/fixtures/java-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-useGradleFixtures(nitpickerCli);
+const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin" configuration', () => {
   describe('exceptions for one-way rules', () => {
@@ -28,7 +23,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     };
     it('fails a new finding of a one-way rule and hands it the allowed form and the exception route', () => {
       const root = kotlinRepository();
-      write(root, added);
+      writeFiles(root, added);
       commit(root, 'add a forbidden call');
 
       const result = run(root);
@@ -48,7 +43,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     });
     it('passes the same change when nitpicker.config.json lists an exception for the path', () => {
       const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([exception]) });
-      write(root, added);
+      writeFiles(root, added);
       commit(root, 'add a forbidden call');
 
       const result = run(root, [], { subprocess: true });
@@ -58,7 +53,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     it('does not lift the rule for another path', () => {
       const other = { ...exception, paths: ['src/main/kotlin/other/**'] };
       const root = kotlinRepository({ 'nitpicker.config.json': withExceptions([other]) });
-      write(root, added);
+      writeFiles(root, added);
       commit(root, 'add a forbidden call');
 
       const result = run(root, [], { subprocess: true });
@@ -84,7 +79,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     'runs no format check for a project without a detected formatter (kotlin.formatter %s)',
     (formatter) => {
       const root = kotlinRepository({ 'nitpicker.config.json': kotlinConfig(formatter) });
-      write(root, {
+      writeFiles(root, {
         'ktlint.txt': 'standard:no-wildcard-imports|Wildcard import\n',
         'kotlin-format.txt': 'src/main/kotlin/demo/K.kt\n',
       });
@@ -108,7 +103,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
         ],
       })}\n`;
     const root = kotlinRepository({ 'nitpicker.legacy.json': inventory(1) });
-    write(root, { 'nitpicker.legacy.json': inventory(2) });
+    writeFiles(root, { 'nitpicker.legacy.json': inventory(2) });
     commit(root, 'raise the allowance');
 
     const result = run(root);

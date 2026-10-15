@@ -1,18 +1,13 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { runAggregateCli } from './aggregate-shards.mjs';
-import {
-  analyzer,
-  captureOutput,
-  createFixture,
-  removeFixtures,
-  writeShard,
-} from './shard-fixtures.mjs';
 import { fileURLToPath } from 'node:url';
+import { captureOutput } from '../reporting/test-support/output-capture.mjs';
+import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
-afterEach(removeFixtures);
+const { createFixture } = useShardFixtures();
 
 describe('quality shard aggregation command', () => {
   it('returns the combined enforceable gate status', () => {

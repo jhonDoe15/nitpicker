@@ -10,7 +10,7 @@ import {
   resolveCacheStore,
 } from './cache-stores.mjs';
 import { cacheKey, createFindingsCache } from './findings-cache.mjs';
-import { resetTestHttpServer, startTestHttpServer } from './test-http-server.mjs';
+import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
 
 const cleanups = [];
 

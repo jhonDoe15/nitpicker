@@ -50,6 +50,7 @@
     "languages/**",
     "!**/*.test.mjs",
     "!**/fixtures/**",
+    "!**/test-support/**",
     "!**/README.md",
     "skills/**"
   ],

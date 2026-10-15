@@ -4,20 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
 import { describeConfigOverrides } from '../configuration/config.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
-import { exactText } from '../diff/fixtures/output-expectations.mjs';
-import {
-  captureOutput,
-  createRepository,
-  fakeAnalyzer,
-  makeOutputRoot,
-  makeTemporaryRoot,
-  policy,
-  runCli,
-  useCliFixtures,
-  writeFiles,
-} from '../diff/fixtures/cli-harness.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
-useCliFixtures(nitpickerCli);
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
 
 const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
 const mode = process.argv[2];

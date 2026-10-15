@@ -1,5 +1,4 @@
-import { existsSync, mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mjs';
@@ -8,18 +7,16 @@ import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import {
   toolRoot,
   fakeEslintCliPath,
-  temporaryRepositories,
-  registerEslintRepositoryLifecycle,
-  createRepository,
   comparisonOptions,
   fixtureAnalyzer,
+  useEslintFixtures,
   policyFiles,
   sourceWithDebugger,
-  writeFiles,
-  commit,
-} from './eslint-fixtures.mjs';
+} from './test-support/eslint-fixtures.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { commit } from '../../../git/test-support/git-repository.mjs';
 
-registerEslintRepositoryLifecycle();
+const { createRepository, temporaryRoot } = useEslintFixtures();
 
 const fixtureDependencyLockfile = `${JSON.stringify(
   {
@@ -60,8 +57,7 @@ function dependencyAnalyzer() {
 
 describe('ESLint snapshot isolation and failures', () => {
   it('uses prepared baseline dependencies without replacing them with head dependencies', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
-    temporaryRepositories.push(root);
+    const root = temporaryRoot('nitpicker-diff-');
     const projectRoot = path.join(root, 'base/project');
     const policyRoot = path.join(root, 'base/policy');
     writeFiles(projectRoot, {
@@ -147,8 +143,7 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.toolErrors).toEqual([]);
   });
   it('rejects direct filesystem roots outside generated worktrees', () => {
-    const untrustedRoot = mkdtempSync(path.join(tmpdir(), 'eslint-untrusted-root-'));
-    temporaryRepositories.push(untrustedRoot);
+    const untrustedRoot = temporaryRoot('eslint-untrusted-root-');
 
     expect(() =>
       parseArguments([

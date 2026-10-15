@@ -4,15 +4,10 @@ import { existsSync, symlinkSync } from 'node:fs';
 import { dependencyPreparationMode } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mjs';
 import { runTypecheck } from '../../../../../languages/typescript/adapters/static-checks/typescript.mjs';
-import {
-  toolRoot,
-  registerStaticRepositoryLifecycle,
-  temporaryDirectory,
-  generatedSnapshot,
-  writeFiles,
-} from './static-check-fixtures.mjs';
+import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
-registerStaticRepositoryLifecycle();
+const { temporaryDirectory, generatedSnapshot } = useStaticCheckFixtures();
 
 describe('static differential adapters: dependencies', () => {
   it('installs merge-base dependencies when dependency manifests differ', () => {

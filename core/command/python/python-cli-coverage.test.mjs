@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  commit,
-  pythonRepository,
-  run,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 describe('changed-branch-coverage with "preset": "python"', () => {
   const BRANCHY = [
@@ -38,7 +34,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     }));
   it('fails an uncovered branch whose line the change touches', () => {
     const root = branchyRepository();
-    write(root, { 'src/demo/a.py': BRANCHY.replace('if x:', 'if  x:') });
+    writeFiles(root, { 'src/demo/a.py': BRANCHY.replace('if x:', 'if  x:') });
     commit(root, 'touch the branch line');
 
     const result = run(root);
@@ -57,7 +53,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
   });
   it('fails a new branch that no test takes and passes once a test covers it', () => {
     const root = branchyRepository();
-    write(root, {
+    writeFiles(root, {
       'src/demo/a.py': `${BRANCHY}\n\ndef sign(y):\n    if y < 0:\n        return -1\n    return 1\n`,
       'coverage-data.json': coverageData(
         [[5, 6]],
@@ -75,7 +71,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     expect(failing.exitCode, failing.text).toBe(1);
     expect(newBranchFindings(failing).map(({ line }) => line)).toEqual([11]);
 
-    write(root, {
+    writeFiles(root, {
       'coverage-data.json': coverageData(
         [
           [5, 6],

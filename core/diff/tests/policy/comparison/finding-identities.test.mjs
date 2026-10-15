@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../comparison/compare.mjs';
 import { parseFinding } from '../../../comparison/finding-schema.mjs';
 import { canonicalCycleIdentity } from '../../../comparison/fingerprint.mjs';
-import { finding } from '../quality-diff-harness.mjs';
+import { finding } from '../../../execution/test-support/analyzer-findings.mjs';
 
 describe('quality diff finding identities', () => {
   it('canonicalizes equivalent cycle traversal order', () => {

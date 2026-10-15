@@ -1,20 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   fakeEslintCliPath,
-  registerEslintRepositoryLifecycle,
-  createRepository,
   comparisonOptions,
   fixtureAnalyzer,
+  useEslintFixtures,
   recordedEslintAnalyzer,
   policyFiles,
   sourceWithDebugger,
-  writeFiles,
-  renameFile,
-  commit,
-} from './eslint-fixtures.mjs';
+} from './test-support/eslint-fixtures.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { commit } from '../../../git/test-support/git-repository.mjs';
 
-registerEslintRepositoryLifecycle();
+const { createRepository } = useEslintFixtures();
 
 describe('ESLint finding comparison', () => {
   it('preserves unchanged, line-moved, and renamed findings while separating added and resolved findings', () => {
