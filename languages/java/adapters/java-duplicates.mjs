@@ -103,10 +103,14 @@ export function runJscpd({
 
 export function runJavaDuplicates(
   projectRoot,
-  { format = 'java', rootsKey = 'sourceRoots', reportFile = DUPLICATES_REPORT } = {},
+  {
+    reportRoot,
+    manifest,
+    format = 'java',
+    rootsKey = 'sourceRoots',
+    reportFile = DUPLICATES_REPORT,
+  },
 ) {
-  const reportRoot = path.join(projectRoot, 'build/nitpicker');
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
   const roots = (manifest[rootsKey] ?? []).filter((root) =>
     existsSync(path.join(projectRoot, root)),
   );

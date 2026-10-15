@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
@@ -11,17 +12,20 @@ import {
 } from '../../../core/diff/git.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
+import { condenseFailure } from './gradle-wrapper/failure-text.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
+import { readJavaFindings } from './java-reports.mjs';
+import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
+const MAX_FAILURE_LENGTH = 3500;
 
 function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektConfig, snapshot }) {
   return preset === 'kotlin'
@@ -49,7 +53,10 @@ export function toolConfigProperties(projectRoot, { toolPrecedence = {}, policyR
   });
 }
 
-function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy = {} } = {}) {
+function runJavaPreset(
+  projectRoot,
+  { gradle, initScript = INIT_SCRIPT, policy = {}, reportBase } = {},
+) {
   const target = gradleTarget({
     projectRoot,
     configured: gradle,
@@ -57,6 +64,7 @@ function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy =
       '--console=plain',
       '--quiet',
       '--no-configuration-cache',
+      `-Pnitpicker.reportDir=${reportBase}`,
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
       '-I',
@@ -75,30 +83,39 @@ function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy =
     throw result.error;
   }
   if (result.status !== 0) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`Java preset failed in ${projectRoot}: ${detail}`);
+    const detail = condenseFailure(
+      result.stderr.trim() === '' ? result.stdout : result.stderr,
+      MAX_FAILURE_LENGTH,
+    );
+    throw new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
   }
 }
 
 export function collectJavaFindings(projectRoot, options = {}) {
   const preset = options.policy?.preset ?? 'java';
-  runJavaPreset(projectRoot, options);
-  requireGradleReports(projectRoot, preset);
-  runJavaDuplicates(projectRoot);
-  if (preset === 'kotlin') {
-    runKotlinDuplicates(projectRoot);
-  }
-  const { findings } = parseAnalyzerReport(
-    readJavaFindings(projectRoot, {
-      crapLimit: options.policy?.crapLimit,
+  const reportBase = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
+  try {
+    runJavaPreset(projectRoot, { ...options, reportBase });
+    const modules = readReportModules(reportBase, preset);
+    runJavaDuplicates(projectRoot, { reportRoot: reportBase, manifest: modules.manifest });
+    if (preset === 'kotlin') {
+      runKotlinDuplicates(projectRoot, { reportRoot: reportBase, manifest: modules.manifest });
+    }
+    const { findings } = parseAnalyzerReport(
+      readJavaFindings(projectRoot, {
+        reportBase,
+        crapLimit: options.policy?.crapLimit,
+        preset,
+        fileLimits: options.policy?.fileLimits,
+        exclude: options.policy?.exclude,
+        exceptions: options.policy?.exceptions,
+      }),
       preset,
-      fileLimits: options.policy?.fileLimits,
-      exclude: options.policy?.exclude,
-      exceptions: options.policy?.exceptions,
-    }),
-    preset,
-  );
-  return applyJavaPolicy(findings, options.policy);
+    );
+    return applyJavaPolicy(findings, options.policy);
+  } finally {
+    rmSync(reportBase, { recursive: true, force: true });
+  }
 }
 
 export function runJavaDiff({
