@@ -19,7 +19,14 @@ describe('bodyLines', () => {
 describe('unreferencedWorkTagLines', () => {
   it.each([
     ['TODO: fix this later', [0]],
-    ['fixme handle null', []],
+    ['fixme handle null', [0]],
+    ['todo: lower case', [0]],
+    ['A todo list component', []],
+    ['TODO SHA-256 hashing', [0]],
+    ['TODO(UTF-8) decoding', [0]],
+    ['TODO: fix this, see #12', [0]],
+    ['TODO(ORD-42) fix', []],
+    ['TODO #12 fix', []],
     ['FIXME handle null', [0]],
     ['XXX revisit', [0]],
     ['HACK around the parser', [0]],
@@ -47,9 +54,11 @@ describe('firstCommentedOutCodeLine', () => {
     'for (const item of items) {',
     '} else {',
     '} catch (Exception e) {',
-    '}',
-    '});',
     'const value = load();',
+    'total++;',
+    'List<String> names = new ArrayList<>();',
+    'export function oldImplementation(x) {',
+    'public void run() {',
     'break;',
   ])('flags the code line %s', (line) => {
     expect(firstCommentedOutCodeLine([line])).toBe(0);
@@ -63,6 +72,11 @@ describe('firstCommentedOutCodeLine', () => {
     'e.g. use foo(bar) here',
     '',
     'The {@code if (x) {} } form is allowed',
+    '}',
+    '});',
+    'Call this once per request; it caches',
+    'the cache is cleared on restart;',
+    'Rounds half up, see the pricing rules;',
   ])('keeps the prose line %s', (line) => {
     expect(firstCommentedOutCodeLine([line])).toBe(-1);
   });

@@ -77,65 +77,74 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary.
-- `nitpicker/no-silent-catch` (all production code): a `catch` must hand the failure on. It
-  passes when it throws (an `Error` subclass with `{ cause: error }`, or `throw error`), when the
-  caught value reaches a `return` or a call that is not a logger (`return toFailure(error)`,
-  `reject(error)`, `setError(error)`, `lastError = error`), when it returns a failure result
-  (`catch { return { kind: 'malformed-json' } }`, `{ ok: false, error }`), or when it ends the
-  process (`process.exitCode = 1`, `process.exit(1)`). A `catch` that only logs the error, reads it
-  and drops it (`void error`, an alias nobody uses), or returns a default (`undefined`, `''`, `[]`,
-  `{}`, `{ items: [] }`) and carries on is reported. A deliberately dropped error needs an
-  exception in the config file.
-- `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
-  (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
-  `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
-  field on unchecked, and `domain/` then re-validates it by hand. Validate the field in the schema
-  (`z.string().trim().min(1)`, `z.email()`). `z.array(z.unknown())` or `z.unknown()` as a whole
-  schema, and `z.unknown().refine(...)`/`.pipe(...)`, are not reported.
-- Untrusted input is parsed once, at the boundary, with zod. Hand-written type guards for external
-  data are not allowed.
-
-## Everywhere
-
-- `nitpicker/no-self-recursion`: no function that calls itself, in all production code (`domain/`,
-  `adapters/`, the composition root and shared code), not in tests. Allowed forms: a retry or poll
-  is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
-  JSON) is a `for...of` over a worklist that each step pushes the node's children onto
-  (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
-  `flatMap` or `Object.fromEntries`. `domain/` has no loops, so a walk there uses `map`/`flatMap` or
-  moves to `adapters/`.
-- `nitpicker/no-duplicate-string-literals` (all production code): a string literal of three
-  characters or more that a file uses three times or more is reported from its third use. Name it
-  once (`const PENDING = 'pending'`). Import sources, type-position literals, object and class
-  keys, JSX attribute values, enum members and directives are not counted.
-- `nitpicker/no-hardcoded-secret` (all production code): a string literal assigned to a
-  secret-named variable, property, parameter default or fallback (`password`, `token`, `secret`,
-  `credentials`, `apiKey`, `privateKey` and similar, also after `||` or `??`) is reported, and so
-  is a string shaped like an AWS key, a GitHub or Slack token or a private key header anywhere.
-  Read secrets from the environment in the composition root. A secret-named value passed to a
-  `logger.*`, `console.*` or `process.stdout.write` call is reported too: log that it is set.
-  Placeholders (`changeme`, `<token>`, `[redacted]`), environment variable names (`MY_API_KEY`),
-  URLs and key names (`access_token`) are not secrets.
-- `nitpicker/no-generic-names` (all production code): a file or folder named `utils`, `helpers`,
-  `common`, `misc` or `manager` (also `string-utils.ts`, `OrderManager.ts`), and a class, type,
-  interface, enum or `const` named `*Utils`, `*Helper` or `*Manager`, is reported. Name the file
-  for its job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under
-  such a name.
-- `nitpicker/no-boolean-flag-parameter` (all production code): an exported function with a
-  `boolean` parameter (`flag: boolean`, `flag?: boolean`, `flag = false`) is reported. Split it
-  into two functions named for each behavior, or take an options object (`{ force }`) or a string
-  union. Destructured options and non-exported functions are not reported.
+- `nitpicker/no-silent-catch` (all production code): a `catch`, and a promise `.catch(...)`
+  callback, must hand the failure on. It passes when it throws (an `Error` subclass with
+  `{ cause: error }`, or `throw error`), when the caught value reaches a `return` or a call that
+  is not a logger (`return toFailure(error)`, `reject(error)`, `setError(error)`,
+  `lastError = error`; `return error` only from a function whose declared return type allows an
+  error), when it returns a failure result (`return { kind: 'malformed-json' }`,
+  `{ ok: false, error }`, `{ status: 'error' }`, `Result.err(...)`), when it answers with an HTTP
+  error (`res.status(500)`, `reply.code(503)`, `Response.json(body, { status: 500 })`), when it
+  shows the error to the user (`setError(...)`, `setStatus('error')`, `toast.error(...)`), or
+  when it ends the process (`process.exitCode = 1`, `process.exit(1)`). A `catch` that only logs
+  the error, drops it (`void error`, `ignore(error)`, an alias nobody uses), or returns a default
+  or a success shape (`undefined`, `''`, `[]`, `{}`, `{ ok: true, items: [] }`) and carries on is
+  reported, and so is `.catch(() => undefined)`. A deliberately dropped error needs an exception
+  in the config file.
+- `nitpicker/no-duplicate-string-literals` (all production code): a string literal (or a
+  template literal without `${}`) of five characters or more that a file uses three times or more
+  is reported from its third use. Name it once (`const PENDING = 'pending'`). Import sources,
+  type-position literals, object and class keys, `case` labels, discriminant values
+  (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members and directives are not
+  counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
+  `status` is typed `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already
+  rejects a misspelling there.
+- `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters
+  or more with letters and digits, or three character classes) assigned to a secret-named
+  variable, property, parameter default or fallback (`password`, `token`, `secret`,
+  `credentials`, `apiKey`, `privateKey` and similar, also after `||` or `??`, through `as const`,
+  `atob(...)`, `Buffer.from(...)` or a concatenation of literals) is reported, and so is a string
+  shaped like an AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key
+  header, a URL with `user:password@`, a `password=` query parameter or a `Bearer` header value
+  anywhere. Read secrets from the environment in the composition root. A secret-named value
+  passed to a `logger.*`, `console.*` or `process.stdout.write` call, directly, as a property
+  value or in a template or `+` concatenation, is reported too: log that it is set
+  (`{ hasToken: token !== undefined }`) or a masked tail. Placeholders (`changeme`, `<token>`,
+  `[redacted]`), environment variable names (`MY_API_KEY`), URLs, header and storage key names
+  (`X-XSRF-TOKEN`, `auth_token`) and translation keys are not secrets. Like the other guards
+  below, it fails a change only when the change adds a finding.
+- `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
+  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `common`, `commons` or
+  `misc` (also `string-utils.ts`, `OrderManager.ts`), and an exported class, type, interface, enum
+  or `const` named that way (`OrderHelper`), is reported. A class that extends or implements a type
+  with the same ending (`class SessionManager implements CacheManager`) is not. Name it for its
+  job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a
+  name. The Java preset uses the same word list.
+- `nitpicker/no-boolean-flag-parameter` (all production code): a `boolean` parameter
+  (`flag: boolean`, `flag?: boolean`, `flag = false`) of an exported function, exported arrow or
+  function `const`, or public method of an exported class is reported when it switches the
+  function between two behaviors (it is the condition of an `if` or `?:`). Split it into two
+  functions named for each behavior, or take an options object (`{ force }`) or a string union.
+  Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
+  factories, constructors, type predicates, destructured options and a boolean that is only passed
+  on or stored are not reported.
 - `nitpicker/no-io-in-loop` (all production code): a database, HTTP, file or repository call once
-  per item of a `for...of` loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`,
-  `reduce`, `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:fs`,
-  `node:http`, `axios`, `pg`, `@prisma/client` and similar, and `find*`/`save*`/`query*`-style
-  methods on `repo`, `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `collection`, `model`
-  and similar receivers. Fetch or write all items at once. A call inside a `try` that returns or
-  breaks on success (a retry) is not reported.
+  per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
+  `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:fs`, `node:http`,
+  `axios`, `pg`, `@prisma/client` and similar, and `find*`/`save*`/`query*`-style methods
+  (`get` itself, `getById`, `getAll`) on a receiver whose name ends in the word `repo`,
+  `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `api`, `gateway` and similar
+  (`userRepository`, `httpClient`, not `platform` or `queryClient.getQueryData`). Batch it: fetch
+  or write all items at once, or run the calls together with `Promise.all(items.map(...))`, which
+  is the allowed form when there is no batch API. Paging, cursor and polling loops (the loop
+  condition reads a variable the body assigns, as in `do { page = await repo.findPage(cursor);
+cursor = page.next; } while (cursor)`) and retries (a `try` directly in the loop body that
+  returns or breaks on success, with a `catch` that lets the loop go on) are not reported.
 - `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
   spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
   grows with the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`,
-  `Map.groupBy` or `flatMap`.
+  `Map.groupBy` or `flatMap`. An object accumulator whose type has a fixed set of keys
+  (`Record<Status, number>`) is not reported: copying it costs the same on every step.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
@@ -159,9 +168,11 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
   exported types. They are allowed there, never required; the Java preset follows the same rule for
-  Javadoc. A `TODO`, `FIXME`, `XXX` or `HACK` without an issue reference (`TODO(#123)`,
-  `TODO PROJ-123`, a link) and commented-out code (statements, not prose) are reported even in a
-  doc comment; code in an `@example` block or a fenced block is documentation. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
+  Javadoc. A `TODO` or `FIXME` (in any case at the start of a line) or `XXX` or `HACK` not
+  directly followed by an issue (`TODO(#123)`, `TODO(PROJ-123)`, `TODO PROJ-123`, a link; `SHA-256`
+  is not an issue) and commented-out code (an assignment, call, `return` or block opening, not
+  prose) are reported even in a doc comment; code in an `@example` block or a fenced block is
+  documentation. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are

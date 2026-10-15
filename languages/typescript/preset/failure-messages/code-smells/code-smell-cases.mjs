@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import strictSyntaxConfig, { strictProductionRules } from '../../eslint-config/strict.mjs';
+import strictSyntaxConfig from '../../eslint-config/strict.mjs';
 import { codeSmellProductionRules } from '../../eslint-config/code-smells/code-smell-rules.mjs';
 
 const codeSmellConfig = [
@@ -8,7 +8,7 @@ const codeSmellConfig = [
     files: ['**/*.ts'],
     languageOptions: { parser: tseslint.parser },
     plugins: { nitpicker: nitpickerRules },
-    rules: { ...strictProductionRules, ...codeSmellProductionRules },
+    rules: codeSmellProductionRules,
   },
 ];
 const FIXTURE = 'src/fixture.ts';
@@ -21,7 +21,7 @@ function codeSmellCase([name, banned, allowed, filename = FIXTURE]) {
 
 const duplicate = "use('pending'); use('pending'); use('pending');";
 const secret = "const password = 'hunter2';";
-const flag = 'export function render(loud: boolean) { return loud; }';
+const flag = 'export function render(loud: boolean) { return loud ? 1 : 0; }';
 const loop = 'for (const id of ids) { await repository.findById(id); }';
 
 export const codeSmellFailureMessageCases = [

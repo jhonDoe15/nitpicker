@@ -6,10 +6,7 @@ import { strictEslintRuleIds } from '../../strict-rules.mjs';
 import { codeSmellProductionRules } from './code-smell-rules.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
-const CODE_SMELL_RULES = [
-  ...Object.keys(codeSmellProductionRules),
-  'nitpicker/no-hardcoded-secret',
-];
+const CODE_SMELL_RULES = Object.keys(codeSmellProductionRules);
 
 async function enabledRules(file) {
   const rules = new Set();
@@ -42,9 +39,9 @@ describe('code smell rules', () => {
     expect(CODE_SMELL_RULES.filter((rule) => rules.has(rule))).toEqual([]);
   });
 
-  it('keep only the hardcoded secret rule strict', () => {
+  it('fail only on findings a change adds, never on touched lines', () => {
     const strictGuards = CODE_SMELL_RULES.filter((rule) => strictEslintRuleIds.includes(rule));
 
-    expect(strictGuards).toEqual(['nitpicker/no-hardcoded-secret']);
+    expect(strictGuards).toEqual([]);
   });
 });

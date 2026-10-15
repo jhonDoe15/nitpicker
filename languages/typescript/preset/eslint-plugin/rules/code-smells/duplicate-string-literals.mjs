@@ -1,4 +1,6 @@
-const MINIMUM_LENGTH = 3;
+import { hasLiteralUnionType } from '../support/checked-types.mjs';
+
+const MINIMUM_LENGTH = 5;
 const MAXIMUM_USES = 2;
 const SHOWN_LENGTH = 30;
 const ALPHANUMERIC = /[A-Za-z0-9]/;
@@ -11,15 +13,31 @@ const MODULE_SOURCE_PARENTS = new Set([
   'TSImportType',
 ]);
 const KEY_PARENTS = new Set(['Property', 'PropertyDefinition', 'MethodDefinition']);
+const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
+const SKIPPED_PARENTS = new Set([
+  'TSLiteralType',
+  'JSXAttribute',
+  'TSEnumMember',
+  'ExpressionStatement',
+  'TaggedTemplateExpression',
+]);
 
-function isCountable(node) {
-  const { parent, value } = node;
-  if (typeof value !== 'string' || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
+function textOf(node) {
+  if (node.type === 'Literal') return typeof node.value === 'string' ? node.value : undefined;
+  return node.expressions.length === 0 ? node.quasis[0].value.cooked : undefined;
+}
+
+function isDiscriminant(parent) {
+  return parent.type === 'Property' && !parent.computed && DISCRIMINANT_KEYS.has(parent.key.name);
+}
+
+function isCountable(node, value) {
+  const { parent } = node;
+  if (value === undefined || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
     return false;
   }
-  if (MODULE_SOURCE_PARENTS.has(parent.type) || parent.type === 'TSLiteralType') return false;
-  if (parent.type === 'JSXAttribute' || parent.type === 'TSEnumMember') return false;
-  if (parent.type === 'ExpressionStatement') return false;
+  if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) return false;
+  if (parent.type === 'SwitchCase' || isDiscriminant(parent)) return false;
   if (KEY_PARENTS.has(parent.type) && parent.key === node && !parent.computed) return false;
   return !(parent.type === 'CallExpression' && parent.callee.name === 'require');
 }
@@ -41,9 +59,12 @@ export const rule = {
   create(context) {
     const uses = new Map();
     return {
-      Literal(node) {
-        if (!isCountable(node)) return;
-        uses.set(node.value, [...(uses.get(node.value) ?? []), node]);
+      'Literal, TemplateLiteral'(node) {
+        const value = textOf(node);
+        if (!isCountable(node, value) || hasLiteralUnionType(context, node)) return;
+        const nodes = uses.get(value) ?? [];
+        nodes.push(node);
+        uses.set(value, nodes);
       },
       'Program:exit'() {
         for (const [value, nodes] of uses) {
