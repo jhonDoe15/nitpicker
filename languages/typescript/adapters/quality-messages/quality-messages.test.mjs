@@ -7,7 +7,12 @@ import {
   normalizeMutation,
 } from '../quality-areas-runner.mjs';
 import { crapUnknownMessage } from './crap-unknown-message.mjs';
-import { timeoutText, unhandledErrors, unhandledErrorText } from './failure-text.mjs';
+import {
+  timeoutText,
+  unhandledErrors,
+  unhandledErrorText,
+  withSnapshotAdvice,
+} from './failure-text.mjs';
 
 const rule = '⎯⎯⎯⎯⎯⎯⎯';
 const unhandledOutput = [
@@ -60,6 +65,42 @@ describe('test timeout text', () => {
 
     expect(message).toContain('src/t.test.ts > times out: Test timed out after 305 ms.');
     expect(message).not.toContain('STACK_TRACE_ERROR');
+  });
+});
+
+describe('snapshot failures', () => {
+  it('say that a new snapshot has to be committed', () => {
+    expect(withSnapshotAdvice('Error: Snapshot `greet > hello 1` mismatched')).toBe(
+      'Error: Snapshot `greet > hello 1` mismatched. A new snapshot must be committed: run `vitest -u` locally and commit the .snap file.',
+    );
+    expect(withSnapshotAdvice('AssertionError: expected 1 to be 2')).toBe(
+      'AssertionError: expected 1 to be 2',
+    );
+  });
+
+  it('show in the failing test list', () => {
+    const message = formatVitestFailures(
+      {
+        numFailedTests: 1,
+        testResults: [
+          {
+            name: '/p/test/a.test.ts',
+            assertionResults: [
+              {
+                fullName: 'snap',
+                status: 'failed',
+                failureMessages: [
+                  'Error: Snapshot `snap 1` mismatched\n  - Expected\n  + Received',
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      '/p',
+    );
+
+    expect(message).toContain('commit the .snap file');
   });
 });
 

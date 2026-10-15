@@ -102,6 +102,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/test-isolation/no-uncollected-tests.mjs',
   'languages/typescript/preset/eslint-plugin/test-isolation/production-source.mjs',
   'languages/typescript/preset/eslint-plugin/test-isolation/rules.mjs',
+  'languages/typescript/preset/eslint-plugin/test-placement/no-test-helpers-in-source.mjs',
   'languages/typescript/preset/eslint-plugin/test-quality/fake-timers-require-restore.mjs',
   'languages/typescript/preset/eslint-plugin/test-quality/no-copy-pasted-tests.mjs',
   'languages/typescript/preset/eslint-plugin/test-quality/no-shared-test-state.mjs',

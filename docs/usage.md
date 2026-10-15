@@ -445,7 +445,14 @@ new and touched code must comply.
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
   or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
-  `toEqual`/`toStrictEqual`: assert the whole value.
+  `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
+  value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
+  `not.toBeUndefined`, a bare `toHaveBeenCalled()`, `toThrow()` without a message and `expect(true)`
+  are rejected. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
+  comments; keep no mutable `let` shared between tests; write `it.each` instead of three copies of a
+  test; restore fake timers in `afterEach`; leave out `it.todo`, `fails`, `skipIf(true)`, the real
+  clock and `Math.random`, and the network in unit tests. A file that defines tests but is not named
+  `*.test.*` never runs, and a setup file may not import production code.
 - **Layout**: features live in `src/main/features/<name>/` and are imported only through their
   `index.ts`; shared code does not import features; features do not import the composition root
   (`src/main/composition-root.ts`); no import cycles; objects are constructed only in the
@@ -503,7 +510,11 @@ own tools do:
   with the project's `tsconfig.json` as it is.
 - **Coverage and mutation tests** load the project's `vitest.config.*` or `vite.config.*` (the
   first found, `.ts`, `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files,
-  aliases and plugins apply. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
+  aliases and plugins apply. The options that decide whether a run passes are fixed by nitpicker
+  whatever the project sets: no retries, no `bail`, no `.only`, no passing without tests, test and
+  hook timeouts of 10 s, unhandled errors fail the run, and snapshots are never written (a snapshot
+  must be committed, or the test fails). `vi.stubEnv` and `vi.stubGlobal` are undone after each
+  test. nitpicker adds the `*.test.*` and `*.spec.*` files under the source and
   test roots, ignores the project's `test.dir`, and owns the coverage settings, so the project's
   coverage thresholds never decide nitpicker's findings.
 

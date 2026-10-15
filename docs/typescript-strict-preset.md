@@ -129,7 +129,12 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
-  gets a reviewed exception for that rule in `nitpicker.config.json`.
+  gets a reviewed exception for that rule in `nitpicker.config.json`. Even with that exception the
+  comments never take effect: the coverage run strips `istanbul`/`c8`/`v8 ignore` hints before it
+  measures, and a mutant a `Stryker disable` comment would hide is reported as an enforceable
+  `mutation/mutant-ignored` finding that asks for the comment to go.
+- Test files get the suppression half of that rule: `noInlineConfig` is on, and `eslint-disable`,
+  `@ts-*`, coverage and `Stryker` comments are reported. Ordinary comments stay allowed in tests.
 
 ## Inside tests
 
@@ -211,13 +216,58 @@ alone.
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
+- Weak assertions pass whatever the code returns, so `vitest/no-restricted-matchers` bans
+  `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and `not.toBeUndefined` (also after
+  `.resolves`/`.rejects`): assert the value with `toBe` or `toEqual`. `vitest/prefer-called-with`
+  rejects a bare `toHaveBeenCalled()` (pass the arguments), `vitest/require-to-throw-message`
+  rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
+  subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
+  string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
+  callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
+- `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same
+  once literals are ignored are reported from the third on. Write one `it.each` table.
+- `nitpicker/fake-timers-require-restore`: a file that calls `vi.useFakeTimers()` needs
+  `vi.useRealTimers()` in `afterEach`/`afterAll` (or a `finally`). Otherwise the fake clock leaks into
+  the next tests, which then time out. With `@testing-library/user-event`, create the user with
+  `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`.
+- `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
+  already reports `skip`; neither is a way to switch a test off), no `fails` (a test that passes when
+  its assertion fails) and no `skipIf(true)`/`runIf(false)`. A real condition such as
+  `skipIf(process.platform === 'win32')` is allowed.
+- `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
+  argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
+  spy on `Math.random`; either one anywhere in the file lifts the check), and in unit tests
+  (`__tests__/`, `<testRoot>/unit/` and `*.test.*` next to sources) no `fetch`, `http`/`https`
+  `request`/`get`, `net.connect` or `new WebSocket`. Inject the client instead.
+- `nitpicker/no-uncollected-tests`: a file in the test area that is not named `*.test.*` or `*.spec.*`
+  but defines `describe`/`it`/`test` at its top level is never run by Vitest. Rename it.
+- `nitpicker/no-test-helpers-in-source`: a file under a source root that sits in a `testing/`,
+  `test-utils/`, `test-helpers/`, `test-support/`, `fixtures/` or `__mocks__/` folder, or is named
+  `test-utils`, `test-helpers`, `test-support` or `*.fixtures`, is a test helper. Placed in
+  production source it is mutation-tested and shipped; keep it in the test folder (for example
+  `test/support/`).
+- `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
+  (`import * as domain`) of production code.
+- `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
+  `setupFiles` or `globalSetup` may not import production code (a setup file runs before every test
+  file, so calls made there would count as covered). A test may not mention `__stryker__` or
+  `STRYKER_*` either (`no-restricted-syntax`): behaviour that depends on the mutation harness hides
+  every mutant.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
   `restoreMocks` value in the project's own vitest config for these runs. Vitest has no option that
-  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`.
+  restores fake timers automatically: call `vi.useRealTimers()` in `afterEach`
+  (`nitpicker/fake-timers-require-restore` checks it). The same file pins every option that changes
+  whether a run passes, over the project's own config: `retry: 0`, `bail: 0`, `allowOnly: false`,
+  `passWithNoTests: false`, `testTimeout` and `hookTimeout` of 10 000 ms,
+  `dangerouslyIgnoreUnhandledErrors: false`, no `testNamePattern`, `unstubEnvs` and `unstubGlobals`
+  (so `vi.stubEnv` and `vi.stubGlobal` are undone after each test) and `update: 'none'`, so a snapshot
+  that is not committed fails the run instead of being written and accepted. The environment, setup
+  files, aliases and plugins of the project config still apply.
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
 whole pipeline to check a decision made earlier. Both need a heuristic (repeated constant arguments
