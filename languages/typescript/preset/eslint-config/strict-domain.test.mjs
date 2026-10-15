@@ -87,7 +87,9 @@ beforeAll(() => {
   });
 });
 
-afterAll(() => rmSync(typed.root, { recursive: true, force: true }));
+afterAll(() => {
+  rmSync(typed.root, { recursive: true, force: true });
+});
 
 async function typedFindings(code) {
   const filePath = path.join(typed.root, 'invoice.ts');
@@ -165,8 +167,8 @@ describe('readonly types and mutation of domain values', () => {
       '10 nitpicker/no-mutating-method-in-domain',
       '11 nitpicker/no-mutating-method-in-domain',
     ]);
-    expect(findings.find(({ line }) => line === 11).message).toContain(
-      'URLSearchParams.append changes the value it is called on',
+    expect(findings.find(({ line }) => line === 11).message).toBe(
+      'domain/ code does not mutate values, and URLSearchParams.append changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta). If this mutation is intended, add an exception for this rule in nitpicker.config.json.',
     );
   });
 
