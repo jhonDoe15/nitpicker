@@ -161,6 +161,7 @@ describe('layout-aware tool configurations', () => {
     const layered = JSON.parse(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')));
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toMatchObject({
+      allowJs: true,
       noEmit: true,
       skipLibCheck: true,
       strict: true,

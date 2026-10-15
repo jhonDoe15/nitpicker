@@ -164,7 +164,7 @@ const POLICY_COMPILER_OPTIONS = {
   forceConsistentCasingInFileNames: true,
 };
 
-const NO_EMIT_ANALYSIS_OPTIONS = { noEmit: true, skipLibCheck: true };
+const ANALYSIS_OPTIONS = { allowJs: true, noEmit: true, skipLibCheck: true };
 
 function readJsonc(file) {
   const typescript = createRequire(import.meta.url)('typescript');
@@ -224,7 +224,7 @@ function projectLayeredTsconfig(extended, base, layout) {
   return {
     extends: extended,
     compilerOptions: {
-      ...NO_EMIT_ANALYSIS_OPTIONS,
+      ...ANALYSIS_OPTIONS,
       ...POLICY_COMPILER_OPTIONS,
       ...javascriptOptions,
     },
