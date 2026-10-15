@@ -13,16 +13,18 @@ const tsConfig = path.resolve(import.meta.dirname, '../fixtures/tsconfig.fixture
 const created = [];
 
 afterEach(() => {
-  created.splice(0).forEach((directory) => rmSync(directory, { recursive: true, force: true }));
+  for (const directory of created.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 function project(files) {
   const directory = mkdtempSync(path.join(tmpdir(), 'outside-roots-'));
   created.push(directory);
-  Object.entries(files).forEach(([name, content]) => {
+  for (const [name, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
     writeFileSync(path.join(directory, name), content);
-  });
+  }
   return directory;
 }
 
@@ -99,9 +101,10 @@ describe('architectureMessage', () => {
       to: 'lib/b.ts',
     });
 
-    expect(message).toContain('src/a.ts must not depend on lib/b.ts');
-    expect(message).toContain('layout.sourceRoots');
-    expect(message).toContain('"exclude" in nitpicker.config.json');
+    expect(message).toBe(
+      'src/a.ts must not depend on lib/b.ts: production code imports only from layout.sourceRoots. ' +
+        'Move it under a source root, add its folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json.',
+    );
   });
 
   it('keeps other rules short', () => {

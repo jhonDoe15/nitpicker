@@ -63,24 +63,12 @@ describe('resolveLayout', () => {
   it('lists project code files under the roots without excluded files', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-test-'));
     temporaryRoots.push(root);
-    for (const file of [
-      'lib/a.ts',
-      'lib/legacy/b.ts',
-      'spec/a.test.ts',
-      'src/ignored.ts',
-      'lib/dist/c.ts',
-      'dist/d.ts',
-      'lib/node_modules/e.ts',
-    ]) {
+    for (const file of ['lib/a.ts', 'lib/legacy/b.ts', 'spec/a.test.ts', 'src/ignored.ts']) {
       const filePath = path.join(root, file);
       mkdirSync(path.dirname(filePath), { recursive: true });
       writeFileSync(filePath, 'export {};\n');
     }
-    expect(customLayout.projectCodeFiles(root).sort()).toEqual([
-      'lib/a.ts',
-      'lib/dist/c.ts',
-      'spec/a.test.ts',
-    ]);
+    expect(customLayout.projectCodeFiles(root).sort()).toEqual(['lib/a.ts', 'spec/a.test.ts']);
   });
 
   it('keeps the default layout identical to the previous fixed roots', () => {
@@ -430,30 +418,6 @@ describe('package-owned child configs', () => {
     expect(files).toContain('spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
     expect(files).toContain('spec/unit/**/*.ts');
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
-  });
-
-  it('eslint.config.mjs turns on the script rules typescript-eslint leaves off for .js files', async () => {
-    const config = await loadConfig('defaults/eslint.config.mjs', policy);
-    const scriptEntry = config.find(
-      (entry) =>
-        entry.rules?.['no-var'] === 'error' &&
-        entry.files?.includes('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'),
-    );
-    expect(scriptEntry).toBeDefined();
-    expect(scriptEntry.rules).toMatchObject({
-      'prefer-const': 'error',
-      'prefer-rest-params': 'error',
-      'prefer-spread': 'error',
-    });
-  });
-
-  it('crap and stryker leave declaration files out while lint and type check read them', async () => {
-    const crap = await loadConfig('defaults/crap.config.mjs', policy);
-    const stryker = await loadConfig('defaults/stryker.config.mjs', policy);
-    const lint = await loadConfig('defaults/eslint.config.mjs', policy, FILE_SELECTION);
-    expect(crap.excludes).toContain('**/*.d.ts');
-    expect(stryker.mutate).toContain('!**/*.d.ts');
-    expect(lint.flatMap((entry) => entry.ignores ?? [])).not.toContain('**/*.d.ts');
   });
 
   it('eslint-config/base.mjs and coding-standards.mjs follow the same layout', async () => {

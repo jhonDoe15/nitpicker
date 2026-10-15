@@ -4,8 +4,9 @@ export function appendMetricSection(lines, metrics) {
   }
   lines.push('', 'Changed metrics:');
   for (const metric of metrics) {
+    const change = `${String(metric.baseValue)} -> ${String(metric.headValue)}`;
     lines.push(
-      `${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${String(metric.baseValue)} -> ${String(metric.headValue)} (${formatDelta(metric.delta)})`,
+      `${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${change} (${formatDelta(metric.delta)})`,
     );
   }
 }

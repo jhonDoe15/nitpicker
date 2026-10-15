@@ -30,7 +30,13 @@ for (const [name, code] of Object.entries(fixtures)) {
 writeFileSync(
   path.join(root, 'tsconfig.json'),
   JSON.stringify({
-    compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', lib: ['ES2022'] },
+    compilerOptions: {
+      strict: true,
+      target: 'ES2022',
+      module: 'ESNext',
+      lib: ['ES2022'],
+      types: [],
+    },
     include: ['src/**/*'],
   }),
 );

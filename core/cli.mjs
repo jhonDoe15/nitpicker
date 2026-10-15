@@ -7,7 +7,6 @@ import {
   removeSnapshotDependencies,
 } from '../languages/typescript/adapters/static-checks-runner.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
-import { outsideRootsNotices } from '../languages/typescript/preset/notices/outside-roots-notice.mjs';
 import { createBaseSetupResolver } from './base-setup.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
@@ -20,6 +19,7 @@ import {
 import { runQualitySnapshot } from './snapshot/run-snapshot.mjs';
 import { parseDrillDownOptions } from './diff/cli.mjs';
 import { parseArguments } from './commands/arguments.mjs';
+import { noticeDescriber } from './commands/notices.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveBase } from './diff/base-ref.mjs';
 import { captureWorkingTree, runGit } from './diff/git.mjs';
@@ -232,17 +232,11 @@ function runComparisonCli(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: cli.resolveBaseSetup,
-    describeNotices: describesTypeScript(config)
-      ? (changedFiles) => outsideRootsNotices(changedFiles, headPolicy)
-      : undefined,
+    describeNotices: noticeDescriber(config, headPolicy),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
-}
-
-function describesTypeScript(config) {
-  return config.preset === undefined || config.preset === 'typescript';
 }
 
 function fixIfRequested(cli, repositoryRoot, base) {

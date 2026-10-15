@@ -36,17 +36,16 @@ describe('structural metrics report', () => {
   });
 
   it('analyzes folders named like build output below the project root', () => {
-    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main').functions.map(
-      (entry) => entry.source,
-    );
+    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main')
+      .functions.map((entry) => entry.source)
+      .filter((source) => source.endsWith('/folder-named-like-output.ts'))
+      .sort();
 
-    expect(sources).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/\/dist\//),
-        expect.stringMatching(/\/build\//),
-        expect.stringMatching(/\/generated\//),
-      ]),
-    );
+    expect(sources).toEqual([
+      'fixture/src/main/build/folder-named-like-output.ts',
+      'fixture/src/main/dist/folder-named-like-output.ts',
+      'fixture/src/main/generated/folder-named-like-output.ts',
+    ]);
   });
 
   it('skips a source root that is build output at the project root', () => {

@@ -94,8 +94,6 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
 ];
 
-const ARCHITECTURE_EXCLUSION = EXCLUDED_PATH_PATTERN;
-
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
   return {
@@ -234,9 +232,9 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'architecture',
       version: dependencyCruiserVersion,
       patterns: layout.graphRoots,
-      exclusions: [ARCHITECTURE_EXCLUSION, ...layout.exclude],
+      exclusions: [EXCLUDED_PATH_PATTERN, ...layout.exclude],
       configRelativePath: ARCHITECTURE_CONFIG,
-      exclude: ARCHITECTURE_EXCLUSION,
+      exclude: EXCLUDED_PATH_PATTERN,
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',

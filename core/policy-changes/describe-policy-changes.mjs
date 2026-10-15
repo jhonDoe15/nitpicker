@@ -34,9 +34,16 @@ function withoutKeys(object, keys) {
 }
 
 function leaves(value, prefix) {
-  return isPlainObject(value)
-    ? Object.entries(value).flatMap(([key, child]) => leaves(child, `${prefix}.${key}`))
-    : [[prefix, value]];
+  const pending = [[prefix, value]];
+  const found = [];
+  for (const [path, node] of pending) {
+    if (isPlainObject(node)) {
+      pending.push(...Object.entries(node).map(([key, child]) => [`${path}.${key}`, child]));
+    } else {
+      found.push([path, node]);
+    }
+  }
+  return found;
 }
 
 function settingLeaves(config) {

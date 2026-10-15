@@ -62,7 +62,10 @@ describe('built-in excluded globs', () => {
 
   it('lint and type-check hand-written declaration files but keep them out of runtime checks', () => {
     expect(defaultResolvedLayout.excludedGlobs).not.toContain('**/*.d.ts');
-    expect(defaultResolvedLayout.runtimeExcludedGlobs).toContain('**/*.d.ts');
+    expect(defaultResolvedLayout.runtimeExcludedGlobs).toEqual([
+      ...defaultResolvedLayout.excludedGlobs,
+      '**/*.d.ts',
+    ]);
     expect(readConfig('tsconfig.quality.json').exclude).not.toContain('**/*.d.ts');
     expect(readConfig('tsconfig.quality.json').compilerOptions.noEmit).toBe(true);
     expect(readConfig('tsconfig.stryker.json').exclude).not.toContain('**/*.d.ts');
