@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
-import { reactRuleIds } from './eslint-config/react-rules.mjs';
+import { reactRuleIds } from './eslint-config/react/react-rules.mjs';
 import { strictPresetConfig } from './eslint-config/strict.mjs';
 import { defaultResolvedLayout } from './layout.mjs';
 import { isStrictRule, strictEslintRuleIds } from './strict-rules.mjs';

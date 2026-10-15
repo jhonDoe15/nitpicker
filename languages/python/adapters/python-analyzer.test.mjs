@@ -2,8 +2,8 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
-import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
+import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import {
   configurationFiles,
   createMutationAnalyzer,
@@ -68,15 +68,17 @@ describe('Python analyzer', () => {
 
     const required = [
       'languages/python/ruff/nitpicker-ruff.toml',
-      'languages/python/adapters/python-test-runner.mjs',
-      'languages/python/ingest/coverage-json.mjs',
+      'languages/python/adapters/execution/python-test-runner.mjs',
+      'languages/python/ingest/coverage-reports/coverage-json.mjs',
       'languages/java/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
       'languages/java/gradle/nitpicker.init.gradle',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
-    expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
+    expect(
+      files.filter((file) => /\.test\.mjs$|(^|\/)(fixtures|test-support)\//.test(file)),
+    ).toEqual([]);
   });
 
   it('runs the runner for the part it is, with the snapshot, the live checkout and the settings', () => {

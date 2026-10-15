@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { readCouplingFindings } from '../adapters/java-coupling.mjs';
-import { readJavaFindings } from '../adapters/java-reports.mjs';
-import { readJavaFileLimitFindings } from '../adapters/java-structure.mjs';
+import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
+import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');

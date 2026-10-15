@@ -1,25 +1,22 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { compareFindings } from '../../../core/diff/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import {
-  captureWorkingTree,
-  readChangedLines,
-  readRenameMap,
-  resolveComparison,
-} from '../../../core/diff/git.mjs';
-import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
+import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
+import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
-import { runJavaDuplicates } from './java-duplicates.mjs';
-import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
+import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
+import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { REPORT_DIRECTORY, requireGradleReports } from './java-reports.mjs';
+import { REPORT_DIRECTORY, requireGradleReports } from './reporting/java-reports.mjs';
 import { MAVEN_REPORT_DIRECTORY, runMavenPreset } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
 import { readModuleFindings } from '../builds/java-modules.mjs';
-import { kotlinGradleArguments } from './kotlin-tools.mjs';
+import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -155,10 +152,11 @@ export function runJavaDiff({
     projectRelativePath,
   });
   const options = { gradle, maven, initScript, policy };
-  const collectAt = (sha) =>
-    withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
+  function collectAt(sha) {
+    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
       collectJavaFindings(path.join(worktreeRoot, projectRelativePath), options),
     );
+  }
 
   const baseFindings = collectAt(comparison.mergeBaseSha);
   const headFindings = collectAt(comparison.headSha);

@@ -33,7 +33,7 @@ export function createIdentityCounter() {
   };
 }
 
-export function percent(covered, total) {
+function percent(covered, total) {
   return Math.round((covered / total) * 10000) / 100;
 }
 
@@ -79,28 +79,21 @@ function safeCodePoint(codePoint, fallback) {
   return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : fallback;
 }
 
+const XML_TOKEN_PARTS = [
+  String.raw`<!--[\s\S]*?-->`,
+  String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
+  String.raw`<\?[\s\S]*?\?>`,
+  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>`,
+  String.raw`<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>`,
+];
+
 export function parseXml(text) {
-  const tokens =
-    /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
+  const tokens = new RegExp(XML_TOKEN_PARTS.join('|'), 'gi');
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
   const contentStarts = new Map();
   for (const match of text.matchAll(tokens)) {
-    const [, closing, name, rest, selfClosing] = match;
-    if (name === undefined) {
-      continue;
-    }
-    if (closing === '/') {
-      closeElement(stack, { name, text, end: match.index, contentStarts });
-    } else {
-      openElement(stack, {
-        name,
-        rest,
-        selfClosing,
-        contentStart: match.index + match[0].length,
-        contentStarts,
-      });
-    }
+    consumeXmlTag(match, { stack, text, contentStarts });
   }
   if (stack.length !== 1) {
     throw new TypeError(`XML element <${stack.at(-1).name}> is not closed`);
@@ -158,9 +151,20 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
-export function descendantsNamed(element, name) {
-  return element.children.flatMap((child) => [
-    ...(child.name === name ? [child] : []),
-    ...descendantsNamed(child, name),
-  ]);
+function consumeXmlTag(match, { stack, text, contentStarts }) {
+  const [, closing, name, rest, selfClosing] = match;
+  if (name === undefined) {
+    return;
+  }
+  if (closing === '/') {
+    closeElement(stack, { name, text, end: match.index, contentStarts });
+    return;
+  }
+  openElement(stack, {
+    name,
+    rest,
+    selfClosing,
+    contentStart: match.index + match[0].length,
+    contentStarts,
+  });
 }
