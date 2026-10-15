@@ -12,7 +12,7 @@ const projectRoot = path.resolve(
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
 const analysis = await analyzeWithFunctionMapFallback({
-  projectRoot: projectRoot,
+  projectRoot,
   explicitPaths: explicitPaths(),
   coverageMode: 'existing-only',
   coverageReportPath,
@@ -67,17 +67,7 @@ process.stdout.write(
 for (const entry of functions.slice(0, 20)) {
   process.stdout.write(
     formatOutput(
-      [
-        entry.crap === null ? 'N/A' : entry.crap.toFixed(2),
-        '\tCC ',
-        `${entry.complexity}`,
-        '\t',
-        entry.source,
-        ':',
-        `${entry.lines.start}`,
-        '\t',
-        entry.function,
-      ].join(''),
+      `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
     ) + '\n',
   );
 }

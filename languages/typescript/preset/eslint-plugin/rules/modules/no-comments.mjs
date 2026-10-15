@@ -11,14 +11,17 @@ const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDecl
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const JSDOC_EXCEPTION =
   'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
-const toolDirective = new RegExp(
-  [
-    '^\\s*(?:eslint\\b|prettier-ignore|@ts-check\\b|@vitest-env',
-    'ironment\\b|@jsx\\b|@jsxImportSource\\b|\\/\\s*<reference\\b|',
-    '#(?:region|endregion)\\b)',
-  ].join(''),
-  '',
-);
+const TOOL_DIRECTIVES = [
+  'eslint\\b',
+  'prettier-ignore',
+  '@ts-check\\b',
+  '@vitest-environment\\b',
+  '@jsx\\b',
+  '@jsxImportSource\\b',
+  '\\/\\s*<reference\\b',
+  '#(?:region|endregion)\\b',
+];
+const toolDirective = new RegExp(`^\\s*(?:${TOOL_DIRECTIVES.join('|')})`);
 
 function suppressionReport(comment) {
   const suppression = typescriptSuppression.exec(comment.value);

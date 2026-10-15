@@ -79,15 +79,16 @@ function safeCodePoint(codePoint, fallback) {
   return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : fallback;
 }
 
+const XML_TOKEN_PARTS = [
+  String.raw`<!--[\s\S]*?-->`,
+  String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
+  String.raw`<\?[\s\S]*?\?>`,
+  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>`,
+  String.raw`<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>`,
+];
+
 export function parseXml(text) {
-  const tokens = new RegExp(
-    [
-      '<!--[\\s\\S]*?-->|<!\\[CDATA\\[[\\s\\S]*?\\]\\]>|<\\?[\\s\\S]*?\\?>',
-      '|<!DOCTYPE[^>[]*(?:\\[[\\s\\S]*?\\])?\\s*>|<(\\/?)([^\\s/>]+)(',
-      '(?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(\\/?)>',
-    ].join(''),
-    'gi',
-  );
+  const tokens = new RegExp(XML_TOKEN_PARTS.join('|'), 'gi');
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
   for (const match of text.matchAll(tokens)) {

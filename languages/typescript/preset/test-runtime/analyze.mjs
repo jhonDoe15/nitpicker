@@ -230,10 +230,10 @@ function classifyTest(source, { layout, dependencies, sourceTexts, bridges, prod
     .sort();
   const bridgeModules = referencedBridges(visited, sourceTexts.get(source) ?? '', bridges);
   const typeOnlyProductionModules = typeOnlyProductionReachability({
-    source: source,
-    dependencies: dependencies,
-    productionRoots: productionRoots,
-    layout: layout,
+    source,
+    dependencies,
+    productionRoots,
+    layout,
   });
   return {
     test: source,
