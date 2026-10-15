@@ -8,6 +8,7 @@ import { hashFiles } from '../../../../../languages/typescript/preset/checks/has
 import { compareFindings } from '../../../comparison/compare.mjs';
 import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 describe('CRAP reporting in the quality-area analyzers', () => {
   it('assigns repeated CRAP symbols by source order instead of report rank', () => {
     function functionEntry(line, crap) {
@@ -220,7 +221,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
   it('uses 9 by default and takes an explicit CRAP limit from the config thresholds', () => {
     expect(DEFAULT_CRAP_SCORE_LIMIT).toBe(9);
     const [configured] = applyThresholds(
-      configuredAnalyzers.filter(({ name }) => name === 'crap'),
+      packageAnalyzers.filter(({ name }) => name === 'crap'),
       { crapLimit: 12 },
     );
     const invocation = configured.createInvocation({
@@ -230,7 +231,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
       snapshot: 'head',
     });
     expect(invocation.args.slice(-2)).toEqual(['--crap-score-limit', '12']);
-    const defaultCrap = configuredAnalyzers.find(({ name }) => name === 'crap');
+    const defaultCrap = packageAnalyzers.find(({ name }) => name === 'crap');
     expect(configured.configurationHash).not.toBe(defaultCrap.configurationHash);
     expect(typeof configured.resolveVersion).toBe('function');
   });

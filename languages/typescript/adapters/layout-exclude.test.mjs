@@ -13,6 +13,7 @@ import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 // Every runner and tool is pointed at a project whose sources live in `lib/` and whose tests live
 // in `spec/`, and told to leave `lib/legacy/` and `spec/legacy/` alone. Each analyzer must report
 // the violation planted in `lib/live/` (the custom root is analyzed) and none from the excluded
@@ -27,7 +28,7 @@ const customConfig = {
   layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
 };
 const customPolicy = resolveHeadPolicy(customConfig);
-const customAnalyzers = applyLayout(configuredAnalyzers, customPolicy);
+const customAnalyzers = applyLayout(packageAnalyzers, customPolicy);
 
 const ANALYZER_NAMES = [
   'eslint-lint',
@@ -105,7 +106,7 @@ describe('custom layout and exclude across runners and tools', () => {
       ['dependency-architecture', 'typescript-typecheck', 'entry-points', 'test-runtime'],
       fixtureFiles(),
       resolveHeadPolicy({}),
-      configuredAnalyzers,
+      packageAnalyzers,
     );
     expect(defaultRun.toolErrors).toEqual([]);
     for (const name of [
@@ -127,7 +128,7 @@ describe('with many exclude globs', () => {
       ['dependency-architecture'],
       fixtureFiles(),
       policy,
-      applyLayout(configuredAnalyzers, policy),
+      applyLayout(packageAnalyzers, policy),
     );
     expect(run.toolErrors).toEqual([]);
   });
@@ -142,7 +143,7 @@ describe('without exclude', () => {
         [name],
         fixtureFiles(),
         layoutOnly,
-        applyLayout(configuredAnalyzers, layoutOnly),
+        applyLayout(packageAnalyzers, layoutOnly),
       );
 
       expect(withoutExclude.toolErrors).toEqual([]);
@@ -282,10 +283,8 @@ describe('applyLayout', () => {
   });
 
   it('keeps the shared default analyzers when the config changes neither', () => {
-    expect(applyLayout(configuredAnalyzers, resolveHeadPolicy({}))).toBe(configuredAnalyzers);
-    expect(applyLayout(configuredAnalyzers, resolveHeadPolicy({ layout: {} }))).toBe(
-      configuredAnalyzers,
-    );
+    expect(applyLayout(packageAnalyzers, resolveHeadPolicy({}))).toBe(packageAnalyzers);
+    expect(applyLayout(packageAnalyzers, resolveHeadPolicy({ layout: {} }))).toBe(packageAnalyzers);
   });
 
   it('leaves custom and injected analyzers alone', () => {

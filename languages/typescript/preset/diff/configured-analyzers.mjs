@@ -109,11 +109,13 @@ function buildPackageAnalyzers(layout) {
     );
 }
 
-export const configuredAnalyzers = buildPackageAnalyzers(resolveLayout());
+export function configuredAnalyzers() {
+  return buildPackageAnalyzers(resolveLayout());
+}
 
-export const javascriptAnalyzers = buildPackageAnalyzers(
-  resolveLayout(undefined, undefined, { javascript: true }),
-);
+export function javascriptAnalyzers() {
+  return buildPackageAnalyzers(resolveLayout(undefined, undefined, { javascript: true }));
+}
 
 export function applyLayout(analyzers, headPolicy) {
   const customized =
@@ -129,12 +131,8 @@ export function applyLayout(analyzers, headPolicy) {
     ]),
   );
   return analyzers.map((analyzer) =>
-    isPackageAnalyzer(analyzer) ? (rebuilt.get(analyzer.name) ?? analyzer) : analyzer,
+    analyzer.policyFromPackage === true ? (rebuilt.get(analyzer.name) ?? analyzer) : analyzer,
   );
-}
-
-function isPackageAnalyzer(analyzer) {
-  return configuredAnalyzers.includes(analyzer) || javascriptAnalyzers.includes(analyzer);
 }
 
 export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {

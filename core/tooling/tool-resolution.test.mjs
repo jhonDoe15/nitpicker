@@ -19,6 +19,7 @@ import {
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots = [];
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -49,8 +50,8 @@ it('records the TypeScript version imported by structure instead of the consumer
   const importedTypeScriptVersion = JSON.parse(
     readFileSync(structureRequire.resolve('typescript/package.json'), 'utf8'),
   ).version;
-  const structure = configuredAnalyzers.find(({ name }) => name === 'structure');
-  const typecheck = configuredAnalyzers.find(({ name }) => name === 'typescript-typecheck');
+  const structure = packageAnalyzers.find(({ name }) => name === 'structure');
+  const typecheck = packageAnalyzers.find(({ name }) => name === 'typescript-typecheck');
   const report = runQualitySnapshot({
     analyzers: [
       {
@@ -150,7 +151,7 @@ it('rejects a snapshot tool symlink that points outside the temporary root', () 
 it('includes a project-owned coding inventory in the selected policy hash', () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-inventory-')));
   temporaryRoots.push(root);
-  const analyzer = configuredAnalyzers.find(({ name }) => name === 'coding-standards');
+  const analyzer = packageAnalyzers.find(({ name }) => name === 'coding-standards');
   const resolveHash = /** @type {{ resolveConfigurationHash: (root: string) => string }} */ (
     analyzer
   ).resolveConfigurationHash;
@@ -162,7 +163,7 @@ it('includes a project-owned coding inventory in the selected policy hash', () =
 it('reads the legacy inventory from the configured path and ignores the old internal one', () => {
   const root = createTemporaryRoot('nitpicker-inventory-path-');
   const [analyzer] = applyLegacyInventory(
-    configuredAnalyzers.filter(({ name }) => name === 'coding-standards'),
+    packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
     'config/legacy.json',
   );
   const original = analyzer.resolveConfigurationHash(root);

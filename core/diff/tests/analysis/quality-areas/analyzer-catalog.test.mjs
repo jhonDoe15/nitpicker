@@ -8,6 +8,7 @@ import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.
 import { planAnalyzerShards } from '../../../sharding/sharding.mjs';
 import { fileURLToPath } from 'node:url';
 
+const packageAnalyzers = configuredAnalyzers();
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',
   'eslint-errors',
@@ -31,12 +32,12 @@ const EXPECTED_ANALYZER_NAMES = [
 
 describe('quality-area analyzer catalog', () => {
   it('runs the supported quality areas in the single-command catalog', () => {
-    expect(configuredAnalyzers.map(({ name }) => name)).toEqual(
+    expect(packageAnalyzers.map(({ name }) => name)).toEqual(
       EXPECTED_ANALYZER_NAMES.filter((name) => name !== 'policy-tests'),
     );
   });
   it('reports a resolved tool version for the single-command analyzers', () => {
-    const prettier = configuredAnalyzers.find(({ name }) => name === 'prettier-format');
+    const prettier = packageAnalyzers.find(({ name }) => name === 'prettier-format');
     const report = runQualitySnapshot({
       analyzers: [
         {
@@ -57,11 +58,11 @@ describe('quality-area analyzer catalog', () => {
     expect(report.summary.tools[0].version).not.toBe('unresolved');
   });
   it('resolves a real version for every analyzer', () => {
-    for (const analyzer of configuredAnalyzers) {
+    for (const analyzer of packageAnalyzers) {
       expect(analyzer.resolveVersion(PACKAGE_ROOT), analyzer.name).not.toBe('unresolved');
     }
   });
-  it.each([['single-command', configuredAnalyzers]])(
+  it.each([['single-command', packageAnalyzers]])(
     'runs coverage before CRAP when CRAP alone is selected in the %s dial',
     (_dial, analyzers) => {
       expect(selectAnalyzers(analyzers, ['crap']).map(({ name }) => name)).toEqual([
@@ -70,7 +71,7 @@ describe('quality-area analyzer catalog', () => {
       ]);
     },
   );
-  it.each([['differential', configuredAnalyzers]])(
+  it.each([['differential', packageAnalyzers]])(
     'configures expensive analyzer scheduling metadata in the %s dial',
     (dial, analyzers) => {
       const weights = Object.fromEntries(
@@ -111,7 +112,7 @@ describe('quality-area analyzer catalog', () => {
     expect(config.test.maxWorkers).toBe(4);
   });
   it('plans three balanced CI shards with heavy dependency chains separated', () => {
-    const shards = planAnalyzerShards(configuredAnalyzers, 3);
+    const shards = planAnalyzerShards(packageAnalyzers, 3);
     const names = shards.map((shard) => shard.map(({ name }) => name));
     const weights = shards.map((shard) =>
       shard.reduce((total, { shardWeight }) => total + shardWeight, 0),
@@ -214,7 +215,7 @@ describe('quality-area analyzer catalog', () => {
       },
     ]);
   });
-  it.each([['differential', configuredAnalyzers]])(
+  it.each([['differential', packageAnalyzers]])(
     'passes the active CRAP limit to the %s dial',
     (_dial, analyzers) => {
       const analyzer = analyzers.find(({ name }) => name === 'crap');

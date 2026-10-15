@@ -24,8 +24,14 @@ const RESOURCE_FILES = [
   'languages/java/detekt/nitpicker-detekt.yml',
   'languages/java/detekt/detekt-validation.yml',
 ];
-const CONFIGURATION_CONTENTS = importClosure([...ENTRY_FILES, ...RESOURCE_FILES], packageRoot);
-export const CONFIGURATION_FILES = [...CONFIGURATION_CONTENTS.keys()].sort();
+
+function configurationContents() {
+  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES], packageRoot);
+}
+
+export function configurationFiles() {
+  return [...configurationContents().keys()].sort();
+}
 
 function readPinnedVersions(initScript = INIT_SCRIPT) {
   const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
@@ -40,9 +46,10 @@ function readPinnedVersions(initScript = INIT_SCRIPT) {
 
 function hashConfiguration() {
   const hash = createHash('sha256');
-  for (const relativePath of CONFIGURATION_FILES) {
+  const contents = configurationContents();
+  for (const relativePath of [...contents.keys()].sort()) {
     hash.update(`${relativePath}\0`);
-    hash.update(CONFIGURATION_CONTENTS.get(relativePath));
+    hash.update(contents.get(relativePath));
     hash.update('\0');
   }
   return hash.digest('hex');

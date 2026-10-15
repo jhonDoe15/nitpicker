@@ -11,6 +11,7 @@ import { configuredAnalyzers } from '../../../../languages/typescript/preset/dif
 import { compareFindings } from '../../comparison/compare.mjs';
 import { runAnalyzers } from '../../execution/run-analyzers.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots = [];
 
 afterEach(() => {
@@ -41,7 +42,7 @@ it('compares both sides using the head coding inventory when that inventory entr
     `${JSON.stringify({ sites: legacySignals.map((site) => ({ ...site, count: 1 })) })}\n`,
   );
 
-  const analyzer = configuredAnalyzers.find(({ name }) => name === 'coding-standards');
+  const analyzer = packageAnalyzers.find(({ name }) => name === 'coding-standards');
   const baseRun = runAnalyzers({
     analyzers: [analyzer],
     projectRoot: baseProjectRoot,

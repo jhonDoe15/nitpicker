@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { CONFIGURATION_FILES, createJavaAnalyzer } from '../java-analyzer.mjs';
+import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyJavaPolicy } from '../java-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import {
@@ -387,6 +387,10 @@ describe('Java analyzer declaration', () => {
       'languages/java/adapters/spring/spring-secrets.mjs',
     ];
 
-    expect(CONFIGURATION_FILES.filter((file) => modules.includes(file)).sort()).toEqual(modules);
+    expect(
+      configurationFiles()
+        .filter((file) => modules.includes(file))
+        .sort(),
+    ).toEqual(modules);
   });
 });

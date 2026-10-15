@@ -16,5 +16,5 @@ export function presetAnalyzers(config, injected) {
   if (GRADLE_PRESETS.includes(config.preset)) {
     return [createJavaAnalyzer({ kotlin: config.preset === 'kotlin' })];
   }
-  return config.preset === 'javascript' ? javascriptAnalyzers : configuredAnalyzers;
+  return config.preset === 'javascript' ? javascriptAnalyzers() : configuredAnalyzers();
 }

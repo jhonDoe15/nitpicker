@@ -31,7 +31,7 @@ function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }
 export function aggregateShardReports({
   inputRoot,
   outputRoot,
-  analyzers = configuredAnalyzers,
+  analyzers = configuredAnalyzers(),
   shardCount,
   liveProjectRoot,
   policyRoot,
