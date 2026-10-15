@@ -3,6 +3,7 @@ package guards;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -90,5 +91,19 @@ class HonestyTest {
 
   private static String orEmpty(Optional<String> value) {
     return value.orElse("");
+  }
+
+  @Test
+  void guardsItsData() {
+    if (names.isEmpty()) {
+      fail("no names loaded");
+    }
+    assertEquals(2, names.size());
+  }
+
+  @Test
+  void equalsIsReflexive() {
+    String name = names.get(0);
+    assertEquals(name, name);
   }
 }

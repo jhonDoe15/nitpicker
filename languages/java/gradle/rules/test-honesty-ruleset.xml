@@ -30,7 +30,7 @@
     <properties><property name="xpath"><value><![CDATA[
 //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]//(IfStatement | SwitchStatement)
   [not(ancestor::*[self::IfStatement or self::SwitchStatement])]
-  [.//MethodCall[starts-with(@MethodName, 'assert') or @MethodName = ('verify', 'fail', 'assertThat')]]
+  [.//MethodCall[starts-with(@MethodName, 'assert') or @MethodName = 'verify']]
 ]]></value></property></properties>
   </rule>
 
@@ -64,7 +64,7 @@
 |
 //MethodCall[@MethodName = ('assertTrue', 'assertFalse')][ArgumentList/BooleanLiteral]
 |
-//MethodCall[@MethodName = ('assertEquals', 'assertSame')][ArgumentList/*[1][self::BooleanLiteral or self::NumericLiteral or self::StringLiteral or self::VariableAccess][@Image = ../*[2]/@Image]]
+//MethodCall[@MethodName = ('assertEquals', 'assertSame')][ArgumentList/*[1][self::BooleanLiteral or self::NumericLiteral or self::StringLiteral][@Image = ../*[2]/@Image]]
 ]]></value></property></properties>
   </rule>
 

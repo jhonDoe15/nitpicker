@@ -29,7 +29,12 @@ const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
 const DATA_LINES = [
   /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
   /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
-  /^[\w.]*[\s\d.,{}()[\]+-]*$/,
+  /^[\w.]*[\s\d.,;{}()[\]+-]*$/,
+  /^(?:Map\.)?entry\([\w\s.,+-]*\)[,;)]*$/,
+  new RegExp(
+    String.raw`^(?:\w+\s+)*[\w<>,.?\s[\]]*\s\w+\s*=\s*` +
+      String.raw`(?:Map\.ofEntries|Map\.of|List\.of|Set\.of|Stream\.of|Arrays\.asList)\([\w\s.,()+-]*$`,
+  ),
 ];
 
 function codeLines(fragment) {
