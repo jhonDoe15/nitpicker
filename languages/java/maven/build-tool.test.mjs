@@ -9,12 +9,16 @@ const roots = [];
 function project(...files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-build-tool-'));
   roots.push(root);
-  files.forEach((name) => writeFileSync(path.join(root, name), ''));
+  for (const name of files) {
+    writeFileSync(path.join(root, name), '');
+  }
   return root;
 }
 
 afterEach(() => {
-  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 describe('detectBuildTool', () => {

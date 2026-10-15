@@ -10,7 +10,7 @@ function unique(values) {
   return [...new Set(values)];
 }
 
-export function pmdRulesets(context) {
+function pmdRulesets(context) {
   const { toolConfig, rulesetDirectory, module, reportRoot, spring } = context;
   const nitpicker = toolConfig.pmd.nitpicker
     ? [path.join(rulesetDirectory, 'pmd-ruleset.xml')]

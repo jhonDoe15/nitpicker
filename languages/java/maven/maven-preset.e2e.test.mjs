@@ -209,10 +209,14 @@ describe.skipIf(!enabled)('Java preset on Maven end to end', () => {
       const result = diffOf(modules, 'lib-violation');
 
       expect(result.failed).toBe(true);
-      const paths = result.newEnforceable.map((finding) => finding.path);
-      expect(paths.length).toBeGreaterThan(0);
-      expect(paths.every((file) => file === 'lib/src/main/java/lib/Bad.java')).toBe(true);
-      expect(summarize(result.newEnforceable)).toContain('pmd EmptyCatchBlock Bad.java');
+      expect([...new Set(result.newEnforceable.map((finding) => finding.path))]).toEqual([
+        'lib/src/main/java/lib/Bad.java',
+      ]);
+      expect(
+        result.newEnforceable
+          .filter((finding) => finding.tool === 'pmd' && finding.rule === 'EmptyCatchBlock')
+          .map((finding) => finding.path),
+      ).toEqual(['lib/src/main/java/lib/Bad.java']);
     },
     STEP_TIMEOUT_MS,
   );

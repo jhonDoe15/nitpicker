@@ -6,6 +6,24 @@ import { analyzeJavaSnapshot, GRADLE_FAILURE_RULE } from '../adapters/java-runne
 
 const roots = [];
 
+const MAVEN_FAILURE = new RegExp(
+  [
+    '^Maven compile failed in \\S+: fake maven: -B -q test-compile',
+    ' org\\.apache\\.maven\\.plugins:maven-help-plugin:\\S+:effective-pom -Doutput=\\S+',
+    ' org\\.apache\\.maven\\.plugins:maven-dependency-plugin:\\S+:build-classpath',
+    ' -Dmdep\\.outputFile=target/nitpicker/classpath-compile\\.txt -DincludeScope=compile$',
+  ].join(''),
+  'u',
+);
+
+const GRADLE_FAILURE = new RegExp(
+  [
+    '^Java preset failed in \\S+: fake maven: --console=plain --quiet --no-configuration-cache',
+    ' -Pnitpicker\\.reportDir=\\S+ -I \\S+nitpicker\\.init\\.gradle nitpickerJava$',
+  ].join(''),
+  'u',
+);
+
 function mavenProject({ gradleFile } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-dispatch-')));
   roots.push(root);
@@ -20,7 +38,9 @@ function mavenProject({ gradleFile } = {}) {
 }
 
 afterEach(() => {
-  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 describe.skipIf(process.platform === 'win32')('a Maven project', () => {
@@ -33,11 +53,8 @@ describe.skipIf(process.platform === 'win32')('a Maven project', () => {
       policy: { preset: 'java' },
     }).findings;
 
-    expect(finding.rule).toBe(GRADLE_FAILURE_RULE);
-    expect(finding.classification).toBe('tool-error');
-    expect(finding.message).toContain('Maven compile failed');
-    expect(finding.message).toContain('fake maven: -B -q test-compile');
-    expect(finding.message).not.toMatch(/gradle/iu);
+    expect([finding.rule, finding.classification]).toEqual([GRADLE_FAILURE_RULE, 'tool-error']);
+    expect(finding.message).toMatch(MAVEN_FAILURE);
   });
 
   it('refuses the kotlin preset with a message about the build tool, not a Gradle error', () => {
@@ -62,7 +79,6 @@ describe.skipIf(process.platform === 'win32')('a Maven project', () => {
       policy: { preset: 'java' },
     }).findings;
 
-    expect(finding.message).toContain('Java preset failed');
-    expect(finding.message).toContain('--console=plain');
+    expect(finding.message).toMatch(GRADLE_FAILURE);
   });
 });

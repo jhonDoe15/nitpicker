@@ -11,7 +11,7 @@ function slash(file) {
   return file.split(path.sep).join('/');
 }
 
-export function mutationTargets(classesDirectory) {
+function mutationTargets(classesDirectory) {
   return readdirSync(classesDirectory, { withFileTypes: true })
     .map((entry) => {
       if (entry.isDirectory()) {
@@ -22,7 +22,7 @@ export function mutationTargets(classesDirectory) {
     .filter((name) => name !== undefined);
 }
 
-export function testClassNames(testClassesDirectory) {
+function testClassNames(testClassesDirectory) {
   const names = readdirSync(testClassesDirectory, { recursive: true })
     .map(slash)
     .filter((name) => name.endsWith('.class') && !ARCHITECTURE_TEST.test(path.basename(name)))
@@ -35,7 +35,7 @@ export function testClassNames(testClassesDirectory) {
   return [...new Set(names)];
 }
 
-export function junitEngineVersion(testClasspath) {
+function junitEngineVersion(testClasspath) {
   const names = testClasspath.map((entry) => path.basename(entry));
   const engine = names.map((name) => ENGINE_JAR.exec(name)?.[1]).find(Boolean);
   const launcher = names.some((name) => LAUNCHER_JAR.test(name));
@@ -46,20 +46,19 @@ function hasClasses(directory) {
   return existsSync(directory) && readdirSync(directory).length > 0;
 }
 
-export function runPit(context) {
-  const { module, reportRoot, tools, classpaths } = context;
-  const output = path.join(reportRoot, 'pit');
-  if (!hasClasses(module.classesDirectory)) {
-    return;
-  }
-  rmSync(output, { recursive: true, force: true });
-  mkdirSync(output, { recursive: true });
+function pitToolClasspath(context) {
+  const { tools, classpaths } = context;
   const { engine, launcher } = junitEngineVersion(classpaths.test);
-  const toolClasspath = [
-    ...tools.classpath('pit'),
-    ...(engine === undefined ? [] : tools.classpath('pit-junit5')),
-    ...(engine === undefined || launcher ? [] : context.launcherClasspath(engine)),
+  return [
+    ...new Set([
+      ...tools.classpath('pit'),
+      ...(engine === undefined ? [] : tools.classpath('pit-junit5')),
+      ...(engine === undefined || launcher ? [] : context.launcherClasspath(engine)),
+    ]),
   ];
+}
+
+function pitArguments({ module, classpaths }, output) {
   const projectClasspath = [
     module.testClassesDirectory,
     module.classesDirectory,
@@ -68,35 +67,45 @@ export function runPit(context) {
   const tests = existsSync(module.testClassesDirectory)
     ? testClassNames(module.testClassesDirectory)
     : [];
+  return [
+    '--reportDir',
+    output,
+    '--targetClasses',
+    mutationTargets(module.classesDirectory).join(','),
+    '--targetTests',
+    tests.join(','),
+    '--sourceDirs',
+    module.sourceRoots.join(','),
+    '--classPath',
+    [...new Set(projectClasspath)].join(','),
+    '--mutableCodePaths',
+    module.classesDirectory,
+    '--outputFormats',
+    'XML',
+    '--timestampedReports',
+    'false',
+    '--threads',
+    '2',
+    '--failWhenNoMutations',
+    'false',
+    '--verbose',
+    'false',
+  ];
+}
+
+export function runPit(context) {
+  const output = path.join(context.reportRoot, 'pit');
+  if (!hasClasses(context.module.classesDirectory)) {
+    return;
+  }
+  rmSync(output, { recursive: true, force: true });
+  mkdirSync(output, { recursive: true });
   runJavaTool(context, {
     label: 'PIT',
     okExit: [0],
-    classpath: [...new Set(toolClasspath)],
+    classpath: pitToolClasspath(context),
     mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: [
-      '--reportDir',
-      output,
-      '--targetClasses',
-      mutationTargets(module.classesDirectory).join(','),
-      '--targetTests',
-      tests.join(','),
-      '--sourceDirs',
-      module.sourceRoots.join(','),
-      '--classPath',
-      [...new Set(projectClasspath)].join(','),
-      '--mutableCodePaths',
-      module.classesDirectory,
-      '--outputFormats',
-      'XML',
-      '--timestampedReports',
-      'false',
-      '--threads',
-      '2',
-      '--failWhenNoMutations',
-      'false',
-      '--verbose',
-      'false',
-    ],
+    args: pitArguments(context, output),
   });
   if (!existsSync(path.join(output, 'mutations.xml'))) {
     writeFileSync(path.join(output, 'mutations.xml'), EMPTY_MUTATIONS);

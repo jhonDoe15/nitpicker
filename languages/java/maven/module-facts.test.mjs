@@ -17,8 +17,21 @@ function repository(layout) {
 }
 
 afterEach(() => {
-  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
+
+function buildHelper(...registrations) {
+  const executions = registrations
+    .map(
+      ([goal, source]) =>
+        `<execution><goals><goal>${goal}</goal></goals><configuration><sources>` +
+        `<source>${source}</source></sources></configuration></execution>`,
+    )
+    .join('');
+  return `<plugins><plugin><artifactId>build-helper-maven-plugin</artifactId><executions>${executions}</executions></plugin></plugins>`;
+}
 
 function projectXml({ root, dir = '', artifactId, packaging, extraBuild = '' }) {
   const base = path.join(root, dir);
@@ -48,7 +61,7 @@ describe('parseEffectivePom', () => {
       effectivePom({ root: '/repo', artifactId: 'shop', packaging: 'war' }),
     );
 
-    expect(project).toMatchObject({
+    expect(project).toEqual({
       groupId: 'org.demo',
       artifactId: 'shop',
       packaging: 'war',
@@ -69,10 +82,10 @@ describe('parseEffectivePom', () => {
   });
 
   it('adds the source roots that build-helper registers', () => {
-    const extraBuild = `<plugins><plugin><artifactId>build-helper-maven-plugin</artifactId><executions>
-      <execution><goals><goal>add-source</goal></goals><configuration><sources><source>src/gen/java</source></sources></configuration></execution>
-      <execution><goals><goal>add-test-source</goal></goals><configuration><sources><source>src/it/java</source></sources></configuration></execution>
-    </executions></plugin></plugins>`;
+    const extraBuild = buildHelper(
+      ['add-source', 'src/gen/java'],
+      ['add-test-source', 'src/it/java'],
+    );
     const [project] = parseEffectivePom(
       effectivePom({ root: '/repo', artifactId: 'gen', extraBuild }),
     );
@@ -124,7 +137,11 @@ describe('selectModules', () => {
       root,
     );
 
-    expect(module).toMatchObject({ key: 'root', path: ':', dir: '' });
+    expect({ key: module.key, path: module.path, dir: module.dir }).toEqual({
+      key: 'root',
+      path: ':',
+      dir: '',
+    });
   });
 
   it('fails instead of passing when no module can be analyzed', () => {
@@ -158,7 +175,7 @@ describe('selectModules', () => {
       root,
     );
 
-    expect(modules.map((module) => module.key)).toContain('module-web');
+    expect(modules.map((module) => module.key)).toEqual(['module-lib', 'module-app', 'module-web']);
   });
 
   it('ignores source roots that live under the build directory', () => {
@@ -167,9 +184,7 @@ describe('selectModules', () => {
       'src/main/java/a/A.java',
       'target/generated-sources/G.java',
     ]);
-    const extraBuild = `<plugins><plugin><artifactId>build-helper-maven-plugin</artifactId><executions>
-      <execution><goals><goal>add-source</goal></goals><configuration><sources><source>${root}/target/generated-sources</source></sources></configuration></execution>
-    </executions></plugin></plugins>`;
+    const extraBuild = buildHelper(['add-source', `${root}/target/generated-sources`]);
     const [module] = selectModules(
       parseEffectivePom(projectXml({ root, artifactId: 'gen', extraBuild })),
       root,

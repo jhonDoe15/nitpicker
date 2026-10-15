@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, descendantsNamed, parseXml } from '../ingest/common.mjs';
 
-export const SUPPORTED_PACKAGINGS = ['jar', 'war'];
+const SUPPORTED_PACKAGINGS = ['jar', 'war'];
 const BUILD_HELPER = 'build-helper-maven-plugin';
 const SOURCE_GOALS = new Map([
   ['add-source', 'sourceRoots'],
@@ -63,24 +63,38 @@ function isInside(directory, parent) {
   return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
-export function locateBasedir(project, projectRoot) {
+function ancestorsWithin(directory, projectRoot) {
+  const relative = path.relative(projectRoot, directory);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    return [];
+  }
+  const segments = relative === '' ? [] : relative.split(path.sep);
+  return [...segments.keys(), segments.length].map((count) =>
+    path.join(projectRoot, ...segments.slice(0, segments.length - count)),
+  );
+}
+
+function enclosingPom(directory, projectRoot) {
+  return ancestorsWithin(directory, projectRoot).find((candidate) =>
+    existsSync(path.join(candidate, 'pom.xml')),
+  );
+}
+
+function locateBasedir(project, projectRoot) {
   const anchors = [
     ...project.declaredSourceRoots,
     ...project.declaredTestRoots,
     project.buildDirectory,
   ].filter((anchor) => anchor !== undefined && path.isAbsolute(anchor));
-  for (const anchor of anchors) {
-    let directory = path.dirname(anchor);
-    while (directory === projectRoot || isInside(directory, projectRoot)) {
-      if (existsSync(path.join(directory, 'pom.xml'))) {
-        return directory;
-      }
-      directory = path.dirname(directory);
-    }
+  const basedir = anchors
+    .map((anchor) => enclosingPom(path.dirname(anchor), projectRoot))
+    .find((directory) => directory !== undefined);
+  if (basedir === undefined) {
+    throw new Error(
+      `Could not find the directory of Maven module ${project.groupId}:${project.artifactId} under ${projectRoot}`,
+    );
   }
-  throw new Error(
-    `Could not find the directory of Maven module ${project.groupId}:${project.artifactId} under ${projectRoot}`,
-  );
+  return basedir;
 }
 
 function containsJava(directory) {
@@ -101,7 +115,7 @@ function slash(file) {
   return file.split(path.sep).join('/');
 }
 
-export function describeModule(project, projectRoot) {
+function describeModule(project, projectRoot) {
   const basedir = locateBasedir(project, projectRoot);
   const dir = slash(path.relative(projectRoot, basedir));
   return {
@@ -116,9 +130,12 @@ export function describeModule(project, projectRoot) {
   };
 }
 
+function hasJava(module) {
+  return [...module.sourceRoots, ...module.testSourceRoots].some(containsJava);
+}
+
 export function selectModules(projects, projectRoot) {
   const described = projects.map((project) => describeModule(project, projectRoot));
-  const hasJava = (module) => [...module.sourceRoots, ...module.testSourceRoots].some(containsJava);
   const unsupported = described.filter(
     (module) => !SUPPORTED_PACKAGINGS.includes(module.packaging) && hasJava(module),
   );

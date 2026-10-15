@@ -4,7 +4,7 @@ import { javaCommand, runJavaTool } from '../java-tool.mjs';
 
 const EXCLUDED = /(?:^|\/)(?:module-info|package-info)\.class$/u;
 
-export function classNames(classesDirectory) {
+function classNames(classesDirectory) {
   if (!existsSync(classesDirectory)) {
     return [];
   }

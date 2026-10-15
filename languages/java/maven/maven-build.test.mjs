@@ -25,41 +25,50 @@ function classesWith(...classFiles) {
 }
 
 afterEach(() => {
-  roots.splice(0).forEach((root) => rmSync(root, { recursive: true, force: true }));
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
+
+const DEPENDENCY_PLUGIN = 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath';
+const TEST_RUN = [
+  '-DskipTests=false',
+  '-Dmaven.test.skip=false',
+  '-Djacoco.skip=true',
+  '-DfailIfNoTests=false',
+  '-Dsurefire.failIfNoSpecifiedTests=false',
+];
 
 describe('Maven invocations', () => {
   it('compiles first and then describes the reactor and writes the compile classpath', () => {
-    const args = describeArguments('/tmp/effective.xml');
-
-    expect(args[0]).toBe('test-compile');
-    expect(args).toContain('org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom');
-    expect(args).toContain('-Doutput=/tmp/effective.xml');
-    expect(args).toContain('-DincludeScope=compile');
-    expect(args).toContain('-Dmdep.outputFile=target/nitpicker/classpath-compile.txt');
+    expect(describeArguments('/tmp/effective.xml')).toEqual([
+      'test-compile',
+      'org.apache.maven.plugins:maven-help-plugin:3.5.1:effective-pom',
+      '-Doutput=/tmp/effective.xml',
+      DEPENDENCY_PLUGIN,
+      '-Dmdep.outputFile=target/nitpicker/classpath-compile.txt',
+      '-DincludeScope=compile',
+    ]);
   });
 
   it('runs the tests with the project config but without skips, its own JaCoCo or ArchUnit rules', () => {
-    const args = testArguments('/tmp/excludes.txt');
-
-    expect(args[0]).toBe('test');
-    expect(args).toEqual(
-      expect.arrayContaining([
-        '-DskipTests=false',
-        '-Dmaven.test.skip=false',
-        '-Djacoco.skip=true',
-        '-Dsurefire.excludesFile=/tmp/excludes.txt',
-        '-DincludeScope=test',
-      ]),
-    );
-    expect(args).not.toContain('-Dmaven.test.failure.ignore=true');
+    expect(testArguments('/tmp/excludes.txt')).toEqual([
+      'test',
+      DEPENDENCY_PLUGIN,
+      '-Dmdep.outputFile=target/nitpicker/classpath-test.txt',
+      '-DincludeScope=test',
+      ...TEST_RUN,
+      '-Dsurefire.excludesFile=/tmp/excludes.txt',
+    ]);
   });
 
   it('runs only the ArchUnit classes in the second pass and keeps going when they fail', () => {
-    const args = architectureArguments();
-
-    expect(args).toContain('-Dtest=*ArchTest,*ArchitectureTest');
-    expect(args).toContain('-Dmaven.test.failure.ignore=true');
+    expect(architectureArguments()).toEqual([
+      'test',
+      '-Dtest=*ArchTest,*ArchitectureTest',
+      ...TEST_RUN,
+      '-Dmaven.test.failure.ignore=true',
+    ]);
     expect(architectureExcludes()).toBe('**/*ArchTest.java\n**/*ArchitectureTest.java');
   });
 

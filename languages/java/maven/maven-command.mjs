@@ -3,7 +3,6 @@ import { condenseFailure } from '../adapters/gradle-wrapper/failure-text.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 import { testFailureSummary } from './context/failure-summary.mjs';
 
-export const MAVEN_COMMAND_VARIABLE = 'NITPICKER_MAVEN';
 const BASE_ARGUMENTS = ['-B', '-q'];
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_FAILURE_LENGTH = 3500;
