@@ -39,6 +39,7 @@ const networkAndDatabaseClients = [
   '@prisma/client',
   '@aws-sdk/[^/]+',
 ];
+const uiFrameworks = ['react', 'react-dom', 'react-native', 'preact'];
 const loggers = ['pino', 'winston', 'bunyan', 'log4js', 'loglevel', 'consola', 'debug'];
 
 const domain = { path: `${feature}/domain/` };
@@ -103,6 +104,19 @@ export const strictBoundaryRules = [
       'domain/ may not import network or database clients. Call the client from adapters/ and pass the data into domain/ as a parameter.',
     from: domain,
     to: { path: `(?:^|/)(?:node_modules/)?(?:${networkAndDatabaseClients.join('|')})(?:/|$)` },
+  },
+  {
+    name: 'domain-does-not-import-ui-frameworks',
+    severity: 'error',
+    comment:
+      'domain/ may not import react, react-dom, react-native or preact. Components and hooks live in adapters/ (or shared/ui); domain/ keeps the logic they call.',
+    from: domain,
+    to: {
+      path: [
+        `(?:^|/)node_modules/(?:@types/)?(?:${uiFrameworks.join('|')})(?:/|$)`,
+        `^(?:${uiFrameworks.join('|')})(?:/|$)`,
+      ],
+    },
   },
   {
     name: 'domain-does-not-import-the-logger',
