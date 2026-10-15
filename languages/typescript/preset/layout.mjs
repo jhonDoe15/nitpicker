@@ -18,18 +18,14 @@ const javascriptProjectExtensionNames = [
   ...JAVASCRIPT_EXTENSIONS,
 ];
 const typescriptFormatExtensionNames = ['ts', 'tsx', 'mts', 'mjs'];
+const ROOT_OUTPUT_FOLDERS = ['dist', 'build', 'generated', 'coverage', 'reports', 'target'];
 export const builtInExcludedGlobs = [
-  '**/dist/**',
-  '**/build/**',
-  '**/generated/**',
+  ...ROOT_OUTPUT_FOLDERS.map((folder) => `${folder}/**`),
   '**/node_modules/**',
-  '**/coverage/**',
-  '**/reports/**',
-  '**/target/**',
-  '**/*.d.ts',
 ];
-const GENERATED_DIRECTORY =
-  /(?:^|\/)(?:dist|build|generated|node_modules|coverage|reports|target)(?:\/|$)/;
+export const declarationGlobs = ['**/*.d.ts'];
+export const EXCLUDED_PATH_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)|(?:^|/)node_modules(?:/|$)`;
+const GENERATED_DIRECTORY = new RegExp(EXCLUDED_PATH_PATTERN);
 
 function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
@@ -90,6 +86,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     testRoots,
     exclude,
     excludedGlobs,
+    runtimeExcludedGlobs: [...excludedGlobs, ...declarationGlobs],
     sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
     testGlobs: [
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),

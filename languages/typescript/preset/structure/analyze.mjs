@@ -131,8 +131,8 @@ function productionFiles(root, displayRoot, layout) {
   function visit(current) {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const absolute = path.join(current, entry.name);
-      const normalized = normalizePath(absolute);
-      if (isExcludedPath(normalized)) {
+      const projectRelative = normalizePath(path.join(displayRoot, path.relative(root, absolute)));
+      if (isExcludedPath(projectRelative)) {
         continue;
       }
       if (entry.isDirectory()) {

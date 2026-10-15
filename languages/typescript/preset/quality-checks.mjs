@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
-import { resolveLayout } from './layout.mjs';
+import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -48,6 +48,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
+  'languages/typescript/preset/eslint-plugin/type-identity/functional-plugin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/ancestry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-branch-in-composition-root.mjs',
@@ -93,8 +94,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
 ];
 
-const ARCHITECTURE_EXCLUSION =
-  '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+const ARCHITECTURE_EXCLUSION = EXCLUDED_PATH_PATTERN;
 
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
@@ -218,7 +218,7 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'typecheck',
       version: typeScriptVersion,
       patterns: [],
-      exclusions: ['**/dist/**', '**/*.d.ts', ...layout.exclude],
+      exclusions: ['dist/**', ...layout.exclude],
       configRelativePath: 'languages/typescript/preset/defaults/tsconfig.quality.json',
       shardWeight: 9,
       configurationFiles: [

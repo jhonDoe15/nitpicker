@@ -1,4 +1,4 @@
-import { codeExtensionNames } from '../layout.mjs';
+import { EXCLUDED_PATH_PATTERN, codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
@@ -26,10 +26,7 @@ export default {
   required: [],
   options: {
     doNotFollow: {
-      path: [
-        '(?:^|/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:/|$)',
-        excludePattern,
-      ]
+      path: [EXCLUDED_PATH_PATTERN, excludePattern]
         .filter((pattern) => pattern !== undefined)
         .join('|'),
     },

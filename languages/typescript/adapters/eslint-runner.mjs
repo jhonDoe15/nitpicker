@@ -10,7 +10,7 @@ import {
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
-import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
+import { eslintMessageWithHint, growthAdviceFor, withoutFatalDirectives } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { runLintEngine } from './lint-engine/lint-engine.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
@@ -125,7 +125,7 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
       scriptKind(relativePath),
     );
 
-    for (const [messageIndex, message] of result.messages.entries()) {
+    for (const [messageIndex, message] of withoutFatalDirectives(result.messages).entries()) {
       const context = `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`;
       normalized.push(
         normalizeMessage({

@@ -26,13 +26,31 @@ describe('structural metrics report', () => {
     const report = analyzeProductionFiles(fixtureRoot, 'fixture/src/main');
     const complex = report.functions.find((entry) => entry.function === 'coordinate');
 
-    expect(report.summary.files).toBe(2);
+    expect(report.summary.files).toBe(5);
     expect(report.functions.map((entry) => entry.source)).not.toEqual(
-      expect.arrayContaining([expect.stringMatching(/dist|build|generated|__tests__/)]),
+      expect.arrayContaining([expect.stringMatching(/__tests__/)]),
     );
     expect(complex).toMatchObject({ parameters: 5, maxControlNesting: 3 });
     expect(complex.statements).toBeGreaterThan(4);
     expect(report.rankings.functionParameters[0].function).toBe('coordinate');
+  });
+
+  it('analyzes folders named like build output below the project root', () => {
+    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main').functions.map(
+      (entry) => entry.source,
+    );
+
+    expect(sources).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/\/dist\//),
+        expect.stringMatching(/\/build\//),
+        expect.stringMatching(/\/generated\//),
+      ]),
+    );
+  });
+
+  it('skips a source root that is build output at the project root', () => {
+    expect(analyzeProductionFiles(fixtureRoot, 'dist').summary.files).toBe(0);
   });
 
   it('keeps anonymous function names stable when preceding lines move', () => {
