@@ -61,8 +61,8 @@ describe('what each tool reads of the project', () => {
     const stryker = await loadDefault('stryker.config.mjs');
     const lint = await loadDefault('eslint.config.mjs');
 
-    expect(crap.excludes).toContain('**/*.d.ts');
-    expect(stryker.mutate).toContain('!**/*.d.ts');
+    expect(crap.excludes.filter((glob) => glob.endsWith('.d.ts'))).toEqual(['**/*.d.ts']);
+    expect(stryker.mutate.filter((glob) => glob.endsWith('.d.ts'))).toEqual(['!**/*.d.ts']);
     expect(lint.flatMap((entry) => entry.ignores ?? [])).not.toContain('**/*.d.ts');
   });
 });

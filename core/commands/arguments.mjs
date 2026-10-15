@@ -51,31 +51,29 @@ export function parseArguments(arguments_) {
 }
 
 function readCommandOptions(remainingArguments, options) {
-  const awaiting = { option: undefined };
-  for (const argument of remainingArguments) {
-    if (awaiting.option === undefined) {
-      readOption(argument, options, awaiting);
+  const values = new Set();
+  for (const [index, argument] of remainingArguments.entries()) {
+    if (values.has(index)) {
       continue;
     }
-    requireValue(awaiting.option, argument);
-    options[VALUE_OPTIONS.get(awaiting.option)] = argument;
-    awaiting.option = undefined;
-  }
-  if (awaiting.option !== undefined) {
-    requireValue(awaiting.option, undefined);
+    const valueKey = VALUE_OPTIONS.get(argument);
+    if (valueKey === undefined) {
+      readFlag(argument, options);
+      continue;
+    }
+    const value = remainingArguments[index + 1];
+    requireValue(argument, value);
+    options[valueKey] = value;
+    values.add(index + 1);
   }
 }
 
-function readOption(argument, options, awaiting) {
+function readFlag(argument, options) {
   const flag = FLAGS.get(argument);
-  if (flag !== undefined) {
-    options[flag.key] = flag.value;
-    return;
-  }
-  if (!VALUE_OPTIONS.has(argument)) {
+  if (flag === undefined) {
     throw new Error(`Unknown argument: ${argument}`);
   }
-  awaiting.option = argument;
+  options[flag.key] = flag.value;
 }
 
 function requireValue(option, value) {

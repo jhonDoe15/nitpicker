@@ -20,17 +20,21 @@ function jsxFiles(directory, relative) {
   const pending = [{ directory, relative }];
   const found = [];
   for (const folder of pending) {
-    for (const entry of readdirSync(folder.directory, { withFileTypes: true })) {
-      const name = `${folder.relative}/${entry.name}`;
-      if (entry.isDirectory() && entry.name !== 'node_modules') {
-        pending.push({ directory: path.join(folder.directory, entry.name), relative: name });
-      }
-      if (entry.isFile() && JSX_FILE.test(entry.name)) {
-        found.push(name);
-      }
-    }
+    readFolder(folder, pending, found);
   }
   return found;
+}
+
+function readFolder(folder, pending, found) {
+  for (const entry of readdirSync(folder.directory, { withFileTypes: true })) {
+    const name = `${folder.relative}/${entry.name}`;
+    if (entry.isDirectory() && entry.name !== 'node_modules') {
+      pending.push({ directory: path.join(folder.directory, entry.name), relative: name });
+    }
+    if (entry.isFile() && JSX_FILE.test(entry.name)) {
+      found.push(name);
+    }
+  }
 }
 
 function existingJsxFiles(projectRoot, root) {
