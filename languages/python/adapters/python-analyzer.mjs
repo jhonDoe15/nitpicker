@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
 import { PINNED_VERSIONS_SOURCE } from './mutation/python-crap.mjs';
-import { createToolContext, mutationVersions, toolVersions } from './execution/python-tools.mjs';
+import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -14,6 +14,7 @@ const MUTATION_SHARD_WEIGHT = 90;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
+const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
 const IMPORT_PATTERN = /(?:from|import)\s+'(\.[^']+)'/g;
 
 function importedFiles(entry) {
@@ -29,7 +30,8 @@ function importedFiles(entry) {
 
 function pythonResourceFiles() {
   return readdirSync(pythonRoot, { recursive: true })
-    .filter((file) => !file.endsWith('.test.mjs') && !file.split(path.sep).includes('fixtures'))
+    .filter((file) => !file.endsWith('.test.mjs'))
+    .filter((file) => !file.split(path.sep).some((folder) => TEST_ONLY_FOLDERS.has(folder)))
     .filter((file) => path.extname(file) !== '')
     .map((file) => path.join(pythonRoot, file));
 }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { onlyUnparsableFiles, runPythonTools, unformattedPaths } from './python-tools.mjs';
+import { onlyUnparsableFiles, runPythonTools, unformattedPaths } from '../python-tools.mjs';
 import {
   callsLog,
   contextFor,

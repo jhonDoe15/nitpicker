@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../../java/adapters/metrics/java-duplicates.mjs';
 import { failure } from './python-process.mjs';
-import { mutationVersions, runPythonTools, toolVersions } from './python-tools.mjs';
+import { mutationVersions, runPythonTools, toolVersions } from '../python-tools.mjs';
 import {
   callsLog,
   contextFor,

@@ -6,7 +6,7 @@ import { writeDiffReports } from '../reporting/reporters.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
-import { resolveBaseProjectPath, readProjectMoves } from '../git/paths.mjs';
+import { resolveBaseProjectPath, readProjectMoves } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';

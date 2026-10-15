@@ -7,7 +7,7 @@ import {
   removeGitRepositories,
 } from '../../../../core/diff/fixtures/git-repository.mjs';
 import { isSourceFile } from '../../preset/layout.mjs';
-import { mutationTargets } from './mutation-scope.mjs';
+import { mutationTargets } from './runners/mutation-scope.mjs';
 
 const layout = { isSourceFile };
 const BASE_SOURCE = [

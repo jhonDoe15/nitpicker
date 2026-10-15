@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter } from '../../../ingest/common.mjs';
-import { LITERAL_MARK, maskKotlinSource } from '../kotlin-literals.mjs';
+import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
 import { isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
 const SUPPRESS_ANNOTATION =

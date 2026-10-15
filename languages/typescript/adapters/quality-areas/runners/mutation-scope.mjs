@@ -1,5 +1,5 @@
-import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
-import { runGit } from '../../../../core/diff/git/repository/command.mjs';
+import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
+import { runGit } from '../../../../../core/diff/git/repository/command.mjs';
 
 export const MUTATION_REPORT_PATH = 'reports/quality/mutation/mutation.json';
 

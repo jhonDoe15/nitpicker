@@ -1,4 +1,4 @@
-import { mutationTargets, MUTATION_REPORT_PATH } from '../mutation-scope.mjs';
+import { mutationTargets, MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import {
   importPolicyModule,
@@ -6,7 +6,7 @@ import {
   runNodeTool,
   spawnNodeTool,
   policyFile,
-} from '../tooling.mjs';
+} from './tooling.mjs';
 import path from 'node:path';
 import { normalizeMutation } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
