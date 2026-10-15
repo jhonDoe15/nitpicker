@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/harness.mjs';
-import strictConfig, { restrictedSyntaxFor } from './strict.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { restrictedSyntaxFor, strictSyntaxConfig } from './strict.mjs';
 
 function messages(code, filename = 'src/fixture.ts') {
-  return failureMessagesFor({ config: strictConfig, filename, code });
+  return failureMessagesFor({ config: strictSyntaxConfig, filename, code });
 }
 
 describe('strict escape-hatch rules', () => {
