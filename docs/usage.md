@@ -19,6 +19,26 @@ choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typ
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
 tool error.
 
+### From a GitHub release
+
+Each release also attaches the same package as a tarball, `nitpicker-<version>.tgz`, with a
+`SHA256SUMS` file. Install it when you want a version that is not on npm. Keep the tarball in your
+repository, so teammates and CI install the same file without access to the release:
+
+```sh
+mkdir -p vendor
+gh release download v0.1.0-rc.1 --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --dir vendor
+npm install --save-dev ./vendor/nitpicker-0.1.0-rc.1.tgz vitest @vitest/coverage-v8 typescript @types/node
+```
+
+`package.json` then records `"nitpicker": "file:vendor/nitpicker-0.1.0-rc.1.tgz"`. `gh` signs in
+with your GitHub account, which a private repository needs. On a public repository, `npm install`
+takes the asset URL directly:
+`https://github.com/jhonDoe15/nitpicker/releases/download/v<version>/nitpicker-<version>.tgz`.
+
+The tarball carries the agent skills, so install the one for your preset from it:
+`npx skills add ./node_modules/nitpicker --skill nitpicker-typescript`.
+
 ## First run
 
 ```sh

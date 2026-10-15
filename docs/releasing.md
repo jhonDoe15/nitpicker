@@ -63,7 +63,16 @@ Work from a clean checkout of `main` with full history.
    so no `--access` flag is needed.
 7. **Verify.** In an empty directory: `npm view nitpicker version`, then
    `npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/node && npx nitpicker --help`.
-8. **GitHub release.** Create a release from the tag with the changes since the previous tag.
+8. **GitHub release.** Create a release from the tag with the changes since the previous tag, and
+   attach the packed tarball so the version can be installed without npm (see
+   [Install from a GitHub release](usage.md#from-a-github-release)):
+   ```sh
+   mkdir -p release-assets && npm pack --pack-destination release-assets
+   (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
+   gh release create v<new-version> release-assets/* --verify-tag --generate-notes
+   ```
+   Add `--prerelease` for a pre-release. A release can also go out on GitHub alone, before or
+   without step 6: steps 1 to 5 still apply, and the tarball is the same file npm would publish.
 
 ## Container image
 
