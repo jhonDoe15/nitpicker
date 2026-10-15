@@ -381,10 +381,13 @@ describe('Java analyzer declaration', () => {
 
   it('hashes the Spring configuration modules', () => {
     const modules = [
+      'languages/java/adapters/spring/config-rules/diagnostics.mjs',
+      'languages/java/adapters/spring/config-rules/profiles.mjs',
       'languages/java/adapters/spring/java-spring.mjs',
       'languages/java/adapters/spring/spring-config-files.mjs',
       'languages/java/adapters/spring/spring-config-parser.mjs',
       'languages/java/adapters/spring/spring-secrets.mjs',
+      'languages/java/adapters/spring/wiring/spring-wiring.mjs',
     ];
 
     expect(CONFIGURATION_FILES.filter((file) => modules.includes(file)).sort()).toEqual(modules);

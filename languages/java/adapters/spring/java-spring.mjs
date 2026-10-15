@@ -1,13 +1,13 @@
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { readSpringDocuments, stripBracketsAndQuotes, usesJpa } from './spring-config-files.mjs';
+import { DIAGNOSTIC_RULES } from './config-rules/diagnostics.mjs';
+import { isPlaceholder, isTest, isTestOrLocal, isTrue } from './config-rules/profiles.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
-import { isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { springWiringProblems } from './wiring/spring-wiring.mjs';
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
-const LOCAL_PROFILES = new Set(['local', 'dev', 'development']);
-const TEST_PROFILES = new Set(['it', 'integration-test']);
-const TRUE_SPELLINGS = new Set(['true', 'on', 'yes', '1']);
 const OPEN_IN_VIEW = 'spring.jpa.open-in-view';
 const DDL_MODE_NAMES = [
   'spring.jpa.hibernate.ddl-auto',
@@ -23,32 +23,6 @@ const STARTUP_FLAG_NAMES = [
 const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
   'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
-
-function isTestProfile(profile) {
-  return profile.startsWith('test') || TEST_PROFILES.has(profile);
-}
-
-function isLocalProfile(profile) {
-  return LOCAL_PROFILES.has(profile);
-}
-
-function exemptWhenEvery(matches) {
-  return (document) =>
-    !document.negated && document.profiles.length > 0 && document.profiles.every(matches);
-}
-
-const isTest = exemptWhenEvery(isTestProfile);
-const isTestOrLocal = exemptWhenEvery(
-  (profile) => isTestProfile(profile) || isLocalProfile(profile),
-);
-
-function isTrue(entry) {
-  return TRUE_SPELLINGS.has(entry.value.toLowerCase());
-}
-
-function isPlaceholder(entry) {
-  return entry.value.startsWith('${');
-}
 
 const ENTRY_RULES = [
   {
@@ -73,20 +47,12 @@ const ENTRY_RULES = [
         ? 'management.endpoints.web.exposure.include=* exposes every actuator endpoint. List the endpoints you need, for example health,info.'
         : undefined,
   },
-  {
-    rule: 'error-details',
-    exempt: isTestOrLocal,
-    problem: (entry, key) =>
-      key === relaxKey('server.error.include-stacktrace') &&
-      ['always', 'on-param', 'on_param'].includes(entry.value.toLowerCase())
-        ? 'server.error.include-stacktrace sends stack traces to clients. Use never.'
-        : undefined,
-  },
+  ...DIAGNOSTIC_RULES,
   {
     rule: 'literal-secret',
     exempt: isTestOrLocal,
     problem: (entry) =>
-      isLiteralSecret(entry.key, entry.value) ? secretProblem(entry) : undefined,
+      isLiteralSecret(entry.key, entry.value) ? secretProblem(entry) : urlProblem(entry),
   },
 ];
 
@@ -94,6 +60,12 @@ function secretProblem(entry) {
   return entry.value.trim().startsWith('${')
     ? `${entry.key} falls back to a literal secret. Drop the default from the placeholder.`
     : `${entry.key} holds a literal secret. Remove it and set ${secretVariable(entry.key)} in the environment, or read it from a secret store.`;
+}
+
+function urlProblem(entry) {
+  return credentialUrl(entry.value)
+    ? `${entry.key} embeds a credential in its URL. Take it out of the URL and supply it from the environment, for example through a placeholder without a default.`
+    : undefined;
 }
 
 function ddlProblem(entry, key) {
@@ -130,10 +102,25 @@ export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resour
     projectRoot,
     Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS,
   );
-  if (documents.length === 0) {
-    return [];
-  }
   const occurrences = new Map();
+  return [
+    ...springWiringProblems(projectRoot, sourceRoots).map(({ path: file, line, key, message }) =>
+      buildFinding({
+        rule: 'missing-enable',
+        document: { path: file },
+        entry: { line },
+        key,
+        message,
+        occurrences,
+      }),
+    ),
+    ...(documents.length === 0
+      ? []
+      : documentFindings(projectRoot, sourceRoots, documents, occurrences)),
+  ];
+}
+
+function documentFindings(projectRoot, sourceRoots, documents, occurrences) {
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),
     ...ENTRY_RULES.flatMap((rule) => entryFindings(documents, rule, occurrences)),
