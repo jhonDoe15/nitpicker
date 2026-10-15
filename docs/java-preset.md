@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -419,6 +419,102 @@ resolved plus a new finding, as in the TypeScript check.
   neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
+
+## Guards
+
+Rules for patterns that coding agents write and that other tools leave out as "noisy". Each one
+stays on; a message that can hit legitimate code ends with the exception to add to
+`nitpicker.config.json` (`rule`, `paths`, `reason`), and every exception shows in the report.
+Inline suppressions are no route: `@SuppressWarnings("unchecked")` and the like are blanked
+before `javac` lints, so they hide nothing. The rules read the same way on base and head, so only
+a pattern a change adds fails.
+
+| Guard                                                                                                                                                  | Rule as printed                                                                                                                                                                                            | Allowed form                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Package and class cycles                                                                                                                               | `coupling/package-cycle`, `coupling/class-cycle`                                                                                                                                                           | Move shared types down, or invert one dependency behind an interface                                               |
+| `Optional.get()`; `Optional` as field, parameter or record component; `Optional<List<..>>`                                                             | `pmd/OptionalGet`, `pmd/OptionalAsFieldOrParameter`, `pmd/OptionalOfCollection`                                                                                                                            | `orElseThrow()`, `orElse`, `map`, `ifPresent`; return an empty collection                                          |
+| Raw types, unchecked casts, deprecated and removed APIs, redundant casts                                                                               | `javac/rawtypes`, `javac/unchecked`, `javac/deprecation`, `javac/removal`, `javac/cast`                                                                                                                    | Type arguments, typed APIs, the replacement the Javadoc names                                                      |
+| `instanceof` followed by a cast                                                                                                                        | `pmd/InstanceofThenCast`                                                                                                                                                                                   | Pattern matching (`x instanceof Circle c`) or a `switch` over a sealed type                                        |
+| Non-final or public non-final fields, mutable static state, `@SneakyThrows`                                                                            | `checkstyle/...VisibilityModifierCheck`, `pmd/NonFinalStaticField`, `pmd/MutableStaticCollection`, `pmd/SneakyThrows`                                                                                      | Private final fields, a `record`, immutable `List.of` and `Map.of`, a declared exception                           |
+| Legacy date and time, `now()` without a `Clock`, `Thread.sleep`, `new Thread`, `Runtime.exec(String)`, `ObjectInputStream`                             | `forbiddenapis/legacy-date-time`, `clock-now`, `thread-sleep`, `new-thread`, `runtime-exec`, `java-deserialization`                                                                                        | `java.time`, an injected `Clock`, an executor, `ProcessBuilder` with a list, JSON                                  |
+| Swallowed `InterruptedException`; side effects in `forEach` and `peek`; `Collectors.toList()`; `Files.lines/list/walk/find` outside try-with-resources | `pmd/SwallowedInterruptedException`, `pmd/ForEachSideEffect`, `pmd/CollectorsToList`, `pmd/StreamResourceNotClosed`                                                                                        | `Thread.currentThread().interrupt()`, `map` and `collect`, `Stream.toList()`, try-with-resources                   |
+| `throws Exception`, raw `RuntimeException`                                                                                                             | `pmd/SignatureDeclareThrowsException`, `pmd/AvoidThrowingRawExceptionTypes`                                                                                                                                | The checked exceptions the method throws; `IllegalArgumentException`, `IllegalStateException`, a project exception |
+| SQL built with `+` or `String.format` in JDBC calls; MD5 and SHA-1; nested-quantifier regexes; a path joined from a parameter                          | `pmd/SqlConcatenation`, `pmd/WeakHash`, `pmd/NestedQuantifierRegex`, `pmd/PathFromParameter`                                                                                                               | `?` parameters, SHA-256, a regex without `(a+)+`, `normalize()` and `startsWith(base)`                             |
+| Constant names; magic numbers                                                                                                                          | `checkstyle/...ConstantNameCheck`, `checkstyle/...MagicNumberCheck`                                                                                                                                        | `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`); a named `private static final`                             |
+| Unused imports                                                                                                                                         | `pmd/UnnecessaryImport`                                                                                                                                                                                    | Remove the import                                                                                                  |
+| Duplicates with renamed names, and in test sources                                                                                                     | `duplicates/duplicate-clone`                                                                                                                                                                               | One shared method; a helper or `@ParameterizedTest` in tests                                                       |
+| Floating versions; declared but unused dependencies                                                                                                    | `dependencies/dependency-version-not-pinned`, `dependencies/unused-declared-dependency`                                                                                                                    | One exact version (or dependency locking); remove it, or `runtimeOnly`                                             |
+| Test honesty                                                                                                                                           | `pmd/TestSleep`, `DisabledTest`, `TestAssumption`, `AssertionInControlFlow`, `TryCatchInTest`, `AssertTrueOnEquality`, `TautologicalAssertion`, `MockedValueType`, `VerifyOnlyTest`, `TestOrderDependence` | See Tests below                                                                                                    |
+
+A Checkstyle rule prints as its full check class, for example
+`checkstyle/com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck`; the message names it.
+
+- **PMD categories.** `performance`, `multithreading` and `security` run next to `errorprone`
+  and `bestpractices`, on main and test sources, with these rules left out because their findings
+  cannot be made right by any change: `AvoidInstantiatingObjectsInLoops` (creating the result
+  objects in a loop is usually the point), `InsufficientStringBufferDeclaration` (it guesses
+  capacities), `TooFewBranchesForSwitch` (a `switch` over a sealed type with two cases is the
+  preferred outcome form), `AvoidUsingVolatile` (a flag needs `volatile`; SpotBugs already
+  reports wrong uses), `DoNotUseThreads` (it flags `ExecutorService`, the allowed form; `new Thread`
+  is a forbiddenapis finding) and `UseConcurrentHashMap` (it flags every local `HashMap`).
+  `AvoidSynchronizedAtMethodLevel` stays, with a message that points at a lock, since its stock
+  advice (a `synchronized` block) is what `AvoidSynchronizedStatement` forbids.
+- **Where they run.** `languages/java/gradle/pmd-ruleset.xml` holds the rules for main and test
+  sources. `rules/guards-ruleset.xml` runs on main sources only (the init script writes a wrapper
+  ruleset that excludes the test directories), `rules/test-honesty-ruleset.xml` on test
+  sources only. A project's own `config/pmd/ruleset.xml` replaces all of them unless it opts in
+  as before.
+- **Checkstyle.** `rules/checkstyle-all.xml` (`ConstantName`) is added to the `google_checks.xml`
+  rules for main and test sources; `rules/checkstyle-main.xml` (`MagicNumber` with `-1`, `0`, `1`
+  and `2` allowed and `hashCode` and annotations ignored, `VisibilityModifier` with public final
+  fields allowed) for main sources only. The messages are rewritten to name the allowed form.
+- **javac lint.** The `nitpickerLint` task compiles the main sources once more with
+  `-Xlint:rawtypes,unchecked,deprecation,removal,cast` into a scratch directory, with the
+  project's compiler, classpath, release and annotation processors, and writes the warnings to
+  `build/nitpicker/javac-lint.txt` (tool `javac`, rule = lint category). It compiles a copy in
+  which every `@SuppressWarnings(...)` is blanked out (same lines and columns). A compile error
+  is a tool error.
+- **forbiddenapis.** [forbiddenapis](https://github.com/policeman-tools/forbidden-apis) 3.10
+  (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
+  against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
+  (`thread-sleep`); the report is `build/nitpicker/forbidden-apis.txt`. Source locations come
+  from the class's debug line numbers.
+- **Duplicates.** The jscpd check is unchanged. `nitpickerCpd` runs PMD's copy-paste detector
+  (BSD-style, already inside the pinned PMD) over main and test sources with identifiers and
+  literals ignored and at least 100 tokens, so a copy with renamed variables is found. A clone
+  jscpd already reports (same two files, overlapping lines) is not reported twice, and a clone
+  made only of getters, setters, field declarations and field-assigning constructors is dropped.
+  Findings use the same tool and rule as jscpd (`duplicates/duplicate-clone`); between two test
+  files the message points at a helper or a `@ParameterizedTest`.
+- **Cycles.** `java-coupling.mjs` already has the class graph from jdeps. A strongly connected set of
+  packages (or of top-level classes) is one `package-cycle` (`class-cycle`) finding whose identity
+  is a hash of its sorted members and whose path is the first member's file. Growing a cycle by
+  one member is a new finding; an old cycle stays baselined.
+- **Dependencies.** `nitpickerDependencies` writes `build/nitpicker/dependencies.json`: every
+  declared external dependency (configuration, group, name, version, `changing`), whether the
+  project has `gradle.lockfile` or `gradle/dependency-locks`, and for `implementation` and `api`
+  the jars of its resolved closure plus the jars jdeps finds referenced by the main classes. A
+  version that contains `+`, starts with `latest.`, ends in `SNAPSHOT` or is a range, and a
+  `changing` module, is `dependency-version-not-pinned` unless the project locks its
+  dependencies. A dependency none of whose jars the main classes reference is
+  `unused-declared-dependency`; starters, BOMs and platforms are never reported, nor are
+  dependencies without artifacts, and `runtimeOnly`, `compileOnly` and test configurations are not
+  checked. The finding sits on the build file.
+- **Tests.** The test rules run on test sources only. `TestSleep` (`Thread.sleep` and
+  `TimeUnit.sleep`), `DisabledTest` (`@Disabled`, `@Ignore`), `TestAssumption` (`assumeTrue` and
+  friends silently skip), `AssertionInControlFlow` (an assertion or `verify` inside `if`, a loop or
+  `switch` of a test method), `TryCatchInTest` (use `assertThrows`), `AssertTrueOnEquality`
+  (`assertTrue(a.equals(b))`, `assertTrue(a == b)`), `TautologicalAssertion` (`assertThat(true)`,
+  `assertTrue(true)`, `assertEquals(1, 1)`), `MockedValueType` (a `String`, number, date, collection,
+  `Optional` or record mocked with `mock` or `@Mock`), `VerifyOnlyTest` (a test with `verify` and no
+  assertion) and `TestOrderDependence` (`@TestMethodOrder`, `@FixMethodOrder`, `@Order` on a
+  test). A test class with `static` non-final fields or a static collection it changes is a
+  `pmd/NonFinalStaticField` or `pmd/MutableStaticCollection` finding like production code. A test
+  with no assertion at all is still `pmd/UnitTestShouldIncludeAssert`.
+- **Left out on purpose.** Lombok `@Data` (a record is the allowed form for data, but `@Data` on a
+  JPA entity is common enough that blocking it needs its own decision), `java.util.Random`
+  (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the
+  tool cannot tell), and a path join that is checked after the fact in another method.
 
 ## Spring rules
 
