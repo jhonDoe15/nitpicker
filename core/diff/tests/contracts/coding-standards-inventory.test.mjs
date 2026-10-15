@@ -1,7 +1,3 @@
-import {
-  expectedOutput32_25,
-  expectedOutput66_40,
-} from '../../fixtures/expected-output/core-diff-coding-standards-inventory.mjs';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -33,7 +29,13 @@ it('compares both sides using the head coding inventory when that inventory entr
     ...(await collectSignals(baseProjectRoot, PACKAGE_ROOT)),
     ...collectArchitectureSignals(baseProjectRoot),
   ];
-  expect(legacySignals).toEqual(expectedOutput32_25());
+  expect(legacySignals).toEqual([
+    {
+      file: 'src/main/legacy.ts',
+      rule: 'nitpicker/preserve-error-cause',
+      source: 'new Error(String(error))',
+    },
+  ]);
   writeFileSync(
     path.join(baseProjectRoot, 'nitpicker.legacy.json'),
     `${JSON.stringify({ sites: legacySignals.map((site) => ({ ...site, count: 1 })) })}\n`,
@@ -65,7 +67,16 @@ it('compares both sides using the head coding inventory when that inventory entr
   expect(baseRun.toolErrors).toEqual([]);
   expect(headRun.toolErrors).toEqual([]);
   expect(comparison.newFindings).toEqual([]);
-  expect(comparison.unchangedFindings).toEqual(expectedOutput66_40());
+  expect(comparison.unchangedFindings).toEqual([
+    {
+      tool: 'coding-standards',
+      rule: 'nitpicker/preserve-error-cause',
+      path: 'src/main/legacy.ts',
+      identity: 'source:2b12a180517391cf91a57a1f|count:1',
+      message: 'New coding-standard site: new Error(String(error))',
+      classification: 'enforceable',
+    },
+  ]);
 });
 
 function createSnapshotRoot() {

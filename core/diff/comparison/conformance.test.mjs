@@ -12,7 +12,7 @@ import { runGit } from '../git/repository/command.mjs';
 
 const conformanceRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
-  '../../spec/conformance',
+  '../../../spec/conformance',
 );
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-conformance-'));
 
