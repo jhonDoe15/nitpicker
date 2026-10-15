@@ -140,7 +140,7 @@ describe('dependency architecture rules', () => {
         to: {
           path: [
             '^(?:node:)?(?:fs|child_process|net|http|https|http2|tls|dgram|dns|cluster|worker_threads|os|readline|crypto|perf_hooks|timers|zlib)(?:$|/)',
-            '(?:^|/)node_modules/(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
+            '(?:^|/)(?:node_modules/)?(?:axios|node-fetch|undici|got|ky|ws|pg|mysql|mysql2|mongodb|mongoose|redis|ioredis|sqlite3|better-sqlite3|knex|sequelize|typeorm|drizzle-orm|@prisma/client|@aws-sdk/[^/]+|pino|winston|bunyan|log4js|loglevel|consola|debug)(?:/|$)',
           ],
           reachable: true,
         },
