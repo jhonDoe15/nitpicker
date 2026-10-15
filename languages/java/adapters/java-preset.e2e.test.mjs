@@ -309,7 +309,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
           {
             rule: 'changed-branch-coverage',
             paths: ['src/main/java/demo/Branchy.java'],
-            function: 'larger',
+            function: 'Branchy.larger',
           },
         ],
       });
@@ -318,7 +318,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
           {
             rule: 'changed-branch-coverage',
             paths: ['src/main/java/demo/Branchy.java'],
-            function: 'smaller',
+            function: 'Branchy.smaller',
           },
         ],
       });
