@@ -15,6 +15,8 @@ export const THRESHOLD_KEYS = [
   'testFileLines',
   'lineLength',
   'folderFiles',
+  'unitTestSeconds',
+  'integrationTestSeconds',
 ];
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',

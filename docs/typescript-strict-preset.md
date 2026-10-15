@@ -243,6 +243,16 @@ alone.
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
+- `slow-test` (coverage check, head only): a test the change adds or edits fails when it runs longer
+  than 5 s, or 30 s in an `integration/` or `e2e/` folder of a test root (every other test location
+  is a unit test). The time is the test's own `duration` in the Vitest JSON report of the coverage
+  run, taken as measured (retries are pinned off, nothing is averaged). A test counts as edited when
+  a line the change wrote falls inside its `it`/`test` call, located with Vitest's
+  `--includeTaskLocation`; a slow test the change did not touch is not reported, and the finding is
+  keyed by file and full test name. The message names the budget, the measured time and the fixes:
+  fake timers instead of real waits, smaller fixtures, or moving a real integration test to an
+  integration folder. `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds` change the
+  budgets, and an exception for `slow-test` with the test file's path lifts it.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
   spy on `Math.random`; either one anywhere in the file lifts the check), and in unit tests
@@ -277,7 +287,8 @@ alone.
   a failing run pass, over the project's own config: `retry: 0`, `bail: 0`, `allowOnly: false`,
   `passWithNoTests: false`, `dangerouslyIgnoreUnhandledErrors: false`, no `testNamePattern` and
   `update: 'none'`, so a snapshot that is not committed fails the run instead of being written and
-  accepted. `testTimeout` and `hookTimeout` are at least 10 000 ms; a project's longer timeout stays.
+  accepted. `testTimeout` and `hookTimeout` are at least 10 000 ms; a project's longer timeout stays
+  (the run passes no `--testTimeout`, so the config decides).
   `unstubEnvs` and `unstubGlobals` are left to the project: forcing them would undo the globals a
   setup file stubs (a jsdom setup's `ResizeObserver`) before every test, so stubs made in tests are
   checked by `nitpicker/fake-timers-require-restore` instead. The per-project options

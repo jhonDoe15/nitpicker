@@ -26,6 +26,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  slowTest: 'slow-test',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -54,6 +55,11 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
 ];
+
+/** Seconds a test the change adds or edits may take (`thresholds.unitTestSeconds` / `integrationTestSeconds`). */
+export const TEST_DURATION_LIMITS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
+
+export const TEST_RUN_EXCEPTION_RULES = [RULE_IDS.slowTest];
 
 export const MUTATION_EXCEPTION_RULES = [
   'mutant-ignored',
@@ -219,6 +225,12 @@ export const RULES = [
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
     enforcedBy: withKotlin(ALL, false),
+  },
+  {
+    id: RULE_IDS.slowTest,
+    check: 'coverage',
+    limit: `a test the change adds or edits that runs longer than ${String(TEST_DURATION_LIMITS.unitTestSeconds)} s, or ${String(TEST_DURATION_LIMITS.integrationTestSeconds)} s under \`integration/\` or \`e2e/\`; override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
+    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   {
     id: RULE_IDS.duplicateClone,

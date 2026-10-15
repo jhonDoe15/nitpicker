@@ -143,6 +143,8 @@ If your change edits a function that existed before it, read
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- A test you add or edit must finish in 5 s (30 s under `test/integration/` or `test/e2e/`), or it
+  fails as `slow-test`: fake the clock instead of waiting, and shrink the fixture.
 
 ## React
 

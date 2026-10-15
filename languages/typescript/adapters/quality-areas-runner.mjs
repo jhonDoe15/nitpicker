@@ -40,6 +40,7 @@ import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { runScopedMutation } from './test-weakening/scoped-mutation.mjs';
+import { changedTestLines, slowTestFindings } from './test-durations/slow-tests.mjs';
 import { crapUnknownMessage } from './quality-messages/crap-unknown-message.mjs';
 import { unhandledErrors, unhandledErrorText } from './quality-messages/failure-text.mjs';
 import { formatVitestFailures, vitestFailures } from './quality-messages/vitest-failures.mjs';
@@ -353,8 +354,7 @@ function runCoverage(options) {
         '--config',
         configPath,
         '--coverage',
-        '--testTimeout',
-        '10000',
+        '--includeTaskLocation',
         '--reporter',
         'dot',
         '--reporter',
@@ -404,11 +404,28 @@ function readCoverageFindings(options, testReportPath) {
     readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
   const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
-  return normalizeCoverage(
-    withBranchSourceHashes(report, options.projectRoot),
-    options.analyzerName,
-    { projectRoot: options.projectRoot, testCount: testReport.numTotalTests },
-  );
+  return [
+    ...normalizeCoverage(
+      withBranchSourceHashes(report, options.projectRoot),
+      options.analyzerName,
+      {
+        projectRoot: options.projectRoot,
+        testCount: testReport.numTotalTests,
+      },
+    ),
+    ...(options.snapshot === 'base' ? [] : headSlowTests(options, testReport)),
+  ];
+}
+
+function headSlowTests(options, testReport) {
+  const { thresholds, exceptions } = readHeadPolicy();
+  return slowTestFindings(testReport, {
+    ...options,
+    testRoots: readLayout().testRoots,
+    thresholds,
+    exceptions,
+    changedLines: changedTestLines(options),
+  });
 }
 
 function readVitestReport(reportPath, result) {
