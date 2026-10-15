@@ -31,12 +31,17 @@ const expectedDirtyFindings = [
     tool: 'eslint-lint',
     rule: 'no-debugger',
     path: 'src/main/example.ts',
-    identity: 'message:unexpected|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-    message: "Unexpected 'debugger' statement.",
+    identity:
+      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
+    message: '`debugger` statement is not allowed',
     classification: 'enforceable',
     symbol: 'example',
     location: { line: 2, column: 3 },
-    ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
+    ratchet: {
+      key: 'count:`debugger` statement is not allowed',
+      value: 1,
+      existingCodeOnly: true,
+    },
   },
   {
     tool: 'prettier-format',
@@ -80,7 +85,7 @@ function expectedDirtyOutput(root) {
 Quality gate summary
 ✖ 3 new enforceable violations
   eslint-lint/no-debugger src/main/example.ts:2
-    Unexpected 'debugger' statement.
+    \`debugger\` statement is not allowed
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
 Full diagnostics: ${root}/reports/dirty/report.txt
@@ -335,7 +340,8 @@ suite('packed nitpicker in a separate consumer', () => {
         ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
           `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript};` +
-            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')}`,
+            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
+            `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`,
         );
         for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
           const installed = JSON.parse(
