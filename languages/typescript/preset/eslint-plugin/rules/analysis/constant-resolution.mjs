@@ -75,7 +75,7 @@ function operandNodes(node) {
   return [];
 }
 
-function numericEntry(context, node, depth, parent) {
+function numericEntry(context, { node, depth, parent }) {
   return {
     node: depth > MAX_RESOLVE_DEPTH ? undefined : resolveConstant(context, node),
     depth,
@@ -84,12 +84,14 @@ function numericEntry(context, node, depth, parent) {
 }
 
 function numericEntries(context, root, depth) {
-  const entries = [numericEntry(context, root, depth, undefined)];
+  const entries = [numericEntry(context, { node: root, depth })];
   for (const entry of entries) {
-    const operands = operandNodes(entry.node);
-    entries.push(
-      ...operands.map((operand) => numericEntry(context, operand, entry.depth + 1, entry)),
-    );
+    const operands = operandNodes(entry.node).map((node) => ({
+      node,
+      depth: entry.depth + 1,
+      parent: entry,
+    }));
+    entries.push(...operands.map((operand) => numericEntry(context, operand)));
   }
   return entries;
 }
