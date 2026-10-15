@@ -19,6 +19,29 @@ choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typ
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
 tool error.
 
+### From a GitHub release
+
+A release made by following [the release steps](releasing.md) also attaches the package as a
+tarball, `nitpicker-<version>.tgz`, with a `SHA256SUMS` file. Install it when you want a version that
+is not on npm. Keep the tarball in your repository, so teammates and CI install the same file
+without access to the release:
+
+```sh
+VERSION=0.1.0-rc.1
+gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-*.tgz' --pattern SHA256SUMS --dir vendor
+(cd vendor && shasum -a 256 -c SHA256SUMS && rm SHA256SUMS)
+npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
+```
+
+`package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
+TypeScript preset's; for another preset, install the tarball with the peers its guide lists, if any.
+`gh` signs in with your GitHub account, which a private repository needs. On a public repository,
+`npm install` takes the asset URL directly:
+`https://github.com/jhonDoe15/nitpicker/releases/download/v<version>/nitpicker-<version>.tgz`.
+
+The tarball carries the agent skills; install the one for your preset from `./node_modules/nitpicker`
+as the [README](../README.md) describes.
+
 ## First run
 
 ```sh
@@ -179,7 +202,7 @@ is visible in review.
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier` and `eslint` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier`, `eslint` and `typescript` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine); `{ "typescript": { "engine": "native" } }`; see [Type check engine](#type-check-engine)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -546,6 +569,36 @@ To run the policy on ESLint itself, set the engine:
 
 ```json
 { "tools": { "eslint": { "engine": "eslint" } } }
+```
+
+### Type check engine
+
+The `typescript-typecheck` analyzer type checks with TypeScript 7, the native compiler, which is
+much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. The project's
+own `typescript` package (5.7 to 6.x) is still needed, because nitpicker reads source files with it
+to name the enclosing symbol of each finding. A run uses the project's TypeScript instead, as
+before, when the config uses an option TypeScript 7 removed or no longer knows (such as `baseUrl`,
+`moduleResolution: "node"` or `target: "ES5"`), or when TypeScript 7's compiler is not installed
+for the platform. The report does not say which engine a run used; set the engine to choose one.
+
+Findings match the project's own TypeScript, with the same messages, positions and symbols, except:
+
+- TypeScript adds "Did you mean ...?" to a limited number of unknown-name errors. TypeScript 7
+  checks files on several checkers, each with its own limit, so it adds the suggestion to more of
+  them.
+- A "file is in the program because" note names the include pattern or `files` entry that
+  matched, where the project's TypeScript says "Root file specified for compilation".
+- A few messages are worded differently, such as "No overload matches this call" details and
+  paths in `/// <reference path>` errors, and an unbuilt project reference is read from its
+  sources instead of being reported as not built.
+
+Switching engines therefore shows those findings as new once. Paths inside messages are relative
+to the project, so they are the same on both sides of the comparison.
+
+To always type check with the project's own TypeScript, set the engine:
+
+```json
+{ "tools": { "typescript": { "engine": "project" } } }
 ```
 
 ## Adopting nitpicker on existing code
