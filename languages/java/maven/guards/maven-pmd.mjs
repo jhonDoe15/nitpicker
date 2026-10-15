@@ -65,31 +65,51 @@ function writeRuleset(reportDir, file, content) {
   return target;
 }
 
+function mainRuleset(module, reportDir, { name, file, skipped }) {
+  return writeRuleset(
+    reportDir,
+    `pmd-${name}-main.xml`,
+    scopedRuleset(`nitpicker-${name}-main`, path.join(GRADLE_DIRECTORY, file), {
+      directories: module.testSourceRoots,
+      skipped,
+    }),
+  );
+}
+
+function testRuleset(reportDir, tests, { name, file }) {
+  return writeRuleset(
+    reportDir,
+    `pmd-${name}.xml`,
+    scopedRuleset(`nitpicker-${name}`, path.join(GRADLE_DIRECTORY, file), {
+      directories: tests,
+      onlyThere: true,
+    }),
+  );
+}
+
 function guardRulesets(module, reportDir) {
   const skipped =
     javaRelease(module.compiler) < PATTERN_MATCHING_RELEASE ? PATTERN_MATCHING_RULES : [];
-  const guards = writeRuleset(
-    reportDir,
-    'pmd-guards-main.xml',
-    scopedRuleset(
-      'nitpicker-guards-main',
-      path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml'),
-      {
-        directories: module.testSourceRoots,
-        skipped,
-      },
-    ),
-  );
+  const main = [
+    mainRuleset(module, reportDir, { name: 'guards', file: 'rules/guards-ruleset.xml', skipped }),
+    mainRuleset(module, reportDir, {
+      name: 'code-smells',
+      file: 'code-smells-ruleset.xml',
+      skipped: [],
+    }),
+  ];
   const tests = module.testSourceRoots.filter((root) => existsSync(root));
   if (tests.length === 0) {
-    return [guards];
+    return main;
   }
-  const honesty = scopedRuleset(
-    'nitpicker-test-honesty',
-    path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml'),
-    { directories: tests, onlyThere: true },
-  );
-  return [guards, writeRuleset(reportDir, 'pmd-test-honesty.xml', honesty)];
+  return [
+    ...main,
+    testRuleset(reportDir, tests, {
+      name: 'code-smells-test',
+      file: 'code-smells-test-ruleset.xml',
+    }),
+    testRuleset(reportDir, tests, { name: 'test-honesty', file: 'rules/test-honesty-ruleset.xml' }),
+  ];
 }
 
 function writeAuxClasspath({ module, reportDir, classpaths }) {
