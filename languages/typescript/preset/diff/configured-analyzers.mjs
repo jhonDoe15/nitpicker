@@ -38,6 +38,7 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/oxlint/stage/oxlint-directives.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-inline-config.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-stage.mjs',
+  'languages/typescript/adapters/oxlint/stage/tsconfig-paths.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];

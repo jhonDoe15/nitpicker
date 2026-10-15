@@ -195,3 +195,97 @@ describe('lintWithOxlint with type-aware rules', () => {
     expect(lines('src/sub/nested.ts')).toEqual(expected);
   });
 });
+
+describe('lintWithOxlint with the project tsconfig paths', () => {
+  const roots = [];
+
+  afterAll(() => {
+    for (const projectRoot of roots) rmSync(projectRoot, { recursive: true, force: true });
+  });
+
+  function lintAliasedImport(projectFiles, specifier = '@/lib/value') {
+    const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-paths-')));
+    roots.push(projectRoot);
+    const files = {
+      'policy.mjs': TYPED_POLICY,
+      'src/lib/value.ts': "export const sure: string = 'x';\n",
+      'src/use.ts': `import { sure } from '${specifier}';\nexport const redundant = sure as string;\n`,
+      ...projectFiles,
+    };
+    for (const [relativePath, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(projectRoot, relativePath)), { recursive: true });
+      writeFileSync(path.join(projectRoot, relativePath), text);
+    }
+    const projectConfigPath = path.join(projectRoot, 'tsconfig.nitpicker.json');
+    const lintResults = lintWithOxlint({
+      options: { projectRoot, patterns: ['src/**/*.ts'] },
+      projectConfigPath,
+      environment: {
+        ...process.env,
+        NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(projectRoot, 'policy.mjs'),
+        NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
+        NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath,
+      },
+      runEslintCli: () => {
+        throw new Error('no rule needs ESLint here');
+      },
+    });
+    return lintResults
+      .find((entry) => entry.filePath === path.join(projectRoot, 'src/use.ts'))
+      ?.messages.map(({ ruleId, line }) => ({ ruleId, line }));
+  }
+
+  const layered = (extended) =>
+    JSON.stringify({
+      extends: extended,
+      compilerOptions: { strict: true, skipLibCheck: true, types: [], lib: ['ES2022'] },
+      include: ['src/**/*.ts'],
+    });
+  const pinned = { types: [], lib: ['ES2022'] };
+  const resolved = [{ ruleId: '@typescript-eslint/no-unnecessary-type-assertion', line: 2 }];
+
+  it.each([
+    ['baseUrl with non-relative paths', { baseUrl: '.', paths: { '@/*': ['src/*'] } }],
+    ['non-relative paths without baseUrl', { paths: { '@/*': ['src/*'] } }],
+    ['relative paths', { paths: { '@/*': ['./src/*'] } }],
+    ['a nested baseUrl', { baseUrl: './src', paths: { '@/*': ['*'] } }],
+  ])('resolves an alias the project declares with %s', (_form, compilerOptions) => {
+    const projectFiles = {
+      'tsconfig.json': JSON.stringify({ compilerOptions: { ...pinned, ...compilerOptions } }),
+      'tsconfig.nitpicker.json': layered('./tsconfig.json'),
+    };
+
+    expect(lintAliasedImport(projectFiles)).toEqual(resolved);
+  });
+
+  it('resolves a bare import through baseUrl alone', () => {
+    const projectFiles = {
+      'tsconfig.json': JSON.stringify({ compilerOptions: { ...pinned, baseUrl: './src' } }),
+      'tsconfig.nitpicker.json': layered('./tsconfig.json'),
+    };
+
+    expect(lintAliasedImport(projectFiles, 'lib/value')).toEqual(resolved);
+  });
+
+  it('resolves paths from a referenced app config that extends a package config', () => {
+    const projectFiles = {
+      'node_modules/@fixture/base/tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          ...pinned,
+          target: 'ES2022',
+          module: 'ESNext',
+          moduleResolution: 'Bundler',
+        },
+      }),
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './tsconfig.app.json' }] }),
+      'tsconfig.app.json': JSON.stringify({
+        extends: '@fixture/base/tsconfig.json',
+        compilerOptions: { ...pinned, baseUrl: '.', paths: { '@/*': ['src/*'] } },
+        include: ['src'],
+      }),
+      'tsconfig.nitpicker.json': layered('./tsconfig.app.json'),
+    };
+
+    expect(lintAliasedImport(projectFiles)).toEqual(resolved);
+  });
+});
