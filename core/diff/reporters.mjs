@@ -7,6 +7,7 @@ import {
 } from '../../shared/rules/finding-helpers.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 import { appendMetricSection } from './summary/metric-section.mjs';
+import { appendNoticeSummary, noticeSection } from './summary/notices.mjs';
 import { appendPolicyChangeSummary, policyChangeSection } from './summary/policy-changes.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
@@ -73,7 +74,10 @@ export function renderTextReport(report) {
   if (configOverrides.length > 0) {
     lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
   }
-  lines.push(...policyChangeSection(report.summary.policyChanges));
+  lines.push(
+    ...policyChangeSection(report.summary.policyChanges),
+    ...noticeSection(report.summary.notices),
+  );
 
   if (report.summary.tools.length === 0) {
     lines.push('Analyzers: none configured');
@@ -112,9 +116,9 @@ export function renderConsoleSummary(
   ];
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
-  appendPolicyChangeSummary(lines, report.summary?.policyChanges, (text) =>
-    style(text, [ANSI.bold, ANSI.yellow], color),
-  );
+  const emphasize = (text) => style(text, [ANSI.bold, ANSI.yellow], color);
+  appendPolicyChangeSummary(lines, report.summary?.policyChanges, emphasize);
+  appendNoticeSummary(lines, report.summary?.notices, emphasize);
   appendHeldSummary(lines, report.unchangedFindings, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));

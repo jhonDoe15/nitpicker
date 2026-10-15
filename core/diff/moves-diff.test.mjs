@@ -151,7 +151,10 @@ function commitHead(root) {
   git(root, 'commit', '-q', '-m', 'head');
 }
 
-function compare(root, { projectRelativePath = '.', headPolicy, resolveBaseSetup } = {}) {
+function compare(
+  root,
+  { projectRelativePath = '.', headPolicy, resolveBaseSetup, describeNotices } = {},
+) {
   return runQualityDiff({
     repositoryRoot: root,
     projectRelativePath,
@@ -161,6 +164,7 @@ function compare(root, { projectRelativePath = '.', headPolicy, resolveBaseSetup
     analyzers: [probeAnalyzer()],
     headPolicy,
     resolveBaseSetup,
+    describeNotices,
     runTasks: runProbe,
   });
 }
@@ -349,5 +353,33 @@ describe('a config that changed between base and head', () => {
 
     expect(setup.analyzers).toEqual([headOnly]);
     expect(setup.headPolicy.exclude).toEqual([]);
+  });
+});
+
+describe('notices about the change', () => {
+  it('passes the changed files to the notice callback and reports what it returns', () => {
+    const root = createRepository({ 'src/kept.mjs': filler('kept') });
+    write(root, { 'scripts/new.mjs': filler('new'), 'src/kept.mjs': `${filler('kept')}// edit\n` });
+    commitHead(root);
+    const seen = [];
+
+    const report = compare(root, {
+      describeNotices: (files) => {
+        seen.push(...files);
+        return ['a notice'];
+      },
+    });
+
+    expect(seen.sort()).toEqual(['scripts/new.mjs', 'src/kept.mjs']);
+    expect(report.summary.notices).toEqual(['a notice']);
+    expect(report.text).toContain('  a notice');
+  });
+
+  it('reports no notices without a callback', () => {
+    const root = createRepository({ 'src/kept.mjs': filler('kept') });
+    write(root, { 'src/kept.mjs': `${filler('kept')}// edit\n` });
+    commitHead(root);
+
+    expect(compare(root).summary.notices).toEqual([]);
   });
 });
