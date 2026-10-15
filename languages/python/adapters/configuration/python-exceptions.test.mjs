@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import { applyPythonExceptions } from './python-exceptions.mjs';
+
+const finding = (rule, path) => ({ tool: 'ruff', rule, path, identity: rule });
+const exception = (rule, paths) => ({ rule, paths, reason: 'because' });
+
+describe('python exceptions', () => {
+  const findings = [
+    finding('T201', 'scripts/run.py'),
+    finding('T201', 'src/app.py'),
+    finding('PTH118', 'scripts/run.py'),
+  ];
+
+  it('keeps everything without exceptions', () => {
+    expect(applyPythonExceptions(findings)).toEqual(findings);
+    expect(applyPythonExceptions(findings, [])).toEqual(findings);
+  });
+
+  it('lifts one rule for the matching paths only', () => {
+    expect(applyPythonExceptions(findings, [exception('T201', ['scripts/**'])])).toEqual([
+      findings[1],
+      findings[2],
+    ]);
+  });
+
+  it('matches any of the globs and any of the entries', () => {
+    const exceptions = [exception('T201', ['nothing/**', 'src/*.py']), exception('PTH118', ['**'])];
+
+    expect(applyPythonExceptions(findings, exceptions)).toEqual([findings[0]]);
+  });
+
+  it('lets a ruff prefix cover the codes under it', () => {
+    expect(applyPythonExceptions(findings, [exception('PTH', ['**'])])).toEqual([
+      findings[0],
+      findings[1],
+    ]);
+    expect(applyPythonExceptions(findings, [exception('T', ['**'])])).toEqual([findings[2]]);
+  });
+
+  it('needs the other tools to name the rule exactly', () => {
+    const mypy = { tool: 'mypy', rule: 'arg-type', path: 'src/a.py', identity: 'x' };
+    const rules = {
+      tool: 'python-rules',
+      rule: 'frozen-dataclass',
+      path: 'src/a.py',
+      identity: 'y',
+    };
+
+    expect(applyPythonExceptions([mypy, rules], [exception('arg', ['**'])])).toEqual([mypy, rules]);
+    expect(applyPythonExceptions([mypy, rules], [exception('frozen-dataclass', ['**'])])).toEqual([
+      mypy,
+    ]);
+  });
+
+  it('lifts a clone when the exception matches either file of the pair', () => {
+    const clones = evaluateDuplicates(
+      [
+        {
+          first: { file: 'src/a/left.py', line: 1 },
+          second: { file: 'src/b/right.py', line: 4 },
+          fragment: 'x',
+          lines: 9,
+          tokens: 70,
+        },
+      ],
+      'duplicates',
+    );
+    const lifted = (glob) =>
+      applyPythonExceptions(clones, [exception('duplicate-clone', [glob])]).map(({ rule }) => rule);
+
+    expect(lifted('src/a/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/b/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);
+    expect(lifted('src/c/**')).toEqual(clones.map(({ rule }) => rule));
+  });
+});

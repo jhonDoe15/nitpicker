@@ -44,33 +44,10 @@ function jacocoMethods(xml) {
     throw new TypeError('JaCoCo report root element must be <report>');
   }
   const byFile = new Map();
-  for (const pkg of childrenNamed(report, 'package')) {
-    for (const cls of childrenNamed(pkg, 'class')) {
-      const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const simpleName = (cls.attrs.name ?? '')
-        .split('/')
-        .at(-1)
-        .split('$')
-        .at(-1)
-        .replace(/^\d+/u, '');
-      for (const method of childrenNamed(cls, 'method')) {
-        const line = Number.parseInt(method.attrs.line, 10);
-        if (!Number.isInteger(line)) {
-          continue;
-        }
-        byFile.set(file, [
-          ...(byFile.get(file) ?? []),
-          {
-            name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
-            className: cls.attrs.name ?? '',
-            line,
-            lines: counter(method, 'LINE'),
-            branches: counter(method, 'BRANCH'),
-          },
-        ]);
-      }
-    }
-  }
+  const classes = childrenNamed(report, 'package').flatMap((pkg) =>
+    childrenNamed(pkg, 'class').map((cls) => ({ pkg, cls })),
+  );
+  for (const entry of classes) addClassMethods(entry, byFile);
   return byFile;
 }
 
@@ -123,4 +100,29 @@ function lowestCoverage(matches) {
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
   return percents.length === 0 ? undefined : Math.min(...percents);
+}
+
+function addClassMethods({ pkg, cls }, byFile) {
+  const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
+  const simpleName = (cls.attrs.name ?? '')
+    .split('/')
+    .at(-1)
+    .split('$')
+    .at(-1)
+    .replace(/^\d+/u, '');
+  const methods = childrenNamed(cls, 'method')
+    .map((method) => ({ method, line: Number.parseInt(method.attrs.line, 10) }))
+    .filter(({ line }) => Number.isInteger(line));
+  for (const { method, line } of methods) {
+    byFile.set(file, [
+      ...(byFile.get(file) ?? []),
+      {
+        name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
+        className: cls.attrs.name ?? '',
+        line,
+        lines: counter(method, 'LINE'),
+        branches: counter(method, 'BRANCH'),
+      },
+    ]);
+  }
 }

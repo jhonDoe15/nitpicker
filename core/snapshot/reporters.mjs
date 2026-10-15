@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const REPORT_FILE_NAMES = [
+const REPORT_FILE_NAMES = [
   'summary.json',
   'findings.json',
   'tool-errors.json',
@@ -27,7 +27,7 @@ export function writeSnapshotReports(outputRoot, report) {
   return text;
 }
 
-export function renderTextReport(report) {
+function renderTextReport(report) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -67,7 +67,7 @@ export function renderRuleFilterSection(report, ruleFilters) {
   return `${lines.join('\n')}\n`;
 }
 
-export function renderJunitReport(report) {
+function renderJunitReport(report) {
   const failures =
     report.summary.tools.filter((tool) => tool.enforceable > 0).length + report.toolErrors.length;
   const testCases = report.summary.tools.map((tool) =>

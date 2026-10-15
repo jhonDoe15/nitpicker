@@ -1,0 +1,98 @@
+import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
+import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
+import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+
+const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
+const EXCEPTION_ROUTE = 'To exempt a file, add it to exclude in nitpicker.config.json.';
+
+export function ingestCoverageBranches(text, options = {}) {
+  const report = JSON.parse(text);
+  if (typeof report?.files !== 'object' || report.files === null) {
+    throw new TypeError('coverage.py JSON report must contain a files object');
+  }
+  const tool = options.tool ?? 'coverage-py';
+  const minimum = options.minimum ?? MINIMUM_BRANCH_COVERAGE;
+  const roots = options.roots ?? [undefined];
+  const findings = Object.entries(report.files).flatMap(([file, data]) => {
+    const filePath = roots
+      .map((root) => normalizeReportPath(file, root))
+      .find((candidate) => candidate !== undefined);
+    const source = filePath === undefined ? undefined : options.sourceText?.(filePath);
+    return source === undefined
+      ? []
+      : fileFindings(data, { path: filePath, lines: source.split(/\r?\n/), tool, minimum });
+  });
+  return { findings };
+}
+
+function fileFindings(data, { path, lines, tool, minimum }) {
+  const branches = [];
+  for (const [line, outcomes] of outcomesByLine(data)) {
+    const source = lines[line - 1]?.trim().replaceAll(/\s+/g, ' ');
+    if (source === undefined || source === '') {
+      continue;
+    }
+    branches.push({
+      path,
+      line,
+      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
+      percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
+      arms: outcomes.missed.map(describeArm),
+    });
+  }
+  return branchCoverageFindings(branches, {
+    tool,
+    minimum,
+    identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
+  }).map((finding) => ({ ...finding, message: `${finding.message} ${EXCEPTION_ROUTE}` }));
+}
+
+function indentOf(text) {
+  return text.length - text.trimStart().length;
+}
+
+function enclosingScope(lines, index) {
+  const names = [];
+  let indent = indentOf(lines[index]);
+  for (const earlier of lines.slice(0, index).reverse()) {
+    if (indent === 0) {
+      break;
+    }
+    const name = SCOPE_START.exec(earlier.trimStart())?.[1];
+    if (name !== undefined && indentOf(earlier) < indent) {
+      names.unshift(name);
+      indent = indentOf(earlier);
+    }
+  }
+  return names.join('.');
+}
+
+function outcomesByLine(data) {
+  const byLine = new Map();
+  for (const [line] of validArcs(data.executed_branches)) {
+    outcomesOf(byLine, line).taken += 1;
+  }
+  for (const [line, destination] of validArcs(data.missing_branches)) {
+    outcomesOf(byLine, line).missed.push(destination);
+  }
+  return [...byLine].sort(([a], [b]) => a - b);
+}
+
+function outcomesOf(byLine, line) {
+  if (!byLine.has(line)) {
+    byLine.set(line, { taken: 0, missed: [] });
+  }
+  return byLine.get(line);
+}
+
+function validArcs(arcs) {
+  return (Array.isArray(arcs) ? arcs : []).filter(
+    (arc) => Array.isArray(arc) && Number.isInteger(arc[0]) && Number.isInteger(arc[1]),
+  );
+}
+
+function describeArm(destination) {
+  return destination > 0
+    ? `the branch to line ${String(destination)}`
+    : 'the exit from the enclosing scope';
+}

@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { calculateCrap, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
 import { ingestCrap } from './crap.mjs';
 
@@ -32,13 +32,19 @@ describe('ingestCrap', () => {
       true,
     );
     expect(findings[0].path).toBe('src/main/java/demo/Calc.java');
-    expect(findings[0].message).toContain('CRAP 71.');
+    expect(findings[0].message).toEqual(
+      'Calc.classify(int, int, String) has CRAP 71.39; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
+    );
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
   it('joins constructors, anonymous-class methods and uses the lower of line and branch coverage', () => {
     const higher = withComplexity('Calc.<anonymous>.run', 8);
-    expect(ingest(higher).map((f) => f.symbol)).toContain('Calc.<anonymous>.run()');
+    expect([...new Set(ingest(higher).map((f) => f.symbol))].sort()).toEqual([
+      'Calc.<anonymous>.run()',
+      'Calc.Inner.get(int)',
+      'Calc.classify(int, int, String)',
+    ]);
   });
 
   it('treats CRAP exactly at the limit as a failure, like the TypeScript check', () => {
@@ -124,9 +130,13 @@ describe('ingestCrap', () => {
       const finding = scoreFinding(withHash('abc'));
 
       expect(finding.identity).toBe('function:Calc.classify(int, int, String):source:abc');
-      expect(finding.ratchet).toMatchObject({
+      expect(finding.ratchet).toEqual({
         key: 'function:Calc.classify(int, int, String):crap',
         value: expect.any(Number),
+        worseMessage:
+          'Calc.classify(int, int, String) CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests.',
+        heldMessage:
+          'Calc.classify(int, int, String): CRAP 71.39 (limit 9), allowed because base was {base}; any increase fails.',
       });
     });
 
