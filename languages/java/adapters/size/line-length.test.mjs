@@ -26,7 +26,7 @@ describe('Java line length', () => {
     const text = [
       `String s = "${'y'.repeat(120)}";`,
       'String t = """',
-      `${'z'.repeat(130)}`,
+      'z'.repeat(130),
       '""";',
       `import ${'a.'.repeat(60)}B;`,
       '// see https://example.com/' + 'p'.repeat(100),
