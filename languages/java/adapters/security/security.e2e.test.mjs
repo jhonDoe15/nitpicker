@@ -41,6 +41,40 @@ public final class Lookup {
 }
 `;
 
+const REPORTS = `package demo;
+
+import java.util.List;
+import java.util.Map;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
+
+public final class Reports {
+  private final NamedParameterJdbcTemplate named;
+  private final JdbcClient client;
+
+  public Reports(NamedParameterJdbcTemplate named, JdbcClient client) {
+    this.named = named;
+    this.client = client;
+  }
+
+  private String build(String status) {
+    return "select email from account where status = '" + status + "'";
+  }
+
+  public List<String> byNamed(String status) {
+    return named.queryForList(build(status), Map.of(), String.class);
+  }
+
+  public List<String> byClient(String status) {
+    return client.sql(build(status)).query(String.class).list();
+  }
+
+  public List<String> bound(String status) {
+    return named.queryForList("select email from account where status = :s", Map.of("s", status), String.class);
+  }
+}
+`;
+
 let repository;
 
 describe.skipIf(!enabled)('find-sec-bugs end to end', () => {
@@ -53,7 +87,10 @@ describe.skipIf(!enabled)('find-sec-bugs end to end', () => {
     runGitIn(repository, 'init', '-q', '-b', 'main');
     runGitIn(repository, 'add', '-A');
     runGitIn(repository, 'commit', '-q', '-m', 'base');
-    commitBranch(repository, 'injection', { 'src/main/java/demo/Lookup.java': LOOKUP });
+    commitBranch(repository, 'injection', {
+      'src/main/java/demo/Lookup.java': LOOKUP,
+      'src/main/java/demo/Reports.java': REPORTS,
+    });
   });
 
   afterAll(() => {
@@ -62,13 +99,17 @@ describe.skipIf(!enabled)('find-sec-bugs end to end', () => {
   });
 
   it(
-    'reports a JPA query built from a parameter once, and no servlet marker',
+    'reports a JPA query and SQL built in a helper once each, and no servlet marker',
     () => {
       const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle });
 
       expect(
         summarize(result.newEnforceable.filter((finding) => finding.tool === 'spotbugs')),
-      ).toEqual(['spotbugs SQL_INJECTION_JPA Lookup.java']);
+      ).toEqual([
+        'spotbugs SQL_INJECTION_JPA Lookup.java',
+        'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
+        'spotbugs SQL_INJECTION_SPRING_JDBC Reports.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

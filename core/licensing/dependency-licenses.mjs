@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import {
   classifyExpression,
@@ -26,7 +26,8 @@ export const JAVA_TOOL_LICENSES = {
 };
 
 const JAVA_ONLY_PERMISSIVE = new Set(['BSD-style']);
-const LICENSE_FILE = /^(?:licen[cs]e|copying)(?:[.-].*)?$/i;
+const LICENSE_FILE = /^(?:licen[cs]es?|copying)(?:[.-].*)?$/i;
+const LESSER_COPYLEFT = /\bLGPL/i;
 const EXACT_VERSION = /^\d+(?:\.\d+)*$/;
 const PINNED_BLOCK = /def pinned = \[([\s\S]*?)\n\]/;
 const PINNED_ENTRY = /^\s*(\w+)\s*:\s*'([^']*)'/gm;
@@ -46,16 +47,28 @@ export function lockedPackages(root) {
     }));
 }
 
+function licenseFiles(directory) {
+  return readdirSync(directory)
+    .filter((entry) => LICENSE_FILE.test(entry))
+    .flatMap((entry) =>
+      statSync(path.join(directory, entry)).isDirectory()
+        ? readdirSync(path.join(directory, entry)).map((inner) => path.join(entry, inner))
+        : [entry],
+    )
+    .filter((entry) => statSync(path.join(directory, entry)).isFile());
+}
+
 function textProblems(directory, label, declared) {
   if (!existsSync(directory) || (declared !== undefined && offersChoice(declared))) {
     return [];
   }
-  return readdirSync(directory)
-    .filter((entry) => LICENSE_FILE.test(entry))
-    .flatMap((entry) => {
-      const found = forbiddenLicenseText(readFileSync(path.join(directory, entry), 'utf8'));
-      return found === undefined ? [] : [`${label}: ${entry} is ${found}, which is not allowed`];
+  const allowGpl = declared !== undefined && LESSER_COPYLEFT.test(declared);
+  return licenseFiles(directory).flatMap((entry) => {
+    const found = forbiddenLicenseText(readFileSync(path.join(directory, entry), 'utf8'), {
+      allowGpl,
     });
+    return found === undefined ? [] : [`${label}: ${entry} is ${found}, which is not allowed`];
+  });
 }
 
 export function npmLicenseViolations(root) {

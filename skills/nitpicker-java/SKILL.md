@@ -102,23 +102,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Security
 
-SpotBugs also runs find-sec-bugs, so these fail as `spotbugs/<PATTERN>` on main sources. Write the
-safe form from the start:
-
-- Queries: bind parameters (`:name` with `JdbcClient` or `NamedParameterJdbcTemplate`,
-  `setParameter` on `EntityManager` queries), never string-built SQL or JPQL.
-- No `Runtime.exec`/`sh -c` with input (use `ProcessBuilder` with one argument per value), no
-  `ObjectInputStream`/`XMLDecoder` on untrusted bytes, no SpEL or script evaluation of input, no
-  `new URL(input)` fetches, no `redirect:` + input, no input written into a response body.
-- Files: resolve against a fixed base directory, `normalize()`, check `startsWith(base)`.
-- XML parsers: secure processing plus `disallow-doctype-decl`.
-- Crypto: SHA-256 or stronger, `AES/GCM/NoPadding` with a random IV, `SecureRandom` for tokens,
-  `MessageDigest.isEqual` for secrets, no hard-coded keys or passwords, default TLS checks.
-- Spring: `@GetMapping`/`@PostMapping` instead of a bare `@RequestMapping`, explicit CORS origins,
-  DTO records instead of entities in controllers (CSRF and outgoing URLs: [spring.md](spring.md)).
-
-Messages end with the exception route (`spotbugs/<PATTERN>` in `nitpicker.config.json`); add one
-only when the code is right, with a reason, and ask first.
+SpotBugs also runs find-sec-bugs on main sources, and nitpicker's Spring rules cover outgoing URLs and CSRF.
+Each finding names the safe form; the exception route is `spotbugs/<PATTERN>` or `pmd/<rule>`.
 
 ## Editing existing code
 

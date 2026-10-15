@@ -66,6 +66,8 @@ describe('npm package contents', () => {
     expect(files.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
     expect(files.has('languages/java/gradle/security/exclude.xml')).toBe(true);
     expect(files.has('languages/java/gradle/security/jakarta-sinks.txt')).toBe(true);
+    expect(files.has('languages/java/gradle/security/spring-jdbc-sinks.txt')).toBe(true);
+    expect(files.has('languages/java/gradle/security/path-sinks.txt')).toBe(true);
     expect(
       [...files].filter(
         (file) =>

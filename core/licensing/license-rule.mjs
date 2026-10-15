@@ -21,24 +21,43 @@ const WEAK_COPYLEFT_LICENSES = new Set([
   'MPL-2.0',
 ]);
 
+const GPL_MARKER = 'GPL or AGPL';
+const POLYFORM_KINDS = [
+  'NONCOMMERCIAL',
+  'SHIELD',
+  'STRICT',
+  'PERIMETER',
+  'SMALL[\\s-]BUSINESS',
+  'FREE[\\s-]TRIAL',
+  'INTERNAL[\\s-]USE',
+  'COUNTERSIGNATURE',
+  'ALTRUISTIC',
+  'BUSINESS',
+  'TRIAL',
+].join('|');
+
 const FORBIDDEN_TEXT_MARKERS = [
-  ['GPL or AGPL', /GNU\s+(?:AFFERO\s+)?GENERAL\s+PUBLIC\s+LICENSE[\s*_#]*Version\s+[23]/i],
-  ['GPL or AGPL', /^[\s#*_]*GNU\s+(?:AFFERO\s+)?GENERAL\s+PUBLIC\s+LICENSE[\s*_]*$/im],
-  ['SSPL', /SERVER SIDE PUBLIC LICENSE/i],
+  [GPL_MARKER, /GNU\s+(?:AFFERO\s+)?GENERAL\s+PUBLIC\s+LICENSE[\s*_#]*Version\s+[23]/i],
+  [GPL_MARKER, /^[\s#*_]*GNU\s+(?:AFFERO\s+)?GENERAL\s+PUBLIC\s+LICENSE[\s*_]*$/im],
+  [GPL_MARKER, /under\s+the\s+terms\s+of\s+the\s+GNU\s+(?:AFFERO\s+)?GENERAL\s+PUBLIC\s+LICENSE/i],
+  ['SSPL', /SERVER SIDE PUBLIC LICENSE[\s*_#,]*VERSION/i],
   ['SSALv1', /SONAR SOURCE-AVAILABLE LICENSE|SSALv1/i],
-  ['BSL', /BUSINESS SOURCE LICENSE/i],
-  ['Elastic License', /ELASTIC LICENSE/i],
-  ['Commons Clause', /COMMONS CLAUSE/i],
-  ['PolyForm', /POLYFORM/i],
-  ['Functional Source License', /FUNCTIONAL SOURCE LICENSE/i],
-  ['Confluent Community License', /CONFLUENT COMMUNITY LICENSE/i],
+  ['BSL', /BUSINESS SOURCE LICENSE[\s*_#,(]*(?:V(?:ERSION)?\s*)?\d/i],
+  ['Elastic License', /ELASTIC LICENSE[\s*_#,(]*(?:V(?:ERSION)?\s*)?\d/i],
+  ['Commons Clause', /COMMONS CLAUSE"?\s+LICENSE\s+CONDITION/i],
+  ['PolyForm', new RegExp(`POLYFORM[\\s-]+(?:${POLYFORM_KINDS})[^\\n]{0,30}LICENSE`, 'i')],
+  ['Functional Source License', /FUNCTIONAL SOURCE LICENSE[\s*_#,]*VERSION/i],
+  ['Confluent Community License', /CONFLUENT COMMUNITY LICENSE[\s*_#,]*VERSION/i],
   [
     'Creative Commons NonCommercial',
     /ATTRIBUTION[- ]NON-?COMMERCIAL|CC[- ]BY[- ]NC|CREATIVE COMMONS[^\n]{0,40}NON-?COMMERCIAL/i,
   ],
-  ['Sustainable Use License', /SUSTAINABLE USE LICENSE/i],
-  ['Redis Source Available License', /REDIS SOURCE AVAILABLE|RSALv2/i],
-  ['Prosperity Public License', /PROSPERITY PUBLIC LICENSE/i],
+  ['Sustainable Use License', /SUSTAINABLE USE LICENSE[\s*_#:]*VERSION/i],
+  [
+    'Redis Source Available License',
+    /REDIS SOURCE AVAILABLE LICENSE[\s*_#,(]*(?:V(?:ERSION)?\s*)?\d|RSALv2/i,
+  ],
+  ['Prosperity Public License', /PROSPERITY PUBLIC LICENSE[\s*_#,]*\d/i],
 ];
 
 export const PERMISSIVE = 'permissive';
@@ -126,6 +145,8 @@ export function declaredExpression(manifest) {
   return undefined;
 }
 
-export function forbiddenLicenseText(text) {
-  return FORBIDDEN_TEXT_MARKERS.find(([, pattern]) => pattern.test(text))?.[0];
+export function forbiddenLicenseText(text, { allowGpl = false } = {}) {
+  return FORBIDDEN_TEXT_MARKERS.find(
+    ([name, pattern]) => !(allowGpl && name === GPL_MARKER) && pattern.test(text),
+  )?.[0];
 }
