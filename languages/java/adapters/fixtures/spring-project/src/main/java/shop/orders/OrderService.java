@@ -122,6 +122,12 @@ public class OrderService {
     String userHome = System.getProperty("user.home");
   }
 
+  @Transactional
+  public void touch(Long id) {
+    products.findById(id).map(products::save);
+    products.findById(id).ifPresent(product -> products.save(product));
+  }
+
   private void helper() {}
 
   public interface Clock {}

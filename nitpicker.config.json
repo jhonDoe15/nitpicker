@@ -71,6 +71,7 @@
         "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs",
+        "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs",
         "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
         "languages/java/maven/maven-preset.e2e.test.mjs",
         "languages/java/guards/guards.e2e.test.mjs"
