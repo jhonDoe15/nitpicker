@@ -5,6 +5,7 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readErrorProneFindings } from './errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
@@ -54,6 +55,7 @@ export function readJavaFindings(
   return {
     findings: [
       ...sarifFindings(context),
+      ...readErrorProneFindings(context),
       ...formatFindings(context),
       ...checkstyleFindings(context),
       ...readDuplicateFindings(reportRoot),

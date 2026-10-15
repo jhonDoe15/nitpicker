@@ -33,6 +33,9 @@ const MESSAGE =
   'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 const SPOTBUGS_MESSAGE =
   'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+const NULLAWAY_MESSAGE =
+  'Do not silence NullAway inline: mark what may be null with @Nullable, or add an exception for errorprone/NullAway in nitpicker.config.json. Error Prone itself ignores @SuppressWarnings; NullAway does not.';
+const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: NULLAWAY_MESSAGE };
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -61,11 +64,12 @@ export function fileFindings(source, filePath) {
   );
   const occurrences = new Map();
   const spotbugsOwnsSuppressWarnings = SPOTBUGS_SUPPRESS_WARNINGS_IMPORT.test(views.code);
+  const javaLangAnnotations = spotbugsOwnsSuppressWarnings
+    ? JAVA_LANG_SUPPRESS_WARNINGS
+    : SUPPRESS_WARNINGS;
   const suppressions = [
-    ...pmdSuppressions(
-      views,
-      spotbugsOwnsSuppressWarnings ? JAVA_LANG_SUPPRESS_WARNINGS : SUPPRESS_WARNINGS,
-    ),
+    ...pmdSuppressions(views, javaLangAnnotations),
+    ...nullAwaySuppressions(views, javaLangAnnotations),
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
@@ -76,7 +80,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}.`,
+      message: `${MESSAGES[tool]} Found: ${found}.`,
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
@@ -88,6 +92,21 @@ function pmdSuppressions(views, annotations) {
     tool: 'pmd',
     ...suppression,
   }));
+}
+
+function nullAwaySuppressions(views, annotations) {
+  return suppressWarningsValues(views, annotations).flatMap(({ offset, values }) => {
+    const silencesNullAway = values.filter((value) => /^NullAway(?:\.|$)/.test(value));
+    return silencesNullAway.length === 0
+      ? []
+      : [
+          {
+            tool: 'errorprone',
+            offset,
+            found: silencesNullAway.map((value) => `"${value}"`).join(', '),
+          },
+        ];
+  });
 }
 
 function spotbugsSuppressions({ code, withoutComments }, includeSuppressWarnings) {
@@ -132,22 +151,33 @@ function blank(text) {
   return text.replace(/[^\n]/g, ' ');
 }
 
-function annotationSuppressions({ code, withoutComments }, annotations) {
-  return [...code.matchAll(annotations)].flatMap((match) => {
+function suppressWarningsValues({ code, withoutComments }, annotations) {
+  return [...code.matchAll(annotations)].map((match) => {
     const start = match.index + match[0].length;
     const end = code.indexOf(')', start);
-    const values = [...withoutComments.slice(start, end).matchAll(STRING_LITERAL)].map(
-      ([, value]) => value,
-    );
-    if (!LITERAL_ARGUMENTS.test(code.slice(start, end))) {
-      return [{ offset: match.index, found: 'a constant expression' }];
+    return {
+      offset: match.index,
+      end,
+      literal: LITERAL_ARGUMENTS.test(code.slice(start, end)),
+      values: [...withoutComments.slice(start, end).matchAll(STRING_LITERAL)].map(
+        ([, value]) => value,
+      ),
+    };
+  });
+}
+
+function annotationSuppressions(views, annotations) {
+  const { code } = views;
+  return suppressWarningsValues(views, annotations).flatMap(({ offset, end, literal, values }) => {
+    if (!literal) {
+      return [{ offset, found: 'a constant expression' }];
     }
     const silencesPmd = values.filter(
       (value) => PMD_WARNING_NAMES.has(value) || /^PMD(?:\.|$)/.test(value),
     );
     return silencesPmd.length === 0 || isAcceptedMarker(silencesPmd, code, end + 1)
       ? []
-      : [{ offset: match.index, found: silencesPmd.map((value) => `"${value}"`).join(', ') }];
+      : [{ offset, found: silencesPmd.map((value) => `"${value}"`).join(', ') }];
   });
 }
 

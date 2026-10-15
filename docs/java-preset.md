@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, errorprone.json, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -27,7 +27,7 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
   exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  JaCoCo 0.8.12, Checkstyle 10.21.1, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
   directory is the contract between the two sides.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
@@ -143,7 +143,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   before. The key is read from the head checkout and applies to both snapshots, like the rest of
   the config.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
-  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
+  snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
   `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
@@ -344,6 +344,175 @@ resolved plus a new finding, as in the TypeScript check.
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
 
+## Error Prone and NullAway
+
+- **What runs.** `nitpickerErrorProne`, a dependency of `nitpickerJava`, compiles the main and
+  the test Java sources a second time with javac and Error Prone 2.50.0 (Apache 2.0) as its
+  plugin, plus NullAway 0.14.2 (Uber, MIT), an Error Prone plugin for null safety. The task lives
+  in `languages/java/gradle/errorprone/` (`error-prone.gradle`, applied by the init script to
+  every `java` project, and `ErrorProneReport.java`). It uses the classpath, annotation processors
+  and `--release` of `compileJava` and `compileTestJava`, writes classes only to the throwaway
+  `build/nitpicker/errorprone/`, and leaves the regular compile and the consumer build alone.
+  javac runs in its own JVM from the JDK that runs Gradle (Error Prone needs JDK 21 or newer),
+  through `ErrorProneReport.java` in single-file source mode, which writes every diagnostic to
+  `build/nitpicker/errorprone.json`. Error Prone and NullAway resolve from a detached
+  configuration with their versions pinned in the init script's map, so a dependency-management
+  plugin of the project cannot move them. A compile error in this second compile fails the task
+  with javac's errors (a `tool-error` on the CLI path); it never becomes an empty report.
+  `module-info.java` is left out, so the sources compile in the unnamed module. Kotlin preset:
+  Java sources only, like PMD and SpotBugs.
+- **Findings.** `languages/java/ingest/errorprone/errorprone.mjs`, through
+  `languages/java/adapters/errorprone/java-errorprone.mjs`: tool `errorprone`, rule the check
+  name (`errorprone/FutureReturnValueIgnored`, `errorprone/NullAway`), every finding enforceable.
+  The message is the diagnostic's first line plus Error Prone's `Did you mean ...` fix when it has
+  one; NullAway, which has no fix text, gets the allowed form instead (annotate with JSpecify's
+  `@Nullable` and check before use, or give a non-null value), so no skill line is needed for
+  it. Diagnostics outside the main and test source roots (annotation-processor output) are
+  dropped. Identity: a hash of the check and the message, with `line <n>` inside the message
+  removed, and `#2`, `#3` for repeats in one file in source order; no line and no path, so moved
+  code stays baselined and a renamed file follows the rename map. Editing the flagged line changes
+  the `Did you mean` text and with it the identity, so the finding is new.
+- **Policy: every check that catches a bug class or names one allowed form.** All 641 checks of
+  2.50.0 were reviewed, including the off-by-default, experimental and suggestion-level ones. On:
+  every ERROR and WARNING check Error Prone enables by default except 32, plus 95 of its
+  off-by-default checks (for example `FieldCanBeLocal`, `MethodCanBeStatic`, `UnnecessaryFinal`,
+  `Varifier`, `RedundantThrows`, `CheckedExceptionNotThrown`, `ThrowSpecificExceptions`,
+  `NonFinalStaticField`, `InterruptedExceptionSwallowed`, `BanSerializableRead`,
+  `UseCorrectAssertInTests`): 559 checks. A check is off only when it duplicates another
+  nitpicker tool (PMD, Checkstyle, google-java-format, the structure rules, NullAway), fights one
+  of them, needs an annotation library a project would add only for it (Error Prone's own
+  annotations, Guava, auto-common), or flags legitimate code with no allowed form. Checks for
+  libraries a project does not use (Guice, Dagger, AutoValue, Flogger, Truth, protobuf, Android)
+  stay on: they cost nothing and fire only where the library is used. Error Prone's severities do
+  not matter: everything is reported as a warning (`-XepAllErrorsAsWarnings`) and every finding is
+  enforceable. The list is `languages/java/gradle/errorprone/checks.json`; the checks that are off
+  are below.
+- **Results of the project's own methods.** `CheckReturnValue` runs with `Packages` set to the
+  project's top-level packages (the shortest packages holding its main classes; Error Prone
+  matches subpackages too), so ignoring the result of any of the project's own methods fails, in
+  main and test code. To drop a value on purpose, assign it: `var unused = ...` (PMD's
+  unused-variable rules skip names starting with `unused`).
+- **NullAway.** `AnnotatedPackages` is the same list: the project's code is non-null unless
+  marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway
+  accepts any annotation of that simple name; JSpecify's `org.jspecify.annotations.Nullable` is the
+  one to add, and Spring Framework 7 already depends on it). Libraries without nullness annotations
+  are trusted. Without main classes in a named package, `CheckReturnValue` keeps its defaults and
+  NullAway is off.
+- **No inline escape.** Error Prone runs with `-XepIgnoreSuppressionAnnotations` (the flag is in
+  2.50.0's `ErrorProneOptions`; the e2e test pins its effect), so `@SuppressWarnings("<Check>")`,
+  and even `"all"`, does nothing for its checks, and the `@Generated` skip
+  (`-XepDisableWarningsInGeneratedCode`) is not used. NullAway reads `@SuppressWarnings("NullAway")`
+  and `"NullAway.Init"` itself and still honors them, so the inline suppression scan reports both
+  as `errorprone/InlineSuppression`. Code that is right despite a check takes an exception:
+  `{ "rule": "errorprone/<Check>", "paths": [...], "reason": "..." }`.
+- **Measured** (findings on the whole project, main and test code; see the review for each check):
+  crank 79, PetClinic 97, the `gradle-project` fixture 1, the `spring-project` fixture 2. NullAway
+  alone: 8, 8, 0 and 1, nearly all `@Nullable` values returned or passed where a non-null one is
+  declared.
+- **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on crank
+  and PetClinic, most of it JVM start-up and Error Prone's own class loading.
+- **Limits.** Lombok projects are untested (Lombok runs as an annotation processor of the second
+  compile too). A project whose own build already runs Error Prone gets nitpicker's run in
+  addition; its Error Prone jars are taken off the processor path of the second compile.
+- **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report `ingest/fixtures/errorprone.json`
+  from crank, schema validity, line-shift stability), `adapters/errorprone/java-errorprone.test.mjs`
+  (paths, source roots, missing report, and that every check turned off is listed below), the
+  inline suppression cases in `suppressions/java-suppressions.test.mjs`, and the gated
+  `adapters/errorprone/error-prone.e2e.test.mjs` (part of `npm run test:java`): an ignored
+  `Future`, ignored results of the project's own methods in main and test code (one under an
+  ignored `@SuppressWarnings`) and a returned `null` give exactly those four findings; the regular
+  classes are byte-identical; a source that only the second compile sees fails the build with
+  javac's error and no report.
+
+### Checks that are off
+
+`Default` is Error Prone's own default for the check.
+
+| Check                               | Default | Why it is off                                                                                                                                                    |
+| ----------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AddNullMarkedToClass`              | off     | NullAway already treats the project's packages as null-marked, so the annotation (and a JSpecify dependency) adds nothing                                        |
+| `AddNullMarkedToPackageInfo`        | off     | Same as AddNullMarkedToClass: NullAway's AnnotatedPackages already covers the project's packages                                                                 |
+| `AnnotateFormatMethod`              | on      | Its allowed form is Error Prone's @FormatMethod, a dependency nitpicker does not ask for                                                                         |
+| `AnnotationMirrorToString`          | off     | Its allowed form is auto-common's AnnotationMirrors, a dependency nitpicker does not ask for                                                                     |
+| `AnnotationPosition`                | off     | Duplicates checkstyle/AnnotationLocation                                                                                                                         |
+| `AnnotationValueToString`           | off     | Its allowed form is auto-common's AnnotationValues, a dependency nitpicker does not ask for                                                                      |
+| `AssignmentExpression`              | on      | Duplicates pmd/AssignmentInOperand                                                                                                                               |
+| `AvoidObjectArrays`                 | off     | Its allowed form for returned arrays is Guava's ImmutableList, and pmd/UseVarargs already proposes another form for array parameters                             |
+| `BigDecimalLiteralDouble`           | on      | Duplicates pmd/AvoidDecimalLiteralsInBigDecimalConstructor                                                                                                       |
+| `BooleanParameter`                  | off     | Asks for /* name= */ comments on literal arguments; the clearer fix (an enum or a named method) is outside its message                                           |
+| `BoxedPrimitiveConstructor`         | on      | Duplicates pmd/PrimitiveWrapperInstantiation                                                                                                                     |
+| `BoxedPrimitiveEquality`            | on      | Duplicates pmd/CompareObjectsWithEquals                                                                                                                          |
+| `CanIgnoreReturnValueSuggester`     | off     | Its allowed form is Error Prone's @CanIgnoreReturnValue, a dependency nitpicker does not ask for                                                                 |
+| `CannotMockFinalClass`              | off     | Mockito 5's default inline mock maker mocks final classes, so it flags working tests                                                                             |
+| `CannotMockMethod`                  | off     | Mockito 5's default inline mock maker mocks final methods, so it flags working tests                                                                             |
+| `CatchAndPrintStackTrace`           | on      | Duplicates pmd/AvoidPrintStackTrace                                                                                                                              |
+| `CatchingUnchecked`                 | off     | pmd/AvoidCatchingGenericException already flags catch (Exception), and this check's fix (catch RuntimeException) is forbidden there too                          |
+| `ClassName`                         | off     | Duplicates checkstyle/OuterTypeFilename                                                                                                                          |
+| `ConstantField`                     | off     | Duplicates checkstyle/MemberName (instance fields) and errorprone/NonFinalStaticField (static fields)                                                            |
+| `DoNotCallSuggester`                | on      | Its allowed form is Error Prone's @DoNotCall, a dependency nitpicker does not ask for                                                                            |
+| `DoubleBraceInitialization`         | on      | Duplicates pmd/DoubleBraceInitialization                                                                                                                         |
+| `EmptyBlockTag`                     | on      | Duplicates checkstyle/NonEmptyAtclauseDescription                                                                                                                |
+| `EmptyCatch`                        | on      | Duplicates pmd/EmptyCatchBlock and checkstyle/EmptyCatchBlock                                                                                                    |
+| `EqualsMissingNullable`             | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                          |
+| `EqualsNaN`                         | on      | Duplicates pmd/ComparisonWithNaN                                                                                                                                 |
+| `EqualsNull`                        | on      | Duplicates pmd/EqualsNull                                                                                                                                        |
+| `ExplicitArrayForVarargs`           | off     | Duplicates pmd/UnnecessaryVarargsArrayCreation                                                                                                                   |
+| `FallThrough`                       | on      | Duplicates pmd/ImplicitSwitchFallThrough and checkstyle/FallThrough                                                                                              |
+| `FieldCanBeFinal`                   | off     | Flags initialized JPA entity fields, which the JPA specification forbids to be final, and there is no way to narrow it                                           |
+| `FieldMissingNullable`              | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                          |
+| `Finalize`                          | on      | Duplicates checkstyle/NoFinalizer                                                                                                                                |
+| `Finally`                           | on      | Duplicates pmd/ReturnFromFinallyBlock and pmd/DoNotThrowExceptionInFinally                                                                                       |
+| `ForEachIterable`                   | off     | Duplicates pmd/ForLoopCanBeForeach                                                                                                                               |
+| `HardCodedSdCardPath`               | off     | Duplicates pmd/DoNotHardCodeSDCard                                                                                                                               |
+| `IdentifierName`                    | off     | Duplicates Checkstyle's naming checks (MemberName, MethodName, ParameterName, LocalVariableName and the rest of google_checks)                                   |
+| `ImmutableMemberCollection`         | off     | Its allowed form is a Guava immutable type, even in projects without Guava                                                                                       |
+| `ImmutableRefactoring`              | off     | A migration to Error Prone's @Immutable annotation, a dependency nitpicker does not ask for                                                                      |
+| `IncrementInForLoopAndHeader`       | on      | Duplicates pmd/AvoidReassigningLoopVariables                                                                                                                     |
+| `InlineMeSuggester`                 | on      | Its allowed form is Error Prone's @InlineMe, a dependency nitpicker does not ask for                                                                             |
+| `InvalidParam`                      | on      | Duplicates checkstyle/JavadocMethod (unused @param tags)                                                                                                         |
+| `JUnit4TestNotRun`                  | on      | Duplicates pmd/DetachedTestCase                                                                                                                                  |
+| `Java8ApiChecker`                   | off     | Checks compatibility with JDK 8 (Android); every Java preset project targets a newer JDK                                                                         |
+| `LongLiteralLowerCaseSuffix`        | off     | Duplicates checkstyle/UpperEll                                                                                                                                   |
+| `MemorySegmentReferenceEquality`    | on      | Duplicates pmd/CompareObjectsWithEquals                                                                                                                          |
+| `MissingBraces`                     | off     | Duplicates checkstyle/NeedBraces                                                                                                                                 |
+| `MissingCasesInEnumSwitch`          | on      | Duplicates pmd/NonExhaustiveSwitch                                                                                                                               |
+| `MissingDefault`                    | off     | Duplicates checkstyle/MissingSwitchDefault and pmd/NonExhaustiveSwitch                                                                                           |
+| `MissingOverride`                   | on      | Duplicates pmd/MissingOverride                                                                                                                                   |
+| `MissingSummary`                    | on      | Duplicates checkstyle/SummaryJavadoc                                                                                                                             |
+| `MixedArrayDimensions`              | off     | Duplicates checkstyle/ArrayTypeStyle                                                                                                                             |
+| `MultiVariableDeclaration`          | off     | Duplicates checkstyle/MultipleVariableDeclarations and pmd/OneDeclarationPerLine                                                                                 |
+| `MultipleTopLevelClasses`           | off     | Duplicates checkstyle/OneTopLevelClass                                                                                                                           |
+| `NonApiType`                        | on      | Its collection advice duplicates pmd/LooseCoupling and its primitive-array advice needs Guava                                                                    |
+| `NotJavadoc`                        | on      | Duplicates checkstyle/InvalidJavadocPosition                                                                                                                     |
+| `OptionalEquality`                  | on      | Duplicates pmd/CompareObjectsWithEquals                                                                                                                          |
+| `ParameterMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                          |
+| `PreferredInterfaceType`            | off     | Fights pmd/LooseCoupling: it asks for the concrete type that rule forbids                                                                                        |
+| `PrivateConstructorForUtilityClass` | off     | Flags Spring Boot application classes, whose constructor Spring must be able to call and subclass                                                                |
+| `ProtoStringFieldReferenceEquality` | on      | Duplicates pmd/CompareObjectsWithEquals                                                                                                                          |
+| `ReferenceEquality`                 | on      | Duplicates pmd/CompareObjectsWithEquals                                                                                                                          |
+| `RemoveUnusedImports`               | off     | google-java-format removes unused imports, so the file is already reported as unformatted                                                                        |
+| `ReturnMissingNullable`             | off     | Duplicates NullAway's "returning @Nullable expression" finding                                                                                                   |
+| `ReturnsNullCollection`             | off     | Duplicates pmd/ReturnEmptyCollectionRatherThanNull                                                                                                               |
+| `StaticOrDefaultInterfaceMethod`    | off     | Forbids static and default interface methods for old Android; they are the normal form in modern Java                                                            |
+| `StringBuilderInitWithChar`         | on      | Duplicates pmd/StringBufferInstantiationWithChar                                                                                                                 |
+| `StringCaseLocaleUsage`             | on      | Duplicates pmd/UseLocaleWithCaseConversions                                                                                                                      |
+| `SwitchDefault`                     | off     | Duplicates pmd/DefaultLabelNotLastInSwitch                                                                                                                       |
+| `SystemExitOutsideMain`             | off     | Duplicates pmd/DoNotTerminateVM                                                                                                                                  |
+| `SystemOut`                         | off     | Duplicates pmd/SystemPrintln                                                                                                                                     |
+| `TooManyParameters`                 | off     | Duplicates the structure rule function-parameters-limit (limit 3)                                                                                                |
+| `TypeParameterNaming`               | off     | Duplicates checkstyle/ClassTypeParameterName and MethodTypeParameterName                                                                                         |
+| `UngroupedOverloads`                | off     | Duplicates checkstyle/OverloadMethodsDeclarationOrder                                                                                                            |
+| `UnnecessaryDefaultInEnumSwitch`    | off     | Fights checkstyle/MissingSwitchDefault, which wants the default this check removes                                                                               |
+| `UnusedException`                   | off     | Duplicates pmd/PreserveStackTrace                                                                                                                                |
+| `UnusedMethod`                      | on      | Duplicates pmd/UnusedPrivateMethod                                                                                                                               |
+| `UnusedVariable`                    | on      | Duplicates pmd/UnusedPrivateField, UnusedLocalVariable, UnusedFormalParameter and UnusedAssignment (and flags JPA fields read by the framework)                  |
+| `UsingJsr305CheckReturnValue`       | off     | A migration to Error Prone's @CheckReturnValue annotation, a dependency nitpicker does not ask for                                                               |
+| `Var`                               | off     | Requires Error Prone's @Var annotation on every reassigned variable, a dependency nitpicker does not ask for                                                     |
+| `VarWithPrimitive`                  | off     | Fights the fix Error Prone itself suggests for an ignored primitive result (var unused = ...); int unused = ... satisfies both, but agents follow the suggestion |
+| `VoidMissingNullable`               | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                          |
+| `WildcardImport`                    | off     | Duplicates checkstyle/AvoidStarImport                                                                                                                            |
+| `YodaCondition`                     | off     | Fights pmd/LiteralsFirstInComparisons, which wants the constant first                                                                                            |
+
 ## Structure limits (SH5)
 
 - **Rules.** The shared structure rule (`shared/rules/structure.mjs`) runs on Java too, so a method
@@ -478,7 +647,7 @@ Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ..
 project's build does not replace it either.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
-`build/nitpicker/checkstyle-test.xml`), google-java-format and the inline suppression scan cover
+`build/nitpicker/checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover
 `src/test/java` as well as the main sources, the way the TypeScript preset lints its tests; the
 file and folder limits already counted test files. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
@@ -616,7 +785,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs` and `error-prone.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
