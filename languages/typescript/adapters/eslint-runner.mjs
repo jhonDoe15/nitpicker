@@ -35,22 +35,23 @@ if (
   }
 }
 
-function runEslint(options) {
+export function runEslint(options) {
   const state = {
     linkedDependencies: [],
     installedPolicyFiles: [],
     preparedDependencies: undefined,
   };
   try {
-    prepareEslint(options, state);
+    const installedPolicyFiles = prepareEslint(options, state);
+    const policyConfig = validatedContainedFile(
+      options.policyRoot,
+      options.configRelativePath,
+      '--config',
+    );
     const value = runLintEngine({
       options,
-      projectConfigPath: state.installedPolicyFiles.at(0)?.targetPath,
-      policyConfigPath: validatedContainedFile(
-        options.policyRoot,
-        options.configRelativePath,
-        '--config',
-      ).canonicalPath,
+      projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
+      policyConfigPath: policyConfig.canonicalPath,
     });
     return normalizeEslintResults({
       value,
@@ -71,7 +72,9 @@ function prepareEslint(options, state) {
   if (options.policyRoot !== PACKAGE_ROOT) {
     state.linkedDependencies = linkDependencies({ dependencyRoot, roots: [options.policyRoot] });
   }
-  state.installedPolicyFiles = installPolicyFiles(options);
+  const installedPolicyFiles = installPolicyFiles(options);
+  state.installedPolicyFiles = installedPolicyFiles;
+  return installedPolicyFiles;
 }
 
 function cleanUpEslint(state) {
