@@ -1,63 +1,23 @@
-import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
-import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
-
-const packageRoot = path.resolve(import.meta.dirname, '../../..');
-const MINUTE_MS = 60 * 1000;
-
-export function parsePositiveNumber(value, name) {
-  const number = Number(value);
-  if (!Number.isFinite(number) || number <= 0) {
-    throw new TypeError(`${name} must be a positive number`);
-  }
-  return number;
-}
-
-export const eslintVersion = 'unresolved';
-export const dependencyCruiserVersion = 'unresolved';
-export const prettierVersion = 'unresolved';
-export const typeScriptVersion = 'unresolved';
-export const vitestVersion = 'unresolved';
-export const jscpdVersion = 'unresolved';
-export const knipVersion = 'unresolved';
-export const crapVersion = 'unresolved';
-export const strykerVersion = 'unresolved';
-
-const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
-
-const ESLINT_RULES_FOLDER = 'languages/typescript/preset/eslint-plugin/rules';
-
-const POLICY_FILES = [
-  'languages/typescript/preset/layout.mjs',
-  'languages/typescript/preset/head-policy.mjs',
+import { testExecutionChecksFor } from './checks/test-execution.mjs';
+import {
+  POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
-  'languages/javascript/preset/jsdoc.mjs',
-  'languages/javascript/preset/eslint-dialect.mjs',
-  'languages/typescript/preset/eslint-config/exceptions.mjs',
-  'languages/typescript/preset/eslint-config/error-wrapping-policy.mjs',
-  'languages/typescript/preset/eslint-config/strict.mjs',
-  'languages/typescript/preset/eslint-config/strict-adapters.mjs',
-  'languages/typescript/preset/eslint-config/strict-declarations.mjs',
-  'languages/typescript/preset/eslint-config/strict-domain.mjs',
-  'languages/typescript/preset/eslint-config/strict-escape-hatches.mjs',
-  'languages/typescript/preset/eslint-config/strict-tests.mjs',
-  'languages/typescript/preset/eslint-config/react-plugins.mjs',
-  'languages/typescript/preset/eslint-config/react-rules.mjs',
-  'languages/typescript/preset/eslint-config/react-scope.mjs',
-  'languages/typescript/preset/eslint-config/rule-hints.mjs',
-  'languages/typescript/preset/eslint-plugin/index.mjs',
-];
+  DEPENDENCY_GRAPH_FILES,
+} from './checks/policy-files.mjs';
+import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
+import { MINUTE_MS, eslintVersion, vitestVersion } from './checks/constants.mjs';
+import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 
-function eslintPolicyFiles() {
-  const rules = readdirSync(path.join(packageRoot, ESLINT_RULES_FOLDER), { recursive: true })
-    .filter((name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs'))
-    .map((name) => `${ESLINT_RULES_FOLDER}/${name.split(path.sep).join('/')}`);
-  return [...POLICY_FILES, ...rules];
-}
+const dependencyCruiserVersion = 'unresolved';
+
+const prettierVersion = 'unresolved';
+
+const typeScriptVersion = 'unresolved';
+
+const jscpdVersion = 'unresolved';
+
+const knipVersion = 'unresolved';
 
 const ARCHITECTURE_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
@@ -103,7 +63,7 @@ function eslintChecksFor(layout, exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/eslint.config.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
-        ...eslintPolicyFiles(),
+        ...POLICY_FILES,
       ],
     },
     productionEslintCheck(layout, exclusions, { name: 'errors', shardWeight: 9 }),
@@ -115,15 +75,15 @@ function eslintChecksFor(layout, exclusions) {
 function productionEslintCheck(layout, exclusions, { name, shardWeight }) {
   return {
     name: `eslint-${name}`,
-    configRelativePath: `languages/typescript/preset/eslint-config/${name}.mjs`,
+    configRelativePath: `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
     patterns: layout.sourceGlobs,
     exclusions: exclusions.production,
     policyFiles: [],
     shardWeight,
     configurationFiles: [
-      'languages/typescript/preset/eslint-config/base.mjs',
-      `languages/typescript/preset/eslint-config/${name}.mjs`,
-      ...eslintPolicyFiles(),
+      'languages/typescript/preset/eslint-config/policies/base.mjs',
+      `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
+      ...POLICY_FILES,
     ],
   };
 }
@@ -167,7 +127,7 @@ function prettierCheckFor(layout, exclusions) {
     ignoreRelativePath: 'languages/typescript/preset/defaults/.prettierignore',
     shardWeight: 8,
     configurationFiles: [
-      'languages/typescript/adapters/prettier-layers.mjs',
+      'languages/typescript/adapters/prettier/prettier-layers.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,
@@ -236,18 +196,12 @@ function standardsChecksFor(exclusions) {
       shardWeight: 10,
       configurationFiles: [
         'languages/typescript/preset/coding-standards/check.mjs',
-        'languages/typescript/preset/eslint-config/coding-standards.mjs',
-        ...eslintPolicyFiles(),
+        'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
+        ...POLICY_FILES,
       ],
     },
   ];
 }
-
-const DEPENDENCY_GRAPH_FILES = [
-  ARCHITECTURE_CONFIG,
-  'languages/typescript/preset/dependency-graph/cruise.mjs',
-  POLICY_TYPESCRIPT_CONFIG,
-];
 
 function graphChecksFor(exclusions) {
   return [
@@ -320,89 +274,6 @@ function repositoryChecksFor(exclusions) {
   ];
 }
 
-const CRAP_CONFIGURATION_FILES = [
-  'languages/typescript/preset/defaults/crap.config.mjs',
-  'languages/typescript/preset/crap/report.mjs',
-  'languages/typescript/preset/crap/analyze.mjs',
-  'languages/javascript/preset/crap-extensions-hook.mjs',
-  'languages/typescript/preset/layout.mjs',
-  'languages/typescript/preset/head-policy.mjs',
-  JAVASCRIPT_PRESET_FILE,
-  'shared/rules/crap.mjs',
-];
-
-function testExecutionChecksFor(exclusions) {
-  return [
-    {
-      name: 'coverage',
-      kind: 'coverage',
-      version: vitestVersion,
-      exclusions: exclusions.general,
-      concurrencyWeight: 2,
-      concurrencyGroup: 'test-execution',
-      executionPriority: 1,
-      shardWeight: 16,
-      timeoutMs: 5 * MINUTE_MS,
-      configurationFiles: [
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-        'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
-        JAVASCRIPT_PRESET_FILE,
-      ],
-    },
-    {
-      name: 'crap',
-      kind: 'crap',
-      version: crapVersion,
-      exclusions: exclusions.production,
-      dependencies: ['coverage'],
-      shardWeight: 2,
-      timeoutMs: 2 * MINUTE_MS,
-      adapterArguments: ['--crap-score-limit', String(DEFAULT_CRAP_SCORE_LIMIT)],
-      configurationFiles: CRAP_CONFIGURATION_FILES,
-    },
-    {
-      name: 'mutation',
-      kind: 'mutation',
-      version: strykerVersion,
-      exclusions: exclusions.production,
-      concurrencyWeight: 2,
-      concurrencyGroup: 'test-execution',
-      executionPriority: 1,
-      shardWeight: 90,
-      timeoutMs: 30 * MINUTE_MS,
-      configurationFiles: [
-        'languages/typescript/preset/tool-configs.mjs',
-        JAVASCRIPT_PRESET_FILE,
-        'languages/typescript/preset/defaults/stryker.config.mjs',
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-        'languages/typescript/preset/defaults/tsconfig.stryker.json',
-      ],
-    },
-  ];
-}
-
 const defaultChecks = createQualityChecks();
-export const {
-  generalExclusions,
-  productionExclusions,
-  eslintChecks,
-  entryPointsCheck,
-  staticChecks,
-  qualityAreaChecks,
-} = defaultChecks;
 
-export function hashFiles(relativePaths, configurationValues = []) {
-  const hash = createHash('sha256');
-  for (const relativePath of [...new Set(relativePaths)].sort()) {
-    hash.update(relativePath);
-    hash.update('\0');
-    hash.update(readFileSync(path.join(packageRoot, relativePath)));
-    hash.update('\0');
-  }
-  for (const configurationValue of [...new Set(configurationValues)].sort()) {
-    hash.update(configurationValue);
-    hash.update('\0');
-  }
-  return hash.digest('hex');
-}
+export const { eslintChecks, entryPointsCheck, staticChecks, qualityAreaChecks } = defaultChecks;
