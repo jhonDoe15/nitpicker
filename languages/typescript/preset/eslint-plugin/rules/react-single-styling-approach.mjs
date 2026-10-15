@@ -148,7 +148,7 @@ export const rule = {
     defaultOptions: [{ approach: 'class-names' }],
     messages: {
       inlineStyle:
-        'Style with {{allowed}}, not an inline `style` object. Pass a runtime value as a CSS custom property, `{{example}}`, typed once with `{{typing}}`. For a one-off, add an exception for this rule in nitpicker.config.json.',
+        'Style with {{allowed}}, not an inline `style` object. Pass a runtime value as a CSS custom property, `{{example}}`, typed once in a `.d.ts` file under src/ with `{{typing}}`. For a one-off, add an exception for this rule in nitpicker.config.json.',
       otherApproach:
         'This project styles with {{allowed}}, not with {{found}}. To change the approach set "styling" under "react" in nitpicker.config.json; for a one-off, add an exception for this rule in nitpicker.config.json.',
     },

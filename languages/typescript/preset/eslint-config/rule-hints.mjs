@@ -1,3 +1,6 @@
+export const SYNTAX_EXCEPTION_HINT =
+  ' If a framework or library requires it, add an exception for `no-restricted-syntax` for those paths in nitpicker.config.json.';
+
 export function withHint(rule, hint) {
   return {
     ...rule,
