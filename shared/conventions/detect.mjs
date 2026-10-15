@@ -51,8 +51,8 @@ function measureConvention(definition, sample, texts) {
   }
   const winner = pluralityOf(counts);
   return winner === undefined
-    ? { choice: definition.fallback, source: 'default', counts }
-    : { choice: winner, source: 'majority', counts };
+    ? { choice: definition.fallback, source: 'default', counts, files: sample.length }
+    : { choice: winner, source: 'majority', counts, files: sample.length };
 }
 
 function pluralityOf(counts) {
