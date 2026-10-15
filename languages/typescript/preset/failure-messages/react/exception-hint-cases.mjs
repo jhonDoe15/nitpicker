@@ -1,7 +1,5 @@
 import strictSyntaxConfig from '../../eslint-config/strict.mjs';
 
-const framework = 'for those paths in nitpicker.config.json';
-
 export const exceptionHintCases = [
   ['default export', 'export default function Page() { return 1; }'],
   ['default export specifier', 'const Page = 1; export { Page as default };'],
@@ -9,9 +7,9 @@ export const exceptionHintCases = [
   ['null', 'export const value = null;'],
   ['null type', 'export type Maybe = string | null;'],
 ].map(([name, banned]) => ({
-  name: `${name} names the no-restricted-syntax exception`,
+  name: `${name} names an exception for its own rule`,
   config: strictSyntaxConfig,
   filename: 'src/main/ui/fixture.tsx',
   banned,
-  allowed: `\`no-restricted-syntax\` ${framework}`,
+  allowed: 'add an exception for this rule for those paths in nitpicker.config.json',
 }));

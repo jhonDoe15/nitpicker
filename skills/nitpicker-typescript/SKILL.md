@@ -163,7 +163,7 @@ Applies when `react` is in `package.json`.
   input and text on every icon-only button or link, `value` with `onChange` (or `defaultValue`).
 - The app entry (`main.tsx` with `createRoot`) and framework files that need a default export (Next.js
   `page.tsx`, Storybook stories) are declared in `nitpicker.config.json` (`layout.entryPoints`, an
-  `exceptions` entry for `no-restricted-syntax`); don't work around them.
+  `exceptions` entry for `nitpicker/no-default-export`); don't work around them.
 - Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
   `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
   or hook internals.

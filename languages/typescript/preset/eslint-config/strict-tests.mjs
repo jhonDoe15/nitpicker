@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
-import { testControlFlowSelectors } from './strict-control-flow.mjs';
+import { promiseChainRule, testControlFlowSelectors } from './strict-control-flow.mjs';
 import { typeAssertionSelectors } from './strict-escape-hatches.mjs';
 
 export const strictTestRules = {
@@ -33,6 +33,7 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
       rules: {
         ...strictTestRules,
         'no-restricted-syntax': ['error', ...testRestrictedSyntax],
+        ...promiseChainRule,
       },
     },
     {
