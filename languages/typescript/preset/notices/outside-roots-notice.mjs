@@ -34,6 +34,6 @@ export function outsideRootsNotices(changedFiles, headPolicy) {
   return [
     `${outside.length} changed TypeScript ${words.files} outside layout.sourceRoots and layout.testRoots, ` +
       `so nothing checks ${words.them}: ${listed}${more}. ` +
-      `Add ${words.their} to layout.sourceRoots, or list ${words.list} in "exclude" in nitpicker.config.json to silence this.`,
+      `Move ${words.them} under a root or add ${words.their} to layout.sourceRoots; to leave ${words.them} unchecked, list ${words.list} in "exclude" in nitpicker.config.json.`,
   ];
 }

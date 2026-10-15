@@ -79,7 +79,7 @@ The base ref is the first match of:
 1. `--base <ref>`
 2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
    `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
-3. `base` in `nitpicker.config.json` (not `HEAD` or the commit you are on)
+3. `base` in `nitpicker.config.json` (not `HEAD`, the branch you are on, or its commit)
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
@@ -92,9 +92,10 @@ Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for 
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
 `changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
 policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run; today it names changed TypeScript files that lie outside
-`layout.sourceRoots` and `layout.testRoots`, so nothing checks them. Add their folder to
-`layout.sourceRoots`, or list it in `exclude`, to settle it. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
+is information that never fails the run. Today there are two: changed TypeScript files that lie
+outside `layout.sourceRoots` and `layout.testRoots` (move them under a root or add their folder to
+`layout.sourceRoots`; to leave them unchecked, list them in `exclude`), and files the change adds
+or moves under an `exclude` entry the base already had, so nothing checks them. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
 console output.
 
 ## Exit codes
@@ -174,17 +175,39 @@ differs, widened to what the head reads: the head's added source and test roots 
 `exclude`, `layout.excludedGlobs` or `layout.entryPoints` entry the head drops is dropped, so code that
 was already there stays baselined when a change brings it under the gate. A finding is new only if
 the change added it. With no config on the base, or an identical one, the head's config applies to
-both sides. Because the head
-controls its own config, every change to it is printed in the console summary and in `report.txt` as
-"Policy changed in this change" and listed in `summary.json` under `policyChanges`. A change that
-loosens the policy fails the run with one `nitpicker-config/policy-loosened` finding per loosening,
-until a person accepts it with `--accept-policy-change` (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=1`).
-Loosening is an added `exclude`, `layout.excludedGlobs` or `layout.entryPoints` entry, an added or
-widened `exceptions` (or `python.exceptions`) entry, a newly disabled analyzer, a raised threshold, a
-removed custom analyzer, and any change of `preset`, `react.enabled` or a tool's `precedence`. A
-project's first `nitpicker.config.json` is compared with the defaults. Tightening and other changes
-(`base`, `layout.sourceRoots`, `legacyInventory`, ...) are listed but never fail. With sharding, the
-first shard reports the findings. Unknown keys and
+both sides; a base config that does not load is ignored the same way, and the head's config is then
+compared with the defaults. Because the head controls its own config, every change to it is printed
+in the console summary and in `report.txt` as "Policy changed in this change" and listed in
+`summary.json` under `policyChanges`. A change that checks less fails the run with one
+`nitpicker-config/policy-loosened` finding per loosening; the finding tells a coding agent to stop
+and ask a person, who accepts it with `--accept-policy-change` (in CI,
+`NITPICKER_ACCEPT_POLICY_CHANGE=1`). A project's first `nitpicker.config.json` is compared with the
+defaults. These changes are loosening:
+
+- an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints`, `exceptions` or
+  `python.exceptions` glob that covers a checked file the base config did not already cover (code
+  files under the source and test roots for TypeScript and JavaScript, all `.py` files for Python,
+  all `.java`, `.kt` and `.kts` files for Java and Kotlin). Files moved with `git mv` keep their
+  base path, so updating a glob after a move is not loosening; a glob that covers no newly checked
+  file is listed but does not fail;
+- a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
+  checked files under it (Python's detected default counts when the setting is absent);
+- a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
+  default), and a removed or changed custom analyzer (any change to its `command` or `args`);
+- a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
+  `typescript` ran. Setting the preset that ran (or, on a project without one, `java`, `kotlin` or
+  `python`), dropping `typescript`, and `javascript` to `typescript` are not loosening;
+- `react.enabled` or `python.importLinter` set to `false`, `kotlin.formatter` set to `none`, and
+  any change of `kotlin.detektConfig`;
+- a tool `precedence` that puts `"project"` first where it was not first, or that drops
+  `"nitpicker"` (for `pmd`, which runs both rule sets, only dropping `"nitpicker"` counts).
+
+Choosing another tool that runs the same checks is not loosening and is only listed:
+`tools.eslint.engine`, `tools.typescript.engine`, `python.typeChecker`, `python.formatter`,
+`python.testRunner`, `python.environment` and a `kotlin.formatter` other than `none`. Other changes
+(`base`, added roots, `legacyInventory`, tightening) are listed and never fail; an added
+`nitpicker.legacy.json` entry fails on its own as `baseline-expansion`. With sharding, the first
+shard reports the findings. Unknown keys and
 invalid values are an error (exit 2). Every override is listed in the report and changes the policy
 hash, so a weakened check is visible in review.
 
@@ -211,8 +234,8 @@ hash, so a weakened check is visible in review.
 
 | Key               | Type                                                               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given. It must differ from the commit you are on: `HEAD`, `@` or a SHA equal to `HEAD` is a config error, because the change would be compared with itself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected. Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java`), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                              |
+| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given. It must not follow the commit you are on: `HEAD`, `@`, an expression that resolves through them (`HEAD~0`, `@{0}`), the branch you are on, or a SHA equal to `HEAD` is a config error, because the change would be compared with itself. Another branch such as `origin/main` is accepted even when it points at the commit you are on, so uncommitted work on an up-to-date branch is still checked.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected. Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java`), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set. The check is best-effort: files under `resources`, `static`, `public`, `assets`, `webapp` or `wwwroot` folders and `*.min.js` files are bundled assets and do not count as TypeScript or JavaScript; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                         |
 | `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin: their line length is Checkstyle's and detekt's, and setting it with `"preset": "java"` or `"kotlin"` is a config error. Generated sources a build registers (Java, Kotlin) belong in `exclude`. |
 | `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Hand-written `*.d.ts` files under the source roots are linted and type-checked; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                         |
@@ -498,9 +521,10 @@ new and touched code must comply.
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
 - **Imports stay inside the roots**: production code imports only from files under
-  `layout.sourceRoots` (plus packages and `.json` files). An import of another project folder fails
-  with a message naming the three ways out: move the file under a root, add its folder to
-  `layout.sourceRoots`, or list it in `exclude`.
+  `layout.sourceRoots` (plus packages, `.json` files and code generated into the root-level
+  `generated/` folder). An import of another project folder, including build output such as
+  `dist/`, `build/` or `target/`, fails with a message naming the ways out: move the file under a
+  root or add its folder to `layout.sourceRoots`; to leave it unchecked, list it in `exclude`.
 - **`/* eslint-env */`**: ESLint no longer supports the comment. It is reported as one lint finding
   on the file instead of stopping the lint analyzers.
 

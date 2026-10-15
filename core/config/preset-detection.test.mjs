@@ -34,7 +34,7 @@ function message(files) {
 function expected(kind, marker, preset) {
   return (
     `nitpicker.config.json: no "preset" is set, so the TypeScript preset would run, but this is a ${kind} ` +
-    `project (${marker}) with no TypeScript or JavaScript under src. Add "preset": "${preset}" to ` +
+    `project (${marker}) with no TypeScript or JavaScript sources under src. Add "preset": "${preset}" to ` +
     'nitpicker.config.json (create the file if there is none).'
   );
 }
@@ -70,6 +70,18 @@ describe('a project without "preset"', () => {
     expect(message({ 'pyproject.toml': '', 'src/index.ts': '' })).toBeUndefined();
     expect(message({ 'build.gradle': '', 'src/main/web/app.js': '' })).toBeUndefined();
     expect(message({ 'package.json': '{}', 'src/index.ts': '' })).toBeUndefined();
+  });
+
+  it('does not count bundled assets as TypeScript or JavaScript sources', () => {
+    const spring = {
+      'pom.xml': '',
+      'src/main/java/demo/App.java': '',
+      'src/main/resources/static/app.js': '',
+      'src/main/webapp/js/legacy.js': '',
+      'src/main/web/vendor.min.js': '',
+    };
+
+    expect(message(spring)).toBe(expected('Gradle or Maven', 'pom.xml', 'java'));
   });
 
   it('accepts an explicit preset and a project with no marker', () => {

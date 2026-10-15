@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cruiseWithConfig } from '../fixtures/strict-cruise.mjs';
+import { createQualityChecks } from '../../quality-checks.mjs';
 import {
   NO_IMPORT_OUTSIDE_ROOTS,
   architectureMessage,
@@ -76,6 +77,31 @@ describe('outsideRootsRule', () => {
     expect(result.exitCode, result.output).toBe(0);
   });
 
+  it('fails an import of build output the architecture check sees, and accepts generated code', async () => {
+    const { exclude } = createQualityChecks().staticChecks.find(
+      ({ name }) => name === 'dependency-architecture',
+    );
+    const result = await cruiseWithConfig(
+      {
+        forbidden: [outsideRootsRule({ productionSource: '^src/', roots: ['src'] })],
+        options: { tsConfig: { fileName: tsConfig }, exclude: { path: exclude } },
+      },
+      {
+        baseDir: project({
+          'src/a.ts':
+            "import { b } from '../dist/b';\nimport { c } from '../generated/c';\nexport const a = [b, c];\n",
+          'dist/b.ts': 'export const b = 1;\n',
+          'generated/c.ts': 'export const c = 1;\n',
+        }),
+        paths: ['src'],
+        outputType: 'err-long',
+      },
+    );
+
+    expect(result.output).toContain('src/a.ts → dist/b.ts');
+    expect(result.output).not.toContain('generated/c.ts');
+  });
+
   it('does not apply to files outside production source', async () => {
     const baseDir = project({
       'src/a.ts': 'export const a = 1;\n',
@@ -103,7 +129,7 @@ describe('architectureMessage', () => {
 
     expect(message).toBe(
       'src/a.ts must not depend on lib/b.ts: production code imports only from layout.sourceRoots. ' +
-        'Move it under a source root, add its folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json.',
+        'Move it under a source root or add its folder to layout.sourceRoots; to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
     );
   });
 

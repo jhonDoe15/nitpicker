@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
-import { EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
+import { DEPENDENCY_PATH_PATTERN, EXCLUDED_PATH_PATTERN, resolveLayout } from './layout.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -234,7 +234,7 @@ function typeAndArchitectureChecksFor(layout) {
       patterns: layout.graphRoots,
       exclusions: [EXCLUDED_PATH_PATTERN, ...layout.exclude],
       configRelativePath: ARCHITECTURE_CONFIG,
-      exclude: EXCLUDED_PATH_PATTERN,
+      exclude: DEPENDENCY_PATH_PATTERN,
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',

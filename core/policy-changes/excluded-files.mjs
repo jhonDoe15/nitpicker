@@ -25,7 +25,10 @@ export function excludedFileNotices({ baseConfig, headConfig, scope, baseProject
   }
   const listed = brought.slice(0, LISTED_FILES).join(', ');
   const more = brought.length > LISTED_FILES ? `, and ${brought.length - LISTED_FILES} more` : '';
+  const [files, them] =
+    brought.length === 1 ? ['1 file', 'it'] : [`${brought.length} files`, 'them'];
   return [
-    `${String(brought.length)} ${brought.length === 1 ? 'file' : 'files'} this change adds or moves under "exclude" in nitpicker.config.json, so nothing checks ${brought.length === 1 ? 'it' : 'them'}: ${listed}${more}. Keep project code out of excluded folders.`,
+    `${files} this change adds or moves under "exclude" in nitpicker.config.json, so nothing checks ` +
+      `${them}: ${listed}${more}. Keep project code out of excluded folders.`,
   ];
 }
