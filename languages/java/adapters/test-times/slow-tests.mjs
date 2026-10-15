@@ -12,7 +12,7 @@ import {
 import { testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
-const TEST_RESULTS_DIRECTORY = 'test-results';
+export const TEST_RESULTS_DIRECTORY = 'test-results';
 const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
 const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
 const SPRING_BOOT_TEST = /@SpringBootTest\b/u;
