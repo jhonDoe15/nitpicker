@@ -63,11 +63,24 @@ export function declarationSelectorsFor({ react = false } = {}) {
   );
 }
 
+const moduleAugmentation =
+  ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
+const moduleStatements = [
+  'ImportDeclaration',
+  'ExportNamedDeclaration',
+  'ExportDefaultDeclaration',
+  'ExportAllDeclaration',
+  'TSExportAssignment',
+]
+  .map((statement) => `> ${statement}`)
+  .join(', ');
+const scriptFile = `Program:not(:has(${moduleStatements}))`;
+
 export const defaultExportSelectors = [
   {
-    selector: 'ExportDefaultDeclaration',
+    selector: `ExportDefaultDeclaration:not(${moduleAugmentation} ExportDefaultDeclaration)`,
     message:
-      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files.',
+      'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files and `declare module` blocks.',
   },
   {
     selector: "ExportSpecifier[exported.name='default']",
@@ -76,14 +89,11 @@ export const defaultExportSelectors = [
   },
 ];
 
-const moduleAugmentation =
-  ":matches(TSModuleDeclaration[declare=true][id.type='Literal'], TSModuleDeclaration[declare=true][kind='global'])";
-
 export const typeDefinitionSelectors = [
   {
-    selector: `TSInterfaceDeclaration:not(${moduleAugmentation} TSInterfaceDeclaration)`,
+    selector: `TSInterfaceDeclaration:not(${moduleAugmentation} TSInterfaceDeclaration):not(${scriptFile} > TSInterfaceDeclaration)`,
     message:
-      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation may declare an `interface`.',
+      'Use a `type` instead of an `interface`: `type Shape = { size: number }`. Only a `declare module` or `declare global` augmentation, or a global declaration file without imports or exports, may declare an `interface`.',
   },
 ];
 
