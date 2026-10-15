@@ -80,13 +80,16 @@ function validateShardEntries(report, expectedNames, shardIndex) {
   }
 }
 
+function findMismatchedProperty(summary, expected) {
+  return COMMON_SUMMARY_PROPERTIES.find((property) => summary[property] !== expected[property]);
+}
+
 export function validateCommonSummaries(shardReports) {
   const expected = shardReports[0].summary;
   for (const [index, { summary }] of shardReports.entries()) {
-    for (const property of COMMON_SUMMARY_PROPERTIES) {
-      if (summary[property] !== expected[property]) {
-        throw new Error(`Quality shard ${String(index)} ${property} does not match shard 0`);
-      }
+    const mismatch = findMismatchedProperty(summary, expected);
+    if (mismatch !== undefined) {
+      throw new Error(`Quality shard ${String(index)} ${mismatch} does not match shard 0`);
     }
   }
 }

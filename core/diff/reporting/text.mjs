@@ -3,6 +3,20 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 
 export function renderTextReport(report) {
   const lines = [
+    ...summaryLines(report),
+    ...configOverrideLines(report.summary.configOverrides ?? []),
+    ...toolCountLines(report.summary.tools),
+  ];
+  appendFindingSection(lines, 'New findings', report.newFindings);
+  appendHeldSection(lines, report.unchangedFindings);
+  appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
+  appendMetricSection(lines, report.changedMetrics);
+  appendToolErrorSection(lines, report.toolErrors);
+  return `${lines.join('\n')}\n`;
+}
+
+function summaryLines(report) {
+  return [
     'Nitpicker quality diff',
     `Base ref: ${report.summary.requestedBaseRef}`,
     `Merge base: ${report.summary.mergeBaseSha}`,
@@ -15,46 +29,41 @@ export function renderTextReport(report) {
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
   ];
+}
 
-  const configOverrides = report.summary.configOverrides ?? [];
-  if (configOverrides.length > 0) {
-    lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
+function configOverrideLines(configOverrides) {
+  if (configOverrides.length === 0) {
+    return [];
   }
+  return ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)];
+}
 
-  if (report.summary.tools.length === 0) {
-    lines.push('Analyzers: none configured');
-  } else {
-    lines.push('', 'Per-tool counts:');
-    for (const tool of report.summary.tools) {
-      lines.push(
-        [
-          `${tool.name}`,
-          ': base=',
-          `${String(tool.base)}`,
-          ' head=',
-          `${String(tool.head)}`,
-          ' new=',
-          `${String(tool.new)}`,
-          ' resolved=',
-          `${String(tool.resolved)}`,
-          ' unchanged=',
-          `${String(tool.unchanged)}`,
-          ' changed-metrics=',
-          `${String(tool.changedMetrics)}`,
-          ' elapsed=',
-          `${formatSeconds(tool.elapsedMs ?? 0)}`,
-          `${tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`}`,
-        ].join(''),
-      );
-    }
+function toolCountLines(tools) {
+  if (tools.length === 0) {
+    return ['Analyzers: none configured'];
   }
+  return ['', 'Per-tool counts:', ...tools.map(toolCountLine)];
+}
 
-  appendFindingSection(lines, 'New findings', report.newFindings);
-  appendHeldSection(lines, report.unchangedFindings);
-  appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
-  appendMetricSection(lines, report.changedMetrics);
-  appendToolErrorSection(lines, report.toolErrors);
-  return `${lines.join('\n')}\n`;
+function toolCountLine(tool) {
+  return [
+    tool.name,
+    ': base=',
+    String(tool.base),
+    ' head=',
+    String(tool.head),
+    ' new=',
+    String(tool.new),
+    ' resolved=',
+    String(tool.resolved),
+    ' unchanged=',
+    String(tool.unchanged),
+    ' changed-metrics=',
+    String(tool.changedMetrics),
+    ' elapsed=',
+    formatSeconds(tool.elapsedMs ?? 0),
+    tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`,
+  ].join('');
 }
 
 export function renderRuleFilterSection(report, ruleFilters) {
@@ -100,19 +109,19 @@ function appendMetricSection(lines, metrics) {
   for (const metric of metrics) {
     lines.push(
       [
-        `${metric.tool}`,
+        metric.tool,
         '/',
-        `${metric.rule}`,
+        metric.rule,
         ' ',
-        `${metric.path}`,
+        metric.path,
         ' ',
-        `${metric.metric}`,
+        metric.metric,
         ': ',
-        `${String(metric.baseValue)}`,
+        String(metric.baseValue),
         ' -> ',
-        `${String(metric.headValue)}`,
+        String(metric.headValue),
         ' (',
-        `${formatDelta(metric.delta)}`,
+        formatDelta(metric.delta),
         ')',
       ].join(''),
     );
