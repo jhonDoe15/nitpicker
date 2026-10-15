@@ -180,8 +180,11 @@ describe('conventions config key', () => {
       'preset: "java"',
       'conventions: {"java.indentation":"4"}',
     ]);
+    expect(() =>
+      validateConfig({ preset: 'python', conventions: { 'java.indentation': '4' } }),
+    ).toThrow('unknown convention "java.indentation". Allowed conventions: (none for this preset)');
     expect(() => validateConfig({ conventions: { 'java.indentation': '4' } })).toThrow(
-      'unknown convention "java.indentation". Allowed conventions: (none for this preset)',
+      /Allowed conventions: prettier\.quotes, prettier\.semicolons/,
     );
     expect(() =>
       validateConfig({ preset: 'java', conventions: { 'java.indentation': 'tabs' } }),

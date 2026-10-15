@@ -7,9 +7,8 @@ import { eslintChecks, staticChecks } from '../../languages/typescript/preset/qu
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import {
   headPolicyEnvironment,
-  prettierPrecedence,
   resolveHeadPolicy,
-  usesProjectConfig,
+  usesLayeredPrettier,
   withHeadPolicyFile,
 } from '../../languages/typescript/preset/head-policy.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
@@ -213,7 +212,7 @@ function parseBaseCheck(result, expectedCount) {
 
 function writePrettier(settings, safeFiles) {
   try {
-    if (usesProjectConfig(prettierPrecedence(settings.policyEnvironment))) {
+    if (usesLayeredPrettier(settings.policyEnvironment)) {
       writeLayeredPrettier(settings, safeFiles);
       return [];
     }
@@ -249,6 +248,7 @@ function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand
       path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
       '--ignore-path',
       path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
+      '--no-editorconfig',
       '--write',
       '--',
       ...safeFiles.map(({ path: name }) => `./${name}`),
