@@ -173,36 +173,22 @@ line) is a finding.
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.
-- Editing or deleting a test reruns mutation testing on the modules it imports: a mutant the base
-  tests caught must still be caught. Keep an assertion unless another test covers the same
-  behaviour.
+- Keep an assertion unless another test covers the same behaviour.
 - Test features through their `index.js` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
   `vi.fn().mockRejectedValue(42)`. Read a fake's calls through a helper that throws when the call is missing, not
   `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring, and give it a real temp
   file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate restores spies; restore fake
-  timers with `vi.useRealTimers()` in `afterEach`, and globals or env stubbed in a test with
-  `vi.unstubAllGlobals()`/`vi.unstubAllEnvs()`.
+  timers with `vi.useRealTimers()` in `afterEach`.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
-- Tests pin values: no `toBeDefined`, `toBeTruthy`, `not.toBeNull`, bare `toHaveBeenCalled()` (pass the
-  arguments), `toThrow()` without a message, `toMatch` of a fragment or `expect(true)`. Keep state in
-  the test or `beforeEach`, not in a `let` shared by tests. Never skip or `todo` a test. No
-  `Date.now()`, `new Date()` or `Math.random()` without a fake clock or spy, no network in unit tests,
-  no `vi.spyOn` on a namespace import (`import * as`) of production code, no mention of
-  `__stryker__` or `activeMutant`, no global read by a computed key
-  (`Reflect.get(globalThis, key)`), and no `eslint-disable`, `@ts-*` or coverage-ignore comment in
-  tests. Tests live in `*.test.js` files, and a setup file imports no production code. The gate
-  runs Vitest without retries and never writes snapshots: commit the `.snap` file, or assert with
-  `toEqual`.
+- Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
-- A test you add or edit must finish in 5 s (30 s under `test/integration/` or `test/e2e/`), or it
-  fails as `slow-test`: fake the clock instead of waiting, and shrink the fixture.
