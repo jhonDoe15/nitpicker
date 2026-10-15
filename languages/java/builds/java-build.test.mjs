@@ -42,6 +42,7 @@ describe('readPinnedTools', () => {
     expect(Object.keys(readPinnedTools())).toEqual([
       'pmd',
       'spotbugs',
+      'findSecBugs',
       'googleJavaFormat',
       'jacoco',
       'checkstyle',

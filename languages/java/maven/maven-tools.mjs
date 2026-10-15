@@ -40,6 +40,9 @@ export function toolDependencies(pinned, launcherVersions = []) {
       dependency(`net.sourceforge.pmd:pmd-java:${pinned.pmd}`),
     ],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
+    spotbugsPlugins: [
+      dependency(`com.h3xstream.findsecbugs:findsecbugs-plugin:${pinned.findSecBugs}`),
+    ],
     format: [
       dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
     ],
