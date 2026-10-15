@@ -8,12 +8,17 @@
 // Metrics follow the TypeScript structure analyzer so both languages enforce the same limits:
 //   lines              last line - first line + 1 (annotations and modifiers included, Javadoc not)
 //   statements         every statement below the body except blocks
-//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch
+//   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch; an `else if` is
+//                      on the level of the `if` it continues
 //   parameters         declared parameters
 //   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch,
 //                      ?:, &&, || and every `case` except a default one (`default`, `case null, default`);
-//                      an arrow case and a case with several constants count once
+//                      an arrow case and a case with several constants count once. A switch expression, or a
+//                      pattern switch, whose arrow cases all hold a single expression or a throw counts once
+//                      in all, plus once per guard, and never more than its cases would
 //   signature          Owner.method(parameter types), the identity of the method in the CRAP check
+//   parameterTypes     the parameter types without generics or package, arrays as `Name[]`, for joining a
+//                      constructor to JaCoCo's method list
 //   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo often leaves out of its report
 // Members of nested classes (anonymous, local or member) are reported as methods of their own and
 // do not count towards the enclosing method; lambda bodies count towards the enclosing method.
@@ -179,6 +184,7 @@ public final class StructureMetrics {
               + ",\"parameters\":" + tree.getParameters().size()
               + ",\"complexity\":" + (1 + complexity.branches)
               + ",\"signature\":" + quote(signature(owner, name, tree))
+              + ",\"parameterTypes\":" + parameterTypes(tree)
               + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")
               + "}");
     }
@@ -188,6 +194,7 @@ public final class StructureMetrics {
   private static final class Body extends TreeScanner<Void, Integer> {
     int statements = 0;
     int maxNesting = 0;
+    private final Set<Tree> continuedIfs = Collections.newSetFromMap(new IdentityHashMap<>());
 
     @Override
     public Void scan(Tree tree, Integer depth) {
@@ -197,7 +204,10 @@ public final class StructureMetrics {
       if (tree instanceof StatementTree && !(tree instanceof BlockTree)) {
         statements += 1;
       }
-      int next = isControl(tree) ? depth + 1 : depth;
+      if (tree instanceof IfTree branch && branch.getElseStatement() instanceof IfTree continued) {
+        continuedIfs.add(continued);
+      }
+      int next = isControl(tree) && !continuedIfs.contains(tree) ? depth + 1 : depth;
       maxNesting = Math.max(maxNesting, next);
       return super.scan(tree, next);
     }
@@ -239,6 +249,47 @@ public final class StructureMetrics {
       }
       return super.scan(tree, ignored);
     }
+
+    @Override
+    public Void visitSwitchExpression(SwitchExpressionTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitchExpression(tree, ignored);
+    }
+
+    @Override
+    public Void visitSwitch(SwitchTree tree, Void ignored) {
+      return isFlat(tree.getKind(), tree.getCases())
+          ? countOnce(tree.getExpression(), tree.getCases())
+          : super.visitSwitch(tree, ignored);
+    }
+
+    private Void countOnce(ExpressionTree selector, List<? extends CaseTree> cases) {
+      long counted = cases.stream().filter(arm -> !isDefault(arm)).count();
+      long guards = cases.stream().filter(arm -> arm.getGuard() != null).count();
+      branches += (int) Math.min(counted, 1 + guards);
+      scan(selector, null);
+      for (CaseTree arm : cases) {
+        scan(arm.getGuard(), null);
+        scan(arm.getBody(), null);
+      }
+      return null;
+    }
+  }
+
+  private static boolean isFlat(Tree.Kind kind, List<? extends CaseTree> cases) {
+    boolean exhaustive =
+        kind == Tree.Kind.SWITCH_EXPRESSION
+            || cases.stream()
+                .flatMap(arm -> arm.getLabels().stream())
+                .anyMatch(label -> label.getKind() == Tree.Kind.PATTERN_CASE_LABEL);
+    return exhaustive
+        && !cases.isEmpty()
+        && cases.stream()
+            .allMatch(
+                arm ->
+                    arm.getCaseKind() == CaseTree.CaseKind.RULE
+                        && !(arm.getBody() instanceof BlockTree));
   }
 
   private static boolean isBranch(Tree tree) {
@@ -260,6 +311,22 @@ public final class StructureMetrics {
             .map(parameter -> parameter.getType().toString())
             .collect(Collectors.joining(", "));
     return owner + "." + name + "(" + types + ")";
+  }
+
+  private static String parameterTypes(MethodTree tree) {
+    return tree.getParameters().stream()
+        .map(parameter -> quote(erasedName(parameter.getType())))
+        .collect(Collectors.joining(",", "[", "]"));
+  }
+
+  private static String erasedName(Tree type) {
+    return switch (type) {
+      case ParameterizedTypeTree parameterized -> erasedName(parameterized.getType());
+      case ArrayTypeTree array -> erasedName(array.getType()) + "[]";
+      case AnnotatedTypeTree annotated -> erasedName(annotated.getUnderlyingType());
+      case MemberSelectTree select -> select.getIdentifier().toString();
+      default -> type.toString();
+    };
   }
 
   private static boolean isPrivateEmptyConstructor(MethodTree tree) {
