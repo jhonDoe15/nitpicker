@@ -58,10 +58,11 @@ function rootRemovals(scope) {
       .filter((root) => !scope.headRoots[key].includes(root))
       .map((root) => ({ key, root })),
   );
-  const loses = ({ key, root }) =>
-    scope.code.some(
+  function loses({ key, root }) {
+    return scope.code.some(
       (file) => isUnder(file, root) && !scope.headRoots[key].some((kept) => isUnder(file, kept)),
     );
+  }
   return {
     loosened: removed.filter(loses).map(({ key, root }) => `${key} removed: ${root}`),
     changed: removed

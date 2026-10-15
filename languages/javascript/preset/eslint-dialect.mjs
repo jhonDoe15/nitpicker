@@ -124,7 +124,7 @@ export function scriptRuleEntries(files) {
 
 export function projectChecksJavascript(projectRoot) {
   const file = path.join(projectRoot, 'tsconfig.json');
-  const { config } = ts.readConfigFile(file, ts.sys.readFile);
+  const { config } = ts.readConfigFile(file, (name) => ts.sys.readFile(name));
   const host = { ...ts.sys, readDirectory: () => [] };
   return ts.parseJsonConfigFileContent(config ?? {}, host, projectRoot).options.checkJs === true;
 }
