@@ -294,10 +294,7 @@ export function normalizeTypeScriptDiagnostics({
     }
     if (diagnostic.file !== undefined && diagnostic.start !== undefined) {
       const location = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start);
-      finding.location = {
-        line: location.line + 1,
-        column: location.character + 1,
-      };
+      finding.location = { line: location.line + 1, column: location.character + 1 };
     }
     return finding;
   });

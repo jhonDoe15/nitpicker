@@ -45,17 +45,21 @@ export function total(lines: readonly Line[]) {
   });
 
   it('keeps react and other UI frameworks out of domain/', () => {
-    const sources = ['react', 'react-dom/client', 'react-native', 'preact/hooks'];
-    sources.forEach((source) => {
-      expect(messagesFor(domainFile, `import { x } from '${source}'; export const y = x;`)).toEqual(
-        [expect.stringContaining('components and hooks live in adapters/ (or shared/ui)')],
-      );
-    });
-    expect(
-      messagesFor(domainFile, "import type { ReactNode } from 'react'; export type A = ReactNode;"),
-    ).toHaveLength(1);
-    expect(messagesFor(domainFile, "export const load = () => import('react');")).toHaveLength(1);
-    expect(messagesFor(domainFile, "export { useState } from 'react';")).toHaveLength(1);
+    const message =
+      'domain/ does not import react, react-dom, react-native or preact: components and hooks live in adapters/ (or shared/ui) and call the logic in domain/.';
+    const banned = [
+      "import { useState } from 'react'; export const y = useState;",
+      "import { createRoot } from 'react-dom/client'; export const y = createRoot;",
+      "import { View } from 'react-native'; export const y = View;",
+      "import { useState } from 'preact/hooks'; export const y = useState;",
+      "import type { ReactNode } from 'react'; export type A = ReactNode;",
+      "export const load = () => import('react');",
+      "export { useState } from 'react';",
+      "export * from 'react';",
+    ];
+    expect(banned.map((code) => messagesFor(domainFile, code))).toEqual(
+      banned.map(() => [message]),
+    );
     expect(
       messagesFor(domainFile, "import { x } from 'react-query-lite'; export const y = x;"),
     ).toEqual([]);

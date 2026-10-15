@@ -1,6 +1,6 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { rule } from './rules/report-module-load-effects.mjs';
+import { rule } from './report-module-load-effects.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
@@ -38,16 +38,15 @@ tester.run('report-module-load-effects for style and asset imports', rule, {
 });
 
 describe('module-load messages name the entry point exception', () => {
-  it.each(['sideEffectImport', 'topLevelAwait', 'topLevelControl', 'topLevelExpression'])(
-    '%s names layout.entryPoints',
-    (messageId) => {
-      expect(rule.meta.messages[messageId]).toContain(
-        '`layout.entryPoints` in nitpicker.config.json',
-      );
-    },
-  );
-
-  it('keeps the static block message free of the entry point hint', () => {
-    expect(rule.meta.messages.staticBlock).not.toContain('entryPoints');
+  it('names layout.entryPoints on every top-level effect but static blocks', () => {
+    const hint =
+      ' If this file is the app entry, list it under `layout.entryPoints` in nitpicker.config.json.';
+    expect(rule.meta.messages).toEqual({
+      sideEffectImport: `Side-effect-only import executes code during module loading.${hint}`,
+      staticBlock: 'Static initialization block executes during module loading.',
+      topLevelAwait: `Top-level await delays and executes work during module loading.${hint}`,
+      topLevelControl: `Top-level {{kind}} executes control flow during module loading.${hint}`,
+      topLevelExpression: `Top-level expression executes work during module loading.${hint}`,
+    });
   });
 });

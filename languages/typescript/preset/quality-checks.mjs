@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { reactPolicyFiles } from './eslint-config/react/policy-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -43,13 +44,6 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/strict-domain.mjs',
   'languages/typescript/preset/eslint-config/strict-escape-hatches.mjs',
   'languages/typescript/preset/eslint-config/strict-tests.mjs',
-  'languages/typescript/preset/eslint-config/react-plugins.mjs',
-  'languages/typescript/preset/eslint-config/react/accessibility-rules.mjs',
-  'languages/typescript/preset/eslint-config/react/hints.mjs',
-  'languages/typescript/preset/eslint-config/react/nitpicker-rules.mjs',
-  'languages/typescript/preset/eslint-config/react/third-party-rules.mjs',
-  'languages/typescript/preset/eslint-config/react-rules.mjs',
-  'languages/typescript/preset/eslint-config/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules/ancestry.mjs',
@@ -68,19 +62,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/no-interval-polling-in-tests.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-internal-module-mocks.mjs',
   'languages/typescript/preset/eslint-plugin/rules/preserve-error-cause.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-effects.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/jsx.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/forms/react-controlled-input.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/forms/react-field-has-label.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/render/react-no-direct-dom.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/render/react-no-effect-event-handling.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react/render/react-no-random-key.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-no-effect-data-fetching.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-no-effect-derived-state.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-single-styling-approach.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-partial-output-assertion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-test-files.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-test-no-implementation-details.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-external-executables-in-unit-tests.mjs',
   'languages/typescript/preset/eslint-plugin/rules/integration-test-uses-approved-harness.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-managed-resource-construction-outside-composition-roots.mjs',
@@ -101,6 +83,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/no-uninjectable-delay.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-process-globals-outside-main-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
+  ...reactPolicyFiles,
 ];
 
 const ARCHITECTURE_EXCLUSION =

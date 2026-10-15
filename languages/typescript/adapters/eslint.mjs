@@ -57,11 +57,7 @@ export function createEslintAnalyzer({
       for (const policyFile of policyFiles) {
         args.push('--policy-file', policyFile);
       }
-      return {
-        command: process.execPath,
-        args,
-        cwd: toolRoot,
-      };
+      return { command: process.execPath, args, cwd: toolRoot };
     },
   };
 }
