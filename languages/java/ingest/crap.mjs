@@ -1,6 +1,9 @@
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
+import { descriptorTypes, sameConstructor } from './constructors/constructor-match.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
+
+const FULL_COVERAGE = 100;
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
@@ -8,7 +11,10 @@ export function calculateCrap(complexity, coveragePercent) {
 }
 
 export function ingestCrap(structure, jacocoXml, options = {}) {
-  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, {
+    unknownMessage: MESSAGES.crapCoverageUnknownJava,
+    ...options,
+  });
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -35,6 +41,7 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const covered = coverage !== undefined && coverage >= FULL_COVERAGE;
     const unique = counters.get(filePath) ?? createIdentityCounter();
     counters.set(filePath, unique);
     const key = unique(`function:${name}`);
@@ -49,6 +56,7 @@ export function ingestCrapRows(parsed, options, resolve) {
       ratchetKey: `${key}:crap`,
       line: fn.start,
       crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
+      covered,
     });
   }
   return {
@@ -73,6 +81,7 @@ function structureFunctions(entries) {
         longName: entry.signature,
         start: entry.start,
         end: entry.end,
+        parameterTypes: entry.parameterTypes,
       };
     });
 }
@@ -147,6 +156,8 @@ function jacocoMethods(xml) {
           ...(byFile.get(file) ?? []),
           {
             name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
+            constructorTypes:
+              method.attrs.name === '<init>' ? descriptorTypes(method.attrs.desc) : undefined,
             className: cls.attrs.name ?? '',
             line,
             lines: counter(method, 'LINE'),
@@ -172,7 +183,9 @@ function counter(element, type) {
 
 function selectNamedMethods(fn, candidates) {
   return candidates.filter(
-    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
+    (method) =>
+      method.name === fn.name &&
+      ((method.line >= fn.start && method.line <= fn.end) || sameConstructor(method, fn)),
   );
 }
 

@@ -98,8 +98,12 @@ export const MESSAGES = {
     '{name} nests control flow {value} deep (limit {limit}). Return early instead of nesting.',
   crapScoreLimit:
     '{name} has CRAP {crap}; score must be below {limit}. Test its uncovered branches, or split a branchy part into its own function.',
+  crapScoreLimitCovered:
+    '{name} has CRAP {crap} although tests cover it; score must be below {limit}. Reduce its branches: split a branchy part into its own function.',
   crapCoverageUnknown:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+  crapCoverageUnknownJava:
+    '{name} has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. Add a test that calls it, and remove @Generated from hand-written code.',
   crapCoverageUnknownPlain:
     '{name} has unknown coverage and no CRAP score: no test runs it. Add a test that calls it.',
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
