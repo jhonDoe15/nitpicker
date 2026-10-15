@@ -49,8 +49,14 @@ function javaFiles(directory) {
     .sort();
 }
 
-function lineOf(source, offset) {
-  return source.slice(0, offset).split('\n').length;
+function lineNumbers(source, offsets) {
+  let line = 1;
+  let position = 0;
+  return offsets.map((offset) => {
+    line += source.slice(position, offset).split('\n').length - 1;
+    position = offset;
+    return line;
+  });
 }
 
 function rawComments(source) {
@@ -87,19 +93,23 @@ function groupLines(group) {
   return bodyLines(group[0].token.slice(2, -2));
 }
 
-function groupReports(lines) {
+function groupReports(lines, isJavadoc) {
   const todo = unreferencedWorkTagLines(lines).map((line) => ({ rule: TODO_RULE, line }));
-  const code = firstCommentedOutCodeLine(lines);
+  const code = isJavadoc ? -1 : firstCommentedOutCodeLine(lines);
   return code === -1 ? todo : [...todo, { rule: CODE_RULE, line: code }];
 }
 
 export function commentFindings(source, filePath) {
   const occurrences = new Map();
   const groups = groupLineComments(source, rawComments(source));
-  return groups.flatMap((group) => {
+  const firstLines = lineNumbers(
+    source,
+    groups.map((group) => group[0].index),
+  );
+  return groups.flatMap((group, groupIndex) => {
     const lines = groupLines(group);
-    const firstLine = lineOf(source, group[0].index);
-    return groupReports(lines).map(({ rule, line }) => {
+    const firstLine = firstLines[groupIndex];
+    return groupReports(lines, group[0].token.startsWith('/**')).map(({ rule, line }) => {
       const key = `${rule}\0${lines[line].trim()}`;
       const occurrence = nextOccurrence(occurrences, key);
       return {
@@ -109,7 +119,7 @@ export function commentFindings(source, filePath) {
         identity: `${rule}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
         message: MESSAGES[rule],
         classification: 'enforceable',
-        location: { line: firstLine + line },
+        location: { line: rule === CODE_RULE ? firstLine : firstLine + line },
       };
     });
   });

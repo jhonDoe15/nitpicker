@@ -28,6 +28,8 @@ describe('TODO comments', () => {
     ['// TODO PROJ-123 fix', []],
     ['// FIXME https://tracker.example.com/issues/9', []],
     ['// TODOS are listed elsewhere', []],
+    ['// todo: lower case', ['TodoWithoutIssue:1']],
+    ['// TODO SHA-256 hashing', ['TodoWithoutIssue:1']],
   ])('%s', (source, expected) => {
     expect(summary(`${source}\nclass A {}`)).toEqual(expected);
   });
@@ -44,13 +46,13 @@ describe('TODO comments', () => {
 });
 
 describe('commented-out code', () => {
-  it('reports a run of commented lines once, at its first code line', () => {
+  it('reports a run of commented lines once, at the line the comment starts', () => {
     const source = 'class A {\n  // Old way:\n  // int total = compute(items);\n  // total++;\n}\n';
-    expect(summary(source)).toEqual(['CommentedOutCode:3']);
+    expect(summary(source)).toEqual(['CommentedOutCode:2']);
   });
 
   it('reports a block comment', () => {
-    expect(summary('/*\nif (ready) {\n  go();\n}\n*/\nclass A {}')).toEqual(['CommentedOutCode:2']);
+    expect(summary('/*\nif (ready) {\n  go();\n}\n*/\nclass A {}')).toEqual(['CommentedOutCode:1']);
   });
 
   it('reports each separate comment', () => {
@@ -67,6 +69,9 @@ describe('commented-out code', () => {
     '/**\n * <pre>\n * int a = 1;\n * </pre>\n */',
     '// NOPMD - generated',
     '// CHECKSTYLE:OFF',
+    '/**\n * Loads the order.\n * int total = compute(items);\n * }\n */',
+    '// Call this once per request; it caches the result;',
+    '// }',
   ])('keeps the prose comment %s', (comment) => {
     expect(summary(`${comment}\nclass A {}`)).toEqual([]);
   });
@@ -102,5 +107,17 @@ describe('readCommentFindings', () => {
     writeFileSync(path.join(root, 'src/main/java/demo/B.java'), 'class B {}\n');
     const findings = readCommentFindings(root, ['src/main/java', 'src/test/java']);
     expect(findings.map(({ path: file }) => file)).toEqual(['src/main/java/demo/A.java']);
+  });
+});
+
+describe('a large file', () => {
+  it('is scanned in linear time', () => {
+    const source = Array.from(
+      { length: 20_000 },
+      (_, index) => `// note ${String(index)}\nint a${String(index)};`,
+    ).join('\n');
+    const started = performance.now();
+    expect(commentFindings(source, 'A.java')).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2000);
   });
 });

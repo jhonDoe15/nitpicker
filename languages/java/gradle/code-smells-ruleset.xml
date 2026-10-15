@@ -9,14 +9,19 @@
         message="This string literal is repeated three times or more in the file. Name it once as a constant (private static final String NAME) and use the constant. If repeating it is intended, add an exception for pmd/RepeatedStringLiteral in nitpicker.config.json.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//StringLiteral[not(ancestor::Annotation)][string-length(@ConstValue) >= 3][matches(@ConstValue, '[A-Za-z0-9]')]
-  [let $value := @ConstValue return count(preceding::StringLiteral[@ConstValue = $value][not(ancestor::Annotation)]) >= 2]
+//StringLiteral[not(ancestor::Annotation or ancestor::SwitchLabel)][string-length(@ConstValue) >= 5][matches(@ConstValue, '[A-Za-z0-9]')]
+  [let $value := @ConstValue
+   return count(preceding::StringLiteral[@ConstValue = $value][not(ancestor::Annotation or ancestor::SwitchLabel)]) >= 2]
 ]]></value></property></properties>
   </rule>
 
   <rule ref="category/java/bestpractices.xml/UnusedFormalParameter"
         message="Remove the unused parameter, or use it. If it must stay (a framework callback), add an exception for pmd/UnusedFormalParameter in nitpicker.config.json.">
-    <properties><property name="checkAll" value="true"/></properties>
+    <properties>
+      <property name="checkAll" value="true"/>
+      <property name="violationSuppressXPath"
+                value="ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1][(self::MethodDeclaration[@Name = 'main'][@Static = true()]) or ModifierList/Annotation[not(@SimpleName = ('Deprecated', 'SuppressWarnings', 'SafeVarargs', 'Nullable', 'NonNull'))]]"/>
+    </properties>
   </rule>
 
   <rule name="GenericTypeName" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -24,7 +29,10 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration]
-  [matches(@SimpleName, '^(Common|Misc|Miscellaneous)$|(Utils?|Utilities|Helpers?|Managers?)$')]
+  [matches(@SimpleName, '(^|[a-z0-9])(Utils?|Utility|Utilities|Helpers?|Managers?|Commons?|Misc|Miscellaneous)$')]
+  [let $suffix := replace(@SimpleName, '^.*?(Utils?|Utility|Utilities|Helpers?|Managers?|Commons?|Misc|Miscellaneous)$', '$1')
+   return not((ExtendsList | ImplementsList)/ClassType[ends-with(@SimpleName, $suffix)])]
+  [not(matches(@SimpleName, '(Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Manager$'))]
 ]]></value></property></properties>
   </rule>
 
@@ -32,7 +40,7 @@
         message="Name this package for what it holds, not utils, helpers, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does. If the name is intended, add an exception for pmd/GenericPackageName in nitpicker.config.json.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//PackageDeclaration[matches(@Name, '(^|\.)(utils?|helpers?|common|misc|managers?)(\.|$)')]
+//PackageDeclaration[matches(@Name, '(^|\.)(utils?|utility|utilities|helpers?|managers?|commons?|misc|miscellaneous)(\.|$)')]
 ]]></value></property></properties>
   </rule>
 
@@ -40,27 +48,39 @@
         message="This variable holds a hardcoded secret. Read it from the environment or a secrets manager and inject it. If it is not a real secret, add an exception for pmd/HardcodedSecret in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-(
-  //VariableDeclarator[matches(VariableId/@Name, '(password|passwd|pwd|passphrase|secret|token|credentials?|api_?key|private_?key|access_?key|secret_?key|auth_?key|signing_?key|encryption_?key)$', 'i')]
-    /StringLiteral
-  | //AssignmentExpression[@Operator = '='][matches((VariableAccess | FieldAccess)[1]/@Name, '(password|passwd|pwd|passphrase|secret|token|credentials?|api_?key|private_?key|access_?key|secret_?key|auth_?key|signing_?key|encryption_?key)$', 'i')]
-    /StringLiteral
-)[string-length(@ConstValue) >= 6]
-  [not(matches(@ConstValue, '\s'))]
-  [not(matches(@ConstValue, '^[a-zA-Z][a-zA-Z0-9+.-]*://'))]
-  [not(matches(@ConstValue, '^([A-Z][A-Z0-9_]+|[a-z]+([_.:/-][a-z]+)+|\*+|x+|<.*>|\[.*\]|\$\{.*\})$'))]
-  [not(matches(@ConstValue, '^(changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$', 'i'))]
-  [not(matches(@ConstValue, 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|sk[-_](live|test|proj)?[-_]?[A-Za-z0-9_-]{16,}'))]
-  [let $name := (parent::VariableDeclarator/VariableId | parent::AssignmentExpression/(VariableAccess | FieldAccess))[1]/@Name
-   return lower-case(replace(@ConstValue, '[^A-Za-z0-9]', '')) != lower-case(replace($name, '[^A-Za-z0-9]', ''))]
+let $secret := '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$',
+    $values := (
+      //VariableDeclarator[matches(lower-case(replace(VariableId/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
+      | //AssignmentExpression[matches(lower-case(replace((VariableAccess | FieldAccess)[1]/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
+      | //MethodCall[@MethodName = ('of', 'entry', 'put', 'setProperty', 'addProperty')]/ArgumentList
+          /*[preceding-sibling::*[1][self::StringLiteral][matches(lower-case(replace(@ConstValue, '[^A-Za-z0-9]', '')), $secret)]]
+    )
+return (
+  $values[self::StringLiteral]
+  | $values[self::InfixExpression[@Operator = '+'][not(.//*[not(self::InfixExpression[@Operator = '+'] or self::StringLiteral)])]]
+  | $values/self::MethodCall[@MethodName = ('toCharArray', 'getBytes')]/StringLiteral
+  | $values/self::MethodCall[@MethodName = ('valueOf', 'copyValueOf')]/ArgumentList/StringLiteral
+  | $values/self::ConstructorCall[ClassType/@SimpleName = 'String']/ArgumentList/StringLiteral
+)[let $text := (if (self::StringLiteral) then string(@ConstValue) else string-join(.//StringLiteral/@ConstValue, ''))
+  return string-length($text) >= 6
+    and not(matches($text, '\s'))
+    and not(matches($text, '^[a-zA-Z][a-zA-Z0-9+.-]*://'))
+    and not(matches($text, '^([A-Z][A-Z0-9_]+|[A-Za-z]+([_.:/-][A-Za-z]+)+|\*+|x+|<.*>|\[.*\]|\$\{.*\})$'))
+    and not(matches($text, '^(changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$', 'i'))
+    and ((matches($text, '[0-9]') and matches($text, '[A-Za-z]'))
+      or count((matches($text, '[a-z]'), matches($text, '[A-Z]'), matches($text, '[0-9]'), matches($text, '[^A-Za-z0-9]'))[. = true()]) >= 3)]
 ]]></value></property></properties>
   </rule>
 
   <rule name="CredentialLiteral" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This string looks like a credential (access key, token or private key). Read it from the environment or a secrets manager. If it is not a real secret, add an exception for pmd/CredentialLiteral in nitpicker.config.json.">
+        message="This string looks like a credential (access key, token, private key, or a password in a URL). Read it from the environment or a secrets manager. If it is not a real secret, add an exception for pmd/CredentialLiteral in nitpicker.config.json.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//StringLiteral[matches(@ConstValue, 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|sk[-_](live|test|proj)?[-_]?[A-Za-z0-9_-]{16,}')]
+//StringLiteral[
+  matches(@ConstValue, 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|[rs]k_(live|test)_[A-Za-z0-9]{20,}|sk-(proj|ant|live|test)-[A-Za-z0-9_-]{20,}')
+  or matches(@ConstValue, '^[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@$\{\}]{6,}@', 'i')
+  or matches(@ConstValue, '[?&amp;;]password=[^&amp;;\s$\{\}]{6,}', 'i')
+  or matches(@ConstValue, '^(Bearer|Basic) [A-Za-z0-9._~+/=-]{16,}$')]
 ]]></value></property></properties>
   </rule>
 
@@ -69,75 +89,94 @@
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 (//VariableAccess | //FieldAccess | //MethodCall)
-  [matches(@Name, '(password|passwd|pwd|passphrase|secret|token|credentials?|api_?key|private_?key|access_?key|secret_?key|auth_?key|signing_?key|encryption_?key)$', 'i')
+  [matches(lower-case(replace(@Name, '[^A-Za-z0-9]', '')), '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$')
    or matches(@MethodName, '^get(Password|Secret|Token|ApiKey|PrivateKey|Credentials?)$')]
-  [ancestor::MethodCall[1][@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')]
+  [not(matches(@Name, '^(has|is)[A-Z_]|^[A-Z][A-Z0-9_]*$'))]
+  [ancestor::*[not(self::InfixExpression[@Operator = '+'])][1][self::ArgumentList]/parent::MethodCall
+    [@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')]
     [*[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('java.io.PrintStream')]]]
 ]]></value></property></properties>
   </rule>
 
   <rule name="CatchOnlyLogsOrReturnsDefault" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This catch only logs the failure or returns a default, and carries on. Rethrow it with the cause (throw new FeatureException(message, e)) or return a failure result that carries the exception. If dropping it is intended, add an exception for pmd/CatchOnlyLogsOrReturnsDefault in nitpicker.config.json.">
+        message="This catch only logs the failure or returns a default, and carries on. Rethrow it with the cause (throw new FeatureException(message, e)), return a failure result that carries the exception, or answer with an error response. If dropping it is intended, add an exception for pmd/CatchOnlyLogsOrReturnsDefault in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //CatchClause[Block[*]]
-  [not(CatchParameter//ClassType[@SimpleName = 'InterruptedException'])]
-  [not(Block/*[not(
-    self::EmptyStatement
-    or self::ContinueStatement
-    or self::BreakStatement
-    or self::ReturnStatement[not(*)
-      or *[self::NullLiteral or self::BooleanLiteral or self::NumericLiteral or self::StringLiteral or self::CharLiteral]
-      or *[self::MethodCall][@MethodName = ('emptyList', 'emptyMap', 'emptySet', 'empty', 'of')][not(ArgumentList/*)]
-      or *[self::ConstructorCall][not(ArgumentList/*)]]
-    or self::ExpressionStatement[MethodCall[@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printStackTrace')]]
-    or self::ExpressionStatement[AssignmentExpression[*[2][self::NullLiteral or self::BooleanLiteral or self::NumericLiteral or self::StringLiteral or self::CharLiteral]]]
-  )])]
+  [not(CatchParameter//ClassType[@SimpleName = 'InterruptedException'] and Block//MethodCall[@MethodName = 'interrupt'])]
+  [not(Block//ThrowStatement)]
+  [not(parent::TryStatement[Block[1]//(ReturnStatement | BreakStatement)]
+    /parent::Block/parent::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement])]
+  [not(Block//MethodCall[@MethodName = ('status', 'internalServerError', 'badRequest', 'notFound', 'unprocessableEntity', 'sendError', 'exit')])]
+  [let $name := CatchParameter/VariableId/@Name
+   return not(Block//VariableAccess[@Name = $name]
+     [not(parent::MethodCall[@MethodName = 'printStackTrace'])]
+     [not(ancestor::MethodCall
+       [@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')]
+       [*[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('java.io.PrintStream')]])])]
 ]]></value></property></properties>
   </rule>
 
   <rule name="BooleanFlagParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="A boolean flag parameter makes the call site unreadable. Split the method into two methods named for each behavior, or pass an enum or a small record. If a boolean is the clearest form here, add an exception for pmd/BooleanFlagParameter in nitpicker.config.json.">
+        message="This boolean parameter switches the method between two behaviors, which makes the call site unreadable. Split the method into two methods named for each behavior, or pass an enum or a small record. If a boolean is the clearest form here, add an exception for pmd/BooleanFlagParameter in nitpicker.config.json.">
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-(//MethodDeclaration | //ConstructorDeclaration)[@Visibility = 'public']
+//MethodDeclaration[@Visibility = 'public']
   [not(ModifierList/Annotation[@SimpleName = 'Override'])]
-  [not(self::MethodDeclaration[matches(@Name, '^set[A-Z]') and count(FormalParameters/FormalParameter) = 1])]
-  [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration][last()][@Visibility = 'public']]
+  [not(matches(@Name, '^(set|with)[A-Z]|^(of|from|valueOf|builder)$'))]
+  [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration or self::RecordDeclaration][last()][@Visibility = 'public']]
   /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean'] or ClassType[@SimpleName = 'Boolean']]
+  [let $flag := VariableId/@Name
+   return exists(../../Block//(IfStatement | ConditionalExpression)/*[1]/descendant-or-self::VariableAccess[@Name = $flag]
+     [ancestor::*[not(self::UnaryExpression or self::InfixExpression[@Operator = ('&&', '||')])][1][self::IfStatement or self::ConditionalExpression]])]
 ]]></value></property></properties>
   </rule>
 
   <rule name="IoCallInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Fetch or write all items at once (findAllById, WHERE id IN (...), one batched request, one file read). If a call per item is intended, add an exception for pmd/IoCallInLoop in nitpicker.config.json.">
+        message="This calls a database, HTTP, file or repository API once per loop item (one query or request per item). Batch it: fetch or write all items at once (findAllById, WHERE id IN (...), one batched request). Paging, polling and retry loops are fine. If a call per item is intended, add an exception for pmd/IoCallInLoop in nitpicker.config.json.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $bodies := (
+let $ioTypes := '(Repository|Dao|DAO|Client|EntityManager|JdbcTemplate|RestTemplate|Connection|Statement)$',
+    $ioNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, $ioTypes)]]//VariableId/@Name,
+    $repositoryNames := //(FieldDeclaration | LocalVariableDeclaration | FormalParameter)[ClassType[matches(@SimpleName, '(Repository|EntityManager)$')]]//VariableId/@Name,
+    $loops := (//ForeachStatement | //ForStatement | //WhileStatement | //DoStatement),
+    $bodies := (
       //ForeachStatement/*[last()] | //ForStatement/*[last()] | //WhileStatement/*[last()] | //DoStatement/*[1]
       | //LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek', 'reduce', 'anyMatch', 'allMatch', 'noneMatch', 'mapToObj', 'mapToInt', 'mapToLong', 'collect')]]),
-    $calls := $bodies//(MethodCall | ConstructorCall),
-    $attempts := $bodies//TryStatement[Block[1]//(ReturnStatement | BreakStatement)]/Block[1]//(MethodCall | ConstructorCall)
+    $attempts := $loops/Block/TryStatement
+      [Block[1]//(ReturnStatement | BreakStatement)]
+      [CatchClause[not(Block/(ThrowStatement | ReturnStatement | BreakStatement))]]
+      /Block[1]//(MethodCall | ConstructorCall),
+    $paging := (//WhileStatement | //DoStatement)
+      [let $tested := *[not(self::Block)]//VariableAccess/@Name
+       return exists(Block//AssignmentExpression[*[1][self::VariableAccess][@Name = $tested]])]
+      //(MethodCall | ConstructorCall),
+    $calls := ($bodies//(MethodCall | ConstructorCall) except $attempts) except $paging
 return
 (
-  ($calls except $attempts)[
+  $calls[
     self::ConstructorCall[ClassType[@SimpleName = ('FileReader', 'FileInputStream', 'FileWriter', 'FileOutputStream', 'RandomAccessFile')]]
-    or self::MethodCall[*[1][@Name = 'Files' or descendant-or-self::*[@SimpleName = 'Files']]]
+    or self::MethodCall[*[1][self::TypeExpression][ClassType[@SimpleName = 'Files']]]
+         [not(@MethodName = ('exists', 'notExists', 'isDirectory', 'isRegularFile', 'isReadable', 'isWritable', 'isExecutable', 'isSymbolicLink', 'isHidden', 'isSameFile'))]
     or self::MethodCall[not(@MethodName = ('hashCode', 'toString', 'equals', 'getClass', 'close'))]
-         [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
+         [not(matches(@MethodName, '^(is|has|get)[A-Z]') and not(matches(@MethodName, '^get(By|All|One|Reference|For)')))]
+         [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $ioNames]
+            or *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
             or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')
             or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')
             or pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
             or pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')
             or pmd-java:typeIs('org.springframework.web.client.RestOperations')
             or pmd-java:typeIs('org.springframework.web.client.RestClient')
+            or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
             or pmd-java:typeIs('java.net.http.HttpClient')]]
-    or self::MethodCall[matches(@MethodName, '^(find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)|^(send|post|put|patch|exchange|retrieve|save)$')]
-         [*[1][matches(@Name, '(repo|repository|dao|jdbc\w*|template|client|connection|conn|statement|stmt|entityManager|em|session|gateway|api)$', 'i')]]
-  ][not(self::MethodCall[matches(@MethodName, '^(save|saveAndFlush|delete|deleteById|persist|merge|remove)$')]
-        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager')]])]
+    or self::MethodCall[matches(@MethodName, '^(find|load|read|query|select|insert|update|delete|exists|count|execute|fetch|list|write)([A-Z0-9_]|$)|^(get|send|post|put|patch|exchange|retrieve|save)$')]
+         [*[1][matches(@Name, '^(repo|repository|dao|jdbc|jdbcTemplate|restTemplate|client|webClient|httpClient|connection|statement|entityManager|gateway|api)$|(Repo|Repository|Dao|DAO|Client|Connection|Statement|EntityManager|Gateway|Api|API|Template)$')]]
+  ][not(self::MethodCall[@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')]
+        [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('jakarta.persistence.EntityManager') or @Name = $repositoryNames]])]
   |
   //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'peek')]/ArgumentList/MethodReference
-    [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
+    [*[1][@Name = $ioNames or pmd-java:typeIs('org.springframework.data.repository.Repository') or pmd-java:typeIs('java.sql.Statement') or pmd-java:typeIs('java.sql.Connection')]]
     [not(@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'hashCode', 'toString', 'equals'))]
 )
 ]]></value></property></properties>
