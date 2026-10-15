@@ -300,6 +300,12 @@ tester.run('no-unsafe-path-join', noUnsafePathJoin, {
     {
       code: 'import path from "node:path"; export function f(name) { return path.join("/srv", name); }',
     },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { const full = path.join("/srv", name); if (!path.resolve(full).startsWith("/srv/")) { return undefined; } return readFileSync(full); }',
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", path.basename(name))); }',
+    },
   ],
   invalid: [
     {
@@ -328,6 +334,74 @@ tester.run('no-unsafe-path-join', noUnsafePathJoin, {
     },
     {
       code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(req, other) { const full = path.join("/srv", req.query.x); if (other.startsWith("/srv")) { return 1; } return readFileSync(full); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", name as string)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", name!)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", name || "index.html")); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name, fallback) { return readFileSync(path.join("/srv", name ? name : fallback)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(parts) { return readFileSync(path.join("/srv", ...parts)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(req) { return readFileSync(path.join("/srv", req?.query?.file)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", decodeURIComponent(name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { promises as fsp } from "node:fs"; import path from "node:path"; export async function f(name) { return fsp.readFile(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { renameSync } from "node:fs"; import path from "node:path"; export function f(name) { renameSync("/tmp/upload", path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { copyFile } from "node:fs/promises"; import path from "node:path"; export async function f(name) { await copyFile(path.join("/srv", name), "/tmp/out"); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { statSync } from "node:fs"; import path from "node:path"; export function f(name) { return statSync(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { access } from "node:fs/promises"; import path from "node:path"; export async function f(name) { await access(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { mkdirSync } from "node:fs"; import path from "node:path"; export function f(name) { mkdirSync(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { open } from "node:fs/promises"; import path from "node:path"; export async function f(name) { return open(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readlinkSync } from "node:fs"; import path from "node:path"; export function f(name) { return readlinkSync(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { truncateSync } from "node:fs"; import path from "node:path"; export function f(name) { truncateSync(path.join("/srv", name)); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import path from "node:path"; export function f(req, res) { res.sendFile(path.join("/srv", req.params.file)); }',
       errors: [{ messageId: 'unsafePath' }],
     },
   ],
