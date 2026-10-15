@@ -81,18 +81,19 @@ describe('structural metrics report', () => {
     );
   });
 
-  it('reports null percentiles for a measure with no entries, so the report keeps its shape', () => {
+  it('leaves the percentiles of a measure with no entries undefined, so the JSON report omits them', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-empty-'));
     try {
       writeFileSync(path.join(root, 'plain.ts'), 'export const one = 1;\n');
       const report = analyzeProductionFiles(root, 'src');
 
-      expect(JSON.parse(JSON.stringify(report.distributions.classLines))).toEqual({
-        p50: null,
-        p90: null,
-        p95: null,
-        max: null,
+      expect(report.distributions.classLines).toStrictEqual({
+        p50: undefined,
+        p90: undefined,
+        p95: undefined,
+        max: undefined,
       });
+      expect(JSON.stringify(report.distributions.classLines)).toBe('{}');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
