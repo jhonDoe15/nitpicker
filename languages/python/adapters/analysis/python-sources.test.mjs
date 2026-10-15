@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../fixtures/scratch.mjs';
+import { createScratch } from '../test-support/scratch.mjs';
 import {
   existingSourceRoots,
   functionText,

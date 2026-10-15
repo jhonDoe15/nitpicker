@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-const fakeTools = path.join(import.meta.dirname, 'fake-python-tools.mjs');
+const fakeTools = path.join(import.meta.dirname, '../fixtures/fake-python-tools.mjs');
 const TOOLS = [
   'ruff',
   'black',
@@ -30,14 +30,6 @@ export function installFakeToolchain(binDirectory, tools = TOOLS) {
       `exec "${process.execPath}" "${fakeTools}" ${tool.replace('python3', 'python')} "$@"`,
     );
   }
-}
-
-export function installFakeUv(binDirectory) {
-  install(
-    binDirectory,
-    'uv',
-    'echo "$*" >> "$FAKE_UV_LOG"\nPATH="$3/.venv/bin:$PATH"\nshift 5\nexec "$@"',
-  );
 }
 
 export function installFakePoetry(binDirectory, environmentDirectory) {

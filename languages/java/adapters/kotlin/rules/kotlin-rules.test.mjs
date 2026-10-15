@@ -8,7 +8,7 @@ import {
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
 } from './kotlin-rules.mjs';
-import { expectedMessage, kotlinRuleCases } from '../../fixtures/kotlin-rules/cases.mjs';
+import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mjs';
 import { fileURLToPath } from 'node:url';
 
 const detektFinding = (rule, message) => ({

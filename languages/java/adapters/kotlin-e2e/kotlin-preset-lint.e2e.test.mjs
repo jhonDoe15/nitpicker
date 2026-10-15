@@ -11,10 +11,9 @@ import {
   DANGER,
   MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
   META,
-} from '../fixtures/kotlin-preset-data.mjs';
+} from './test-support/kotlin-lint-data.mjs';
 import {
   commitBranch,
-  createKotlinProject,
   diffOf,
   fromTool,
   git,
@@ -28,7 +27,7 @@ import {
   removeProject,
   summarize,
   writeAll,
-} from './kotlin-e2e-project.mjs';
+} from './test-support/kotlin-e2e-project.mjs';
 
 const BAD_DETEKT_FINDINGS = [
   ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
@@ -58,13 +57,12 @@ const LEGACY_FINDINGS = [
   'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
 ];
 
-const project = createKotlinProject();
-
-const kotlinOnlyProject = createKotlinProject();
-
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end to end', () => {
+  let project;
+  let kotlinOnlyProject;
+
   beforeAll(() => {
-    initializeProject(kotlinOnlyProject);
+    kotlinOnlyProject = initializeProject();
     rmSync(path.join(kotlinOnlyProject.root, 'src/main/java'), { recursive: true });
     writeAll(kotlinOnlyProject, {
       'src/test/kotlin/demo/GreeterTest.kt': GREETER_TEST_WITHOUT_JAVA,
@@ -72,7 +70,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
     git(kotlinOnlyProject, 'add', '-A');
     git(kotlinOnlyProject, 'commit', '-q', '-m', 'Kotlin only');
     commitBranch(kotlinOnlyProject, 'kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
-    initializeProject(project);
+    project = initializeProject();
     commitBranch(project, 'clean', {
       [`${kotlinSources}/Farewell.kt`]: FAREWELL,
       'src/test/kotlin/demo/FarewellTest.kt': FAREWELL_TEST,

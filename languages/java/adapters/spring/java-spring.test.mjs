@@ -16,7 +16,7 @@ import {
   resource,
   rules,
   sourceRoots,
-} from '../fixtures/spring-config-projects.mjs';
+} from './test-support/spring-config-projects.mjs';
 
 afterEach(removeProjects);
 

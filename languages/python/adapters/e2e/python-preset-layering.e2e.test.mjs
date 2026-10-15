@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { LAYERED_FILES, ORDER_TOTAL } from './python-preset-data.mjs';
+import { LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   gate,
@@ -9,7 +9,7 @@ import {
   removeRepositories,
   repository,
   write,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python duplicates, coupling and import contracts end to end',

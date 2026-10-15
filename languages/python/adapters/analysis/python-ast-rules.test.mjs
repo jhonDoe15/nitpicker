@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../fixtures/fake-project.mjs';
+import { createFakeProjects } from '../test-support/fake-project.mjs';
 import { checkRules, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
