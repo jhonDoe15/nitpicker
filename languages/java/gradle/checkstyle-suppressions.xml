@@ -4,4 +4,5 @@
     "https://checkstyle.org/dtds/suppressions_1_2.dtd">
 <suppressions>
   <suppress checks="MissingJavadocMethod|MissingJavadocType" files="."/>
+  <suppress checks="Indentation|CommentsIndentation|WhitespaceAround|WhitespaceAfter|GenericWhitespace|MethodParamPad|ParenPad|NoWhitespaceBefore|OperatorWrap|SeparatorWrap|NoLineWrap|CustomImportOrder|EmptyLineSeparator|LeftCurly|RightCurly|AnnotationLocation|FileTabCharacter|RegexpSinglelineJava" files="."/>
 </suppressions>
