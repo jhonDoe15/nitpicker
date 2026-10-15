@@ -30,3 +30,11 @@ export function exceptionSentence(entryText, key = 'exceptions') {
 export function appendSentence(message, sentence) {
   return `${message.endsWith('.') ? message : `${message}.`} ${sentence}`;
 }
+
+/** `message` with the file the sentence names replaced, for a finding whose path gained a prefix. */
+export function retargetSentence(message, fromPath, toPath) {
+  return message.replaceAll(
+    `"paths":[${JSON.stringify(escapeGlob(fromPath))}]`,
+    `"paths":[${JSON.stringify(escapeGlob(toPath))}]`,
+  );
+}
