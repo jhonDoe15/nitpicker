@@ -23,7 +23,7 @@ export const builtInExcludedGlobs = [
   ...ROOT_OUTPUT_FOLDERS.map((folder) => `${folder}/**`),
   '**/node_modules/**',
 ];
-export const declarationGlobs = ['**/*.d.ts'];
+const declarationGlobs = ['**/*.d.ts'];
 export const EXCLUDED_PATH_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)|(?:^|/)node_modules(?:/|$)`;
 const GENERATED_DIRECTORY = new RegExp(EXCLUDED_PATH_PATTERN);
 
@@ -61,6 +61,12 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
+function entryExtensionsFor(javascript) {
+  return javascript
+    ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
+    : ['ts'];
+}
+
 export function resolveLayout(layout = {}, exclude = [], { javascript = false } = {}) {
   const sourceRoots = (layout.sourceRoots ?? defaultSourceRoots).map(normalizeRoot);
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
@@ -77,9 +83,7 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
   const resolved = {
     javascript,
     extensions,
-    entryExtensions: javascript
-      ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
-      : ['ts'],
+    entryExtensions: entryExtensionsFor(javascript),
     formatExtensions: javascript ? extensions : typescriptFormatExtensionNames,
     sourceRoots,
     sourceRoot,

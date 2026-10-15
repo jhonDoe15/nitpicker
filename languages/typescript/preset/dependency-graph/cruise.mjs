@@ -10,7 +10,7 @@ const dependencyCruiser = path.join(
   projectRoot,
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
-const config = path.join(import.meta.dirname, 'config.mjs');
+const config = path.join(import.meta.dirname, 'dependency-graph.config.mjs');
 export { EXCLUDED_PATH_PATTERN };
 const excludedPath = new RegExp(EXCLUDED_PATH_PATTERN);
 export const ARCHITECTURE_CONFIG =

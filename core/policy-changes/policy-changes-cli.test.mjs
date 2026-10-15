@@ -83,6 +83,14 @@ function runWithHeadConfig({ baseConfig, headConfig }) {
   };
 }
 
+const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
+
+function policyBlock(text) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(HEADING);
+  return lines.slice(start, start + 4);
+}
+
 describe('the policy changed block', () => {
   const loosened = {
     exclude: ['src/legacy/**', 'src/vendor/**'],
@@ -103,11 +111,8 @@ describe('the policy changed block', () => {
 
     expect(exitCode).toBe(0);
     expect(summary.policyChanges).toEqual(expected);
-    expect(stdoutText).toContain('Policy changed in this change');
-    for (const change of expected) {
-      expect(stdoutText).toContain(`  ${change}`);
-      expect(report).toContain(`  ${change}`);
-    }
+    expect(policyBlock(stdoutText)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
+    expect(policyBlock(report)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
   });
 
   it('lists the whole head config when the base has none', () => {

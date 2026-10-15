@@ -135,42 +135,34 @@ describe('quality shard aggregation', () => {
     );
   });
 
-  it('carries the notices of the shards into the report and the text summary', () => {
+  it('carries the policy changes and notices of the shards into the report', () => {
     const fixture = createFixture();
-    const notices = ['1 changed TypeScript file is outside layout.sourceRoots'];
-    writeShard(fixture.inputRoot, 0, { tools: ['first'], notices });
-    writeShard(fixture.inputRoot, 1, { tools: ['second'], notices });
+    const carried = {
+      policyChanges: ['exclude added: src/vendor/**'],
+      notices: ['1 changed TypeScript file is outside layout.sourceRoots'],
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], ...carried });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'], ...carried });
 
     const report = aggregateShardReports({
       ...fixture,
       analyzers: [analyzer('first'), analyzer('second')],
       shardCount: 2,
     });
+    const summary = readJson(fixture.outputRoot, 'summary.json');
+    const text = readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8').split('\n');
+    const heading = 'Policy changed in this change (nitpicker.config.json, head against base):';
+    const start = text.indexOf(heading);
 
-    expect(report.summary.notices).toEqual(notices);
-    expect(readJson(fixture.outputRoot, 'summary.json').notices).toEqual(notices);
-    expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
-      `  ${notices[0]}`,
-    );
-  });
-
-  it('carries the policy changes of the shards into the report and the console summary', () => {
-    const fixture = createFixture();
-    const policyChanges = ['exclude added: src/vendor/**'];
-    writeShard(fixture.inputRoot, 0, { tools: ['first'], policyChanges });
-    writeShard(fixture.inputRoot, 1, { tools: ['second'], policyChanges });
-
-    const report = aggregateShardReports({
-      ...fixture,
-      analyzers: [analyzer('first'), analyzer('second')],
-      shardCount: 2,
-    });
-
-    expect(report.summary.policyChanges).toEqual(policyChanges);
-    expect(readJson(fixture.outputRoot, 'summary.json').policyChanges).toEqual(policyChanges);
-    expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
+    expect([report.summary.policyChanges, report.summary.notices]).toEqual(Object.values(carried));
+    expect([summary.policyChanges, summary.notices]).toEqual(Object.values(carried));
+    expect(text.slice(start, start + 5)).toEqual([
+      heading,
       '  exclude added: src/vendor/**',
-    );
+      '',
+      'Notices (not failing):',
+      '  1 changed TypeScript file is outside layout.sourceRoots',
+    ]);
   });
 
   it('carries the held findings of every shard into the report and its note', () => {

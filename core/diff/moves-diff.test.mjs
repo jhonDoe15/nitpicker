@@ -372,7 +372,9 @@ describe('notices about the change', () => {
 
     expect(seen.sort()).toEqual(['scripts/new.mjs', 'src/kept.mjs']);
     expect(report.summary.notices).toEqual(['a notice']);
-    expect(report.text).toContain('  a notice');
+    const lines = report.text.split('\n');
+    const start = lines.indexOf('Notices (not failing):');
+    expect(lines.slice(start, start + 2)).toEqual(['Notices (not failing):', '  a notice']);
   });
 
   it('reports no notices without a callback', () => {

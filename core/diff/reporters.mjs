@@ -7,8 +7,8 @@ import {
 } from '../../shared/rules/finding-helpers.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 import { appendMetricSection } from './summary/metric-section.mjs';
-import { appendNoticeSummary, noticeSection } from './summary/notices.mjs';
-import { appendPolicyChangeSummary, policyChangeSection } from './summary/policy-changes.mjs';
+import { appendReviewSummary, noticeSection } from './summary/notices.mjs';
+import { policyChangeSection } from './summary/policy-changes.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 const JUNIT_REPORT_FILE_NAME = 'report.junit.xml';
@@ -55,6 +55,17 @@ export function absoluteTextReportPath(outputRoot) {
   return path.resolve(outputRoot, TEXT_REPORT_FILE_NAME);
 }
 
+function configSections(summary) {
+  const configOverrides = summary.configOverrides ?? [];
+  return [
+    ...(configOverrides.length === 0
+      ? []
+      : ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)]),
+    ...policyChangeSection(summary.policyChanges),
+    ...noticeSection(summary.notices),
+  ];
+}
+
 export function renderTextReport(report) {
   const lines = [
     'Nitpicker quality diff',
@@ -70,14 +81,7 @@ export function renderTextReport(report) {
     `Tool errors: ${String(report.toolErrors.length)}`,
   ];
 
-  const configOverrides = report.summary.configOverrides ?? [];
-  if (configOverrides.length > 0) {
-    lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
-  }
-  lines.push(
-    ...policyChangeSection(report.summary.policyChanges),
-    ...noticeSection(report.summary.notices),
-  );
+  lines.push(...configSections(report.summary));
 
   if (report.summary.tools.length === 0) {
     lines.push('Analyzers: none configured');
@@ -116,9 +120,9 @@ export function renderConsoleSummary(
   ];
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
-  const emphasize = (text) => style(text, [ANSI.bold, ANSI.yellow], color);
-  appendPolicyChangeSummary(lines, report.summary?.policyChanges, emphasize);
-  appendNoticeSummary(lines, report.summary?.notices, emphasize);
+  appendReviewSummary(lines, report.summary, (text) =>
+    style(text, [ANSI.bold, ANSI.yellow], color),
+  );
   appendHeldSummary(lines, report.unchangedFindings, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));

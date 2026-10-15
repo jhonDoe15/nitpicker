@@ -679,10 +679,7 @@ describe('nitpicker config file', () => {
     return { exitCode, output };
   }
 
-  function runWithConfig(
-    config,
-    { extraArguments = ['--base', 'HEAD'], analyzers, changed = {} } = {},
-  ) {
+  function runWithConfig(config, { extraArguments = ['--base', 'HEAD'], analyzers } = {}) {
     const repository = createRepository({
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
@@ -693,7 +690,6 @@ describe('nitpicker config file', () => {
         'nitpicker.config.json': typeof config === 'string' ? config : JSON.stringify(config),
       });
     }
-    writeFiles(repository.root, changed);
     const output = captureOutput();
     const outputRoot = makeOutputRoot();
     const exitCode = runCli({
@@ -718,29 +714,11 @@ describe('nitpicker config file', () => {
     expect(summary.configOverrides).toEqual([]);
   });
 
-  it('notes a changed TypeScript file outside the source roots', () => {
-    const changed = { 'scripts/slop.ts': 'export const slop = 1;\n' };
-    const { exitCode, output, summary } = runWithConfig(undefined, { changed });
-
-    expect(exitCode).toBe(0);
-    expect(summary.notices).toEqual([expect.stringContaining('scripts/slop.ts')]);
-    expect(output.stdoutText).toContain('Notices (not failing):');
-  });
-
-  it('stays quiet about that file when it is excluded or the project is not TypeScript', () => {
-    const changed = { 'scripts/slop.ts': 'export const slop = 1;\n' };
-    const excluded = runWithConfig({ exclude: ['scripts/**'] }, { changed });
-    const python = runWithConfig({ preset: 'python' }, { changed });
-
-    expect(excluded.summary.notices).toEqual([]);
-    expect(python.summary.notices).toEqual([]);
-  });
-
   it('uses base from the config file', () => {
     const { exitCode, output } = runWithConfig({ base: 'comparison-base' }, { extraArguments: [] });
-
+    const baseLine = output.stdoutText.split('\n').find((line) => line.startsWith('Base: '));
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toContain('Base: comparison-base (config)');
+    expect(baseLine).toBe('Base: comparison-base (config)');
   });
 
   it('lets an explicit --base win over the config base', () => {

@@ -32,7 +32,7 @@ describe('coupling report', () => {
     const cohesive = report.packages.find((entry) => entry.name === 'cohesive');
 
     expect(report.summary).toMatchObject({ modules: 3, dependencies: 1, packages: 2 });
-    expect(report.packages.map((entry) => entry.name)).toContain('build');
+    expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
     expect(cohesive.cohesion).toMatchObject({
       connectedComponents: 1,
       largestComponentShare: 1,

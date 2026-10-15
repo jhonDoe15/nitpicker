@@ -21,8 +21,7 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
   }
 
   if (isNonEmpty(configuredBase)) {
-    rejectCheckedOutCommit(repositoryRoot, configuredBase);
-    return { baseRef: configuredBase, source: 'config' };
+    return { baseRef: notCheckedOutCommit(repositoryRoot, configuredBase), source: 'config' };
   }
 
   const remotes = runGit(repositoryRoot, ['remote'])
@@ -54,18 +53,26 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
   throw new Error('No base could be determined. Use --base <ref>.');
 }
 
-function rejectCheckedOutCommit(repositoryRoot, configuredBase) {
+function notCheckedOutCommit(repositoryRoot, configuredBase) {
   if (!COMMIT_ID.test(configuredBase)) {
-    return;
+    return configuredBase;
   }
-  const commitOf = (ref) =>
-    gitOrUndefined(repositoryRoot, ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`])?.trim();
-  const base = commitOf(configuredBase);
-  if (base !== undefined && base === commitOf('HEAD')) {
+  const base = commitOf(repositoryRoot, configuredBase);
+  if (base !== undefined && base === commitOf(repositoryRoot, 'HEAD')) {
     throw configError(
       `"base" is ${configuredBase}, the commit you are on, so the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
     );
   }
+  return configuredBase;
+}
+
+function commitOf(repositoryRoot, ref) {
+  return gitOrUndefined(repositoryRoot, [
+    'rev-parse',
+    '--verify',
+    '--quiet',
+    `${ref}^{commit}`,
+  ])?.trim();
 }
 
 function isNonEmpty(value) {

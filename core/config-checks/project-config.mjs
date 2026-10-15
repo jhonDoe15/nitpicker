@@ -17,13 +17,20 @@ export function rejectHeadBase(base) {
 }
 
 function jsxFiles(directory, relative) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const name = `${relative}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return entry.name === 'node_modules' ? [] : jsxFiles(path.join(directory, entry.name), name);
+  const pending = [{ directory, relative }];
+  const found = [];
+  for (const folder of pending) {
+    for (const entry of readdirSync(folder.directory, { withFileTypes: true })) {
+      const name = `${folder.relative}/${entry.name}`;
+      if (entry.isDirectory() && entry.name !== 'node_modules') {
+        pending.push({ directory: path.join(folder.directory, entry.name), relative: name });
+      }
+      if (entry.isFile() && JSX_FILE.test(entry.name)) {
+        found.push(name);
+      }
     }
-    return entry.isFile() && JSX_FILE.test(entry.name) ? [name] : [];
-  });
+  }
+  return found;
 }
 
 function existingJsxFiles(projectRoot, root) {

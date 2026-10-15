@@ -6,6 +6,8 @@ const TOOL_CONFIGURATION = /(?:^|\/)[^/]*\.config\.[cm]?tsx?$/;
 const HIDDEN_FOLDER = /(?:^|\/)\.[^/]+\//;
 const EXCLUDED_FOLDER = new RegExp(EXCLUDED_PATH_PATTERN);
 const LISTED_FILES = 3;
+const SINGULAR = { files: 'file is', them: 'it', their: 'its folder', list: 'it' };
+const PLURAL = { files: 'files are', them: 'them', their: 'their folders', list: 'them' };
 
 export function outsideRootsNotices(changedFiles, headPolicy) {
   const layout = resolveLayoutFor(headPolicy);
@@ -28,9 +30,10 @@ export function outsideRootsNotices(changedFiles, headPolicy) {
   }
   const listed = outside.slice(0, LISTED_FILES).join(', ');
   const more = outside.length > LISTED_FILES ? `, and ${outside.length - LISTED_FILES} more` : '';
-  const noun = outside.length === 1 ? 'file is' : 'files are';
+  const words = outside.length === 1 ? SINGULAR : PLURAL;
   return [
-    `${outside.length} changed TypeScript ${noun} outside layout.sourceRoots and layout.testRoots, so nothing checks ` +
-      `${outside.length === 1 ? 'it' : 'them'}: ${listed}${more}. Add their folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json to silence this.`,
+    `${outside.length} changed TypeScript ${words.files} outside layout.sourceRoots and layout.testRoots, ` +
+      `so nothing checks ${words.them}: ${listed}${more}. ` +
+      `Add ${words.their} to layout.sourceRoots, or list ${words.list} in "exclude" in nitpicker.config.json to silence this.`,
   ];
 }

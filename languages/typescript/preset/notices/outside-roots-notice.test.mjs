@@ -3,20 +3,21 @@ import { outsideRootsNotices } from './outside-roots-notice.mjs';
 
 describe('outsideRootsNotices', () => {
   it('names a changed TypeScript file that no source or test root covers', () => {
-    const [notice] = outsideRootsNotices(['src/a.ts', 'scripts/slop.ts'], {});
-
-    expect(notice).toContain('1 changed TypeScript file is outside layout.sourceRoots');
-    expect(notice).toContain('scripts/slop.ts');
-    expect(notice).not.toContain('src/a.ts');
-    expect(notice).toContain('"exclude" in nitpicker.config.json');
+    expect(outsideRootsNotices(['src/a.ts', 'scripts/slop.ts'], {})).toEqual([
+      '1 changed TypeScript file is outside layout.sourceRoots and layout.testRoots, so nothing checks it: ' +
+        'scripts/slop.ts. Add its folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json ' +
+        'to silence this.',
+    ]);
   });
 
   it('lists three files and counts the rest', () => {
     const files = ['lib/d.tsx', 'lib/c.mts', 'lib/b.cts', 'lib/a.ts'];
-    const [notice] = outsideRootsNotices(files, {});
 
-    expect(notice).toContain('4 changed TypeScript files are outside');
-    expect(notice).toContain('lib/a.ts, lib/b.cts, lib/c.mts, and 1 more');
+    expect(outsideRootsNotices(files, {})).toEqual([
+      '4 changed TypeScript files are outside layout.sourceRoots and layout.testRoots, so nothing checks them: ' +
+        'lib/a.ts, lib/b.cts, lib/c.mts, and 1 more. Add their folders to layout.sourceRoots, or list them in ' +
+        '"exclude" in nitpicker.config.json to silence this.',
+    ]);
   });
 
   it('follows the configured source and test roots', () => {
