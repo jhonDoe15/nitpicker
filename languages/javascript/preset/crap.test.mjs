@@ -3,7 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { parseArguments, runQualityArea } from '../../typescript/adapters/quality-areas-runner.mjs';
+import { parseArguments } from '../../typescript/adapters/quality-areas/arguments.mjs';
+import { runQualityArea } from '../../typescript/adapters/quality-areas-runner.mjs';
 import { resolveHeadPolicy } from '../../typescript/preset/head-policy.mjs';
 
 const originalPolicy = process.env.NITPICKER_POLICY;

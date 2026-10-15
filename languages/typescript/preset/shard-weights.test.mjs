@@ -6,15 +6,16 @@ import {
 } from '../../../scripts/measure-shard-weights.mjs';
 import { configuredAnalyzers } from './diff/configured-analyzers.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 // These pin the relative ordering the measurements in docs/shard-weights.md established, never
 // exact timings: re-measuring may move every number, but not the shape.
 const weight = Object.fromEntries(
-  configuredAnalyzers.map(({ name, shardWeight }) => [name, shardWeight]),
+  packageAnalyzers.map(({ name, shardWeight }) => [name, shardWeight]),
 );
 
 describe('shard weights', () => {
   it('gives every analyzer an explicit positive integer weight', () => {
-    for (const { name, shardWeight } of configuredAnalyzers) {
+    for (const { name, shardWeight } of packageAnalyzers) {
       expect(Number.isInteger(shardWeight) && shardWeight > 0, name).toBe(true);
     }
   });
