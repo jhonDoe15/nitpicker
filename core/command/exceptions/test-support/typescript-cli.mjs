@@ -1,12 +1,11 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { runCli } from '../../../cli.mjs';
 import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mjs';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
 
 const COMPARISON_BASE_REF = 'comparison-base';
 
-export function useTypescriptCli() {
+export function useTypescriptCli(runCli) {
   const git = useGitFixtures();
 
   function typescriptRepository(files) {

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { runCli } from '../../cli.mjs';
 import { validateConfig } from '../../configuration/validate.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { useTypescriptCli } from './test-support/typescript-cli.mjs';
 
-const { runTypescript, typescriptRepository } = useTypescriptCli();
+const { runTypescript, typescriptRepository } = useTypescriptCli(runCli);
 
 const WIDE =
   'export function wide(a: number, b: number, c: number, d: number): number {\n  return a + b + c + d;\n}\n';
