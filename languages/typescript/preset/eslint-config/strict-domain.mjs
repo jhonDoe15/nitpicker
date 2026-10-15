@@ -11,10 +11,23 @@ export const domainGlobs = domainGlobsFor(['src']);
 
 const MUTATING_ARRAY_METHODS = 'push|pop|shift|unshift|splice|sort|reverse|fill|copyWithin';
 const READONLY_WRAPPER = "TSTypeOperator[operator='readonly']";
+const UI_FRAMEWORK_SOURCE = '[source.value=/^(?:react|react-dom|react-native|preact)(?:\\x2F|$)/]';
 const TRANSFORMS =
   'map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy';
 
 export const domainRestrictedSyntax = [
+  {
+    selector: [
+      'ImportDeclaration',
+      'ImportExpression',
+      'ExportNamedDeclaration',
+      'ExportAllDeclaration',
+    ]
+      .map((node) => `${node}${UI_FRAMEWORK_SOURCE}`)
+      .join(', '),
+    message:
+      'domain/ does not import react, react-dom, react-native or preact: components and hooks live in adapters/ (or shared/ui) and call the logic in domain/.',
+  },
   {
     selector: 'ForStatement, ForInStatement, ForOfStatement, WhileStatement, DoWhileStatement',
     message: `domain/ code has no loops: transform with ${TRANSFORMS}.`,
