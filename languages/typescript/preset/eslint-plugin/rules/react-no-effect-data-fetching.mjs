@@ -58,7 +58,7 @@ export const rule = {
       fetchInEffect:
         'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. If this request is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
       asyncInEffect:
-        'Do not run async work in `useEffect` (`await` or a call that returns a promise): responses arrive out of order and nothing caches them. Load data with `useQuery` or a route loader. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not run async work in `useEffect` (`await` or a call that returns a promise): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
