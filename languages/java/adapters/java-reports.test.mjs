@@ -208,7 +208,16 @@ describe('readJavaFindings', () => {
     writeFileSync(
       path.join(root, 'build/nitpicker/structure.json'),
       JSON.stringify([
-        { file: bad, name: 'Bad.decode', start: 8, end: 14, lines: 7, parameters: 4 },
+        {
+          file: bad,
+          name: 'Bad.decode',
+          start: 8,
+          end: 14,
+          lines: 7,
+          parameters: 4,
+          complexity: 12,
+          signature: 'Bad.decode(byte[])',
+        },
       ]),
     );
     const { findings } = readJavaFindings(root);
@@ -218,7 +227,7 @@ describe('readJavaFindings', () => {
     const entry = (rule, functionName) => ({ rule, paths: [bad], function: functionName });
 
     expect(routed.map(({ rule, symbol }) => [rule, symbol])).toEqual([
-      ['crap-score-limit', 'Bad::decode( byte[] bytes)'],
+      ['crap-score-limit', 'Bad.decode(byte[])'],
       ['function-parameters-limit', 'Bad.decode'],
       ['changed-branch-coverage', 'Bad.decode'],
     ]);
