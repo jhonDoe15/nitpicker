@@ -1,9 +1,3 @@
-import {
-  expectedOutput166_38,
-  expectedOutput173_38,
-  expectedOutput207_32,
-  expectedOutput262_41,
-} from '../../../../core/diff/fixtures/expected-output/languages-typescript-adapters-eslint-fingerprint.mjs';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -132,6 +126,21 @@ describe('a finding in an edited function stays baselined while the function has
   const SILENT = 'nitpicker/no-silent-catch';
   const originalHandler = "\n    return '';\n  ";
   const rewrittenHandler = "\n    const fallback = '';\n    return fallback;\n  ";
+  const baselinedSilentCatch = [
+    {
+      tool: 'eslint-strict',
+      rule: SILENT,
+      path: 'src/legacy.ts',
+      identity:
+        'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+      message: 'Reported text.',
+      location: { line: 4, column: 5 },
+      classification: 'enforceable',
+      symbol: 'load',
+      ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
+      heldAtBase: 1,
+    },
+  ];
 
   function load(handler, extra = '') {
     return [
@@ -169,14 +178,14 @@ describe('a finding in an edited function stays baselined while the function has
 
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
-    expect(result.unchangedFindings).toEqual(expectedOutput166_38({ SILENT }));
+    expect(result.unchangedFindings).toEqual(baselinedSilentCatch);
   });
 
   it('keeps a catch whose own line the change edited baselined', () => {
     const result = compareWithTouched(load(originalHandler), load(rewrittenHandler), [[4, 6]]);
 
     expect(result.newFindings).toEqual([]);
-    expect(result.unchangedFindings).toEqual(expectedOutput173_38({ SILENT }));
+    expect(result.unchangedFindings).toEqual(baselinedSilentCatch);
   });
 
   it('fails a catch on a line the change added', () => {
@@ -210,7 +219,20 @@ describe('a finding in an edited function stays baselined while the function has
       [[5, 6]],
     );
 
-    expect(result.newFindings).toEqual(expectedOutput207_32());
+    expect(result.newFindings).toEqual([
+      {
+        tool: 'eslint-strict',
+        rule: 'nitpicker/no-silent-catch',
+        path: 'src/legacy.ts',
+        identity:
+          'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+        message: 'Reported text.',
+        location: { line: 13, column: 5 },
+        classification: 'enforceable',
+        symbol: 'fetchValue',
+        ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
+      },
+    ]);
   });
 
   it('keeps a lint finding of a non-strict rule baselined when its code is edited', () => {
@@ -265,7 +287,13 @@ describe('a new throw in a legacy function', () => {
     });
 
   it('carries advice for the count ratchet of the rule', () => {
-    expect(throws(oneThrow)[0].ratchet).toEqual(expectedOutput262_41());
+    expect(throws(oneThrow)[0].ratchet).toEqual({
+      key: 'count:noThrow',
+      value: 1,
+      existingCodeOnly: true,
+      growthAdvice:
+        'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+    });
   });
 
   it('says the count may not grow when the base already had a throw', () => {

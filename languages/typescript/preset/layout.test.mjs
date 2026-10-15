@@ -1,7 +1,3 @@
-import {
-  expectedOutput31_25,
-  expectedOutput32_23,
-} from '../../../core/diff/fixtures/expected-output/languages-typescript-preset-layout.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -34,8 +30,12 @@ describe('common layout', () => {
     expect(duplicates.path).toContain(testRoots[0]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
-    expect([...new Set(sourceGlobs)].sort()).toEqual(expectedOutput31_25());
-    expect([...new Set(testGlobs)].sort()).toEqual(expectedOutput32_23());
+    expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
+    expect([...new Set(testGlobs)].sort()).toEqual([
+      'src/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+    ]);
     for (const file of ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts']) {
       expect(isTestFile(file)).toBe(true);
       expect(isSourceFile(file)).toBe(false);

@@ -1,7 +1,3 @@
-import {
-  expectedOutput86_49,
-  expectedOutput89_45,
-} from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-architecture-runtime-dependency-boundaries.mjs';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -87,8 +83,26 @@ describe('runtime dependency boundaries', () => {
   });
 
   it('reports unresolved dynamic dependencies instead of silently skipping the boundary', () => {
-    expect(inspect('void import(pluginName);')).toEqual(expectedOutput86_49());
-    expect(inspect('require(moduleName);')).toEqual(expectedOutput89_45());
+    expect(inspect('void import(pluginName);')).toEqual([
+      {
+        source: 'domain/decision-policy.ts',
+        role: 'decision-policy',
+        rule: 'unresolved-runtime-dependency',
+        target: 'import',
+        line: 1,
+        column: 6,
+      },
+    ]);
+    expect(inspect('require(moduleName);')).toEqual([
+      {
+        source: 'domain/decision-policy.ts',
+        role: 'decision-policy',
+        rule: 'unresolved-runtime-dependency',
+        target: 'require',
+        line: 1,
+        column: 1,
+      },
+    ]);
   });
 
   it('applies different roles without encoding domain or feature names in the analyzer', () => {

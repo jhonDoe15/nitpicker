@@ -1,7 +1,3 @@
-import {
-  expectedOutput27_89,
-  expectedOutput32_50,
-} from '../../../../../core/diff/fixtures/expected-output/languages-typescript-preset-eslint-config-strict-domain.mjs';
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/harness.mjs';
 import { strictDomainConfig } from './strict-domain.mjs';
@@ -32,10 +28,15 @@ export function total(lines: readonly Line[]) {
       [
         ...new Set(messagesFor(domainFile, 'export const run = (xs: number[]) => xs.push(1);')),
       ].sort(),
-    ).toEqual(expectedOutput27_89());
+    ).toEqual([
+      'domain/ code does not mutate arrays: build a new array with map, filter, flatMap or spread (toSorted, toReversed and toSpliced instead of sort, reverse and splice).',
+      'domain/ types are readonly: write readonly T[] (or a readonly tuple) instead of a mutable array type.',
+    ]);
     const assign = (target) =>
       `export const run = (o: { readonly a: number }) => Object.assign(${target}, o);`;
-    expect(messagesFor(domainFile, assign('o'))).toEqual(expectedOutput32_50());
+    expect(messagesFor(domainFile, assign('o'))).toEqual([
+      'domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field } (Object.assign is fine only onto a fresh object literal).',
+    ]);
     expect(messagesFor(domainFile, assign('{}'))).toEqual([]);
   });
 

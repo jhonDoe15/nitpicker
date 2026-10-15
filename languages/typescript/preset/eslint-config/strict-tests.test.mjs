@@ -1,4 +1,3 @@
-import { expectedOutput35_45 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-eslint-config-strict-tests.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
@@ -65,7 +64,9 @@ function timeoutSettings(file) {
 describe('strict test rules', () => {
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
-      expect(messages(raisedTimeout, file)).toEqual(expectedOutput35_45());
+      expect(messages(raisedTimeout, file)).toEqual([
+        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.',
+      ]);
     }
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
   });

@@ -1,13 +1,13 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { strictPresetConfig } from '../../typescript/preset/eslint-config/strict.config.mjs';
-import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
+import { strictPresetConfig } from '../../../typescript/preset/eslint-config/strict.config.mjs';
+import { defaultResolvedLayout } from '../../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
   applyJavascriptDialect,
   javascriptRuleEntries,
-} from './eslint-dialect.mjs';
+} from '../eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
 const JAVASCRIPT_FILES = '**/*.{js,mjs,cjs}';

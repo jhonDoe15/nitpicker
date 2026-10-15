@@ -1,4 +1,3 @@
-import { expectedOutput110_33 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-eslint-config-strict-adapters.mjs';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -114,7 +113,9 @@ describe('strict adapters type-aware rules', () => {
     expect(messages.map((message) => message.ruleId)).toEqual([
       '@typescript-eslint/no-floating-promises',
     ]);
-    expect(messages[0].message).toEqual(expectedOutput110_33());
+    expect(messages[0].message).toEqual(
+      'Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator.',
+    );
   });
 
   it('accepts an awaited promise', async () => {
