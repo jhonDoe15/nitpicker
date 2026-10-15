@@ -1,4 +1,4 @@
-import { exactText } from '../fixtures/output-expectations.mjs';
+import { exactText } from './test-support/output-expectations.mjs';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

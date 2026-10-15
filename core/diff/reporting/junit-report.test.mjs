@@ -1,4 +1,4 @@
-import { exactText } from '../fixtures/output-expectations.mjs';
+import { exactText } from './test-support/output-expectations.mjs';
 import { describe, expect, it } from 'vitest';
 import { renderJunitReport } from './junit.mjs';
 import { attributeOf, expectWellFormedXml } from './test-support/report-assertions.mjs';

@@ -2,21 +2,20 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
-import { exactText } from '../diff/fixtures/output-expectations.mjs';
-import {
-  captureOutput,
-  createRepository,
-  fakeAnalyzer,
-  git,
-  makeOutputRoot,
-  policy,
-  runCli,
-  useCliFixtures,
-  writeFiles,
-} from '../diff/fixtures/cli-harness.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { fileURLToPath } from 'node:url';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
-useCliFixtures(nitpickerCli);
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
+
+function isolatedCache() {
+  return { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') };
+}
 
 describe('nitpicker CLI', () => {
   it('fixes changed ESLint and Prettier violations before comparing without touching unchanged files or the index', () => {
@@ -34,12 +33,12 @@ describe('nitpicker CLI', () => {
     writeFiles(repository.root, {
       'src/main/changed.ts': 'export let changed=2;\n',
     });
-    git(repository.root, ['add', 'src/main/changed.ts']);
+    fixtureGit(repository.root, ['add', 'src/main/changed.ts']);
     writeFiles(repository.root, {
       'src/main/changed.ts': 'export let changed=3;\n',
       'src/main/format.mjs': 'export const format=2\n',
     });
-    const indexBefore = git(repository.root, ['ls-files', '--stage']);
+    const indexBefore = fixtureGit(repository.root, ['ls-files', '--stage']);
     const output = captureOutput();
     const exitCode = runCli({
       arguments_: [
@@ -54,7 +53,7 @@ describe('nitpicker CLI', () => {
         makeOutputRoot(),
       ],
       currentProjectRoot: repository.root,
-      environment: {},
+      environment: isolatedCache(),
       stdout: output.stdout,
       stderr: output.stderr,
     });
@@ -68,7 +67,7 @@ describe('nitpicker CLI', () => {
     expect(readFileSync(path.join(repository.root, 'src/main/unchanged.ts'), 'utf8')).toBe(
       'export const unchanged=1\n',
     );
-    expect(git(repository.root, ['ls-files', '--stage'])).toBe(indexBefore);
+    expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(indexBefore);
     expect(output.stdoutText).toMatch(
       /Fixed files:\nsrc\/main\/changed.ts\nsrc\/main\/format.mjs\nBase:/,
     );
@@ -94,7 +93,7 @@ describe('nitpicker CLI', () => {
     const exitCode = runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', outputRoot],
       currentProjectRoot: repository.root,
-      environment: {},
+      environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
       executeFixCommand({ operation }) {
         if (operation === 'eslint-fix') {
@@ -164,7 +163,7 @@ No new enforceable violations, but the run is incomplete:
       'src/main/legacy.json':
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n',
     });
-    git(repository.root, ['mv', 'src/main/legacy.json', 'src/main/legacy.md']);
+    fixtureGit(repository.root, ['mv', 'src/main/legacy.json', 'src/main/legacy.md']);
     writeFiles(repository.root, {
       'src/main/legacy.md':
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n\n#  Heading\n\nSome   text\n',
@@ -174,7 +173,7 @@ No new enforceable violations, but the run is incomplete:
     const exitCode = runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
-      environment: {},
+      environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
       executeFixCommand({ operation, input }) {
         if (operation === 'prettier-base-check') {
@@ -225,7 +224,7 @@ Base: ${repository.baseRef} (argument)
         makeOutputRoot(),
       ],
       currentProjectRoot: repository.root,
-      environment: {},
+      environment: isolatedCache(),
       stdout: output.stdout,
       stderr: output.stderr,
     });
@@ -278,7 +277,7 @@ Base: ${repository.baseRef} (argument)
         makeOutputRoot(),
       ],
       currentProjectRoot: repository.root,
-      environment: {},
+      environment: isolatedCache(),
       stdout: output.stdout,
       stderr: output.stderr,
     });
@@ -303,7 +302,7 @@ Base: ${repository.baseRef} (argument)
 
     const exitCode = runCli({
       arguments_: ['--all', '--base', 'x'],
-      environment: {},
+      environment: isolatedCache(),
       stdout: output.stdout,
       stderr: output.stderr,
     });

@@ -2,25 +2,15 @@ import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
-import { exactText } from '../diff/fixtures/output-expectations.mjs';
-import {
-  captureOutput,
-  commit,
-  crashingAnalyzer,
-  createRepository,
-  fakeAnalyzer,
-  finding,
-  findingLine,
-  git,
-  makeOutputRoot,
-  makeTemporaryRoot,
-  policy,
-  runCli,
-  useCliFixtures,
-  writeFiles,
-} from '../diff/fixtures/cli-harness.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
+import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
-useCliFixtures(nitpickerCli);
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
 
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
@@ -88,9 +78,13 @@ describe('nitpicker CLI', () => {
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
-    git(repository.root, ['update-ref', 'refs/remotes/origin/main', repository.baseSha]);
-    git(repository.root, ['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main']);
-    git(repository.root, ['remote', 'add', 'origin', repository.root]);
+    fixtureGit(repository.root, ['update-ref', 'refs/remotes/origin/main', repository.baseSha]);
+    fixtureGit(repository.root, [
+      'symbolic-ref',
+      'refs/remotes/origin/HEAD',
+      'refs/remotes/origin/main',
+    ]);
+    fixtureGit(repository.root, ['remote', 'add', 'origin', repository.root]);
     const output = captureOutput();
 
     const exitCode = runCli({
@@ -389,13 +383,13 @@ describe('nitpicker CLI', () => {
     writeFiles(repository.root, {
       'src/main/staged.ts': 'export const staged = true;\n',
     });
-    git(repository.root, ['add', 'src/main/staged.ts']);
+    fixtureGit(repository.root, ['add', 'src/main/staged.ts']);
     writeFiles(repository.root, {
       'src/main/staged.ts': 'export const staged = 2;\n',
       'src/main/untracked.ts': findingLine(finding({ identity: 'untracked-all' })),
     });
-    const beforeStatus = git(repository.root, ['status', '--porcelain=v1']);
-    const beforeIndex = git(repository.root, ['ls-files', '--stage']);
+    const beforeStatus = fixtureGit(repository.root, ['status', '--porcelain=v1']);
+    const beforeIndex = fixtureGit(repository.root, ['ls-files', '--stage']);
     const output = captureOutput();
     const exitCode = runCli({
       arguments_: ['--all', '--output', makeOutputRoot()],
@@ -421,7 +415,7 @@ describe('nitpicker CLI', () => {
         '',
       ].join('\n'),
     );
-    expect(git(repository.root, ['status', '--porcelain=v1'])).toBe(beforeStatus);
-    expect(git(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
+    expect(fixtureGit(repository.root, ['status', '--porcelain=v1'])).toBe(beforeStatus);
+    expect(fixtureGit(repository.root, ['ls-files', '--stage'])).toBe(beforeIndex);
   });
 });

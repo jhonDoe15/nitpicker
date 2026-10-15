@@ -2,22 +2,16 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { runCli } from '../../cli.mjs';
-import {
-  callsLog,
-  commit,
-  pythonRepository,
-  run,
-  temporaryRoot,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "python" running the project', () => {
   it('fails a change that leaves the project without any test', () => {
     const root = pythonRepository();
-    write(root, { 'test-exit.txt': '5\n' });
+    writeFiles(root, { 'test-exit.txt': '5\n' });
     commit(root, 'delete the tests');
 
     const result = run(root);
@@ -36,7 +30,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
   });
   it('reports a failing test run on head as a tool error with exit 2 instead of throwing', () => {
     const root = pythonRepository();
-    write(root, { 'test-exit.txt': '1\n' });
+    writeFiles(root, { 'test-exit.txt': '1\n' });
     commit(root, 'break the tests');
 
     const result = run(root);
@@ -59,7 +53,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
       'nitpicker.config.json':
         '{ "preset": "python", "python": { "environment": "no-such-venv" } }\n',
     });
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
+    writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
     commit(root, 'change');
 
     const result = run(root);
@@ -79,7 +73,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
   it('runs base sources, not the head ones, against the environment of the checkout', () => {
     const calls = callsLog();
     const root = pythonRepository();
-    write(root, { 'src/demo/a.py': 'def value():\n    return 2\n' });
+    writeFiles(root, { 'src/demo/a.py': 'def value():\n    return 2\n' });
     commit(root, 'change behaviour');
 
     const result = run(root);

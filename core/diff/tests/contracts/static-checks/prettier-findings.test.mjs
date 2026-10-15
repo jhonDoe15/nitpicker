@@ -5,17 +5,15 @@ import { parseArguments } from '../../../../../languages/typescript/adapters/sta
 import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mjs';
 import {
   toolRoot,
-  registerStaticRepositoryLifecycle,
+  useStaticCheckFixtures,
   analyzer,
   policyFiles,
   filler,
-  createRepository,
-  generatedSnapshot,
-  writeFiles,
-  commit,
-} from './static-check-fixtures.mjs';
+} from './test-support/static-check-fixtures.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { commit } from '../../../git/test-support/git-repository.mjs';
 
-registerStaticRepositoryLifecycle();
+const { createRepository, generatedSnapshot } = useStaticCheckFixtures();
 
 describe('static differential adapters: Prettier', () => {
   describe('prettier findings by touched lines', () => {

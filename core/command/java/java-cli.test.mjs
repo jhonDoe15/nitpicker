@@ -2,19 +2,12 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import { exactText } from '../../diff/fixtures/output-expectations.mjs';
-import {
-  commit,
-  git,
-  gradleRepository,
-  run,
-  runCli,
-  temporaryRoot,
-  useGradleFixtures,
-  write,
-} from '../../diff/fixtures/java-cli-harness.mjs';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
+import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-useGradleFixtures(nitpickerCli);
+const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
@@ -28,7 +21,9 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 describe('nitpicker with "preset": "java"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = gradleRepository();
-    write(root, { 'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n' });
+    writeFiles(root, {
+      'src/main/java/demo/A.java': 'package demo;\n\n\n\npublic final class A {}\n',
+    });
     commit(root, 'move only');
 
     const result = run(root);
@@ -38,7 +33,9 @@ describe('nitpicker with "preset": "java"', () => {
   });
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
     const root = gradleRepository();
-    write(root, { 'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n' });
+    writeFiles(root, {
+      'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
+    });
     commit(root, 'add violation');
 
     const result = run(root, [], { subprocess: true });
@@ -123,7 +120,7 @@ describe('nitpicker with "preset": "java"', () => {
   });
   it('honours exclude from nitpicker.config.json', () => {
     const root = gradleRepository();
-    write(root, {
+    writeFiles(root, {
       'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
       'violations.txt': 'Avoid unused field: legacy\nAvoid unused field: added\n',
     });
@@ -143,7 +140,7 @@ describe('nitpicker with "preset": "java"', () => {
     const source = (name) =>
       `package demo;\n\npublic final class ${name} {\n  int run(int a, int b) {\n    int total = 0;\n${body}\n    return total;\n  }\n}\n`;
     const root = gradleRepository({ 'src/main/java/demo/First.java': source('First') });
-    write(root, { 'src/main/java/demo/Second.java': source('Second') });
+    writeFiles(root, { 'src/main/java/demo/Second.java': source('Second') });
     commit(root, 'copy the class');
 
     const result = run(root);
@@ -178,8 +175,8 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
   });
   it('reports a Gradle failure on head as a tool error with exit 2 instead of throwing', () => {
     const root = gradleRepository();
-    write(root, { GRADLE_FAIL: 'Execution failed for task :compileJava\n' });
-    git(root, ['rm', '-q', 'violations.txt']);
+    writeFiles(root, { GRADLE_FAIL: 'Execution failed for task :compileJava\n' });
+    fixtureGit(root, ['rm', '-q', 'violations.txt']);
     commit(root, 'break the build');
 
     const result = run(root);
