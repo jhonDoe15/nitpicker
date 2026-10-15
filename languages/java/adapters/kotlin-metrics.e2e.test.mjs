@@ -1,9 +1,13 @@
-import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from './java-diff.mjs';
+import {
+  gradleClasspath,
+  pinnedKotlinCompiler,
+  runPsiProgram,
+  writeSources,
+} from './kotlin-psi/psi-program.mjs';
 import {
   BOM,
   BROKEN,
@@ -24,20 +28,8 @@ import {
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
+const pinned = pinnedKotlinCompiler;
 const metricsSource = path.resolve(import.meta.dirname, '../gradle/KotlinMetrics.java');
-
-const PRINT_CLASSPATH = `allprojects {
-    plugins.withId('org.jetbrains.kotlin.jvm') {
-        tasks.register('printKotlinCompiler') {
-            doLast {
-                println 'JAVA_HOME=' + System.getProperty('java.home')
-                println 'CLASSPATH=' + configurations.nitpickerKotlinCompiler.asPath
-            }
-        }
-    }
-}
-`;
 
 const FORCE_OTHER_KOTLIN = `
 configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
@@ -53,59 +45,14 @@ let workspace;
 let java;
 let classpath;
 
-function gradleClasspath(project) {
-  const script = path.join(workspace, 'print.init.gradle');
-  writeFileSync(script, PRINT_CLASSPATH);
-  const result = spawnSync(
-    gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      '-Pnitpicker.kotlin=true',
-      '-I',
-      INIT_SCRIPT,
-      '-I',
-      script,
-      'printKotlinCompiler',
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 15 * 60 * 1000 },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
-  return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
-}
-
-function writeSources(name, files) {
-  const dir = path.join(workspace, name);
-  for (const [relative, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(dir, relative)), { recursive: true });
-    writeFileSync(path.join(dir, relative), content);
-  }
-  return dir;
-}
-
 function measure(project) {
-  const output = path.join(project, 'metrics.json');
-  const result = spawnSync(
-    path.join(java, 'bin/java'),
-    [
-      `-Dnitpicker.kotlinCompiler=${pinned}`,
-      '-cp',
-      classpath,
-      metricsSource,
-      output,
-      project,
-      'src',
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 5 * 60 * 1000 },
-  );
-  return {
-    status: result.status,
-    log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(output, 'utf8')) : undefined,
-  };
+  const { status, log, result } = runPsiProgram({
+    java,
+    classpath,
+    source: metricsSource,
+    project,
+  });
+  return { status, log, metrics: result };
 }
 
 describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
@@ -119,7 +66,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    ({ javaHome: java, classpath } = gradleClasspath(project));
+    ({ javaHome: java, classpath } = gradleClasspath({ gradle, project, workspace }));
   });
 
   afterAll(() => {
@@ -136,7 +83,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('measures the units of a file and leaves out what is not a unit', () => {
-    const { metrics } = measure(writeSources('units', { 'src/Units.kt': UNITS }));
+    const { metrics } = measure(writeSources(workspace, 'units', { 'src/Units.kt': UNITS }));
 
     expect(
       metrics.functions.map(
@@ -158,7 +105,9 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('measures init blocks and property initializers that hold a block or branch, and leaves out the straight-line ones', () => {
-    const { metrics } = measure(writeSources('initializers', { 'src/Init.kt': INITIALIZERS }));
+    const { metrics } = measure(
+      writeSources(workspace, 'initializers', { 'src/Init.kt': INITIALIZERS }),
+    );
 
     expect(
       metrics.functions.map(
@@ -181,7 +130,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('counts a flat if / else if / else chain as one level and an if inside an else block or a branch as one deeper', () => {
-    const { metrics } = measure(writeSources('nesting', { 'src/Nesting.kt': NESTING }));
+    const { metrics } = measure(writeSources(workspace, 'nesting', { 'src/Nesting.kt': NESTING }));
 
     expect(
       metrics.functions.map(
@@ -198,7 +147,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('lists the package and classes of each file, including a file outside its package directory', () => {
     const { metrics } = measure(
-      writeSources('files', {
+      writeSources(workspace, 'files', {
         'src/Flat.kt': FLAT,
         'src/Root.kt': ROOT_PACKAGE,
         'src/Units.kt': UNITS,
@@ -218,7 +167,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('reads a file with a byte order mark and one with Windows line endings', () => {
     const { metrics } = measure(
-      writeSources('encoding', { 'src/Bom.kt': BOM, 'src/Crlf.kt': CRLF }),
+      writeSources(workspace, 'encoding', { 'src/Bom.kt': BOM, 'src/Crlf.kt': CRLF }),
     );
 
     expect(metrics.files.map(({ package: name, classes }) => [name, classes])).toEqual([
@@ -233,7 +182,10 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('gives each part of a multifile class its own class and the first file the facade', () => {
     const { metrics } = measure(
-      writeSources('multifile', { 'src/MfA.kt': MULTIFILE_A, 'src/MfB.kt': MULTIFILE_B }),
+      writeSources(workspace, 'multifile', {
+        'src/MfA.kt': MULTIFILE_A,
+        'src/MfB.kt': MULTIFILE_B,
+      }),
     );
 
     expect(metrics.files.map(({ file, classes }) => [file, classes])).toEqual([
@@ -243,7 +195,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {
-    const { status, log } = measure(writeSources('broken', { 'src/Broken.kt': BROKEN }));
+    const { status, log } = measure(writeSources(workspace, 'broken', { 'src/Broken.kt': BROKEN }));
 
     const [, line, version] =
       /^src\/Broken\.kt:(\d+): .*The sources compile, so the pinned Kotlin compiler (\S+) is too old to read them: bump kotlinCompiler in nitpicker\.init\.gradle\.$/m.exec(

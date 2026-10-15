@@ -137,6 +137,7 @@ function projectWithKotlinReports({
   mkdirSync(path.join(reports, 'pit'));
   writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
   writeFileSync(path.join(reports, 'structure.json'), '[]');
+  writeFileSync(path.join(reports, 'kotlin-mutation-facts.json'), '{"files":[]}');
   writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(
     path.join(reports, 'detekt.sarif'),

@@ -1,0 +1,872 @@
+{
+  "files": [
+    {
+      "file": "src/main/kotlin/demo/Coro.kt",
+      "package": "demo",
+      "lines": 77,
+      "classes": [
+        {
+          "name": "demo.Meters",
+          "kind": "value",
+          "start": 49,
+          "headerEnd": 50,
+          "init": false,
+          "serializable": false,
+          "functions": ["doubled"],
+          "properties": [
+            {
+              "name": "value",
+              "start": 50,
+              "end": 50,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Registry",
+          "kind": "object",
+          "start": 54,
+          "headerEnd": 54,
+          "init": false,
+          "serializable": false,
+          "functions": ["reset"],
+          "properties": [
+            {
+              "name": "size",
+              "start": 55,
+              "end": 55,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": true
+            },
+            {
+              "name": "last",
+              "start": 56,
+              "end": 56,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.CoroKt",
+          "kind": "facade",
+          "start": 0,
+          "headerEnd": 0,
+          "init": false,
+          "serializable": false,
+          "functions": [
+            "numbers",
+            "collected",
+            "safeFetch",
+            "parallel",
+            "grade",
+            "orDash",
+            "pairs",
+            "built"
+          ],
+          "properties": [
+            {
+              "name": "shout",
+              "start": 64,
+              "end": 64,
+              "constructor": false,
+              "getter": true,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "doubled",
+          "class": "demo.Meters",
+          "start": 51,
+          "end": 51,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "reset",
+          "class": "demo.Registry",
+          "start": 58,
+          "end": 61,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "numbers",
+          "class": "demo.CoroKt",
+          "start": 14,
+          "end": 19,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "collected",
+          "class": "demo.CoroKt",
+          "start": 21,
+          "end": 21,
+          "suspend": true,
+          "inline": false
+        },
+        {
+          "name": "safeFetch",
+          "class": "demo.CoroKt",
+          "start": 23,
+          "end": 30,
+          "suspend": true,
+          "inline": false
+        },
+        {
+          "name": "parallel",
+          "class": "demo.CoroKt",
+          "start": 32,
+          "end": 40,
+          "suspend": true,
+          "inline": false
+        },
+        {
+          "name": "grade",
+          "class": "demo.CoroKt",
+          "start": 42,
+          "end": 47,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "orDash",
+          "class": "demo.CoroKt",
+          "start": 66,
+          "end": 66,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "pairs",
+          "class": "demo.CoroKt",
+          "start": 68,
+          "end": 69,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "built",
+          "class": "demo.CoroKt",
+          "start": 71,
+          "end": 76,
+          "suspend": false,
+          "inline": false
+        }
+      ],
+      "lambdas": [
+        { "start": 15, "end": 19, "valueLines": [18, 18], "callee": "flow" },
+        { "start": 33, "end": 40, "valueLines": [34, 39], "callee": "withContext" },
+        { "start": 34, "end": 39, "valueLines": [38, 38], "callee": "coroutineScope" },
+        { "start": 35, "end": 35, "valueLines": [35, 35], "callee": "async" },
+        { "start": 36, "end": 36, "valueLines": [36, 36], "callee": "async" },
+        { "start": 37, "end": 37, "valueLines": [37, 37], "callee": "launch" },
+        { "start": 55, "end": 55, "valueLines": [], "callee": "observable" },
+        { "start": 69, "end": 69, "valueLines": [69, 69], "callee": "mapNotNull" },
+        { "start": 72, "end": 76, "valueLines": [], "callee": "buildString" }
+      ],
+      "branching": [26, 43, 44, 45, 46, 66, 69, 73],
+      "bang": []
+    },
+    {
+      "file": "src/main/kotlin/demo/Flow.kt",
+      "package": "demo",
+      "lines": 28,
+      "classes": [
+        {
+          "name": "demo.FlowKt",
+          "kind": "facade",
+          "start": 0,
+          "headerEnd": 0,
+          "init": false,
+          "serializable": false,
+          "functions": ["fetch", "fetchAll", "evens", "maybe", "tryUse"],
+          "properties": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "fetch",
+          "class": "demo.FlowKt",
+          "start": 5,
+          "end": 10,
+          "suspend": true,
+          "inline": false
+        },
+        {
+          "name": "fetchAll",
+          "class": "demo.FlowKt",
+          "start": 12,
+          "end": 18,
+          "suspend": true,
+          "inline": false
+        },
+        {
+          "name": "evens",
+          "class": "demo.FlowKt",
+          "start": 20,
+          "end": 20,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "maybe",
+          "class": "demo.FlowKt",
+          "start": 22,
+          "end": 22,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "tryUse",
+          "class": "demo.FlowKt",
+          "start": 24,
+          "end": 27,
+          "suspend": false,
+          "inline": false
+        }
+      ],
+      "lambdas": [
+        { "start": 20, "end": 20, "valueLines": [20, 20], "callee": "filter" },
+        { "start": 20, "end": 20, "valueLines": [20, 20], "callee": "map" },
+        { "start": 22, "end": 22, "valueLines": [22, 22], "callee": "firstOrNull" }
+      ],
+      "branching": [7, 14, 20, 22, 25],
+      "bang": []
+    },
+    {
+      "file": "src/main/kotlin/demo/More.kt",
+      "package": "demo",
+      "lines": 123,
+      "classes": [
+        {
+          "name": "demo.Holder",
+          "kind": "class",
+          "start": 81,
+          "headerEnd": 81,
+          "init": true,
+          "serializable": false,
+          "functions": ["toString", "check"],
+          "properties": [
+            {
+              "name": "items",
+              "start": 81,
+              "end": 81,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            },
+            {
+              "name": "label",
+              "start": 81,
+              "end": 81,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Animal",
+          "kind": "interface",
+          "start": 96,
+          "headerEnd": 96,
+          "init": false,
+          "serializable": false,
+          "functions": ["sound"],
+          "properties": []
+        },
+        {
+          "name": "demo.Dog",
+          "kind": "class",
+          "start": 100,
+          "headerEnd": 100,
+          "init": false,
+          "serializable": false,
+          "functions": ["sound"],
+          "properties": []
+        },
+        {
+          "name": "demo.Fish",
+          "kind": "class",
+          "start": 104,
+          "headerEnd": 104,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": []
+        },
+        {
+          "name": "demo.MoreKt",
+          "kind": "facade",
+          "start": 0,
+          "headerEnd": 0,
+          "init": false,
+          "serializable": false,
+          "functions": [
+            "rangeSum",
+            "indexed",
+            "inRange",
+            "subjectless",
+            "whiles",
+            "smart",
+            "lets",
+            "applies",
+            "finals",
+            "uses",
+            "sequences",
+            "failing",
+            "unreachable"
+          ],
+          "properties": [
+            {
+              "name": "lazyValue",
+              "start": 79,
+              "end": 79,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": true
+            }
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "name": "toString",
+          "class": "demo.Holder",
+          "start": 88,
+          "end": 88,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "check",
+          "class": "demo.Holder",
+          "start": 90,
+          "end": 93,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "sound",
+          "class": "demo.Animal",
+          "start": 97,
+          "end": 97,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "sound",
+          "class": "demo.Dog",
+          "start": 101,
+          "end": 101,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "rangeSum",
+          "class": "demo.MoreKt",
+          "start": 5,
+          "end": 17,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "indexed",
+          "class": "demo.MoreKt",
+          "start": 19,
+          "end": 28,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "inRange",
+          "class": "demo.MoreKt",
+          "start": 30,
+          "end": 30,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "subjectless",
+          "class": "demo.MoreKt",
+          "start": 32,
+          "end": 37,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "whiles",
+          "class": "demo.MoreKt",
+          "start": 39,
+          "end": 50,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "smart",
+          "class": "demo.MoreKt",
+          "start": 52,
+          "end": 59,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "lets",
+          "class": "demo.MoreKt",
+          "start": 61,
+          "end": 61,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "applies",
+          "class": "demo.MoreKt",
+          "start": 63,
+          "end": 67,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "finals",
+          "class": "demo.MoreKt",
+          "start": 69,
+          "end": 75,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "uses",
+          "class": "demo.MoreKt",
+          "start": 77,
+          "end": 77,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "sequences",
+          "class": "demo.MoreKt",
+          "start": 106,
+          "end": 109,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "failing",
+          "class": "demo.MoreKt",
+          "start": 111,
+          "end": 116,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "unreachable",
+          "class": "demo.MoreKt",
+          "start": 118,
+          "end": 122,
+          "suspend": false,
+          "inline": false
+        }
+      ],
+      "lambdas": [
+        { "start": 61, "end": 61, "valueLines": [61, 61], "callee": "let" },
+        { "start": 65, "end": 65, "valueLines": [65, 65], "callee": "forEach" },
+        { "start": 77, "end": 77, "valueLines": [77, 77], "callee": "use" },
+        { "start": 79, "end": 79, "valueLines": [79, 79], "callee": "lazy" },
+        { "start": 85, "end": 85, "valueLines": [85, 85], "callee": "require" },
+        { "start": 91, "end": 91, "valueLines": [91, 91], "callee": "check" },
+        { "start": 106, "end": 109, "valueLines": [108, 108], "callee": "sequence" }
+      ],
+      "branching": [
+        7, 10, 13, 21, 24, 30, 33, 34, 35, 36, 42, 46, 48, 53, 55, 61, 65, 77, 85, 88, 91, 92, 112,
+        119, 120, 121
+      ],
+      "bang": []
+    },
+    {
+      "file": "src/main/kotlin/demo/Nulls.kt",
+      "package": "demo",
+      "lines": 67,
+      "classes": [
+        {
+          "name": "demo.Person",
+          "kind": "class",
+          "start": 3,
+          "headerEnd": 3,
+          "init": false,
+          "serializable": false,
+          "functions": ["display", "nickLength", "forced", "castOrNull", "cast", "tagged"],
+          "properties": [
+            {
+              "name": "tag",
+              "start": 4,
+              "end": 4,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            },
+            {
+              "name": "name",
+              "start": 3,
+              "end": 3,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            },
+            {
+              "name": "nickname",
+              "start": 3,
+              "end": 3,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Counter",
+          "kind": "class",
+          "start": 55,
+          "headerEnd": 55,
+          "init": false,
+          "serializable": false,
+          "functions": ["increment"],
+          "properties": [
+            {
+              "name": "count",
+              "start": 61,
+              "end": 61,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Counter$Companion",
+          "kind": "object",
+          "start": 56,
+          "headerEnd": 56,
+          "init": false,
+          "serializable": false,
+          "functions": ["create"],
+          "properties": [
+            {
+              "name": "START",
+              "start": 57,
+              "end": 57,
+              "constructor": false,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.NullsKt",
+          "kind": "facade",
+          "start": 0,
+          "headerEnd": 0,
+          "init": false,
+          "serializable": false,
+          "functions": [
+            "greet",
+            "overloaded",
+            "twice",
+            "useInline",
+            "classify",
+            "both",
+            "either",
+            "loop",
+            "safeParse"
+          ],
+          "properties": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "display",
+          "class": "demo.Person",
+          "start": 6,
+          "end": 6,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "nickLength",
+          "class": "demo.Person",
+          "start": 8,
+          "end": 8,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "forced",
+          "class": "demo.Person",
+          "start": 10,
+          "end": 10,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "castOrNull",
+          "class": "demo.Person",
+          "start": 12,
+          "end": 12,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "cast",
+          "class": "demo.Person",
+          "start": 14,
+          "end": 14,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "tagged",
+          "class": "demo.Person",
+          "start": 16,
+          "end": 16,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "create",
+          "class": "demo.Counter$Companion",
+          "start": 58,
+          "end": 58,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "increment",
+          "class": "demo.Counter",
+          "start": 63,
+          "end": 65,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "greet",
+          "class": "demo.NullsKt",
+          "start": 19,
+          "end": 20,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "overloaded",
+          "class": "demo.NullsKt",
+          "start": 22,
+          "end": 23,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "twice",
+          "class": "demo.NullsKt",
+          "start": 25,
+          "end": 25,
+          "suspend": false,
+          "inline": true
+        },
+        {
+          "name": "useInline",
+          "class": "demo.NullsKt",
+          "start": 27,
+          "end": 27,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "classify",
+          "class": "demo.NullsKt",
+          "start": 29,
+          "end": 34,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "both",
+          "class": "demo.NullsKt",
+          "start": 36,
+          "end": 36,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "either",
+          "class": "demo.NullsKt",
+          "start": 38,
+          "end": 38,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "loop",
+          "class": "demo.NullsKt",
+          "start": 40,
+          "end": 46,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "safeParse",
+          "class": "demo.NullsKt",
+          "start": 48,
+          "end": 53,
+          "suspend": false,
+          "inline": false
+        }
+      ],
+      "lambdas": [{ "start": 27, "end": 27, "valueLines": [27, 27], "callee": "twice" }],
+      "branching": [6, 8, 10, 12, 14, 23, 27, 30, 33, 36, 38, 42],
+      "bang": [10]
+    },
+    {
+      "file": "src/main/kotlin/demo/Shapes.kt",
+      "package": "demo",
+      "lines": 38,
+      "classes": [
+        {
+          "name": "demo.Shape",
+          "kind": "class",
+          "start": 3,
+          "headerEnd": 3,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": []
+        },
+        {
+          "name": "demo.Shape$Circle",
+          "kind": "data",
+          "start": 4,
+          "headerEnd": 4,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": [
+            {
+              "name": "radius",
+              "start": 4,
+              "end": 4,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Shape$Square",
+          "kind": "data",
+          "start": 5,
+          "headerEnd": 5,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": [
+            {
+              "name": "side",
+              "start": 5,
+              "end": 5,
+              "constructor": true,
+              "getter": false,
+              "setter": false,
+              "delegated": false
+            }
+          ]
+        },
+        {
+          "name": "demo.Shape$Empty",
+          "kind": "object",
+          "start": 6,
+          "headerEnd": 6,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": []
+        },
+        {
+          "name": "demo.Color",
+          "kind": "enum",
+          "start": 9,
+          "headerEnd": 9,
+          "init": false,
+          "serializable": false,
+          "functions": [],
+          "properties": []
+        },
+        {
+          "name": "demo.ShapesKt",
+          "kind": "facade",
+          "start": 0,
+          "headerEnd": 0,
+          "init": false,
+          "serializable": false,
+          "functions": ["area", "hex", "describe", "word"],
+          "properties": []
+        }
+      ],
+      "functions": [
+        {
+          "name": "area",
+          "class": "demo.ShapesKt",
+          "start": 11,
+          "end": 16,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "hex",
+          "class": "demo.ShapesKt",
+          "start": 18,
+          "end": 23,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "describe",
+          "class": "demo.ShapesKt",
+          "start": 25,
+          "end": 30,
+          "suspend": false,
+          "inline": false
+        },
+        {
+          "name": "word",
+          "class": "demo.ShapesKt",
+          "start": 32,
+          "end": 37,
+          "suspend": false,
+          "inline": false
+        }
+      ],
+      "lambdas": [],
+      "branching": [12, 13, 14, 15, 19, 20, 21, 22, 26, 27, 28, 29, 33, 34, 35, 36],
+      "bang": []
+    }
+  ]
+}

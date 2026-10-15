@@ -22,6 +22,7 @@ import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
+  kotlinGeneratedFilter,
   reportOnlyKotlinMutants,
   requireKotlinManifest,
   sourceLocator,
@@ -183,6 +184,7 @@ function pitFindings(context) {
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }
