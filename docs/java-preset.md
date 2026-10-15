@@ -15,7 +15,7 @@ side contributes only two things: producing reports, and converting them into fi
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, permits.txt, manifest.json}
-  -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
+  -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
@@ -189,7 +189,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
-- **Tests.** `core/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
+- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
   on base, missing binary, `--all`. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
   (`npm run test:java`), unchanged.
@@ -201,12 +201,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                      | Report                     | Ingester                                                            | Classification                                          | Identity                                                                                                            |
-| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                 | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                      | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
+| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -295,7 +295,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
-  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
+  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
   per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
   (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
@@ -317,7 +317,7 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Tool and report.** No new tool: the JaCoCo XML of slice 1 already has, per source line, the
   covered and missed branch outcomes (`<line nr mb cb>`). The init script is unchanged.
-- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/jacoco-branches.mjs`) emits one enforceable
+- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage-reports/jacoco-branches.mjs`) emits one enforceable
   `jacoco` / `changed-branch-coverage` finding per source line whose covered branch outcomes are
   below 95% (the TypeScript check's minimum); lines without branches are never reported. It runs on
   both snapshots, so a branch that is uncovered on the base is baselined like any other finding.
@@ -339,7 +339,7 @@ resolved plus a new finding, as in the TypeScript check.
   used. A line that is only reformatted counts as changed. Lines whose source text is empty after
   trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
   that is added or removed changes which branches are covered on head.
-- **Tests.** `languages/java/ingest/jacoco-branches.test.mjs` (sample report, identity stability,
+- **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs` (sample report, identity stability,
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
@@ -371,7 +371,7 @@ resolved plus a new finding, as in the TypeScript check.
   (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
-- **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
@@ -391,7 +391,7 @@ resolved plus a new finding, as in the TypeScript check.
   `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
-- **Conversion.** `languages/java/adapters/java-coupling.mjs` parses the class graph, folds nested classes
+- **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
   the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
@@ -415,7 +415,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.
-- **Tests.** `languages/java/adapters/java-coupling.test.mjs` (parsing, metrics, stability edges, the
+- **Tests.** `languages/java/adapters/metrics/java-coupling.test.mjs` (parsing, metrics, stability edges, the
   neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
@@ -780,9 +780,9 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 ## Tests
 
-- `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
+- `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

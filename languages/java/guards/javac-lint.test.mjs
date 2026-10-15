@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
 
 const roots = [];
