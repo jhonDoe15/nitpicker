@@ -1,8 +1,8 @@
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
-import { ingestCrapRows, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
 
-export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+export function ingestCrap(structure, jacocoXml, options = {}) {
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -17,6 +17,27 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
   }));
 }
 
+function structureFunctions(entries) {
+  return entries
+    .filter((entry) => entry.privateEmptyConstructor !== true)
+    .map((entry) => {
+      if (!Number.isInteger(entry.complexity)) {
+        throw new TypeError(`Structure entry without complexity: ${entry.name}`);
+      }
+      if (typeof entry.signature !== 'string') {
+        throw new TypeError(`Structure entry without signature: ${entry.name}`);
+      }
+      return {
+        ccn: entry.complexity,
+        file: entry.file,
+        name: entry.name.split('.').at(-1),
+        longName: entry.signature,
+        start: entry.start,
+        end: entry.end,
+      };
+    });
+}
+
 function jacocoMethods(xml) {
   const report = parseXml(xml);
   if (report.name !== 'report') {
@@ -26,7 +47,12 @@ function jacocoMethods(xml) {
   for (const pkg of childrenNamed(report, 'package')) {
     for (const cls of childrenNamed(pkg, 'class')) {
       const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const simpleName = (cls.attrs.name ?? '').split('/').at(-1).split('$').at(-1);
+      const simpleName = (cls.attrs.name ?? '')
+        .split('/')
+        .at(-1)
+        .split('$')
+        .at(-1)
+        .replace(/^\d+/u, '');
       for (const method of childrenNamed(cls, 'method')) {
         const line = Number.parseInt(method.attrs.line, 10);
         if (!Number.isInteger(line)) {
@@ -60,9 +86,8 @@ function counter(element, type) {
 }
 
 function selectNamedMethods(fn, candidates) {
-  const methodName = fn.name.split('::').at(-1);
   return candidates.filter(
-    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
   );
 }
 

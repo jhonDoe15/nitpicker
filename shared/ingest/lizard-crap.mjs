@@ -10,7 +10,7 @@ export function calculateCrap(complexity, coveragePercent) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const unique = createIdentityCounter();
+  const counters = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -19,6 +19,8 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
     const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined

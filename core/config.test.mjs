@@ -242,7 +242,9 @@ describe('config file', () => {
       }),
     ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
-      'Checkstyle checks Java line length',
+      new Error(
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Checkstyle checks Java line length; set it in config/checkstyle/checkstyle.xml and opt in with "tools": { "checkstyle": { "precedence": ["project"] } }',
+      ),
     );
   });
 
@@ -356,27 +358,81 @@ describe('tool precedence', () => {
     }
   });
 
-  it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
+  it('accepts either lint engine for the ESLint checks', () => {
+    for (const engine of ['oxlint', 'eslint', undefined]) {
+      expect(validateConfig({ tools: { eslint: { engine } } })).toBeDefined();
+    }
+  });
+
+  it('rejects an unknown lint engine', () => {
+    for (const engine of ['biome', '']) {
+      expect(() => validateConfig({ tools: { eslint: { engine } } })).toThrow(
+        '"tools.eslint.engine" must be "oxlint" or "eslint"',
+      );
+    }
     expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "eslint". Supported tools: prettier',
+      '"tools.eslint" has unknown key "precedence"',
+    );
+  });
+
+  it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
+    expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
     );
     for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
       expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
-        '"tools.prettier.precedence" must list',
+        new Error(
+          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
+        ),
       );
     }
+    expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once',
+      ),
+    );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
   });
 
-  it('is a TypeScript-only key and shows up as a config override', () => {
+  it('lists the tools setting among the config overrides', () => {
     const tools = { prettier: { precedence: ['project', 'nitpicker'] } };
-    expect(() => validateConfig({ preset: 'java', tools })).toThrow(
-      '"tools" is not supported with "preset": "java"',
-    );
     expect(describeConfigOverrides({ tools })).toEqual([`tools: ${JSON.stringify(tools)}`]);
+  });
+
+  it.each(['java', 'kotlin'])(
+    'names PMD and Checkstyle with the %s preset, where Checkstyle runs one config',
+    (preset) => {
+      const tools = {
+        pmd: { precedence: ['project', 'nitpicker'] },
+        checkstyle: { precedence: ['project'] },
+      };
+      expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(() =>
+        validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
+      ).toThrow(
+        '"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle',
+      );
+      expect(() =>
+        validateConfig({ preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } }),
+      ).toThrow('"tools.checkstyle.precedence" must be ["nitpicker"] or ["project"]');
+    },
+  );
+
+  it('keeps PMD and Checkstyle out of the TypeScript and Python presets', () => {
+    const tools = { pmd: { precedence: ['project'] } };
+    expect(() => validateConfig({ tools })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint',
+      ),
+    );
+    expect(() => validateConfig({ preset: 'python', tools })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+      ),
+    );
   });
 });
 
