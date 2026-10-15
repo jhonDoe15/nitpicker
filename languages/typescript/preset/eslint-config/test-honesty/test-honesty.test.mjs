@@ -73,10 +73,26 @@ describe('test honesty rules', () => {
     const code = 'export const labels = [1, -1, 0];';
 
     expect(messages(code, 'src/main/features/labels/testing/make-labels.ts')).toEqual([
-      'This looks like a test helper (testing/), but it sits in production source, so it is mutation-tested and shipped. Move it to the test folder (for example test/support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+      'This looks like a test helper (testing/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+    ]);
+    expect(messages(code, 'src/main/features/labels/test-support/make-labels.ts')).toEqual([
+      'This looks like a test helper (test-support/), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under test/, so move it to a test-support/ folder there (test/test-support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
     ]);
     expect(messages(code, 'src/main/features/labels/domain/labels.ts')).toEqual([]);
     expect(messages(code, 'test/support/make-labels.ts')).toEqual([]);
+  });
+
+  it('allow test-support/ next to the code when no test root exists, and name it', () => {
+    const code = 'export const labels = [1, -1, 0];';
+    const colocated = [parser, ...testHonestyConfigFor(layout, { testRootsOnDisk: [] })];
+
+    expect(
+      messages(code, 'src/main/features/labels/test-support/make-labels.ts', colocated),
+    ).toEqual([]);
+    expect(messages(code, 'src/main/test-support/fixtures/labels.ts', colocated)).toEqual([]);
+    expect(messages(code, 'src/main/features/labels/testing/make-labels.ts', colocated)).toEqual([
+      'This looks like a test helper (testing/), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+    ]);
   });
 
   it('keep the real network out of unit tests only', () => {

@@ -21,6 +21,7 @@ import { testHonestyConfigFor } from '../eslint-config/test-honesty/index.mjs';
 import { setupFilesIn } from '../eslint-config/test-honesty/setup-files.mjs';
 import { stubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { existingRoots } from '../layout.mjs';
 
 const policy = readHeadPolicy();
 
@@ -129,6 +130,7 @@ const presetConfig = defineConfig(
   ...testHonestyConfigFor(layout, {
     setupFiles: setupFilesIn(analyzedProjectRoot()),
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
+    testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
   }),
 );
 
