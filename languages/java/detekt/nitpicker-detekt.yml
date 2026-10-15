@@ -1,7 +1,7 @@
 # Nitpicker's detekt rules for the Kotlin preset (detekt 1.23.8). Laid over detekt's defaults and over the
 # project's own detekt config, so a project cannot switch these rules off, lower their severity or exclude
 # paths in detekt.yml: every rule below sets active, severity, includes and excludes itself. Lift them per
-# path with "exceptions" in nitpicker.config.json. The rule list is languages/java/adapters/kotlin-rules.mjs.
+# path with "exceptions" in nitpicker.config.json. The rule list is languages/java/adapters/kotlin/rules/kotlin-rules.mjs.
 # Rules here that need type resolution run because the detekt task passes the module's classpath.
 
 potential-bugs:
