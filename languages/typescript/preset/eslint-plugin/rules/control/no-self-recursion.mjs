@@ -5,6 +5,8 @@ const FUNCTION_TYPES = new Set([
   'FunctionExpression',
   'ArrowFunctionExpression',
 ]);
+const EXCEPTION_ROUTE =
+  ' If the recursion is bounded and deliberate, add an exception for this rule in nitpicker.config.json.';
 const DOMAIN_PATH = /(?:^|\/)features\/[^/]+\/domain\//;
 
 function boundFunction(definition) {
@@ -13,10 +15,6 @@ function boundFunction(definition) {
   }
   const init = definition.type === 'Variable' ? definition.node.init : undefined;
   return init !== undefined && init !== null && FUNCTION_TYPES.has(init.type) ? init : undefined;
-}
-
-function enclosingFunctions(node) {
-  return ancestorsOf(node).filter((current) => FUNCTION_TYPES.has(current.type));
 }
 
 const ITERATION_METHODS = new Set([
@@ -42,6 +40,18 @@ function isIterationCallback(identifier, call) {
   );
 }
 
+function isInlineIterationCallback(fn) {
+  const { parent } = fn;
+  return parent.type === 'CallExpression' && isIterationCallback(fn, parent);
+}
+
+function callingFunction(node, target) {
+  const functions = ancestorsOf(node).filter((current) => FUNCTION_TYPES.has(current.type));
+  return (
+    functions.find((fn) => fn === target || !isInlineIterationCallback(fn)) ?? functions.at(-1)
+  );
+}
+
 function isCallEdge({ identifier }) {
   const { parent } = identifier;
   if (parent.type !== 'CallExpression' && parent.type !== 'NewExpression') {
@@ -57,9 +67,12 @@ function edgesTo(variable) {
   }
   return variable.references
     .filter(isCallEdge)
-    .flatMap(({ identifier }) =>
-      enclosingFunctions(identifier).map((source) => ({ source, target, node: identifier })),
-    );
+    .map(({ identifier }) => ({
+      source: callingFunction(identifier, target),
+      target,
+      node: identifier,
+    }))
+    .filter(({ source }) => source !== undefined);
 }
 
 function callGraph(sourceCode) {
@@ -80,8 +93,14 @@ function nameOf(fn) {
   return fn.id?.name ?? fn.parent.id?.name;
 }
 
+function callsBack(source, target, edges) {
+  return edges.some((edge) => edge.source === target && edge.target === source);
+}
+
 function startsCycle({ source, target }, edges) {
-  if (ancestorsOf(target).includes(source) || !reachableFrom(target, edges).has(source)) {
+  const closedByNestedCall =
+    ancestorsOf(target).includes(source) && callsBack(source, target, edges);
+  if (closedByNestedCall || !reachableFrom(target, edges).has(source)) {
     return false;
   }
   const members = [...reachableFrom(source, edges)].filter((member) =>
@@ -94,6 +113,9 @@ function recursionReport(edge, edges, messageId) {
   const { source, target, node } = edge;
   if (source === target) {
     return { node, messageId, data: { name: nameOf(source) } };
+  }
+  if (ancestorsOf(source).includes(target) && reachableFrom(target, edges).has(source)) {
+    return { node, messageId, data: { name: nameOf(target) } };
   }
   if (!startsCycle(edge, edges)) {
     return undefined;
@@ -113,12 +135,9 @@ export const rule = {
     },
     schema: [],
     messages: {
-      recursion:
-        "'{{name}}' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported.",
-      domainRecursion:
-        "'{{name}}' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries.",
-      mutualRecursion:
-        "'{{name}}' and '{{other}}' call each other. Replace the cycle with a for...of loop over a worklist, or merge them into one function that loops.",
+      recursion: `'{{name}}' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported.${EXCEPTION_ROUTE}`,
+      domainRecursion: `'{{name}}' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries.${EXCEPTION_ROUTE}`,
+      mutualRecursion: `'{{name}}' and '{{other}}' call each other. Replace the cycle with a for...of loop over a worklist, or merge them into one function that loops.${EXCEPTION_ROUTE}`,
     },
   },
   create(context) {

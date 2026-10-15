@@ -71,6 +71,9 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     },
     'function poll() { setTimeout(poll, 1000); }',
     'function onMessage(event) { emitter.off("message", onMessage); }',
+    'function watch() { emitter.on("change", () => watch()); }',
+    'function start() { window.addEventListener("load", function onLoad() { start(); }); }',
+    'function outer() { const run = () => helper(); return run; } function helper() { return outer(); }',
   ],
   invalid: [
     {
@@ -97,6 +100,18 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     {
       code: 'function a() { function b() { return a(); } return b(); }',
       errors: [{ messageId: 'recursion', data: { name: 'a' } }],
+    },
+    {
+      code: 'function walk(node) { node.children.forEach((child) => walk(child)); }',
+      errors: [{ messageId: 'recursion', data: { name: 'walk' } }],
+    },
+    {
+      code: 'function a() { const b = () => a(); return b(); }',
+      errors: [{ messageId: 'recursion', data: { name: 'a' } }],
+    },
+    {
+      code: 'function outer() { const run = () => helper(); return run(); } function helper() { return outer(); }',
+      errors: [{ messageId: 'mutualRecursion', data: { name: 'outer', other: 'run' } }],
     },
   ],
 });
