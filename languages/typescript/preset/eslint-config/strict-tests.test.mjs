@@ -141,8 +141,8 @@ describe('strict test rules', () => {
     expect(
       timeoutSettings('languages/typescript/preset/defaults/vitest.quality.config.ts'),
     ).toEqual([['MINIMUM_TIMEOUT', TEST_TIMEOUT_CEILING_MS]]);
-    expect(timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs')).toEqual(
-      [],
-    );
+    expect(
+      timeoutSettings('languages/typescript/adapters/quality-areas/runners/tests.mjs'),
+    ).toEqual([]);
   });
 });
