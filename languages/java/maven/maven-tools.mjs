@@ -44,6 +44,7 @@ export function toolDependencies(pinned, launcherVersions = []) {
       dependency(`com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`),
     ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
+    archunit: [dependency(`com.tngtech.archunit:archunit:${pinned.archunit}`)],
     jacoco: [dependency(`org.jacoco:org.jacoco.cli:${pinned.jacoco}:nodeps`)],
     pit: [
       dependency(`org.pitest:pitest-command-line:${pinned.pitest}`),
@@ -103,10 +104,14 @@ function missing(classpaths) {
     .map(([name]) => name);
 }
 
-function cacheDirectory(key) {
+export function cacheRoot() {
   const root = path.join(process.env.XDG_CACHE_HOME ?? path.join(homedir(), '.cache'), 'nitpicker');
   mkdirSync(root, { recursive: true, mode: 0o700 });
-  return path.join(root, `maven-tools-${key}`);
+  return root;
+}
+
+function cacheDirectory(key) {
+  return path.join(cacheRoot(), `maven-tools-${key}`);
 }
 
 export function resolveTools({ projectRoot, maven, pinned, launcherVersions }) {
