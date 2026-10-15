@@ -1,7 +1,3 @@
-import {
-  expectedOutput65_27,
-  expectedOutput132_24,
-} from '../../../core/diff/fixtures/expected-output/languages-java-adapters-java-policy.mjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -66,7 +62,19 @@ describe('configureJavaAnalyzer', () => {
     const parsed = parseRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
-    expect(parsed.policy).toEqual(expectedOutput65_27());
+    expect(parsed.policy).toEqual({
+      crapLimit: 12,
+      fileLimits: undefined,
+      exclude: ['a/**', 'b/*.java'],
+      exceptions: [],
+      legacyInventory: 'legacy.json',
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
+      snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
+    });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
       configureJavaAnalyzer(analyzer, { thresholds: { crapLimit: 13 } }).configurationHash,
@@ -128,7 +136,20 @@ describe('configureJavaAnalyzer', () => {
 
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
-    expect([...new Set(JAVA_TOOLS)].sort()).toEqual(expectedOutput132_24());
+    expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
+      'archunit',
+      'checkstyle',
+      'coupling',
+      'crap',
+      'duplicates',
+      'google-java-format',
+      'jacoco',
+      'pit',
+      'pmd',
+      'spotbugs',
+      'spring',
+      'structure',
+    ]);
   });
 });
 
