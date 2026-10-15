@@ -5,13 +5,7 @@ import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
 function parseSource(source, filename) {
-  const sourceFile = ts.createSourceFile(
-    filename,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    filename.endsWith('.mts') ? ts.ScriptKind.TS : ts.ScriptKind.TS,
-  );
+  const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
   if (sourceFile.parseDiagnostics?.length > 0) {
     const diagnostics = sourceFile.parseDiagnostics
       .map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'))
