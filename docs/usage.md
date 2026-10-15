@@ -179,7 +179,7 @@ is visible in review.
 | `kotlin`          | object                                                             | Kotlin preset only. `formatter`: `"ktlint"`, `"ktfmt"` or `"none"`, the format check to run; detected from the build files and `.editorconfig` when absent. `detektConfig`: path of the detekt config inside the project; detected when absent. See [Kotlin preset](#kotlin-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `analyzers`       | object[]                                                           | Custom analyzers; see below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `legacyInventory` | string                                                             | Path of the legacy inventory, inside the project. Default `nitpicker.legacy.json`. Every preset; see [Adopting nitpicker on existing code](#adopting-nitpicker-on-existing-code) [Java preset](#java-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| `tools`           | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). Prettier is the only tool so far; any other name is an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `tools`           | object                                                             | Which config each tool uses: `{ "prettier": { "precedence": [...] } }`. See [Your project's tool configs](#your-projects-tool-configs). `prettier` and `eslint` with the TypeScript and JavaScript presets (`{ "eslint": { "engine": "oxlint" } }`; see [Lint engine](#lint-engine)), `pmd` and `checkstyle` with `java` and `kotlin`; any other name is an error, and `python` has no `tools`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 These are the analyzer names you can pass to `disable` and `--analyzer`.
 The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-module-effects`,
@@ -226,7 +226,8 @@ new enforceable findings fail. Exit codes, console summary, `new-findings.json`,
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
-Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
+Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
+project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
 presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines` and `folderFiles`), `exclude`
 (findings under the globs are dropped), `exceptions` and `legacyInventory`. A Java exception names
@@ -236,9 +237,9 @@ inventory has the same format as
 the TypeScript one, `{ "sites": [{ "file", "rule", "source", "count" }] }`, where `source` is the
 finding's `identity` as printed in `new-findings.json`: up to `count` occurrences of that site are
 baselined, and raising a `count` (or adding a site) on head over the base fails as
-`baseline-expansion`. `layout`, `react` and `tools` describe TypeScript source roots, React and tool
-configs, have no Java meaning, and stay a config error with this preset. Details:
-[java-preset.md](java-preset.md).
+`baseline-expansion`. `layout` and `react` describe TypeScript source roots and React, have no Java
+meaning, and stay a config error with this preset. `tools` takes `pmd` and `checkstyle`; see
+[Your project's tool configs](#your-projects-tool-configs). Details: [java-preset.md](java-preset.md).
 
 ## Kotlin preset
 
@@ -327,7 +328,7 @@ Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the
 format check (ruff format or black, whichever the project uses), a strict type check (mypy or
 pyright or basedpyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
-score (lizard at the version the Java preset pins, plus per-function coverage; it must be installed
+score (lizard at the version pinned in languages/java/gradle/nitpicker.init.gradle, plus per-function coverage; it must be installed
 as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
@@ -508,6 +509,37 @@ and the project's `.prettierignore` applies too. The version is still the one ni
 project's config is read from the head checkout and applies to both sides of the comparison, so
 editing it never turns unchanged code into new findings; `--fix` formats with the same merged
 config. The setting is listed under "Config overrides" in the report.
+
+With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
+`checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head
+checkout, and naming `"project"` without the file is a tool error. PMD runs both rule sets when both
+layers are listed, so the order makes no difference; nitpicker's Spring rules run whenever
+`"nitpicker"` is listed. Checkstyle runs one config, so its `precedence` is `["nitpicker"]` or
+`["project"]`. Without a `tools` entry these files are not used.
+
+### Lint engine
+
+The lint analyzers apply nitpicker's ESLint policy, but by default they run it on
+[oxlint](https://oxc.rs), which is several times faster. Rules oxlint has its own port of run
+natively, type-aware rules run on its TypeScript 7 checker, and every other rule (nitpicker's own,
+and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin. The few type-aware
+plugin rules oxlint cannot run still run on ESLint, for those rules only.
+
+Findings match ESLint's with these known differences:
+
+- Type-aware rules see the project through TypeScript 7, so a rule such as
+  `@typescript-eslint/unbound-method` can find a few cases TypeScript 6 missed.
+- A disable comment for a rule the analyzer does not run is reported as unused, where ESLint
+  reports that the rule definition was not found.
+- Rules oxlint has its own port of word some messages differently, and a few report a different
+  column. Switching engines therefore shows those findings as new once.
+- Files and folders whose names start with a dot are not linted.
+
+To run the policy on ESLint itself, set the engine:
+
+```json
+{ "tools": { "eslint": { "engine": "eslint" } } }
+```
 
 ## Adopting nitpicker on existing code
 
