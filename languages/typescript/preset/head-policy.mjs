@@ -63,6 +63,10 @@ export function usesProjectConfig(precedence) {
   return precedence.includes('project');
 }
 
+export function typecheckEngine(environment = process.env) {
+  return readHeadPolicy(environment).tools.typescript?.engine ?? 'native';
+}
+
 export function prettierPrecedence(environment = process.env) {
   return readHeadPolicy(environment).tools.prettier?.precedence ?? ['nitpicker'];
 }

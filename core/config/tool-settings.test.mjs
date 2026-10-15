@@ -14,26 +14,26 @@ describe('tool precedence', () => {
     }
   });
 
-  it('accepts either lint engine for the ESLint checks', () => {
-    for (const engine of ['oxlint', 'eslint', undefined]) {
-      expect(validateConfig({ tools: { eslint: { engine } } })).toBeDefined();
+  it.each([
+    ['eslint', ['oxlint', 'eslint'], 'biome'],
+    ['typescript', ['native', 'project'], 'tsgo'],
+  ])('accepts only the known %s engines', (tool, engines, unknown) => {
+    for (const engine of [...engines, undefined]) {
+      expect(validateConfig({ tools: { [tool]: { engine } } })).toBeDefined();
     }
-  });
-
-  it('rejects an unknown lint engine', () => {
-    for (const engine of ['biome', '']) {
-      expect(() => validateConfig({ tools: { eslint: { engine } } })).toThrow(
-        '"tools.eslint.engine" must be "oxlint" or "eslint"',
+    for (const engine of [unknown, '']) {
+      expect(() => validateConfig({ tools: { [tool]: { engine } } })).toThrow(
+        `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
       );
     }
-    expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
-      '"tools.eslint" has unknown key "precedence"',
+    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
+      `"tools.${tool}" has unknown key "precedence"`,
     );
   });
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -81,7 +81,7 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(

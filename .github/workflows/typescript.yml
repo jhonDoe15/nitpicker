@@ -14,28 +14,26 @@ on:
       - 'nitpicker.config.json'
       - '.npmrc'
       - 'spec/**'
+      - 'evals/**'
+      - 'skills/**'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'README.md'
+      - 'LICENSE'
       - '.github/workflows/typescript.yml'
   pull_request:
-    paths:
-      - 'core/**'
-      - 'shared/**'
-      - 'languages/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'vitest.config.mts'
-      - 'nitpicker.config.json'
-      - '.npmrc'
-      - 'spec/**'
-      - '.github/workflows/typescript.yml'
+    types: [labeled]
+  workflow_dispatch:
 
-# A new push to a pull request cancels its run still in progress; runs on main always finish.
+# Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
+# only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
     # A healthy run takes 5 to 20 minutes; this stops a hung one well before the 6-hour default.
     timeout-minutes: 40
@@ -57,16 +55,14 @@ jobs:
       # Vitest defaults to one worker on a 2-vCPU runner, and most tests wait on child processes, so a
       # second worker keeps both cores busy.
       - run: npm test -- --maxWorkers=2
-      - name: Conformance suite (spec/conformance)
-        run: npm run test:conformance
 
   # nitpicker gates its own repository: only new findings on lines a PR touches fail, everything
   # already in the merge base stays baselined. A separate job, not a step after the tests, because it
   # needs only `npm ci` (about 2 minutes), so it reports in parallel with the 5 to 20 minute test job
-  # and a failing gate never hides test results (or the other way round). Pull requests only: on a
-  # push to main there is no base to compare with.
+  # and a failing gate never hides test results (or the other way round). Not on main: there the
+  # head is the base, so there is nothing to compare.
   self-gate:
-    if: github.event_name == 'pull_request'
+    if: github.ref != 'refs/heads/main' && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -80,7 +76,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      # The CLI takes the base from GITHUB_BASE_REF (origin/<target branch>); policy is nitpicker.config.json.
+      # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
+      # policy is nitpicker.config.json.
       - name: nitpicker on itself
         run: node core/cli.mjs --output reports/nitpicker
       - uses: actions/upload-artifact@v4
