@@ -5,7 +5,6 @@ import loggingConfig from '../eslint-config/policies/logging.config.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.config.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
 import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
-import strictAdaptersConfig from '../eslint-config/strict-adapters.config.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
 import { strictCompositionRootConfig } from '../eslint-config/strict/strict-composition-root.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
