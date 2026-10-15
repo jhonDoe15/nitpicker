@@ -15,6 +15,7 @@ import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
 import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
+import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
@@ -66,6 +67,7 @@ export const nitpickerRules = {
     'no-silent-catch': noSilentCatch,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
+    'no-mutating-method-in-domain': noMutatingMethodInDomain,
     'no-unvalidated-schema-field': noUnvalidatedSchemaField,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,

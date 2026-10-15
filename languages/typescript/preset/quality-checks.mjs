@@ -19,6 +19,13 @@ const jscpdVersion = 'unresolved';
 
 const knipVersion = 'unresolved';
 
+function eslintPolicyFiles() {
+  const rules = readdirSync(path.join(packageRoot, ESLINT_RULES_FOLDER), { recursive: true })
+    .filter((name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs'))
+    .map((name) => `${ESLINT_RULES_FOLDER}/${name.split(path.sep).join('/')}`);
+  return [...POLICY_FILES, ...rules];
+}
+
 const ARCHITECTURE_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 
@@ -63,7 +70,7 @@ function eslintChecksFor(layout, exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/eslint.config.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
-        ...POLICY_FILES,
+        ...eslintPolicyFiles(),
       ],
     },
     productionEslintCheck(layout, exclusions, { name: 'errors', shardWeight: 9 }),
