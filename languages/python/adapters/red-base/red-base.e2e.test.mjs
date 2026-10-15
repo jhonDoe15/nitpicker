@@ -37,6 +37,7 @@ describe.skipIf(!enabled)('Python preset on a base whose tests fail', () => {
     commitBranch(project, 'red-base', { [TEST_PATH]: FAILING_TEST });
     commitBranch(project, 'repaired', { [TEST_PATH]: PASSING_TEST }, 'red-base');
     commitBranch(project, 'repaired-with-violation', { 'src/demo/bad.py': VIOLATION }, 'repaired');
+    commitBranch(project, 'still-red', { 'src/demo/extra.py': 'EXTRA = 1\n' }, 'red-base');
     commitBranch(
       project,
       'repaired-legacy-edit',
