@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');

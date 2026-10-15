@@ -12,7 +12,7 @@
 //   maxControlNesting  deepest nesting of if, for, while, do, when and catch; an else if nests like in Java
 //   parameters         declared value parameters (the extension receiver is not one)
 //   complexity         cyclomatic complexity: 1 + if, for, while, do, each when branch but else, catch,
-//                      &&, || and ?: (the CRAP input; what lizard counts for Java)
+//                      &&, || and ?: (the CRAP input; counted like StructureMetrics does for Java)
 //   inline             true for an inline function or accessor: its body is copied into the callers, so
 //                      JaCoCo never sees it run and its coverage (hence its CRAP score) cannot be measured
 // A unit is a named function, a property accessor with a body, a secondary constructor with a block
