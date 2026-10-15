@@ -61,8 +61,18 @@ function parseOptionalFields(value, classification, context) {
   if (value.ratchet !== undefined) {
     fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
+  if (value.toolNotRun !== undefined) {
+    fields.toolNotRun = parseToolNotRun(value.toolNotRun, classification, context);
+  }
 
   return fields;
+}
+
+function parseToolNotRun(value, classification, context) {
+  if (value !== true || classification !== 'descriptive') {
+    throw new TypeError(`${context}.toolNotRun must be true on a descriptive finding`);
+  }
+  return true;
 }
 
 function parseLocation(value, context) {

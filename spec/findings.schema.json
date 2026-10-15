@@ -43,12 +43,26 @@
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
-        "ratchet": { "$ref": "#/$defs/ratchet" }
+        "ratchet": { "$ref": "#/$defs/ratchet" },
+        "toolNotRun": {
+          "description": "Marks a descriptive notice that this snapshot has no report from `tool`. When the base carries one, the comparison reports the head's enforceable findings of that tool as descriptive, since nothing tells which of them the change added.",
+          "const": true
+        }
       },
-      "if": { "required": ["metric"] },
-      "then": {
-        "properties": { "classification": { "const": "descriptive" } }
-      }
+      "allOf": [
+        {
+          "if": { "required": ["metric"] },
+          "then": {
+            "properties": { "classification": { "const": "descriptive" } }
+          }
+        },
+        {
+          "if": { "required": ["toolNotRun"] },
+          "then": {
+            "properties": { "classification": { "const": "descriptive" } }
+          }
+        }
+      ]
     },
     "location": {
       "type": "object",

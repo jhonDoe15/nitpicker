@@ -500,7 +500,9 @@ A Checkstyle rule prints as its full check class, for example
   (the classes other processors generate are already compiled) and stops after flow analysis
   without writing classes. `module-info.java` is left out and the sources compile on the class
   path. When the lint compile fails the run goes on: the report says so in a descriptive
-  `javac/lint-not-run` notice, and javac warnings are not checked in that run.
+  `javac/lint-not-run` notice, and javac warnings are not checked in that run. When only the base
+  failed, the head's javac findings are reported but do not fail the gate: with no base report,
+  nothing tells which of them the change added, and each one says so.
 - **forbiddenapis.** [forbiddenapis](https://github.com/policeman-tools/forbidden-apis) 3.10
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
