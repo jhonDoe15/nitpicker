@@ -15,7 +15,7 @@ import {
 
 describe('retry', () => {
   it('waits 1000 ms once and uploads the same batch again', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const done = run.uploader.uploadAll(makeItems(2), options(2, 1, controller.signal));
     await waitForCalls(run.calls, 1);
@@ -36,7 +36,7 @@ describe('retry', () => {
   });
 
   it('gives a batch up after a second rejection and records the second reason and time', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const items = makeItems(2);
     const done = run.uploader.uploadAll(items, options(2, 1));
     run.clock.time = 111;
@@ -100,7 +100,7 @@ describe('retry', () => {
   });
 
   it('lists failed batches by index and counts only uploaded items', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const items = makeItems(5);
     const done = run.uploader.uploadAll(items, options(2, 3));
     await waitForCalls(run.calls, 3);
@@ -127,7 +127,7 @@ describe('retry', () => {
   });
 
   it('keeps the slot of a batch that is waiting to retry', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(2), options(1, 1));
     await waitForCalls(run.calls, 1);
     callAt(run.calls, 0).fail(new Error('x'));
@@ -146,7 +146,7 @@ describe('retry', () => {
   });
 
   it('lets other slots keep working while one batch waits to retry', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(3), options(1, 2));
     await waitForCalls(run.calls, 2);
     callAt(run.calls, 0).fail(new Error('x'));
@@ -165,7 +165,7 @@ describe('retry', () => {
 
 describe('abort', () => {
   it('starts nothing when the signal is already aborted', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     controller.abort();
     const items = makeItems(5);
@@ -179,7 +179,7 @@ describe('abort', () => {
   });
 
   it('stops starting batches, lets started ones finish and lists the rest in order', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const items = makeItems(9);
     const done = run.uploader.uploadAll(items, options(2, 2, controller.signal));
@@ -199,7 +199,7 @@ describe('abort', () => {
   });
 
   it('retries a batch that was already running when the signal aborted', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const items = makeItems(4);
     const done = run.uploader.uploadAll(items, options(2, 1, controller.signal));
@@ -221,7 +221,7 @@ describe('abort', () => {
   });
 
   it('reports a failed in-flight batch next to the batches never started', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const items = makeItems(3);
     const done = run.uploader.uploadAll(items, options(1, 1, controller.signal));
@@ -242,7 +242,7 @@ describe('abort', () => {
   });
 
   it('is done, not aborted, when every batch had started before the signal aborted', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const done = run.uploader.uploadAll(makeItems(4), options(2, 2, controller.signal));
     await waitForCalls(run.calls, 2);
@@ -254,7 +254,7 @@ describe('abort', () => {
   });
 
   it('checks the signal before each start, so a late abort leaves only the last batches', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const items = makeItems(4);
     const done = run.uploader.uploadAll(items, options(1, 1, controller.signal));

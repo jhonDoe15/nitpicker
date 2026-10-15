@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { createBatchUploader } from '../../src/main/features/uploads/index.js';
+import type { createBatchUploader } from '../../src/main/features/uploads/index.js';
 
 export type Deps = Parameters<typeof createBatchUploader>[0];
 export type Item = Parameters<Deps['upload']>[0][number];
@@ -31,7 +31,7 @@ export async function settle(): Promise<void> {
   }
 }
 
-export function harness() {
+export function harness(create: typeof createBatchUploader) {
   const calls: Call[] = [];
   const waits: Wait[] = [];
   const clock = { time: 0, reads: 0 };
@@ -66,7 +66,7 @@ export function harness() {
     return clock.time;
   }
   const deps: Deps = { upload, sleep, now };
-  return { calls, waits, clock, flight, uploader: createBatchUploader(deps) };
+  return { calls, waits, clock, flight, uploader: create(deps) };
 }
 
 export function callAt(calls: readonly Call[], index: number): Call {

@@ -1,4 +1,4 @@
-import { createExpenseTracker } from '../../src/main/composition-root.js';
+import type { createExpenseTracker } from '../../src/main/composition-root.js';
 
 export type FakeDisk = {
   readonly files: Map<string, string>;
@@ -10,8 +10,8 @@ export function createDisk(initial: Record<string, string> = {}, today = '2024-0
   return { files: new Map(Object.entries(initial)), writes: [], clock: { today } };
 }
 
-export function open(disk: FakeDisk) {
-  return createExpenseTracker({
+export function open(create: typeof createExpenseTracker, disk: FakeDisk) {
+  return create({
     readText: (path: string) => Promise.resolve(disk.files.get(path)),
     writeText: (path: string, text: string) => {
       disk.writes.push(path);
