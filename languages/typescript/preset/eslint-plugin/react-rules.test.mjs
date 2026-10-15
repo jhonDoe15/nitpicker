@@ -276,6 +276,7 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
 });
 
 const testFilename = '/repo/test/ui/panel.test.tsx';
+const plainTestFilename = '/repo/test/domain/store.test.ts';
 const reactTestingImport = "import { render } from '@testing-library/react'; ";
 
 function componentInternalsError(name) {
@@ -312,6 +313,11 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
     'node[0];',
     'reactNode.value;',
     'react.useState;',
+    "vi.mock('react-dom', () => ({ createPortal: (node) => node }));",
+    "vi.mock('./use-cart', () => ({ useCart: vi.fn() }));",
+    'vi.mock(name, () => ({ useState: vi.fn() }));',
+    "mock('react', () => ({ useState: vi.fn() }));",
+    "vi.fn('react', () => ({ useState: vi.fn() }));",
   ]
     .map((code) => ({ filename: testFilename, code: `${reactTestingImport}${code}` }))
     .concat(
@@ -335,7 +341,8 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         "const R = await import('react'); vi.spyOn(R, 'createElement');",
         "import { default as Preact } from 'preact'; vi.spyOn(Preact, 'useState');",
         "vi.spyOn(require('preact'), 'useState');",
-      ].map((code) => ({ filename: testFilename, code })),
+        "vi.mock('react', () => ({ useState: vi.fn() }));",
+      ].map((code) => ({ filename: plainTestFilename, code })),
     ),
   invalid: [
     { code: 'wrapper.instance();', errors: [componentInternalsError('instance()')] },
@@ -393,6 +400,27 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
       code,
       errors: [{ messageId: 'hookSpy' }],
     })),
+    ...[
+      [
+        "vi.mock('react', async (importOriginal) => ({ ...(await importOriginal()), useState: vi.fn(() => ['x', vi.fn()]) }));",
+        'useState',
+      ],
+      [
+        "jest.mock('react', () => ({ ...jest.requireActual('react'), useEffect: (f) => f() }));",
+        'useEffect',
+      ],
+      [
+        "vi.doMock('react', () => ({ useId: () => 'id', 'useMemo': (f) => f() }));",
+        'useId`, `useMemo',
+      ],
+      ["vi.mock(import('react'), () => ({ useState: vi.fn() }));", 'useState'],
+      [
+        "vi.mock('react-dom', () => ({ useFormStatus: () => ({ pending: true }) }));",
+        'useFormStatus',
+      ],
+      ["vi.mock('react');", 'react'],
+      ["vi.mock('react', () => ({ createElement: vi.fn() }));", 'react'],
+    ].map(([code, name]) => ({ code, errors: [{ messageId: 'reactMock', data: { name } }] })),
     {
       code: 'vi.spyOn(React, "useState"); wrapper.state();',
       errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
@@ -409,14 +437,12 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         "import renderer from 'react-test-renderer';",
         "import { createRoot } from 'react-dom/client';",
         "import React from 'react';",
-        "import { renderWithProviders } from '../utils/test-utils';",
-        "import { renderWithProviders } from './test-utils.tsx';",
         "import type { Wrapper } from '@testing-library/react';",
         "const { render } = require('@testing-library/react');",
         "import enzyme = require('enzyme');",
         "export { render } from '@testing-library/react';",
       ].map((importLine) => ({
-        filename: testFilename,
+        filename: plainTestFilename,
         code: `${importLine} wrapper.instance();`,
         errors: [componentInternalsError('instance()')],
       })),

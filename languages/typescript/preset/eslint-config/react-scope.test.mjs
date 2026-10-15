@@ -303,7 +303,7 @@ describe('the React scope config', () => {
       ...(await reactSyntaxConfigFor(layout)),
     ];
 
-    expect(lintFixture({ config, filename: 'test/ui/a.test.tsx', code })).toEqual([]);
+    expect(lintFixture({ config, filename: 'test/ui/a.test.ts', code })).toEqual([]);
   });
 
   it.each([
@@ -312,7 +312,6 @@ describe('the React scope config', () => {
     ['react-dom', "import { flushSync } from 'react-dom';"],
     ['enzyme', "import { mount } from 'enzyme';"],
     ['react-test-renderer', "import renderer from 'react-test-renderer';"],
-    ['a project test-utils module', "import { renderWithProviders } from '../utils/test-utils';"],
   ])('reports in a test that imports %s', async (_name, importLine) => {
     const config = [
       { languageOptions: { parser: tseslint.parser } },
@@ -321,7 +320,7 @@ describe('the React scope config', () => {
 
     const rules = lintFixture({
       config,
-      filename: 'test/ui/a.test.tsx',
+      filename: 'test/ui/a.test.ts',
       code: `${importLine} wrapper.state();`,
     }).map(({ ruleId }) => ruleId);
 
@@ -445,8 +444,10 @@ describe('the React scope config', () => {
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
 
     expect(result.messages.map(({ ruleId }) => ruleId)).toEqual([
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
       'testing-library/await-async-events',
+      'testing-library/prefer-user-event-setup',
       'testing-library/await-async-events',
     ]);
     expect(result.messages.every(({ fix, suggestions }) => !fix && !suggestions)).toBe(true);

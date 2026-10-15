@@ -1,11 +1,43 @@
+import { readFileSync, statSync } from 'node:fs';
+import path from 'node:path';
+
 const REACT_PACKAGE = 'react';
 const reactTestModule = /^(?:@testing-library\/.+|react(?:-[^/]+)?(?:\/.*)?|enzyme(?:\/.*)?)$/;
-const projectTestUtilsModule = /^\.{1,2}\/(?:.*\/)?[^/]*test-utils[^/]*$/;
+const testingLibraryModule =
+  /^(?:@testing-library\/.+|enzyme(?:\/.*)?|react-test-renderer(?:\/.*)?)$/u;
+const testingLibraryQueryModule = /^@testing-library\/(?!user-event$|jest-dom(?:\/|$)).+$/u;
+const componentFile = /\.[cm]?[jt]sx$/u;
+const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
+const relativeModule = /^\.{1,2}\//u;
+const compiledExtension = /\.(?:[cm]?js|jsx)$/u;
+const scriptExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
+const moduleSource = /(?:\bfrom|\bimport|\brequire\s*\()\s*\(?\s*['"]([^'"\n]+)['"]/gu;
 
 function isReactTestModule(source) {
+  return typeof source === 'string' && reactTestModule.test(source);
+}
+
+function isFile(candidate) {
+  return statSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
+}
+
+function helperFile(testFile, source) {
+  const target = path.resolve(path.dirname(testFile), source);
+  const stem = target.replace(compiledExtension, '');
+  return [
+    target,
+    ...scriptExtensions.map((extension) => `${stem}${extension}`),
+    ...scriptExtensions.map((extension) => path.join(target, `index${extension}`)),
+  ].find(isFile);
+}
+
+function helperImportsTestingLibrary(testFile, source) {
+  const file = relativeModule.test(source) ? helperFile(testFile, source) : undefined;
   return (
-    typeof source === 'string' &&
-    (reactTestModule.test(source) || projectTestUtilsModule.test(source))
+    file !== undefined &&
+    [...readFileSync(file, 'utf8').matchAll(moduleSource)].some(([, imported]) =>
+      testingLibraryModule.test(imported),
+    )
   );
 }
 
@@ -35,12 +67,34 @@ function statementSources(statement) {
   }
 }
 
-function importsReactTestModule(program) {
-  return program.body.some((statement) => statementSources(statement).some(isReactTestModule));
+function reactTestScope(context) {
+  const sources = context.sourceCode.ast.body
+    .flatMap(statementSources)
+    .filter((source) => typeof source === 'string');
+  const helper = sources.find((source) => helperImportsTestingLibrary(context.filename, source));
+  const component =
+    componentFile.test(context.filename) &&
+    !sources.some((source) => browserTestModule.test(source));
+  const direct = sources.some((source) => testingLibraryQueryModule.test(source));
+  return {
+    inScope: component || helper !== undefined || sources.some(isReactTestModule),
+    utilsModule: direct ? undefined : helper,
+  };
+}
+
+function withUtilsModule(context, helper) {
+  const settings = { ...context.settings, 'testing-library/utils-module': helper };
+  return Object.create(context, { settings: { value: settings } });
 }
 
 export function inReactTestFilesOnly(create) {
-  return (context) => (importsReactTestModule(context.sourceCode.ast) ? create(context) : {});
+  return (context) => {
+    const { inScope, utilsModule } = reactTestScope(context);
+    if (!inScope) {
+      return {};
+    }
+    return create(utilsModule === undefined ? context : withUtilsModule(context, utilsModule));
+  };
 }
 
 const moduleLoaders = new Set(['require', 'importActual', 'requireActual']);
@@ -123,7 +177,7 @@ function children(node, visitorKeys) {
     .filter((child) => typeof child?.type === 'string');
 }
 
-function descendants(root, visitorKeys) {
+export function descendants(root, visitorKeys) {
   const found = [root];
   for (const node of found) {
     found.push(...children(node, visitorKeys));
