@@ -53,8 +53,75 @@ export const accessibilityRuleOptions = Object.fromEntries(
   }),
 );
 
+const USER_EVENT_MODULE = '@testing-library/user-event';
+
+function userEventImports(program) {
+  return program.body.filter(
+    (statement) =>
+      statement.type === 'ImportDeclaration' && statement.source.value === USER_EVENT_MODULE,
+  );
+}
+
+function namedUserEvent(declaration) {
+  return declaration.specifiers.find(
+    (specifier) =>
+      specifier.type === 'ImportSpecifier' &&
+      specifier.imported.type === 'Identifier' &&
+      specifier.imported.name === 'userEvent',
+  )?.local.name;
+}
+
+function directCall(node, local) {
+  const { callee } = node;
+  return callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === local &&
+    callee.property.name !== 'setup'
+    ? callee
+    : undefined;
+}
+
+function withNamedUserEventImport(rule) {
+  return {
+    ...rule,
+    create(context) {
+      const upstream = rule.create(context);
+      const imports = userEventImports(context.sourceCode.ast);
+      const hasDefault = imports.some((declaration) =>
+        declaration.specifiers.some(({ type }) => type === 'ImportDefaultSpecifier'),
+      );
+      const local = imports.map(namedUserEvent).find((name) => name !== undefined);
+      if (hasDefault || local === undefined) {
+        return upstream;
+      }
+      return {
+        ...upstream,
+        CallExpression(node) {
+          upstream.CallExpression?.(node);
+          const callee = directCall(node, local);
+          if (callee !== undefined) {
+            context.report({
+              node: callee,
+              messageId: 'preferUserEventSetup',
+              data: { method: callee.property.name },
+            });
+          }
+        },
+      };
+    },
+  };
+}
+
+const extendedTestingLibraryRules = {
+  'prefer-user-event-setup': withNamedUserEventImport(
+    testingLibrary.rules['prefer-user-event-setup'],
+  ),
+};
+
 function testingLibraryRule(name, hint) {
-  const rule = withoutFixes(withHint(testingLibrary.rules[name], hint));
+  const upstream = extendedTestingLibraryRules[name] ?? testingLibrary.rules[name];
+  const rule = withoutFixes(withHint(upstream, hint));
   return { ...rule, create: inReactTestFilesOnly(rule.create) };
 }
 
