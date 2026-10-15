@@ -1,6 +1,5 @@
 import { normalizeGitPath } from '../normalize.mjs';
 import { joinRepositoryPath, repositoryPath, relativeToProject } from '../paths.mjs';
-
 import { runGit } from '../repository/command.mjs';
 import { RENAME_LIMIT_SETTING, RENAME_DETECTION } from './changes.mjs';
 

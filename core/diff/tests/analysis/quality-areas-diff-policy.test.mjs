@@ -8,28 +8,18 @@ import {
   expectedOutput459_22,
   expectedOutput483_7,
 } from '../../fixtures/expected-output/core-diff-quality-areas-diff-policy.mjs';
-
 import { describe, expect, it } from 'vitest';
-
 import vitestQualityConfig from '../../../../languages/typescript/preset/defaults/vitest.quality.config.ts';
-
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-
 import { PACKAGE_ROOT, resolveTool } from '../../../tooling/tool-resolution.mjs';
-
 import { runQualitySnapshot } from '../../../snapshot/run-snapshot.mjs';
-
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
-
 import { runAnalyzers, selectAnalyzers } from '../../execution/run-analyzers.mjs';
-
 import { planAnalyzerShards } from '../../sharding/sharding.mjs';
-
 import {
   coverageFailureFindings,
   formatVitestFailures,
 } from '../../../../languages/typescript/adapters/quality-areas/reporting/vitest.mjs';
-
 import {
   normalizeBaselineExpansions,
   normalizeCoupling,

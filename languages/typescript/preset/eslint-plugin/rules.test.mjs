@@ -1,21 +1,12 @@
 import { RuleTester } from 'eslint';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-
 import tseslint from 'typescript-eslint';
-
 import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
-
 import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
-
 import { rule as noFixedSleepSynchronization } from './rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
-
 import { rule as noIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
-
 import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
-
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
-
 import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
 
 RuleTester.afterAll = afterAll;

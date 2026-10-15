@@ -1,7 +1,5 @@
 import { heldFindings, heldLine } from './format/held-findings.mjs';
-
 import { singleLine } from './format/text.mjs';
-
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,

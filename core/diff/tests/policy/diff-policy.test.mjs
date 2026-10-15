@@ -2,9 +2,7 @@ import {
   expectedOutput174_32,
   expectedOutput211_35,
 } from '../../fixtures/expected-output/core-diff-diff-policy.mjs';
-
 import { execFileSync } from 'node:child_process';
-
 import {
   cpSync,
   mkdirSync,
@@ -15,15 +13,10 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-
 import { runQualityDiff as runQualityDiffWithSubprocesses } from '../../comparison/run-diff.mjs';
-
 import { runTasksInProcess } from '../../fixtures/in-process-analyzers.mjs';
 
 const runQualityDiff = (options) =>

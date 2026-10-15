@@ -1,37 +1,22 @@
 import { realpathSync } from 'node:fs';
-
 import path from 'node:path';
-
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-
 import { planAnalyzerShards } from './sharding.mjs';
-
 import { resolveMetadata } from './metadata.mjs';
-
 import { readAndValidateShard, validateCommonSummaries, commonSummary } from './read-shards.mjs';
-
 import { sortByToolAndPath, policyHash } from '../reporting/report-model.mjs';
-
 import {
   writeDiffReports,
   clearDiffReports,
   absoluteTextReportPath,
 } from '../reporting/reporters.mjs';
-
 import { parseArguments } from './arguments.mjs';
-
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
-
 import { pathToFileURL } from 'node:url';
-
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
-
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
-
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
-
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {

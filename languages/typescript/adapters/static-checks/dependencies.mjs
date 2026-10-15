@@ -1,7 +1,5 @@
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { resolveDependencyHook } from '../dependency-graph/dependency-hooks.mjs';
-
 import {
   existsSync,
   readFileSync,
@@ -11,7 +9,6 @@ import {
   rmSync,
   unlinkSync,
 } from 'node:fs';
-
 import path from 'node:path';
 
 export function dependencyPreparationMode({

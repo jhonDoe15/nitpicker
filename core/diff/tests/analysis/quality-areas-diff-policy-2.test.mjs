@@ -12,33 +12,24 @@ import {
   expectedOutput945_7,
   expectedOutput1011_7,
 } from '../../fixtures/expected-output/core-diff-quality-areas-diff-policy.mjs';
-
 import { describe, expect, it } from 'vitest';
-
 import {
   applyThresholds,
   configuredAnalyzers,
 } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-
 import { hashFiles } from '../../../../languages/typescript/preset/checks/hash.mjs';
-
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
-
 import { compareFindings } from '../../comparison/compare.mjs';
-
 import {
   describeUncoveredArms,
   sourceSnippet,
 } from '../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
-
 import { normalizeDeadCode } from '../../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-
 import {
   normalizeCoverage,
   normalizeCrap,
   normalizeMutation,
 } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
-
 import { normalizeDuplicates } from '../../../../languages/typescript/preset/duplicates/normalize.mjs';
 
 describe('complete quality-area analyzer catalog', () => {

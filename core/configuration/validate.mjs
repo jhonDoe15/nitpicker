@@ -1,5 +1,4 @@
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
-
 import {
   isPlainObject,
   configError,
@@ -10,19 +9,12 @@ import {
   validateExceptions,
   validateProjectRelativePath,
 } from '../../shared/config.mjs';
-
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mjs';
-
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
-
 import { validatePythonConfig } from '../../languages/python/adapters/configuration/python-config.mjs';
-
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
-
 import { validateTools } from './tool-settings.mjs';
-
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
-
 import path from 'node:path';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];

@@ -1,19 +1,11 @@
 import { globSync, readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
-
 import { prettierPrecedence, usesProjectConfig, readLayout } from '../../preset/head-policy.mjs';
-
 import { runNodeTool, projectFile, policyFile, hash } from './shared.mjs';
-
 import { isIgnoredByLayers, layeredPrettierOptions } from '../prettier/prettier-layers.mjs';
-
 import path from 'node:path';
-
 import { pathToFileURL } from 'node:url';
-
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-
 import { formattingHunks } from '../prettier/format-hunks.mjs';
 
 export async function runPrettier(options) {

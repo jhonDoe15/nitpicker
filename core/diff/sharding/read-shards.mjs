@@ -1,5 +1,4 @@
 import path from 'node:path';
-
 import { existsSync, readFileSync } from 'node:fs';
 
 const COMMON_SUMMARY_PROPERTIES = [

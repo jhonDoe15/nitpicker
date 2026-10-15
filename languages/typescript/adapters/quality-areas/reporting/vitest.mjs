@@ -1,7 +1,5 @@
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import { readFileSync } from 'node:fs';
-
 import path from 'node:path';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';

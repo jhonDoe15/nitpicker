@@ -1,11 +1,7 @@
 import { evaluateBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
-
 import { evaluateCoupling } from '../../../../../shared/rules/coupling.mjs';
-
 import { evaluateTestRuntime } from '../../../../../shared/rules/test-runtime.mjs';
-
 import { evaluateStructure } from '../../../../../shared/rules/structure.mjs';
-
 import {
   hash,
   nextOccurrence,

@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;

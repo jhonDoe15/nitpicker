@@ -2,9 +2,7 @@ import { depthFirst } from '../../../../shared/traversal.mjs';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { callbackProtocolContracts } from './contracts.mjs';
-
 import ts from 'typescript';
-
 import {
   unwrap,
   invokedReadName,
@@ -16,11 +14,8 @@ import {
   optionProperties,
   constructedTarget,
 } from './bindings.mjs';
-
 import { defaultResolvedLayout } from '../layout.mjs';
-
 import { existsSync, readFileSync } from 'node:fs';
-
 import path from 'node:path';
 
 function createReporter(tree, file, findings) {

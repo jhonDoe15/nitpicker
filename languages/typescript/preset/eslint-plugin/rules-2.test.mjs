@@ -1,23 +1,13 @@
 import { RuleTester } from 'eslint';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-
 import tseslint from 'typescript-eslint';
-
 import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
-
 import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
-
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
-
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
-
 import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
-
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
-
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
-
 import { rule as testMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
 
 RuleTester.afterAll = afterAll;

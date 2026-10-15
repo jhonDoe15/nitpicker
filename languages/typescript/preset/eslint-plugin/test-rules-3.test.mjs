@@ -1,11 +1,7 @@
 import { RuleTester } from 'eslint';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-
 import tseslint from 'typescript-eslint';
-
 import { rule as noFirstTestChargedSetup } from './rules/testing/lifecycle/no-first-test-charged-setup.mjs';
-
 import { rule as noUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
 
 RuleTester.afterAll = afterAll;

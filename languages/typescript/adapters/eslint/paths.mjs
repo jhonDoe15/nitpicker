@@ -1,7 +1,5 @@
 import path from 'node:path';
-
 import { lstatIfExists } from '../../../../core/tooling/policy-links.mjs';
-
 import { realpathSync } from 'node:fs';
 
 export function validatedProjectFile(projectRoot, filePath) {

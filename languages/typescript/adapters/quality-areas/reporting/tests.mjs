@@ -1,5 +1,4 @@
 import path from 'node:path';
-
 import {
   addMetric,
   hash,
@@ -7,13 +6,9 @@ import {
   nextOccurrence,
   positiveInteger,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import { branchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mjs';
-
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
-
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
-
 import { mutantFindings } from '../../../../../shared/rules/mutation.mjs';
 
 export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {

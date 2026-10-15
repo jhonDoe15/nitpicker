@@ -4,9 +4,7 @@ import {
   runDependencyCruiser,
   runNodeTool,
 } from '../tooling.mjs';
-
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import {
   normalizeBaselineExpansions,
   normalizeCoupling,
@@ -14,25 +12,15 @@ import {
   normalizeStructure,
   normalizeDeadCode,
 } from '../reporting/repository.mjs';
-
 import path from 'node:path';
-
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
-
 import { existingRoots } from '../../../preset/layout.mjs';
-
 import { readLayout } from '../../../preset/head-policy.mjs';
-
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
-
 import { typescriptFileLimitFindings } from '../../../preset/structure/file-limits.mjs';
-
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
-
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
-
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
-
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 
 export async function runCodingStandards(options) {

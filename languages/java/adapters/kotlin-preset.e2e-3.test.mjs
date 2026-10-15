@@ -1,15 +1,9 @@
 import { execFileSync } from 'node:child_process';
-
 import path from 'node:path';
-
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync, cpSync, readFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { runJavaDiff } from './java-diff.mjs';
-
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
-
 import {
   GREETER_TEST_WITHOUT_JAVA,
   BAD,

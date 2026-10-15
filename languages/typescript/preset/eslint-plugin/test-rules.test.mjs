@@ -1,13 +1,8 @@
 import { RuleTester } from 'eslint';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-
 import tseslint from 'typescript-eslint';
-
 import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-git-in-tests.mjs';
-
 import { rule as noGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
-
 import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
 
 RuleTester.afterAll = afterAll;

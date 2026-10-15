@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process';
-
 import {
   cpSync,
   mkdirSync,
@@ -9,17 +8,11 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-
 import { installFakeToolchain } from '../../../languages/python/adapters/fixtures/fake-toolchain.mjs';
-
 import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-duplicates.mjs';
-
 import { runCli } from '../../cli.mjs';
 
 const temporaryRoots = [];

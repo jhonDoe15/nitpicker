@@ -1,28 +1,17 @@
 import { createGitTemplate, copyGitTemplate } from '../../fixtures/git-repository.mjs';
-
 import {
   expectedOutput471_27,
   expectedOutput477_49,
 } from '../../fixtures/expected-output/core-diff-static-checks-diff-policy.mjs';
-
 import { execFileSync, spawnSync } from 'node:child_process';
-
 import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-
 import { createStaticCheckAnalyzer } from '../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
-
 import { dependencyPreparationMode } from '../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
-
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-
 import { withDefaultAnalyzerParallelism } from '../../fixtures/analyzer-parallelism.mjs';
-
 import { runQualityDiff } from '../../comparison/run-diff.mjs';
 
 const toolRoot = path.resolve(new URL('../../', import.meta.url).pathname, '../..');

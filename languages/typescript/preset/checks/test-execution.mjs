@@ -1,9 +1,6 @@
 import { vitestVersion, crapVersion, strykerVersion } from '../quality-checks.mjs';
-
 import { MINUTE_MS } from './constants.mjs';
-
 import { JAVASCRIPT_PRESET_FILE, CRAP_CONFIGURATION_FILES } from './policy-files.mjs';
-
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 
 export function testExecutionChecksFor(exclusions) {

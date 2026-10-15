@@ -1,17 +1,12 @@
 import path from 'node:path';
-
 import {
   lstatIfExists,
   removeOwnedLink,
   linkPolicyFile,
 } from '../../../../core/tooling/policy-links.mjs';
-
 import { realpathSync, symlinkSync } from 'node:fs';
-
 import { readLayout } from '../../preset/head-policy.mjs';
-
 import { validatedContainedFile } from './paths.mjs';
-
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 
 export function linkDependencies({ dependencyRoot, roots }) {

@@ -1,13 +1,8 @@
 import { spawn } from 'node:child_process';
-
 import { once } from 'node:events';
-
 import { existsSync, mkdtempSync, rmSync, watch } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { describe, expect, it } from 'vitest';
 
 const schedulerPath = new URL('./analyzer-scheduler.mjs', import.meta.url).pathname;

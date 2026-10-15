@@ -4,15 +4,10 @@ import {
   expectedOutput320_38,
   expectedOutput382_56,
 } from '../fixtures/expected-output/core-diff-analyzer-scheduler.mjs';
-
 import { existsSync, mkdtempSync, rmSync, watch } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { describe, expect, it, vi } from 'vitest';
-
 import { executeAnalyzerTask } from './process.mjs';
 import { resolveMaxParallel, runTaskGraph } from './analyzer-scheduler.mjs';
 

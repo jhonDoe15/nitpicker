@@ -1,13 +1,8 @@
 import { withSharedBuildDirectory } from '../../tooling/build-once/build-once.mjs';
-
 import { spawnSync } from 'node:child_process';
-
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
-
 import { analyzerName } from '../reporting/report-model.mjs';
-
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
-
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;

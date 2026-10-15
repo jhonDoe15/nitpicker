@@ -1,9 +1,6 @@
 import path from 'node:path';
-
 import { CONFIG_FILE_NAME, configError } from '../../shared/config.mjs';
-
 import { existsSync, readFileSync } from 'node:fs';
-
 import { validateConfig, KEYS } from './validate.mjs';
 
 export function loadConfig(projectRoot) {

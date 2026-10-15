@@ -1,5 +1,4 @@
 import { runPolicyTests, runCoverage, runCrap } from './runners/tests.mjs';
-
 import {
   runCodingStandards,
   runCoupling,
@@ -8,7 +7,6 @@ import {
   runDuplicates,
   runDeadCode,
 } from './runners/repository.mjs';
-
 import { runMutation } from './runners/mutation.mjs';
 
 export const QUALITY_AREA_RUNNERS = new Map([

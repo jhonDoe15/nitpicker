@@ -1,5 +1,4 @@
 import ts from 'typescript';
-
 import { TYPE_NAME_KINDS } from './types.mjs';
 
 const ARRAY_PRODUCING_METHODS = new Set([

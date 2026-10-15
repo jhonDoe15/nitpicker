@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
-
 import { compareFindings } from '../../comparison/compare.mjs';
-
 import { normalizeStructure } from '../../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-
 import { normalizeCrap } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
-
 import { rebaseMutationConfig } from '../../../../languages/typescript/adapters/quality-areas/runners/mutation.mjs';
 
 describe('complete quality-area analyzer catalog', () => {

@@ -1,15 +1,9 @@
 import { execFileSync } from 'node:child_process';
-
 import path from 'node:path';
-
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync, cpSync, readFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { runJavaDiff, collectJavaFindings } from './java-diff.mjs';
-
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
-
 import {
   GREETER_TEST_WITHOUT_JAVA,
   BAD,
@@ -56,9 +50,7 @@ import {
   BAD_KTLINT_RULES,
   BAD_FINDINGS,
 } from './fixtures/kotlin-preset-data.mjs';
-
 import { kotlinRuleCases, expectedMessage } from './fixtures/kotlin-rules/cases.mjs';
-
 import { SUPPRESSION_RULE, addOneWayHint } from './kotlin/rules/kotlin-rules.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs

@@ -1,11 +1,7 @@
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
-
 import path from 'node:path';
-
 import { renderTextReport } from './text.mjs';
-
 import { renderJunitReport } from './junit.mjs';
-
 import { renderSarifReport } from './sarif.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';

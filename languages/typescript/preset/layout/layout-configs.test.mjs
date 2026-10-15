@@ -15,23 +15,14 @@ import {
   expectedOutput423_19,
   expectedOutput424_19,
 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-layout-configs.mjs';
-
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import ts from 'typescript';
-
 import { afterAll, describe, expect, it } from 'vitest';
-
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
-
 import { globToRegExp, resolveLayout } from '../layout.mjs';
-
 import {
   isCustomLayout,
   layoutJscpdConfig,

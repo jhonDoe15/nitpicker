@@ -1,15 +1,9 @@
 import { RuleTester } from 'eslint';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-
 import tseslint from 'typescript-eslint';
-
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
-
 import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
-
 import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
-
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 
 RuleTester.afterAll = afterAll;

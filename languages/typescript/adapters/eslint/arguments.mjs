@@ -2,13 +2,9 @@ import {
   PACKAGE_ROOT,
   SNAPSHOT_DIRECTORY_NAMES,
 } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { realpathSync, statSync } from 'node:fs';
-
 import { normalizedRelativePath, assertContainedPath } from './paths.mjs';
-
 import path from 'node:path';
-
 import { tmpdir } from 'node:os';
 
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;

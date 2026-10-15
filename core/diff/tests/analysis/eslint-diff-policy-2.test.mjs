@@ -1,22 +1,14 @@
 import { createGitTemplate, copyGitTemplate } from '../../fixtures/git-repository.mjs';
-
 import {
   expectedOutput403_27,
   expectedOutput423_42,
 } from '../../fixtures/expected-output/core-diff-eslint-diff-policy.mjs';
-
 import { execFileSync, spawnSync } from 'node:child_process';
-
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-
 import { createEslintAnalyzer } from '../../../../languages/typescript/adapters/eslint/analyzer.mjs';
-
 import { runQualityDiff } from '../../comparison/run-diff.mjs';
 
 const toolRoot = path.resolve(new URL('../../', import.meta.url).pathname, '../..');

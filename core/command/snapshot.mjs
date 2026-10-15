@@ -1,28 +1,19 @@
 import path from 'node:path';
-
 import {
   clearSnapshotReports,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mjs';
-
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
-
 import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
-
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../../languages/typescript/adapters/static-checks/dependencies.mjs';
-
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
-
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
-
 import { realpathSync } from 'node:fs';
-
 import { runGit } from '../diff/git/repository/command.mjs';
-
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 
 export function runSnapshotCli({

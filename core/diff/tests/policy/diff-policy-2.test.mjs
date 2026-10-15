@@ -2,9 +2,7 @@ import {
   expectedOutput351_80,
   expectedOutput410_31,
 } from '../../fixtures/expected-output/core-diff-diff-policy.mjs';
-
 import { execFileSync } from 'node:child_process';
-
 import {
   cpSync,
   existsSync,
@@ -15,21 +13,13 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-
 import { runCli as runCliWithSubprocesses } from '../../../cli.mjs';
-
 import { runGit } from '../../git/repository/command.mjs';
-
 import { REPORT_FILE_NAMES } from '../../reporting/reporters.mjs';
-
 import { runQualityDiff as runQualityDiffWithSubprocesses } from '../../comparison/run-diff.mjs';
-
 import { runTasksInProcess } from '../../fixtures/in-process-analyzers.mjs';
 
 // Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture
