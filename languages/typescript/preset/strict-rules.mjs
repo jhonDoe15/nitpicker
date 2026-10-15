@@ -30,6 +30,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-silent-catch',
   'nitpicker/no-throw',
   'nitpicker/no-uninjectable-delay',
+  'nitpicker/no-ui-framework-in-domain',
   'nitpicker/no-unknown-in-domain',
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/preserve-error-cause',

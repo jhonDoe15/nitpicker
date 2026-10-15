@@ -110,6 +110,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
         ...domainFunctionalRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
         'nitpicker/no-throw': 'error',
+        'nitpicker/no-ui-framework-in-domain': 'error',
         'nitpicker/no-unknown-in-domain': 'error',
       },
     },

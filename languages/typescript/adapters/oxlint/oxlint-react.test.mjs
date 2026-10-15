@@ -7,6 +7,7 @@ import { lintWithOxlint } from './oxlint-runner.mjs';
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-react-')));
 const adapters = 'src/main/features/profile/adapters';
+const domain = 'src/main/features/profile/domain';
 const typedRules = new Set([
   'react-x/no-leaked-conditional-rendering',
   'nitpicker/react-no-effect-data-fetching',
@@ -16,18 +17,16 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const reactScope = path.join(
-  packageRoot,
-  'languages/typescript/preset/eslint-config/react-scope.mjs',
-);
-const layoutModule = path.join(packageRoot, 'languages/typescript/preset/layout.mjs');
+const preset = path.join(packageRoot, 'languages/typescript/preset');
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
-  `import { reactScopeConfigFor } from ${JSON.stringify(reactScope)};`,
-  `import { resolveLayout } from ${JSON.stringify(layoutModule)};`,
+  `import { reactScopeConfigFor } from ${JSON.stringify(`${preset}/eslint-config/react-scope.mjs`)};`,
+  `import { strictSyntaxConfigFor } from ${JSON.stringify(`${preset}/eslint-config/strict.mjs`)};`,
+  `import { resolveLayout } from ${JSON.stringify(`${preset}/layout.mjs`)};`,
   'const parserOptions = { project: true, tsconfigRootDir: import.meta.dirname };',
   'export default [',
-  "  { files: ['**/*.tsx'], languageOptions: { parser: tseslint.parser, parserOptions } },",
+  "  { files: ['**/*.{ts,tsx}'], languageOptions: { parser: tseslint.parser, parserOptions } },",
+  '  ...strictSyntaxConfigFor(resolveLayout(), { react: true }),',
   '  ...(await reactScopeConfigFor(resolveLayout())),',
   '];',
 ];
@@ -48,7 +47,7 @@ const files = {
       types: [],
       lib: ['ES2022', 'DOM'],
     },
-    include: ['src/**/*.tsx'],
+    include: ['src/**/*.ts', 'src/**/*.tsx'],
   }),
   [`${adapters}/badge.tsx`]: [
     'export function Badge(props: { count: number }) {',
@@ -65,6 +64,11 @@ const files = {
     '  return <p>profile</p>;',
     '}',
   ],
+  [`${domain}/required.ts`]: [
+    "import React = require('react');",
+    "const dom = require('react-dom');",
+    'export const parts = [React, dom];',
+  ],
 };
 
 for (const [file, contents] of Object.entries(files)) {
@@ -78,7 +82,7 @@ for (const [file, contents] of Object.entries(files)) {
 function lintedWithResidualRun() {
   const residualRuns = [];
   const results = lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.tsx'] },
+    options: { projectRoot: root, patterns: ['src/**/*.ts', 'src/**/*.tsx'] },
     projectConfigPath: path.join(root, 'tsconfig.nitpicker.json'),
     environment: {
       ...process.env,
@@ -97,18 +101,40 @@ function lintedWithResidualRun() {
   return { results, residualRuns };
 }
 
-describe('the typed React rules under the oxlint engine', () => {
-  it('run in the residual ESLint pass, which has type information, and never crash oxlint', () => {
-    const { results, residualRuns } = lintedWithResidualRun();
+const runs = new Map();
+
+function oxlintRun() {
+  if (!runs.has('project')) runs.set('project', lintedWithResidualRun());
+  return runs.get('project');
+}
+
+function findingsOf(rule) {
+  return oxlintRun().results.flatMap(({ filePath, messages }) =>
+    messages
+      .filter(({ ruleId }) => ruleId === rule)
+      .map(({ line }) => `${path.relative(root, filePath)}:${String(line)}`),
+  );
+}
+
+describe('the React rules under the oxlint engine', () => {
+  it('send the typed rules to the residual ESLint pass and never crash oxlint', () => {
+    const { results, residualRuns } = oxlintRun();
 
     expect(
       results.flatMap(({ messages }) => messages.filter(({ ruleId }) => ruleId === null)),
     ).toEqual([]);
     expect(residualRuns).toEqual([
       {
-        files: [`${adapters}/badge.tsx`, `${adapters}/profile.tsx`],
+        files: [`${adapters}/badge.tsx`, `${adapters}/profile.tsx`, `${domain}/required.ts`],
         rules: [...typedRules].toSorted(),
       },
+    ]);
+  });
+
+  it('keep react out of domain/ through require and import = require', () => {
+    expect(findingsOf('nitpicker/no-ui-framework-in-domain')).toEqual([
+      `${domain}/required.ts:1`,
+      `${domain}/required.ts:2`,
     ]);
   });
 });
