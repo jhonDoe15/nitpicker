@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
+import { securityMessage } from '../security/security-advice.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -189,35 +190,26 @@ describe('readJavaFindings', () => {
     ]);
   });
 
-  it('gives a find-sec-bugs result the allowed form and its exception route, unless PMD reports the query', () => {
+  it('gives find-sec-bugs results their advice, except a query PMD reports', () => {
     const root = projectWithReports();
+    const place = (line, method) => [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: 'demo/Bad.java' },
+          region: { startLine: line },
+        },
+        logicalLocations: [{ fullyQualifiedName: method }],
+      },
+    ];
     const result = (method, line = 10) => ({
       ruleId: 'SQL_INJECTION_SPRING_JDBC',
       message: { text: 'Potential JDBC Injection', arguments: ['JdbcTemplate.queryForList'] },
-      locations: [
-        {
-          physicalLocation: {
-            artifactLocation: { uri: 'demo/Bad.java' },
-            region: { startLine: line },
-          },
-          logicalLocations: [{ fullyQualifiedName: method }],
-        },
-      ],
+      locations: place(line, method),
     });
+    const results = [result('a.B.one()'), result('a.B.two()'), result('a.B.three()', 8)];
     writeFileSync(
       path.join(root, 'build/nitpicker/spotbugs.sarif'),
-      JSON.stringify({
-        runs: [
-          {
-            tool: { driver: { name: 'SpotBugs' } },
-            results: [
-              result('demo.Bad.one()'),
-              result('demo.Bad.two()'),
-              result('demo.Bad.three()', 8),
-            ],
-          },
-        ],
-      }),
+      JSON.stringify({ runs: [{ results }] }),
     );
     const pmdFile = path.join(root, 'build/nitpicker/pmd.sarif');
     const pmd = JSON.parse(readFileSync(pmdFile, 'utf8'));
@@ -226,12 +218,12 @@ describe('readJavaFindings', () => {
 
     const found = readJavaFindings(root).findings.filter(({ tool }) => tool === 'spotbugs');
 
-    const advice =
-      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC in nitpicker.config.json.';
-    expect(found.map(({ message }) => message)).toEqual([advice, advice]);
+    expect(found.map(({ message }) => message)).toEqual(
+      Array(2).fill(securityMessage('SQL_INJECTION_SPRING_JDBC')),
+    );
     expect(found.map(({ identity }) => identity)).toEqual([
-      'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.one',
-      'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.two',
+      'fp:nitpicker/subject=JdbcTemplate.queryForList a.B.one',
+      'fp:nitpicker/subject=JdbcTemplate.queryForList a.B.two',
     ]);
   });
 
