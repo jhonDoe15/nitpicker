@@ -82,7 +82,7 @@ function parseSource(source, filename) {
   throw new SyntaxError(`Unable to parse ${filename}: ${messages.join('; ')}`);
 }
 
-function report(context, node, rule, target) {
+function report(context, node, { rule, target }) {
   const location = context.file.getLineAndCharacterOfPosition(node.getStart(context.file));
   context.findings.push({
     source: context.filename,
@@ -101,9 +101,9 @@ function normalizedSpecifier(filename, text) {
     .replace(/^(\.\.\/)+/, '');
 }
 
-function recordDependency(context, node, specifier, form) {
+function recordDependency(context, node, { specifier, form }) {
   if (specifier === undefined || !ts.isStringLiteralLike(specifier)) {
-    report(context, node, 'unresolved-runtime-dependency', form);
+    report(context, node, { rule: 'unresolved-runtime-dependency', target: form });
     return;
   }
   const { forbiddenDependencies } = context.role;
@@ -112,7 +112,7 @@ function recordDependency(context, node, specifier, form) {
     matches(specifier.text, forbiddenDependencies) ||
     matches(normalized, forbiddenDependencies)
   ) {
-    report(context, node, 'forbidden-runtime-dependency', specifier.text);
+    report(context, node, { rule: 'forbidden-runtime-dependency', target: specifier.text });
   }
 }
 
@@ -138,20 +138,24 @@ function moduleDependencyOf(node) {
 }
 
 function recordCall(context, node) {
-  const name = staticCallName(node.expression);
   if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-    recordDependency(context, node, node.arguments[0], 'import');
-  } else if (name === 'require') {
-    recordDependency(context, node, node.arguments[0], 'require');
-  } else if (name !== undefined && matches(name, context.role.forbiddenCalls)) {
-    report(context, node, 'forbidden-runtime-call', name);
+    recordDependency(context, node, { specifier: node.arguments[0], form: 'import' });
+    return;
+  }
+  const name = staticCallName(node.expression);
+  if (name === 'require') {
+    recordDependency(context, node, { specifier: node.arguments[0], form: 'require' });
+    return;
+  }
+  if (name !== undefined && matches(name, context.role.forbiddenCalls)) {
+    report(context, node, { rule: 'forbidden-runtime-call', target: name });
   }
 }
 
 function inspectNode(context, node) {
   const dependency = moduleDependencyOf(node);
   if (dependency !== undefined) {
-    recordDependency(context, node, dependency.specifier, dependency.form);
+    recordDependency(context, node, dependency);
     return;
   }
   if (ts.isCallExpression(node)) recordCall(context, node);

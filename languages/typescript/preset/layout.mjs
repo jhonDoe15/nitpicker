@@ -65,20 +65,34 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
+function toPosix(file) {
+  return file.replaceAll('\\', '/');
+}
+
+function sourceUnderRootClassifier({ sourceRoot, isSourceFile, isExcluded }) {
+  return (file, root) => {
+    const normalized = toPosix(file);
+    const prefix = `${toPosix(root).replace(/\/$/, '')}/`;
+    return (
+      normalized.startsWith(prefix) &&
+      isSourceFile(`${sourceRoot}/${normalized.slice(prefix.length)}`) &&
+      !isExcluded(normalized)
+    );
+  };
+}
+
 function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
-  const sourceRoot = sourceRoots[0] ?? defaultSourceRoots[0];
   const excludeMatchers = exclude.map(globToRegExp);
-  const toPosix = (file) => file.replaceAll('\\', '/');
-  const isExcluded = (file) => {
+  function isExcluded(file) {
     const normalized = toPosix(file);
     return excludeMatchers.some((matcher) => matcher.test(normalized));
-  };
-  const isTestFile = (file) => {
+  }
+  function isTestFile(file) {
     const normalized = toPosix(file);
     if (!patterns.codePattern.test(normalized) || normalized.endsWith('.d.ts')) return false;
     return patterns.testPattern.test(normalized);
-  };
-  const isSourceFile = (file) => {
+  }
+  function isSourceFile(file) {
     const normalized = toPosix(file);
     return (
       patterns.sourcePattern.test(normalized) &&
@@ -87,21 +101,17 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
       !normalized.endsWith('.d.ts') &&
       !isExcluded(normalized)
     );
-  };
+  }
   return {
     isExcluded,
     isTestFile,
     isRunnableTestFile: (file) => isTestFile(file) && patterns.runnableTestPattern.test(file),
     isSourceFile,
-    isSourceUnderRoot: (file, root) => {
-      const normalized = toPosix(file);
-      const prefix = `${toPosix(root).replace(/\/$/, '')}/`;
-      return (
-        normalized.startsWith(prefix) &&
-        isSourceFile(`${sourceRoot}/${normalized.slice(prefix.length)}`) &&
-        !isExcluded(normalized)
-      );
-    },
+    isSourceUnderRoot: sourceUnderRootClassifier({
+      sourceRoot: sourceRoots[0] ?? defaultSourceRoots[0],
+      isSourceFile,
+      isExcluded,
+    }),
     sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
     isTestFixture: (file, name = '') => {
       const normalized = toPosix(file);
