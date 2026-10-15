@@ -212,34 +212,6 @@ class GreeterTest {
 }
 `;
 
-export const BAD_DETEKT_FINDINGS = [
-  ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
-  'detekt detekt.style.UnusedPrivateProperty Bad.kt',
-];
-
-export const BAD_BRANCH_FINDINGS = ['jacoco changed-branch-coverage Bad.kt'];
-
-export const BAD_FINDINGS = [...BAD_DETEKT_FINDINGS, ...BAD_BRANCH_FINDINGS];
-
-export const BAD_KTLINT_RULES = [
-  'ktlint.standard:blank-line-before-declaration',
-  'ktlint.standard:colon-spacing',
-  'ktlint.standard:comma-spacing',
-  'ktlint.standard:function-expression-body',
-  'ktlint.standard:function-return-type-spacing',
-  'ktlint.standard:function-signature',
-  'ktlint.standard:if-else-wrapping',
-  'ktlint.standard:no-wildcard-imports',
-  'ktlint.standard:op-spacing',
-  'ktlint.standard:parameter-list-spacing',
-  'ktlint.standard:statement-wrapping',
-];
-
-export const LEGACY_FINDINGS = [
-  'detekt detekt.style.FunctionOnlyReturningConstant Legacy.kt',
-  'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
-];
-
 export const WIDE = `package demo
 
 fun sum(a: Int, b: Int, c: Int, d: Int): Int = a + b + c + d

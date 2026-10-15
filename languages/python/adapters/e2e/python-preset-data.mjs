@@ -1,8 +1,6 @@
 import { readFileSync } from 'node:fs';
-
 import path from 'node:path';
-
-import { fixture } from '../e2e/python-preset.e2e.test.mjs';
+import { fixture } from './python-e2e-support.mjs';
 
 export const VIOLATION = 'import sys\n\n\ndef f( a,b ):\n    return a+b\n';
 
@@ -169,10 +167,10 @@ export const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return
 export const BRANCH_CLAMP =
   'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 
-export const signsTest = (...assertions) =>
-  `from demo import signs\n\n\n${assertions
-    .map(([name, body]) => `def test_${name}():\n    assert ${body}\n`)
-    .join('\n\n')}`;
+export function signsTest(...assertions) {
+  const tests = assertions.map(([name, body]) => `def test_${name}():\n    assert ${body}\n`);
+  return `from demo import signs\n\n\n${tests.join('\n\n')}`;
+}
 
 export const PRAGMAS = [
   'import sys',

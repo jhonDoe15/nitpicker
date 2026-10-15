@@ -45,9 +45,15 @@ describe('readJavaFindings with the kotlin preset: coverage and mutation', () =>
       path.join(reports, 'jacoco.xml'),
       '<report name="demo"><package name="demo/flat"><sourcefile name="Flat.kt"><line nr="3" mi="1" ci="0" mb="2" cb="0"/></sourcefile></package></report>',
     );
+    const flatMutation = mutation({
+      status: 'SURVIVED',
+      className: 'demo.flat.FlatKt',
+      sourceFile: 'Flat.kt',
+      line: 3,
+    });
     writeFileSync(
       path.join(reports, 'pit/mutations.xml'),
-      `<mutations>${mutation('SURVIVED', 'demo.flat.FlatKt', 'Flat.kt', 3)}</mutations>`,
+      `<mutations>${flatMutation}</mutations>`,
     );
 
     const { findings } = readJavaFindings(root, { preset: 'kotlin' });
