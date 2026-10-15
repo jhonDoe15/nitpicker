@@ -28,12 +28,13 @@ const files = {
   'node_modules/react/index.js': 'exports.useState = () => [];\n',
   'node_modules/pino/package.json': JSON.stringify({ name: 'pino', main: 'pino.js' }),
   'node_modules/pino/pino.js': 'module.exports = () => ({});\n',
-  'node_modules/axios/package.json': JSON.stringify({ name: 'axios', main: 'index.js' }),
-  'node_modules/axios/index.js': 'module.exports = {};\n',
+  'node_modules/axios/package.json': JSON.stringify({ name: 'axios', main: 'dist/node/axios.cjs' }),
+  'node_modules/axios/dist/node/axios.cjs': 'module.exports = {};\n',
   [`${domain}/log.ts`]: "import pino from 'pino';\nexport const log = pino;\n",
   [`${domain}/fetch.ts`]: "import axios from 'axios';\nexport const client = axios;\n",
   [`${domain}/view.ts`]: "import { useState } from 'react';\nexport const view = useState;\n",
-  [`${domain}/total.ts`]: 'export function total(a: number, b: number): number {\n  return a + b;\n}\n',
+  [`${domain}/total.ts`]:
+    'export function total(a: number, b: number): number {\n  return a + b;\n}\n',
 };
 
 for (const [file, contents] of Object.entries(files)) {
@@ -68,7 +69,7 @@ function findingsOf(names) {
 
 describe('architecture rules on installed packages', () => {
   it(
-    'report domain imports of packages that resolve into node_modules, react included',
+    'report domain imports of installed packages, also one whose entry is under dist/',
     () => {
       expect(findingsOf(['dependency-architecture', 'eslint-lint'])).toEqual([
         `${domain}/fetch.ts domain-does-not-import-network-or-database-clients`,
