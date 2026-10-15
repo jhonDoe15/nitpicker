@@ -12,7 +12,7 @@ const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
 
-export function expandLayoutRoots(entries, layout) {
+function expandLayoutRoots(entries, layout) {
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
     const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;

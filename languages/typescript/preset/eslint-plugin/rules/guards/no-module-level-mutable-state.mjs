@@ -1,4 +1,7 @@
-import { compositionRootOptionsSchema, isCompositionRootFile } from '../composition-root-files.mjs';
+import {
+  compositionRootOptionsSchema,
+  isCompositionRootFile,
+} from '../boundaries/composition-root-files.mjs';
 
 const COLLECTION_CONSTRUCTORS = new Set([
   'Map',

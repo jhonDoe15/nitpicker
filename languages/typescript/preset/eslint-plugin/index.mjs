@@ -1,42 +1,43 @@
-import { rule as integrationTestUsesApprovedHarness } from './rules/integration-test-uses-approved-harness.mjs';
-import { rule as containerPauseRequiresFinallyUnpause } from './rules/container-pause-requires-finally-unpause.mjs';
-import { rule as boundedContainerTeardown } from './rules/bounded-container-teardown.mjs';
-import { rule as noFixedSleepSynchronization } from './rules/no-fixed-sleep-synchronization.mjs';
-import { rule as noIntervalPollingInTests } from './rules/no-interval-polling-in-tests.mjs';
-import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/no-managed-resource-construction-outside-composition-roots.mjs';
-import { rule as noBranchInCompositionRoot } from './rules/no-branch-in-composition-root.mjs';
-import { rule as noHandwrittenBoundaryGuard } from './rules/no-handwritten-boundary-guard.mjs';
-import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
-import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
-import { rule as cognitiveComplexity } from './rules/cognitive-complexity.mjs';
-import { rule as noComments } from './rules/no-comments.mjs';
-import { rule as noProductionConsole } from './rules/no-production-console.mjs';
-import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
-import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
-import { rule as noThrow } from './rules/no-throw.mjs';
-import { rule as noUnknownInDomain } from './rules/no-unknown-in-domain.mjs';
-import { rule as noUnvalidatedSchemaField } from './rules/no-unvalidated-schema-field.mjs';
-import { rule as reportModuleLoadEffects } from './rules/report-module-load-effects.mjs';
-import { rule as structuredCatchLogging } from './rules/structured-catch-logging.mjs';
-import { rule as testMustUseProductionRuntime } from './rules/test-must-use-production-runtime.mjs';
-import { rule as noWaitForWithFakeTimers } from './rules/no-wait-for-with-fake-timers.mjs';
-import { rule as preserveErrorCause } from './rules/preserve-error-cause.mjs';
-import { rule as noInternalModuleMocks } from './rules/no-internal-module-mocks.mjs';
-import { rule as noExternalExecutables } from './rules/no-external-executables-in-unit-tests.mjs';
-import { rule as noFirstTestChargedSetup } from './rules/no-first-test-charged-setup.mjs';
-import { rule as noUninjectableDelay } from './rules/no-uninjectable-delay.mjs';
-import { rule as noGitRepositoryPerTest } from './rules/no-git-repository-per-test.mjs';
-import { rule as hermeticGitInTests } from './rules/hermetic-git-in-tests.mjs';
-import { rule as noNodeProcessPerTest } from './rules/no-node-process-per-test.mjs';
-import { rule as noServerOrWorkerPerTest } from './rules/no-server-or-worker-per-test.mjs';
-import { rule as noRaisedTestTimeout } from './rules/no-raised-test-timeout.mjs';
-import { rule as noPartialOutputAssertion } from './rules/no-partial-output-assertion.mjs';
-import { rule as noProcessGlobalsOutsideMainGuard } from './rules/no-process-globals-outside-main-guard.mjs';
-import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-lib-and-types.mjs';
-import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
-import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
-import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
-import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
+import { rule as integrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
+import { rule as containerPauseRequiresFinallyUnpause } from './rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
+import { rule as boundedContainerTeardown } from './rules/testing/lifecycle/bounded-container-teardown.mjs';
+import { rule as noFixedSleepSynchronization } from './rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
+import { rule as noIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
+import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
+import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as noHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
+import { rule as noMockingSubjectUnderTest } from './rules/testing/assertions/no-mocking-subject-under-test.mjs';
+import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
+import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
+import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
+import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
+import { rule as noThrow } from './rules/errors/no-throw.mjs';
+import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
+import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
+import { rule as noUnvalidatedSchemaField } from './rules/boundaries/no-unvalidated-schema-field.mjs';
+import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
+import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
+import { rule as testMustUseProductionRuntime } from './rules/testing/assertions/test-must-use-production-runtime.mjs';
+import { rule as noWaitForWithFakeTimers } from './rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
+import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
+import { rule as noInternalModuleMocks } from './rules/testing/assertions/no-internal-module-mocks.mjs';
+import { rule as noExternalExecutables } from './rules/testing/processes/no-external-executables-in-unit-tests.mjs';
+import { rule as noFirstTestChargedSetup } from './rules/testing/lifecycle/no-first-test-charged-setup.mjs';
+import { rule as noUninjectableDelay } from './rules/testing/lifecycle/no-uninjectable-delay.mjs';
+import { rule as noGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
+import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-git-in-tests.mjs';
+import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
+import { rule as noServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
+import { rule as noRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as noPartialOutputAssertion } from './rules/testing/assertions/no-partial-output-assertion.mjs';
+import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
+import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
+import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
+import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
+import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
+import { rule as reactTestNoImplementationDetails } from './rules/react/react-test-no-implementation-details.mjs';
 
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
@@ -81,6 +82,7 @@ export const nitpickerRules = {
     'no-silent-catch': noSilentCatch,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,
+    'no-mutating-method-in-domain': noMutatingMethodInDomain,
     'no-unvalidated-schema-field': noUnvalidatedSchemaField,
     'report-module-load-effects': reportModuleLoadEffects,
     'structured-catch-logging': structuredCatchLogging,

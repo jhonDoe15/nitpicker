@@ -1,6 +1,6 @@
-import { ancestorsOf } from '../ancestry.mjs';
-import { isCompositionRootFile } from '../composition-root-files.mjs';
-import { mentionsEntryPoint } from '../no-process-globals-outside-main-guard.mjs';
+import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { isCompositionRootFile } from '../boundaries/composition-root-files.mjs';
+import { mentionsEntryPoint } from '../modules/no-process-globals-outside-main-guard.mjs';
 
 function propertyText(node) {
   if (!node.computed) {

@@ -1,6 +1,6 @@
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
-import { reactRuleIds, reactTestRuleIds } from './eslint-config/react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 
 // eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
@@ -24,6 +24,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-magic-numbers',
   'nitpicker/no-module-level-let',
   'nitpicker/no-module-level-mutable-state',
+  'nitpicker/no-mutating-method-in-domain',
   'nitpicker/no-node-process-per-test',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-process-globals-outside-main-guard',

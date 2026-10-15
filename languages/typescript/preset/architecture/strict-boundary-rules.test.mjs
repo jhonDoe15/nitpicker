@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruiseStrict } from './fixtures/strict-cruise.mjs';
+import { cruiseStrict } from './test-support/strict-cruise.mjs';
 import { strictBoundaryRules, strictBoundaryRulesFor } from './strict-boundary-rules.mjs';
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
@@ -85,11 +85,19 @@ describe('strict boundary rules', () => {
   });
 
   it('defines every strict rule the fixtures exercise', () => {
-    const strictRules = violations.filter(([, , allowedForm]) => allowedForm !== null);
-
-    expect(strictBoundaryRules.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(strictRules.map(([, rule]) => rule)),
-    );
+    expect([...new Set(strictBoundaryRules.map(({ name }) => name))].sort()).toEqual([
+      'domain-does-not-import-adapters',
+      'domain-does-not-import-id-libraries',
+      'domain-does-not-import-module-state',
+      'domain-does-not-import-network-or-database-clients',
+      'domain-does-not-import-node-io',
+      'domain-does-not-import-the-logger',
+      'domain-does-not-reach-io-through-shared',
+      'feature-internals-only-through-index',
+      'features-do-not-import-composition-root',
+      'features-do-not-import-other-feature-internals',
+      'shared-does-not-import-features',
+    ]);
   });
 
   it.each(violations)('rejects %s', async (fixture, rule, allowedForm) => {

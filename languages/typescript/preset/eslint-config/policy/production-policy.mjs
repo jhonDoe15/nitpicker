@@ -1,7 +1,7 @@
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
-import { domainGlobsFor } from '../strict-domain.mjs';
+import { domainGlobsFor } from '../strict/strict-domain.mjs';
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];

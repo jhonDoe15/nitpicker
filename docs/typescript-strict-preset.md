@@ -87,8 +87,10 @@ config file is an exception like any other.
 
 ## Inside `domain/`
 
-- `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters and data types
-  are `readonly`.
+- `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters, return types,
+  module-level values and data types are `readonly`. A variable inside a function needs no
+  `readonly` annotation, because the mutation rules below report the ways to change it, and
+  annotating every intermediate `map` or `filter` result only made agents write worse code.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
@@ -120,18 +122,23 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   reported once, by this rule, for its `unknown` parameter; `no-handwritten-boundary-guard` stays
   in `adapters/`.
 - Mutation is reported once per site by the `no-restricted-syntax` domain selectors (`push` and the
-  other mutating array methods, property assignment and update, `delete`, and `Object.assign`,
-  `defineProperty`, `defineProperties` or `setPrototypeOf` on anything but a fresh object literal).
+  other mutating array methods, also through `.call`, `.apply` and `.bind`, property assignment and
+  update, destructuring assignment, `delete`, `Object.assign`, `defineProperty`, `defineProperties`
+  or `setPrototypeOf` on anything but a fresh object literal, and the mutating `Reflect` and
+  `Atomics` calls). `nitpicker/no-mutating-method-in-domain` uses the types to report every other
+  use of a mutating method of an array, `Set`, `Map`, `WeakSet`, `WeakMap`, `Date` (its `set`
+  methods), typed array, `Buffer` or `URLSearchParams`: a computed `a['push']()`, a method taken as
+  a value (`const add = set.add`, `xs.map(set.add, set)`), or a receiver typed `Readonly<Date>` or
+  by a type parameter. Aliasing `Object` or `Reflect` itself is not followed.
+  `functional/immutable-data` is not enabled because it reported the same sites a second time with
+  a less helpful message.
 - When `functional/prefer-immutable-types` flags something, its message names the annotation that
   fixes it: a callback that returns an object or array literal gets a return type
-  (`items.map((item): Summary => ({ ... }))`, `lines.map((line): readonly string[] => ...)`); an
-  intermediate `const` gets `const cheap: readonly Item[] = items.filter(...)`; the tail of a
-  destructured array is taken with an annotated `slice`; an `Object.groupBy` result is typed
+  (`items.map((item): Summary => ({ ... }))`, `lines.map((line): readonly string[] => ...)`); a
+  module-level object literal gets a type with readonly fields; an `Object.groupBy` result is typed
   `Readonly<Partial<Record<Key, readonly T[]>>>`; an `Error` field is typed `unknown` (as `error` or
   `cause`) or replaced by `message: string`; a generic bound is written with readonly fields
   (`<T extends { readonly id: string }>`).
-  `functional/immutable-data` is not enabled because it reported the same sites a second time with
-  a less helpful message.
 
 ## Inside `adapters/`
 
@@ -294,8 +301,8 @@ alone.
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
   `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
-  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`,
-  `stryker.vitest.config.ts` and the coverage runner's `--testTimeout`; a test keeps them in step).
+  `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
+  Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
@@ -446,13 +453,13 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   sites with a message that names the allowed form.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
-  `restrictedSyntaxByScope` in `strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
+  `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
   the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
   control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
-- The React scope lives in `languages/typescript/preset/eslint-config/react-scope.mjs`; see "React"
+- The React scope lives in `languages/typescript/preset/eslint-config/react/react-scope.mjs`; see "React"
   above and `docs/internals.md`. Its rules are strict rules too (`react-rules.mjs` lists them).
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
@@ -537,7 +544,7 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 
 1. Ship the strict preset as a new major version, with a changelog listing every rule that fails.
 2. The policy hash changes with the preset. The gate analyzes both the base worktree and the head
-   (`core/diff/run-diff.mjs`), so existing violations appear on both sides and are baselined, not
+   (`core/diff/comparison/run-diff.mjs`), so existing violations appear on both sides and are baselined, not
    failed. The upgrade PR itself should be verified once to confirm the base side is analyzed with
    the new rules (checked in S13: the base side is analyzed with the head's policy, and a test shows a legacy
    violation staying baselined when the edit is elsewhere in the file).
@@ -549,17 +556,17 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 ### How touched code is detected and held to strict rules
 
 Today the gate classifies a finding as new only when its comparison key is missing from the base.
-The key (`core/diff/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
+The key (`core/diff/comparison/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
 identity, classification and metric name. It contains no line number, so an existing violation in an
 edited file keeps matching the base and stays baselined. That is the behavior to change for strict.
 
 Recommendation: line-hunk promotion, implemented in the diff engine (folded into S13 and
-implemented there: `readChangedLines` in `core/diff/git.mjs`, applied by `compareFindings` in
-`core/diff/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
+implemented there: `readChangedLines` in `core/diff/git/repository/git.mjs`, applied by `compareFindings` in
+`core/diff/comparison/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
 
 - Compute the changed line ranges of each file on the head side from
   `git diff --unified=0 --find-renames <base>...HEAD` (the engine already shells out to git in
-  `core/diff/git.mjs` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
+  `core/diff/git/repository/git.mjs` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
 - After `compareFindings`, move a finding from `unchangedFindings` to `newFindings` when its rule
   is in the strict set and its head `location.line` falls inside a changed range of its file.
   Findings with no `location` (file- or graph-level findings) are promoted only when the file is
