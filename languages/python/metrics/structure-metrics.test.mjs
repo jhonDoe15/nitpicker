@@ -3,7 +3,10 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readPythonStructureFindings, STRUCTURE_REPORT } from '../adapters/python-structure.mjs';
+import {
+  readPythonStructureFindings,
+  STRUCTURE_REPORT,
+} from '../adapters/analysis/python-structure.mjs';
 import {
   directories,
   field,
