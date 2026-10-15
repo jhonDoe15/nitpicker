@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { strictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
@@ -5,8 +8,11 @@ import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
+  UNTYPED_VALUE_RULES,
   applyJavascriptDialect,
+  projectChecksJavascript,
   scriptRuleEntries,
+  untypedScriptEntries,
 } from './eslint-dialect.mjs';
 
 const javascript = { preset: 'javascript' };
@@ -207,5 +213,34 @@ describe('scriptRuleEntries', () => {
     expect(scriptRuleEntries(['src/**/*.js'])).toEqual([
       { files: ['src/**/*.js'], rules: JAVASCRIPT_ONLY_RULES },
     ]);
+  });
+});
+
+describe('untypedScriptEntries', () => {
+  const offForScripts = [
+    {
+      files: ['**/*.{js,mjs,cjs,jsx}'],
+      rules: Object.fromEntries(UNTYPED_VALUE_RULES.map((rule) => [rule, 'off'])),
+    },
+  ];
+
+  it('turns the unsafe-value rules off for JavaScript files in a TypeScript project', () => {
+    expect(untypedScriptEntries({}, false)).toEqual(offForScripts);
+  });
+
+  it('keeps them when the JavaScript is type-checked', () => {
+    expect(untypedScriptEntries(javascript, false)).toEqual([]);
+    expect(untypedScriptEntries({}, true)).toEqual([]);
+  });
+
+  it('reads checkJs through the project tsconfig and what it extends', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-check-js-'));
+    writeFileSync(path.join(root, 'base.json'), '{ "compilerOptions": { "checkJs": true } }');
+    const checked = projectChecksJavascript(root);
+    writeFileSync(path.join(root, 'tsconfig.json'), '{ "extends": "./base.json" }');
+    const extended = projectChecksJavascript(root);
+    rmSync(root, { recursive: true, force: true });
+
+    expect([checked, extended]).toEqual([false, true]);
   });
 });

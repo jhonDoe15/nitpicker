@@ -553,6 +553,9 @@ own tools do:
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
   test roots. Because `noEmit` is set, `.js` files that the project's tsconfig includes no longer
   fail with TS5055; they get the JavaScript lint rules, `no-var` and `prefer-const` among them.
+  Unless the project's tsconfig sets `checkJs`, their values have no types, so the type-aware
+  `no-unsafe-*`, `restrict-plus-operands` and `restrict-template-expressions` rules are off for
+  `.js`, `.mjs`, `.cjs` and `.jsx` files (the JavaScript preset type-checks them and keeps them).
 - **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked
