@@ -84,6 +84,7 @@ export function parseXml(text) {
     /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
+  const contentStarts = new Map();
   for (const match of text.matchAll(tokens)) {
     const [, closing, name, rest, selfClosing] = match;
     if (name === undefined) {
@@ -94,12 +95,16 @@ export function parseXml(text) {
       if (stack.length === 1 || current.name !== name) {
         throw new TypeError(`XML closing tag </${name}> does not match an open element`);
       }
+      if (current.children.length === 0) {
+        current.text = decodeEntities(text.slice(contentStarts.get(current), match.index).trim());
+      }
       stack.pop();
       continue;
     }
     const element = { name, attrs: parseAttributes(rest), children: [] };
     current.children.push(element);
     if (selfClosing !== '/') {
+      contentStarts.set(element, match.index + match[0].length);
       stack.push(element);
     }
   }
