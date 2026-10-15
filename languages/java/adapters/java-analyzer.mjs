@@ -59,6 +59,10 @@ export const CONFIGURATION_FILES = [
   'languages/java/ingest/kotlin-branches.mjs',
   'languages/java/ingest/pit.mjs',
   'languages/java/ingest/sarif.mjs',
+  'languages/java/messages/rule-messages.mjs',
+  'languages/java/messages/pmd.json',
+  'languages/java/messages/checkstyle.json',
+  'languages/java/messages/spotbugs.json',
 ];
 
 export function readPinnedVersions(initScript = INIT_SCRIPT) {

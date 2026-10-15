@@ -1,4 +1,6 @@
+import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { CONFIGURATION_FILES } from '../adapters/java-analyzer.mjs';
 import {
   CATALOG_TOOLS,
   LAYOUT_FIX,
@@ -69,6 +71,14 @@ describe('withRuleMessage', () => {
     );
   });
 
+  it('offers no exception outside the java preset, whose exceptions cannot lift these tools', () => {
+    expect(
+      withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err'), {
+        preset: 'kotlin',
+      }).message,
+    ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
+  });
+
   it('offers no exception for a descriptive finding', () => {
     expect(
       withRuleMessage(finding('pmd', 'SystemPrintln', 'Usage of System.out/err', 'descriptive'))
@@ -102,5 +112,14 @@ describe('rule catalogs', () => {
     );
 
     expect(malformed).toEqual([]);
+  });
+
+  it('are part of the configuration hash, with the code that applies them', () => {
+    const files = readdirSync(import.meta.dirname)
+      .filter((name) => !name.includes('.test.'))
+      .map((name) => `languages/java/messages/${name}`)
+      .sort();
+
+    expect(CONFIGURATION_FILES.filter((file) => files.includes(file)).sort()).toEqual(files);
   });
 });

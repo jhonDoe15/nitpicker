@@ -17,27 +17,28 @@ export function checkstyleRuleName(source) {
   return CHECKSTYLE_CHECK.exec(source)?.[1] ?? source;
 }
 
-export function withRuleMessage(finding) {
+export function withRuleMessage(finding, { preset = 'java' } = {}) {
   const catalog = CATALOGS.get(finding.tool);
   if (catalog === undefined) {
     return finding;
   }
   const rule = finding.tool === 'checkstyle' ? checkstyleRuleName(finding.rule) : finding.rule;
   const entry = Object.hasOwn(catalog, rule) ? catalog[rule] : undefined;
-  return { ...finding, rule, message: ruleMessage({ ...finding, rule }, entry) };
+  return { ...finding, rule, message: ruleMessage({ ...finding, rule }, entry, preset) };
 }
 
-export function applyRuleMessages(findings) {
-  return findings.map(withRuleMessage);
+export function applyRuleMessages(findings, options) {
+  return findings.map((finding) => withRuleMessage(finding, options));
 }
 
-function ruleMessage(finding, entry) {
+function ruleMessage(finding, entry, preset) {
   const message = finding.message.trim();
   if (message.includes(CONFIG_FILE)) {
     return message;
   }
   const fix = entry?.layout === true ? LAYOUT_FIX : entry?.fix;
-  const liftable = finding.classification === 'enforceable' && entry?.mayBeIntended !== false;
+  const liftable =
+    preset === 'java' && finding.classification === 'enforceable' && entry?.mayBeIntended !== false;
   return [
     SENTENCE_END.test(message) ? message : `${message}.`,
     ...(typeof fix === 'string' ? [fix] : []),
