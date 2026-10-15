@@ -137,22 +137,23 @@ describe('unhandled errors in the Vitest output', () => {
   });
 
   it('becomes a tool error that names the file, the message and the fix', () => {
-    const [finding] = coverageFailureFindings(
+    const findings = coverageFailureFindings(
       { analyzerName: 'coverage', projectRoot: '/p' },
       { numFailedTests: 0, testResults: [] },
       { status: 1, stdout: '', stderr: unhandledOutput },
     );
 
-    expect(finding).toEqual(
-      expect.objectContaining({
+    expect(findings).toEqual([
+      {
         tool: 'coverage',
+        rule: 'tests-failed',
         path: 'src/t.test.ts',
+        identity: 'tests-failed',
+        message:
+          "Vitest caught an unhandled rejection from src/t.test.ts: AssertionError: expected 'user-2' to be 'nope' // Object.is equality. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.",
         classification: 'tool-error',
-      }),
-    );
-    expect(finding.message).toBe(
-      "Vitest caught an unhandled rejection from src/t.test.ts: AssertionError: expected 'user-2' to be 'nope' // Object.is equality. Await or return the promise in the test so its failure fails the test, then rerun; coverage, CRAP and mutation were skipped.",
-    );
+      },
+    ]);
   });
 });
 
