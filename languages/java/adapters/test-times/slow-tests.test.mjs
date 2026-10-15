@@ -42,7 +42,7 @@ function suite(className, cases) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="${className}">\n${testCases}\n</testsuite>\n`;
 }
 
-function findingsFor({ sources = {}, results, base, limits, snapshot = 'head' }) {
+function findingsFor({ sources = {}, results, base, limits, snapshot = 'head', modulePath }) {
   const reportRoot = directoryWith(
     Object.fromEntries(
       Object.entries(results).flatMap(([task, xml]) =>
@@ -57,6 +57,7 @@ function findingsFor({ sources = {}, results, base, limits, snapshot = 'head' })
     testRoots: [TEST_ROOT],
     limits,
     baseline,
+    modulePath,
   });
 }
 
@@ -194,5 +195,42 @@ describe('readSlowTestFindings', () => {
     expect(findings.map(({ path: file, identity }) => [file, identity])).toEqual([
       ['.', 'test:gen.Made#x()'],
     ]);
+  });
+
+  it('counts Surefire results as unit tests and Failsafe results as integration tests', () => {
+    const findings = findingsFor({
+      sources: { [ORDER_TEST]: ORDER_SOURCE },
+      results: {
+        surefire: suite('shop.OrderTest', [['totals()', '6']]),
+        failsafe: [
+          suite('shop.Flow', [['runs()', '12']]),
+          suite('shop.Slow', [['crawls()', '31']]),
+        ],
+      },
+    });
+
+    expect(findings.map(({ identity, message }) => [identity, message.split(';')[1]])).toEqual([
+      ['test:shop.OrderTest#totals()', expect.stringContaining(' a unit test may take 5 s')],
+      ['test:shop.Slow#crawls()', expect.stringContaining(' an integration test may take 30 s')],
+    ]);
+  });
+
+  it('compares a module test with the base file under the module path', () => {
+    const modulePath = 'services/core';
+    const inBase = (text) => ({ [`${modulePath}/${ORDER_TEST}`]: text });
+    const results = { surefire: suite('shop.OrderTest', [['totals()', '9']]) };
+    const edited = ORDER_SOURCE.replace('total()', 'total() + 0');
+    const run = (source) =>
+      findingsFor({
+        sources: { [ORDER_TEST]: source },
+        results,
+        base: inBase(ORDER_SOURCE),
+        modulePath,
+      });
+
+    expect(run(ORDER_SOURCE)).toEqual([]);
+    const [finding] = run(edited);
+    expect(finding.path).toBe(ORDER_TEST);
+    expect(finding.message).toContain(`"paths":["${modulePath}/${ORDER_TEST}"]`);
   });
 });

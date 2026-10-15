@@ -20,6 +20,7 @@ import {
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
+import { copyTestResults } from './results/maven-test-results.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
@@ -158,6 +159,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  copyTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
   runFormat({ module, reportDir, tools });
