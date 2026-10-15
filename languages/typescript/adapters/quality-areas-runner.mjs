@@ -18,7 +18,6 @@ import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expan
 import { evaluateCoupling } from '../../../shared/rules/coupling.mjs';
 import {
   addMetric,
-  enclosingFunctionName,
   hash,
   nextOccurrence,
   positiveInteger,
@@ -38,7 +37,7 @@ import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { deadCodeMessage } from './exceptions/dead-code-messages.mjs';
-import { namedFunctions } from './exceptions/function-names.mjs';
+import * as identity from './exceptions/function-identity.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
@@ -725,6 +724,7 @@ export function normalizeDeadCode(report, analyzerName) {
               : ''
           }`,
           message: deadCodeMessage(category, name, entry),
+          symbol: name,
           classification: ENFORCED_DEAD_CODE_CATEGORIES.has(category)
             ? 'enforceable'
             : 'descriptive',
@@ -768,7 +768,6 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
     metricName: 'branches',
     value: coveragePercent(branchOutcomes),
   });
-  const functions = namedFunctions(coverage, relativePath);
   const branches = branchEntries.map(([branchId, outcomes]) => {
     const line = coverage.branchMap?.[branchId]?.loc?.start?.line;
     return {
@@ -779,7 +778,7 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
       percent: coveragePercent(outcomes),
       line,
       arms: coverage.uncoveredArms?.[branchId],
-      symbol: enclosingFunctionName(functions, relativePath, line),
+      symbol: coverage.branchFunctions?.[branchId],
     };
   });
   findings.push(
@@ -922,6 +921,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
     status,
     label: mutant.mutatorName ?? 'mutant',
+    ...(mutant.functionName === undefined ? {} : { symbol: mutant.functionName }),
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined
       ? {}
@@ -952,6 +952,7 @@ function withFunctionSourceHashes(report, projectRoot) {
       }
       return {
         ...entry,
+        function: identity.crapFunctionName(source, entry.source, entry) ?? entry.function,
         sourceHash: hash(
           sourceLineRange(source, entry.start ?? entry.lines?.start, entry.end ?? entry.lines?.end),
         ),
@@ -984,7 +985,12 @@ function withBranchSourceHashes(report, projectRoot) {
           describeUncoveredArms(branch, coverage.b?.[branchId], source),
         ]),
       );
-      return [absolutePath, { ...coverage, branchSourceHashes, uncoveredArms }];
+      const branchFunctions = identity.branchFunctionNames(
+        source,
+        absolutePath,
+        coverage.branchMap,
+      );
+      return [absolutePath, { ...coverage, branchSourceHashes, uncoveredArms, branchFunctions }];
     }),
   );
 }
@@ -1089,6 +1095,11 @@ function withMutationSourceHashes(report, projectRoot) {
               ...mutant,
               sourceHash: hash(sourceLocation(source, mutant.location)),
               original: sourceSnippet(source, mutant.location),
+              functionName: identity.functionNameAtLine(
+                source,
+                filePath,
+                mutant.location?.start?.line,
+              ),
             })),
           },
         ];
