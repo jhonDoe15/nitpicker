@@ -35,23 +35,8 @@ export function readJavaFindings(
   projectRoot,
   { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
 ) {
-  const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
-  requireGradleReports(projectRoot, preset);
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  if (kotlin) {
-    requireKotlinManifest(manifest);
-  }
-  const context = {
-    projectRoot,
-    reportRoot,
-    manifest,
-    sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: lintedRoots(manifest),
-    roots: projectRoots(projectRoot),
-    kotlin,
-    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
-  };
+  const context = reportContext(projectRoot, preset);
+  const { reportRoot, manifest, kotlin } = context;
   return {
     findings: applyRuleMessages(
       [
@@ -81,6 +66,26 @@ export function readJavaFindings(
       ],
       { preset },
     ),
+  };
+}
+
+function reportContext(projectRoot, preset) {
+  const kotlin = preset === 'kotlin';
+  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
+  requireGradleReports(projectRoot, preset);
+  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
+  if (kotlin) {
+    requireKotlinManifest(manifest);
+  }
+  return {
+    projectRoot,
+    reportRoot,
+    manifest,
+    sourceRoots: manifest.sourceRoots ?? [],
+    lintedRoots: lintedRoots(manifest),
+    roots: projectRoots(projectRoot),
+    kotlin,
+    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
 }
 

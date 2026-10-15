@@ -74,7 +74,6 @@ class SwallowingTest {
 }
 `;
 
-
 let repository;
 
 const ofTool = (result, tool) =>
@@ -117,12 +116,9 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
       expect(result.failed).toBe(true);
       expect(ofFile(result, 'Bad.java')).toEqual([
-        ...[
-          'EmptyCatchBlock',
-          'EmptyLineSeparator',
-          'Indentation',
-          'RegexpSinglelineJava',
-        ].map((check) => `checkstyle ${check} Bad.java`),
+        ...['EmptyCatchBlock', 'EmptyLineSeparator', 'Indentation', 'RegexpSinglelineJava'].map(
+          (check) => `checkstyle ${check} Bad.java`,
+        ),
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java',
         'pmd EmptyCatchBlock Bad.java',
