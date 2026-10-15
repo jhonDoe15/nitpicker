@@ -8,9 +8,11 @@ import {
 } from '../../languages/java/adapters/java-runner.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { withHeadPolicyFile } from '../../shared/head-policy.mjs';
-import { createGitRepository, removeGitRepositories } from '../diff/fixtures/git-repository.mjs';
-import { resolveComparison } from '../diff/git.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { resolveComparison } from '../diff/git/repository/git.mjs';
 import { comparisonPolicy } from './resolve.mjs';
+
+const { createGitRepository } = useGitFixtures();
 
 const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -21,7 +23,6 @@ const indented = (width) =>
 const projects = [];
 
 afterEach(() => {
-  removeGitRepositories();
   for (const root of projects.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }

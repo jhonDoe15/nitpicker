@@ -1,23 +1,18 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  fixtureGit,
-  removeGitRepositories,
-} from '../diff/fixtures/git-repository.mjs';
-import { describeConfigOverrides, validateConfig } from '../config.mjs';
-import { resolveComparison } from '../diff/git.mjs';
+import { describe, expect, it } from 'vitest';
+import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { describeConfigOverrides } from '../configuration/config.mjs';
+import { validateConfig } from '../configuration/validate.mjs';
+import { resolveComparison } from '../diff/git/repository/git.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './resolve.mjs';
 
+const { createGitRepository } = useGitFixtures();
+
 const twoSpaces = 'class A {\n  void a() {\n    run();\n  }\n}\n';
 const fourSpaces = 'class B {\n    void b() {\n        run();\n    }\n}\n';
-
-afterEach(() => {
-  removeGitRepositories();
-});
 
 function writeFiles(root, files) {
   for (const [relativePath, contents] of Object.entries(files)) {

@@ -3,7 +3,7 @@ import { collectJavaFindings } from './java-diff.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 
