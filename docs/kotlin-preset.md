@@ -535,7 +535,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   `-Pnitpicker.kotlin=true`, and a JaCoCo or PIT report the test provides): pass, new detekt finding,
   new unformatted file with each formatter, an uncovered changed Kotlin branch, a Kotlin mutant that
   does not fail and a Java one that does, baseline expansion, Gradle failure on either snapshot.
-- `languages/java/adapters/reporting/kotlin-reports.test.mjs`: a real detekt SARIF
+- `languages/java/adapters/reporting/kotlin-*-reports.test.mjs` (lint, coverage, metrics): a real detekt SARIF
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; branch gating of Kotlin files; Kotlin mutants being
   descriptive and Java ones enforceable; the Java preset ignoring Kotlin reports.
@@ -559,7 +559,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
-- `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+- `languages/java/adapters/kotlin-e2e/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle, lizard (the Java preset's) and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt

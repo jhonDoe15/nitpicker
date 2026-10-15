@@ -731,7 +731,7 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
-- `languages/python/adapters/e2e/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+- `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3, uv, ruff, black and network access to PyPI; about 2
   minutes. On `languages/python/adapters/fixtures/python-project` (one legacy ruff violation on the
   base, editable install in a `.venv`) it checks: a change that alters behaviour and updates its
