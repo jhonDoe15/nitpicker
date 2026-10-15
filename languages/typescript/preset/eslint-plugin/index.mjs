@@ -15,7 +15,7 @@ import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
 import { rule as noThrow } from './rules/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/no-unknown-in-domain.mjs';
-import { rule as noMutatingMethodInDomain } from './rules/no-mutating-method-in-domain.mjs';
+import { rule as noMutatingMethodInDomain } from './rules/domain/no-mutating-method-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/no-unvalidated-schema-field.mjs';
 import { rule as reportModuleLoadEffects } from './rules/report-module-load-effects.mjs';
 import { rule as structuredCatchLogging } from './rules/structured-catch-logging.mjs';
