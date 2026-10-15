@@ -83,16 +83,19 @@ function superclassOf(source, className) {
   return declaration.exec(source)?.[1].split('.').at(-1);
 }
 
-function suppliesVersion(index, superclass, depth = 0) {
-  const sources = (index.get(superclass) ?? []).map((file) => readSource(file) ?? '');
-  if (sources.length === 0 || depth >= MAX_ANCESTORS) {
-    return false;
+function suppliesVersion(index, superclass) {
+  const pending = [superclass];
+  for (const name of pending) {
+    const sources = (index.get(name) ?? []).map((file) => readSource(file) ?? '');
+    if (sources.some((source) => VERSION_ANNOTATION.test(source))) {
+      return true;
+    }
+    const parent = sources.map((source) => superclassOf(source, name)).find(Boolean);
+    if (parent !== undefined && pending.length < MAX_ANCESTORS) {
+      pending.push(parent);
+    }
   }
-  if (sources.some((source) => VERSION_ANNOTATION.test(source))) {
-    return true;
-  }
-  const parent = sources.map((source) => superclassOf(source, superclass)).find(Boolean);
-  return parent !== undefined && suppliesVersion(index, parent, depth + 1);
+  return false;
 }
 
 function superclassAfter(source, line) {
