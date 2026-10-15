@@ -146,7 +146,7 @@ field by field. Per snapshot:
   compiler plugin puts a plain jar there when `module-info.java` requires it. On the head it reuses
   the base's warnings for unchanged files exactly as on Gradle. forbiddenapis reads the module's
   output directory (`target/classes` unless the POM moves it) against the main compile classpath
-  and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
+  and is skipped when the module has no classes; CPD, the guard, code smell and test-honesty PMD rulesets,
   the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
   16 PMD rules are skipped below release 16, with the same Java 8 default. The dependency check
   reads the dependencies the module's own `pom.xml` declares with compile scope (no `<scope>` or
@@ -798,8 +798,8 @@ A Checkstyle rule prints as its full check class, for example
 
 [`languages/java/gradle/code-smells-ruleset.xml`](../languages/java/gradle/code-smells-ruleset.xml) holds nitpicker's
 own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring
-(the init script wraps them like the guard rules: test directories excluded); test sources get
-`code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
+(the init script, and on Maven `languages/java/maven/guards/maven-pmd.mjs`, wraps them like the
+guard rules: test directories excluded); test sources get `code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
 private-method `UnusedFormalParameter`). The Java preset is the only Gradle preset with these
 rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
 with the exception to add when the code is right: `{ "rule": "pmd/<rule>", "paths": [...], "reason": "..." }`.
@@ -838,8 +838,9 @@ TODO an issue.
 **Tests.** `adapters/fixtures/code-smells-project` holds a violating and a legitimate sample per
 rule, each violation marked `// violation: <rule>`. `code-smell-rules.test.mjs` checks that every
 rule is documented here, names its exception route and has a marked sample, and that the init
-script wires both rule sets; the gated `spring/java-spring.e2e.test.mjs` also runs the fixture
-through Gradle and expects exactly the marked findings in main and test sources.
+script and the Maven PMD run wire both rule sets; the gated `spring/java-spring.e2e.test.mjs` also
+runs the fixture through Gradle, and `maven/maven-preset.e2e.test.mjs` through Maven, and both
+expect exactly the marked findings in main and test sources.
 
 ## Spring rules
 
