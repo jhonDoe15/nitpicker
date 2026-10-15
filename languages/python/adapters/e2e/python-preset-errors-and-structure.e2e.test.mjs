@@ -6,7 +6,7 @@ import {
   NO_MUTATION,
   SAMPLE_SOURCE,
   SAME_NAME_SOURCES,
-} from './python-preset-data.mjs';
+} from './test-support/python-preset-data.mjs';
 import {
   command,
   commitBranch,
@@ -16,7 +16,7 @@ import {
   removeRepositories,
   repository,
   write,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 import { fileURLToPath } from 'node:url';
 
 describe.skipIf(!pythonE2eEnabled)(
@@ -47,8 +47,8 @@ describe.skipIf(!pythonE2eEnabled)(
             new RegExp(
               [
                 '^coverage run exited 1 in the virtualenv environment:\\n',
-                "[\\s\\S]*assert 'Hello, Ada!' == 'Hi, Ada!'[\\s\\S]*1 faile",
-                'd, 2 passed in [\\d.]+s$',
+                "[\\s\\S]*assert 'Hello, Ada!' == 'Hi, Ada!'",
+                '[\\s\\S]*1 failed, 2 passed in [\\d.]+s$',
               ].join(''),
               '',
             ),

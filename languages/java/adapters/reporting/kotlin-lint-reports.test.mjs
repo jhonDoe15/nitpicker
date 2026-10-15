@@ -8,7 +8,7 @@ import {
   kotlinFindings,
   projectWithKotlinReports,
   removeTemporaryProjects,
-} from './kotlin-report-project.mjs';
+} from './test-support/kotlin-report-project.mjs';
 
 afterEach(removeTemporaryProjects);
 
@@ -105,10 +105,9 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     expect(finding.message).toMatch(
       new RegExp(
         [
-          '^Calling !! on a nullable type will throw\\. Handle null',
-          ' with `value \\?: return`.*checkNotNull\\(value\\).*"excep',
-          'tions" entry for rule detekt\\.potential-bugs\\.UnsafeCal',
-          'lOnNullableType in nitpicker\\.config\\.json\\.$',
+          '^Calling !! on a nullable type will throw\\. Handle null with `value \\?: return`',
+          '.*checkNotNull\\(value\\).*"exceptions" entry for rule',
+          ' detekt\\.potential-bugs\\.UnsafeCallOnNullableType in nitpicker\\.config\\.json\\.$',
         ].join(''),
         '',
       ),

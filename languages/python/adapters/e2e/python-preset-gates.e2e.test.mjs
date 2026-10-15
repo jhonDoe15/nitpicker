@@ -11,7 +11,7 @@ import {
   VIOLATION,
   WEAKENED_MYPY,
   WEAKENED_PYRIGHT,
-} from './python-preset-data.mjs';
+} from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   fixtureRepository,
@@ -19,7 +19,7 @@ import {
   pythonE2eEnabled,
   removeRepositories,
   summarize,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 
 const enforceable = (result) =>
   summarize(

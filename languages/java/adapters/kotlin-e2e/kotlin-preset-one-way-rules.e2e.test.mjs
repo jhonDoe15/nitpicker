@@ -5,12 +5,11 @@ import {
   EXTRA_SOURCES,
   HOSTILE_DETEKT_CONFIG,
   ruleFixtures,
-} from '../fixtures/kotlin-preset-data.mjs';
+} from './test-support/kotlin-one-way-data.mjs';
 import { expectedMessage, fixturePath, kotlinRuleCases } from '../fixtures/kotlin-rules/cases.mjs';
 import { SUPPRESSION_RULE, addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
 import {
   commitBranch,
-  createKotlinProject,
   detektFindingsOf,
   diffOf,
   fromTool,
@@ -21,22 +20,16 @@ import {
   kotlinE2eEnabled,
   removeProject,
   summarize,
-} from './kotlin-e2e-project.mjs';
-
-const project = createKotlinProject();
-
-const results = new Map();
-
-const diffOnce = (branch) => {
-  if (!results.has(branch)) {
-    results.set(branch, diffOf(project, branch));
-  }
-  return results.get(branch);
-};
+} from './test-support/kotlin-e2e-project.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () => {
+  let project;
+  let bannedResult;
+  let allowedResult;
+  let hostileConfigResult;
+
   beforeAll(() => {
-    initializeProject(project);
+    project = initializeProject();
     commitBranch(project, 'one-way-banned', ruleFixtures('banned'));
     commitBranch(project, 'one-way-allowed', ruleFixtures('allowed'));
     commitBranch(project, 'one-way-hostile-config', {
@@ -49,6 +42,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
         ]),
       ),
     });
+    bannedResult = diffOf(project, 'one-way-banned');
+    allowedResult = diffOf(project, 'one-way-allowed');
+    hostileConfigResult = diffOf(project, 'one-way-hostile-config');
   });
   afterAll(() => {
     removeProject(project);
@@ -56,7 +52,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
   it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
     'fails the banned form %s with a message that names the allowed form',
     (_id, testCase) => {
-      const result = diffOnce('one-way-banned');
+      const result = bannedResult;
       const found = detektFindingsOf(result.newEnforceable, testCase).filter(
         ({ rule }) => rule === testCase.rule,
       );
@@ -68,7 +64,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     },
   );
   it('reports the detekt message each case records and the hint that the gate adds', () => {
-    const result = diffOnce('one-way-banned');
+    const result = bannedResult;
 
     for (const testCase of kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE)) {
       const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
@@ -84,12 +80,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     }
   });
   it('lets the allowed form of every case through detekt', () => {
-    const result = diffOnce('one-way-allowed');
+    const result = allowedResult;
 
     expect(fromTool(result.newEnforceable, 'detekt')).toEqual([]);
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
-    const result = diffOnce('one-way-banned');
+    const result = bannedResult;
     const suppression = kotlinRuleCases.find(({ rule }) => rule === SUPPRESSION_RULE);
 
     expect(detektFindingsOf(result.newEnforceable, suppression).map(({ rule }) => rule)).toEqual([
@@ -97,7 +93,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     ]);
   });
   it('keeps every one-way rule on when the project config switches rulesets off, lowers severities or excludes paths, and still runs with plugin rulesets', () => {
-    const result = diffOnce('one-way-hostile-config');
+    const result = hostileConfigResult;
     const missing = kotlinRuleCases
       .filter(({ rule }) => rule !== SUPPRESSION_RULE)
       .filter(
@@ -111,7 +107,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     expect(missing).toEqual([]);
   });
   it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
-    const extras = diffOnce('one-way-hostile-config').newEnforceable.filter(({ path: file }) =>
+    const extras = hostileConfigResult.newEnforceable.filter(({ path: file }) =>
       file.includes('/demo/extras/'),
     );
 
@@ -124,13 +120,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
     expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
   });
   it('does not analyze a Kotlin script among the sources', () => {
-    const result = diffOnce('one-way-hostile-config');
+    const result = hostileConfigResult;
 
     expect(result.newFindings.some(({ path: file }) => file.endsWith('.kts'))).toBe(false);
     expect(result.newFindings.some(({ rule }) => rule === 'gradle-failure')).toBe(false);
   });
   it('reports the suppressions that hide a detekt or ktlint rule, however they are written, and leaves compiler warnings alone', () => {
-    const result = diffOnce('one-way-hostile-config');
+    const result = hostileConfigResult;
 
     const suppressions = result.newEnforceable
       .filter(({ rule, path: file }) => rule === SUPPRESSION_RULE && file.includes('/extras/'))

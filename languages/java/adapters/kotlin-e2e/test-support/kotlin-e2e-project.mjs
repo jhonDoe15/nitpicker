@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { runJavaDiff } from '../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mjs';
 
 export const kotlinE2eEnabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 
@@ -20,10 +20,6 @@ const gitEnvironment = {
   GIT_COMMITTER_NAME: 'fixture',
   GIT_COMMITTER_EMAIL: 'fixture@example.com',
 };
-
-export function createKotlinProject() {
-  return { root: undefined };
-}
 
 export function git(project, ...args) {
   return execFileSync('git', args, {
@@ -61,15 +57,16 @@ export function commitFromStructureBase(project, name, files) {
   commitFiles(project, name, files);
 }
 
-export function initializeProject(project) {
-  project.root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-'));
-  cpSync(path.resolve(import.meta.dirname, '../fixtures/kotlin-project'), project.root, {
+export function initializeProject() {
+  const project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-e2e-')) };
+  cpSync(path.resolve(import.meta.dirname, '../../fixtures/kotlin-project'), project.root, {
     recursive: true,
   });
   writeAll(project, { '.gitignore': '/build/\n/.gradle/\n/.kotlin/\n' });
   git(project, 'init', '-q', '-b', 'main');
   git(project, 'add', '-A');
   git(project, 'commit', '-q', '-m', 'base with one legacy detekt finding');
+  return project;
 }
 
 export function removeProject(project) {

@@ -24,14 +24,14 @@ import {
   STABILITY_FILES,
   stabilityClass,
   repeated,
-} from './fixtures/java-preset-data.mjs';
-import { runJavaDiff } from './java-diff.mjs';
+} from './test-support/java-preset-data.mjs';
+import { runJavaDiff } from '../java-diff.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
   summarize,
-} from './fixtures/gradle-e2e.mjs';
+} from '../test-support/gradle-e2e.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
 // access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), so it
@@ -120,7 +120,7 @@ const CHECKSTYLE_ON_BAD = [
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
     repository = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-e2e-'));
-    cpSync(path.resolve(import.meta.dirname, 'fixtures/gradle-project'), repository, {
+    cpSync(path.resolve(import.meta.dirname, '../fixtures/gradle-project'), repository, {
       recursive: true,
     });
     writeFileSync(path.join(repository, '.gitignore'), 'build/\n.gradle/\n');

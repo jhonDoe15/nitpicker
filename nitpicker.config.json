@@ -61,12 +61,12 @@
         "core/diff/execution/analyzer-process.test.mjs",
         "core/diff/sharding/aggregate-cli.test.mjs"
       ],
-      "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch, analyzer exit codes under SIGINT and SIGTERM, and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
+      "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
-        "languages/java/adapters/java-preset.e2e.test.mjs",
+        "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs"
       ],
@@ -75,7 +75,7 @@
     {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": ["core/installed.test.mjs"],
-      "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
+      "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout, and removing each installed tree takes long enough to need its own hook timeout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",

@@ -4,39 +4,34 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { executeAnalyzerTask } from './process.mjs';
+import { executeAnalyzerTask, reportFromAnalyzerOutput } from './process.mjs';
 import { task, waitForFile } from './test-support/analyzer-task.mjs';
 import { fileURLToPath } from 'node:url';
 
 const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
 
 describe('analyzer process execution', () => {
-  it('accepts findings of declared wrapped tools and rejects any other tool', async () => {
-    const report = (tool) =>
-      `process.stdout.write(JSON.stringify({findings:[{tool:'${tool}',rule:'r',path:'a',identity:'i',message:'m',classification:'enforceable'}]}))`;
-    const withTool = (tool, reportedTools) => ({
-      ...task('wrapper'),
-      reportedTools,
-      invocation: {
-        command: process.execPath,
-        args: ['-e', report(tool)],
-        cwd: fileURLToPath(new URL('../', import.meta.url)),
+  it('accepts findings of declared wrapped tools and rejects any other tool', () => {
+    const finding = {
+      tool: 'inner',
+      rule: 'r',
+      path: 'a',
+      identity: 'i',
+      message: 'm',
+      classification: 'enforceable',
+    };
+    const outputOf = (reportedTools) => [
+      { ...task('wrapper'), reportedTools },
+      {
+        status: 0,
+        signal: null,
+        stdoutText: JSON.stringify({ findings: [finding] }),
+        stderrText: '',
       },
-    });
+    ];
 
-    await expect(executeAnalyzerTask(withTool('inner', ['inner']))).resolves.toEqual({
-      findings: [
-        {
-          tool: 'inner',
-          rule: 'r',
-          path: 'a',
-          identity: 'i',
-          message: 'm',
-          classification: 'enforceable',
-        },
-      ],
-    });
-    await expect(executeAnalyzerTask(withTool('inner', []))).rejects.toThrow(
+    expect(reportFromAnalyzerOutput(...outputOf(['inner']))).toEqual({ findings: [finding] });
+    expect(() => reportFromAnalyzerOutput(...outputOf([]))).toThrow(
       'wrapper emitted a finding for unexpected tool inner',
     );
   });
