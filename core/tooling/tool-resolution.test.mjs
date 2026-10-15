@@ -240,6 +240,9 @@ it('finds the nearest package or nitpicker config bounded by the git repository'
   temporaryRoots.push(emptyRoot);
   execFileSync('git', ['init', '-q'], { cwd: emptyRoot });
   expect(() => resolveProjectRoot(emptyRoot)).toThrow(
-    'No package.json or nitpicker.config.json found',
+    new Error(
+      `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
+        'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+    ),
   );
 });
