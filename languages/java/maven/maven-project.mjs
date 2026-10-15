@@ -8,6 +8,7 @@ const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
+const COMPILER = 'org.apache.maven.plugins:maven-compiler-plugin';
 
 function child(element, ...names) {
   return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
@@ -66,7 +67,28 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
-function describeModule(project, basedir) {
+function compilerSettings(project, plugins) {
+  const configuration = child(plugins.get(COMPILER), 'configuration');
+  const setting = (name, property) =>
+    textAt(configuration, name) ?? textAt(project, 'properties', property);
+  return {
+    release: setting('release', 'maven.compiler.release'),
+    source: setting('source', 'maven.compiler.source'),
+    target: setting('target', 'maven.compiler.target'),
+    encoding:
+      setting('encoding', 'maven.compiler.encoding') ??
+      textAt(project, 'properties', 'project.build.sourceEncoding'),
+    args: [
+      ...all(configuration, 'compilerArgs', 'arg').flatMap((arg) => arg.text ?? []),
+      ...(textAt(configuration, 'compilerArgument')?.split(/\s+/u) ?? []),
+      ...(setting('enablePreview', 'maven.compiler.enablePreview') === 'true'
+        ? ['--enable-preview']
+        : []),
+    ],
+  };
+}
+
+function describeModule(project, { basedir, pomFile }) {
   const build = child(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
@@ -75,6 +97,7 @@ function describeModule(project, basedir) {
   const destFile = jacocoDestFile(plugins.get(JACOCO));
   return {
     basedir,
+    pomFile,
     coordinates: coordinates(project),
     packaging: textAt(project, 'packaging') ?? 'jar',
     buildDirectory,
@@ -100,6 +123,7 @@ function describeModule(project, basedir) {
       : path.join(buildDirectory, 'surefire-reports'),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
+    compiler: compilerSettings(project, plugins),
   };
 }
 
@@ -167,7 +191,7 @@ export function readReactor(projectRoot, effectivePom) {
     const basedir = moduleDirectory(projectRoot, pomFile, modules);
     const project = matchProject(pomFile, candidates);
     candidates.splice(candidates.indexOf(project), 1);
-    modules.push(describeModule(project, basedir));
+    modules.push(describeModule(project, { basedir, pomFile }));
     const children = all(project, 'modules', 'module')
       .filter((module) => module.text !== undefined)
       .map((module) => pomFileOf(basedir, module.text));
@@ -192,7 +216,15 @@ export function parseDependencyList(text) {
       );
       return index === undefined
         ? []
-        : [{ scope: parts[index], file: parts.slice(index + 1).join(':') }];
+        : [
+            {
+              groupId: parts[0],
+              artifactId: parts[1],
+              type: parts[2],
+              scope: parts[index],
+              file: parts.slice(index + 1).join(':'),
+            },
+          ];
     });
 }
 

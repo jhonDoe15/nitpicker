@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { javaFiles, nitpickerCheckstyleConfig } from './maven-lint.mjs';
+import { javaFiles, nitpickerCheckstyleConfig, withGuardChecks } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -39,6 +39,32 @@ describe('nitpickerCheckstyleConfig', () => {
         '  <module name="TreeWalker"></module>',
         '</module>',
       ].join('\n'),
+    );
+  });
+});
+
+describe('withGuardChecks', () => {
+  const config = '<module name="Checker"><module name="TreeWalker"><module name="A"/></module></module>';
+
+  it('adds the modules of the guard rule files at the start of the TreeWalker', () => {
+    const merged = withGuardChecks(config, ['checkstyle-all.xml', 'checkstyle-main.xml']);
+    const added = [...merged.matchAll(/<module name="(\w+)">/gu)].map(([, name]) => name);
+
+    expect(added).toEqual([
+      'Checker',
+      'TreeWalker',
+      'ConstantName',
+      'SuppressionXpathSingleFilter',
+      'MagicNumber',
+      'VisibilityModifier',
+      'SuppressionXpathSingleFilter',
+    ]);
+    expect(merged).toMatch(/<\/module>\n<module name="A"\/><\/module><\/module>$/u);
+  });
+
+  it('fails when the bundled checks have no TreeWalker', () => {
+    expect(() => withGuardChecks('<module name="Checker"/>', ['checkstyle-all.xml'])).toThrow(
+      new Error('nitpicker could not find TreeWalker in google_checks.xml'),
     );
   });
 });

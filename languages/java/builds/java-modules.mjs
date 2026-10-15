@@ -44,7 +44,7 @@ function mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name }) {
 function projectCoupling(projectRoot, moduleDirs, { reportDirectory, sourceRoots }) {
   const reportRoot = path.join(projectRoot, reportDirectory);
   mkdirSync(reportRoot, { recursive: true });
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt']) {
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'permits.txt']) {
     mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name });
   }
   return readCouplingFindings(reportRoot, { projectRoot, sourceRoots });
