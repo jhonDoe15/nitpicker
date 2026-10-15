@@ -1,5 +1,5 @@
 def pinned = project.ext.nitpickerPinned
-def reportDir = layout.buildDirectory.dir('nitpicker')
+def reportDir = project.ext.nitpickerReportDir
 def rulesDir = new File(buildscript.sourceFile.parentFile, '../rules')
 def javaHome = new File(System.getProperty('java.home'))
 
@@ -68,19 +68,19 @@ def compileInChildProcess = { File javac, File argumentFile, File directory ->
     [code: process.waitFor(), log: log]
 }
 
-def relativeTo = { File root, File file -> root.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
-def baselineDir = project.ext.nitpickerBaselineDir
+def relativeToRoot = project.ext.nitpickerRelativeToRoot
+def baselineRoot = project.ext.nitpickerBaselineRoot
+def lintCache = layout.buildDirectory.file('nitpicker-lint/javac-lint.txt')
 def baselineReport = {
-    def report = baselineDir == null ? null
-        : new File(baselineDir, relativeTo(projectDir, reportDir.get().file('javac-lint.txt').asFile))
+    def report = baselineRoot == null ? null : new File(baselineRoot, relativeToRoot(lintCache.get().asFile))
     report?.isFile() ? report : null
 }
 def unchangedSince = { Collection<File> sources ->
     sources.findAll { source ->
-        def relative = relativeTo(projectDir, source)
-        def before = new File(baselineDir, relative)
+        def relative = relativeToRoot(source)
+        def before = new File(baselineRoot, relative)
         !relative.startsWith('..') && before.isFile() && before.length() == source.length() && before.bytes == source.bytes
-    }.collect { relativeTo(projectDir, it) } as Set
+    }.collect { relativeToRoot(it) } as Set
 }
 def warningsOf = { File report, Set<String> files ->
     report.readLines('UTF-8').findAll { line ->
@@ -131,24 +131,30 @@ tasks.register('nitpickerLint') {
     inputs.files(tasks.named('compileJava')).withPropertyName('classes')
     inputs.files(sourceSets.main.compileClasspath).withPropertyName('classpath')
     inputs.files({ baselineReport() ?: [] }).withPropertyName('baselineReport')
-    inputs.property('baseline', baselineDir?.absolutePath ?: '')
-    outputs.files(reportDir.map { it.file('javac-lint.txt') }, reportDir.map { it.file('javac-lint-failed.txt') })
+    inputs.property('baseline', baselineRoot?.absolutePath ?: '')
+    outputs.files(reportDir.map { it.file('javac-lint.txt') }, reportDir.map { it.file('javac-lint-failed.txt') }, lintCache)
         .withPropertyName('reports')
     doLast {
         reportDir.get().asFile.mkdirs()
         def output = reportDir.get().file('javac-lint.txt').asFile
         def failure = reportDir.get().file('javac-lint-failed.txt').asFile
-        project.delete(output, failure)
+        def cache = lintCache.get().asFile
+        project.delete(output, failure, cache)
         def all = mainSources.files
             .findAll { it.name.endsWith('.java') && it.name != 'module-info.java' && it.exists() }.sort()
         def moduleInfo = mainSources.files.find { it.name == 'module-info.java' && it.isFile() }
         def reused = moduleInfo == null ? baselineReport() : null
         Set<String> unchanged = reused == null ? new HashSet<String>() : unchangedSince(all)
         def kept = reused == null ? '' : warningsOf(reused, unchanged)
-        def sources = all.findAll { !(relativeTo(projectDir, it) in unchanged) } + (moduleInfo == null ? [] : [moduleInfo])
+        def sources = all.findAll { !(relativeToRoot(it) in unchanged) } + (moduleInfo == null ? [] : [moduleInfo])
         logger.info("nitpickerLint: linting ${sources.size()} of ${all.size()} source files")
+        def write = { String text ->
+            output.text = text
+            cache.parentFile.mkdirs()
+            cache.text = text
+        }
         if (sources.isEmpty()) {
-            output.text = kept
+            write(kept)
             return
         }
         def compile = tasks.named('compileJava').get()
@@ -161,7 +167,7 @@ tasks.register('nitpickerLint') {
         project.delete(staged, classes)
         [staged, classes]*.mkdirs()
         def relativeNames = sources.collect { source ->
-            def relative = relativeTo(projectDir, source)
+            def relative = relativeToRoot(source)
             def target = new File(staged, relative)
             target.parentFile.mkdirs()
             target.setText(source.getText(encoding).replaceAll(/@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/) { match ->
@@ -182,7 +188,7 @@ tasks.register('nitpickerLint') {
         def result = compileInChildProcess(javac, argumentFile, staged)
         def log = result.log.replace(staged.absolutePath + File.separator, '')
         if (result.code == 0) {
-            output.text = kept + log
+            write(kept + log)
         } else {
             failure.text = log
         }

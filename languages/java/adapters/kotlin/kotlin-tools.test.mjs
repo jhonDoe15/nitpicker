@@ -150,7 +150,9 @@ describe('Gradle arguments', () => {
     const root = project({ 'build.gradle.kts': 'ktlint' });
     const argumentsOf = (policy) => {
       collectJavaFindings(root, { gradle: fakeGradle, policy });
-      return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
+      return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
+        (argument) => !argument.startsWith('-Pnitpicker.reportDir='),
+      );
     };
     const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
 

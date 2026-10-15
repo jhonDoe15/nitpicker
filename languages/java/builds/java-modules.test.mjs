@@ -1,0 +1,105 @@
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { readModuleFindings } from './java-modules.mjs';
+
+const REPORT_DIRECTORY = 'target/nitpicker';
+const temporaryRoots = [];
+
+afterEach(() => {
+  for (const root of temporaryRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function write(file, text) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, text);
+}
+
+function sarif(results = []) {
+  return JSON.stringify({ runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results }] });
+}
+
+function writeModule(moduleDir, { className, lines }) {
+  const source = path.join(moduleDir, `src/main/java/demo/${className}.java`);
+  write(source, `${Array.from({ length: lines }, () => '').join('\n')}\n`);
+  const reports = path.join(moduleDir, REPORT_DIRECTORY);
+  write(
+    path.join(reports, 'manifest.json'),
+    JSON.stringify({ build: 'maven', sourceRoots: ['src/main/java'], testSourceRoots: [] }),
+  );
+  write(
+    path.join(reports, 'pmd.sarif'),
+    sarif([
+      {
+        ruleId: 'EmptyCatchBlock',
+        message: { text: 'Avoid empty catch blocks' },
+        locations: [
+          {
+            physicalLocation: {
+              artifactLocation: { uri: `file://${source}` },
+              region: { startLine: 2 },
+            },
+          },
+        ],
+      },
+    ]),
+  );
+  write(path.join(reports, 'spotbugs.sarif'), sarif());
+  write(path.join(reports, 'format.txt'), '');
+  write(path.join(reports, 'jacoco.xml'), '<report name="demo"></report>');
+  write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
+  write(path.join(reports, 'structure.json'), '[]');
+  write(path.join(reports, 'jdeps.txt'), '');
+  write(path.join(reports, 'jdeps-classes.txt'), `demo.${className}\n`);
+  write(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
+}
+
+function mavenProject() {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-modules-')));
+  temporaryRoots.push(root);
+  writeModule(path.join(root, 'core'), { className: 'Adder', lines: 320 });
+  writeModule(path.join(root, 'app'), { className: 'Main', lines: 10 });
+  return root;
+}
+
+const summary = (findings) =>
+  findings
+    .filter(({ tool }) => tool !== 'coupling')
+    .map(({ tool, rule, path: file }) => [tool, rule, file])
+    .sort();
+
+describe('readModuleFindings', () => {
+  it('reads each Maven module report and prefixes its paths with the module folder', () => {
+    const root = mavenProject();
+    const findings = readModuleFindings(root, [path.join(root, 'app'), path.join(root, 'core')], {
+      reportDirectory: REPORT_DIRECTORY,
+    });
+    expect(summary(findings)).toEqual([
+      ['pmd', 'EmptyCatchBlock', 'app/src/main/java/demo/Main.java'],
+      ['pmd', 'EmptyCatchBlock', 'core/src/main/java/demo/Adder.java'],
+      ['structure', 'file-lines-limit', 'core/src/main/java/demo/Adder.java'],
+    ]);
+    const coupling = findings
+      .filter(({ tool }) => tool === 'coupling')
+      .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`);
+    expect(coupling.length).toBeGreaterThan(0);
+    expect(new Set(coupling).size).toBe(coupling.length);
+  });
+
+  it('reads a single module at the project root without a prefix', () => {
+    const root = mavenProject();
+    const findings = readModuleFindings(root, [path.join(root, 'app')], {
+      reportDirectory: REPORT_DIRECTORY,
+    });
+    expect(summary(findings)).toEqual([
+      ['pmd', 'EmptyCatchBlock', 'app/src/main/java/demo/Main.java'],
+    ]);
+    const single = path.join(root, 'app');
+    expect(
+      summary(readModuleFindings(single, [single], { reportDirectory: REPORT_DIRECTORY })),
+    ).toEqual([['pmd', 'EmptyCatchBlock', 'src/main/java/demo/Main.java']]);
+  });
+});

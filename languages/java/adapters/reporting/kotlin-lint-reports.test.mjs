@@ -2,8 +2,9 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { readJavaFindings } from './java-reports.mjs';
 import {
+  readJavaFindings,
+  rootReports,
   KOTLIN_SOURCE,
   kotlinFindings,
   projectWithKotlinReports,
@@ -46,7 +47,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const root = projectWithKotlinReports();
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -74,7 +75,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
   it('ends the message of a one-way rule with the allowed form and the exception route, keeping the identity', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -139,7 +140,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const identitiesOf = (messages) => {
       const root = projectWithKotlinReports();
       writeFileSync(
-        path.join(root, 'build/nitpicker/detekt.sarif'),
+        path.join(rootReports(root), 'detekt.sarif'),
         JSON.stringify({
           runs: [
             {

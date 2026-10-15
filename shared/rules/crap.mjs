@@ -35,11 +35,14 @@ export function crapFindings(
       identity: fn.identity,
       message: unknown
         ? renderMessage(unknownMessage, { name: fn.name })
-        : renderMessage(MESSAGES.crapScoreLimit, {
-            name: fn.name,
-            crap: fn.crap.toFixed(2),
-            limit,
-          }),
+        : renderMessage(
+            fn.covered === true ? MESSAGES.crapScoreLimitCovered : MESSAGES.crapScoreLimit,
+            {
+              name: fn.name,
+              crap: fn.crap.toFixed(2),
+              limit,
+            },
+          ),
       classification: 'enforceable',
       symbol: fn.name,
       ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
