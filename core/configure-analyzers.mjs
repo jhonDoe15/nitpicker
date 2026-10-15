@@ -40,6 +40,7 @@ function applyJavaConfig(analyzers, config) {
     names.includes(analyzer.name)
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
+          tools: config.tools,
           exclude: config.exclude,
           legacyInventory: config.legacyInventory ?? DEFAULT_LEGACY_INVENTORY,
           ...(analyzer.name === MUTATION_ANALYZER_NAME

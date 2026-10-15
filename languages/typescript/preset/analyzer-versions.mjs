@@ -27,6 +27,8 @@ const TYPESCRIPT_CONSUMERS = new Set([
   'eslint-module-effects',
 ]);
 
+const OXLINT_PACKAGES = ['oxlint', 'oxlint-tsgolint'];
+
 export const ESLINT_PLUGIN_PACKAGES = [
   '@eslint/js',
   '@vitest/eslint-plugin',
@@ -56,6 +58,9 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
 
   const toolRoot = analyzerName === 'structure' ? PACKAGE_ROOT : liveProjectRoot;
   const version = resolve(toolName, { projectRoot: toolRoot }).version;
+  if (analyzerName === 'typescript-typecheck') {
+    return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
+  }
   if (!TYPESCRIPT_CONSUMERS.has(analyzerName)) {
     return version;
   }
@@ -63,5 +68,12 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
   const typeScriptVersion = resolve('typescript', {
     projectRoot: PACKAGE_ROOT,
   }).version;
-  return `${toolName}@${version};typescript@${typeScriptVersion};plugins:${resolveEslintPluginVersions(resolve)}`;
+  const base = `${toolName}@${version};typescript@${typeScriptVersion};plugins:${resolveEslintPluginVersions(resolve)}`;
+  return analyzerName.startsWith('eslint-') ? `${base};${resolveOxlintVersions(resolve)}` : base;
+}
+
+function resolveOxlintVersions(resolve) {
+  return OXLINT_PACKAGES.map(
+    (name) => `${name}@${resolve(name, { projectRoot: PACKAGE_ROOT }).version}`,
+  ).join(',');
 }
