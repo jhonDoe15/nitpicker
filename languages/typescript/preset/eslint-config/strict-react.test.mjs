@@ -7,7 +7,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/harness.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { reactRuleIds, reactTestRuleIds } from './react-rules.mjs';
-import { SYNTAX_EXCEPTION_HINT } from './rule-hints.mjs';
 import strictSyntaxConfig, { restrictedSyntaxFor, strictSyntaxConfigFor } from './strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
@@ -113,7 +112,8 @@ describe('null in a React project', () => {
     const [message] = nullMessages(reactConfig, 'export const value = null;');
 
     expect(message).toBe(
-      `Use \`undefined\` for an absent value. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument, and the \`useRef\` and \`createContext\` argument.${SYNTAX_EXCEPTION_HINT}`,
+      'Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.' +
+        ' If a framework or library requires it, add an exception for this rule for those paths in nitpicker.config.json.',
     );
   });
 });

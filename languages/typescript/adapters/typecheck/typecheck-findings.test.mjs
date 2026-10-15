@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeTypeScriptDiagnostics } from '../static-checks-runner.mjs';
-import { withAssetImportHint } from './asset-import-hint.mjs';
 
 const ts = createRequire(import.meta.url)('typescript');
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-typecheck-hint-'));
@@ -23,6 +22,7 @@ function findingsFor(source) {
   writeFileSync(file, source);
   const program = ts.createProgram([file], { noEmit: true, types: [] });
   return normalizeTypeScriptDiagnostics({
+    ts,
     diagnostics: ts.getPreEmitDiagnostics(program),
     projectRoot: root,
     analyzerName: 'typescript-typecheck',
@@ -37,7 +37,11 @@ describe('typecheck findings for missing modules', () => {
     const plain = "Cannot find module './panel.module.css' or its corresponding type declarations.";
 
     expect(finding.rule).toBe('TS2307');
-    expect(finding.message).toBe(withAssetImportHint(2307, plain));
+    expect(finding.message).toBe(
+      `${plain} For CSS Modules and asset imports, add \`vite/client\` to \`types\` in tsconfig.json ` +
+        '(or `/// <reference types="vite/client" />` in a `.d.ts` under src/), ' +
+        'or declare the module in a `.d.ts` under src/ (`declare module "*.module.css"`).',
+    );
     expect(finding.message).not.toBe(plain);
     expect(finding.identity).toBe(`diagnostic:2307|message:${hash(plain)}|symbol:|occurrence:1`);
   });
