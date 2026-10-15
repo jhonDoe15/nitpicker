@@ -7,8 +7,8 @@ export function calculateCrap(complexity, coveragePercent) {
   return complexity * complexity * uncovered ** 3 + complexity;
 }
 
-export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+export function ingestCrap(structure, jacocoXml, options = {}) {
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -26,7 +26,7 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const unique = createIdentityCounter();
+  const counters = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -35,6 +35,8 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
     const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined
@@ -52,6 +54,27 @@ export function ingestCrapRows(parsed, options, resolve) {
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function structureFunctions(entries) {
+  return entries
+    .filter((entry) => entry.privateEmptyConstructor !== true)
+    .map((entry) => {
+      if (!Number.isInteger(entry.complexity)) {
+        throw new TypeError(`Structure entry without complexity: ${entry.name}`);
+      }
+      if (typeof entry.signature !== 'string') {
+        throw new TypeError(`Structure entry without signature: ${entry.name}`);
+      }
+      return {
+        ccn: entry.complexity,
+        file: entry.file,
+        name: entry.name.split('.').at(-1),
+        longName: entry.signature,
+        start: entry.start,
+        end: entry.end,
+      };
+    });
 }
 
 export function parseLizardCsv(text) {
@@ -72,32 +95,42 @@ export function parseLizardCsv(text) {
   return functions;
 }
 
-function splitCsvLine(line) {
-  const fields = [];
-  let current = '';
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    if (quoted) {
-      if (char === '"' && line[index + 1] === '"') {
-        current += '"';
-        index += 1;
-      } else if (char === '"') {
-        quoted = false;
-      } else {
-        current += char;
-      }
-    } else if (char === '"') {
-      quoted = true;
-    } else if (char === ',') {
-      fields.push(current);
-      current = '';
-    } else {
-      current += char;
-    }
+function consumeQuotedCharacter(state, { char, next }, characters) {
+  if (char === '"' && next === '"') {
+    state.current += '"';
+    characters.next();
+    return;
   }
-  fields.push(current);
-  return fields;
+  if (char === '"') {
+    state.quoted = false;
+    return;
+  }
+  state.current += char;
+}
+
+function consumeCsvCharacter(state, token, characters) {
+  if (state.quoted) {
+    consumeQuotedCharacter(state, token, characters);
+    return;
+  }
+  if (token.char === '"') {
+    state.quoted = true;
+    return;
+  }
+  if (token.char === ',') {
+    state.fields.push(state.current);
+    state.current = '';
+    return;
+  }
+  state.current += token.char;
+}
+
+function splitCsvLine(line) {
+  const state = { fields: [], current: '', quoted: false };
+  const characters = line.split('').entries();
+  for (const [index, char] of characters)
+    consumeCsvCharacter(state, { char, next: line[index + 1] }, characters);
+  return [...state.fields, state.current];
 }
 
 function jacocoMethods(xml) {
@@ -106,28 +139,10 @@ function jacocoMethods(xml) {
     throw new TypeError('JaCoCo report root element must be <report>');
   }
   const byFile = new Map();
-  for (const pkg of childrenNamed(report, 'package')) {
-    for (const cls of childrenNamed(pkg, 'class')) {
-      const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-      const simpleName = (cls.attrs.name ?? '').split('/').at(-1).split('$').at(-1);
-      for (const method of childrenNamed(cls, 'method')) {
-        const line = Number.parseInt(method.attrs.line, 10);
-        if (!Number.isInteger(line)) {
-          continue;
-        }
-        byFile.set(file, [
-          ...(byFile.get(file) ?? []),
-          {
-            name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
-            className: cls.attrs.name ?? '',
-            line,
-            lines: counter(method, 'LINE'),
-            branches: counter(method, 'BRANCH'),
-          },
-        ]);
-      }
-    }
-  }
+  const classes = childrenNamed(report, 'package').flatMap((pkg) =>
+    childrenNamed(pkg, 'class').map((cls) => ({ pkg, cls })),
+  );
+  for (const entry of classes) addClassMethods(entry, byFile);
   return byFile;
 }
 
@@ -143,9 +158,8 @@ function counter(element, type) {
 }
 
 function selectNamedMethods(fn, candidates) {
-  const methodName = fn.name.split('::').at(-1);
   return candidates.filter(
-    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
   );
 }
 
@@ -181,4 +195,29 @@ function lowestCoverage(matches) {
     .filter((measure) => measure.total > 0)
     .map((measure) => (measure.covered / measure.total) * 100);
   return percents.length === 0 ? undefined : Math.min(...percents);
+}
+
+function addClassMethods({ pkg, cls }, byFile) {
+  const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
+  const simpleName = (cls.attrs.name ?? '')
+    .split('/')
+    .at(-1)
+    .split('$')
+    .at(-1)
+    .replace(/^\d+/u, '');
+  const methods = childrenNamed(cls, 'method')
+    .map((method) => ({ method, line: Number.parseInt(method.attrs.line, 10) }))
+    .filter(({ line }) => Number.isInteger(line));
+  for (const { method, line } of methods) {
+    byFile.set(file, [
+      ...(byFile.get(file) ?? []),
+      {
+        name: method.attrs.name === '<init>' ? simpleName : method.attrs.name,
+        className: cls.attrs.name ?? '',
+        line,
+        lines: counter(method, 'LINE'),
+        branches: counter(method, 'BRANCH'),
+      },
+    ]);
+  }
 }

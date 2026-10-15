@@ -31,8 +31,8 @@ fails with a tool error saying so.
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
   -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
-  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/java-reports.mjs)
-       -> readKotlinFindings                         (languages/java/adapters/kotlin-reports.mjs)
+  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mjs)
+       -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
 ```
 
@@ -43,7 +43,7 @@ and makes `nitpickerJava` depend on them. The tool versions are in the same pinn
 Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
 `kotlinSourceRoots` and `kotlinFormatter`; its `sourceRoots` stay the Java source roots. Which
 formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
-(`languages/java/adapters/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
+(`languages/java/adapters/kotlin/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
 properties.
 
 ## What runs on what
@@ -53,9 +53,9 @@ properties.
 | detekt                                   |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                   |
 | ktlint or ktfmt                          |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file. |
 | JaCoCo                                   | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
-| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools. A Kotlin-only module has no Java files; the tasks are skipped and write empty reports.                 |
+| PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
 | SpotBugs                                 | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
-| lizard (CRAP of Java)                    | yes          | no             | Java sources and classes only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                                  |
+| Java structure metrics (CRAP of Java)    | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
 | PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
 | Structure limits, CRAP, jscpd duplicates | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
 | jdeps (stability direction)              | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
@@ -122,7 +122,7 @@ no separate build to ship), turned on and configured. Every message names the al
 form (in detekt's text, or in a sentence the gate appends when detekt's text does not name it) and
 ends with the exception route, which the gate appends to all of them. The `inline-suppression`
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
-`languages/java/adapters/fixtures/kotlin-rules/cases.mjs`.
+`languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
 | Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
 | ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -379,7 +379,7 @@ bridge and an interface `DefaultImpls` method (2), a negated conditional in a st
 A gate that fails on mutants nobody can fix breaks the premise of the differential gate, so Kotlin
 mutation reports for now. Enforcing it needs a filter validated on real projects (or the plugin);
 that is a follow-up, and flipping it is the single `reportOnlyKotlinMutants` call in
-`languages/java/adapters/java-reports.mjs`. To reproduce the numbers: run
+`languages/java/adapters/reporting/java-reports.mjs`. To reproduce the numbers: run
 `gradle -Pnitpicker.kotlin=true -I <nitpicker>/languages/java/gradle/nitpicker.init.gradle nitpickerPit`
 in that project and read `build/nitpicker/pit/mutations.xml`.
 
@@ -403,11 +403,10 @@ there are no inline disables.
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again. lizard cannot be the source: it has no statement count
-or control nesting, and its Kotlin reader (1.24.1) misreads ordinary Kotlin. It drops extension
-functions (`fun String.shout() = ...`), ends an expression-bodied function at the next `fun`, and
-turns the `->` of a lambda into an anonymous function that swallows the declarations after it. A
-complexity per function from lizard would be attributed to the wrong lines.
+pin means running `npm run test:kotlin` again. A line-based tool cannot be the source: it has no
+statement count or control nesting, and token-based readers misread ordinary Kotlin (extension
+functions such as `fun String.shout() = ...`, expression-bodied functions, the `->` of a lambda), which
+would attribute a complexity per function to the wrong lines.
 
 **What is measured, all from the one parse, with the definitions of the other languages.**
 
@@ -447,8 +446,8 @@ Kotlin functions get the shared CRAP rule: `crap-score-limit` at a score of 9 or
 `ccn^2 * (1 - coverage)^3 + ccn`, with the lower of line and branch coverage, as for Java, and the
 CRAP ingester (`ingestCrapFunctions`) is the Java one.
 
-**Complexity and coverage (decisions).** The complexity is the one from `KotlinMetrics.java`, not
-lizard's, for the reason above; it counts what lizard counts for Java. Coverage is JaCoCo's per-method
+**Complexity and coverage (decisions).** The complexity is the one from `KotlinMetrics.java`, for
+the reason above; it counts what `StructureMetrics.java` counts for Java. Coverage is JaCoCo's per-method
 data. The match is by file and line, not by function name, because Kotlin's JVM names do not follow
 the source: JaCoCo keys classes by `package/sourcefilename`, so `FileNameKt` facades, companions,
 nested classes and `DefaultImpls` of one file are all that file's methods. The key is built from the
@@ -472,7 +471,7 @@ by any test and would fail a complex inline function for good. They are left out
 complex inline function should be split up. The metrics step marks them (`inline: true` in
 `kotlin-metrics.json`).
 
-lizard stays in the pipeline for the Java sources of a mixed module (`-l java`); it never reads a
+The Java sources of a mixed module get their complexity from `StructureMetrics.java`; it never reads a
 `.kt` file.
 
 ## Duplicates
@@ -530,37 +529,37 @@ fails only when it grows, and a package folder moved to a new path is matched to
 
 ## Tests
 
-- `core/java-cli.test.mjs`: the CLI with the fake `gradle`
+- `core/command/java/java-cli.test.mjs`: the CLI with the fake `gradle`
   (`languages/java/adapters/fixtures/fake-gradle.mjs`, which writes the Kotlin reports when it sees
   `-Pnitpicker.kotlin=true`, and a JaCoCo or PIT report the test provides): pass, new detekt finding,
   new unformatted file with each formatter, an uncovered changed Kotlin branch, a Kotlin mutant that
   does not fail and a Java one that does, baseline expansion, Gradle failure on either snapshot.
-- `languages/java/adapters/kotlin-reports.test.mjs`: a real detekt SARIF
+- `languages/java/adapters/reporting/kotlin-*-reports.test.mjs` (lint, coverage, metrics): a real detekt SARIF
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; branch gating of Kotlin files; Kotlin mutants being
   descriptive and Java ones enforceable; the Java preset ignoring Kotlin reports.
-- `languages/java/ingest/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
+- `languages/java/ingest/coverage-reports/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
   lines it must keep), a JaCoCo report recorded from 0.8.12 on the measurement project
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
   statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
   `fixtures/kotlin-multiline`).
-- `languages/java/adapters/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
+- `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).
-- `languages/java/adapters/kotlin-metrics.test.mjs`: structure findings, the JaCoCo method selection
+- `languages/java/adapters/kotlin/kotlin-metrics.test.mjs`: structure findings, the JaCoCo method selection
   (facade, accessor, lambda, `$default`, nested function) and the CRAP score and ratchet on recorded
   data; `java-coupling.test.mjs` (Kotlin classes, file modules, stability direction) and the CLI tests
   with the fake `gradle` (structure ratchet, a clone found by jscpd).
-- `core/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
+- `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
-- `languages/java/adapters/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
-  `fixtures/kotlin-rules/cases.mjs` gets its message from the recorded detekt text and must name the
+- `languages/java/adapters/kotlin/rules/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
+  `kotlin/rules/test-support/kotlin-rule-cases.mjs` gets its message from the recorded detekt text and must name the
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
-  `core/java-cli.test.mjs` runs an exception through the CLI.
-- `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
-  (`npm run test:kotlin`). Needs Java 21, Gradle, lizard (the Java preset's) and network access
+  `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
+- `languages/java/adapters/kotlin-e2e/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
+  (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
   finding baselined; new detekt and ktlint findings fail; a Java change in the Kotlin module is
@@ -594,7 +593,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | --- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | KT1 | Gradle integration, detekt, format           | This document: done.                                                                                                                                        |
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
-| KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (lizard's Kotlin reader is unreliable), jscpd with the Kotlin format and jdeps over Kotlin classes. |
+| KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, report-only.                                              |
 
 ## Known limits
@@ -604,7 +603,8 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
   when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
   per-module reports is not done for either preset yet.
-- Only main sources are linted, and generated sources under the build directory are skipped.
+- Kotlin is linted in main sources only; Java files are linted in main and test sources, as in the
+  Java preset. Generated sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
   (about 60 MB, cached by Gradle) on the first run. It parses with the pinned compiler, so syntax newer
   than that version ends the run with an error naming the file and the version. A version that the
