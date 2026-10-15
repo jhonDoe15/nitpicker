@@ -12,8 +12,12 @@ const relativeModule = /^\.{1,2}\//u;
 const compiledExtension = /\.(?:[cm]?js|jsx)$/u;
 const scriptExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 const moduleSource = /(?:\bfrom|\bimport|\brequire\s*\()\s*\(?\s*['"]([^'"\n]+)['"]/gu;
-const runtimeModuleSource =
-  /\b(?:import|export)(?!\s+type\b)(?:\s*\(|[^'"`;()=]*?\bfrom)?\s*['"]([^'"\n]+)['"]|\brequire\s*\(\s*['"]([^'"\n]+)['"]/gu;
+const runtimeImport = String.raw`\b(?:import|export)(?!\s+type\b)(?:\s*\(|[^'";()=]*?\bfrom)?`;
+const quotedSource = String.raw`\s*['"]([^'"\n]+)['"]`;
+const runtimeModuleSource = new RegExp(
+  `${runtimeImport}${quotedSource}|\\brequire\\s*\\(${quotedSource}`,
+  'gu',
+);
 
 function isReactTestModule(source) {
   return typeof source === 'string' && reactTestModule.test(source);

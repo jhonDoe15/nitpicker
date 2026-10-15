@@ -15,19 +15,26 @@ RuleTester.it = it;
 RuleTester.itOnly = it.only;
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-render-helper-'));
+const renderLine = 'import { render } from "@testing-library/react";';
+const appModule = '../../src/main/ui/app.js';
 const helpers = {
-  'render-app.tsx':
-    "import { render } from '@testing-library/react';\nimport { App } from '../../src/main/ui/app.js';\nexport function renderApp() { return render(<App />); }\n",
-  'reexport.ts': "export { App } from '../../src/main/ui/app.js';\n",
-  'library-only.tsx':
-    "import { render } from '@testing-library/react';\nexport function renderApp() { return render(<main />); }\n",
-  'type-only.tsx':
-    "import { render } from '@testing-library/react';\nimport type { AppProps } from '../../src/main/ui/app.js';\nexport function renderApp(props: AppProps) { return render(<main {...props} />); }\n",
+  'render-app.tsx': [
+    renderLine,
+    `import { App } from '${appModule}';`,
+    'export function renderApp() { return render(<App />); }',
+  ],
+  'reexport.ts': [`export { App } from '${appModule}';`],
+  'library-only.tsx': [renderLine, 'export function renderApp() { return render(<main />); }'],
+  'type-only.tsx': [
+    renderLine,
+    `import type { AppProps } from '${appModule}';`,
+    'export function renderApp(props: AppProps) { return render(<main {...props} />); }',
+  ],
 };
 
 for (const [file, source] of Object.entries(helpers)) {
   mkdirSync(path.join(root, 'test/support'), { recursive: true });
-  writeFileSync(path.join(root, 'test/support', file), source);
+  writeFileSync(path.join(root, 'test/support', file), `${source.join('\n')}\n`);
 }
 
 afterAll(() => {
