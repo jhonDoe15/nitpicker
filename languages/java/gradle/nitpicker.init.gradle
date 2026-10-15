@@ -333,12 +333,23 @@ allprojects {
             def pitDir = reportDir.map { it.dir('pit') }
             doFirst {
                 def classDirs = mutatedClassDirs().findAll { it.exists() }
-                def targets = classDirs.collectMany { dir ->
-                    (dir.listFiles() ?: []).collect { entry ->
-                        entry.isDirectory() ? "${entry.name}.*".toString()
-                            : entry.name.endsWith('.class') ? entry.name.replaceAll(/\.class$/, '') : null
-                    }
-                }.findAll { it }.unique()
+                // A target is the first package holding classes on each path. PIT refuses any filter
+                // that matches its own org.pitest classes, as `org.*` does, so such a package lists its
+                // classes by name and its subpackages separately.
+                def classNames = { File dir, String prefix ->
+                    (dir.listFiles() ?: []).findAll { it.isFile() && it.name.endsWith('.class') }
+                        .collect { "${prefix}${it.name.replaceAll(/\.class$/, '')}".toString() }
+                }
+                def packageTargets
+                packageTargets = { File dir, String prefix ->
+                    def subpackages = { (dir.listFiles() ?: []).findAll { it.isDirectory() }
+                        .collectMany { packageTargets(it, "${prefix}${it.name}.".toString()) } }
+                    def classes = classNames(dir, prefix)
+                    classes.isEmpty() ? subpackages()
+                        : 'org.pitest.'.startsWith(prefix) ? classes + subpackages()
+                        : ["${prefix}*".toString()]
+                }
+                def targets = classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
                 // Tests are named class by class: a package glob would also hand the main classes
                 // that share a package with the tests to the test engine.
                 def testClassDirs = sourceSets.test.output.classesDirs.files.findAll { it.exists() }
@@ -446,6 +457,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    springArch     : usesSpring(),
                 ])
             }
         }

@@ -410,10 +410,6 @@ describe('readJavaFindings: Spring configuration', () => {
       path.join(root, 'build/nitpicker/manifest.json'),
       JSON.stringify({ sourceRoots: ['src/main/java'], ...manifest }),
     );
-    writeFileSync(
-      path.join(root, 'build/nitpicker/spring-arch.json'),
-      JSON.stringify({ root: 'demo', violations: [] }),
-    );
   }
 
   it('reads application files from the default and the manifest resource roots', () => {

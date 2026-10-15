@@ -69,7 +69,7 @@ function architecture(root) {
 
 describe('readJavaFindings: Spring architecture rules', () => {
   it('attaches each violation to its main or test source file', () => {
-    expect(architecture(project({ spring: true }, true))).toEqual([
+    expect(architecture(project({ spring: true, springArch: true }, true))).toEqual([
       ['archunit', 'spring-layout', 'src/main/java/demo/Bad.java', 'Bad'],
       ['archunit', 'spring-test-placement', 'src/test/java/demo/BadTest.java', 'BadTest'],
     ]);
@@ -79,8 +79,12 @@ describe('readJavaFindings: Spring architecture rules', () => {
     expect(architecture(project({}, written))).toEqual([]);
   });
 
+  it('reads nothing when the build did not run the rules, as a Maven build does not yet', () => {
+    expect(architecture(project({ spring: true, build: 'maven' }, false))).toEqual([]);
+  });
+
   it('fails when a Spring project has no report, instead of passing unchecked', () => {
-    expect(() => architecture(project({ spring: true }, false))).toThrow(
+    expect(() => architecture(project({ spring: true, springArch: true }, false))).toThrow(
       'The Spring architecture report spring-arch.json is missing',
     );
   });
