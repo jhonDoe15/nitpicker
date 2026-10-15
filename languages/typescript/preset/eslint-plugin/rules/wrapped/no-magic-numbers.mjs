@@ -17,6 +17,9 @@ const STATUS_METHODS = new Set([
   'code',
   'writeHead',
 ]);
+const STATUS_CALLEE = /status|error|exception|text|body|json|send|redirect|end|head|throw/i;
+const STATUS_PROPERTIES = new Set(['status', 'statusCode']);
+const EQUALITY_OPERATORS = new Set(['===', '!==', '==', '!=']);
 const DIGITS_METHODS = new Set(['toFixed', 'toPrecision']);
 const LOWEST_STATUS = 100;
 const HIGHEST_STATUS = 599;
@@ -54,13 +57,46 @@ function memberName(callee) {
   return callee.type === 'MemberExpression' ? callee.property.name : undefined;
 }
 
+function calleeName(callee) {
+  return callee.type === 'Identifier' ? callee.name : memberName(callee);
+}
+
+function isStatusProperty(expression) {
+  const member = expression.type === 'ChainExpression' ? expression.expression : expression;
+  return (
+    member.type === 'MemberExpression' &&
+    !member.computed &&
+    STATUS_PROPERTIES.has(member.property.name)
+  );
+}
+
+function isStatusCallArgument(node, parent) {
+  if (parent.type !== 'CallExpression' && parent.type !== 'NewExpression') {
+    return false;
+  }
+  const name = calleeName(parent.callee);
+  return (
+    parent.arguments.includes(node) &&
+    typeof name === 'string' &&
+    (STATUS_METHODS.has(name) || STATUS_CALLEE.test(name))
+  );
+}
+
+function isStatusComparison(node, parent) {
+  if (parent.type === 'BinaryExpression' && EQUALITY_OPERATORS.has(parent.operator)) {
+    return isStatusProperty(parent.left === node ? parent.right : parent.left);
+  }
+  return (
+    parent.type === 'AssignmentExpression' && parent.right === node && isStatusProperty(parent.left)
+  );
+}
+
 function isStatusCode(node) {
   const { value } = node;
   if (!Number.isInteger(value) || value < LOWEST_STATUS || value > HIGHEST_STATUS) {
     return false;
   }
-  const { parent } = node;
-  return parent.type === 'CallExpression' && STATUS_METHODS.has(memberName(parent.callee));
+  return isStatusCallArgument(node, node.parent) || isStatusComparison(node, node.parent);
 }
 
 function isDigitsArgument(node) {

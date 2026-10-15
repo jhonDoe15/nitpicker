@@ -157,6 +157,11 @@ describe('magic numbers and other basics', () => {
       'a status-sized number elsewhere',
       'export function f(xs: readonly number[]) { return xs.at(404); }',
     ],
+    [
+      'a status-sized number compared to another field',
+      'export function f(r: R) { return r.size === 404; }',
+    ],
+    ['a number outside the status range', 'export function f(r: R) { return r.status === 600; }'],
   ])('rejects %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual(['nitpicker/no-magic-numbers']);
   });
@@ -174,6 +179,12 @@ describe('magic numbers and other basics', () => {
     ['a constant list', 'export const CODES = [200, 404, 500] as const;'],
     ['a status code', 'export function f(res: Res) { return res.status(404); }'],
     ['a status property', "export function reply() { return new Response('', { status: 204 }); }"],
+    ['a status comparison', 'export function f(response: R) { return response.status === 404; }'],
+    ['an optional status comparison', 'export function f(r?: R) { return 503 !== r?.statusCode; }'],
+    ['a status assignment', 'export function f(res: R) { res.statusCode = 201; }'],
+    ['a Hono text reply', "export function f(c: C) { return c.text('missing', 404); }"],
+    ['an error factory', "export function f() { throw createError(409, 'conflict'); }"],
+    ['an HTTP exception', "export function f() { throw new HttpException('gone', 410); }"],
     ['rounding digits', 'export function f(x: number) { return x.toFixed(3); }'],
     ['percent scaling', 'export function f(x: number) { return Math.round(x * 100) / 100; }'],
   ])('allows %s', (_name, code) => {
