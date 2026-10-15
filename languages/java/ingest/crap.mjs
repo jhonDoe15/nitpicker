@@ -1,6 +1,8 @@
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 import { crapFindings } from '../../../shared/rules/crap.mjs';
+import { nextOccurrence } from '../../../shared/rules/finding-helpers.mjs';
 import { childrenNamed, createIdentityCounter, normalizeReportPath, parseXml } from './common.mjs';
+import { jacocoLineUnits } from './coverage/jacoco-lines.mjs';
 
 export function calculateCrap(complexity, coveragePercent) {
   const uncovered = 1 - coveragePercent / 100;
@@ -12,8 +14,12 @@ export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
+  const report = parseJacocoReport(jacocoXml);
   const coverageOf = coverageLookup({
-    methods: jacocoMethods(jacocoXml),
+    pools: {
+      methods: jacocoMethods(report),
+      lines: parsed.some((fn) => fn.lineScoped) ? jacocoLineUnits(report) : new Map(),
+    },
     keysOf: options.jacocoKeys ?? rootRelativeKeys(options.sourceRoots ?? ['']),
     selectMethods: options.selectMethods ?? selectNamedMethods,
     parsed,
@@ -27,6 +33,7 @@ export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
   const unique = createIdentityCounter();
+  const sameSource = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -35,18 +42,26 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
-    const key = unique(`function:${name}`);
+    const crap = coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage);
     const sourceHash =
       coverage === undefined
         ? undefined
         : options.sourceHash?.({ file: filePath, start: fn.start, end: fn.end });
+    const key =
+      fn.numberedAmongSameSource === true
+        ? keyAmongSameSource(sameSource, {
+            name,
+            sourceHash,
+            over: crap === undefined || crap >= limit,
+          })
+        : unique(`function:${name}`);
     functions.push({
       path: filePath,
       name,
       identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
       ratchetKey: `${key}:crap`,
       line: fn.start,
-      crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
+      crap,
     });
   }
   return {
@@ -56,6 +71,15 @@ export function ingestCrapRows(parsed, options, resolve) {
       unknownMessage: options.unknownMessage,
     }),
   };
+}
+
+function keyAmongSameSource(seen, { name, sourceHash, over }) {
+  const base = `function:${name}`;
+  if (!over) {
+    return base;
+  }
+  const occurrence = nextOccurrence(seen, `${base}\0${String(sourceHash)}`);
+  return occurrence === 1 ? base : `${base}#${String(occurrence)}`;
 }
 
 export function parseLizardCsv(text) {
@@ -104,11 +128,15 @@ function splitCsvLine(line) {
   return fields;
 }
 
-function jacocoMethods(xml) {
+function parseJacocoReport(xml) {
   const report = parseXml(xml);
   if (report.name !== 'report') {
     throw new TypeError('JaCoCo report root element must be <report>');
   }
+  return report;
+}
+
+function jacocoMethods(report) {
   const byFile = new Map();
   for (const pkg of childrenNamed(report, 'package')) {
     for (const cls of childrenNamed(pkg, 'class')) {
@@ -161,12 +189,13 @@ function rootRelativeKeys(sourceRoots) {
     });
 }
 
-function coverageLookup({ methods, keysOf, selectMethods, parsed }) {
+function coverageLookup({ pools, keysOf, selectMethods, parsed }) {
   const siblings = Map.groupBy(parsed, (fn) => fn.file);
 
   function coverageOf(fn, filePath) {
+    const pool = fn.lineScoped ? pools.lines : pools.methods;
     const matches = keysOf(filePath).flatMap((key) =>
-      selectMethods(fn, methods.get(key) ?? [], siblings.get(fn.file)),
+      selectMethods(fn, pool.get(key) ?? [], siblings.get(fn.file)),
     );
     return lowestCoverage(matches);
   }

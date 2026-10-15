@@ -131,12 +131,12 @@ describe('nitpicker-detekt.yml', () => {
   });
 
   it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
-    const pinned = { active: 'true', excludes: '[]', includes: '[]' };
+    const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
     for (const { settings, rules } of Object.values(rulesets)) {
       expect(settings).toEqual(pinned);
       for (const rule of Object.values(rules)) {
-        const { active, excludes, includes, severity } = rule;
-        expect({ active, excludes, includes, severity }).toEqual({
+        const { active, excludes, ignoreAnnotated, includes, severity } = rule;
+        expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
           ...pinned,
           severity: 'warning',
         });

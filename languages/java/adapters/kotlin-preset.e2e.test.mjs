@@ -13,50 +13,59 @@ import {
 } from './fixtures/kotlin-rules/cases.mjs';
 import { addOneWayHint, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 import {
-  FAREWELL,
-  FAREWELL_TEST,
-  LEGACY_WITH_COMMENT,
   BAD,
-  META,
-  DANGER,
-  LABEL,
-  LABEL_ONE_SIDED_TEST,
-  SPREAD,
-  SPREAD_TEST,
-  OFFSET,
-  GENERATED,
-  GENERATED_TEST,
-  BROKEN,
-  MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
-  GREETER_TEST_WITHOUT_JAVA,
-  BAD_DETEKT_FINDINGS,
   BAD_BRANCH_FINDINGS,
+  BAD_DETEKT_FINDINGS,
   BAD_FINDINGS,
   BAD_KTLINT_RULES,
-  LEGACY_FINDINGS,
-  WIDE,
-  WIDE_TEST,
-  WIDE_MOVED,
+  BOOTER,
+  BOOTER_TEST,
+  BOX_TEST,
+  boxes,
+  BROKEN,
+  classifier,
+  clonedClass,
+  COMBINE,
+  COMBINE_TEST,
+  DANGER,
+  DEEP,
+  DEEP_TEST,
+  FAREWELL,
+  FAREWELL_TEST,
+  FLATTEN,
+  FLATTEN_TEST,
+  GENERATED,
+  GENERATED_TEST,
+  GREETER_TEST_WITHOUT_JAVA,
   GROWN,
   GROWN_TEST,
   GROWN_WIDER,
   GROWN_WIDER_TEST,
-  DEEP,
-  DEEP_TEST,
-  classifier,
-  TIERS,
-  TIERS_TEST,
-  clonedClass,
+  LABEL,
+  LABEL_ONE_SIDED_TEST,
+  LEGACY_FINDINGS,
+  LEGACY_WITH_COMMENT,
+  MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
+  META,
+  OFFSET,
+  PIPELINE,
+  SPREAD,
+  SPREAD_TEST,
   stabilityClass,
   stabilityFiles,
-  FLATTEN,
-  FLATTEN_TEST,
-  COMBINE,
-  COMBINE_TEST,
-  PIPELINE,
-  HOSTILE_DETEKT_CONFIG,
+  TIERS,
+  TIERS_TEST,
+  WIDE,
+  WIDE_MOVED,
+  WIDE_TEST,
+} from './fixtures/kotlin-e2e/sources.mjs';
+import {
+  copyJdkWithNativeImage,
   EXTRA_SOURCES,
-} from './fixtures/kotlin-e2e-sources.mjs';
+  HOSTILE_DETEKT_CONFIG,
+  JDK_PROBE,
+  TOOLCHAIN_PROBE,
+} from './fixtures/kotlin-e2e/detekt-fixtures.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs
 // Java 21, Gradle, lizard (see java-preset.e2e.test.mjs) and network access to Maven Central and
@@ -85,6 +94,7 @@ const detektFindingsOf = (findings, testCase) =>
 let repository;
 let mixedRepository;
 let kotlinOnlyRepository;
+let toolchainJdk;
 
 function git(...args) {
   return execFileSync('git', args, {
@@ -196,6 +206,16 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
     commitBranch('broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch('init-base', {
+      [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
+      'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
+    });
+    commitBranch(
+      'init-inserted',
+      { [`${kotlinSources}/boxes/Box.kt`]: boxes(true) },
+      [],
+      'init-base',
+    );
     commitBranch('structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
@@ -211,20 +231,31 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
       [`${kotlinSources}/Complex.kt`]: classifier('classify', 9, { bump: 2 }),
       [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 10, { step: 7 }),
-      [`${kotlinSources}/Deep.kt`]: DEEP,
-      'src/test/kotlin/demo/DeepTest.kt': DEEP_TEST,
-      [`${kotlinSources}/Rank.kt`]: classifier('rank', 9, { step: 13 }),
-      [`${kotlinSources}/Tiers.kt`]: TIERS,
-      'src/test/kotlin/demo/TiersTest.kt': TIERS_TEST,
-      [`${kotlinSources}/Combine.kt`]: COMBINE,
-      'src/test/kotlin/demo/CombineTest.kt': COMBINE_TEST,
+      [`${kotlinSources}/change/Deep.kt`]: DEEP,
+      'src/test/kotlin/demo/change/DeepTest.kt': DEEP_TEST,
+      [`${kotlinSources}/change/Rank.kt`]: classifier('rank', 9, { step: 13 }),
+      [`${kotlinSources}/change/Tiers.kt`]: TIERS,
+      'src/test/kotlin/demo/change/TiersTest.kt': TIERS_TEST,
+      [`${kotlinSources}/change/Combine.kt`]: COMBINE,
+      'src/test/kotlin/demo/change/CombineTest.kt': COMBINE_TEST,
       'src/main/kotlin/Flatten.kt': FLATTEN,
       'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
       [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
-      [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
-      [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
+      [`${kotlinSources}/extra/Booter.kt`]: BOOTER,
+      'src/test/kotlin/demo/change/BooterTest.kt': BOOTER_TEST,
+      [`${kotlinSources}/extra/Left.kt`]: clonedClass('Left'),
+      [`${kotlinSources}/extra/Right.kt`]: clonedClass('Right'),
       ...stabilityFiles('2'),
       'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
+    });
+    const buildScript = readFileSync(path.join(repository, 'build.gradle.kts'), 'utf8');
+    commitBranch('jdk-plain', { 'build.gradle.kts': `${buildScript}${JDK_PROBE}` });
+    toolchainJdk = copyJdkWithNativeImage(
+      path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-jdk-')), 'jdk'),
+    );
+    commitBranch('jdk-toolchain', {
+      'build.gradle.kts': `${buildScript}${JDK_PROBE}${TOOLCHAIN_PROBE}`,
+      'gradle.properties': `${readFileSync(path.join(repository, 'gradle.properties'), 'utf8')}org.gradle.java.installations.paths=${toolchainJdk}\n`,
     });
     commitBranch('one-way-banned', ruleFixtures('banned'));
     commitBranch('one-way-allowed', ruleFixtures('allowed'));
@@ -243,6 +274,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
   afterAll(() => {
     rmSync(mixedRepository, { recursive: true, force: true });
     rmSync(kotlinOnlyRepository, { recursive: true, force: true });
+    rmSync(path.dirname(toolchainJdk), { recursive: true, force: true });
   });
 
   it('passes a tested Kotlin change and keeps the legacy detekt finding baselined when its line moves', () => {
@@ -338,13 +370,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
         .map(({ message, location }) => ({ message, location })),
-    ).toEqual([
-      {
-        message:
-          'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/Label.kt"],"function":"Label.larger","reason":"..."} to "exceptions" in nitpicker.config.json.',
-        location: { line: 4 },
-      },
-    ]);
+    ).toEqual([{ message: 'Branch coverage is 50.00%; minimum is 95%', location: { line: 4 } }]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
       result.newFindings.filter(
@@ -471,7 +497,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       expect(missing).toEqual([]);
     });
 
-    it('finds runBlocking behind a wildcard import and fully qualified, and does not ask a mutable holder class to become a data class', () => {
+    it('finds runBlocking behind a wildcard import and fully qualified and a forbidden call in a class the project config lists in ignoreAnnotated, and does not ask a mutable holder class to become a data class', () => {
       const extras = diffOnce('one-way-hostile-config').newEnforceable.filter(({ path: file }) =>
         file.includes('/demo/extras/'),
       );
@@ -481,8 +507,42 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
           .filter(({ rule }) => rule === 'detekt.style.ForbiddenMethodCall')
           .map(({ path: file }) => path.basename(file))
           .sort(),
-      ).toEqual(['Qualified.kt', 'Wildcard.kt']);
+      ).toEqual(['Annotated.kt', 'Printer.kt', 'Qualified.kt', 'Sleeper.kt', 'Wildcard.kt']);
       expect(extras.some(({ rule }) => rule === 'detekt.style.UseDataClass')).toBe(false);
+    });
+
+    it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {
+      const result = diffOnce('one-way-hostile-config');
+      const forbidden = result.newEnforceable.filter(
+        ({ rule, path: file }) =>
+          rule === 'detekt.style.ForbiddenMethodCall' &&
+          (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
+      );
+
+      const exception =
+        ' To allow it on specific paths, add an "exceptions" entry for rule detekt.style.ForbiddenMethodCall in nitpicker.config.json.';
+      const runBlocking =
+        'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work.';
+
+      const run =
+        'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
+
+      expect(
+        forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
+      ).toEqual([
+        ['Annotated.kt', `${run}${exception}`],
+        ['Banned.kt', `${run}${exception}`],
+        [
+          'Printer.kt',
+          `The method \`kotlin.io.println\` has been forbidden in the detekt config.${exception}`,
+        ],
+        ['Qualified.kt', `${runBlocking}${exception}`],
+        [
+          'Sleeper.kt',
+          `The method \`java.lang.Thread.sleep\` has been forbidden: Use a scheduler or a test clock instead of sleeping.${exception}`,
+        ],
+        ['Wildcard.kt', `${runBlocking}${exception}`],
+      ]);
     });
 
     it('does not analyze a Kotlin script among the sources', () => {
@@ -526,6 +586,27 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     });
   });
 
+  it('resolves detekt types against the JDK that runs Gradle when the project declares no toolchain, and against its toolchain JDK when it does', () => {
+    const jdkOf = (branch) => {
+      git('checkout', '-q', branch);
+      collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
+      const read = (name) => readFileSync(path.join(repository, 'build', name), 'utf8');
+      return { detekt: read('jdk-home.txt'), gradle: read('gradle-jvm-home.txt') };
+    };
+
+    const plain = jdkOf('jdk-plain');
+    const toolchain = jdkOf('jdk-toolchain');
+
+    expect(plain.detekt).toBe(plain.gradle);
+    expect([toolchain.detekt, toolchain.detekt === toolchain.gradle]).toEqual([
+      toolchainJdk,
+      false,
+    ]);
+    expect(readFileSync(path.join(repository, 'build/toolchain-home.txt'), 'utf8')).toBe(
+      toolchainJdk,
+    );
+  });
+
   it('reports a Gradle failure as a tool error instead of throwing', () => {
     git('checkout', '-q', 'broken');
 
@@ -556,30 +637,34 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       ).message;
 
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit Booter.<init>',
+      'crap crap-score-limit Booter.label',
       'crap crap-score-limit Left.total',
       'crap crap-score-limit Right.total',
       'crap crap-score-limit classify2',
       'crap crap-score-limit flatten',
       'crap crap-score-limit rank',
+      'structure function-control-nesting-limit Booter.<init>',
       'structure function-control-nesting-limit depth',
       'structure function-lines-limit Left.total',
       'structure function-lines-limit Right.total',
       'structure function-parameters-limit combine',
       'structure function-parameters-limit pipeline',
       'structure function-parameters-limit product',
+      'structure function-statements-limit Booter.label',
       'structure function-statements-limit Left.total',
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',
       'structure function-statements-limit rank',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
-      'depth nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Deep.kt"],"function":"depth","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'depth nests control flow 3 deep (limit 2). Return early instead of nesting.',
     );
     expect(messageOf('function-parameters-limit', 'product')).toBe(
-      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Grown.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'product grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another.',
     );
     expect(messageOf('crap-score-limit', 'classify2')).toBe(
-      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Complex2.kt"],"function":"classify2","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'classify2 CRAP rose from 110 to 132 (limit 9). Put new code in a new function and cover it with tests.',
     );
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual([
       'crap crap-score-limit classify',
@@ -599,8 +684,7 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
       {
         rule: 'stability-direction',
         identity: 'package-edge:stable2->churn2',
-        message:
-          'stable2 depends on less stable package churn2. If this is intended, add {"rule":"stability-direction","paths":["stable2"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        message: 'stable2 depends on less stable package churn2',
       },
     ]);
     const stable = onlyTools(result.newFindings, 'coupling').find(
@@ -612,6 +696,22 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
         .filter(({ rule }) => rule === 'stability-direction')
         .map(({ identity }) => identity),
     ).toEqual(['package-edge:stable->churn']);
+  });
+
+  it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {
+    const result = diffOf('init-inserted', kotlinPolicy, 'init-base');
+
+    const legacy = [
+      'crap crap-score-limit Box.<anonymous>.<init>',
+      'crap crap-score-limit Box.<init>',
+      'crap crap-score-limit Box.Companion.<init>',
+      'structure function-control-nesting-limit Box.<anonymous>.<init>',
+      'structure function-control-nesting-limit Box.<init>',
+      'structure function-control-nesting-limit Box.Companion.<init>',
+    ];
+
+    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
+    expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
 
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {

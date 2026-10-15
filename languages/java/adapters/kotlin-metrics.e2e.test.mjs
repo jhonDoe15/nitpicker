@@ -4,6 +4,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from './java-diff.mjs';
+import {
+  BOM,
+  BROKEN,
+  CRLF,
+  FLAT,
+  INITIALIZERS,
+  MULTIFILE_A,
+  MULTIFILE_B,
+  NESTING,
+  ROOT_PACKAGE,
+  UNITS,
+} from './fixtures/kotlin-metrics/sources.mjs';
 
 // Runs KotlinMetrics.java, the PSI program behind Kotlin structure, CRAP and coupling, on source
 // files. It needs Java 21, Gradle and network access to Maven Central (for the Kotlin compiler the
@@ -36,68 +48,6 @@ configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
     }
 }
 `;
-
-const UNITS = `package demo.units
-
-fun plain(a: Int, b: Int): Int {
-    if (a > 0 && b > 0 || a < -5) {
-        return a
-    }
-    return b ?: 0
-}
-
-fun Int.double(): Int = this * 2
-
-inline fun twice(block: () -> Unit) {
-    block()
-    block()
-}
-
-class Holder(private val start: Int) {
-    constructor() : this(0) {
-        println("default")
-    }
-
-    init {
-        println("init")
-    }
-
-    val doubled: Int
-        get() = start * 2
-
-    val combine: (Int, Int, Int, Int) -> Int = { a, b, c, d ->
-        if (a > b) c else d
-    }
-
-    val cached by lazy {
-        val values = listOf(1, 2)
-        values.sum()
-    }
-
-    val anonymous = fun(x: Int): Int {
-        return x + 1
-    }
-
-    val eager = run {
-        println("eager")
-        1
-    }
-
-    abstract class Nested {
-        abstract fun missing()
-    }
-}
-`;
-
-const FLAT = 'package demo.flat\n\nfun flat() = 1\n';
-const BOM = '﻿package demo.bom\n\nfun bom() = 1\n';
-const ROOT_PACKAGE = 'fun root() = 1\n';
-const MULTIFILE_A =
-  '@file:JvmName("Mf")\n@file:JvmMultifileClass\n\npackage demo.mf\n\nfun partA() = 1\n';
-const MULTIFILE_B =
-  '@file:JvmName("Mf")\n@file:JvmMultifileClass\n\npackage demo.mf\n\nfun partB() = 2\n';
-const CRLF = 'package demo.crlf\r\n\r\nfun crlf(): Int {\r\n    return 1\r\n}\r\n';
-const BROKEN = 'package demo.broken\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
 
 let workspace;
 let java;
@@ -190,18 +140,59 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
     expect(
       metrics.functions.map(
-        ({ name, start, end, statements, parameters, complexity, inline }) =>
-          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}`,
+        ({ name, start, end, statements, parameters, complexity, inline, initializer }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${inline ? ' inline' : ''}${initializer ? ' initializer' : ''}`,
       ),
     ).toEqual([
       'plain 3-8 s3 p2 c5',
       'Int.double 10-10 s1 p0 c1',
       'twice 12-15 s2 p1 c1 inline',
       'Holder.Holder 18-20 s1 p0 c1',
+      'Holder.<init> 22-24 s1 p0 c1 initializer',
       'Holder.doubled.get 27-27 s1 p0 c1',
       'Holder.combine 29-31 s3 p4 c2',
       'Holder.cached 33-36 s2 p0 c1',
       'Holder.anonymous 38-40 s1 p1 c1',
+      'Holder.eager 42-45 s3 p0 c1 initializer',
+    ]);
+  });
+
+  it('measures init blocks and property initializers that hold a block or branch, and leaves out the straight-line ones', () => {
+    const { metrics } = measure(writeSources('initializers', { 'src/Init.kt': INITIALIZERS }));
+
+    expect(
+      metrics.functions.map(
+        ({ name, start, end, statements, parameters, complexity, initializer }) =>
+          `${name} ${start}-${end} s${statements} p${parameters} c${complexity}${initializer ? ' initializer' : ''}`,
+      ),
+    ).toEqual([
+      'Boot.<init> 9-12 s2 p0 c1 initializer',
+      'Boot.label 16-16 s1 p0 c2 initializer',
+      'Boot.table 18-18 s2 p0 c1 initializer',
+      'Boot.chosen 20-24 s1 p0 c3 initializer',
+      'Boot.observed 26-28 s1 p3 c1',
+      'Boot.<anonymous>.run 31-33 s1 p0 c1',
+      'Boot.<anonymous>.<init> 35-37 s1 p0 c1 initializer',
+      'Boot.Companion.registry 41-41 s2 p0 c1 initializer',
+      'Boot.Companion.<init> 43-45 s1 p0 c1 initializer',
+      'Single.<init> 50-52 s1 p0 c1 initializer',
+      'top 55-55 s2 p0 c1 initializer',
+    ]);
+  });
+
+  it('counts a flat if / else if / else chain as one level and an if inside an else block or a branch as one deeper', () => {
+    const { metrics } = measure(writeSources('nesting', { 'src/Nesting.kt': NESTING }));
+
+    expect(
+      metrics.functions.map(
+        ({ name, maxControlNesting, complexity }) => `${name} n${maxControlNesting} c${complexity}`,
+      ),
+    ).toEqual([
+      'chain n1 c4',
+      'inElseBlock n2 c3',
+      'inBranch n2 c5',
+      'withWhen n2 c4',
+      'inLoop n2 c4',
     ]);
   });
 

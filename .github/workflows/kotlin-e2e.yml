@@ -1,0 +1,61 @@
+name: kotlin-e2e
+
+# The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
+# about 15 minutes. It runs only for changes that can alter its result: the Java and Kotlin preset code, the
+# core and shared code it imports, the package and test configuration, and this file. TypeScript-only,
+# Python-only and docs-only pull requests skip it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'languages/java/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - '.github/workflows/kotlin-e2e.yml'
+  pull_request:
+    paths:
+      - 'languages/java/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - '.github/workflows/kotlin-e2e.yml'
+
+# A new push to a pull request cancels its run still in progress; runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  kotlin:
+    runs-on: ubuntu-latest
+    # A healthy run takes about 15 minutes with a cold Gradle cache; this stops a hung one well before the default.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
+      # resolves, and the Kotlin Gradle plugin.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      # The Java sources of the mixed fixture project get their complexity from lizard (pin: nitpicker.init.gradle).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install lizard==1.24.1
+      - run: npm ci
+      - name: Kotlin end-to-end suite
+        run: npm run test:kotlin
