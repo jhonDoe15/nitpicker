@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { createIdentityCounter } from '../../ingest/common.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
@@ -9,12 +10,12 @@ const MESSAGES = {
     detail === ''
       ? `${simple} sits in the root package ${root}. Put it in a feature package (${root}.<feature>); the root package holds only the application and @Configuration classes.`
       : `${simple} is in the layer package "${detail}". Group by feature instead: ${root}.<feature> holds its controller, service and repository together, and pure utilities go to ${root}.shared.`,
-  'spring-feature-boundary': ({ simple, detail, root }) =>
-    `${simple} uses ${detail}, inside another feature. Depend only on classes in the other feature's top package, or move what both need to ${root}.shared.`,
-  'spring-shared-pure': ({ simple, detail }) =>
+  'spring-feature-boundary': ({ simple, detail, target, root }) =>
+    `${simple} uses ${detail} from ${target.packageName}, inside another root package ${target.rootPackage}. Depend only on the classes directly in ${target.rootPackage}, or move what both need to ${root}.shared.`,
+  'spring-shared-pure': ({ simple, detail, target }) =>
     detail === ''
       ? `${simple} is a Spring bean or entity in the shared package. shared holds pure utilities; move it into the feature that owns it.`
-      : `${simple} depends on ${detail}, a feature class. shared holds pure utilities and depends on no feature; move the code into the feature that uses it.`,
+      : `${simple} depends on ${detail} in ${target.rootPackage}. shared holds pure utilities and depends on no other root package; move the code into the package that uses it.`,
   'spring-controller-repository': ({ simple, detail }) =>
     `${simple} depends on repository ${detail}. Controllers call services only; inject a service and let it use the repository.`,
   'spring-controller-entity': ({ simple, detail }) => {
@@ -47,12 +48,19 @@ function shortDetail(detail) {
     : simpleName(detail);
 }
 
+function targetOf(detail, root) {
+  const packageName = packageOf(detail);
+  const [segment] = packageName.slice(root.length + 1).split('.');
+  return { packageName, rootPackage: `${root}.${segment}` };
+}
+
 export function readSpringArchFindings(reportRoot, { resolvePath }) {
   const file = path.join(reportRoot, SPRING_ARCH_REPORT);
   if (!existsSync(file)) {
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
   }
   const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
+  const unique = createIdentityCounter();
   return violations.flatMap(({ rule, className, fileName, detail }) => {
     const filePath = resolvePath(className, fileName === '' ? undefined : fileName);
     const describe = MESSAGES[rule];
@@ -62,10 +70,13 @@ export function readSpringArchFindings(reportRoot, { resolvePath }) {
     if (filePath === undefined) {
       return [];
     }
+    const simple = simpleName(className);
+    const short = shortDetail(detail);
     const message = describe({
-      simple: simpleName(className),
-      detail: shortDetail(detail),
+      simple,
+      detail: short,
       root,
+      target: root === null ? undefined : targetOf(detail, root),
       packageName: packageOf(className),
     });
     return [
@@ -73,10 +84,12 @@ export function readSpringArchFindings(reportRoot, { resolvePath }) {
         tool: TOOL,
         rule,
         path: filePath,
-        identity: detail === '' ? className : `${className}|${detail}`,
+        identity: unique(`${rule}:${short === '' ? simple : `${simple}|${short}`}`).slice(
+          rule.length + 1,
+        ),
         message: `${message} ${exceptionRoute(rule)}`,
         classification: 'enforceable',
-        symbol: className,
+        symbol: simple,
       },
     ];
   });

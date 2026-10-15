@@ -12,6 +12,8 @@ final class Layout {
   private static final String APPLICATION = "org.springframework.boot.autoconfigure.SpringBootApplication";
   private static final String CONFIGURATION = "org.springframework.context.annotation.Configuration";
   private static final String PROPERTIES = "org.springframework.boot.context.properties.ConfigurationProperties";
+  private static final String SERVLET_INITIALIZER =
+      "org.springframework.boot.web.servlet.support.SpringBootServletInitializer";
   private static final String COMPONENT = "org.springframework.stereotype.Component";
   private static final String SHARED = "shared";
   private static final Set<String> LAYER_PACKAGES =
@@ -75,7 +77,9 @@ final class Layout {
 
   private static void rootClass(JavaClass type, Set<Found> sink) {
     JavaClass owner = Spring.owner(type);
-    if (!owner.isMetaAnnotatedWith(CONFIGURATION) && !owner.isAnnotatedWith(PROPERTIES)) {
+    if (!owner.isMetaAnnotatedWith(CONFIGURATION)
+        && !owner.isAnnotatedWith(PROPERTIES)
+        && !owner.isAssignableTo(SERVLET_INITIALIZER)) {
       Found.add(sink, LAYOUT, type, "");
     }
   }
