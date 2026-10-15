@@ -77,23 +77,19 @@ describe('the strict-clean fixture project', () => {
     FIXTURE_TIMEOUT_MS,
   );
 
-  it(
-    'fails when a banned form is added, so the run above is a real check',
-    () => {
-      const root = createProject();
-      const target = path.join(root, 'src/main/features/greeting/domain/greet.ts');
-      writeFileSync(
-        target,
-        `${readFileSync(target, 'utf8')}\nexport const widened = ['a'] as readonly string[];\n`,
-      );
+  it('fails when a banned form is added, so the run above is a real check', () => {
+    const root = createProject();
+    const target = path.join(root, 'src/main/features/greeting/domain/greet.ts');
+    writeFileSync(
+      target,
+      `${readFileSync(target, 'utf8')}\nexport const widened = ['a'] as readonly string[];\n`,
+    );
 
-      const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
+    const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'eslint-lint']);
 
-      expect(exitCode).toBe(1);
-      expect(stdoutText).toBe(BANNED_FORM_OUTPUT);
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
+    expect(exitCode).toBe(1);
+    expect(stdoutText).toBe(BANNED_FORM_OUTPUT);
+  });
 
   describe('strict rules in touched code', () => {
     const legacy = [
@@ -146,28 +142,24 @@ describe('the strict-clean fixture project', () => {
       FIXTURE_TIMEOUT_MS,
     );
 
-    it(
-      'fails when the edit touches the line of a legacy violation',
-      () => {
-        const { exitCode, stdoutText } = runDifference('touched', (text) =>
-          text.replace('] as', ']  as'),
-        );
+    it('fails when the edit touches the line of a legacy violation', () => {
+      const { exitCode, stdoutText } = runDifference('touched', (text) =>
+        text.replace('] as', ']  as'),
+      );
 
-        expect(stdoutText).toBe(
-          [
-            'Base: main (argument)',
-            '',
-            'Quality gate summary',
-            '✖ 1 new enforceable violation',
-            '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
-            '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
-            `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
-            '',
-          ].join('\n'),
-        );
-        expect(exitCode).toBe(1);
-      },
-      FIXTURE_TIMEOUT_MS,
-    );
+      expect(stdoutText).toBe(
+        [
+          'Base: main (argument)',
+          '',
+          'Quality gate summary',
+          '✖ 1 new enforceable violation',
+          '  eslint-lint/no-restricted-syntax src/main/legacy.ts:2',
+          '    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
+          `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
+          '',
+        ].join('\n'),
+      );
+      expect(exitCode).toBe(1);
+    });
   });
 });

@@ -97,27 +97,23 @@ describe('the react-project fixture', () => {
     FIXTURE_TIMEOUT_MS,
   );
 
-  it(
-    'applies no React rule to a project that does not depend on react, whatever the exceptions say',
-    () => {
-      const { findings } = lintFindings(
-        commitProject({
-          manifest: { private: true },
-          config: {
-            exceptions: [
-              { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
-            ],
-          },
-        }),
-      );
+  it('applies no React rule to a project that does not depend on react, whatever the exceptions say', () => {
+    const { findings } = lintFindings(
+      commitProject({
+        manifest: { private: true },
+        config: {
+          exceptions: [
+            { rule: 'react-hooks/exhaustive-deps', paths: ['src/**'], reason: 'Legacy hooks' },
+          ],
+        },
+      }),
+    );
 
-      expect(rulesByFile(findings)).toEqual({
-        allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
-        'class-component': ['no-restricted-syntax'],
-      });
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
+    expect(rulesByFile(findings)).toEqual({
+      allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
+      'class-component': ['no-restricted-syntax'],
+    });
+  });
 
   it(
     'names the configured styling approach',

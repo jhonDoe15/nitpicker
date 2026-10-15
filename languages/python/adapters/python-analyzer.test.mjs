@@ -76,7 +76,9 @@ describe('Python analyzer', () => {
       'languages/java/gradle/nitpicker.init.gradle',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
-    expect(files.filter((file) => /\.test\.mjs$|fixtures/.test(file))).toEqual([]);
+    expect(
+      files.filter((file) => /\.test\.mjs$|(^|\/)(fixtures|test-support)\//.test(file)),
+    ).toEqual([]);
   });
 
   it('runs the runner for the part it is, with the snapshot, the live checkout and the settings', () => {
