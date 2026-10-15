@@ -34,20 +34,32 @@ function isSchemaParseArgument(expression) {
   return isSchemaParseCall(parent) && parent.arguments.includes(expression);
 }
 
-function isUntypedInput(type) {
+function recordValueType(type) {
+  if (type.type !== 'TSTypeReference' || type.typeName.name !== 'Record') {
+    return undefined;
+  }
+  const [, value] = type.typeArguments?.params ?? type.typeParameters?.params ?? [];
+  return value;
+}
+
+function isUntypedLeaf(type) {
   if (type === undefined) {
     return false;
   }
-  if (UNTYPED_KEYWORDS.has(type.type)) {
-    return true;
+  return type.type === 'TSTypeLiteral'
+    ? type.members.length === 0
+    : UNTYPED_KEYWORDS.has(type.type);
+}
+
+function isUntypedInput(type) {
+  const chain = [type];
+  for (const current of chain) {
+    const value = current === undefined ? undefined : recordValueType(current);
+    if (value !== undefined) {
+      chain.push(value);
+    }
   }
-  if (type.type === 'TSTypeLiteral') {
-    return type.members.length === 0;
-  }
-  const [, value] = type.typeArguments?.params ?? type.typeParameters?.params ?? [];
-  return (
-    type.type === 'TSTypeReference' && type.typeName.name === 'Record' && isUntypedInput(value)
-  );
+  return isUntypedLeaf(chain.at(-1));
 }
 
 function predicateInputType(predicate) {
@@ -110,6 +122,28 @@ function isOverloadCast(node) {
   );
 }
 
+function isParsedBySchema(sourceCode, call) {
+  if (isSchemaParseArgument(call)) {
+    return true;
+  }
+  const declarator = call.parent;
+  if (
+    declarator.type !== 'VariableDeclarator' ||
+    declarator.init !== call ||
+    declarator.id.type !== 'Identifier'
+  ) {
+    return false;
+  }
+  return sourceCode
+    .getDeclaredVariables(declarator)
+    .some((variable) =>
+      variable.references.some(
+        (reference) =>
+          reference.identifier !== declarator.id && isSchemaParseArgument(reference.identifier),
+      ),
+    );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -131,28 +165,6 @@ export const rule = {
   },
   create(context) {
     const sourceCode = context.sourceCode;
-
-    function isParsedBySchema(call) {
-      if (isSchemaParseArgument(call)) {
-        return true;
-      }
-      const declarator = call.parent;
-      if (
-        declarator.type !== 'VariableDeclarator' ||
-        declarator.init !== call ||
-        declarator.id.type !== 'Identifier'
-      ) {
-        return false;
-      }
-      return sourceCode
-        .getDeclaredVariables(declarator)
-        .some((variable) =>
-          variable.references.some(
-            (reference) =>
-              reference.identifier !== declarator.id && isSchemaParseArgument(reference.identifier),
-          ),
-        );
-    }
 
     const visitors = {
       TSTypePredicate(node) {
@@ -176,7 +188,7 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        if (isJsonParse(node) && !isParsedBySchema(node)) {
+        if (isJsonParse(node) && !isParsedBySchema(sourceCode, node)) {
           context.report({ node, messageId: 'unparsedJson' });
         }
       },

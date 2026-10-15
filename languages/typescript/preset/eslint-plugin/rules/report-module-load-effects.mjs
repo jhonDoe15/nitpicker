@@ -105,6 +105,15 @@ function isCommonJsExport(expression) {
   );
 }
 
+function importTimeEffectAtLoad(node) {
+  const call = importTimeEffect(node);
+  return call !== undefined &&
+    executesAtModuleLoad(node) &&
+    ancestorsOf(node).some(isModuleLevelDeclaration)
+    ? call
+    : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -142,12 +151,8 @@ export const rule = {
         }
       },
       'NewExpression, CallExpression'(node) {
-        const call = importTimeEffect(node);
-        if (
-          call !== undefined &&
-          executesAtModuleLoad(node) &&
-          ancestorsOf(node).some(isModuleLevelDeclaration)
-        ) {
+        const call = importTimeEffectAtLoad(node);
+        if (call !== undefined) {
           context.report({ node, messageId: 'importTimeEffect', data: { call } });
         }
       },
@@ -155,11 +160,9 @@ export const rule = {
         if (
           node.parent.type !== 'Program' ||
           isDirective(node) ||
-          node.expression.type === 'AwaitExpression'
+          node.expression.type === 'AwaitExpression' ||
+          (commonJsExports && isCommonJsExport(node.expression))
         ) {
-          return;
-        }
-        if (commonJsExports && isCommonJsExport(node.expression)) {
           return;
         }
         context.report({ node, messageId: 'topLevelExpression' });

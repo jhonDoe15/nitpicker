@@ -7,107 +7,87 @@ const config = [
   ...strictSyntaxConfigFor(defaultResolvedLayout),
 ];
 
-const adapter = 'src/main/features/billing/adapters/store.ts';
-const domain = 'src/main/features/billing/domain/invoice.ts';
-
-function policyCase(name, filename, banned, allowed) {
-  return { name: `policy: ${name}`, config, filename, banned, allowed };
+function casesIn(filename) {
+  return function policyCase(name, banned, allowed) {
+    return { name: `policy: ${name}`, config, filename, banned, allowed };
+  };
 }
 
+const adapterCase = casesIn('src/main/features/billing/adapters/store.ts');
+const domainCase = casesIn('src/main/features/billing/domain/invoice.ts');
+const indexCase = casesIn('src/main/features/billing/index.ts');
+const utilsCase = casesIn('src/main/utils/strings.ts');
+
 export const policyFailureMessageCases = [
-  policyCase(
+  indexCase(
     'export * names the listed export',
-    'src/main/features/billing/index.ts',
     "export * from './domain/invoice.js';",
     'export { name }',
   ),
-  policyCase(
+  adapterCase(
     'discarded allSettled names Promise.all',
-    adapter,
     'export async function run(jobs) { await Promise.allSettled(jobs); }',
     'Promise.all',
   ),
-  policyCase(
+  adapterCase(
     'Promise wrapper names Promise.resolve',
-    adapter,
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',
   ),
-  policyCase(
+  adapterCase(
     'process.env names the composition root',
-    adapter,
     "export const url = process.env['API_URL'];",
     'composition root',
   ),
-  policyCase(
+  adapterCase(
     'process.env names the exception route',
-    adapter,
     "export const url = process.env['API_URL'];",
     'exception for this rule in nitpicker.config.json',
   ),
-  policyCase(
+  adapterCase(
     'process.exit names the main guard',
-    adapter,
     'export function stop() { process.exit(1); }',
     'main guard',
   ),
-  policyCase(
+  adapterCase(
     'shell string names execFile',
-    adapter,
     "import { exec } from 'node:child_process'; export function ls(dir) { exec(`ls ${dir}`); }",
     'execFile',
   ),
-  policyCase(
+  adapterCase(
     'path join names the containment check',
-    adapter,
     "import { readFileSync } from 'node:fs'; import path from 'node:path'; export function read(name) { return readFileSync(path.join('/srv', name)); }",
     'startsWith',
   ),
-  policyCase(
+  adapterCase(
     'Math.random names crypto.randomUUID',
-    adapter,
     'export const token = Math.random().toString(36);',
     'crypto.randomUUID()',
   ),
-  policyCase(
-    'unknown main folder names features',
-    'src/main/utils/strings.ts',
-    'export const a = 1;',
-    'features/<name>/',
-  ),
-  policyCase(
+  utilsCase('unknown main folder names features', 'export const a = 1;', 'features/<name>/'),
+  adapterCase(
     'mutable module state names the composition root',
-    adapter,
     'const cache = new Map(); export function put(k, v) { cache.set(k, v); }',
     'composition root',
   ),
-  policyCase(
-    'domain process names adapters',
-    domain,
-    "export const url = process['argv'];",
-    'adapters/',
-  ),
-  policyCase(
+  domainCase('domain process names adapters', "export const url = process['argv'];", 'adapters/'),
+  domainCase(
     'domain setTimeout names adapters',
-    domain,
     'export function later(f) { setTimeout(f, 1); }',
     'adapters/',
   ),
-  policyCase(
+  domainCase(
     'domain Date.now alias names a parameter',
-    domain,
     'export const read = Date.now;',
     'as a parameter',
   ),
-  policyCase(
+  domainCase(
     'domain performance.now names a parameter',
-    domain,
     'export const t = performance.now();',
     'as a parameter',
   ),
-  policyCase(
+  domainCase(
     'domain Reflect.set names spread',
-    domain,
     'export const f = (o) => Reflect.set(o, "a", 1);',
     'spread',
   ),

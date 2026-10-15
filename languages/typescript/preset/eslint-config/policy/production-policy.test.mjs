@@ -54,8 +54,12 @@ describe('production policy scope', () => {
         code,
       })[0].message;
 
-    expect(message(domain)).toContain('take the time, ID or random value as a parameter');
-    expect(message(adapter)).toContain('crypto.randomUUID()');
+    expect(message(domain)).toBe(
+      "'Math.random' is restricted from being used. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.",
+    );
+    expect(message(adapter)).toBe(
+      "'Math.random' is restricted from being used. Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.",
+    );
   });
 
   it('reports a domain global once per use and leaves other layers alone', () => {

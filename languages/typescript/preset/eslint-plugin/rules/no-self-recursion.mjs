@@ -19,18 +19,18 @@ function enclosingFunctions(node) {
   return ancestorsOf(node).filter((current) => FUNCTION_TYPES.has(current.type));
 }
 
-function callGraph(sourceCode) {
-  const variables = sourceCode.scopeManager.scopes.flatMap((scope) => scope.variables);
-  const edges = [];
-  for (const variable of variables) {
-    const target = variable.defs.map(boundFunction).find((fn) => fn !== undefined);
-    for (const reference of target === undefined ? [] : variable.references) {
-      for (const source of enclosingFunctions(reference.identifier)) {
-        edges.push({ source, target, node: reference.identifier });
-      }
-    }
+function edgesTo(variable) {
+  const target = variable.defs.map(boundFunction).find((fn) => fn !== undefined);
+  if (target === undefined) {
+    return [];
   }
-  return edges;
+  return variable.references.flatMap(({ identifier }) =>
+    enclosingFunctions(identifier).map((source) => ({ source, target, node: identifier })),
+  );
+}
+
+function callGraph(sourceCode) {
+  return sourceCode.scopeManager.scopes.flatMap((scope) => scope.variables).flatMap(edgesTo);
 }
 
 function reachableFrom(start, edges) {
@@ -55,6 +55,21 @@ function startsCycle({ source, target }, edges) {
     reachableFrom(member, edges).has(source),
   );
   return members.every((member) => source.range[0] <= member.range[0]);
+}
+
+function recursionReport(edge, edges, messageId) {
+  const { source, target, node } = edge;
+  if (source === target) {
+    return { node, messageId, data: { name: nameOf(source) } };
+  }
+  if (!startsCycle(edge, edges)) {
+    return undefined;
+  }
+  return {
+    node,
+    messageId: 'mutualRecursion',
+    data: { name: nameOf(source), other: nameOf(target) },
+  };
 }
 
 export const rule = {
@@ -82,12 +97,9 @@ export const rule = {
       'Program:exit'() {
         const edges = callGraph(context.sourceCode);
         for (const edge of edges) {
-          const { source, target, node } = edge;
-          if (source === target) {
-            context.report({ node, messageId, data: { name: nameOf(source) } });
-          } else if (startsCycle(edge, edges)) {
-            const data = { name: nameOf(source), other: nameOf(target) };
-            context.report({ node, messageId: 'mutualRecursion', data });
+          const report = recursionReport(edge, edges, messageId);
+          if (report !== undefined) {
+            context.report(report);
           }
         }
       },

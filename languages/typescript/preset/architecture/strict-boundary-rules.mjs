@@ -199,10 +199,11 @@ const baseBoundaryRules = [
   },
 ];
 
-const withExceptionRoute = (rule) =>
-  rule.name.startsWith('domain-')
+function withExceptionRoute(rule) {
+  return rule.name.startsWith('domain-')
     ? { ...rule, comment: `${rule.comment}${EXCEPTION_ROUTE}` }
     : rule;
+}
 
 function withExceptions(rule, exceptions) {
   const lifted = exceptions

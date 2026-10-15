@@ -58,7 +58,7 @@ function constantInitializer(sourceCode, identifier) {
     : undefined;
 }
 
-function unvalidatedRoot(sourceCode, expression, depth = 0) {
+function withoutNonValidatingCalls(expression) {
   const pending = [expression];
   for (const current of pending) {
     if (
@@ -68,22 +68,35 @@ function unvalidatedRoot(sourceCode, expression, depth = 0) {
       pending.push(current.callee.object);
     }
   }
-  const root = pending.at(-1);
-  if (root.type === 'Identifier' && depth < MAX_ALIAS_DEPTH) {
-    const initializer = constantInitializer(sourceCode, root);
-    return initializer && unvalidatedRoot(sourceCode, initializer, depth + 1);
-  }
+  return pending.at(-1);
+}
+
+function isUnvalidatedLeaf(sourceCode, root) {
   if (isZodCall(sourceCode, root, UNVALIDATED_FACTORIES)) {
-    return root;
+    return true;
   }
-  if (isZodCall(sourceCode, root, CUSTOM_FACTORY) && root.arguments.length === 0) {
-    return root;
+  return isZodCall(sourceCode, root, CUSTOM_FACTORY) && root.arguments.length === 0;
+}
+
+function nestedSchemas(sourceCode, root, depth) {
+  if (root.type === 'Identifier') {
+    const initializer = depth < MAX_ALIAS_DEPTH ? constantInitializer(sourceCode, root) : undefined;
+    return initializer ? [initializer] : [];
   }
-  return isZodCall(sourceCode, root, CONTAINER_FACTORIES)
-    ? root.arguments
-        .map((argument) => unvalidatedRoot(sourceCode, argument, depth + 1))
-        .find((found) => found !== undefined)
-    : undefined;
+  return isZodCall(sourceCode, root, CONTAINER_FACTORIES) ? root.arguments : [];
+}
+
+function unvalidatedRoot(sourceCode, expression) {
+  const pending = [{ node: expression, depth: 0 }];
+  for (const { node, depth } of pending) {
+    const root = withoutNonValidatingCalls(node);
+    if (isUnvalidatedLeaf(sourceCode, root)) {
+      return root;
+    }
+    const children = nestedSchemas(sourceCode, root, depth);
+    pending.push(...children.map((child) => ({ node: child, depth: depth + 1 })));
+  }
+  return undefined;
 }
 
 function chainRoot(expression) {
@@ -97,6 +110,26 @@ function chainRoot(expression) {
     }
   }
   return chain.at(-1);
+}
+
+function isOnZod(sourceCode, node) {
+  const root = chainRoot(node);
+  return root.type === 'Identifier' && isZod(sourceCode, root);
+}
+
+function isLooseCall(sourceCode, node) {
+  const name = memberName(node.callee);
+  if (name === 'looseObject') {
+    return isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES);
+  }
+  if (LOOSE_OBJECT_METHODS.has(name)) {
+    return isOnZod(sourceCode, node);
+  }
+  return (
+    name === 'catchall' &&
+    isOnZod(sourceCode, node) &&
+    unvalidatedRoot(sourceCode, node.arguments[0]) !== undefined
+  );
 }
 
 export const rule = {
@@ -118,27 +151,8 @@ export const rule = {
   create(context) {
     const sourceCode = context.sourceCode;
 
-    function isLooseCall(node) {
-      const name = memberName(node.callee);
-      const onZod = () => {
-        const root = chainRoot(node);
-        return root.type === 'Identifier' && isZod(sourceCode, root);
-      };
-      if (name === 'looseObject') {
-        return isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES);
-      }
-      if (LOOSE_OBJECT_METHODS.has(name)) {
-        return onZod();
-      }
-      return (
-        name === 'catchall' &&
-        onZod() &&
-        unvalidatedRoot(sourceCode, node.arguments[0]) !== undefined
-      );
-    }
-
     function reportLooseObject(node) {
-      if (isLooseCall(node)) {
+      if (isLooseCall(sourceCode, node)) {
         context.report({ node, messageId: 'looseObject' });
       }
     }

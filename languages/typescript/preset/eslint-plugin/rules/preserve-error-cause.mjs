@@ -95,8 +95,9 @@ export const rule = {
         if (wrapper.classificationIndex === undefined) {
           if (!referencesCatch(node)) return;
         }
-        if (preservesCause(wrapper, node, referencesCatch)) return;
-        context.report({ node, messageId: 'lostCause' });
+        if (!preservesCause(wrapper, node, referencesCatch)) {
+          context.report({ node, messageId: 'lostCause' });
+        }
       },
     };
   },

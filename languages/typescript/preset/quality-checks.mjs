@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
+import { eslintConfigPolicyFiles } from './eslint-config/policy/policy-files.mjs';
 import { resolveLayout } from './layout.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
@@ -35,20 +36,7 @@ const POLICY_FILES = [
   JAVASCRIPT_PRESET_FILE,
   'languages/javascript/preset/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
-  'languages/typescript/preset/eslint-config/exceptions.mjs',
-  'languages/typescript/preset/eslint-config/error-wrapping-policy.mjs',
-  'languages/typescript/preset/eslint-config/strict.mjs',
-  'languages/typescript/preset/eslint-config/strict-control-flow.mjs',
-  'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
-  'languages/typescript/preset/eslint-config/strict-adapters.mjs',
-  'languages/typescript/preset/eslint-config/strict-declarations.mjs',
-  'languages/typescript/preset/eslint-config/strict-domain.mjs',
-  'languages/typescript/preset/eslint-config/strict-escape-hatches.mjs',
-  'languages/typescript/preset/eslint-config/strict-tests.mjs',
-  'languages/typescript/preset/eslint-config/react-plugins.mjs',
-  'languages/typescript/preset/eslint-config/react-rules.mjs',
-  'languages/typescript/preset/eslint-config/react-scope.mjs',
-  'languages/typescript/preset/eslint-config/rule-hints.mjs',
+  ...eslintConfigPolicyFiles,
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules/ancestry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/composition-root-files.mjs',
@@ -78,11 +66,6 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/no-managed-resource-construction-outside-composition-roots.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-mocking-subject-under-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-module-level-let.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/guards/no-module-level-mutable-state.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/guards/no-process-access-outside-composition-root.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/guards/no-shell-string-command.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-production-console.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-silent-catch.mjs',
   'languages/typescript/preset/eslint-plugin/rules/report-module-load-effects.mjs',

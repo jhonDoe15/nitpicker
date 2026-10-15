@@ -1,7 +1,31 @@
 import { compositionRootOptionsSchema, isCompositionRootFile } from './composition-root-files.mjs';
 
-const MANAGED_RESOURCE =
-  /(?:Service|Client|Pool|Cache|Store|Scheduler|Transport|Adapter|Server|Worker|Connection|Queue|Producer|Consumer|Broker|Gateway|Database|DatabaseSync|Emitter)$|^(?:Redis|Stripe|Octokit|OpenAI|Socket|WebSocket)$/;
+const MANAGED_SUFFIXES = [
+  'Service',
+  'Client',
+  'Pool',
+  'Cache',
+  'Store',
+  'Scheduler',
+  'Transport',
+  'Adapter',
+  'Server',
+  'Worker',
+  'Connection',
+  'Queue',
+  'Producer',
+  'Consumer',
+  'Broker',
+  'Gateway',
+  'Database',
+  'DatabaseSync',
+  'Emitter',
+];
+const MANAGED_NAMES = ['Redis', 'Stripe', 'Octokit', 'OpenAI', 'Socket', 'WebSocket'];
+const MANAGED_RESOURCE = new RegExp(
+  `(?:${MANAGED_SUFFIXES.join('|')})$|^(?:${MANAGED_NAMES.join('|')})$`,
+  'u',
+);
 const VALUE_OBJECT =
   /^(?:Error|URL|Map|Set|WeakMap|WeakSet|Date|RegExp|Request|Response)$|(?:Request|Response|Command)$/;
 const RESOURCE_FACTORY =

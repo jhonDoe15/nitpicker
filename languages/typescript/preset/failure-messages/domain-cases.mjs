@@ -1,4 +1,5 @@
 import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
+import { policyFailureMessageCases } from './policy/policy-cases.mjs';
 
 const filename = 'src/main/features/billing/domain/invoice.ts';
 
@@ -93,4 +94,5 @@ export const domainFailureMessageCases = [
     'Write a readonly type for this value in domain/',
   ),
   domainCase('mutable property names readonly', 'type Invoice = { total: number };', 'readonly'),
+  ...policyFailureMessageCases,
 ];
