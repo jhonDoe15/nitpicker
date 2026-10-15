@@ -1,21 +1,22 @@
 import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
 import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
+import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
   javascriptRuleEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
-import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
 import {
   analyzedProjectRoot,
   isReactProject,
   reactScopeConfigFor,
-} from '../eslint-config/react-scope.mjs';
+} from '../eslint-config/react/react-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 import { configuredTestRunner } from '../test-runner/runners.mjs';
 import { resolveTestRunner } from '../test-runner/resolve.mjs';
@@ -40,7 +41,7 @@ const productionFiles = sourceGlobs;
 const testFiles = testGlobs;
 const selectedFiles = [...productionFiles, ...testFiles];
 
-const presetConfig = tseslint.config(
+const presetConfig = defineConfig(
   {
     ignores: [...excludedGlobs, '.stryker-tmp/**'],
   },

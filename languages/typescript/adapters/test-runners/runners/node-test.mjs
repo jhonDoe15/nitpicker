@@ -3,7 +3,7 @@ import { readLayout } from '../../../preset/head-policy.mjs';
 import { codeExtensionNames, existingRoots } from '../../../preset/layout.mjs';
 import { readManifest, testScripts } from '../../../preset/test-runner/evidence.mjs';
 import { nodeTestArgumentsOf } from './node-arguments.mjs';
-import { runNodeTool } from '../tool-process.mjs';
+import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import {
   COVERAGE_DIRECTORY,
   coverageExcludeGlobs,

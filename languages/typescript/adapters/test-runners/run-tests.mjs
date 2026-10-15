@@ -4,7 +4,7 @@ import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs
 import { testRunnerLabel } from '../../preset/test-runner/runners.mjs';
 import { runJestWithCoverage } from './runners/jest.mjs';
 import { runNodeTestWithCoverage } from './runners/node-test.mjs';
-import { formatProcessOutput } from './tool-process.mjs';
+import { formatProcessOutput } from './test-report.mjs';
 import { runVitestWithCoverage } from './runners/vitest.mjs';
 
 const EXECUTORS = new Map([

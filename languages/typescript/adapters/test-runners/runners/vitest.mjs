@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runNodeTool } from '../tool-process.mjs';
+import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { TEST_TIMEOUT_MS } from '../coverage-globs.mjs';
 
 const VITEST_QUALITY_CONFIG = 'languages/typescript/preset/defaults/vitest.quality.config.ts';

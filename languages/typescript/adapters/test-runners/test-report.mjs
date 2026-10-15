@@ -90,3 +90,11 @@ function assertionName(assertion) {
   }
   return '<unknown test>';
 }
+
+export function formatProcessOutput(result) {
+  const output = [result.stderr, result.stdout]
+    .filter((value) => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim())
+    .join('\n');
+  return output.length > 0 ? `\nProcess output:\n${output}` : '';
+}

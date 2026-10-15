@@ -1,7 +1,7 @@
 import { globToRegExpSource } from '../../../../../shared/glob.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import { readManifest, testScripts } from '../../../preset/test-runner/evidence.mjs';
-import { runNodeTool, spawnNodeTool } from '../tool-process.mjs';
+import { runNodeTool, spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import {
   COVERAGE_DIRECTORY,
   coverageExcludeGlobs,

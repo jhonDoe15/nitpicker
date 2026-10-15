@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 
 const [projectRoot, ...patterns] = process.argv.slice(2);
-const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-config-wrapper.mjs');
+const wrapperConfigPath = path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs');
 
 try {
   process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
