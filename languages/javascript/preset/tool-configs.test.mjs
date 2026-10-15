@@ -54,10 +54,10 @@ describe('generated tsconfig.quality.json', () => {
     expect(config.include).toEqual(['src/**/*', 'test/**/*', 'tests/**/*', 'vitest*.ts']);
   });
 
-  it('keeps the TypeScript preset free of checkJs', () => {
+  it('keeps the TypeScript preset free of checkJs and never emits', () => {
     const config = transformed('tsconfig.quality.json', typescriptLayout, projectWith());
     expect(config.compilerOptions).not.toHaveProperty('checkJs');
-    expect(config.compilerOptions).not.toHaveProperty('noEmit');
+    expect(config.compilerOptions.noEmit).toBe(true);
   });
 
   it('uses the custom roots and exclusions together with the JavaScript options', () => {
