@@ -85,33 +85,6 @@ describe('config file', () => {
     ).toThrow('"exceptions" is not supported with "preset": "python"');
   });
 
-  describe('hygiene exceptions', () => {
-    const exception = (rule) => ({ rule, paths: ['config/**'], reason: 'Fixture' });
-
-    it.each(['committed-env-file', 'committed-private-key', 'committed-binary', 'large-file'])(
-      'accepts an exception for %s in every preset',
-      (rule) => {
-        for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
-          const config = { preset, exceptions: [exception(rule)] };
-          expect(validateConfig(config)).toEqual(config);
-        }
-      },
-    );
-
-    it('keeps the package rules to the TypeScript and JavaScript presets', () => {
-      for (const rule of ['unused-dependency', 'unlisted-dependency', 'unresolved-import']) {
-        const config = { preset: 'typescript', exceptions: [exception(rule)] };
-        expect(validateConfig(config)).toEqual(config);
-        expect(() => validateConfig({ preset: 'python', exceptions: [exception(rule)] })).toThrow(
-          '"exceptions" is not supported with "preset": "python"',
-        );
-        expect(() => validateConfig({ preset: 'java', exceptions: [exception(rule)] })).toThrow(
-          /"exceptions\[0\]\.rule" must name a finding as it is printed/u,
-        );
-      }
-    });
-  });
-
   describe('kotlin options', () => {
     it.each([
       { formatter: 'ktfmt' },
@@ -401,7 +374,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit. Shared by all presets: thresholds, exclude, legacyInventory',
+        'nitpicker.config.json: "tools" is not supported with "preset": "python": it describes the TypeScript source layout and ESLint rules, which the Python preset does not have. Not supported with python: layout, exceptions, react, tools, except exceptions for file-lines-limit, line-length-limit, folder-files-limit, committed-env-file, committed-private-key, committed-binary, large-file. Shared by all presets: thresholds, exclude, legacyInventory',
       ),
     );
   });

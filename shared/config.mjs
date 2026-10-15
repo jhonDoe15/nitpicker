@@ -5,6 +5,7 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
+import { PACKAGE_EXCEPTION_RULES } from './hygiene/rules.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -23,7 +24,7 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'folderFiles',
 ]);
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'reason'];
+const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'reason'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -106,5 +107,20 @@ function validateException(entry, label) {
   }
   if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+  if (entry.packages !== undefined) {
+    validatePackages(entry, label);
+  }
+}
+
+function validatePackages(entry, label) {
+  if (!PACKAGE_EXCEPTION_RULES.includes(entry.rule)) {
+    throw configError(
+      `"${label}.packages" is only for the rules ${PACKAGE_EXCEPTION_RULES.join(', ')}`,
+    );
+  }
+  validateStringArray(entry.packages, `${label}.packages`);
+  if (entry.packages.length === 0) {
+    throw configError(`"${label}.packages" needs at least one package name`);
   }
 }
