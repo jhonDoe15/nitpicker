@@ -3,7 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings as readFindings } from './java-reports.mjs';
+import { readingFrom, reportBaseOf, rootReports, writeModules } from './fixtures/report-base.mjs';
+
+const readJavaFindings = readingFrom(readFindings);
 
 const temporaryRoots = [];
 
@@ -108,8 +111,9 @@ function projectWithKotlinReports({
 } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-reports-')));
   temporaryRoots.push(root);
-  const reports = path.join(root, 'build/nitpicker');
+  const reports = rootReports(root);
   mkdirSync(reports, { recursive: true });
+  writeModules(root);
   mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
   mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
   writeFileSync(path.join(root, 'src/main/kotlin/demo/Bad.kt'), KOTLIN_SOURCE);
@@ -137,7 +141,7 @@ function projectWithKotlinReports({
   mkdirSync(path.join(reports, 'pit'));
   writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
   writeFileSync(path.join(reports, 'structure.json'), '[]');
-  writeFileSync(path.join(reports, 'duplicates.json'), JSON.stringify({ runs: [] }));
+  writeFileSync(path.join(reportBaseOf(root), 'duplicates.json'), JSON.stringify({ runs: [] }));
   writeFileSync(
     path.join(reports, 'detekt.sarif'),
     readFileSync(path.join(import.meta.dirname, '../ingest/fixtures/detekt.sarif'), 'utf8'),
@@ -186,7 +190,7 @@ describe('readJavaFindings with the kotlin preset', () => {
     const root = projectWithKotlinReports();
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -215,7 +219,7 @@ describe('readJavaFindings with the kotlin preset', () => {
   it('ends the message of a one-way rule with the allowed form and the exception route, keeping the identity', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
-      path.join(root, 'build/nitpicker/detekt.sarif'),
+      path.join(rootReports(root), 'detekt.sarif'),
       JSON.stringify({
         runs: [
           {
@@ -275,7 +279,7 @@ describe('readJavaFindings with the kotlin preset', () => {
     const identitiesOf = (messages) => {
       const root = projectWithKotlinReports();
       writeFileSync(
-        path.join(root, 'build/nitpicker/detekt.sarif'),
+        path.join(rootReports(root), 'detekt.sarif'),
         JSON.stringify({
           runs: [
             {
@@ -414,7 +418,7 @@ describe('readJavaFindings with the kotlin preset', () => {
 
   it('finds a Kotlin file whose directory does not match its package', () => {
     const root = projectWithKotlinReports();
-    const reports = path.join(root, 'build/nitpicker');
+    const reports = rootReports(root);
     writeFileSync(
       path.join(root, 'src/main/kotlin/Flat.kt'),
       'package demo.flat\n\nfun pick(x: Int) = if (x > 0) 1 else 2\n',
@@ -443,7 +447,7 @@ describe('readJavaFindings with the kotlin preset', () => {
   it('does not take a Kotlin file of another package for the one JaCoCo names', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
-      path.join(root, 'build/nitpicker/jacoco.xml'),
+      path.join(rootReports(root), 'jacoco.xml'),
       '<report name="demo"><package name="demo/other"><sourcefile name="Bad.kt"><line nr="8" mi="1" ci="0" mb="2" cb="0"/></sourcefile></package></report>',
     );
 
@@ -478,7 +482,7 @@ describe('readJavaFindings with the kotlin preset', () => {
 
   it('turns the Kotlin metrics and clones into structure, CRAP and duplicate findings', () => {
     const root = projectWithKotlinReports();
-    const reports = path.join(root, 'build/nitpicker');
+    const reports = rootReports(root);
     writeFileSync(
       path.join(reports, 'kotlin-metrics.json'),
       JSON.stringify({
@@ -499,7 +503,7 @@ describe('readJavaFindings with the kotlin preset', () => {
       }),
     );
     writeFileSync(
-      path.join(reports, 'kotlin-duplicates.json'),
+      path.join(reportBaseOf(root), 'kotlin-duplicates.json'),
       JSON.stringify({
         runs: [
           {
@@ -557,7 +561,7 @@ describe('readJavaFindings with the kotlin preset', () => {
       temporaryRoots.push(root);
 
       expect(() => readJavaFindings(root, { preset })).toThrow(
-        `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the`,
+        `The ${preset} preset found no Gradle project that applies the`,
       );
     },
   );
