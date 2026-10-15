@@ -16,19 +16,13 @@ function isFile(filePath) {
 }
 
 function nameStatusEntries(output) {
-  const tokens = output.split('\0').filter((token) => token.length > 0);
-  const entries = [];
-  for (let index = 0; index < tokens.length;) {
-    const status = tokens[index];
-    const paired = status.startsWith('R') || status.startsWith('C');
-    entries.push({
-      status: status[0],
-      from: tokens[index + 1],
-      to: paired ? tokens[index + 2] : tokens[index + 1],
+  return output
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const [status, from, to = from] = line.split('\t');
+      return { status: status[0], from, to };
     });
-    index += paired ? 3 : 2;
-  }
-  return entries;
 }
 
 function changedTestPaths({ baselineRoot, projectRoot }, layout) {
@@ -38,7 +32,6 @@ function changedTestPaths({ baselineRoot, projectRoot }, layout) {
     'core.quotePath=false',
     'diff',
     '--name-status',
-    '-z',
     '--find-renames',
     '--relative',
     '--no-color',
