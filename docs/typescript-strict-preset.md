@@ -234,7 +234,11 @@ alone.
   which then time out. With `@testing-library/user-event`, create the user with
   `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`. In a `*.test.*`/`*.spec.*` file the
   rule does the same for `vi.stubGlobal` (restore with `vi.unstubAllGlobals()`) and `vi.stubEnv`
-  (`vi.unstubAllEnvs()`); a setup file may stub a global for every test, as jsdom setups do.
+  (`vi.unstubAllEnvs()`); a setup file may stub a global for every test, as jsdom setups do. A
+  project whose Vitest config sets `unstubGlobals: true` or `unstubEnvs: true` restores that kind of
+  stub itself, so it is not checked there: the flag is read as a literal from the root config, from
+  an inline `test.projects` entry (for the files under its `root`) and from the config of a path or
+  glob `test.projects` entry (for the files under that package).
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
