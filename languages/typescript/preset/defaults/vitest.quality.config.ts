@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { loadConfigFromFile } from 'vite';
-import { configDefaults, defineConfig } from 'vitest/config';
+import { loadConfigFromFile, type Plugin } from 'vite';
+import { configDefaults, defineConfig, type TestProjectConfiguration } from 'vitest/config';
 
 const policyFile = process.env.NITPICKER_POLICY;
 type NitpickerPolicy = {
@@ -36,6 +36,46 @@ function projectConfigInWorkingDirectory() {
   return PROJECT_CONFIG_NAMES.find((name) => existsSync(name));
 }
 
+const perProjectPins = {
+  retry: 0,
+  allowOnly: false,
+  testTimeout: 10_000,
+  hookTimeout: 10_000,
+  restoreMocks: true,
+  unstubEnvs: true,
+  unstubGlobals: true,
+};
+
+const globalPins = {
+  bail: 0,
+  passWithNoTests: false,
+  dangerouslyIgnoreUnhandledErrors: false,
+  testNamePattern: undefined,
+  update: 'none' as const,
+};
+
+const coverageIgnoreHint =
+  /\/\*\s*(?:v8|c8|istanbul)\s+ignore\b[\s\S]*?\*\/|\/\/\s*(?:v8|c8|istanbul)\s+ignore\b[^\n]*/gu;
+
+const stripCoverageIgnoreHints: Plugin = {
+  name: 'nitpicker-strip-coverage-ignore-hints',
+  enforce: 'pre',
+  transform(code, id) {
+    if (id.includes('/node_modules/') || !code.includes('ignore')) {
+      return undefined;
+    }
+    const stripped = code.replaceAll(coverageIgnoreHint, (hint) => hint.replaceAll(/[^\n]/gu, ' '));
+    return stripped === code ? undefined : { code: stripped, map: null };
+  },
+};
+
+function pinnedProject(entry: TestProjectConfiguration): TestProjectConfiguration {
+  if (typeof entry !== 'object' || entry instanceof Promise || typeof entry === 'function') {
+    return entry;
+  }
+  return 'test' in entry ? { ...entry, test: { ...entry.test, ...perProjectPins } } : entry;
+}
+
 const coverage = {
   provider: 'v8' as const,
   include: sourceRoots.map((root) => `${root}/**/*.${codeExtensions}`),
@@ -56,7 +96,9 @@ const coverage = {
 };
 
 const configWithoutProjectConfig = {
+  plugins: [stripCoverageIgnoreHints],
   test: {
+    ...globalPins,
     maxWorkers: 4,
     projects: [
       {
@@ -65,7 +107,7 @@ const configWithoutProjectConfig = {
           root: '.',
           include: sourceRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
-          restoreMocks: true,
+          ...perProjectPins,
         },
       },
       {
@@ -74,8 +116,7 @@ const configWithoutProjectConfig = {
           root: '.',
           include: testRoots.flatMap(testFiles),
           exclude: nitpickerExclude,
-          restoreMocks: true,
-          testTimeout: 10_000,
+          ...perProjectPins,
         },
       },
     ],
@@ -88,8 +129,10 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
   const project = loaded?.config ?? {};
   return {
     ...project,
+    plugins: [...(project.plugins ?? []), stripCoverageIgnoreHints],
     test: {
       ...project.test,
+      projects: project.test?.projects?.map(pinnedProject),
       include: [
         ...(project.test?.include ?? []),
         ...[...sourceRoots, ...testRoots].flatMap(testFiles),
@@ -97,7 +140,8 @@ async function layeredOnProjectConfig(projectConfigFile: string) {
       exclude: [...(project.test?.exclude ?? []), ...nitpickerExclude],
       dir: undefined,
       maxWorkers: 4,
-      restoreMocks: true,
+      ...globalPins,
+      ...perProjectPins,
       coverage,
     },
   };

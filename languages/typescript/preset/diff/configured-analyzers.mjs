@@ -63,6 +63,9 @@ const QUALITY_AREA_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
+  'languages/typescript/adapters/quality-messages/crap-unknown-message.mjs',
+  'languages/typescript/adapters/quality-messages/failure-text.mjs',
+  'languages/typescript/adapters/quality-messages/vitest-failures.mjs',
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];

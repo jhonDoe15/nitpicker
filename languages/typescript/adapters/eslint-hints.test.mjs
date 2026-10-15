@@ -217,6 +217,29 @@ describe('eslintMessageWithHint', () => {
     });
   });
 
+  describe('vitest/no-disabled-tests', () => {
+    const ruleId = 'vitest/no-disabled-tests';
+    const hint =
+      '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+
+    it.each([
+      ['Disabled test', 'a test'],
+      ['Disabled test suite', 'a test suite'],
+    ])('drops the advice to use .todo() instead from "%s"', (head, kind) => {
+      const text = `${head} - if you want to skip ${kind} temporarily, use .todo() instead`;
+
+      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(
+        `${head}${hint}`,
+      );
+    });
+
+    it('leaves its other messages as they were', () => {
+      const text = 'Test is missing function argument';
+
+      expect(eslintMessageWithHint({ ruleId, text, relativePath: 'test/a.test.ts' })).toBe(text);
+    });
+  });
+
   it('offers growth advice for nitpicker/no-throw only', () => {
     expect(growthAdviceFor('nitpicker/no-throw')).toBe(
       'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
