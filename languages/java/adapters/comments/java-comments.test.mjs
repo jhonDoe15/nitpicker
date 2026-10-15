@@ -8,7 +8,7 @@ import { commentFindings, readCommentFindings } from './java-comments.mjs';
 const TODO_MESSAGE = [
   'A TODO or FIXME needs an issue reference: write "TODO(#123): ..." or "TODO PROJ-123: ...",',
   'or do the work now.',
-  'If this is intended, add an exception for comments/TodoWithoutIssue in nitpicker.config.json.',
+  'If it is right here, add an exception for comments/TodoWithoutIssue in nitpicker.config.json.',
 ].join(' ');
 const roots = [];
 afterEach(() => {
