@@ -17,7 +17,10 @@ function reducerOf(call) {
 export const rule = {
   meta: {
     type: 'problem',
-    docs: { description: 'Do not spread the accumulator inside reduce' },
+    docs: {
+      description: 'Do not spread the accumulator inside reduce',
+      requiresTypeChecking: true,
+    },
     schema: [],
     messages: {
       spread: [
