@@ -311,6 +311,8 @@ describe('spec/findings.schema.json', () => {
       { ...valid, location: { line: 1, column: 1.5 } },
       { ...valid, classification: 'descriptive', metric: { name: 'm', value: Infinity } },
       { ...valid, metric: { name: 'm', value: 1 } },
+      { ...valid, toolNotRun: true },
+      { ...valid, classification: 'descriptive', toolNotRun: false },
     ];
 
     for (const finding of malformed) {
@@ -354,6 +356,21 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [finding] })).toEqual([]);
     expect(() => parseFinding(empty)).toThrow(TypeError);
     expect(validate({ findings: [empty] })).not.toEqual([]);
+  });
+
+  it('accepts a tool-not-run notice on a descriptive finding', () => {
+    const finding = {
+      tool: 'javac',
+      rule: 'lint-not-run',
+      path: '.',
+      identity: 'lint-not-run',
+      message: 'No javac lint report.',
+      classification: 'descriptive',
+      toolNotRun: true,
+    };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
   });
 
   it('is exercised by a validator that covers every keyword the schema uses', () => {
