@@ -40,7 +40,6 @@
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
     "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism languages/java/adapters/java-e2e/java-preset.e2e.test.mjs languages/java/adapters/spring/java-spring.e2e.test.mjs languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs languages/java/adapters/red-base/red-base.e2e.test.mjs",
-    "test:typescript": "NITPICKER_TYPESCRIPT_E2E=1 vitest run --config vitest.config.mts core/diff/tests/policy/base-red/ts-red-base.test.mjs",
     "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/python/adapters/e2e languages/python/rules/nitpicker-rules.e2e.test.mjs languages/python/rules/rule-cases.e2e.test.mjs",
     "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/java/adapters/kotlin-metrics.e2e.test.mjs languages/java/adapters/kotlin-e2e languages/java/adapters/red-base/red-base.e2e.test.mjs"
   },
