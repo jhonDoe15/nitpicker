@@ -535,7 +535,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           message:
             'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function.',
           classification: 'enforceable',
-          location: { line: 1 },
+          location: { line: 1, endLine: 8 },
           ratchet: {
             key: 'function:pick:crap',
             value: 20,

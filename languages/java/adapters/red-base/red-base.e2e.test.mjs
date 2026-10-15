@@ -171,7 +171,12 @@ describeRedBase({
     return root;
   },
   expected: {
-    legacy: 'detekt UnusedPrivateProperty Legacy.kt',
-    violation: [],
+    legacy: 'detekt detekt.style.UnusedPrivateProperty Legacy.kt',
+    violation: [
+      'jacoco changed-branch-coverage Bad.kt',
+      'ktlint ktlint.standard:function-signature Bad.kt',
+      'ktlint ktlint.standard:function-signature Bad.kt',
+      'ktlint ktlint.standard:function-signature Bad.kt',
+    ],
   },
 });
