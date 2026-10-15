@@ -92,20 +92,37 @@ describe('missing-enable', () => {
   });
 
   it.each([
-    ['org.springframework.cache.annotation.Cacheable', '@Cacheable("p")', 'EnableCaching'],
-    ['org.springframework.cache.annotation.CacheEvict', '@CacheEvict("p")', 'EnableCaching'],
+    [
+      'org.springframework.cache.annotation.Cacheable',
+      '@Cacheable("p")',
+      'Cacheable',
+      'EnableCaching',
+    ],
+    [
+      'org.springframework.cache.annotation.CacheEvict',
+      '@CacheEvict("p")',
+      'CacheEvict',
+      'EnableCaching',
+    ],
     [
       'org.springframework.security.access.prepost.PreAuthorize',
       '@PreAuthorize("hasRole(\'A\')")',
+      'PreAuthorize',
       'EnableMethodSecurity',
     ],
-    ['org.springframework.retry.annotation.Retryable', '@Retryable', 'EnableRetry'],
-  ])('knows %s needs @%s', (type, use, enabler) => {
+    ['org.springframework.retry.annotation.Retryable', '@Retryable', 'Retryable', 'EnableRetry'],
+    ['org.springframework.scheduling.annotation.Async', '@Async', 'Async', 'EnableAsync'],
+  ])('knows %s needs @%s', (type, use, annotation, enabler) => {
     const source = `package demo;\nimport ${type};\nclass S {\n  ${use}\n  void m() {}\n}`;
-    const [problem] = problems({ [`${MAIN}/S.java`]: source });
 
-    expect(problem.message).toContain(`@${enabler}`);
-    expect(problem.line).toBe(4);
+    expect(problems({ [`${MAIN}/S.java`]: source })).toEqual([
+      {
+        path: `${MAIN}/S.java`,
+        line: 4,
+        key: `enable-${enabler.slice('Enable'.length).toLowerCase()}`,
+        message: `@${annotation} does nothing: no class has @${enabler}. Add @${enabler} to one @Configuration class.`,
+      },
+    ]);
   });
 
   it('ignores annotations of other libraries, comments, strings and test sources', () => {

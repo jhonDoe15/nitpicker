@@ -116,11 +116,11 @@ export function readSpringConfigFindings(projectRoot, { sourceRoots = [], resour
     ),
     ...(documents.length === 0
       ? []
-      : documentFindings(projectRoot, sourceRoots, documents, occurrences)),
+      : documentFindings({ projectRoot, sourceRoots, documents, occurrences })),
   ];
 }
 
-function documentFindings(projectRoot, sourceRoots, documents, occurrences) {
+function documentFindings({ projectRoot, sourceRoots, documents, occurrences }) {
   return [
     ...(usesJpa(projectRoot, sourceRoots) ? openInViewFindings(documents, occurrences) : []),
     ...ENTRY_RULES.flatMap((rule) => entryFindings(documents, rule, occurrences)),
