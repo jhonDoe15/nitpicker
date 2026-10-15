@@ -133,8 +133,8 @@ line) is a finding.
   checked by the schema in `adapters/`.
 - Every parameter and result is typed readonly, callbacks included: `@param {readonly Invoice[]}`,
   `@returns {readonly Total[]}`, `@property`s marked `readonly`. A non-readonly type is a
-  `prefer-immutable-types` finding. Annotate a local array or object too:
-  `/** @type {readonly Status[]} */ const statuses = [...new Set(xs.map(statusOf))];`.
+  `prefer-immutable-types` finding, and so is a mutable module-level value. A local inside a
+  function needs no annotation.
 - A callback that returns an object literal can't carry a type, so make it a module-level function
   with `@returns {Total}` and pass it: `statuses.map((status) => totalFor(xs, status))`. A reducer is
   the same: `xs.reduce(addInvoice, none)`, with `addInvoice` taking and returning the readonly type.
