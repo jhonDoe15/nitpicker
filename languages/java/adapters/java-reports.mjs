@@ -1,3 +1,4 @@
+import { withPmdAdvice } from '../guards/advice/pmd-advice.mjs';
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readCouplingFindings } from './java-coupling.mjs';
@@ -119,7 +120,7 @@ function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   function sarif(file, tool, identityKey) {
     const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
-    findings.push(...ingestSarif(normalized, { tool }).findings);
+    findings.push(...ingestSarif(normalized, { tool }).findings.map(withPmdAdvice));
   }
   sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
   sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));

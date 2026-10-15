@@ -100,4 +100,30 @@ describe('readLintFindings', () => {
     expect(readLintFindings(path.join(root, 'build/nitpicker'), { projectRoot: root })).toEqual([]);
     expect(readLintFindings(path.join(root, 'nothing'), { projectRoot: root })).toEqual([]);
   });
+
+  it('turns a failed lint compile into one descriptive notice instead of a tool error', () => {
+    const root = project([]);
+    const reports = path.join(root, 'nothing');
+    mkdirSync(reports);
+    writeFileSync(
+      path.join(reports, 'javac-lint-failed.txt'),
+      'Picked up JAVA_TOOL_OPTIONS: -Dx=y\nsrc/main/java/demo/A.java:3: error: cannot find symbol\n1 error\n',
+    );
+
+    const findings = readLintFindings(reports, { projectRoot: root });
+
+    expect(findings).toEqual([
+      {
+        tool: 'javac',
+        rule: 'lint-not-run',
+        path: '.',
+        identity: 'lint-not-run',
+        classification: 'descriptive',
+        message:
+          'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
+          'so raw types, unchecked operations, deprecated calls and redundant casts were not checked.',
+      },
+    ]);
+    expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
 });

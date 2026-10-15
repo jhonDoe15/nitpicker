@@ -141,6 +141,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
         'google-java-format format SwallowingTest.java',
         'pmd AvoidCatchingGenericException SwallowingTest.java',
         'pmd EmptyCatchBlock SwallowingTest.java',
+        'pmd TryCatchInTest SwallowingTest.java',
         'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       ]);
     },

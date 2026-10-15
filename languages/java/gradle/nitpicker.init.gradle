@@ -18,8 +18,6 @@
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
-//   build/nitpicker/javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, pmd-guards-main.xml,
-//                                    pmd-test-honesty.xml  guard reports (docs/internals.md, "Guard reports")
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
@@ -65,39 +63,30 @@ def initScriptDir = buildscript.sourceFile.parentFile
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
 
-def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
-    def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
-    def excludes = testDirectories.collect { directory ->
-        "  <exclude-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</exclude-pattern>"
-    }
-    (['<?xml version="1.0" encoding="UTF-8"?>',
-      '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-      '  <description>Nitpicker\'s Spring rules on main sources only.</description>']
-        + excludes
-        + ["  <rule ref=\"${escape(springRuleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
-}
-
-def scopedRuleset = { String name, File ruleset, Collection<File> directories, boolean onlyThere ->
+def scopedRuleset = { String name, File ruleset, Collection<File> directories, boolean onlyThere, Collection<String> skipped ->
     def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
     def kind = onlyThere ? 'include' : 'exclude'
-    def patterns = directories.collect { directory ->
+    def patterns = (onlyThere ? ['  <exclude-pattern>.*</exclude-pattern>'] : []) + directories.collect { directory ->
         "  <${kind}-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</${kind}-pattern>"
     }
+    def reference = skipped.isEmpty() ? ["  <rule ref=\"${escape(ruleset.absolutePath)}\"/>"]
+        : ["  <rule ref=\"${escape(ruleset.absolutePath)}\">"] + skipped.collect { "    <exclude name=\"${it}\"/>" } + ['  </rule>']
     (['<?xml version="1.0" encoding="UTF-8"?>',
       "<ruleset name=\"${name}\" xmlns=\"http://pmd.sourceforge.net/ruleset/2.0.0\">",
       "  <description>${name}</description>"]
         + patterns
-        + ["  <rule ref=\"${escape(ruleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
+        + reference + ['</ruleset>', '']).join('\n')
 }
 
 allprojects {
     plugins.withId('java') {
         project.ext.nitpickerPinned = pinned
+        project.ext.nitpickerKotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
         def reportDir = layout.buildDirectory.dir('nitpicker')
-        def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def kotlinPreset = project.ext.nitpickerKotlinPreset
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -194,6 +183,12 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
+        project.ext.nitpickerAnalyzedClassDirs = analyzedClassDirs
+        def javaRelease = {
+            def compile = tasks.named('compileJava').get()
+            compile.options.release.orNull ?: (JavaVersion.toVersion(compile.targetCompatibility).majorVersion as int)
+        }
+        def patternMatchingRules = ['InstanceofThenCast', 'CollectorsToList']
         // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
@@ -223,16 +218,19 @@ allprojects {
                     + sourceSets.test.output.classesDirs.files).findAll { it.exists() }.unique()
                     .collect { it.absolutePath }.join('\n')
                 def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
-                springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSources.files)
+                springMainRuleset.text = scopedRuleset('nitpicker-spring-main', new File(initScriptDir, 'spring-ruleset.xml'),
+                    testSources.files, false, [])
                 def guardRulesets = []
                 if (nitpickerRulesets) {
                     def guardsMain = reportDir.get().file('pmd-guards-main.xml').asFile
-                    guardsMain.text = scopedRuleset('nitpicker-guards-main', new File(initScriptDir, 'rules/guards-ruleset.xml'), testSources.files, false)
+                    guardsMain.text = scopedRuleset('nitpicker-guards-main', new File(initScriptDir, 'rules/guards-ruleset.xml'),
+                        testSources.files, false, javaRelease() < 16 ? patternMatchingRules : [])
                     guardRulesets << guardsMain.absolutePath
                     def existingTests = testSources.files.findAll { it.exists() }
                     if (!existingTests.isEmpty()) {
                         def honesty = reportDir.get().file('pmd-test-honesty.xml').asFile
-                        honesty.text = scopedRuleset('nitpicker-test-honesty', new File(initScriptDir, 'rules/test-honesty-ruleset.xml'), existingTests, true)
+                        honesty.text = scopedRuleset('nitpicker-test-honesty', new File(initScriptDir, 'rules/test-honesty-ruleset.xml'),
+                            existingTests, true, [])
                         guardRulesets << honesty.absolutePath
                     }
                 }
@@ -462,7 +460,7 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
-        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle', 'permits-task.gradle'].each {
             project.apply from: new File(initScriptDir, "tasks/${it}")
         }
         // --- end coupling ---

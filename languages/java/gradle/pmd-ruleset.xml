@@ -35,25 +35,33 @@
     <exclude name="UseConcurrentHashMap"/>
   </rule>
   <rule ref="category/java/multithreading.xml/AvoidSynchronizedAtMethodLevel"
-        message="Use a ReentrantLock, an atomic or a concurrent collection instead of a synchronized method. If it is right here, add an exception for pmd/AvoidSynchronizedAtMethodLevel in nitpicker.config.json."/>
+        message="Use a ReentrantLock, an atomic or a concurrent collection instead of a synchronized method."/>
   <rule ref="category/java/security.xml"/>
   <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
   <rule name="NonFinalStaticField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Make this static field final, or keep the state in an instance. Mutable static state is shared by every caller and every test. If it is right here, add an exception for pmd/NonFinalStaticField in nitpicker.config.json.">
+        message="Make this static field final, or keep the state in an instance. Mutable static state is shared by every caller and every test.">
     <description>A non-final static field is global mutable state.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FieldDeclaration[pmd-java:modifiers() = 'static'][not(pmd-java:modifiers() = 'final')]
   [not(ModifierList/Annotation[@SimpleName = ('TempDir', 'Container', 'RegisterExtension', 'ClassRule')])]
+  [not(pmd-java:typeIs('org.testcontainers.lifecycle.Startable'))]
+  [let $name := VariableDeclarator/VariableId/@Name return
+    not(ancestor::ClassBody[1]/MethodDeclaration[ModifierList/Annotation[@SimpleName = ('BeforeAll', 'BeforeClass')]]
+      //AssignmentExpression/*[1][self::VariableAccess or self::FieldAccess][@Name = $name])]
 ]]></value></property></properties>
   </rule>
   <rule name="MutableStaticCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Do not mutate a static collection or expose a mutable one. Build it once as an immutable List.of, Map.of or Map.copyOf, or keep the state in an instance. If it is right here, add an exception for pmd/MutableStaticCollection in nitpicker.config.json.">
+        message="Do not mutate a static collection or expose a mutable one. Build it once as an immutable List.of, Map.of or Map.copyOf, or keep the state in an instance.">
     <description>A static final collection that is public or changed after class loading is global mutable state.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
   [VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+  [not(pmd-java:modifiers() = 'private' and VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+      or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArrayList') or pmd-java:typeIs('java.util.concurrent.CopyOnWriteArraySet')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedQueue') or pmd-java:typeIs('java.util.concurrent.ConcurrentLinkedDeque')
+      or pmd-java:typeIs('java.util.concurrent.ConcurrentSkipListSet')])]
   [let $name := VariableDeclarator/VariableId/@Name return
     pmd-java:modifiers() = 'public'
     or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -103,29 +103,8 @@ class GreeterTest {
 `;
 
 // Tested, but not at the boundary: the `>` to `>=` mutant of clamp survives.
-const CALC = `package demo;
-
-public final class Calc {
-  public int clamp(int value) {
-    return value > 10 ? 10 : value;
-  }
-}
-`;
-
-const CALC_TEST = `package demo;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import org.junit.jupiter.api.Test;
-
-class CalcTest {
-  @Test
-  void clampsAboveTen() {
-    assertEquals(10, new Calc().clamp(20));
-    assertEquals(5, new Calc().clamp(5));
-  }
-}
-`;
+const survivorSource = (file) =>
+  readFileSync(path.resolve(import.meta.dirname, 'fixtures/survivor', file), 'utf8');
 
 // Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter).
 const BAD = `package demo;
@@ -336,7 +315,10 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     branchWith('architecture', { 'Stamp.java': STAMP });
     branchWith('complex', { 'Complex.java': COMPLEX });
     branchWith('clone', { 'Left.java': clonedClass('Left'), 'Right.java': clonedClass('Right') });
-    branchWith('survivor', { 'Calc.java': CALC, 'src/test/java/demo/CalcTest.java': CALC_TEST });
+    branchWith('survivor', {
+      'Calc.java': survivorSource('Calc.java'),
+      'src/test/java/demo/CalcTest.java': survivorSource('CalcTest.java'),
+    });
     branchWith('branch-moved', { 'Branchy.java': BRANCHY_MOVED });
     branchWith('branch-edited', { 'Branchy.java': BRANCHY_EDITED });
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
@@ -430,6 +412,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(summarize(result.newEnforceable)).toEqual([
         'archunit no_classes_use_legacy_date Stamp.java',
         'archunit no_classes_use_legacy_date Stamp.java',
+        ...repeated(4, 'forbiddenapis legacy-date-time Stamp.java'),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(
@@ -480,14 +463,18 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
   );
 
   it(
-    'fails a new clone found by jscpd',
+    'fails a new clone found by jscpd, and the repeated blocks PMD CPD finds inside each copy',
     () => {
       const result = diffOf('clone');
 
       expect(result.failed).toBe(true);
       expect(
         summarize(result.newEnforceable.filter((finding) => finding.tool === 'duplicates')),
-      ).toEqual(['duplicates duplicate-clone Left.java']);
+      ).toEqual([
+        'duplicates duplicate-clone Left.java',
+        'duplicates duplicate-clone Left.java',
+        'duplicates duplicate-clone Right.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
