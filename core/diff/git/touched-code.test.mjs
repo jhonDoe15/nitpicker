@@ -1,15 +1,4 @@
 import { createGitTemplate, copyGitTemplate } from '../fixtures/git-repository.mjs';
-import {
-  expectedOutput69_42,
-  expectedOutput77_42,
-  expectedOutput83_51,
-  expectedOutput98_37,
-  expectedOutput121_37,
-  expectedOutput157_37,
-  expectedOutput163_33,
-  expectedOutput201_37,
-  expectedOutput202_41,
-} from '../fixtures/expected-output/core-diff-touched-code.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -78,11 +67,29 @@ describe('changed line ranges', () => {
   it('reads head-side ranges, new files and spaced names, and skips pure deletions', () => {
     const changed = parseChangedLines(diff);
 
-    expect(changed.get('src/main/a.ts')).toEqual(expectedOutput69_42());
+    expect(changed.get('src/main/a.ts')).toEqual({
+      path: 'src/main/a.ts',
+      added: false,
+      ranges: [
+        [4, 5],
+        [22, 22],
+      ],
+      inserted: [[4, 5]],
+    });
     expect(changed.get('src/main/a.ts').inserted).toEqual([[4, 5]]);
-    expect(changed.get('src/main/b.ts')).toEqual(expectedOutput77_42());
+    expect(changed.get('src/main/b.ts')).toEqual({
+      path: 'src/main/b.ts',
+      added: true,
+      ranges: [[1, 4]],
+      inserted: [[1, 4]],
+    });
     expect(changed.has('src/main/gone.ts')).toBe(false);
-    expect(changed.get('src/main/with space.ts')).toEqual(expectedOutput83_51());
+    expect(changed.get('src/main/with space.ts')).toEqual({
+      path: 'src/main/with space.ts',
+      added: false,
+      ranges: [[1, 1]],
+      inserted: [],
+    });
   });
 
   it('counts only the lines beyond the replaced ones as inserted', () => {
@@ -97,7 +104,16 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual(expectedOutput98_37());
+    expect(changed.get('src/a.ts')).toEqual({
+      path: 'src/a.ts',
+      added: false,
+      ranges: [
+        [5, 8],
+        [22, 23],
+        [33, 33],
+      ],
+      inserted: [[7, 8]],
+    });
   });
 
   it('treats an added line that resembles a replaced line as edited, wherever it sits', () => {
@@ -113,7 +129,12 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual(expectedOutput121_37());
+    expect(changed.get('src/a.ts')).toEqual({
+      path: 'src/a.ts',
+      added: false,
+      ranges: [[43, 44]],
+      inserted: [[43, 43]],
+    });
   });
 
   it('pairs an edited line with the line it replaced in another hunk of the file', () => {
@@ -149,13 +170,22 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual(expectedOutput157_37());
+    expect(changed.get('src/a.ts')).toEqual({
+      path: 'src/a.ts',
+      added: false,
+      ranges: [[7, 7]],
+      inserted: [[7, 7]],
+    });
   });
 
   it('makes paths relative to the project inside the repository', () => {
     const changed = parseChangedLines(diff, 'src');
 
-    expect([...new Set([...changed.keys()])].sort()).toEqual(expectedOutput163_33());
+    expect([...new Set([...changed.keys()])].sort()).toEqual([
+      'main/a.ts',
+      'main/b.ts',
+      'main/with space.ts',
+    ]);
   });
 
   it('reads real git output, including a content-preserving rename', () => {
@@ -194,8 +224,18 @@ describe('changed line ranges', () => {
       projectRelativePath: '.',
     });
 
-    expect(changed.get('src/a.ts')).toEqual(expectedOutput201_37());
-    expect(changed.get('src/fresh.ts')).toEqual(expectedOutput202_41());
+    expect(changed.get('src/a.ts')).toEqual({
+      path: 'src/a.ts',
+      added: false,
+      ranges: [[6, 6]],
+      inserted: [],
+    });
+    expect(changed.get('src/fresh.ts')).toEqual({
+      path: 'src/fresh.ts',
+      added: true,
+      ranges: [[1, 1]],
+      inserted: [[1, 1]],
+    });
     expect(changed.has('src/renamed.ts')).toBe(false);
     expect(changed.has('src/moved.ts')).toBe(false);
   });

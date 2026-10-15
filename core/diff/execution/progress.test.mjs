@@ -1,4 +1,3 @@
-import { expectedOutput107_56 } from '../fixtures/expected-output/core-diff-progress.mjs';
 import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -105,7 +104,10 @@ describe('progress on a descriptor', () => {
   });
 
   it('reports a descriptor that is not open instead of throwing', () => {
-    expect(writeToDescriptor('line\n', 2_147_483_646)).toEqual(expectedOutput107_56());
+    expect(writeToDescriptor('line\n', 2_147_483_646)).toEqual({
+      written: false,
+      error: expect.any(Error),
+    });
   });
 });
 
