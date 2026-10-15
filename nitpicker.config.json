@@ -40,6 +40,11 @@
   "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
   "exceptions": [
     {
+      "rule": "nitpicker/no-io-in-loop",
+      "paths": ["languages/java/adapters/comments/java-comments.mjs"],
+      "reason": "The comment scan reads each Java source file exactly once; the files are distinct, so there is no batched read to use."
+    },
+    {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."

@@ -229,8 +229,16 @@ allprojects {
                     guardsMain.text = scopedRuleset('nitpicker-guards-main', new File(initScriptDir, 'rules/guards-ruleset.xml'),
                         testSources.files, false, javaRelease() < 16 ? patternMatchingRules : [])
                     guardRulesets << guardsMain.absolutePath
+                    def smellsMain = reportDir.get().file('pmd-code-smells-main.xml').asFile
+                    smellsMain.text = scopedRuleset('nitpicker-code-smells-main', new File(initScriptDir, 'code-smells-ruleset.xml'),
+                        testSources.files, false, [])
+                    guardRulesets << smellsMain.absolutePath
                     def existingTests = testSources.files.findAll { it.exists() }
                     if (!existingTests.isEmpty()) {
+                        def smellsTest = reportDir.get().file('pmd-code-smells-test.xml').asFile
+                        smellsTest.text = scopedRuleset('nitpicker-code-smells-test', new File(initScriptDir, 'code-smells-test-ruleset.xml'),
+                            existingTests, true, [])
+                        guardRulesets << smellsTest.absolutePath
                         def honesty = reportDir.get().file('pmd-test-honesty.xml').asFile
                         honesty.text = scopedRuleset('nitpicker-test-honesty', new File(initScriptDir, 'rules/test-honesty-ruleset.xml'),
                             existingTests, true, [])

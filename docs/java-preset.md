@@ -144,7 +144,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   the config.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
-  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
+  `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7), `spring` (configuration files, below) and `comments` (TODOs and commented-out code, in the code smell rules section). The analyzer declares them as
   `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
   Its version is the pinned tool versions from the init script, its configuration hash covers the
   init script and the Java adapter files, so a tool bump invalidates the base cache.
@@ -584,6 +584,36 @@ A Checkstyle rule prints as its full check class, for example
   (`SecureRandom` is right for tokens, but a plain `Random` for sampling is legitimate and the
   tool cannot tell), and a path join that is checked after the fact in another method.
 
+## Code smell rules
+
+[`languages/java/gradle/code-smells-ruleset.xml`](../languages/java/gradle/code-smells-ruleset.xml) holds nitpicker's
+own PMD rules for patterns coding agents repeat. They run on main sources (tests keep the PMD
+`AvoidDuplicateLiterals`, in `code-smells-test-ruleset.xml`), with or without Spring. Each message names
+the allowed form and ends with the exception to add when the code is right: `{ "rule": "pmd/<rule>",
+"paths": [...], "reason": "..." }`.
+
+| Rule                            | Reports                                                                                                                                                                                                                                                                                                                                              | Allowed form                                                                    |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `RepeatedStringLiteral`         | a string literal of 3+ characters used three times or more in a file, from the third use (annotation values are skipped)                                                                                                                                                                                                                             | one `private static final String` constant                                      |
+| `UnusedFormalParameter`         | an unused parameter of any method or constructor, not only private ones (overrides and names starting `ignored` or `unused` are skipped); test sources keep PMD's private-method check                                                                                                                                                               | remove it, or use it                                                            |
+| `GenericTypeName`               | a class, interface, enum or record named `*Utils`, `*Util`, `*Utilities`, `*Helper`, `*Manager`, `Common` or `Misc`                                                                                                                                                                                                                                  | a name for the job (`PriceRounder`)                                             |
+| `GenericPackageName`            | a package with a segment `utils`, `helpers`, `common`, `misc` or `managers`                                                                                                                                                                                                                                                                          | a package named for what it holds; pure shared logic goes in a `shared` package |
+| `HardcodedSecret`               | a string of 6+ characters assigned to a variable or field named `*password`, `*secret`, `*token`, `*credentials`, `*apiKey`, `*privateKey` and similar (placeholders, environment variable names, URLs and key names such as `access_token` are skipped)                                                                                             | read it from the environment or a secrets manager                               |
+| `CredentialLiteral`             | a string shaped like an AWS access key, a GitHub or Slack token, an `sk-` key or a private key header                                                                                                                                                                                                                                                | the same                                                                        |
+| `SecretInLog`                   | a secret-named variable, field or getter (`getPassword()`) passed to a logger or `System.out`/`System.err` call                                                                                                                                                                                                                                      | log that it is set, or a masked tail                                            |
+| `CatchOnlyLogsOrReturnsDefault` | a `catch` whose statements are only log calls, `printStackTrace`, `continue`/`break`, or a default (`return null`, a literal, `Optional.empty()`, an empty collection); `InterruptedException` catches are skipped, since they need the interrupt flag restored instead                                                                              | rethrow with the cause, or return a failure result that carries the exception   |
+| `BooleanFlagParameter`          | a `boolean` or `Boolean` parameter of a public method or constructor of a public type (setters, overrides and annotated parameters such as `@RequestParam` are skipped)                                                                                                                                                                              | two methods named for each behavior, an enum, or a record                       |
+| `IoCallInLoop`                  | a repository, JDBC, `EntityManager`, HTTP client or `Files` call, or a `new FileReader(...)`, inside a `for`, `while` or `do` body or a stream callback (`forEach`, `map`, `filter` and similar); a call in a `try` that returns or breaks on success (a retry) and Spring Data `save`/`delete`, which `SpringDataNoSaveInLoop` reports, are skipped | fetch or write all items at once (`findAllById`, `WHERE id IN (...)`)           |
+
+Receivers are matched by type when the class is on the compile classpath and by name otherwise
+(`*Repository`, `*Dao`, `*Client`, `*Template`, `connection`, `em`, `session`, `gateway`, `api`).
+
+**Comments.** The `comments` tool scans every Java source file, main and test, for two problems:
+`comments/TodoWithoutIssue` (a `TODO`, `FIXME`, `XXX` or `HACK` without `#123`, `PROJ-123` or a
+link on the same line) and `comments/CommentedOutCode` (a comment with statements in it, such as
+`// int total = compute(items);`; a run of `//` lines counts once). Code in a Javadoc `<pre>`
+block, `{@code ...}` or `@example` is documentation. Delete the code, or give the TODO an issue.
+
 ## Spring rules
 
 A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
@@ -654,8 +684,9 @@ assertion style the TypeScript preset does not have, plus design's `AvoidCatchin
 `Throwable`), as the TypeScript and Python presets forbid broad catches. A test with no assertion
 still fails (`UnitTestShouldIncludeAssert`, which also counts MockMvc's `andExpect`), and a class
 named like a test but without test methods fails (`TestClassWithoutTestCases`), except
-`*ArchTest` and `*ArchitectureTest` classes, which hold ArchUnit rules. The guard rules read main
-sources only and the test-honesty rules test sources only (see [Guards](#guards)). The Spring rule
+`*ArchTest` and `*ArchitectureTest` classes, which hold ArchUnit rules. The guard rules and the code
+smell rules read main sources only, and the test-honesty rules and
+`code-smells-test-ruleset.xml` test sources only (see [Guards](#guards)). The Spring rule
 set reads main sources only: the init script wraps it in `build/nitpicker/pmd-spring-main.xml` with
 an exclude pattern per test source directory, since field injection and package-private test
 methods are the norm in tests. A PMD rule that flags legitimate test code, such as `SystemPrintln`

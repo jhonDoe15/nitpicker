@@ -8,6 +8,7 @@ import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
+import { readCommentFindings } from './comments/java-comments.mjs';
 import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
   methodText,
@@ -74,6 +75,7 @@ export function readJavaFindings(
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...guardFindings(context),
+      ...readCommentFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
     ],
   };
