@@ -272,9 +272,9 @@ format check (ktlint or ktfmt, whichever the project uses, and none for a projec
 neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
 JaCoCo coverage and changed-branch coverage for both (a changed Kotlin branch that no test takes
 fails; a line the compiler generated branches for is ignored), and the structure limits, CRAP,
-duplicates and package stability checks on Kotlin code. PIT also mutates the Kotlin classes, but
-their mutants are only reported, because plain PIT on Kotlin bytecode reports mostly
-compiler-generated mutants (and a Kotlin module pays for PIT's run all the same). The project's
+duplicates and package stability checks on Kotlin code. PIT also mutates the Kotlin classes and
+their new surviving or uncovered mutants fail like Java ones, after a filter that leaves out the
+mutants of code the Kotlin compiler generated (the PSI facts program runs next to it). The project's
 detekt config is found in the usual places or set with `"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
 requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).

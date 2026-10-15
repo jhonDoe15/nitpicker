@@ -41,9 +41,9 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
 
     expect(counts(options)).toEqual({
       Survived: 15,
-      Killed: 150,
+      Killed: 145,
       NoCoverage: 1,
-      GeneratedCode: 74,
+      GeneratedCode: 79,
     });
     expect(leftovers(options)).toEqual([
       [

@@ -487,14 +487,14 @@ describe('nitpicker with "preset": "kotlin"', () => {
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
   });
 
-  it('reports a surviving Kotlin mutant without failing', () => {
+  it('fails a surviving mutant in a Kotlin class like one in a Java class', () => {
     const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
     write(root, { 'mutations.xml': pitReport('demo.KKt', 'K.kt') });
     commit(root, 'a mutant survives');
 
     const result = run(root);
 
-    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    expect(result.exitCode, result.output.out + result.output.err).toBe(1);
     expect(mutantsOf(result)).toEqual([
       {
         tool: 'pit',
@@ -503,11 +503,26 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'demo.KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
           'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
-        classification: 'descriptive',
+        classification: 'enforceable',
         symbol: 'demo.KKt#fee(I)I',
         location: { line: 3 },
       },
     ]);
+  });
+
+  it('leaves out the mutants of code the Kotlin compiler generated', () => {
+    const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
+    const generated = pitReport('demo.KKt', 'K.kt').replace(
+      'Replaced integer multiplication with division',
+      'removed call to kotlin/ResultKt::throwOnFailure',
+    );
+    write(root, { 'mutations.xml': generated });
+    commit(root, 'a generated mutant survives');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    expect(mutantsOf(result)).toEqual([]);
   });
 
   it('still fails a surviving mutant in a Java class of a Kotlin project', () => {

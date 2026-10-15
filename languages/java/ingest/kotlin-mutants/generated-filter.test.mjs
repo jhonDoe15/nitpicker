@@ -65,6 +65,7 @@ describe('rules that need no source facts', () => {
       removed('kotlin/jvm/internal/Intrinsics::checkNotNullExpressionValue'),
     ],
     ['null-check-intrinsic', removed('kotlin/jvm/internal/Intrinsics::checkNotNull')],
+    ['inline-marker', removed('kotlin/jvm/internal/InlineMarker::mark')],
     ['when-mappings', { className: 'demo.DemoKt$WhenMappings', ...returns }],
     [
       'synthetic-accessor',
@@ -79,6 +80,7 @@ describe('rules that need no source facts', () => {
 
   it.each([
     ['a call of written code', removed('java/io/StringReader::close')],
+    ['a call that spreads an argument', removed('kotlin/jvm/internal/SpreadBuilder::addSpread')],
     ['a written call named like the coroutine one', removed('kotlin/Result::getOrThrow')],
     ['a composable the project calls', removed('demo/ScreenKt::Screen')],
     [
@@ -325,6 +327,16 @@ describe('value classes, inline functions and default arguments', () => {
       { method: 'twice', line: 11 },
     ],
     [
+      'the out-of-line copy of a suspend inline function',
+      'inline-function-body',
+      { method: 'twice$$forInline', line: 11 },
+    ],
+    [
+      'a mutant of code inlined from another file, on a line past the end of this one',
+      'inlined-beyond-file',
+      { method: 'caller', line: 55 },
+    ],
+    [
       'the out-of-line body of an inline function with defaults',
       'inline-function-body',
       { method: 'twice$default', line: 10 },
@@ -345,6 +357,7 @@ describe('value classes, inline functions and default arguments', () => {
     ['an ordinary function on the lines of an inline one', { method: 'plain', line: 15 }],
     ['an inline function of another class', { className: 'demo.Other', method: 'twice', line: 11 }],
     ['a call of the inline function, inlined into its caller', { method: 'caller', line: 11 }],
+    ['the last line of the file', { method: 'caller', line: 40 }],
   ])('keeps %s', (name, overrides) => {
     expect(at(overrides)).toBeUndefined();
   });

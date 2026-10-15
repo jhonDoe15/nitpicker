@@ -69,6 +69,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   a function. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do.
-- Every branch you add needs a test: changed-branch coverage runs on your change.
+- Every branch you add needs a test: changed-branch coverage runs on your change. A surviving or uncovered
+  mutant (`mutant-survived`, `mutant-nocoverage`) of your code fails as well: pin the boundary or the result
+  with an assertion, or test the function that nothing reaches. The mutants of code the compiler generates
+  (coroutine state machines, data class members, `inline` copies) are left out already.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.

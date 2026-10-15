@@ -7,7 +7,7 @@
 // src/main/kotlin/demo/K.kt (rule `detekt.style.MagicNumber`, or the part before ` :: ` in the line),
 // each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
 // `kotlin-format.txt` a file ktfmt would change, a file `kotlin-metrics.json` is the Kotlin metrics
-// report as it is, a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
+// report as it is (`kotlin-mutation-facts.json` the same, an empty one without it), a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
 // report. The arguments are kept in build/nitpicker/gradle-args.json.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -84,6 +84,12 @@ if (kotlin) {
   if (existsSync('kotlin-metrics.json')) {
     writeFileSync('build/nitpicker/kotlin-metrics.json', readFileSync('kotlin-metrics.json'));
   }
+  writeFileSync(
+    'build/nitpicker/kotlin-mutation-facts.json',
+    existsSync('kotlin-mutation-facts.json')
+      ? readFileSync('kotlin-mutation-facts.json')
+      : '{"files":[]}',
+  );
 }
 writeFileSync(
   'build/nitpicker/pmd.sarif',
