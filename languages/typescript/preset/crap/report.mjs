@@ -65,10 +65,10 @@ process.stdout.write(
   formatOutput(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2)) + '\n',
 );
 for (const entry of functions.slice(0, 20)) {
+  const crap = entry.crap === null ? 'N/A' : entry.crap.toFixed(2);
+  const location = `${entry.source}:${entry.lines.start}`;
   process.stdout.write(
-    formatOutput(
-      `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
-    ) + '\n',
+    formatOutput(`${crap}\tCC ${entry.complexity}\t${location}\t${entry.function}`) + '\n',
   );
 }
 
