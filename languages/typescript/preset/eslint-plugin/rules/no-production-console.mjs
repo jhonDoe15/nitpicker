@@ -35,7 +35,8 @@ export const rule = {
     },
     schema: compositionRootOptionsSchema,
     messages: {
-      consoleCall: 'Use the application logger instead of console.{{method}}().',
+      consoleCall:
+        'Use the application logger instead of console.{{method}}(). If this module prints the program output, add an exception for this rule in nitpicker.config.json.',
       streamWrite:
         'Use the application logger instead of process.{{stream}}.write(). Program output is written in the composition root. If this module prints the program output, add an exception for this rule in nitpicker.config.json.',
     },

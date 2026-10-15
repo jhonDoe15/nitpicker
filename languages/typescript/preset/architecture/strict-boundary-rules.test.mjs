@@ -36,7 +36,7 @@ const violations = [
     'domain-does-not-import-module-state',
     'Receive the state as a parameter',
   ],
-  ['domain-imports-id-library', 'domain-does-not-import-clock-or-id-libraries', 'as a parameter'],
+  ['domain-imports-id-library', 'domain-does-not-import-id-libraries', 'as a parameter'],
   [
     'domain-reaches-io-through-shared',
     'domain-does-not-reach-io-through-shared',

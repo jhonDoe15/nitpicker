@@ -1,4 +1,9 @@
 import { ancestorsOf } from './ancestry.mjs';
+import { importedCalleeName, moduleBindings } from './test-code-analysis.mjs';
+
+const SYNC_MODULES = new Set(
+  ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
+);
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',
   'DoWhileStatement',
@@ -78,7 +83,11 @@ function calleeText(callee) {
   return path.every((segment) => segment !== undefined) ? path.join('.') : undefined;
 }
 
-function importTimeEffect(node) {
+function isNodeSyncCall(node, syncBindings) {
+  return importedCalleeName(node.callee, syncBindings)?.endsWith('Sync') === true;
+}
+
+function importTimeEffect(node, syncBindings) {
   if (node.type === 'NewExpression') {
     const name = calleeText(node.callee);
     const isClock = name === 'Date' && node.arguments.length === 0;
@@ -90,7 +99,7 @@ function importTimeEffect(node) {
   const isEffect =
     (EFFECT_CALLEES.has(name) && (text === name || GLOBAL_OBJECTS.has(root))) ||
     EFFECT_MEMBER_CALLS.has(text) ||
-    (name !== undefined && name.endsWith('Sync')) ||
+    isNodeSyncCall(node, syncBindings) ||
     text?.startsWith('process.');
   return isEffect ? `${text}()` : undefined;
 }
@@ -105,8 +114,8 @@ function isCommonJsExport(expression) {
   );
 }
 
-function importTimeEffectAtLoad(node) {
-  const call = importTimeEffect(node);
+function importTimeEffectAtLoad(node, syncBindings) {
+  const call = importTimeEffect(node, syncBindings);
   return call !== undefined &&
     executesAtModuleLoad(node) &&
     ancestorsOf(node).some(isModuleLevelDeclaration)
@@ -139,6 +148,7 @@ export const rule = {
   },
   create(context) {
     const commonJsExports = context.options[0]?.commonJsExports === true;
+    const syncBindings = moduleBindings(context.sourceCode.ast, SYNC_MODULES);
     return {
       ImportDeclaration(node) {
         if (node.specifiers.length === 0) {
@@ -151,7 +161,7 @@ export const rule = {
         }
       },
       'NewExpression, CallExpression'(node) {
-        const call = importTimeEffectAtLoad(node);
+        const call = importTimeEffectAtLoad(node, syncBindings);
         if (call !== undefined) {
           context.report({ node, messageId: 'importTimeEffect', data: { call } });
         }

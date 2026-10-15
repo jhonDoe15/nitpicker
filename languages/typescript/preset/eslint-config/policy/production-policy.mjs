@@ -4,7 +4,7 @@ import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict-domain.mjs';
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
-const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2];
+const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
 
 const RANDOM_MESSAGE =
   'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.';
@@ -50,8 +50,8 @@ function productionRules({ react }) {
     'no-param-reassign': ['error', { props: false }],
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
-    '@typescript-eslint/naming-convention': namingConvention({ react }),
-    '@typescript-eslint/no-magic-numbers': [
+    'nitpicker/naming-convention': namingConvention({ react }),
+    'nitpicker/no-magic-numbers': [
       'error',
       {
         ignore: MAGIC_NUMBER_ALLOWED,
@@ -67,14 +67,35 @@ function productionRules({ react }) {
   };
 }
 
-const productionGuardRules = {
-  'nitpicker/no-process-access-outside-composition-root': 'error',
-  'nitpicker/no-shell-string-command': 'error',
-  'nitpicker/no-unsafe-path-join': 'error',
-};
+function productionGuardRules({ react }) {
+  return {
+    'nitpicker/no-process-access-outside-composition-root': [
+      'error',
+      { allowImportMetaEnv: react },
+    ],
+    'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/no-unsafe-path-join': 'error',
+  };
+}
 
 function configFileGlobsFor(layout) {
   return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
+}
+
+export function productionLayoutConfigFor(layout, options = {}) {
+  if (options.react === true) {
+    return [];
+  }
+  return [
+    {
+      files: layout.sourceGlobs,
+      ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
+      plugins: { nitpicker: nitpickerRules },
+      rules: {
+        'nitpicker/no-unknown-main-folder': ['error', { sourceRoots: layout.sourceRoots }],
+      },
+    },
+  ];
 }
 
 export function productionPolicyConfigFor(layout, options = {}) {
@@ -89,10 +110,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
       plugins: { '@typescript-eslint': tseslint.plugin, nitpicker: nitpickerRules, regexp },
       rules: {
         ...productionRules({ react: options.react === true }),
-        ...productionGuardRules,
-        ...(options.react === true
-          ? {}
-          : { 'nitpicker/no-unknown-main-folder': ['error', { sourceRoots: layout.sourceRoots }] }),
+        ...productionGuardRules({ react: options.react === true }),
       },
     },
     {

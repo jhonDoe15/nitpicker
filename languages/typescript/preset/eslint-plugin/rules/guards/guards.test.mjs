@@ -31,6 +31,11 @@ tester.run('no-module-level-mutable-state', noModuleLevelMutableState, {
       filename: adapter,
       code: 'const set = new Set(); export function has(x) { return set.has(x); }',
     },
+    { filename: adapter, code: 'export const NAMES = ["a", "b"];' },
+    {
+      filename: adapter,
+      code: 'export function table() { const byId = new Map(); byId.set(1, 2); return byId; }',
+    },
   ],
   invalid: [
     {
@@ -42,6 +47,26 @@ tester.run('no-module-level-mutable-state', noModuleLevelMutableState, {
       filename: adapter,
       code: 'export const counters: Record<string, number> = {}; export function bump(k) { counters[k] = 1; }',
       errors: [{ messageId: 'moduleState', data: { name: 'counters' } }],
+    },
+    {
+      filename: adapter,
+      code: 'const state = { items: [] }; export function add(x) { state.items.push(x); }',
+      errors: [{ messageId: 'moduleState', data: { name: 'state' } }],
+    },
+    {
+      filename: adapter,
+      code: 'const lookup = Object.create(null); export function put(k) { lookup[k] = 1; }',
+      errors: [{ messageId: 'moduleState', data: { name: 'lookup' } }],
+    },
+    {
+      filename: adapter,
+      code: 'const buffer = new Uint8Array(8); export function poke() { buffer.fill(1); }',
+      errors: [{ messageId: 'moduleState', data: { name: 'buffer' } }],
+    },
+    {
+      filename: adapter,
+      code: 'export const registry = new Map();',
+      errors: [{ messageId: 'exportedState', data: { name: 'registry' } }],
     },
     {
       filename: adapter,
@@ -79,6 +104,11 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
     { filename: adapter, code: 'if (import.meta.main) { process.exit(main()); }' },
     { filename: adapter, code: 'export const args = process.argv;' },
     { filename: '/repo/src/other/src/main/composition-root/wire.ts', code: 'process.env.A;' },
+    {
+      filename: adapter,
+      code: 'export const dev = import.meta.env.DEV;',
+      options: [{ allowImportMetaEnv: true }],
+    },
   ],
   invalid: [
     {
@@ -94,6 +124,12 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
     {
       filename: adapter,
       code: 'export const url = import.meta.env.VITE_URL;',
+      errors: [{ messageId: 'envOutsideRoot' }],
+    },
+    {
+      filename: adapter,
+      code: 'export const url = process.env.API_URL;',
+      options: [{ allowImportMetaEnv: true }],
       errors: [{ messageId: 'envOutsideRoot' }],
     },
     {
@@ -127,6 +163,10 @@ tester.run('no-shell-string-command', noShellStringCommand, {
     { code: 'import { spawn } from "node:child_process"; spawn("ls", [dir], { shell: false });' },
     { code: 'const exec = (x) => x; exec(`ls ${dir}`);' },
     { code: 'import { exec } from "other"; exec(`ls ${dir}`);' },
+    { code: 'import { exec } from "node:child_process"; const cmd = "git status"; exec(cmd);' },
+    {
+      code: 'import { exec } from "node:child_process"; import { promisify } from "node:util"; const run = promisify(exec); await run("ls");',
+    },
   ],
   invalid: [
     {
@@ -153,6 +193,18 @@ tester.run('no-shell-string-command', noShellStringCommand, {
       code: 'import { execFileSync } from "node:child_process"; execFileSync(program, [], { shell: "/bin/sh" });',
       errors: [{ messageId: 'shellString' }],
     },
+    {
+      code: 'import { exec } from "node:child_process"; import { promisify } from "node:util"; const run = promisify(exec); await run(`ls ${dir}`);',
+      errors: [{ messageId: 'shellString' }],
+    },
+    {
+      code: 'import * as cp from "node:child_process"; import util from "node:util"; const run = util.promisify(cp.execSync); run(command);',
+      errors: [{ messageId: 'shellString' }],
+    },
+    {
+      code: 'import { exec } from "node:child_process"; let cmd = "ls"; exec(cmd);',
+      errors: [{ messageId: 'shellString' }],
+    },
   ],
 });
 
@@ -165,8 +217,15 @@ tester.run('no-unknown-main-folder', noUnknownMainFolder, {
     { filename: '/repo/src/main/index.ts', code: 'export const a = 1;' },
     { filename: '/repo/src/utils/strings.ts', code: 'export const a = 1;' },
     { filename: '/repo/lib/main/utils/strings.ts', code: 'export const a = 1;' },
+    { filename: '/repo/src/main/server.ts', code: 'export const a = 1;' },
+    { filename: '/repo/src/main/main.tsx', code: 'export const a = 1;' },
   ],
   invalid: [
+    {
+      filename: '/repo/src/main/helpers.ts',
+      code: 'export const a = 1;',
+      errors: [{ messageId: 'looseFile', data: { folder: 'helpers.ts' } }],
+    },
     {
       filename: '/repo/src/main/utils/strings.ts',
       code: 'export const a = 1;',
@@ -201,7 +260,10 @@ tester.run('no-unsafe-path-join', noUnsafePathJoin, {
       code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { const full = path.resolve("/srv", name); if (!full.startsWith("/srv/")) { return undefined; } return readFileSync(full); }',
     },
     {
-      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", name)); if (path.relative("/srv", name)) { return 1; } }',
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(dir) { return readFileSync(path.join(dir, "package.json")); }',
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { const full = path.join("/srv", name); if (path.relative("/srv", full).startsWith("..")) { return undefined; } return readFileSync(full); }',
     },
     {
       code: 'import { readFileSync } from "node:fs"; export function f(name) { return readFileSync(name); }',
@@ -225,6 +287,18 @@ tester.run('no-unsafe-path-join', noUnsafePathJoin, {
     },
     {
       code: 'import { writeFileSync } from "node:fs"; import { join } from "node:path"; export const f = (name) => writeFileSync(join(base, name), "x");',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(name) { return readFileSync(path.join("/srv", name)); if (path.relative("/srv", name)) { return 1; } }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(c) { const file = c.req.param("file"); const full = path.join("/srv", file); return readFileSync(full); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readFileSync } from "node:fs"; import path from "node:path"; export function f(req, other) { const full = path.join("/srv", req.query.x); if (other.startsWith("/srv")) { return 1; } return readFileSync(full); }',
       errors: [{ messageId: 'unsafePath' }],
     },
   ],

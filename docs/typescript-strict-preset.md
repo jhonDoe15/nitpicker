@@ -27,7 +27,9 @@ config file is an exception like any other.
   architecture's folder names. It may not import `adapters/`, Node I/O modules (the pure ones
   `path`, `url`, `util`, `assert`, `buffer`, `events`, `string_decoder`, `punycode`, `querystring`
   and subpaths like `path/posix` and `assert/strict` are fine), network or database clients, the
-  logger, module state, or ID and clock libraries (`uuid`, `nanoid`, `dayjs`, `moment`, `luxon`).
+  logger, module state, or ID and random-data libraries (`uuid`, `nanoid`, `cuid`, `ulid`, `faker`).
+  Date libraries (`dayjs`, `luxon`, `date-fns`) are fine for arithmetic on a given value; reading
+  the clock through them (`dayjs()`, `moment()`, `DateTime.now()`) is reported like `Date.now()`.
   It may not reach Node I/O or a client through a `shared/` module it imports
   (`domain-does-not-reach-io-through-shared`). Time, IDs, and randomness arrive as parameters. A
   dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
@@ -38,17 +40,24 @@ config file is an exception like any other.
   are not allowed.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
   (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
-  reported on every file, with the layout in the message. Put the code in the feature that uses it
-  (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several features need it. A React project's own UI folders are not reported.
+  reported on every file, with the layout in the message, and so is a file directly in `src/main/`
+  other than the composition root and `index.ts` (`src/main/helpers.ts`). Put the code in the
+  feature that uses it (`domain/` for pure logic, `adapters/` for I/O) or in `shared/` when several
+  features need it. A React project's own UI folders are not reported. The rule reports on line 1,
+  so it is not strict: editing a legacy file in `utils/` does not fail, only a new file does.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
   module-level `let`, and no module-level collection or object that the module mutates
   (`nitpicker/no-module-level-mutable-state`: `const cache = new Map()` with `cache.set(...)`,
-  `const state = { count: 0 }` with `state.count++`, a `Set` with `add`, an array with `push`, and
-  `Object.assign` onto it). Create the store in the composition root and pass it in. `domain/` is
+  `const state = { count: 0 }` with `state.count++` or `state.items.push(x)`, a `Set`, `WeakMap`,
+  typed array or `Object.create(null)` that is written to, an array with `push`, and
+  `Object.assign` onto it). An exported `Map`, `Set`, `WeakMap`, `WeakSet`, typed array or
+  `Object.create(null)` is reported where it is declared, since another module can mutate it. Build a lookup table inside a
+  function and return it; create a store in the composition root and pass it in. `domain/` is
   covered by `functional/prefer-immutable-types` instead.
-- The composition root is `src/main/composition-root.ts`, `src/main/main.ts` or
-  `src/main/server.ts` (`.mts`, `.js`, `.mjs` too) or a file under `src/main/composition-root/`.
-  A `server.ts` or `main.ts` in another folder is not a root. The `compositionRootPattern` option
+- The composition root is `src/main/composition-root.ts`, `src/main/main.ts`,
+  `src/main/server.ts`, `src/main.ts`, `src/server.ts` or `src/composition-root.ts` (any
+  TypeScript or JavaScript extension) or a file under `src/main/composition-root/`. A `server.ts`
+  or `main.ts` in another folder is not a root. The `compositionRootPattern` option
   adds roots to this list.
 - `nitpicker/no-managed-resource-construction-outside-composition-roots` reports `new` on names
   that end in `Service`, `Client`, `Pool`, `Cache`, `Store`, `Scheduler`, `Transport`, `Adapter`,
@@ -61,7 +70,8 @@ config file is an exception like any other.
   `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
   schema, and the typed config is passed down. `process.exit` is called only in the composition
   root or a main guard. Entry scripts listed in `layout.entryPoints` and config files
-  (`*.config.*`, `.*rc.*`) are exempt.
+  (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed anywhere:
+  Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`).
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -127,8 +137,10 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary. `nitpicker/preserve-error-cause` checks
-  `Error` and every class whose name ends in `Error` (`new AppError(String(error))` in a `catch` is
-  reported): pass `{ cause: error }` as an option, or the caught value itself as an argument.
+  `Error` and every class whose name ends in `Error`: one thrown in a `catch` is reported unless
+  it passes `{ cause: error }` as an option or the caught value itself as an argument, whether or
+  not it mentions the caught value (`throw new AppError('range')` and
+  `new AppError(String(error))` are both reported).
 - `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
   caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
   result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
@@ -152,14 +164,20 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `{}` or `Record<string, unknown>`, an `unknown` value narrowed inline with `typeof x ===
 'object'` or `'key' in x`, and an overload whose implementation returns `unknown` or `any`. A
   predicate over a union (`(result): result is Ok => result.kind === 'ok'`) is fine, and so is
-  `error instanceof Error` on a caught value.
+  `error instanceof Error` on a caught value, including the checks it narrows: later in the same
+  `&&` chain, inside the `if` or `?:` it guards, or after an earlier
+  `if (!(error instanceof Error))` exit (`error instanceof Error && 'code' in error`).
+  `JSON.parse(JSON.stringify(value))` as a copy is reported: use `structuredClone(value)`.
 
 ## Everywhere
 
 - `nitpicker/no-self-recursion`: no function that calls itself or refers to itself
   (`xs.flatMap(flatten)` inside `flatten`), and no functions of one file that call each other
   (`evens` and `odds`), in all production code (`domain/`, `adapters/`, the composition root and
-  shared code), not in tests. Allowed forms: a retry or poll
+  shared code), not in tests. A reference counts when it is called, constructed or passed to an
+  array method (`map`, `flatMap`, `forEach`, `filter`, `reduce`, `sort` and the like); a
+  component that renders itself in JSX, `setTimeout(poll)` and an event handler that removes
+  itself are not reported. Allowed forms: a retry or poll
   is a `for...of` over attempt numbers with `await` inside the loop; a tree walk (directories, AST,
   JSON) is a `for...of` over a worklist that each step pushes the node's children onto
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
@@ -168,32 +186,45 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
-  left without being awaited (`@typescript-eslint/no-floating-promises`, with `void` not counting as
-  handled outside React projects, where `void handler()` stays allowed). `await Promise.allSettled(...)` with its result dropped hides every rejection, and
+  left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
+  fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
+  do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
-- Identifier casing (`@typescript-eslint/naming-convention`): types and type parameters in
-  PascalCase; functions, variables and parameters in camelCase; constants may be UPPER_CASE; a
-  leading underscore is allowed. PascalCase functions and variables are allowed in a React project.
-  Names a destructuring takes from external data are not checked.
+- Identifier casing (`nitpicker/naming-convention`, which wraps
+  `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
+  variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
+  allowed. A schema constant may be PascalCase when its initializer is a `z`, `v` (valibot) or
+  `yup` call (`const Order = z.object(...)`, then `type Order = z.infer<typeof Order>`), and so may
+  a parameter typed as a component (`ComponentType`, `FC`, `ElementType`) or named `*Component`.
+  PascalCase functions and variables are allowed in a React project. Names a destructuring takes
+  from external data are not checked.
 - Exported production functions declare their return type
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
   (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
-- No magic numbers (`@typescript-eslint/no-magic-numbers`): name the number with a constant
-  (`const SECONDS_PER_DAY = 86400;`). `-1`, `0`, `1` and `2`, default parameter values, array
-  indexes, numeric literal types and object property values are allowed. Tests are exempt.
+- No magic numbers (`nitpicker/no-magic-numbers`, which wraps
+  `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
+  in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
+  `const RETRY_STATUSES = [429, 503] as const;`). `-1`, `0`, `1`, `2`, `10`, `100` and `1000`
+  (so `Math.round(x * 100) / 100`), an HTTP status code passed to `status`, `sendStatus`, `json`,
+  `send`, `redirect`, `code` or `writeHead` (`res.status(404)`, `c.json(body, 201)`), the digits of
+  `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
+  and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
-  and `execSync` take a string literal only, otherwise `execFile(program, [args])`, and `shell:
-true` is reported); no `Math.random` for ids or tokens (use `crypto.randomUUID()` or
-  `crypto.randomInt()`, or take the value as a parameter); no `fs` call on `path.join`/`path.resolve`
-  of a parameter without a containment check in the same function
-  (`nitpicker/no-unsafe-path-join`: `path.resolve(base, name)` then `full.startsWith(base +
-path.sep)`).
+  and `execSync`, also through `promisify(exec)`, take a string literal or a `const` holding one,
+  otherwise `execFile(program, [args])`, and `shell: true` is reported); no `Math.random` for ids
+  or tokens (use `crypto.randomUUID()` or `crypto.randomInt()`, or take the value as a parameter);
+  no `fs` call on a `path.join`/`path.resolve` whose later segment comes from a parameter (also
+  through a `const` alias or a call on it, such as `c.req.param('file')` or `req.query.name`)
+  unless the same function checks containment on the joined variable
+  (`nitpicker/no-unsafe-path-join`: `const full = path.resolve(base, name)`, then
+  `full.startsWith(base + path.sep)` or `path.relative(base, full)`). A parameter as the first
+  segment is the base and is fine (`path.join(dir, 'package.json')`).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -205,7 +236,8 @@ path.sep)`).
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
 - `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
   initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
-  timers, any `...Sync` call such as `readFileSync`, any `process.*` call, `new Date()` with no
+  timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`
+  (a project's own `buildTableSync()` is fine), any `process.*` call, `new Date()` with no
   argument, `new Worker`, `new WebSocket`) and any top-level `await`. Pure initialisers
   (`z.object(...)`, `new RegExp(...)`, `path.dirname(...)`) are fine.
 - `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
@@ -397,7 +429,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
-Outside React, `eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking`.
+`eslint-plugin-regexp` (MIT) supplies `regexp/no-super-linear-backtracking` in every project, React
+or not.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10

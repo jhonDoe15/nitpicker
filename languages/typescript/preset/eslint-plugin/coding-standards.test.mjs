@@ -107,7 +107,6 @@ tester.run('do not replace internal collaborators', noInternalMocks, {
 tester.run('preserve wrapped error causes', preserveErrorCause, {
   valid: [
     'try { load(); } catch (error) { throw normalizeFailure(error); }',
-    "try { load(); } catch (error) { throw new Error('bounded external failure'); }",
     "try { load(); } catch (error) { throw new Error('failed', { cause: error }); }",
     {
       code: "try { load(); } catch (error) { throw new DomainFailure('invalid-input'); }",
@@ -141,6 +140,10 @@ tester.run('preserve wrapped error causes', preserveErrorCause, {
     },
   ],
   invalid: [
+    {
+      code: "try { load(); } catch (error) { throw new Error('bounded external failure'); }",
+      errors: [{ messageId: 'lostCause' }],
+    },
     {
       code: 'try { load(); } catch (error) { throw new Error(error.message); }',
       errors: [{ messageId: 'lostCause' }],

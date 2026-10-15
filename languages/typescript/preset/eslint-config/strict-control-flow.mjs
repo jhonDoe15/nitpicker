@@ -60,8 +60,4 @@ export const testControlFlowSelectors = [
 
 export const controlFlowRules = { eqeqeq: ['error', 'always'] };
 
-export function controlFlowTypedRulesFor(react) {
-  return { '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: react }] };
-}
-
-export const controlFlowTypedRules = controlFlowTypedRulesFor(false);
+export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };

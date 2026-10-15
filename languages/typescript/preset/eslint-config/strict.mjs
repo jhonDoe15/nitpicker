@@ -18,7 +18,7 @@ import {
 import {
   controlFlowRules,
   controlFlowSelectors,
-  controlFlowTypedRulesFor,
+  controlFlowTypedRules,
   forEachSelectors,
   loopSelectors,
 } from './strict-control-flow.mjs';
@@ -124,14 +124,14 @@ const strictSyntaxConfig = strictSyntaxConfigFor();
 
 export default strictSyntaxConfig;
 
-export function strictTypedConfigFor(layout, parserOptions, options = {}) {
+export function strictTypedConfigFor(layout, parserOptions) {
   return [
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { '@typescript-eslint': tseslint.plugin },
-      rules: { ...typedDeclarationRules, ...controlFlowTypedRulesFor(options.react === true) },
+      rules: { ...typedDeclarationRules, ...controlFlowTypedRules },
     },
     {
       files: domainGlobsFor(layout.sourceRoots),
@@ -144,7 +144,6 @@ export function strictTypedConfigFor(layout, parserOptions, options = {}) {
       ...entry,
       files: adapterGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
-      rules: { ...entry.rules, ...controlFlowTypedRulesFor(options.react === true) },
     })),
   ];
 }
@@ -168,7 +167,7 @@ export function strictPresetConfig(layout, parserOptions, options = {}) {
   return [
     ...productionPolicyConfigFor(layout, options),
     ...strictSyntaxConfigFor(layout, options),
-    ...strictTypedConfigFor(layout, parserOptions, options),
+    ...strictTypedConfigFor(layout, parserOptions),
     {
       files: layout.sourceGlobs,
       ...productionScope(layout),

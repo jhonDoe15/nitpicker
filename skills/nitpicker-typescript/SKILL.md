@@ -62,7 +62,9 @@ If your change edits a function that existed before it, read
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
-  may be `undefined`: check the value you got.
+  may be `undefined`: check the value you got. Read an index-signature key with brackets
+  (`env['PORT']`, `styles['card']`); an optional field a caller passes `undefined` into is
+  `title?: string | undefined`.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions.
 - Template literals take strings only: `${String(count)}`.
@@ -85,21 +87,30 @@ If your change edits a function that existed before it, read
 ## Production rules
 
 - `process.env`, `process.argv` and `process.exit` live only in the composition root and the entry
-  point; pass values in. Config values, clocks and IDs arrive as parameters.
-- Name numbers: a numeric literal other than -1, 0, 1, 2 is a `const LIMIT = 30` (UPPER_CASE) at module level.
-  Types are PascalCase, functions and parameters camelCase, constants camelCase or UPPER_CASE.
+  point; pass values in. A React project may read `import.meta.env` anywhere. Config values,
+  clocks and IDs arrive as parameters.
+- Name numbers: a numeric literal other than -1, 0, 1, 2, 10, 100, 1000 is a module-level
+  `const LIMIT = 30` (any arithmetic in its initializer is fine: `const DAY_MS = 24 * 60 * 60 * 1000`).
+  HTTP statuses in `res.status(404)` and `toFixed(2)` digits are fine.
+  Types are PascalCase, functions and parameters camelCase, constants camelCase or UPPER_CASE; a zod
+  schema constant may be PascalCase (`const Order = z.object(...)`).
 - Always use braces (`curly`); never reassign a parameter; no `eval`; one `import` per module
   (`import type` may sit beside it); `export { a, b }` names its exports, never `export * from`.
-- Await every promise. `void promise` still fails (React event handlers may use it); `await Promise.allSettled(...)` and read the result.
-- Shell commands use `execFile(command, [args])`, never a command string. Join a request-supplied
-  path with `resolve` and check it stays under the base. Tokens come from `node:crypto`, not `Math.random`.
-- No module-level `let`/`Map`/`Set`/array that gets mutated outside `domain/`: create state in a
-  factory and pass it in. Nothing with an effect at import time (`await`, timers, `fetch`, `Date.now()`).
+- Await every promise; deliberate fire-and-forget is `void job();`. `await Promise.allSettled(...)`
+  and read the result.
+- Shell commands use `execFile(command, [args])`, never a command string built from a variable.
+  Join a request-supplied path into a variable with `resolve` and check that variable stays under
+  the base (`full.startsWith(base + path.sep)`). Tokens come from `node:crypto`, not `Math.random`.
+- No module-level `let`/`Map`/`Set`/array that gets mutated outside `domain/`, and no exported
+  `Map`/`Set`: build lookup tables inside a function and return them, create state in a factory and
+  pass it in. Nothing with an effect at import time (`await`, timers, `fetch`, `Date.now()`).
 - Create clients, servers, pools and queues (`new Pool()`, `createClient()`, `axios.create()`) only in
-  `src/main/composition-root.ts` (or `src/main/main.ts`, `server.ts`, `composition-root/`); nothing
-  else lives directly under `src/main/` except `features/` and `shared/`.
-- `console` and `process.stdout.write` only in the composition root; use the project's logger elsewhere.
-- Wrapping a caught error: `new AppError(message, { cause: error })`, for any `*Error` subclass.
+  `src/main/composition-root.ts` (or `src/main/main.ts`, `server.ts`, `composition-root/`, or
+  `src/main.ts`, `src/server.ts`); nothing else lives directly under `src/main/` except `features/`,
+  `shared/` and `index.ts`.
+- No `console` in production code; use the project's logger. Program output is
+  `process.stdout.write` in the composition root.
+- Any `*Error` thrown in a `catch` passes the caught error: `new AppError(message, { cause: error })`.
 - Zod: `z.record`, `z.array`, `z.set`, `z.map` and `z.tuple` need validated element schemas, no
   `z.unknown()`, `z.any()`, `z.custom()` without a validator, `.passthrough()`, `.loose()`.
 - Parameter types in `domain/` are readonly types you declare there, not the adapters' `z.infer` type

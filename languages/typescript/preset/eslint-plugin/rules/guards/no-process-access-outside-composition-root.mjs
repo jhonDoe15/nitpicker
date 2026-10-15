@@ -1,5 +1,5 @@
 import { ancestorsOf } from '../ancestry.mjs';
-import { compositionRootOptionsSchema, isCompositionRootFile } from '../composition-root-files.mjs';
+import { isCompositionRootFile } from '../composition-root-files.mjs';
 import { mentionsEntryPoint } from '../no-process-globals-outside-main-guard.mjs';
 
 function propertyText(node) {
@@ -9,10 +9,11 @@ function propertyText(node) {
   return node.property.type === 'Literal' ? node.property.value : undefined;
 }
 
-function isEnvAccess(node) {
+function isEnvAccess(node, allowImportMetaEnv) {
   const owner = node.object;
   const base = owner.type === 'MetaProperty' ? 'import.meta' : owner.name;
-  return ['process', 'import.meta', 'Deno'].includes(base) && propertyText(node) === 'env';
+  const readers = allowImportMetaEnv ? ['process', 'Deno'] : ['process', 'import.meta', 'Deno'];
+  return readers.includes(base) && propertyText(node) === 'env';
 }
 
 function isProcessExit(node) {
@@ -35,7 +36,16 @@ export const rule = {
     docs: {
       description: 'Read environment variables and exit the process only in the composition root',
     },
-    schema: compositionRootOptionsSchema,
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          compositionRootPattern: { type: 'string' },
+          allowImportMetaEnv: { type: 'boolean' },
+        },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       envOutsideRoot:
         'Read environment variables only in the composition root: parse the environment once with a zod schema there and pass the typed config down as a parameter. If this module is a config loader or a script, add an exception for this rule in nitpicker.config.json.',
@@ -47,9 +57,10 @@ export const rule = {
     if (isCompositionRootFile(context)) {
       return {};
     }
+    const allowImportMetaEnv = context.options[0]?.allowImportMetaEnv === true;
     return {
       MemberExpression(node) {
-        if (isEnvAccess(node)) {
+        if (isEnvAccess(node, allowImportMetaEnv)) {
           context.report({ node, messageId: 'envOutsideRoot' });
         } else if (isProcessExit(node) && !insideMainGuard(node)) {
           context.report({ node, messageId: 'exitOutsideRoot' });

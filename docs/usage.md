@@ -497,7 +497,8 @@ own tools do:
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. TypeScript projects also get
   `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`
-  (JavaScript projects do not). The files checked are the source and test roots.
+  (JavaScript projects do not); their errors name the allowed form (`env['PORT']`,
+  `title?: string | undefined`). The files checked are the source and test roots.
 - **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked
