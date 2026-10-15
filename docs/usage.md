@@ -536,18 +536,23 @@ To run the policy on ESLint itself, set the engine:
 ### Type check engine
 
 The `typescript-typecheck` analyzer type checks with TypeScript 7, the native compiler, which is
-much faster than TypeScript 5 and 6. nitpicker pins its version, so the project does not
-need to install it. When the config uses an option TypeScript 7 removed or no longer knows, such
-as `baseUrl`, `moduleResolution: "node"` or `target: "ES5"`, that run uses the project's own
-TypeScript instead, as before.
+much faster than TypeScript 5 and 6. nitpicker installs and pins TypeScript 7 itself. The project's
+own `typescript` package (5.7 to 6.x) is still needed, because nitpicker reads source files with it
+to name the enclosing symbol of each finding. A run uses the project's TypeScript instead, as
+before, when the config uses an option TypeScript 7 removed or no longer knows (such as `baseUrl`,
+`moduleResolution: "node"` or `target: "ES5"`), or when TypeScript 7's compiler is not installed
+for the platform. The report does not say which engine a run used; set the engine to choose one.
 
 Findings match the project's own TypeScript, with the same messages, positions and symbols, except:
 
 - TypeScript adds "Did you mean ...?" to a limited number of unknown-name errors. TypeScript 7
   checks files on several checkers, each with its own limit, so it adds the suggestion to more of
   them.
-- A "file is in the program because" note names the include pattern that matched, where the
-  project's TypeScript says "Root file specified for compilation".
+- A "file is in the program because" note names the include pattern or `files` entry that
+  matched, where the project's TypeScript says "Root file specified for compilation".
+- A few messages are worded differently, such as "No overload matches this call" details and
+  paths in `/// <reference path>` errors, and an unbuilt project reference is read from its
+  sources instead of being reported as not built.
 
 Switching engines therefore shows those findings as new once. Paths inside messages are relative
 to the project, so they are the same on both sides of the comparison.

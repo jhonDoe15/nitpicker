@@ -31,15 +31,12 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
   }
   const installed = readManifest(path.join(root, 'package.json'));
-  const declared = declaredPackage(name, owningManifest.dependencies?.[name]);
-  if (installed.name !== declared.name || typeof installed.version !== 'string') {
-    throw new Error(`Invalid installed tool package for ${name}`);
-  }
-  if (!owningPeers.has(name) && installed.version !== declared.version) {
-    throw new Error(
-      `Tool ${name} version ${installed.version} does not match declared ${String(declared.version)}`,
-    );
-  }
+  assertDeclaredPackage({
+    name,
+    installed,
+    declared: declaredPackage(name, owningManifest.dependencies?.[name]),
+    isPeer: owningPeers.has(name),
+  });
   let binPath;
   if (bin !== undefined) {
     binPath = realpathSync(path.join(root, bin));
@@ -54,6 +51,17 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
     }
   }
   return { root, version: installed.version, binPath };
+}
+
+function assertDeclaredPackage({ name, installed, declared, isPeer }) {
+  if (installed.name !== declared.name || typeof installed.version !== 'string') {
+    throw new Error(`Invalid installed tool package for ${name}`);
+  }
+  if (!isPeer && installed.version !== declared.version) {
+    throw new Error(
+      `Tool ${name} version ${installed.version} does not match declared ${String(declared.version)}`,
+    );
+  }
 }
 
 function declaredPackage(name, specifier) {

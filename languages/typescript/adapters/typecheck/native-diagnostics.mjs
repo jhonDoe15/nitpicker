@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
@@ -6,12 +5,12 @@ import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 const NO_INPUTS_CODE = 18003;
 const REMOVED_OPTION_CODES = new Set([5102, 5108]);
 const ENGINE_HINT =
-  'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json to type check with the project\'s own TypeScript instead.';
+  'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
+  "to type check with the project's own TypeScript instead.";
 
 export async function nativeDiagnostics({ ts, configPath, projectRoot }) {
-  const apiPath = path.join(resolveTool('typescript-native').root, 'dist/api/sync/api.js');
-  const { API } = await import(pathToFileURL(apiPath).href);
-  const api = new API({ cwd: projectRoot });
+  const api = await startedApi(projectRoot);
+  if (api === undefined) return { unsupported: true };
   let collected;
   try {
     collected = collectedDiagnostics(api, configPath);
@@ -25,6 +24,16 @@ export async function nativeDiagnostics({ ts, configPath, projectRoot }) {
   return settledDiagnostics(ts, collected);
 }
 
+async function startedApi(projectRoot) {
+  const apiPath = path.join(resolveTool('typescript-native').root, 'dist/api/sync/api.js');
+  const { API } = await import(pathToFileURL(apiPath).href);
+  try {
+    return new API({ cwd: projectRoot });
+  } catch {
+    return undefined;
+  }
+}
+
 function collectedDiagnostics(api, configPath) {
   const [project] = api.updateSnapshot({ openProjects: [configPath] }).getProjects();
   const { program, compilerOptions } = project;
@@ -34,7 +43,7 @@ function collectedDiagnostics(api, configPath) {
     hasRootFiles: project.rootFiles.length > 0,
     configErrors: program.getConfigFileParsingDiagnostics(),
     diagnostics: [
-      ...program.getProgramDiagnostics(),
+      ...program.getProgramDiagnostics().map(withoutConfigLocation),
       ...program.getSyntacticDiagnostics(),
       ...program.getGlobalDiagnostics(),
       ...program.getBindDiagnostics(),
@@ -44,12 +53,18 @@ function collectedDiagnostics(api, configPath) {
   };
 }
 
+function withoutConfigLocation(diagnostic) {
+  return diagnostic.fileName?.endsWith('.json') === true
+    ? { ...diagnostic, fileName: undefined, pos: -1, end: -1 }
+    : diagnostic;
+}
+
 function settledDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
   if (!hasRootFiles && configErrors.every(({ code }) => code === NO_INPUTS_CODE)) {
     return { diagnostics: [] };
   }
   if (configErrors.length > 0 || diagnostics.some(({ code }) => REMOVED_OPTION_CODES.has(code))) {
-    return { unsupportedConfig: true };
+    return { unsupported: true };
   }
   const sourceFileOf = sourceFileReader(ts);
   return {
@@ -63,7 +78,7 @@ function sourceFileReader(ts) {
   const sourceFiles = new Map();
   return (fileName) => {
     if (!sourceFiles.has(fileName)) {
-      const text = readFileSync(fileName, 'utf8').replace(/^﻿/u, '');
+      const text = ts.sys.readFile(fileName);
       const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
       sourceFile.path = ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
       sourceFiles.set(fileName, sourceFile);
