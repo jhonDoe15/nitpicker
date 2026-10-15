@@ -1,5 +1,6 @@
 import { EXCLUDED_PATH_PATTERN, codeExtensionNames } from '../layout.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { outsideRootsRule } from '../architecture/outside-roots/outside-roots.mjs';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mjs';
 
 const { sourceRoots, testRoots, excludePattern } = readLayout();
@@ -21,6 +22,11 @@ export default {
       from: { path: productionSource },
       to: { circular: true },
     },
+    outsideRootsRule({
+      productionSource,
+      roots: [...sourceRoots, ...testRoots],
+      excludePattern,
+    }),
     ...strictBoundaryRules,
   ],
   required: [],
