@@ -15,7 +15,7 @@ const GRADLE_TIMEOUT = 15 * 60 * 1000;
 const HOOK_TIMEOUT = 16 * 60 * 1000;
 
 function gradleProject(fixtureName) {
-  const project = { root: undefined };
+  const project = { root: '' };
   beforeAll(() => {
     project.root = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-e2e-')), fixtureName);
     cpSync(path.join(fixtures, fixtureName), project.root, { recursive: true });
@@ -29,7 +29,7 @@ function gradleProject(fixtureName) {
     }
   }, HOOK_TIMEOUT);
   afterAll(() => {
-    if (project.root !== undefined) {
+    if (project.root !== '') {
       rmSync(path.dirname(project.root), { recursive: true, force: true });
     }
   });

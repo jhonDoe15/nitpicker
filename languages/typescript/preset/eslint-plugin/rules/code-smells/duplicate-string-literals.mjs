@@ -12,7 +12,8 @@ const MODULE_SOURCE_PARENTS = new Set([
   'TSExternalModuleReference',
   'TSImportType',
 ]);
-const KEY_PARENTS = new Set(['Property', 'PropertyDefinition', 'MethodDefinition']);
+const PROPERTY = 'Property';
+const KEY_PARENTS = new Set([PROPERTY, 'PropertyDefinition', 'MethodDefinition']);
 const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
 const TRANSLATION_CALLS = new Set([
   't',
@@ -41,7 +42,7 @@ function textOf(node) {
 }
 
 function isDiscriminant(parent) {
-  return parent.type === 'Property' && !parent.computed && DISCRIMINANT_KEYS.has(parent.key.name);
+  return parent.type === PROPERTY && !parent.computed && DISCRIMINANT_KEYS.has(parent.key.name);
 }
 
 function calleeName({ callee }) {
@@ -62,9 +63,7 @@ function isTranslationKey(node) {
   const { parent } = node;
   if (parent.type === 'JSXExpressionContainer') return parent.parent.type === 'JSXAttribute';
   const inMessageDescriptor =
-    parent.type === 'Property' &&
-    parent.value === node &&
-    parent.parent.type === 'ObjectExpression';
+    parent.type === PROPERTY && parent.value === node && parent.parent.type === 'ObjectExpression';
   return (
     isTranslationArgument(node) || (inMessageDescriptor && isTranslationArgument(parent.parent))
   );
