@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { staticChecks } from '../../preset/quality-checks.mjs';
 import { withAssetImportHint } from './asset-import-hint.mjs';
 
 const hint =
@@ -29,5 +30,11 @@ describe('hint for CSS Module and asset imports that TypeScript cannot find', ()
     ['a path where css is not the extension', 2307, missing('./css/panel')],
   ])('leaves %s alone', (_name, code, message) => {
     expect(withAssetImportHint(code, message)).toBe(message);
+  });
+
+  it('reports the .d.ts files it sends declarations to as checked', () => {
+    const typecheck = staticChecks.find(({ name }) => name === 'typescript-typecheck');
+
+    expect(typecheck.exclusions.filter((glob) => glob.endsWith('.d.ts'))).toEqual([]);
   });
 });

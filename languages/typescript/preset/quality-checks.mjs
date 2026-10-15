@@ -212,7 +212,7 @@ function typeAndArchitectureChecksFor(layout) {
       kind: 'typecheck',
       version: typeScriptVersion,
       patterns: [],
-      exclusions: ['**/dist/**', '**/*.d.ts', ...layout.exclude],
+      exclusions: ['**/dist/**', ...layout.exclude],
       configRelativePath: 'languages/typescript/preset/defaults/tsconfig.quality.json',
       shardWeight: 9,
       configurationFiles: [
