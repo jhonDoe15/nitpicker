@@ -35,7 +35,9 @@ function normalizeRoot(root) {
   return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
-function filePatterns({ sourceRoots, testRoots, extensions }) {
+const TEST_SUPPORT_DIRECTORY = 'test-support';
+
+function filePatterns({ sourceRoots, testRoots, extensions, colocatedTests }) {
   const sourceAlternatives = sourceRoots.map(escapeRegExp).join('|');
   const testAlternatives = testRoots.map(escapeRegExp).join('|');
   const suffix = `(?:${extensions.join('|')})$`;
@@ -44,6 +46,7 @@ function filePatterns({ sourceRoots, testRoots, extensions }) {
       `^(?:${testAlternatives})/`,
       `^(?:${sourceAlternatives})/.*\\.(?:test|spec)\\.${suffix}`,
       `^(?:${sourceAlternatives})/(?:.*/)?__tests__/`,
+      ...(colocatedTests ? [`^(?:${sourceAlternatives})/(?:.*/)?${TEST_SUPPORT_DIRECTORY}/`] : []),
     ]
       .map((pattern) => `(?:${pattern})`)
       .join('|'),
@@ -120,8 +123,11 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
   };
 }
 
-function globsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
+function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests }) {
   return {
+    testSupportGlobs: colocatedTests
+      ? sourceRoots.map((root) => `${root}/**/${TEST_SUPPORT_DIRECTORY}/**`)
+      : [],
     sourceGlobs: sourceRoots.map((root) => `${root}/**/*.${extensionGlob}`),
     testGlobs: [
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
@@ -139,10 +145,12 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
   const testRoots = (layout.testRoots ?? defaultTestRoots).map(normalizeRoot);
   const extensions = javascript ? javascriptProjectExtensionNames : codeExtensionNames;
   const extensionGlob = `{${extensions.join(',')}}`;
-  const patterns = filePatterns({ sourceRoots, testRoots, extensions });
-  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob });
+  const colocatedTests = layout.colocatedTests === true;
+  const patterns = filePatterns({ sourceRoots, testRoots, extensions, colocatedTests });
+  const globs = globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests });
   const resolved = {
     javascript,
+    colocatedTests,
     extensions,
     entryExtensions: javascript
       ? [...JAVASCRIPT_EXTENSIONS, ...TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT]
@@ -190,6 +198,13 @@ function isCodeFile(layout, { entry, name }) {
 
 export function existingRoots(projectRoot, roots) {
   return roots.filter((root) => existsSync(path.join(projectRoot, root)));
+}
+
+export function hasColocatedTests(projectRoot, layout = {}) {
+  return (
+    existingRoots(projectRoot, (layout.testRoots ?? defaultTestRoots).map(normalizeRoot)).length ===
+    0
+  );
 }
 
 export function resolveLayoutFor(policy = {}) {

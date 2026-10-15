@@ -44,8 +44,9 @@ function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
 }
 
 function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
-  const options =
-    testRootsOnDisk.length === 0 ? { colocated: true } : { testRoot: testRootsOnDisk[0] };
+  const options = layout.colocatedTests
+    ? { colocated: true }
+    : { testRoot: testRootsOnDisk[0] ?? layout.testRoots[0] };
   return {
     files: layout.sourceGlobs,
     ignores: [...layout.excludedGlobs, ...testAreaGlobs],

@@ -82,9 +82,9 @@ describe('test honesty rules', () => {
     expect(messages(code, 'test/support/make-labels.ts')).toEqual([]);
   });
 
-  it('allow test-support/ next to the code when no test root exists, and name it', () => {
+  it('allow test-support/ next to the code in a colocated layout, and name it', () => {
     const code = 'export const labels = [1, -1, 0];';
-    const colocated = [parser, ...testHonestyConfigFor(layout, { testRootsOnDisk: [] })];
+    const colocated = [parser, ...testHonestyConfigFor(resolveLayout({ colocatedTests: true }))];
 
     expect(
       messages(code, 'src/main/features/labels/test-support/make-labels.ts', colocated),
