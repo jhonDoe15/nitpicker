@@ -70,8 +70,8 @@ function writeRuleset(reportDir, scope) {
   return file;
 }
 
-function nitpickerRulesets({ module, reportDir, spring }) {
-  const testRoots = module.testSourceRoots.filter((root) => existsSync(root));
+function nitpickerRulesets({ module, reportDir, spring, linted }) {
+  const testRoots = module.testSourceRoots.filter((root) => linted.includes(root));
   const mainOnly = { roots: module.testSourceRoots, onlyThere: false };
   const springMain = { name: 'spring-main', ruleset: 'spring-ruleset.xml', ...mainOnly };
   const smellsMain = { name: 'code-smells-main', ruleset: 'code-smells-ruleset.xml', ...mainOnly };
@@ -112,7 +112,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
   const rulesets = [
-    ...(configs.pmd.nitpicker ? nitpickerRulesets({ module, reportDir, spring }) : []),
+    ...(configs.pmd.nitpicker ? nitpickerRulesets({ module, reportDir, spring, linted }) : []),
     ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
   ];
   runJava({
