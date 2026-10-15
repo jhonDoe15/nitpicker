@@ -65,6 +65,16 @@ const files = {
     '  return <p>profile</p>;',
     '}',
   ],
+  [`${adapters}/player.tsx`]: [
+    "import { useRef } from 'react';",
+    'export function Player() {',
+    '  const seen = useRef<Set<number> | null>(null);',
+    '  if (seen.current === null) {',
+    '    seen.current = new Set();',
+    '  }',
+    '  return <p>{seen.current.size}</p>;',
+    '}',
+  ],
   [`${ui}/banner.ts`]: [
     'export function showBanner(text: string) {',
     "  const banner = window.document.querySelector('#banner');",
@@ -134,6 +144,7 @@ describe('the React rules under the oxlint engine', () => {
       {
         files: [
           `${adapters}/badge.tsx`,
+          `${adapters}/player.tsx`,
           `${adapters}/profile.tsx`,
           `${domain}/required.ts`,
           `${ui}/banner.ts`,
@@ -155,5 +166,9 @@ describe('the React rules under the oxlint engine', () => {
       `${ui}/banner.ts:2`,
       `${ui}/banner.ts:3`,
     ]);
+  });
+
+  it('let the lazy ref init through and report the ref read during render', () => {
+    expect(findingsOf('react-x/refs')).toEqual([`${adapters}/player.tsx:7`]);
   });
 });

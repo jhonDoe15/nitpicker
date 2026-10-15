@@ -4,7 +4,7 @@ export const reactXHints = {
   immutability: ` Copy instead: \`setList([...list, item])\`, \`items.toSorted()\`.${GENERAL_HINT}`,
   purity: ` Pass the value in as a prop or state, or read it in an event handler or an effect.${GENERAL_HINT}`,
   'set-state-in-render': ` Compute the value during render, or set state in an event handler or an effect.${GENERAL_HINT}`,
-  refs: ` Read and write \`ref.current\` in event handlers and effects; keep what renders in state.${GENERAL_HINT}`,
+  refs: ` Read and write \`ref.current\` in event handlers and effects (render may only run the lazy init \`if (ref.current === null) ref.current = new X()\`); keep what renders in state.${GENERAL_HINT}`,
   'no-nested-component-definitions': ` Declare the component at module level and pass data as props.${GENERAL_HINT}`,
   'static-components': ` Create it once at module level, e.g. \`const ThemedPanel = withTheme(Panel)\` outside the component.${GENERAL_HINT}`,
   'no-nested-lazy-component-declarations': ` Declare \`lazy(...)\` at module level.${GENERAL_HINT}`,

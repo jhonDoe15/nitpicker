@@ -65,10 +65,25 @@ describe('rules from the React plugins', () => {
     ['a sorted copy of a prop', 'const sorted = items.toSorted();'],
     ['an effect that cleans up its listener', cleanedListener()],
     ['a ref read in a handler', 'const ref = useRef(0); const read = () => ref.current;'],
+    [
+      'the lazy-init idiom for a ref',
+      'const seen = useRef<Set<number> | null>(null); if (seen.current === null) { seen.current = new Set(); }',
+    ],
   ])('lets %s through', async (_name, body) => {
     const code = `import { useEffect, useRef, useState } from 'react'; export function Panel({ items }: { items: number[] }) { ${body} return <div />; }`;
 
     expect(await ruleIdsFor(code)).toEqual([]);
+  });
+
+  it('reports a ref read during render after the lazy init', async () => {
+    const code = `import { useRef } from 'react'; export function Panel() { const seen = useRef<Set<number> | null>(null); if (seen.current === null) { seen.current = new Set(); } return <p>{seen.current.size}</p>; }`;
+
+    const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
+
+    expect(result.messages.map(({ ruleId }) => ruleId)).toEqual(['react-x/refs']);
+    expect(result.messages[0].message).toContain(
+      'render may only run the lazy init `if (ref.current === null) ref.current = new X()`',
+    );
   });
 
   it('lets keyed lists, memoised context values and hoisted defaults through', async () => {
