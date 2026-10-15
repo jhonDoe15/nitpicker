@@ -142,14 +142,10 @@ public final class Bad {
 }
 `;
 
-// What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required).
+// What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required, and layout
+// is the formatter's: the sloppy indentation is one google-java-format finding).
 const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
-const CHECKSTYLE_ON_BAD = [
-  'blocks.EmptyCatchBlockCheck',
-  'indentation.IndentationCheck',
-  'regexp.RegexpSinglelineJavaCheck',
-  'whitespace.EmptyLineSeparatorCheck',
-];
+const CHECKSTYLE_ON_BAD = ['blocks.EmptyCatchBlockCheck'];
 // Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
 // with otherwise clean code.
 const STAMP = `package demo;

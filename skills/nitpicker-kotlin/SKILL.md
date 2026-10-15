@@ -63,7 +63,10 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
   a function. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
-  test files directly: group the rest into subpackages by what they do.
+  test files directly: group the rest into subpackages by what they do. Packages go at most 4
+  levels below the root package: group by responsibility instead of nesting. Java sources follow
+  the `nitpicker-java` rules on class size and, when the project's `java.indentation` convention is `"4"`,
+  its 4-space style.
 - Every branch you add needs a test: changed-branch coverage runs on your change.
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.

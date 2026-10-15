@@ -342,6 +342,11 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   code, and keep such exceptions narrow.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
+- `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
+  `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
+  the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. A folder already
+  deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
+  limits.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   roots must be directories; `excludedGlobs` are globs and replace the built-in exclusions;
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported;

@@ -18,6 +18,7 @@ import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
+import { javaStyleProperties } from './style/java-style.mjs';
 
 export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
@@ -59,6 +60,7 @@ function runJavaPreset(projectRoot, { gradle, initScript = INIT_SCRIPT, policy =
       '--no-configuration-cache',
       ...kotlinProperties(projectRoot, policy),
       ...toolConfigProperties(projectRoot, policy),
+      ...javaStyleProperties(policy.javaStyle),
       '-I',
       initScript,
       'nitpickerJava',
@@ -95,6 +97,7 @@ export function collectJavaFindings(projectRoot, options = {}) {
       fileLimits: options.policy?.fileLimits,
       exclude: options.policy?.exclude,
       exceptions: options.policy?.exceptions,
+      javaStyle: options.policy?.javaStyle,
     }),
     preset,
   );

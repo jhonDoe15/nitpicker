@@ -12,6 +12,7 @@ import {
   readJavaFileLimitFindings,
   readJavaStructureFindings,
 } from './java-structure.mjs';
+import { readClassLimitFindings } from './size/class-limits.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
@@ -32,7 +33,7 @@ const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+  { crapLimit, preset = 'java', fileLimits, exclude, exceptions, javaStyle } = {},
 ) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
@@ -49,6 +50,7 @@ export function readJavaFindings(
     lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
+    javaStyle,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
@@ -62,11 +64,7 @@ export function readJavaFindings(
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...readJavaFileLimitFindings(projectRoot, {
-        manifest,
-        kotlin,
-        policy: { thresholds: fileLimits, exclude, exceptions },
-      }),
+      ...sizeFindings(context, { thresholds: fileLimits, exclude, exceptions }),
       ...branchFindings(context, context.jacoco),
       ...readCouplingFindings(reportRoot, {
         projectRoot,
@@ -78,6 +76,13 @@ export function readJavaFindings(
       ...springFindings(context),
     ],
   };
+}
+
+function sizeFindings({ projectRoot, reportRoot, manifest, kotlin }, policy) {
+  return [
+    ...readJavaFileLimitFindings(projectRoot, { manifest, kotlin, policy }),
+    ...(kotlin ? [] : readClassLimitFindings(reportRoot, policy)),
+  ];
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -111,13 +116,13 @@ function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   return findings;
 }
 
-function formatFindings({ reportRoot, roots }) {
+function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
   return ingestFormatCheck(formatLines.join('\n'), {
     tool: 'google-java-format',
-    message: 'File is not formatted with google-java-format',
+    message: `File is not formatted with google-java-format${javaStyle === 'aosp' ? ' --aosp' : ''}`,
   }).findings;
 }
 

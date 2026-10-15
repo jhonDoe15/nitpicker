@@ -190,6 +190,43 @@ describe('readJavaFindings', () => {
     ]);
   });
 
+  it('names the aosp style when the formatter check ran with it', () => {
+    const root = projectWithReports();
+    const format = (options) =>
+      readJavaFindings(root, options)
+        .findings.filter(({ tool }) => tool === 'google-java-format')
+        .map(({ message }) => message);
+
+    expect(format({})).toEqual(['File is not formatted with google-java-format']);
+    expect(format({ javaStyle: 'aosp' })).toEqual([
+      'File is not formatted with google-java-format --aosp',
+    ]);
+  });
+
+  it('reports a class over the class limits from classes.json, in Java projects only', () => {
+    const root = projectWithReports();
+    writeFileSync(
+      path.join(root, 'build/nitpicker/classes.json'),
+      JSON.stringify({
+        files: { [bad]: { package: 'demo', imports: [] } },
+        classes: [{ file: bad, name: 'Bad', kind: 'class', start: 1, methods: 3, fields: 0 }],
+      }),
+    );
+    const rules = (options) =>
+      readJavaFindings(root, options)
+        .findings.filter(({ tool, rule }) => tool === 'structure' && rule.startsWith('class-'))
+        .map(({ rule }) => rule);
+
+    expect(rules({})).toEqual([]);
+    expect(rules({ fileLimits: { classMethods: 2 } })).toEqual(['class-methods-limit']);
+    expect(
+      rules({
+        fileLimits: { classMethods: 2 },
+        exceptions: [{ rule: 'class-methods-limit', glob: 'src/**' }],
+      }),
+    ).toEqual([]);
+  });
+
   it('applies the configured CRAP limit instead of the default', () => {
     const root = projectWithReports();
     const rules = (options) =>
