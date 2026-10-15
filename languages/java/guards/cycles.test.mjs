@@ -7,6 +7,7 @@ const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const edge = (source, target) => ({ source, target });
 const findings = (modules, edges) =>
   cycleFindings({ modules, edges, packageOf, fileOf }, 'coupling');
+const identities = (result) => result.map((finding) => finding.identity);
 
 describe('cyclicComponents', () => {
   it('finds the members of a loop, not the nodes that only lead into it', () => {
@@ -30,6 +31,25 @@ describe('cyclicComponents', () => {
     ]);
   });
 
+  it('leaves out a node between two loops that belongs to neither', () => {
+    const components = cyclicComponents(
+      ['a', 'b', 'm', 'x', 'y'],
+      [
+        edge('a', 'b'),
+        edge('b', 'a'),
+        edge('b', 'm'),
+        edge('m', 'x'),
+        edge('x', 'y'),
+        edge('y', 'x'),
+      ],
+    );
+
+    expect(components).toEqual([
+      ['a', 'b'],
+      ['x', 'y'],
+    ]);
+  });
+
   it('reports one component for a long ring', () => {
     const nodes = ['n1', 'n2', 'n3', 'n4', 'n5'];
     const ring = nodes.map((node, index) => edge(node, nodes[(index + 1) % nodes.length]));
@@ -37,53 +57,56 @@ describe('cyclicComponents', () => {
     expect(cyclicComponents(nodes, ring)).toEqual([nodes]);
   });
 
-  it('ignores a node that depends on itself and a graph without loops', () => {
-    expect(cyclicComponents(['a', 'b'], [edge('a', 'a'), edge('a', 'b')])).toEqual([]);
+  it('handles a graph without loops', () => {
+    expect(cyclicComponents(['a', 'b', 'c'], [edge('a', 'b'), edge('b', 'c')])).toEqual([]);
   });
 
-  it('does not overflow the stack on a deep chain that closes into a loop', () => {
+  it('finds a ring of twenty thousand nodes', () => {
     const nodes = Array.from({ length: 20_000 }, (_, index) => `n${String(index)}`);
     const chain = nodes.map((node, index) => edge(node, nodes[(index + 1) % nodes.length]));
 
-    expect(cyclicComponents(nodes, chain)).toHaveLength(1);
+    expect(cyclicComponents(nodes, chain).map((component) => component.length)).toEqual([20_000]);
   });
 });
 
 describe('cycleFindings', () => {
   const modules = ['app.a.Alpha', 'app.b.Beta', 'app.b.Gamma', 'app.c.Leaf'];
+  const loop = [edge('app.a.Alpha', 'app.b.Beta'), edge('app.b.Beta', 'app.a.Alpha')];
 
-  it('reports a package cycle and a class cycle with the exception route', () => {
-    const result = findings(modules, [
-      edge('app.a.Alpha', 'app.b.Beta'),
-      edge('app.b.Beta', 'app.a.Alpha'),
-      edge('app.b.Gamma', 'app.c.Leaf'),
-    ]);
+  it('reports each package of a cycle once, with the exception route', () => {
+    const result = findings(modules, [...loop, edge('app.b.Gamma', 'app.c.Leaf')]);
 
-    expect(result.map((finding) => `${finding.rule} ${finding.path}`)).toEqual([
-      'package-cycle src/main/java/app/a/Alpha.java',
-      'class-cycle src/main/java/app/a/Alpha.java',
+    expect(result).toEqual([
+      {
+        tool: 'coupling',
+        rule: 'package-cycle',
+        path: 'src/main/java/app/a/Alpha.java',
+        identity: 'cycle:app.a',
+        classification: 'enforceable',
+        message:
+          'Package app.a is in a dependency cycle with app.b. ' +
+          'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
+          'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
+      },
+      {
+        tool: 'coupling',
+        rule: 'package-cycle',
+        path: 'src/main/java/app/b/Beta.java',
+        identity: 'cycle:app.b',
+        classification: 'enforceable',
+        message:
+          'Package app.b is in a dependency cycle with app.a. ' +
+          'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
+          'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
+      },
     ]);
-    expect(result[0].message).toBe(
-      'Packages app.a, app.b depend on each other. Move the shared types down into one of them, or invert one dependency behind an interface. If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
-    );
-    expect(result[1].message).toBe(
-      'Classes app.a.Alpha, app.b.Beta depend on each other. Break the loop: pass what is needed as a parameter, or invert one dependency behind an interface. If it is right here, add an exception for coupling/class-cycle in nitpicker.config.json.',
-    );
-    expect(result.every((finding) => finding.classification === 'enforceable')).toBe(true);
     expect(() => parseAnalyzerReport({ findings: result }, 'java')).not.toThrow();
   });
 
-  it('reports a package cycle that no class cycle explains', () => {
+  it('is quiet for a class loop inside one package, a layered graph and outside classes', () => {
     const result = findings(modules, [
-      edge('app.a.Alpha', 'app.b.Beta'),
-      edge('app.b.Gamma', 'app.a.Alpha'),
-    ]);
-
-    expect(result.map((finding) => finding.rule)).toEqual(['package-cycle']);
-  });
-
-  it('is quiet for a layered graph and for edges to classes outside the project', () => {
-    const result = findings(modules, [
+      edge('app.b.Beta', 'app.b.Gamma'),
+      edge('app.b.Gamma', 'app.b.Beta'),
       edge('app.a.Alpha', 'app.b.Beta'),
       edge('app.b.Beta', 'app.c.Leaf'),
       edge('app.c.Leaf', 'org.other.Library'),
@@ -92,30 +115,27 @@ describe('cycleFindings', () => {
     expect(result).toEqual([]);
   });
 
-  it('gives the same identity however the edges are ordered, and a new one when the loop grows', () => {
-    const loop = [edge('app.a.Alpha', 'app.b.Beta'), edge('app.b.Beta', 'app.a.Alpha')];
-    const forward = findings(modules, loop);
-    const backward = findings(modules, [...loop].reverse());
+  it('keeps the identity of each member when the cycle grows or shrinks', () => {
     const grown = findings(modules, [
       ...loop,
       edge('app.b.Beta', 'app.c.Leaf'),
       edge('app.c.Leaf', 'app.a.Alpha'),
     ]);
 
-    expect(forward.map((finding) => finding.identity)).toEqual(
-      backward.map((finding) => finding.identity),
+    expect(identities(findings(modules, [...loop].reverse()))).toEqual(
+      identities(findings(modules, loop)),
     );
-    expect(grown[0].identity).not.toBe(forward[0].identity);
+    expect(identities(grown)).toEqual(['cycle:app.a', 'cycle:app.b', 'cycle:app.c']);
   });
 
-  it('lists five members and counts the rest', () => {
+  it('lists five other members and counts the rest', () => {
     const many = Array.from({ length: 8 }, (_, index) => `app.p${String(index)}.C`);
     const ring = many.map((name, index) => edge(name, many[(index + 1) % many.length]));
 
     const [first] = findings(many, ring);
 
     expect(first.message).toBe(
-      'Packages app.p0, app.p1, app.p2, app.p3, app.p4 and 3 more depend on each other. ' +
+      'Package app.p0 is in a dependency cycle with app.p1, app.p2, app.p3, app.p4, app.p5 and 2 more. ' +
         'Move the shared types down into one of them, or invert one dependency behind an interface. ' +
         'If it is right here, add an exception for coupling/package-cycle in nitpicker.config.json.',
     );

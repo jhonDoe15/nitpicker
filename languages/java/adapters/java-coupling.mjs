@@ -6,6 +6,7 @@ import { cycleFindings } from '../guards/cycles.mjs';
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
+const PERMITS_REPORT = 'permits.txt';
 const ROOT_PACKAGE = '(root)';
 
 export function parseJdeps(text) {
@@ -68,17 +69,35 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
   const report = analyzeJavaCoupling({ classes, edges, fileOf, moduleOf });
   return [
     ...evaluateCoupling(report, COUPLING_TOOL),
-    ...cycleFindings(
-      {
-        modules: [...new Set(classes.map(moduleOf))],
-        edges: edges.map((edge) => ({
-          source: moduleOf(edge.source),
-          target: moduleOf(edge.target),
-        })),
-        packageOf,
-        fileOf,
-      },
-      COUPLING_TOOL,
-    ),
+    ...packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }),
   ];
+}
+
+function permittedEdges(reportRoot) {
+  const permits = path.join(reportRoot, PERMITS_REPORT);
+  return new Set(
+    existsSync(permits)
+      ? parseJdeps(
+          readFileSync(permits, 'utf8')
+            .split(/\r?\n/)
+            .map((line) => `  ${line}`)
+            .join('\n'),
+        ).map((edge) => `${edge.source}\0${edge.target}`)
+      : [],
+  );
+}
+
+function packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }) {
+  const permitted = permittedEdges(reportRoot);
+  return cycleFindings(
+    {
+      modules: [...new Set(classes.map(moduleOf))],
+      edges: edges
+        .filter((edge) => !permitted.has(`${edge.source}\0${edge.target}`))
+        .map((edge) => ({ source: moduleOf(edge.source), target: moduleOf(edge.target) })),
+      packageOf,
+      fileOf,
+    },
+    COUPLING_TOOL,
+  );
 }
