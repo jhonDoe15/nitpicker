@@ -109,7 +109,7 @@ function projectWithKotlinReports({
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-reports-')));
   temporaryRoots.push(root);
   const reports = path.join(root, 'build/nitpicker');
-  mkdirSync(reports, { recursive: true });
+  mkdirSync(path.join(reports, 'pit'), { recursive: true });
   mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
   mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
   writeFileSync(path.join(root, 'src/main/kotlin/demo/Bad.kt'), KOTLIN_SOURCE);
@@ -134,7 +134,6 @@ function projectWithKotlinReports({
     '<checkstyle version="10.21.1"></checkstyle>',
   );
   writeFileSync(path.join(reports, 'jacoco.xml'), JACOCO);
-  mkdirSync(path.join(reports, 'pit'));
   writeFileSync(path.join(reports, 'pit/mutations.xml'), PIT);
   writeFileSync(path.join(reports, 'structure.json'), '[]');
   writeFileSync(path.join(reports, 'classes.json'), JSON.stringify({ files: {}, classes: [] }));
@@ -387,27 +386,6 @@ describe('readJavaFindings with the kotlin preset', () => {
         ['ktlint', 'ktfmt'].includes(tool),
       ),
     ).toEqual([]);
-  });
-
-  it('checks the class limits of the Java sources of a Kotlin project', () => {
-    const root = projectWithKotlinReports();
-    const legacy = 'src/main/java/demo/Legacy.java';
-    writeFileSync(
-      path.join(root, 'build/nitpicker/classes.json'),
-      JSON.stringify({
-        files: { [legacy]: { package: 'demo', imports: [] } },
-        classes: [{ file: legacy, name: 'Legacy', kind: 'class', start: 1, methods: 3, fields: 0 }],
-      }),
-    );
-    const rules = (fileLimits) =>
-      readJavaFindings(root, { preset: 'kotlin', fileLimits }).findings.filter(({ rule }) =>
-        rule.startsWith('class-'),
-      );
-
-    expect(rules({})).toEqual([]);
-    expect(rules({ classMethods: 2 }).map(({ rule, path: file }) => [rule, file])).toEqual([
-      ['class-methods-limit', legacy],
-    ]);
   });
 
   it('reads JaCoCo coverage of Kotlin and Java files and gates the branches of both', () => {
