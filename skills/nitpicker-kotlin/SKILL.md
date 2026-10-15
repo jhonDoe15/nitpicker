@@ -16,9 +16,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    running.
 2. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It has no `--fix` for Kotlin; format with the project's ktlint or
-   ktfmt. It runs Gradle on the merge base and on head, needs `gradle` on the PATH (or
-   `NITPICKER_GRADLE=./gradlew`) and `lizard==1.24.1` installed, even in a Kotlin-only project. It
-   takes minutes and prints a progress line for each slow analyzer.
+   ktfmt. It runs Gradle on the merge base and on head, with the project's `./gradlew` when there
+   is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides both). It takes minutes
+   and prints a progress line for each slow analyzer.
 3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding and any tool error listed below them, then rerun.
@@ -26,7 +26,9 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
 4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
-   entries, or weakened tests. If a finding seems wrong, stop and ask.
+   entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
+   `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
+   only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
 
 ## Write it this way
 

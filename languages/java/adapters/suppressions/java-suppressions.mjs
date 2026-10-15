@@ -7,8 +7,23 @@ const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
 const LITERALS_AND_COMMENTS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
-const SUPPRESS_WARNINGS = /@(?:java\.lang\.)?SuppressWarnings\s*\(/g;
+const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\(/g;
+const JAVA_LANG_SUPPRESS_WARNINGS = /@\s*java\s*\.\s*lang\s*\.\s*SuppressWarnings\s*\(/g;
+const BARE_SUPPRESS_WARNINGS = /@\s*SuppressWarnings\b/g;
+const QUALIFIED_ANNOTATION = String.raw`@\s*(?:\w+\s*\.\s*)*`;
+const SPOTBUGS_PACKAGE = String.raw`edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*`;
+const SUPPRESS_FB_WARNINGS = new RegExp(
+  [
+    String.raw`${QUALIFIED_ANNOTATION}\w*SuppressFBWarnings\b`,
+    String.raw`${QUALIFIED_ANNOTATION}\w+SuppressWarnings\b`,
+    String.raw`@\s*${SPOTBUGS_PACKAGE}SuppressWarnings\b`,
+  ].join('|'),
+  'g',
+);
+const SPOTBUGS_SUPPRESS_WARNINGS_IMPORT =
+  /\bimport\s+edu\s*\.\s*umd\s*\.\s*cs\s*\.\s*findbugs\s*\.\s*annotations\s*\.\s*(?:SuppressWarnings|\*)\s*;/;
 const STRING_LITERAL = /"((?:[^"\\]|\\.)*)"/g;
+const JUSTIFICATION = /\bjustification\s*=\s*"(?:[^"\\]|\\.)*"/g;
 const UNICODE_ESCAPE = /\\u+([0-9a-fA-F]{4})/g;
 const NESTED_PARENTHESES = /(\([^()]*)\([^()]*\)/g;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
@@ -16,6 +31,8 @@ const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
   'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+const SPOTBUGS_MESSAGE =
+  'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -43,19 +60,58 @@ export function fileFindings(source, filePath) {
     source.replace(UNICODE_ESCAPE, (_, code) => String.fromCodePoint(Number.parseInt(code, 16))),
   );
   const occurrences = new Map();
-  return annotationSuppressions(views).map(({ offset, found }) => {
+  const spotbugsOwnsSuppressWarnings = SPOTBUGS_SUPPRESS_WARNINGS_IMPORT.test(views.code);
+  const suppressions = [
+    ...pmdSuppressions(
+      views,
+      spotbugsOwnsSuppressWarnings ? JAVA_LANG_SUPPRESS_WARNINGS : SUPPRESS_WARNINGS,
+    ),
+    ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
+  ].sort((left, right) => left.offset - right.offset);
+  return suppressions.map(({ tool, offset, found }) => {
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
-    const occurrence = nextOccurrence(occurrences, key);
+    const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
     return {
-      tool: 'pmd',
+      tool,
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${MESSAGE} Found: ${found}.`,
+      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}.`,
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
   });
+}
+
+function pmdSuppressions(views, annotations) {
+  return annotationSuppressions(views, annotations).map((suppression) => ({
+    tool: 'pmd',
+    ...suppression,
+  }));
+}
+
+function spotbugsSuppressions({ code, withoutComments }, includeSuppressWarnings) {
+  const annotations = includeSuppressWarnings
+    ? new RegExp(`${SUPPRESS_FB_WARNINGS.source}|${BARE_SUPPRESS_WARNINGS.source}`, 'g')
+    : SUPPRESS_FB_WARNINGS;
+  return [...code.matchAll(annotations)].map((match) => ({
+    tool: 'spotbugs',
+    offset: match.index,
+    found: spotbugsFound(withoutComments.slice(match.index, annotationEnd(code, match))),
+  }));
+}
+
+function annotationEnd(code, match) {
+  const afterName = match.index + match[0].replace(/\($/, '').length;
+  const rest = code.slice(afterName);
+  return /^\s*\(/.test(rest) ? code.indexOf(')', afterName) + 1 : afterName;
+}
+
+function spotbugsFound(annotation) {
+  const values = [...annotation.replace(JUSTIFICATION, '').matchAll(STRING_LITERAL)].map(
+    ([, value]) => `"${value}"`,
+  );
+  return values.length === 0 ? 'a suppression of every bug pattern' : values.join(', ');
 }
 
 function sourceViews(source) {
@@ -76,8 +132,8 @@ function blank(text) {
   return text.replace(/[^\n]/g, ' ');
 }
 
-function annotationSuppressions({ code, withoutComments }) {
-  return [...code.matchAll(SUPPRESS_WARNINGS)].flatMap((match) => {
+function annotationSuppressions({ code, withoutComments }, annotations) {
+  return [...code.matchAll(annotations)].flatMap((match) => {
     const start = match.index + match[0].length;
     const end = code.indexOf(')', start);
     const values = [...withoutComments.slice(start, end).matchAll(STRING_LITERAL)].map(

@@ -1,10 +1,11 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
+import { toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -42,14 +43,6 @@ const context = () => ({
 });
 
 describe('configureJavaAnalyzer', () => {
-  const context = {
-    projectRoot: '/p',
-    toolRoot: '/t',
-    snapshot: 'head',
-    projectPolicyRoot: tmpdir(),
-    baselineRoot: tmpdir(),
-  };
-
   it('leaves the analyzer untouched without any shared config', () => {
     const analyzer = createJavaAnalyzer();
     expect(configureJavaAnalyzer(analyzer, {})).toBe(analyzer);
@@ -63,7 +56,7 @@ describe('configureJavaAnalyzer', () => {
       legacyInventory: 'legacy.json',
     });
 
-    const { args } = configured.createInvocation(context);
+    const { args } = configured.createInvocation(context());
     const parsed = parseRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
@@ -98,7 +91,7 @@ describe('configureJavaAnalyzer', () => {
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
       { rule: 'detekt.style.ForbiddenMethodCall', paths: ['a/Main.kt', 'b/**'] },
@@ -117,7 +110,7 @@ describe('configureJavaAnalyzer', () => {
       kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy).toEqual({
       crapLimit: undefined,
@@ -141,6 +134,103 @@ describe('configureJavaAnalyzer', () => {
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
     expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+  });
+});
+
+describe('project tool configs', () => {
+  function projectWith(files) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-tools-'));
+    roots.push(root);
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), text);
+    }
+    return root;
+  }
+  const tools = {
+    pmd: { precedence: ['project', 'nitpicker'] },
+    checkstyle: { precedence: ['project'] },
+  };
+
+  it('hands the precedence to the runner and hashes the project files it opts into', () => {
+    const analyzer = createJavaAnalyzer();
+    const configured = configureJavaAnalyzer(analyzer, { tools });
+    const root = projectWith({ 'config/pmd/ruleset.xml': '<ruleset/>' });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
+
+    expect(parsed.policy.toolPrecedence).toEqual({
+      pmd: ['project', 'nitpicker'],
+      checkstyle: ['project'],
+    });
+    expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+    expect(configureJavaAnalyzer(analyzer, {}).resolveConfigurationHash).toBeUndefined();
+  });
+
+  it('hashes every file in the opted-in config folders', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { tools });
+    const root = projectWith({
+      'config/pmd/ruleset.xml': '<ruleset/>',
+      'config/checkstyle/checkstyle.xml': '<module/>',
+      'config/checkstyle/suppressions.xml': '<suppressions/>',
+    });
+
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(
+      path.join(root, 'config/checkstyle/suppressions.xml'),
+      '<suppressions> </suppressions>',
+    );
+
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
+  it('chains the project files into the legacy inventory hash', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      tools,
+      legacyInventory: 'nitpicker.legacy.json',
+    });
+    const root = projectWith({ 'config/pmd/ruleset.xml': '<ruleset/>' });
+
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(path.join(root, 'config/pmd/ruleset.xml'), '<ruleset name="edited"/>');
+
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
+  it("uses only nitpicker's configs by default, and the head project's files when opted in", () => {
+    const head = projectWith({
+      'config/pmd/ruleset.xml': '<ruleset/>',
+      'config/checkstyle/checkstyle.xml': '<module/>',
+    });
+
+    expect(toolConfigProperties('/base', { policyRoot: head })).toEqual([]);
+    expect(
+      toolConfigProperties('/base', {
+        policyRoot: head,
+        toolPrecedence: { pmd: ['nitpicker', 'project'], checkstyle: ['project'] },
+      }),
+    ).toEqual([
+      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
+      `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
+      '-Pnitpicker.checkstyle.nitpickerConfig=false',
+    ]);
+    expect(
+      toolConfigProperties('/base', { policyRoot: head, toolPrecedence: { pmd: ['project'] } }),
+    ).toEqual([
+      `-Pnitpicker.pmd.projectConfig=${path.join(head, 'config/pmd/ruleset.xml')}`,
+      '-Pnitpicker.pmd.nitpickerConfig=false',
+    ]);
+  });
+
+  it('fails with the missing file when the project layer is chosen without one', () => {
+    expect(() =>
+      toolConfigProperties(projectWith({}), { toolPrecedence: { pmd: ['project'] } }),
+    ).toThrow(
+      new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
+    );
   });
 });
 

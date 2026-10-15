@@ -51,11 +51,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: 8.14.3
-      # The Java sources of the mixed fixture project get their complexity from lizard (pin: nitpicker.init.gradle).
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - run: pip install lizard==1.24.1
       - run: npm ci
       - name: Kotlin end-to-end suite
         run: npm run test:kotlin

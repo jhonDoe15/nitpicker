@@ -1,0 +1,87 @@
+[
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.Calc",
+    "start": 9,
+    "end": 11,
+    "lines": 3,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 1,
+    "complexity": 1,
+    "signature": "Calc.Calc(int)"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.classify",
+    "start": 13,
+    "end": 25,
+    "lines": 13,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 3,
+    "complexity": 9,
+    "signature": "Calc.classify(int, int, String)"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.doubler",
+    "start": 27,
+    "end": 29,
+    "lines": 3,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 0,
+    "complexity": 1,
+    "signature": "Calc.doubler()"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.<anonymous>.run",
+    "start": 34,
+    "end": 36,
+    "lines": 3,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 0,
+    "complexity": 2,
+    "signature": "Calc.<anonymous>.run()"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.anon",
+    "start": 31,
+    "end": 38,
+    "lines": 8,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 0,
+    "complexity": 1,
+    "signature": "Calc.anon()"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.Inner.get",
+    "start": 41,
+    "end": 41,
+    "lines": 1,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 1,
+    "complexity": 1,
+    "signature": "Calc.Inner.get(int)"
+  },
+  {
+    "file": "src/main/java/demo/Calc.java",
+    "name": "Calc.Util.Util",
+    "start": 43,
+    "end": 43,
+    "lines": 1,
+    "statements": 1,
+    "maxControlNesting": 0,
+    "parameters": 0,
+    "complexity": 1,
+    "signature": "Calc.Util.Util()",
+    "privateEmptyConstructor": true
+  }
+]
