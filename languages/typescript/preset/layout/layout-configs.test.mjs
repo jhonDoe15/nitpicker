@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -12,7 +12,6 @@ import {
 } from '../tool-configs.mjs';
 import {
   customLayout,
-  defaults,
   readDefault,
   removeTemporaryRoots,
   trackTemporaryRoot,

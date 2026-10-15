@@ -32,20 +32,18 @@ export function readDefault(name) {
   return JSON.parse(readFileSync(path.join(defaults, name), 'utf8'));
 }
 
-export const FILE_SELECTION = (module) =>
-  module.default.map(({ files, ignores }) => ({ files, ignores }));
+export function selectFilesAndIgnores(module) {
+  return module.default.map(({ files, ignores }) => ({ files, ignores }));
+}
 
-// Config modules read the head policy once, at import time. Each distinct policy therefore gets
-// its own module instance (a unique query string), while shared dependencies such as
-// typescript-eslint load once per test file instead of once per process.
-let policyImportCount = 0;
+const policyImports = { count: 0 };
 
 export async function loadConfig(relativePath, policy, read = (module) => module.default) {
   const restore = setPolicyEnvironment(policy);
   try {
-    policyImportCount += 1;
+    policyImports.count += 1;
     const url = pathToFileURL(path.join(new URL('../', import.meta.url).pathname, relativePath));
-    url.search = `policy=${String(policyImportCount)}`;
+    url.search = `policy=${String(policyImports.count)}`;
     return read(await import(url.href));
   } finally {
     restore();
@@ -61,8 +59,6 @@ export function temporaryProject(files) {
   return projectRoot;
 }
 
-// The copied Vitest configs are functions that look for the project's own config in the
-// directory Vitest runs in, so each call runs in a fresh project directory.
 export async function resolveVitestConfig(relativePath, policy, projectFiles = {}) {
   const config = await loadConfig(relativePath, policy);
   const projectRoot = temporaryProject(projectFiles);

@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import {
-  FILE_SELECTION,
+  selectFilesAndIgnores,
   customPolicy as policy,
   loadConfig,
   removeTemporaryRoots,
@@ -10,7 +10,7 @@ afterAll(removeTemporaryRoots);
 
 describe('package-owned child configs', () => {
   it('eslint.config.mjs lints the custom roots and ignores excluded paths', async () => {
-    const config = await loadConfig('defaults/eslint.config.mjs', policy, FILE_SELECTION);
+    const config = await loadConfig('defaults/eslint.config.mjs', policy, selectFilesAndIgnores);
     const ignores = config.flatMap((entry) =>
       entry.files === undefined ? (entry.ignores ?? []) : [],
     );
@@ -49,7 +49,7 @@ describe('package-owned child configs', () => {
     const config = await loadConfig(
       'eslint-config/policies/coding-standards.config.mjs',
       policy,
-      FILE_SELECTION,
+      selectFilesAndIgnores,
     );
     expect([...new Set(config[0].ignores)].sort()).toEqual([
       '**/*.d.ts',
