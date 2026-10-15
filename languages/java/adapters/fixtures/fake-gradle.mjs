@@ -109,6 +109,11 @@ function writeModule({ key, dir }) {
   if (existsSync('MAIN_CLASSES')) {
     writeFileSync(report('jdeps-classes.txt'), 'demo.A\n');
   }
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt']) {
+    if (existsSync(inside(name))) {
+      writeFileSync(report(name), readFileSync(inside(name)));
+    }
+  }
   if (existsSync('mutations.xml')) {
     writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
   }

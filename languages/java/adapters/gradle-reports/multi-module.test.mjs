@@ -37,6 +37,11 @@ function project(files) {
 const KILLED_MUTANT =
   "<mutations><mutation detected='true' status='KILLED'><sourceFile>A.java</sourceFile><mutatedClass>demo.A</mutatedClass><mutatedMethod>run</mutatedMethod><methodDescription>()V</methodDescription><lineNumber>3</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.VoidMethodCallMutator</mutator><description>removed call</description></mutation></mutations>";
 
+const ROOT_JDEPS = {
+  'jdeps-classes.txt': 'demo.a.A\ndemo.c.C\n',
+  'jdeps.txt': '   demo.a.A -> demo.c.C main\n',
+};
+
 const collect = (root) => collectJavaFindings(root, { gradle: fakeGradle, policy: {} });
 
 describe('a Gradle build with several projects', () => {
@@ -80,6 +85,34 @@ describe('a Gradle build with several projects', () => {
     ]);
   });
 
+  it('counts package dependencies across projects, so a cycle through two projects is one graph', () => {
+    const root = project({
+      'modules.txt': 'lib\n',
+      'src/main/java/demo/a/A.java': 'package demo.a;\n',
+      'lib/src/main/java/demo/b/B.java': 'package demo.b;\n',
+      'jdeps-classes.txt': 'demo.a.A\n',
+      'jdeps.txt': '   demo.a.A -> demo.b.B lib\n',
+      'lib/jdeps-classes.txt': 'demo.b.B\n',
+      'lib/jdeps.txt': '   demo.b.B -> demo.a.A app\n',
+    });
+
+    const coupling = collect(root)
+      .filter((finding) => finding.tool === 'coupling')
+      .filter(({ identity }) =>
+        ['module:totalCoupling', 'package:demo.a:fanIn', 'package:demo.b:fanOut'].includes(
+          identity.split('@')[0],
+        ),
+      )
+      .map((finding) => `${finding.path} ${finding.identity} ${String(finding.metric.value)}`);
+
+    expect(coupling.toSorted()).toEqual([
+      '. package:demo.a:fanIn 1',
+      '. package:demo.b:fanOut 1',
+      'lib/src/main/java/demo/b/B.java module:totalCoupling 2',
+      'src/main/java/demo/a/A.java module:totalCoupling 2',
+    ]);
+  });
+
   it('reads a project without main classes or JaCoCo report as untested', () => {
     const root = project({ 'modules.txt': 'lib\n', NO_JACOCO_IN: 'lib' });
 
@@ -88,11 +121,16 @@ describe('a Gradle build with several projects', () => {
 
   it('gives the root project the same identities with one project or several', () => {
     const rootIdentities = (files) =>
-      collect(project({ 'mutations.xml': KILLED_MUTANT, ...files }))
+      collect(project({ 'mutations.xml': KILLED_MUTANT, ...ROOT_JDEPS, ...files }))
         .filter((finding) => finding.path === '.' && !finding.identity.includes('@'))
         .map((finding) => `${finding.rule} ${finding.identity}`);
 
-    expect(rootIdentities({ 'modules.txt': 'extra\n' })).toEqual(rootIdentities({}));
+    const identities = rootIdentities({});
+    expect(identities.filter((identity) => identity.endsWith(':fanOut'))).toEqual([
+      'package-coupling package:demo.a:fanOut',
+      'package-coupling package:demo.c:fanOut',
+    ]);
+    expect(rootIdentities({ 'modules.txt': 'extra\n' })).toEqual(identities);
   });
 
   it('skips a project with no sources and no classes, which writes no reports', () => {
