@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { KINDS, TYPE_NAME_KINDS } from './kinds.mjs';
+import { KINDS, kindOfTypeName } from './kinds.mjs';
 
 const ARRAY_PRODUCING_METHODS = new Set([
   'concat',
@@ -48,7 +48,7 @@ function kindOfExpression(expression) {
     return 'regexp';
   }
   if (ts.isNewExpression(unwrapped)) {
-    return TYPE_NAME_KINDS.get(unwrapped.expression.getText());
+    return kindOfTypeName(unwrapped.expression.getText());
   }
   return ts.isCallExpression(unwrapped) ? kindOfCall(unwrapped) : undefined;
 }

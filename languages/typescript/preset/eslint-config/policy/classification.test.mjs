@@ -106,9 +106,9 @@ describe('production rule classification', () => {
       headFindings: head,
       touchedCode: touchedLineOne(file),
     });
-    expect(result.newFindings.map(({ rule }) => rule)).toContain('no-eval');
-    expect(result.newFindings.map(({ rule }) => rule)).not.toContain(
+    expect(result.newFindings.map(({ rule }) => rule)).toEqual(['no-eval']);
+    expect(result.unchangedFindings.map(({ rule }) => rule)).toEqual([
       'nitpicker/no-unknown-main-folder',
-    );
+    ]);
   });
 });

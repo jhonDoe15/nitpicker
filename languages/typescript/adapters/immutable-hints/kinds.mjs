@@ -46,7 +46,7 @@ export const KINDS = {
 export const ERROR_CLASS_HINT =
   'Error is a class and always mutable: type the field `unknown` (domain/ allows `error` and `cause` typed unknown for a caught error) or carry `message: string`.';
 
-export const TYPE_NAME_KINDS = new Map([
+const TYPE_NAME_KINDS = new Map([
   ['Array', 'array'],
   ['Set', 'set'],
   ['Map', 'map'],
@@ -55,3 +55,7 @@ export const TYPE_NAME_KINDS = new Map([
   ['RegExpExecArray', 'execArray'],
   ['RegExpMatchArray', 'execArray'],
 ]);
+
+export function kindOfTypeName(name) {
+  return TYPE_NAME_KINDS.get(name);
+}

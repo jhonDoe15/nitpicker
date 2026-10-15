@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { ERROR_CLASS_HINT, KINDS, TYPE_NAME_KINDS } from './immutable-hints/kinds.mjs';
+import { ERROR_CLASS_HINT, KINDS, kindOfTypeName } from './immutable-hints/kinds.mjs';
 import { typeParameterFinding, untypedFinding } from './immutable-hints/untyped-finding.mjs';
 
 const GENERIC_HINT = 'Type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`.';
@@ -116,7 +116,7 @@ function kindOfType(typeNode, sourceFile) {
     return {};
   }
   const name = typeNode.typeName.getText(sourceFile);
-  const kind = TYPE_NAME_KINDS.get(name);
+  const kind = kindOfTypeName(name);
   if (kind !== undefined) {
     return { kind, label: KINDS[kind].label };
   }
@@ -148,7 +148,7 @@ function isMutableType(node, sourceFile) {
     return false;
   }
   const name = node.typeName.getText(sourceFile);
-  return MUTABLE_CLASSES.has(name) || TYPE_NAME_KINDS.has(name);
+  return MUTABLE_CLASSES.has(name) || kindOfTypeName(name) !== undefined;
 }
 
 function childrenOf(node, item, sourceFile) {
