@@ -294,7 +294,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   is a new value on every render: hoist it or wrap it in `useMemo`
   (`react-x/no-unstable-context-value`, `react-x/no-unstable-default-props`). `ref` is a plain prop
   and `<Context value={...}>` is the provider (`react-x/no-forward-ref`,
-  `react-x/no-context-provider`); a project on React 18 needs an exception for those two.
+  `react-x/no-context-provider`); both are off when the installed `react` (or, when none is
+  installed, the declared range) is older than 19.
 - **Browser APIs** (`eslint-plugin-react-dom`): no `dangerouslySetInnerHTML` (render JSX; sanitised
   and reviewed HTML needs an exception for `react-dom/no-dangerously-set-innerhtml`), an explicit
   `type` on every `<button>`, `rel="noreferrer noopener"` next to `target="_blank"`, no
