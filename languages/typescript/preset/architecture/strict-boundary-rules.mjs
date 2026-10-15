@@ -88,7 +88,7 @@ const nodeIoModules = [
 
 const reachableIoPatterns = [
   `^(?:node:)?(?:${nodeIoModules.join('|')})(?:$|/)`,
-  `(?:^|/)node_modules/(?:${[...networkAndDatabaseClients, ...loggers].join('|')})(?:/|$)`,
+  `(?:^|/)(?:node_modules/)?(?:${[...networkAndDatabaseClients, ...loggers].join('|')})(?:/|$)`,
 ];
 
 const domain = { path: `${feature}/domain/` };

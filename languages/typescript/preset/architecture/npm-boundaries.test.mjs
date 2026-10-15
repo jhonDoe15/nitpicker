@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -38,14 +38,42 @@ afterAll(() => {
   }
 });
 
-function architectureFindings(files) {
+function writeFiles(root, files) {
+  for (const [relativePath, contents] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
+    writeFileSync(path.join(root, relativePath), contents);
+  }
+}
+
+function sourceFiles(files) {
+  return Object.fromEntries(
+    Object.entries(files).filter(([relativePath]) => !relativePath.startsWith('node_modules/')),
+  );
+}
+
+function installedFiles(files) {
+  return Object.fromEntries(
+    Object.entries(files).filter(([relativePath]) => relativePath.startsWith('node_modules/')),
+  );
+}
+
+function prepareDependencies(temporaryRoot, projectRoot, files, dependencies) {
+  if (dependencies === 'installed') {
+    writeFiles(projectRoot, installedFiles(files));
+  }
+  if (dependencies === 'symlinked') {
+    const liveRoot = path.join(temporaryRoot, 'live');
+    writeFiles(liveRoot, installedFiles(files));
+    symlinkSync(path.join(liveRoot, 'node_modules'), path.join(projectRoot, 'node_modules'), 'dir');
+  }
+}
+
+function architectureFindings(files, dependencies = 'installed') {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   roots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'head');
-  for (const [relativePath, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(projectRoot, relativePath)), { recursive: true });
-    writeFileSync(path.join(projectRoot, relativePath), contents);
-  }
+  writeFiles(projectRoot, sourceFiles(files));
+  prepareDependencies(temporaryRoot, projectRoot, files, dependencies);
   const run = withDefaultAnalyzerParallelism(() =>
     withHeadPolicyFile(resolveHeadPolicy({}), (headPolicyFile) =>
       runAnalyzers({
@@ -69,13 +97,16 @@ function architectureFindings(files) {
 }
 
 describe('domain rules on installed npm packages', () => {
-  it('reports an installed ID library and a client reached through shared/', () => {
-    expect(architectureFindings(project)).toEqual({
-      toolErrors: [],
-      findings: [
-        'domain-does-not-import-id-libraries src/main/features/orders/domain/order-id.ts',
-        'domain-does-not-reach-io-through-shared src/main/features/orders/domain/order-total.ts',
-      ],
-    });
-  });
+  it.each(['installed', 'symlinked', 'absent'])(
+    'reports an ID library and a client reached through shared/ with node_modules %s',
+    (dependencies) => {
+      expect(architectureFindings(project, dependencies)).toEqual({
+        toolErrors: [],
+        findings: [
+          'domain-does-not-import-id-libraries src/main/features/orders/domain/order-id.ts',
+          'domain-does-not-reach-io-through-shared src/main/features/orders/domain/order-total.ts',
+        ],
+      });
+    },
+  );
 });
