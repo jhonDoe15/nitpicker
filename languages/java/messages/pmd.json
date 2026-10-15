@@ -16,11 +16,11 @@
     "mayBeIntended": false
   },
   "AssignmentInOperand": {
-    "fix": "Move the assignment to its own statement before the condition; read lines with a for or while over a BufferedReader.lines() stream or an explicit loop.",
+    "fix": "Assign in its own statement before the condition; read lines with reader.lines() or for (String line = r.readLine(); line != null; line = r.readLine()).",
     "mayBeIntended": true
   },
   "AssignmentToNonFinalStatic": {
-    "fix": "Make the static field final, or set it through a static factory or holder class instead of the constructor; per-instance state belongs in instance fields.",
+    "fix": "Make it an instance field, or a static final field set once at its declaration; a constructor must never write a static field.",
     "mayBeIntended": false
   },
   "AvoidAccessibilityAlteration": {
@@ -52,7 +52,7 @@
     "mayBeIntended": true
   },
   "AvoidDecimalLiteralsInBigDecimalConstructor": {
-    "fix": "Pass a String (new BigDecimal(\"0.1\")) or use BigDecimal.valueOf(0.1) so the value is exact.",
+    "fix": "Pass the value as a String, new BigDecimal(\"0.1\"), so it is exact.",
     "mayBeIntended": false
   },
   "AvoidDuplicateLiterals": {
@@ -80,7 +80,7 @@
     "mayBeIntended": true
   },
   "AvoidLosingExceptionInformation": {
-    "fix": "Pass the exception as the cause when rethrowing or logging it, and do not call getMessage() alone and drop the stack trace.",
+    "fix": "Delete the call whose result is thrown away, such as a bare e.getMessage();, or use its value; to keep the error, pass e on as the cause.",
     "mayBeIntended": false
   },
   "AvoidMessageDigestField": {
@@ -100,8 +100,8 @@
     "mayBeIntended": false
   },
   "AvoidReassigningLoopVariables": {
-    "fix": "Leave the loop variable alone; compute into a separate local, or use a while loop when you must skip elements.",
-    "mayBeIntended": true
+    "fix": "Leave the loop variable alone: compute into a separate local, or use a while loop with its own counter when you must skip elements.",
+    "mayBeIntended": false
   },
   "AvoidReassigningParameters": {
     "fix": "Copy the parameter into a new local variable and change the local.",
@@ -112,7 +112,7 @@
     "mayBeIntended": true
   },
   "AvoidUsingHardCodedIP": {
-    "fix": "Take the address from configuration or a parameter, or use a host name; if a literal stays, put it in a named constant.",
+    "fix": "Read the address from configuration or take it as a parameter; for loopback use InetAddress.getLoopbackAddress() or the host name localhost.",
     "mayBeIntended": true
   },
   "AvoidUsingOctalValues": {
@@ -136,7 +136,7 @@
     "mayBeIntended": false
   },
   "CheckSkipResult": {
-    "fix": "Store the value returned by skip() and loop until all bytes are skipped, or use readNBytes or skipNBytes instead.",
+    "fix": "Call in.skipNBytes(n), which skips exactly n bytes or throws, instead of skip(n).",
     "mayBeIntended": false
   },
   "ClassCastExceptionWithToArray": {
@@ -188,7 +188,7 @@
     "mayBeIntended": false
   },
   "DetachedTestCase": {
-    "fix": "Add @Test to the public test method, or make it private or non-test if it is a helper, so JUnit 5 runs it.",
+    "fix": "Annotate the method with @Test so JUnit runs it, or make it private if it is a helper.",
     "mayBeIntended": true
   },
   "DoNotCallGarbageCollectionExplicitly": {
@@ -200,12 +200,12 @@
     "mayBeIntended": false
   },
   "DoNotHardCodeSDCard": {
-    "fix": "Get the storage directory from the platform API (Environment.getExternalStorageDirectory or context.getExternalFilesDir), not a /sdcard literal.",
+    "fix": "Get the directory from context.getExternalFilesDir(null) or another Context storage method, never a /sdcard path literal.",
     "mayBeIntended": false
   },
   "DoNotTerminateVM": {
-    "fix": "Return or throw to the caller and let main end the program; do not call System.exit or Runtime.halt in library code.",
-    "mayBeIntended": true
+    "fix": "Return or throw to the caller and let main decide the exit code; only main may call System.exit.",
+    "mayBeIntended": false
   },
   "DoNotThrowExceptionInFinally": {
     "fix": "Move the throw out of finally; keep finally for cleanup only, or use try-with-resources so close errors become suppressed exceptions.",
@@ -260,7 +260,7 @@
     "mayBeIntended": false
   },
   "GuardLogStatement": {
-    "fix": "Use parameterized messages or a Supplier lambda, and wrap in isLoggable or isDebugEnabled only when computing an argument is costly.",
+    "fix": "Pass only constants and locals with {} placeholders; for a computed value pass a Supplier lambda or wrap the call in an isLoggable check.",
     "mayBeIntended": true
   },
   "IdempotentOperations": {
@@ -268,7 +268,7 @@
     "mayBeIntended": false
   },
   "ImplicitSwitchFallThrough": {
-    "fix": "End each case with break, return or throw, or use an arrow-form switch (case A -> ...) that has no fall through.",
+    "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
     "mayBeIntended": false
   },
   "InstantiationToGetClass": {
@@ -352,8 +352,8 @@
     "mayBeIntended": false
   },
   "MissingSerialVersionUID": {
-    "fix": "Declare private static final long serialVersionUID, or drop Serializable if the class is not serialized.",
-    "mayBeIntended": true
+    "fix": "Declare private static final long serialVersionUID = 1L; in the class, or stop implementing Serializable if it is never serialized.",
+    "mayBeIntended": false
   },
   "MissingStaticMethodInNonInstantiatableClass": {
     "fix": "Add a public static factory or accessor method, or make a constructor non-private, so the class can be used.",
@@ -372,11 +372,11 @@
     "mayBeIntended": false
   },
   "NonExhaustiveSwitch": {
-    "fix": "Add a default branch or a case for every enum constant, or use a switch expression so the compiler checks coverage.",
+    "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
     "mayBeIntended": false
   },
   "NonSerializableClass": {
-    "fix": "Make the class implement Serializable and mark non-serializable fields transient, or keep the class off serialization paths.",
+    "fix": "Make the field's type Serializable or mark the field transient; if the class is never serialized, stop implementing Serializable.",
     "mayBeIntended": true
   },
   "NonStaticInitializer": {
@@ -384,8 +384,8 @@
     "mayBeIntended": false
   },
   "NullAssignment": {
-    "fix": "Restructure instead of assigning null: use a ternary or early return, an Optional, or a separate local; do not reset variables to null.",
-    "mayBeIntended": true
+    "fix": "Restructure so the variable gets its value once: declare it where the value is known, return early, or extract a method; never write x = null.",
+    "mayBeIntended": false
   },
   "OneDeclarationPerLine": {
     "fix": "Declare each variable in its own statement: int width; int height;.",
@@ -408,11 +408,11 @@
     "mayBeIntended": false
   },
   "ProperLogger": {
-    "fix": "Declare the logger as private static final, named LOG (or the project's name), for the enclosing class: System.getLogger(Foo.class.getName()).",
-    "mayBeIntended": true
+    "fix": "Declare it private static final Log LOG = LogFactory.getLog(Foo.class), where Foo is the class that declares it.",
+    "mayBeIntended": false
   },
   "ReplaceEnumerationWithIterator": {
-    "fix": "Implement or use Iterator, or turn an API's Enumeration into a list with Collections.list(enumeration) and use for-each.",
+    "fix": "Implement Iterator instead of Enumeration; where a legacy API demands an Enumeration, pass Collections.enumeration(list).",
     "mayBeIntended": true
   },
   "ReplaceHashtableWithMap": {
@@ -436,7 +436,7 @@
     "mayBeIntended": false
   },
   "SimplifiableTestAssertion": {
-    "fix": "Use the dedicated assertion, e.g. assertThat(actual).isEqualTo(expected) or assertEquals, instead of assertTrue on a comparison.",
+    "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
     "mayBeIntended": false
   },
   "SingleMethodSingleton": {
@@ -468,7 +468,7 @@
     "mayBeIntended": false
   },
   "SwitchStmtsShouldHaveDefault": {
-    "fix": "Add a default branch to the switch statement, or use a switch expression over an enum or sealed type.",
+    "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
     "mayBeIntended": false
   },
   "SystemPrintln": {
@@ -536,7 +536,7 @@
     "mayBeIntended": false
   },
   "UnusedNullCheckInEquals": {
-    "fix": "Do the null check on the argument before calling a method on it in equals, or use Objects.equals.",
+    "fix": "Call equals on the value you just null-checked, a != null && a.equals(other), or drop the check and use Objects.equals(a, other).",
     "mayBeIntended": false
   },
   "UnusedPrivateField": {
@@ -568,7 +568,7 @@
     "mayBeIntended": false
   },
   "UseProperClassLoader": {
-    "fix": "Use Thread.currentThread().getContextClassLoader() or Foo.class.getClassLoader() instead of getClass().getClassLoader() in J2EE code.",
+    "fix": "Use Thread.currentThread().getContextClassLoader() instead of calling getClassLoader() on a Class.",
     "mayBeIntended": true
   },
   "UseStandardCharsets": {
@@ -588,7 +588,7 @@
     "mayBeIntended": false
   },
   "WhileLoopWithLiteralBoolean": {
-    "fix": "Put the real condition in while, or remove the loop; while (true) with break becomes a loop with its exit condition.",
-    "mayBeIntended": true
+    "fix": "Write do { } while (true) as while (true) { }, replace do { } while (false) with a plain block, and delete a while (false) loop.",
+    "mayBeIntended": false
   }
 }
