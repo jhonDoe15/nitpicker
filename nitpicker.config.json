@@ -55,8 +55,7 @@
       "rule": "nitpicker/no-io-in-loop",
       "paths": [
         "languages/java/adapters/comments/java-comments.mjs",
-        "languages/java/adapters/test-support/violation-markers.mjs",
-        "languages/java/guards/javac-lint.mjs"
+        "languages/java/adapters/test-support/violation-markers.mjs"
       ],
       "reason": "Each reads or checks every distinct local file exactly once; the file system has no batched read to use."
     },
