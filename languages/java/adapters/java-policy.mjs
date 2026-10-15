@@ -16,7 +16,6 @@ import {
   SHARED_EXCEPTION_RULES,
 } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
-import { javaStyleArguments } from './style/java-style.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = [
@@ -79,7 +78,6 @@ function javaAdapterArguments({
   exclude = [],
   exceptions = [],
   kotlin = {},
-  conventions,
   tools = {},
 }) {
   const fileLimits = fileLimitThresholds(thresholds);
@@ -90,7 +88,6 @@ function javaAdapterArguments({
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
-    ...javaStyleArguments(conventions),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...[...PROJECT_TOOL_CONFIGS.keys()]

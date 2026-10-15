@@ -426,8 +426,8 @@ line, lines of at most 100 characters. A project that indents with 4 spaces has 
 `java.indentation` convention at `"4"` (`"2"`, or no value, is Google): the format check then runs
 google-java-format with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100). The
 convention applies to the Java sources of a kotlin-preset project too. There is no `java` config
-key; the single function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns the
-convention into the style (`google` or `aosp`).
+key; the convention comes from the head policy, and the single function `javaStyle()` in
+`languages/java/adapters/style/java-style.mjs` turns it into the style (`google` or `aosp`).
 
 A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
 only restate the formatter's layout are suppressed in both styles (`Indentation`,
@@ -440,9 +440,10 @@ Javadoc rules, `OneStatementPerLine`, the 100-character `LineLength` and the res
 Checkstyle config (`tools.checkstyle.precedence`) is used as written, layout checks included.
 
 The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through
-`gradle.properties`. It is part of the analyzer's configuration hash, and the base is analysed with
-the base's own config, so a change of style in the same pull request does not fail the files it
-makes differ. Format failures name the style (`File is not formatted with
+`gradle.properties`. The runner reads the convention from the head policy file at run time, like the
+other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
+same policy file, so a change of style in the same pull request does not fail the files it makes
+differ. Format failures name the style (`File is not formatted with
 google-java-format --aosp`).
 
 ## Coupling and stability (ticket SH6)

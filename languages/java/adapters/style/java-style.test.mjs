@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { analyzeJavaSnapshot } from '../java-runner.mjs';
-import { javaStyle, javaStyleArguments, javaStyleProperties } from './java-style.mjs';
+import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
+import { javaStyle, javaStyleProperties } from './java-style.mjs';
 
 const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 const roots = [];
@@ -88,9 +88,17 @@ describe('javaStyle', () => {
     expect(javaStyle(undefined)).toBe('google');
   });
 
-  it('turns a non-default style into runner arguments', () => {
-    expect(javaStyleArguments({ 'java.indentation': '4' })).toEqual(['--java-style', 'aosp']);
-    expect(javaStyleArguments({ 'java.indentation': '2' })).toEqual([]);
-    expect(javaStyleArguments(undefined)).toEqual([]);
+  it('reaches the runner policy from the policy file named by NITPICKER_POLICY', () => {
+    const policyOf = (conventions) => {
+      const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-policy-')));
+      roots.push(root);
+      const file = path.join(root, 'policy.json');
+      writeFileSync(file, JSON.stringify(conventions === undefined ? {} : { conventions }));
+      return readRunnerPolicy(['--project-root', '/p'], { NITPICKER_POLICY: file }).policy;
+    };
+    expect(policyOf({ 'java.indentation': '4' }).javaStyle).toBe('aosp');
+    expect(policyOf({ 'java.indentation': '2' }).javaStyle).toBe('google');
+    expect(policyOf(undefined).javaStyle).toBe('google');
+    expect(readRunnerPolicy(['--project-root', '/p'], {}).policy.javaStyle).toBe('google');
   });
 });
