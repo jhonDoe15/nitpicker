@@ -1,7 +1,7 @@
 import { rule as reactNoDirectDom } from './react-no-direct-dom.mjs';
 import { rule as reactNoEffectEventHandling } from './react-no-effect-event-handling.mjs';
 import { rule as reactNoRandomKey } from './react-no-random-key.mjs';
-import { createReactRuleTester, filename } from '../tester.mjs';
+import { createReactRuleTester, filename } from '../test-support/tester.mjs';
 
 const tester = createReactRuleTester();
 

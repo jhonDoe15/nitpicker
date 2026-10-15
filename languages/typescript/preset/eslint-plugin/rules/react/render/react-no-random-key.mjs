@@ -1,4 +1,4 @@
-import { ancestorsOf, variableNamed } from '../../ancestry.mjs';
+import { ancestorsOf, variableNamed } from '../../analysis/ancestry.mjs';
 
 const generators = new Set([
   'Math.random',

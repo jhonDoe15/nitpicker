@@ -1,5 +1,5 @@
-import { ancestorsOf, variableNamed } from '../../ancestry.mjs';
-import { isEffectCallback, isFunctionNode } from '../../react-effects.mjs';
+import { ancestorsOf, variableNamed } from '../../analysis/ancestry.mjs';
+import { isEffectCallback, isFunctionNode } from '../react-effects.mjs';
 
 const callbackName = /^on[A-Z]/u;
 

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { rule } from '../react-no-effect-data-fetching.mjs';
+import { rule } from './react-no-effect-data-fetching.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-async-effects-'));
 const ruleName = 'nitpicker/react-no-effect-data-fetching';

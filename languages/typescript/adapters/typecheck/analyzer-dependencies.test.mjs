@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createEslintAnalyzer } from '../eslint.mjs';
-import { createStaticCheckAnalyzer } from '../static-checks.mjs';
+import { createEslintAnalyzer } from '../eslint/analyzer.mjs';
+import { createStaticCheckAnalyzer } from '../static-checks/analyzer.mjs';
 
 describe('analyzers that need the installed dependencies in the snapshot', () => {
   it('asks the run to link them once, so a finished analyzer cannot remove them under a running one', () => {

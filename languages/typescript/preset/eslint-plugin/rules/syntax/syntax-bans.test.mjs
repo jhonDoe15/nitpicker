@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../../failure-messages/harness.mjs';
+import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
 import { applyRuleExceptions } from '../../../eslint-config/exceptions.mjs';
-import strictSyntaxConfig from '../../../eslint-config/strict.mjs';
+import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
 
 const code = [
   'export const value = null;',
