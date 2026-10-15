@@ -32,7 +32,11 @@ function effective(root) {
   <project>
     <parent><groupId>demo</groupId></parent>
     <artifactId>core</artifactId>
-    <properties><nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes></properties>
+    <properties>
+      <nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes>
+      <maven.compiler.release>17</maven.compiler.release>
+      <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+    </properties>
     <build>
       <sourceDirectory>${root}/core/src/main/java</sourceDirectory>
       <testSourceDirectory>${root}/core/src/test/java</testSourceDirectory>
@@ -58,6 +62,15 @@ function effective(root) {
           <executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>
         </plugin>
         <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>17</source>
+            <compilerArgs><arg>-Xlint:all</arg><arg>-Xplugin:Noop</arg></compilerArgs>
+            <compilerArgument>-parameters</compilerArgument>
+            <enablePreview>true</enablePreview>
+          </configuration>
+        </plugin>
+        <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
           <configuration><reportsDirectory>${root}/core/out/tests</reportsDirectory></configuration>
         </plugin>
@@ -73,10 +86,19 @@ function effective(root) {
 `;
 }
 
-function defaultModule(basedir, coordinates, packaging) {
+const NO_COMPILER_SETTINGS = {
+  release: undefined,
+  source: undefined,
+  target: undefined,
+  encoding: undefined,
+  args: [],
+};
+
+function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
   const target = path.join(basedir, 'target');
   return {
     basedir,
+    pomFile: path.join(basedir, pomFile),
     coordinates,
     packaging,
     buildDirectory: target,
@@ -88,6 +110,7 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     jacocoDestFile: undefined,
     archunitIncludes: undefined,
+    compiler: NO_COMPILER_SETTINGS,
   };
 }
 
@@ -106,9 +129,10 @@ describe('readReactor', () => {
     });
     const [parent, core, app] = readReactor(root, effective(root));
 
-    expect(parent).toEqual(defaultModule(root, 'demo:parent', 'pom'));
+    expect(parent).toEqual(defaultModule(root, { coordinates: 'demo:parent', packaging: 'pom' }));
     expect(core).toEqual({
       basedir: path.join(root, 'core'),
+      pomFile: path.join(root, 'core/pom.xml'),
       coordinates: 'demo:core',
       packaging: 'jar',
       buildDirectory: `${root}/core/out`,
@@ -120,8 +144,21 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
+      compiler: {
+        release: '17',
+        source: '17',
+        target: undefined,
+        encoding: 'ISO-8859-1',
+        args: ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'],
+      },
     });
-    expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
+    expect(app).toEqual(
+      defaultModule(path.join(root, 'tools'), {
+        coordinates: 'demo:app',
+        packaging: 'war',
+        pomFile: 'app-pom.xml',
+      }),
+    );
   });
 
   it('reads a single-module effective POM', () => {
@@ -193,7 +230,7 @@ describe('readReactor', () => {
 });
 
 describe('parseDependencyList', () => {
-  it('reads scope and file, with classifiers, module names, optional markers and drive letters', () => {
+  it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
     const listing = [
       '',
       'The following files have been resolved:',
@@ -205,10 +242,34 @@ describe('parseDependencyList', () => {
     ].join('\n');
 
     expect(parseDependencyList(listing)).toEqual([
-      { scope: 'test', file: '/m2/junit-jupiter-api-5.11.0.jar' },
-      { scope: 'test', file: '/work/core/target/test-classes' },
-      { scope: 'compile', file: 'C:\\work\\shared\\target\\classes' },
-      { scope: 'compile', file: '/m2/z-1.0-runtime.jar' },
+      {
+        groupId: 'org.junit.jupiter',
+        artifactId: 'junit-jupiter-api',
+        type: 'jar',
+        scope: 'test',
+        file: '/m2/junit-jupiter-api-5.11.0.jar',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'core',
+        type: 'jar',
+        scope: 'test',
+        file: '/work/core/target/test-classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'shared',
+        type: 'jar',
+        scope: 'compile',
+        file: 'C:\\work\\shared\\target\\classes',
+      },
+      {
+        groupId: 'demo',
+        artifactId: 'z',
+        type: 'jar',
+        scope: 'compile',
+        file: '/m2/z-1.0-runtime.jar',
+      },
     ]);
   });
 });
