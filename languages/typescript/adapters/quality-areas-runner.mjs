@@ -37,7 +37,7 @@ import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { deadCodeMessage } from './exceptions/dead-code-messages.mjs';
-import * as ids from './exceptions/function-ids.mjs';
+import * as ids from './exceptions/function-identity.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
