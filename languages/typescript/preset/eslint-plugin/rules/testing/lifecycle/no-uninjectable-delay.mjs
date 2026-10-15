@@ -23,24 +23,21 @@ function isFunction(node) {
   return FUNCTION_TYPES.has(node.type);
 }
 
-function exportedLocalNames(program) {
-  const names = new Set();
-  for (const statement of program.body) {
-    if (
-      statement.type === 'ExportNamedDeclaration' &&
-      !statement.declaration &&
-      !statement.source
-    ) {
-      for (const specifier of statement.specifiers) names.add(specifier.local.name);
-    }
-    if (
-      statement.type === 'ExportDefaultDeclaration' &&
-      statement.declaration.type === 'Identifier'
-    ) {
-      names.add(statement.declaration.name);
-    }
+function exportedNamesOf(statement) {
+  if (statement.type === 'ExportNamedDeclaration' && !statement.declaration && !statement.source) {
+    return statement.specifiers.map((specifier) => specifier.local.name);
   }
-  return names;
+  if (
+    statement.type === 'ExportDefaultDeclaration' &&
+    statement.declaration.type === 'Identifier'
+  ) {
+    return [statement.declaration.name];
+  }
+  return [];
+}
+
+function exportedLocalNames(program) {
+  return new Set(program.body.flatMap(exportedNamesOf));
 }
 
 function topLevelFunction(node) {

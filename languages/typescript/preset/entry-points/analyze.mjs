@@ -41,28 +41,33 @@ function isProductionModule(modulePath, sourceRoot, layout) {
   return layout.isSourceUnderRoot(modulePath, sourceRoot);
 }
 
-function exportReachability(graph, sourceRoot) {
+function exportedTargetsOf(module, sourceRoot) {
+  return (module.dependencies ?? [])
+    .filter(
+      (dependency) =>
+        typeof dependency.resolved === 'string' &&
+        dependency.dependencyTypes?.includes('export') === true,
+    )
+    .map((dependency) => normalizePath(dependency.resolved))
+    .filter((target) => target.startsWith(`${sourceRoot}/`));
+}
+
+function exportTargetsBySource(graph, sourceRoot) {
   const exportTargets = new Map();
   for (const module of graph.modules) {
     const source = normalizePath(module.source);
-    if (!source.startsWith(`${sourceRoot}/`)) {
-      continue;
-    }
-    for (const dependency of module.dependencies ?? []) {
-      if (
-        typeof dependency.resolved !== 'string' ||
-        dependency.dependencyTypes?.includes('export') !== true
-      ) {
-        continue;
-      }
-      const target = normalizePath(dependency.resolved);
-      if (target.startsWith(`${sourceRoot}/`)) {
-        const targets = exportTargets.get(source) ?? new Set();
-        targets.add(target);
-        exportTargets.set(source, targets);
-      }
+    if (!source.startsWith(`${sourceRoot}/`)) continue;
+    for (const target of exportedTargetsOf(module, sourceRoot)) {
+      const targets = exportTargets.get(source) ?? new Set();
+      targets.add(target);
+      exportTargets.set(source, targets);
     }
   }
+  return exportTargets;
+}
+
+function exportReachability(graph, sourceRoot) {
+  const exportTargets = exportTargetsBySource(graph, sourceRoot);
 
   return (entryPoint, target) => {
     const pending = [entryPoint];
@@ -148,11 +153,18 @@ function crossBoundaryFinding(edge, scope) {
 
 function recordBoundaryFinding(finding, scope, groups) {
   const entryPoint = scope.entryPoints.get(finding.targetComponent);
-  if (entryPoint === undefined) groups.missingEntryPointImports.push(finding);
-  else if (finding.target === entryPoint) groups.throughEntryPoint.push(finding);
-  else if (scope.isExportReachable(entryPoint, finding.target))
-    groups.publicAlternativeBypasses.push({ ...finding, publicEntryPoint: entryPoint });
-  else groups.unexportedTargetImports.push({ ...finding, publicEntryPoint: entryPoint });
+  if (entryPoint === undefined) {
+    groups.missingEntryPointImports.push(finding);
+    return;
+  }
+  if (finding.target === entryPoint) {
+    groups.throughEntryPoint.push(finding);
+    return;
+  }
+  const group = scope.isExportReachable(entryPoint, finding.target)
+    ? groups.publicAlternativeBypasses
+    : groups.unexportedTargetImports;
+  group.push({ ...finding, publicEntryPoint: entryPoint });
 }
 
 function boundaryImports(scope) {

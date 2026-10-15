@@ -68,15 +68,15 @@ for (const entry of functions.slice(0, 20)) {
   process.stdout.write(
     formatOutput(
       [
-        `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}`,
+        entry.crap === null ? 'N/A' : entry.crap.toFixed(2),
         '\tCC ',
         `${entry.complexity}`,
         '\t',
-        `${entry.source}`,
+        entry.source,
         ':',
         `${entry.lines.start}`,
         '\t',
-        `${entry.function}`,
+        entry.function,
       ].join(''),
     ) + '\n',
   );
