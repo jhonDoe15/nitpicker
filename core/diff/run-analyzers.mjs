@@ -3,6 +3,7 @@ import path from 'node:path';
 import { analyzerName } from './report-model.mjs';
 import { withSharedBuildDirectory } from '../tooling/build-once/build-once.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
+import { namedReports, namedToolErrors } from './snapshot-root/snapshot-root.mjs';
 import { headPolicyEnvironment } from '../../languages/typescript/preset/head-policy.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -112,10 +113,11 @@ export function runAnalyzers({
   }
 
   const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  const snapshotRoot = projectRoot === liveProjectRoot ? undefined : { projectRoot, snapshot };
   return {
-    reports: scheduled.reports,
+    reports: namedReports(scheduled.reports, snapshotRoot),
     timings: scheduled.timings,
-    toolErrors: [...toolErrors, ...scheduled.toolErrors],
+    toolErrors: namedToolErrors([...toolErrors, ...scheduled.toolErrors], snapshotRoot),
     skipped: scheduled.skipped,
   };
 }
