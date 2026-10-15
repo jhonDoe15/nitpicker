@@ -144,6 +144,11 @@ that defines a named function (a copied helper: keep one in a non-test file such
 `test/support/` and import it). Repeated expected values and assertions between tests are left
 alone.
 
+Every runnable test imports production code at runtime
+(`nitpicker/test-must-use-production-runtime`), directly or through a relative test helper that
+does, such as a `renderWithProviders` in `test/support/` that imports the app. The rule follows one
+hop, and type-only imports do not count.
+
 - `nitpicker/no-git-repository-per-test`: no `git init` or `git clone` per test. This covers direct
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
   `run('git', ['init'])`. Build a template repository once in `beforeAll` and `cpSync` it per test.
