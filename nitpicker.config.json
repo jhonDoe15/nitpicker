@@ -33,6 +33,7 @@
   "exclude": [
     "languages/java/ingest/fixtures/**",
     "languages/java/adapters/fixtures/**",
+    "languages/java/maven/fixtures/**",
     "languages/javascript/preset/fixtures/**",
     "languages/python/ingest/fixtures/**",
     "languages/python/rules/fixtures/**",
@@ -70,9 +71,11 @@
         "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs",
+        "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
+        "languages/java/maven/maven-preset.e2e.test.mjs",
         "languages/java/guards/guards.e2e.test.mjs"
       ],
-      "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
+      "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
     {
       "rule": "nitpicker/no-raised-test-timeout",
