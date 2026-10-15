@@ -163,7 +163,8 @@ function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
 
 function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimit) {
   const sources = new Map();
-  return ingestCrap(readFileSync(path.join(reportRoot, 'lizard.csv'), 'utf8'), jacoco, {
+  const structure = JSON.parse(readFileSync(path.join(reportRoot, 'structure.json'), 'utf8'));
+  return ingestCrap(structure, jacoco, {
     sourceRoots,
     limit: crapLimit,
     sourceHash: (entry) =>

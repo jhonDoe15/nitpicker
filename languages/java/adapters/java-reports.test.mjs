@@ -98,8 +98,21 @@ function projectWithReports({ shift = 0 } = {}) {
   );
   // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
   writeFileSync(
-    path.join(reports, 'lizard.csv'),
-    `9,12,60,1,7,"Bad::decode@${String(8 + shift)}-${String(14 + shift)}@src/main/java/demo/Bad.java","src/main/java/demo/Bad.java","Bad::decode","Bad::decode( byte[] bytes)",${String(8 + shift)},${String(14 + shift)}\n`,
+    path.join(reports, 'structure.json'),
+    JSON.stringify([
+      {
+        file: 'src/main/java/demo/Bad.java',
+        name: 'Bad.decode',
+        start: 8 + shift,
+        end: 14 + shift,
+        lines: 7,
+        statements: 9,
+        maxControlNesting: 1,
+        parameters: 1,
+        complexity: 12,
+        signature: 'Bad.decode(byte[])',
+      },
+    ]),
   );
   // The jscpd sample report (one clone); `shift` moves its start lines like the other reports.
   const jscpd = JSON.parse(
@@ -153,7 +166,7 @@ describe('readJavaFindings', () => {
         'crap',
         'crap-score-limit',
         bad,
-        expect.stringMatching(/^function:Bad::decode\( byte\[\] bytes\):source:[0-9a-f]{24}$/),
+        expect.stringMatching(/^function:Bad\.decode\(byte\[\]\):source:[0-9a-f]{24}$/),
       ],
       ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
     ]);

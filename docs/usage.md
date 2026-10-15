@@ -226,7 +226,8 @@ new enforceable findings fail. Exit codes, console summary, `new-findings.json`,
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
 
-Needs Java 21 and `gradle` on the PATH (or `NITPICKER_GRADLE=<command>`, for example `./gradlew`).
+Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
+project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
 presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines` and `folderFiles`), `exclude`
 (findings under the globs are dropped), `exceptions` and `legacyInventory`. A Java exception names
@@ -327,7 +328,7 @@ Set `"preset": "python"` in `nitpicker.config.json` to gate a Python project the
 format check (ruff format or black, whichever the project uses), a strict type check (mypy or
 pyright, whichever the project uses), a few small checks of nitpicker's own, the test suite under
 coverage.py, function size limits (lines, statements, control nesting, parameters) and the CRAP
-score (lizard at the version the Java preset pins, plus per-function coverage; it must be installed
+score (lizard at the version pinned in languages/java/gradle/nitpicker.init.gradle, plus per-function coverage; it must be installed
 as `lizard` in the environment or on the `PATH`, or named by `NITPICKER_LIZARD`; nothing is downloaded) run on the merge base and on head, inside the project's own environment, and only new
 enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif` and
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no

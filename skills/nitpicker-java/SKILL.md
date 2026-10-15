@@ -6,7 +6,7 @@ description: Use before writing or changing Java in a project that runs nitpicke
 # nitpicker for Java
 
 nitpicker gates a Gradle project (Java 21) with PMD, SpotBugs, Checkstyle, google-java-format,
-JaCoCo, lizard (CRAP), PIT mutation testing, jscpd and size limits. It fails only on findings your
+JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on findings your
 change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
 start; the gate is a backstop.
 
@@ -16,13 +16,14 @@ start; the gate is a backstop.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
    `--replace`). `npx nitpicker --fix` does not touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
-   code. It runs Gradle on the merge base and on head, takes minutes, and needs `gradle` on the
-   PATH (or `NITPICKER_GRADLE=./gradlew`) and `lizard==1.24.1` installed.
+   code. It runs Gradle on the merge base and on head and takes minutes. It uses the project's
+   `./gradlew` when there is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides
+   both).
 4. Act on the exit code:
    - 0: done.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
-   - 2: no new findings, but a tool failed (Gradle, a missing lizard, a test failure). Fix the
+   - 2: no new findings, but a tool failed (Gradle, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
@@ -50,8 +51,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
-- Utility classes: no empty private no-arg constructor. JaCoCo leaves it out of its report, so it
-  fails `crap-coverage-unknown`. Use a final class of static methods with the implicit constructor.
+- Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
   less stable one (`stability-direction`).
