@@ -17,8 +17,6 @@ import {
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../../..');
 
-// `../dependency-graph.config.mjs` reads the policy tsconfig path from the environment when it is first imported. The
-// tsconfig used for each call is the linked one passed below, so the imported path is only a placeholder.
 const previousEnvironment = process.env[TYPESCRIPT_CONFIG_ENVIRONMENT];
 process.env[TYPESCRIPT_CONFIG_ENVIRONMENT] = path.join(projectRoot, POLICY_TYPESCRIPT_CONFIG);
 const { default: config } = await import('../dependency-graph.config.mjs');
