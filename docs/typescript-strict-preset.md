@@ -329,7 +329,10 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `import '@testing-library/jest-dom/vitest'` in a file listed in `test.setupFiles`, for
   `toBeInTheDocument()` and the other DOM matchers; and the named import
   `import { userEvent } from '@testing-library/user-event'`, because the default import has no
-  `setup()` under `module: NodeNext`.
+  `setup()` under `module: NodeNext`. When a test fails with `document is not defined`,
+  `Invalid Chai property: toBeInTheDocument` or `afterEach is not defined`, the `tests-failed`
+  message ends with a hint that names the missing setup line
+  (`adapters/test-failures/failure-lines.mjs`).
 - **Snapshot-only tests are allowed.** No rule bans a test whose only assertion is
   `toMatchSnapshot()` or `toMatchInlineSnapshot()`. A snapshot can pin a rendered structure
   deliberately, and there is no general recommendation against it nor a weird pattern with a

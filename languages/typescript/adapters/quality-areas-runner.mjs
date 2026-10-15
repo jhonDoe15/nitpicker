@@ -38,6 +38,7 @@ import { loadDependencyGraph } from './dependency-graph/project-dependency-graph
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
+import { firstLine, missingSetupHints } from './test-failures/failure-lines.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
 import {
   layoutJscpdConfig,
@@ -417,9 +418,6 @@ function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
 }
 
 const MAX_LISTED_FAILURES = 5;
-const MAX_ASSERTION_LINE_LENGTH = 200;
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
 
 function vitestFailures(report, projectRoot) {
   const failures = [];
@@ -457,23 +455,6 @@ function findingPath(file) {
   return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
 }
 
-function firstLine(message) {
-  const line =
-    typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
-          .split('\n')
-          .map((candidate) => candidate.trim())
-          .find((candidate) => candidate.length > 0)
-      : undefined;
-  if (line === undefined) {
-    return '';
-  }
-  return line.length > MAX_ASSERTION_LINE_LENGTH
-    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
-    : line;
-}
-
 export function formatVitestFailures(report, projectRoot) {
   const failures = vitestFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
@@ -494,6 +475,7 @@ export function formatVitestFailures(report, projectRoot) {
     `${headline}:`,
     ...listed,
     ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+    ...missingSetupHints(failures),
   ].join('\n');
 }
 
