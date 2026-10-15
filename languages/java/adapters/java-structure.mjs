@@ -5,6 +5,7 @@ import { collectFileLimitFindings } from '../../../shared/rules/file-limits.mjs'
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { evaluateStructure } from '../../../shared/rules/structure.mjs';
 import { javaFolderDepthFindings } from './size/folder-depth.mjs';
+import { javaLineLengthFindings } from './size/line-length.mjs';
 
 const STRUCTURE_REPORT = 'structure.json';
 const STRUCTURE_TOOL = 'structure';
@@ -58,9 +59,9 @@ function rootsOf(manifest, kind, kotlin) {
   ].filter((root) => !OUTSIDE_SOURCES.test(root));
 }
 
-export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
-  const excluders = (policy.exclude ?? []).map((glob) => globToRegExp(glob));
-  const entries = [
+function projectCodeFiles(projectRoot, { manifest, kotlin, exclude = [] }) {
+  const excluders = exclude.map((glob) => globToRegExp(glob));
+  return [
     ...codeFiles(projectRoot, {
       roots: rootsOf(manifest, 'source', kotlin),
       kind: 'source',
@@ -68,6 +69,14 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
     }),
     ...codeFiles(projectRoot, { roots: rootsOf(manifest, 'test', kotlin), kind: 'test', kotlin }),
   ].filter((entry) => !excluders.some((matcher) => matcher.test(entry.path)));
+}
+
+export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = false, policy = {} }) {
+  const entries = projectCodeFiles(projectRoot, { manifest, kotlin, exclude: policy.exclude });
+  const rootEntries =
+    policy.baselineRoot === undefined
+      ? entries
+      : projectCodeFiles(policy.baselineRoot, { manifest, kotlin, exclude: policy.exclude });
   const options = {
     analyzerName: STRUCTURE_TOOL,
     thresholds: policy.thresholds,
@@ -78,8 +87,15 @@ export function readJavaFileLimitFindings(projectRoot, { manifest, kotlin = fals
       ...options,
       checks: ['fileLines', 'folderFiles'],
     }),
-    ...javaFolderDepthFindings(entries, options),
+    ...javaLineLengthFindings(javaFiles(projectRoot, entries), options),
+    ...javaFolderDepthFindings(entries, { ...options, rootEntries }),
   ];
+}
+
+function javaFiles(projectRoot, entries) {
+  return entries
+    .filter((entry) => entry.path.endsWith('.java'))
+    .map((entry) => ({ ...entry, text: readFileSync(path.join(projectRoot, entry.path), 'utf8') }));
 }
 
 function codeFiles(projectRoot, { roots, kind, kotlin }) {

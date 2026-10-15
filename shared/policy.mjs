@@ -5,6 +5,15 @@
 // Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
+import {
+  JAVA_LINE_LENGTH,
+  SIZE_HELD_MESSAGES,
+  SIZE_RULE_IDS,
+  sizeGrewMessages,
+  sizeMessages,
+  sizeRules,
+} from './policy-size.mjs';
+
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
 export const RULE_IDS = {
@@ -26,10 +35,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
-  folderDepth: 'folder-depth-limit',
-  classMethods: 'class-methods-limit',
-  classFields: 'class-fields-limit',
-  inheritanceDepth: 'inheritance-depth-limit',
+  ...SIZE_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -52,34 +58,12 @@ export const FILE_LIMIT_DEFAULTS = {
   folderFiles: 6,
 };
 
-export const CLASS_LIMIT_DEFAULTS = {
-  classMethods: 20,
-  classFields: 10,
-  inheritanceDepth: 3,
-};
-
-export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4 };
-
-export const JAVA_SIZE_RULES = [
-  RULE_IDS.folderDepth,
-  RULE_IDS.classMethods,
-  RULE_IDS.classFields,
-  RULE_IDS.inheritanceDepth,
-];
-
-export const JAVA_LINE_LENGTH = 100;
-
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
 ];
-
-export const TYPESCRIPT_SIZE_RULES = [RULE_IDS.folderDepth];
-
-/** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
-export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
 const EXCEPTION_HINT =
@@ -129,10 +113,7 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
-  folderDepth: `{subject} is {value} levels below {below} (limit {limit}). {advice} ${EXCEPTION_HINT}`,
-  classMethods: `{name} has {value} methods (limit {limit}). Split it into classes by responsibility. ${EXCEPTION_HINT}`,
-  classFields: `{name} has {value} fields (limit {limit}). Group related fields into a record or a class of their own. ${EXCEPTION_HINT}`,
-  inheritanceDepth: `{name} extends {value} classes deep (limit {limit}). Hold the shared part as a field and delegate to it instead of extending. ${EXCEPTION_HINT}`,
+  ...sizeMessages(EXCEPTION_HINT),
 };
 
 export function renderMessage(template, values) {
@@ -157,10 +138,7 @@ export const GREW_MESSAGES = {
   fileLines: `File grew from {base} to {value} lines (limit {limit}). Put new code in a new file. ${EXCEPTION_HINT}`,
   lineLength: `Line grew from {base} to {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder grew from {base} to {value} {kind} files (limit {limit}). Put the new file in a subfolder. ${EXCEPTION_HINT}`,
-  folderDepth: `{subject} grew from {base} to {value} levels below {below} (limit {limit}). {advice} ${EXCEPTION_HINT}`,
-  classMethods: `{name} grew from {base} to {value} methods (limit {limit}). Put the new method in a new class. ${EXCEPTION_HINT}`,
-  classFields: `{name} grew from {base} to {value} fields (limit {limit}). Put the new field in a new class, or group it with related fields in a record. ${EXCEPTION_HINT}`,
-  inheritanceDepth: `{name} now extends {value} classes deep, up from {base} (limit {limit}). Hold the shared part as a field and delegate to it instead of extending. ${EXCEPTION_HINT}`,
+  ...sizeGrewMessages(EXCEPTION_HINT),
 };
 
 export const HELD_MESSAGES = {
@@ -179,19 +157,11 @@ export const HELD_MESSAGES = {
     'Line: {value} characters (limit {limit}), allowed because base was {base}; any increase fails.',
   folderFiles:
     'Folder: {value} {kind} files (limit {limit}), allowed because base was {base}; any increase fails.',
-  folderDepth:
-    '{subject}: {value} levels below {below} (limit {limit}), allowed because base was {base}; any increase fails.',
-  classMethods:
-    '{name}: {value} methods (limit {limit}), allowed because base was {base}; any increase fails.',
-  classFields:
-    '{name}: {value} fields (limit {limit}), allowed because base was {base}; any increase fails.',
-  inheritanceDepth:
-    '{name}: extends {value} classes deep (limit {limit}), allowed because base was {base}; any increase fails.',
+  ...SIZE_HELD_MESSAGES,
 };
 
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
-const JAVA_ONLY = { typescript: false, java: true, python: false };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
@@ -299,8 +269,8 @@ export const RULES = [
   {
     id: RULE_IDS.lineLength,
     check: 'structure',
-    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java: Checkstyle's ${String(JAVA_LINE_LENGTH)} characters, which google-java-format wraps at; Kotlin: detekt's)`,
-    enforcedBy: withKotlin({ ...ALL, java: false }, false),
+    limit: `a line longer than ${String(FILE_LIMIT_DEFAULTS.lineLength)} characters, except imports, URLs and string literal text; override with \`thresholds.lineLength\` (Java files: ${String(JAVA_LINE_LENGTH)} characters, which google-java-format wraps at, not configurable; Kotlin files: detekt's)`,
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.folderFiles,
@@ -308,28 +278,5 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
-  {
-    id: RULE_IDS.folderDepth,
-    check: 'structure',
-    limit: `code more than ${String(FOLDER_DEPTH_DEFAULTS.typescript)} folder below \`features/<feature>/<layer>/\` (TypeScript) or more than ${String(FOLDER_DEPTH_DEFAULTS.java)} packages below the root package (Java, Kotlin); override with \`thresholds.folderDepth\``,
-    enforcedBy: withKotlin(BOTH, true),
-  },
-  {
-    id: RULE_IDS.classMethods,
-    check: 'structure',
-    limit: `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main sources; override with \`thresholds.classMethods\``,
-    enforcedBy: withKotlin(JAVA_ONLY, false),
-  },
-  {
-    id: RULE_IDS.classFields,
-    check: 'structure',
-    limit: `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main sources; override with \`thresholds.classFields\``,
-    enforcedBy: withKotlin(JAVA_ONLY, false),
-  },
-  {
-    id: RULE_IDS.inheritanceDepth,
-    check: 'structure',
-    limit: `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main sources; override with \`thresholds.inheritanceDepth\``,
-    enforcedBy: withKotlin(JAVA_ONLY, false),
-  },
+  ...sizeRules({ both: BOTH, withKotlin }),
 ];

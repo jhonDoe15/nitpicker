@@ -143,14 +143,26 @@ describe('Java file limits', () => {
     rmSync(projectRoot, { recursive: true, force: true });
   });
 
-  it('counts main and test classes per package and leaves line length to Checkstyle', () => {
-    writeClasses('src/main/java/demo', 7, `class A { ${'int a; '.repeat(40)}}\n`);
+  it('counts main and test classes per package', () => {
+    writeClasses('src/main/java/demo', 7);
     writeClasses('src/test/java/demo', 6);
     writeFileSync(path.join(projectRoot, 'src/main/java/demo/notes.txt'), 'not code\n');
 
     expect(summary(readJavaFileLimitFindings(projectRoot, { manifest }))).toEqual([
       [RULE_IDS.folderFiles, 'src/main/java/demo', 'folder-files:source:7', 'structure'],
     ]);
+  });
+
+  it('limits Java lines to 100 characters, except string literals, and honours the exception', () => {
+    writeClasses('src/main/java/demo', 1, `class A { ${'int a; '.repeat(40)}}\n`);
+    writeClasses('src/test/java/demo', 1, `class T { String s = "${'t'.repeat(150)}"; }\n`);
+    const found = (policy) =>
+      readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+        ({ rule, path: findingPath }) => [rule, findingPath],
+      );
+
+    expect(found({})).toEqual([[RULE_IDS.lineLength, 'src/main/java/demo/C0.java']]);
+    expect(found({ exceptions: [{ rule: 'line-length-limit', glob: 'src/main/**' }] })).toEqual([]);
   });
 
   it('applies the configured thresholds, exceptions and exclude globs', () => {
@@ -224,6 +236,28 @@ describe('Java file limits', () => {
     expect(
       found({ policy: { exceptions: [{ rule: 'folder-depth-limit', glob: '**/e/**' }] } }),
     ).toEqual([]);
+  });
+
+  it('takes the root package from the base, so a new top-level package fails no legacy folder', () => {
+    const baseRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-base-'));
+    try {
+      for (const folder of ['demo', 'demo/a/b/c/d']) {
+        mkdirSync(path.join(baseRoot, 'src/main/java', folder), { recursive: true });
+        writeFileSync(path.join(baseRoot, 'src/main/java', folder, 'A.java'), 'class A {}\n');
+      }
+      writeClasses('src/main/java/demo', 1);
+      writeClasses('src/main/java/demo/a/b/c/d', 1);
+      writeClasses('src/main/java/db/migration', 1);
+      const found = (policy) =>
+        readJavaFileLimitFindings(projectRoot, { manifest, policy }).map(
+          ({ rule, path: findingPath }) => [rule, findingPath],
+        );
+
+      expect(found({})).toEqual([[RULE_IDS.folderDepth, 'src/main/java/demo/a/b/c/d']]);
+      expect(found({ baselineRoot: baseRoot })).toEqual([]);
+    } finally {
+      rmSync(baseRoot, { recursive: true, force: true });
+    }
   });
 
   it('checks the packages of Kotlin sources the same way', () => {

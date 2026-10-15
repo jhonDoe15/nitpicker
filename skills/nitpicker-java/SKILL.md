@@ -35,8 +35,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format, 100 columns (Checkstyle's line length; Java keeps 100, not the
-  general 120). Indent like the files around you: nitpicker follows the project's majority, 2
+- Style is google-java-format, 100 columns (`line-length-limit`: string literals, text blocks, imports and URLs do not
+  count; Java keeps 100, not the general 120). Indent like the files around you: nitpicker follows the project's majority, 2
   spaces (Google style) or 4 (`--aosp`, 8 for a continuation line). Never reformat existing files
   to the other one. Layout is google-java-format's alone: a misformatted file is one
   `google-java-format` finding, and Checkstyle's indentation, whitespace, wrapping, import-order

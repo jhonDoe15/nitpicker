@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, classes.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -173,8 +173,10 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
     (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
     described under [Class and package size limits](#class-and-package-size-limits). Line length
-    is 100 characters, where google-java-format wraps, and Checkstyle checks it; `thresholds.lineLength`
-    is a config error, not the general 120.
+    is 100 characters, where google-java-format wraps; nitpicker's own `line-length-limit` rule
+    checks it (string literal text, text blocks, imports and URLs do not count, an old long line is
+    held and fails only when it grows) and takes an `exceptions` entry; `thresholds.lineLength` is a
+    config error, not the general 120.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -402,17 +404,24 @@ the allowed form and the `exceptions` entry that lifts it.
 | `inheritance-depth-limit` | 3 superclasses; a superclass outside the project counts as one level                     | `inheritanceDepth` |
 | `folder-depth-limit`      | 4 package levels below the root package (test sources too)                               | `folderDepth`      |
 
-- **Classes.** `languages/java/gradle/ClassMetrics.java` (task `nitpickerClasses`, report
-  `build/nitpicker/classes.json`) parses the main sources like `StructureMetrics.java`. Member and
+- **Classes.** `languages/java/gradle/StructureMetrics.java` (task `nitpickerStructure`) writes
+  `build/nitpicker/classes.json` in the same parse that gives `structure.json`, so each module's
+  sources are parsed once. Member and
   local classes, interfaces, enums, records and annotation types are measured on their own;
   anonymous classes are not. Tests are not measured: a test class legitimately holds many methods.
   The inheritance chain is resolved from the source text (same package, imports, wildcard imports,
   nested names, names in full), not compiled, so a superclass that only the compiler can find counts
-  as one level and ends the chain. Kotlin sources get the package depth only; `classMethods`,
-  `classFields` and `inheritanceDepth` are a config error with the kotlin preset.
-- **Package depth.** The root package is the longest package prefix all main and test code shares.
-  A package with code in it that lies more than four levels below it fails once per kind of file
-  (source, test). Packages are the folders under the source roots.
+  as one level and ends the chain, so a hierarchy that continues in another module or a library is
+  undercounted. A record over `classFields` gets its own message (components, not fields). A kotlin-preset project gets the class limits for its `.java`
+  files; Kotlin classes are not measured.
+- **Package depth.** The root package is the longest package prefix all main and test code of the
+  base shares, so adding a package outside it (`db/migration`, the default package) moves nothing:
+  the head run reads the root from the base snapshot, and a project with no base code uses its
+  own. A package with code in it that lies more than four levels below the root fails once per
+  kind of file (source, test); a package outside the root counts its own levels. Packages are the
+  folders under the source roots.
+- **A missing report is an error.** If `classes.json` is absent the run fails with a tool error
+  naming the `nitpickerStructure` step, so a build that skipped it cannot silently drop the limits.
 - **Allowed form.** Split a class by responsibility, group fields into a record, prefer composition
   to a deep hierarchy, and keep packages flat: group by responsibility instead of nesting.
 - **Exceptions.** A class limit is lifted for the file the class is in
@@ -438,7 +447,8 @@ only restate the formatter's layout are suppressed in both styles (`Indentation`
 `EmptyLineSeparator`, `LeftCurly`, `RightCurly`, `AnnotationLocation`, `FileTabCharacter` and the
 empty-block spacing regex), in `languages/java/gradle/checkstyle-suppressions.xml`. Checkstyle keeps
 everything that is not layout: naming, `NeedBraces`, `AvoidStarImport`, empty catch blocks, the
-Javadoc rules, `OneStatementPerLine`, the 100-character `LineLength` and the rest. A project's own
+Javadoc rules, `OneStatementPerLine` and the rest. Checkstyle's `LineLength` is suppressed too: the
+line-length rule above replaces it. A project's own
 Checkstyle config (`tools.checkstyle.precedence`) is used as written, layout checks included.
 
 The style reaches Gradle as the command-line property `-Pnitpicker.java.style=aosp`, never through

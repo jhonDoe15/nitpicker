@@ -22,9 +22,9 @@ export const THRESHOLD_KEYS = [
 ];
 const THRESHOLD_PRESETS = {
   folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
-  classMethods: ['java'],
-  classFields: ['java'],
-  inheritanceDepth: ['java'],
+  classMethods: ['java', 'kotlin'],
+  classFields: ['java', 'kotlin'],
+  inheritanceDepth: ['java', 'kotlin'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'fileLines',

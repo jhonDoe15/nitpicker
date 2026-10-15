@@ -208,7 +208,7 @@ is visible in review.
 Size thresholds beyond the file limits, all whole numbers that fail only when a change makes the
 code worse than the base: `folderDepth` is the folders below `features/<feature>/<layer>/` in
 TypeScript and JavaScript (default 1) and the packages below the root package in Java and Kotlin
-(default 4); for Java only, `classMethods` (methods per class, default 20), `classFields` (instance
+(default 4); for Java and Kotlin (their `.java` files), `classMethods` (methods per class, default 20), `classFields` (instance
 fields per class, default 10) and `inheritanceDepth` (superclasses, default 3). Their rules
 (`folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) take
 `exceptions` like the file limits, and a threshold a preset does not enforce is a config error. Java

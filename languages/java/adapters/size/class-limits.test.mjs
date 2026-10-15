@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readClassLimitFindings } from './class-limits.mjs';
 
-const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../gradle/ClassMetrics.java');
+const METRICS_SOURCE = path.resolve(import.meta.dirname, '../../gradle/StructureMetrics.java');
 const SOURCE_ROOT = 'src/main/java';
 
 const SAMPLE = `package demo;
@@ -106,7 +106,13 @@ function measure(root) {
   mkdirSync(reportRoot);
   const result = spawnSync(
     'java',
-    [METRICS_SOURCE, path.join(reportRoot, 'classes.json'), root, SOURCE_ROOT],
+    [
+      METRICS_SOURCE,
+      path.join(reportRoot, 'structure.json'),
+      path.join(reportRoot, 'classes.json'),
+      root,
+      SOURCE_ROOT,
+    ],
     { cwd: root, encoding: 'utf8', timeout: 120_000 },
   );
   const stderr = result.stderr
@@ -119,7 +125,7 @@ function measure(root) {
 beforeAll(() => {
   const root = projectWith({ 'Sample.java': SAMPLE, ...CHAIN });
   sample = { ...measure(root), root };
-});
+}, 60_000);
 
 afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -127,7 +133,7 @@ afterAll(() => {
   }
 });
 
-describe('ClassMetrics.java', () => {
+describe('StructureMetrics.java classes report', () => {
   it('parses clean sources silently', () => {
     expect({ status: sample.status, stderr: sample.stderr }).toEqual({ status: 0, stderr: '' });
   });
@@ -165,7 +171,7 @@ describe('ClassMetrics.java', () => {
     const result = measure(root);
     expect(result.status).toBe(1);
     expect(result.stderr).toBe(
-      `ClassMetrics could not parse the sources:\n${SOURCE_ROOT}/demo/Broken.java:2: reached end of file while parsing\n`,
+      `StructureMetrics could not parse the sources:\n${SOURCE_ROOT}/demo/Broken.java:2: reached end of file while parsing\n`,
     );
   });
 });
@@ -173,7 +179,12 @@ describe('ClassMetrics.java', () => {
 describe('readClassLimitFindings', () => {
   const find = (measured, thresholds, exceptions = []) =>
     readClassLimitFindings(measured.reportRoot, { thresholds, exceptions }).map(
-      ({ rule, path: file, symbol, message }) => ({ rule, file, symbol, message }),
+      ({ rule, path: file, identity, message }) => ({
+        rule,
+        file,
+        symbol: identity.split(':')[1],
+        message,
+      }),
     );
 
   it('reports a class over each limit by the superclasses it has in the project', () => {
@@ -215,9 +226,10 @@ describe('readClassLimitFindings', () => {
     ).toEqual(['class-fields-limit']);
   });
 
-  it('has nothing to read without a report', () => {
-    expect(readClassLimitFindings(path.join(sample.root, 'missing'), { thresholds: {} })).toEqual(
-      [],
+  it('fails loudly, naming the step, without a report', () => {
+    const missing = path.join(sample.root, 'missing');
+    expect(() => readClassLimitFindings(missing, { thresholds: {} })).toThrow(
+      `The classes.json report is missing from ${missing}: the nitpickerStructure step did not write it, so the class limits cannot be checked`,
     );
   });
 });

@@ -1,4 +1,5 @@
-import { SHARED_EXCEPTION_RULES, TYPESCRIPT_SIZE_RULES } from '../../../../shared/policy.mjs';
+import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/policy-size.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
   const exceptions = allExceptions.filter(

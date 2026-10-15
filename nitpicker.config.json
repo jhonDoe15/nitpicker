@@ -54,6 +54,11 @@
       "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
     {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": ["languages/java/adapters/size/class-limits.test.mjs"],
+      "reason": "The file starts the JDK single-file launcher once in beforeAll to parse real sources; the JVM start can pass 10 s on a loaded machine and the process boundary is what StructureMetrics.java is tested through."
+    },
+    {
       "rule": "@typescript-eslint/no-unsafe-member-access",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."

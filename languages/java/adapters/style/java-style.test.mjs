@@ -2,6 +2,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createJavaAnalyzer } from '../java-analyzer.mjs';
 import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 import { javaStyle, javaStyleProperties } from './java-style.mjs';
 
@@ -48,6 +49,7 @@ describe('Checkstyle layout checks', () => {
       'GenericWhitespace',
       'Indentation',
       'LeftCurly',
+      'LineLength',
       'MethodParamPad',
       'MissingJavadocMethod',
       'MissingJavadocType',
@@ -64,7 +66,7 @@ describe('Checkstyle layout checks', () => {
   });
 
   it('keeps the checks that are not layout', () => {
-    for (const kept of ['LineLength', 'NeedBraces', 'AvoidStarImport', 'EmptyCatchBlock']) {
+    for (const kept of ['NeedBraces', 'AvoidStarImport', 'EmptyCatchBlock']) {
       expect(suppressed).not.toContain(kept);
     }
   });
@@ -77,6 +79,34 @@ describe('the Gradle run', () => {
     expect(styleProperties({ javaStyle: 'aosp' })).toEqual(['-Pnitpicker.java.style=aosp']);
     expect(styleProperties({ javaStyle: 'google' })).toEqual([]);
     expect(styleProperties({})).toEqual([]);
+    expect(styleProperties({ preset: 'kotlin', javaStyle: 'aosp' })).toEqual([
+      '-Pnitpicker.java.style=aosp',
+    ]);
+  });
+});
+
+describe('the analyzer hash', () => {
+  const hashWith = (conventions) => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-hash-')));
+    roots.push(root);
+    const file = path.join(root, 'policy.json');
+    writeFileSync(file, JSON.stringify({ conventions }));
+    const previous = process.env.NITPICKER_POLICY;
+    process.env.NITPICKER_POLICY = file;
+    try {
+      const analyzer = createJavaAnalyzer();
+      return [analyzer.configurationHash, analyzer.version];
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NITPICKER_POLICY;
+      } else {
+        process.env.NITPICKER_POLICY = previous;
+      }
+    }
+  };
+
+  it('does not depend on the style, which is read at run time', () => {
+    expect(hashWith({ 'java.indentation': '4' })).toEqual(hashWith({ 'java.indentation': '2' }));
   });
 });
 
