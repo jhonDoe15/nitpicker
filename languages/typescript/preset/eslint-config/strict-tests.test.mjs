@@ -106,17 +106,12 @@ describe('strict test rules', () => {
     }
   });
 
-  it('cap timeouts at the testTimeout nitpicker runs tests with', () => {
+  it('cap timeouts at the minimum testTimeout nitpicker runs tests with', () => {
     for (const config of ['languages/typescript/preset/defaults/vitest.quality.config.ts']) {
       const text = readFileSync(path.join(packageRoot, config), 'utf8');
       expect(text).toContain(
         `MINIMUM_TIMEOUT = ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
       );
     }
-    const runner = readFileSync(
-      path.join(packageRoot, 'languages/typescript/adapters/quality-areas-runner.mjs'),
-      'utf8',
-    );
-    expect(runner).toContain(`'--testTimeout',\n        '${String(TEST_TIMEOUT_CEILING_MS)}'`);
   });
 });

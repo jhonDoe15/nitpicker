@@ -1,6 +1,14 @@
-import { MUTATION_EXCEPTION_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import {
+  MUTATION_EXCEPTION_RULES,
+  SHARED_EXCEPTION_RULES,
+  TEST_RUN_EXCEPTION_RULES,
+} from '../../../../shared/policy.mjs';
 
-const NON_ESLINT_RULES = new Set([...SHARED_EXCEPTION_RULES, ...MUTATION_EXCEPTION_RULES]);
+const NON_ESLINT_RULES = new Set([
+  ...SHARED_EXCEPTION_RULES,
+  ...MUTATION_EXCEPTION_RULES,
+  ...TEST_RUN_EXCEPTION_RULES,
+]);
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
   const exceptions = allExceptions.filter(({ rule }) => !NON_ESLINT_RULES.has(rule));
