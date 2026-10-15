@@ -78,6 +78,11 @@
       "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
     },
     {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": ["languages/typescript/adapters/layout-exclude.test.mjs"],
+      "reason": "The shared hook runs ten real analyzers (eslint, prettier, tsc, dependency-cruiser, jscpd and others) side by side over one fixture project, as they run for a user; that takes about eight seconds on an idle four-CPU machine, too close to the ten-second hook limit for a shared CI runner."
+    },
+    {
       "rule": "@typescript-eslint/no-unsafe-member-access",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."

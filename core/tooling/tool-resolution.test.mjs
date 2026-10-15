@@ -11,7 +11,7 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { beforeAll, afterEach, expect, it } from 'vitest';
+import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT, resolveProjectRoot, resolveTool } from './tool-resolution.mjs';
 import {
   applyLegacyInventory,
@@ -225,26 +225,29 @@ function writeManifest(packageRoot, manifest) {
   writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify(manifest));
 }
 
-it('finds the nearest package or nitpicker config bounded by the git repository', () => {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
-  temporaryRoots.push(root);
-  copyGitTemplate(gitTemplate.root, root);
-  writeFileSync(path.join(root, 'package.json'), '{}');
-  mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
-  writeFileSync(path.join(root, 'packages/package.json'), '{}');
-  expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
-  mkdirSync(path.join(root, 'service/src'), { recursive: true });
-  writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
-  expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
-  const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
-  temporaryRoots.push(emptyRoot);
-  copyGitTemplate(gitTemplate.root, emptyRoot);
-  expect(() => resolveProjectRoot(emptyRoot)).toThrow(
-    'No package.json or nitpicker.config.json found',
-  );
-});
+describe('project root resolution', () => {
+  let gitTemplateRoot;
 
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
+  it('finds the nearest package or nitpicker config bounded by the git repository', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
+    temporaryRoots.push(root);
+    copyGitTemplate(gitTemplateRoot, root);
+    writeFileSync(path.join(root, 'package.json'), '{}');
+    mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
+    writeFileSync(path.join(root, 'packages/package.json'), '{}');
+    expect(resolveProjectRoot(path.join(root, 'packages/leaf'))).toBe(path.join(root, 'packages'));
+    mkdirSync(path.join(root, 'service/src'), { recursive: true });
+    writeFileSync(path.join(root, 'service/nitpicker.config.json'), '{"preset":"java"}');
+    expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
+    const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
+    temporaryRoots.push(emptyRoot);
+    copyGitTemplate(gitTemplateRoot, emptyRoot);
+    expect(() => resolveProjectRoot(emptyRoot)).toThrow(
+      'No package.json or nitpicker.config.json found',
+    );
+  });
 });
