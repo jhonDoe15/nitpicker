@@ -11,7 +11,7 @@ import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
 import { mutationFindings } from './mutation/python-mutation.mjs';
 import { readPythonFindings } from './python-reports.mjs';
-import { createToolContext, runPythonTools } from './execution/python-tools.mjs';
+import { createToolContext, runPythonTools } from './python-tools.mjs';
 
 const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',

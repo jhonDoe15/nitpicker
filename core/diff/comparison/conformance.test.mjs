@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from './compare.mjs';
 import { parseAnalyzerReport } from './finding-schema.mjs';
-import { readRenameMap } from '../git/paths.mjs';
+import { readRenameMap } from '../git/patches/project-moves.mjs';
 import { resolveComparison } from '../git/repository/git.mjs';
 import { runGit } from '../git/repository/command.mjs';
 

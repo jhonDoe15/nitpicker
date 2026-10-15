@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../failure-messages/harness.mjs';
-import strictAdaptersConfig from './strict-adapters.config.mjs';
+import { lintFixture } from '../failure-messages/test-support/harness.mjs';
+import { strictAdaptersConfig } from './strict-adapters.mjs';
 
 const adapterFile = 'src/main/features/billing/adapters/http.ts';
 

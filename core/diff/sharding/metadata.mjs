@@ -5,42 +5,34 @@ import path from 'node:path';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { readJson } from './read-shards.mjs';
 
-function resolveAnalyzerVersions(analyzers, liveProjectRoot, errors) {
-  if (liveProjectRoot === undefined) {
-    return;
-  }
+function resolveEachAnalyzer(analyzers, errors, resolve) {
   for (const [index, analyzer] of analyzers.entries()) {
     try {
-      if (typeof analyzer?.resolveVersion === 'function') {
-        analyzer.version = analyzer.resolveVersion(liveProjectRoot);
-      }
+      resolve(analyzer);
     } catch (error) {
-      recordAnalyzerResolutionError({
-        analyzer: analyzer,
-        index: index,
-        error: error,
-        errors: errors,
-      });
+      recordAnalyzerResolutionError({ analyzer, index, error, errors });
     }
   }
 }
 
-function resolveAnalyzerConfigurationHashes(analyzers, configurationRoot, errors) {
-  for (const [index, analyzer] of analyzers.entries()) {
-    try {
-      const resolveConfigurationHash = analyzer?.resolveConfigurationHash;
-      if (typeof resolveConfigurationHash === 'function') {
-        analyzer.configurationHash = resolveConfigurationHash(configurationRoot);
-      }
-    } catch (error) {
-      recordAnalyzerResolutionError({
-        analyzer: analyzer,
-        index: index,
-        error: error,
-        errors: errors,
-      });
-    }
+function resolveAnalyzerVersions(analyzers, liveProjectRoot, errors) {
+  if (liveProjectRoot === undefined) {
+    return;
   }
+  resolveEachAnalyzer(analyzers, errors, (analyzer) => {
+    if (typeof analyzer?.resolveVersion === 'function') {
+      analyzer.version = analyzer.resolveVersion(liveProjectRoot);
+    }
+  });
+}
+
+function resolveAnalyzerConfigurationHashes(analyzers, configurationRoot, errors) {
+  resolveEachAnalyzer(analyzers, errors, (analyzer) => {
+    const resolveConfigurationHash = analyzer?.resolveConfigurationHash;
+    if (typeof resolveConfigurationHash === 'function') {
+      analyzer.configurationHash = resolveConfigurationHash(configurationRoot);
+    }
+  });
 }
 
 function recordAnalyzerResolutionError({ analyzer, index, error, errors }) {

@@ -4,13 +4,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { failureMessagesFor } from '../../failure-messages/harness.mjs';
+import { failureMessagesFor } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { reactRuleIds, reactTestRuleIds } from './react-rules.mjs';
-import strictSyntaxConfig, {
-  restrictedSyntaxFor,
-  strictSyntaxConfigFor,
-} from '../strict.config.mjs';
+import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
   path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),

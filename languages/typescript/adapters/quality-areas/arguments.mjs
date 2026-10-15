@@ -1,6 +1,6 @@
 import { QUALITY_AREA_RUNNERS } from './registry.mjs';
 import { realpathSync, lstatSync } from 'node:fs';
-import { TRUSTED_TOOL_ROOT } from './tooling.mjs';
+import { TRUSTED_TOOL_ROOT } from './runners/tooling.mjs';
 import path from 'node:path';
 import {
   PACKAGE_ROOT,

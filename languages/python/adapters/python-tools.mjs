@@ -1,24 +1,24 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../../java/adapters/metrics/java-duplicates.mjs';
-import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
-import { scanImports } from '../analysis/python-coupling.mjs';
-import { runDuplicates } from '../analysis/python-duplicates.mjs';
-import { globToRegExpSource } from '../../../../shared/glob.mjs';
-import { detectEnvironment, openEnvironment } from './python-environment.mjs';
-import { checkRules } from '../analysis/python-ast-rules.mjs';
-import { crap } from '../mutation/python-crap.mjs';
-import { importLinterEnabled, runImportLinter } from '../analysis/python-import-linter.mjs';
-import { MUTMUT_VERSION_PROBE } from '../mutation/python-mutation.mjs';
-import { execute, failure, probeVersion, run } from './python-process.mjs';
+import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { scanImports } from './analysis/python-coupling.mjs';
+import { runDuplicates } from './analysis/python-duplicates.mjs';
+import { globToRegExpSource } from '../../../shared/glob.mjs';
+import { detectEnvironment, openEnvironment } from './execution/python-environment.mjs';
+import { checkRules } from './analysis/python-ast-rules.mjs';
+import { crap } from './mutation/python-crap.mjs';
+import { importLinterEnabled, runImportLinter } from './analysis/python-import-linter.mjs';
+import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
+import { execute, failure, probeVersion, run } from './execution/python-process.mjs';
 import {
   detectFormatter,
   detectSourceRoots,
   detectTargetVersion,
   detectTypeCheckers,
   importRoots,
-} from './python-project.mjs';
-import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
+} from './execution/python-project.mjs';
+import { RUFF_CONFIG } from './configuration/python-ruff-config.mjs';
 import {
   detectTestRunner,
   NO_TESTS_EXIT,
@@ -26,9 +26,9 @@ import {
   testCommand,
   testRunnerLabel,
   testsRan,
-} from './python-test-runner.mjs';
-import { resolveTypeChecker, typeCheck } from '../python-types.mjs';
-import { structure } from '../analysis/python-structure.mjs';
+} from './execution/python-test-runner.mjs';
+import { resolveTypeChecker, typeCheck } from './python-types.mjs';
+import { structure } from './analysis/python-structure.mjs';
 
 export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';

@@ -12,11 +12,11 @@ export function ingestSarif(log, options = {}) {
   const skipped = [];
   for (const [runIndex, run] of log.runs.entries()) {
     ingestRun({
-      run: run,
+      run,
       context: `runs[${String(runIndex)}]`,
-      options: options,
-      findings: findings,
-      skipped: skipped,
+      options,
+      findings,
+      skipped,
     });
   }
   return { findings, skipped };
@@ -188,12 +188,7 @@ function ingestResult(result, resultContext, { tool, rules, options, seen, findi
 }
 
 function uniqueResultIdentity(result, { rule, filePath, symbol }, seen) {
-  const baseIdentity = identityOf({
-    result: result,
-    rule: rule,
-    filePath: filePath,
-    symbol: symbol,
-  });
+  const baseIdentity = identityOf({ result, rule, filePath, symbol });
   const seenKey = `${filePath}\0${baseIdentity}`;
   const count = (seen.get(seenKey) ?? 0) + 1;
   seen.set(seenKey, count);

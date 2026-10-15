@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import {
   accessibilityRuleNames,

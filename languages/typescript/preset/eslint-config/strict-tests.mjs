@@ -44,7 +44,7 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
   ];
 }
 
-export default [
+export const strictTestsConfig = [
   { languageOptions: { parser: tseslint.parser } },
   ...strictTestConfigFor(defaultResolvedLayout),
 ];

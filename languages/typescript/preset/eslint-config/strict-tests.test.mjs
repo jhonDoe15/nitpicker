@@ -3,16 +3,17 @@ import path from 'node:path';
 import ts from 'typescript';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/harness.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
-import { strictPresetConfig } from './strict.config.mjs';
-import strictTestsConfig, {
+import { strictPresetConfig } from './strict.mjs';
+import {
   strictTestConfigFor,
   strictTestHelperRules,
   strictTestRules,
-} from './strict-tests.config.mjs';
+  strictTestsConfig,
+} from './strict-tests.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const raisedTimeout = "it('slow', () => {}, 60_000);";

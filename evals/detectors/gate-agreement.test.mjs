@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../../languages/typescript/preset/failure-messages/harness.mjs';
-import strictTestsConfig from '../../languages/typescript/preset/eslint-config/strict-tests.config.mjs';
+import { failureMessagesFor } from '../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
+import { strictTestsConfig } from '../../languages/typescript/preset/eslint-config/strict-tests.mjs';
 import { detectCodeShortcuts } from './code-shortcuts.mjs';
 
 const testFile = 'test/a.test.ts';

@@ -11,18 +11,10 @@ export function renderJunitReport(report) {
   for (const finding of violations) {
     const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
     const name = `${finding.tool}/${finding.rule} ${finding.path}${location}`;
+    const type = escapeXml(`${finding.tool}/${finding.rule}`);
+    const message = escapeXml(singleLine(finding.message));
     testCases.push(
-      [
-        '  <testcase classname="quality.diff.new-findings" name="',
-        escapeXml(name),
-        '" time="0"><failure message="',
-        escapeXml(singleLine(finding.message)),
-        '" type="',
-        escapeXml(`${finding.tool}/${finding.rule}`),
-        '">',
-        escapeXml(finding.message),
-        '</failure></testcase>',
-      ].join(''),
+      `  <testcase classname="quality.diff.new-findings" name="${escapeXml(name)}" time="0"><failure message="${message}" type="${type}">${escapeXml(finding.message)}</failure></testcase>`,
     );
   }
   for (const error of report.toolErrors) {
