@@ -20,7 +20,6 @@ export const RULE_IDS = {
   duplicateClone: 'duplicate-clone',
   stabilityDirection: 'stability-direction',
   packageCycle: 'package-cycle',
-  classCycle: 'class-cycle',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
   noProductionRuntime: 'no-production-runtime',
@@ -233,12 +232,6 @@ export const RULES = [
     id: RULE_IDS.packageCycle,
     check: 'coupling',
     limit: 'packages that depend on each other in a loop',
-    enforcedBy: withKotlin(JAVA_ONLY, true),
-  },
-  {
-    id: RULE_IDS.classCycle,
-    check: 'coupling',
-    limit: 'top-level classes (or Kotlin files) that depend on each other in a loop',
     enforcedBy: withKotlin(JAVA_ONLY, true),
   },
   {
