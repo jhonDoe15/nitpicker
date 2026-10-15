@@ -26,8 +26,10 @@ config file is an exception like any other.
 - `features/<name>/domain/` holds pure logic: functional core, imperative shell, using hexagonal
   architecture's folder names. It may not import `adapters/`, Node I/O modules, network or database
   clients, the logger, or module state. Time, IDs, and randomness arrive as parameters.
-- `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with no I/O has no
-  `adapters/` folder.
+- `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with neither I/O nor UI
+  has no `adapters/` folder. React components and hooks live in `adapters/` (the UI is I/O with the
+  user), or in `shared/ui/` when several features use them. `domain/` may not import `react`,
+  `react-dom`, `react-native` or `preact`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No
@@ -255,33 +257,88 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   flagged, and neither is `[]` (the mounted-flag pattern) or a function declared outside the effect.
   Subscribing to an external store (`matchMedia`) is better written with `useSyncExternalStore`;
   measuring the DOM in `useLayoutEffect` is the usual legitimate exception.
-- **No data fetching in effects** (`nitpicker/react-no-effect-data-fetching`). `fetch` (also
-  `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest` anywhere inside an
-  effect callback are flagged: use a data-fetching library (TanStack Query `useQuery`, SWR
-  `useSWR`) or the framework (a route loader, a Server Component). The check is by name: wrappers
-  (`api.get`, `got`, `$.ajax`), aliased imports (`import http from 'axios'`) and a function declared
-  outside the effect and only called inside it are not followed.
-- **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item.
+- **No data fetching or async work in effects** (`nitpicker/react-no-effect-data-fetching`).
+  `fetch` (also `window.fetch` and `globalThis.fetch`), `axios`, `ky` and `new XMLHttpRequest`
+  anywhere inside an effect callback are flagged: use a data-fetching library (TanStack Query
+  `useQuery`, SWR `useSWR`) or the framework (a route loader, a Server Component). Beyond the
+  names, an effect that contains an `await`, or calls a function whose type returns a promise
+  (found through the type checker, so a loader declared outside the effect counts), is flagged
+  once, at its first async step. Wrappers like `api.get(...)` are caught when they are typed to
+  return a promise; with no type information only `await` is seen.
+- **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
+  effect with dependencies that calls a prop callback (`onSave(value)`, `props.onChange()`) reacts
+  to a change instead of to an event: call the callback in the handler that causes the change.
+  A call inside a nested function (a subscription, a timer) and an effect with `[]` are left alone;
+  an effect that synchronizes with an external system needs an exception.
+- **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
+  element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
+  one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
+  `performance.now()`, `crypto.randomUUID()`, `uuid()`, `nanoid()` and similar generators is
+  flagged (`nitpicker/react-no-random-key`): it changes on every render and remounts the row.
+- **Pure render, no mutation.** State, props and hook results are not mutated
+  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
+  `Date.now()`, `Math.random()` or storage, read or write refs, or set state
+  (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
+  initialiser is the place for a one-time read. These rules come from the React Compiler's
+  analysis and can flag legitimate code, so each message names the exception.
+- **Components are declared at module level** (`react-x/no-nested-component-definitions`,
+  `react-x/static-components`, `react-x/no-nested-lazy-component-declarations`): a component
+  declared inside another remounts, and loses its state, on every render.
+- **One form per construct.** `{count && <p />}` renders `0` for a number, so compare
+  (`count > 0 && ...`) or use a ternary (`react-x/no-leaked-conditional-rendering`, needs type
+  information). A context value, and a default prop, that is an object, array or function literal
+  is a new value on every render: hoist it or wrap it in `useMemo`
+  (`react-x/no-unstable-context-value`, `react-x/no-unstable-default-props`). `ref` is a plain prop
+  and `<Context value={...}>` is the provider (`react-x/no-forward-ref`,
+  `react-x/no-context-provider`); a project on React 18 needs an exception for those two.
+- **Browser APIs** (`eslint-plugin-react-dom`): no `dangerouslySetInnerHTML` (render JSX; sanitised
+  and reviewed HTML needs an exception for `react-dom/no-dangerously-set-innerhtml`), an explicit
+  `type` on every `<button>`, `rel="noreferrer noopener"` next to `target="_blank"`, no
+  `javascript:` URLs. Effects clean up after themselves (`eslint-plugin-react-web-api`): an
+  `addEventListener` is paired with `removeEventListener` of the same named function, and a
+  `setInterval`, `setTimeout`, `ResizeObserver` or `IntersectionObserver` is cleared or
+  disconnected in the returned cleanup. Fetching in an effect is covered by the data-fetching rule
+  below.
+- **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
+  JSX. `document.getElementById`/`querySelector`/`querySelectorAll`, `getElementsBy*`, assignments
+  to `.innerHTML`, `.innerText`, `.textContent`, `.className` or `.style.*`, and `classList.add`,
+  `remove`, `toggle`, `replace` are flagged: state and props drive the DOM, and a ref is for
+  focusing and measuring. Glue for a third-party widget needs an exception.
+- **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
+  `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
+  `<label htmlFor>` points to, `aria-label` or `aria-labelledby` (hidden, submit, reset, button
+  and image inputs, and fields with spread props, are left alone). A field is either controlled
+  (`value` or `checked` with `onChange`, `readOnly` or `disabled`) or uncontrolled
+  (`defaultValue`), never `value` with `defaultValue`.
 - **One styling approach** (`nitpicker/react-single-styling-approach`), chosen with
   `react.styling`: `class-names` (`className` with CSS Modules, plain stylesheets or utility
   classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,
   Emotion, Stitches, goober, Linaria; stylesheet imports and inline `style` objects are flagged) or
   `inline-style` (`style` objects; stylesheet imports and CSS-in-JS libraries are flagged). Unset,
   the approach is `css-in-js` when `package.json` lists one of those libraries, else `class-names`.
-  A `style` object is flagged when it is written inline, bound to a `const` in the same file,
+  A `style` object is flagged when it is written inline, bound to a `const` in the same file
+  (also `style={styles.box}` and `styles['box']` on a `const styles = { box: {...} }`),
   or reached through `?:`, `&&`, `??`, `satisfies` or `as`; `css=` and `sx=` props and `style` inside
   spread props are not checked. A `style` object whose keys are all CSS custom properties
   (`'--progress': percent`) is allowed, as is a `style` value that is not an object literal
   (`style={style}`), so a runtime value reaches class-based CSS. Type the custom property once,
-  in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
-  (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
+  in a `.d.ts` file under the source root (for example `src/main/shared/css-properties.d.ts`; the
+  dead-code check leaves `.d.ts` files alone, which a `.ts` module nothing imports is not):
+  `declare module 'csstype' { interface Properties { '--progress'?: number } }` (needs `csstype`
+  installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
-- **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+- **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set plus
+  `control-has-associated-label` (buttons, links and roles need text or `aria-label`; form fields
+  are covered by the field rule above), `anchor-ambiguous-text` (no "click here"),
+  `no-aria-hidden-on-focusable` and `prefer-tag-over-role`, as errors. `<label>Name <TextField /></label>`
+  counts as a labelled control for any capitalised component.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.
 - `@typescript-eslint/no-misused-promises` stops flagging `async` event handlers in JSX attributes
-  (`onClick={async () => ...}`), which is the normal React form.
+  (`onClick={async () => ...}`), which is the normal React form. `no-confusing-void-expression`
+  stops flagging a shorthand arrow whose contextual type returns `void`
+  (`onChange={(event) => setTitle(event.target.value)}`).
 - **Component tests** (test files only: the test roots, `*.test.*` and `*.spec.*` files under the
   source roots, and `__tests__` directories). They need no particular test runner (Vitest or
   Jest), and report only in a test file that imports `@testing-library/*`, `react`, `react-dom`
@@ -300,7 +357,30 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   element with no role or accessible name needs an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
-The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),
+### Vite, Next.js and other framework conventions
+
+- **App entry.** The file that mounts the app (`src/main/main.tsx` with `createRoot(...).render(...)`)
+  runs work at import time on purpose. List it as an entry point, and the module-load rule skips it:
+  `"layout": { "entryPoints": ["src/main/main.tsx"] }`. Side-effect imports of stylesheets
+  (`import './index.css'`) are not module-load effects.
+- **CSS Modules and assets.** `import styles from './panel.module.css'` and image imports need
+  types. Add `vite/client` to `types` in `tsconfig.json`, or put
+  `/// <reference types="vite/client" />` in a `.d.ts` under `src/` (what `create-vite` generates as
+  `vite-env.d.ts`), or declare the module in a `.d.ts`. Hand-written `.d.ts` files under the source
+  roots are part of the type-check program, so these declarations take effect.
+- **Default exports.** Next.js `page.tsx`, `layout.tsx` and route handlers, React Router route
+  modules and Storybook `*.stories.tsx` need `export default`. The messages name the exception;
+  scope it to those paths:
+  `"exceptions": [{ "rule": "no-restricted-syntax", "paths": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "**/*.stories.tsx"], "reason": "framework file convention" }]`.
+  The exception switches every `no-restricted-syntax` ban off for those paths, so keep the path list
+  narrow.
+- **Lazy components.** The standard `lazy(() => import('./x').then(...))` is a promise chain. Use
+  `lazy(async () => ({ default: (await import('./badge.js')).Badge }))`.
+- **`null`.** `useRef<HTMLDivElement>(null)` and `createContext<T | null>(null)` are allowed. Anything
+  else a library forces is an exception for `no-restricted-syntax` on those paths.
+
+The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x`, `eslint-plugin-react-dom` and
+`eslint-plugin-react-web-api` (the last three are eslint-react, MIT, pinned to one version),
 `eslint-plugin-jsx-a11y-x` and `eslint-plugin-testing-library` (whose peer range includes ESLint 10). `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare no ESLint 10
 support, so their maintained, ESLint 10 compatible counterparts are used.
 

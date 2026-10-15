@@ -215,8 +215,10 @@ two, `python` and `mutation`.
 
 A TypeScript project with `react` in `dependencies` or `devDependencies` gets a React rule scope on
 top of the strict preset: function components only, the rules of hooks and exhaustive dependencies,
-no state derived from props or state in an effect, no data fetching in an effect, no array index as a
-`key`, one styling approach, the `jsx-a11y` accessibility rules and Testing Library rules for
+no state derived from props or state in an effect, no data fetching or async work in an effect, no
+array index (or random value) as a `key`, no mutated state, impure render or nested component, labelled
+form fields, no `dangerouslySetInnerHTML`, cleanup for listeners and timers, one styling approach, the
+`jsx-a11y` accessibility rules and Testing Library rules for
 component tests (query by role, `userEvent` over `fireEvent`, no implementation details). Detection
 reads the package.json of each tree being analyzed (base and head), so adopting React is judged by the code that adds it.
 Set `"react": { "enabled": true }` to force the scope on (a monorepo whose manifest is elsewhere) or
@@ -227,7 +229,8 @@ objects and CSS-in-JS imports, `css-in-js` flags stylesheet imports and inline `
 rule that flags legitimate code is lifted for some paths with an entry in `exceptions` (for example
 `react-hooks/exhaustive-deps`); an exception that names a React rule is skipped while the scope is
 off, so adding or removing React in a PR does not break either side of the comparison. The rules and
-their allowed forms are in [The strict preset](typescript-strict-preset.md#react).
+their allowed forms, and the Vite entry point, CSS Module typing and framework file-convention
+exceptions, are in [The strict preset](typescript-strict-preset.md#react).
 
 ### Custom analyzers
 

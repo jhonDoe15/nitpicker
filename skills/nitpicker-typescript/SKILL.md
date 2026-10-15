@@ -134,17 +134,36 @@ If your change edits a function that existed before it, read
 
 Applies when `react` is in `package.json`.
 
-- Function components only. Hooks follow the rules of hooks, and every effect lists its
-  dependencies. No array index as `key`: use the item's id.
+- Function components only, declared at module level (never inside another component), in
+  `adapters/` or `shared/ui/`. `domain/` never imports `react`. Hooks follow the rules of hooks, and
+  every effect lists its dependencies.
+- Lists: every element has a `key` that is the item's id, never the index, `Math.random()`,
+  `Date.now()` or a generated id.
+- Never mutate state, props or hook results: `setList([...list, item])`, `items.toSorted()`.
+  Render is pure: no `Date.now()`, `Math.random()`, storage, ref reads or `setState` in the body.
+- `{count > 0 && <Badge />}`, not `{count && <Badge />}`. Hoist object and array defaults and
+  context values (`useMemo`). `ref` is a plain prop and `<Context value={...}>` is the provider.
 - Compute derived values while rendering (`useMemo` if costly); never copy props or state into
-  state in an effect. Reset state with a `key`.
-- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`.
+  state in an effect. Reset state with a `key`. Call a prop callback (`onSave`) in the event
+  handler, not in an effect that watches a flag.
+- Fetch with the project's data library (`useQuery`) or the framework's loader, never in `useEffect`
+  (no `await` or promise-returning call there either). Subscriptions, timers and listeners in an
+  effect return their cleanup.
 - Style with `className` (CSS Modules or utility classes), not `style={{ ... }}`. A runtime value
-  goes in a custom property, `style={{ '--progress': percent }}`, typed once with
+  goes in a custom property, `style={{ '--progress': percent }}`, typed once in a `.d.ts` file with
   `declare module 'csstype' { interface Properties { '--progress'?: number } }`. If the project
-  styles with CSS-in-JS (or `react.styling` says so), follow that instead.
-- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
-- Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
+  styles with CSS-in-JS (or `react.styling` says so), follow that instead. CSS Modules and image
+  imports need `vite/client` in `types` (or a `vite-env.d.ts`).
+- Change the DOM by rendering, not with `document.querySelector` or `el.innerHTML`; a ref is for
+  focus and measuring. No `dangerouslySetInnerHTML`. Buttons have a `type`, and `target="_blank"`
+  has `rel="noreferrer noopener"`.
+- `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`. Lazy
+  components: `lazy(async () => ({ default: (await import('./badge.js')).Badge }))`.
+- Accessible markup: `alt` on images, buttons for clicks, a `<label>` (or `aria-label`) on every
+  input and text on every icon-only button or link, `value` with `onChange` (or `defaultValue`).
+- The app entry (`main.tsx` with `createRoot`) and framework files that need a default export (Next.js
+  `page.tsx`, Storybook stories) are declared in `nitpicker.config.json` (`layout.entryPoints`, an
+  `exceptions` entry for `no-restricted-syntax`); don't work around them.
 - Component tests: query by role (`screen.getByRole`), not test ids, class selectors or `container`;
   `await userEvent`, not `fireEvent`; assert what the user sees, never component state, instances
   or hook internals.
