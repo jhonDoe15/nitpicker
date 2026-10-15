@@ -37,7 +37,7 @@ import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { deadCodeMessage } from './exceptions/dead-code-messages.mjs';
-import * as identity from './exceptions/function-identity.mjs';
+import * as ids from './exceptions/function-ids.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
@@ -952,7 +952,7 @@ function withFunctionSourceHashes(report, projectRoot) {
       }
       return {
         ...entry,
-        function: identity.crapFunctionName(source, entry.source, entry) ?? entry.function,
+        function: ids.crapFunctionName(source, entry.source, entry) ?? entry.function,
         sourceHash: hash(
           sourceLineRange(source, entry.start ?? entry.lines?.start, entry.end ?? entry.lines?.end),
         ),
@@ -985,11 +985,7 @@ function withBranchSourceHashes(report, projectRoot) {
           describeUncoveredArms(branch, coverage.b?.[branchId], source),
         ]),
       );
-      const branchFunctions = identity.branchFunctionNames(
-        source,
-        absolutePath,
-        coverage.branchMap,
-      );
+      const branchFunctions = ids.branchFunctionNames(source, absolutePath, coverage.branchMap);
       return [absolutePath, { ...coverage, branchSourceHashes, uncoveredArms, branchFunctions }];
     }),
   );
@@ -1095,11 +1091,7 @@ function withMutationSourceHashes(report, projectRoot) {
               ...mutant,
               sourceHash: hash(sourceLocation(source, mutant.location)),
               original: sourceSnippet(source, mutant.location),
-              functionName: identity.functionNameAtLine(
-                source,
-                filePath,
-                mutant.location?.start?.line,
-              ),
+              functionName: ids.functionNameAtLine(source, filePath, mutant.location?.start?.line),
             })),
           },
         ];
