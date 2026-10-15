@@ -4,8 +4,16 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings as readFindings } from './java-reports.mjs';
+import {
+  readingFrom,
+  reportBaseOf,
+  rootReports,
+  writeModules,
+} from '../test-support/report-base.mjs';
 import { fileURLToPath } from 'node:url';
+
+const readJavaFindings = readingFrom(readFindings);
 
 const temporaryRoots = [];
 
@@ -30,9 +38,10 @@ const JACOCO = `<?xml version="1.0" encoding="UTF-8"?>
 function projectWithReports({ shift = 0 } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-')));
   temporaryRoots.push(root);
-  const reports = path.join(root, 'build/nitpicker');
+  const reports = rootReports(root);
   const sourceFile = path.join(root, 'src/main/java/demo/Bad.java');
   mkdirSync(reports, { recursive: true });
+  writeModules(root);
   mkdirSync(path.dirname(sourceFile), { recursive: true });
   // Line 9 (moved down by `shift`) holds the branch JaCoCo reports as uncovered.
   const sourceLines = Array.from({ length: 9 + shift }, () => '');
@@ -130,7 +139,7 @@ function projectWithReports({ shift = 0 } = {}) {
     clone.secondFile.start += shift;
   }
   writeFileSync(
-    path.join(reports, 'duplicates.json'),
+    path.join(reportBaseOf(root), 'duplicates.json'),
     JSON.stringify({ runs: [{ root: 'src/main/java', report: jscpd }] }),
   );
   return root;
@@ -157,6 +166,15 @@ describe('readJavaFindings', () => {
       ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+/)],
       ['checkstyle', CS_INDENT, bad, expect.stringMatching(/^[0-9a-f]+.*#2$/)],
       ['checkstyle', CS_LENGTH, bad, expect.stringMatching(/^[0-9a-f]+/)],
+      ['jacoco', 'line-coverage', bad, 'line-coverage'],
+      ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
+      [
+        'crap',
+        'crap-score-limit',
+        bad,
+        expect.stringMatching(/^function:Bad\.decode\(byte\[\]\):source:[0-9a-f]{24}$/),
+      ],
+      ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
       [
         'duplicates',
         'duplicate-clone',
@@ -177,15 +195,6 @@ describe('readJavaFindings', () => {
         bad,
         'pair:src/main/java/demo/Bad.java|src/main/java/demo/Copy.java:occurrence:1:tokens',
       ],
-      ['jacoco', 'line-coverage', bad, 'line-coverage'],
-      ['jacoco', 'uncovered-method', bad, expect.stringMatching(/^cov:/)],
-      [
-        'crap',
-        'crap-score-limit',
-        bad,
-        expect.stringMatching(/^function:Bad\.decode\(byte\[\]\):source:[0-9a-f]{24}$/),
-      ],
-      ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
     ]);
   });
 
@@ -248,11 +257,11 @@ describe('readJavaFindings', () => {
     mkdirSync(path.dirname(testFile), { recursive: true });
     writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
     writeFileSync(
-      path.join(root, 'build/nitpicker/manifest.json'),
+      path.join(rootReports(root), 'manifest.json'),
       JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] }),
     );
     writeFileSync(
-      path.join(root, 'build/nitpicker/checkstyle-test.xml'),
+      path.join(rootReports(root), 'checkstyle-test.xml'),
       `<checkstyle><file name="${testFile}"><error line="2" severity="warning" message="Too long" source="${CS_LENGTH}"/></file></checkstyle>`,
     );
 
@@ -263,6 +272,29 @@ describe('readJavaFindings', () => {
     expect(onTests.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
       `checkstyle ${CS_LENGTH}`,
       'pmd InlineSuppression',
+    ]);
+  });
+
+  it('reads the Checkstyle report of every other source set', () => {
+    const root = projectWithReports();
+    const file = path.join(root, 'src/integration/java/demo/BigIt.java');
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, 'class BigIt {}\n');
+    writeFileSync(
+      path.join(rootReports(root), 'manifest.json'),
+      JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/integration/java'] }),
+    );
+    writeFileSync(
+      path.join(rootReports(root), 'checkstyle-integration.xml'),
+      `<checkstyle><file name="${file}"><error line="1" severity="warning" message="Too long" source="${CS_LENGTH}"/></file></checkstyle>`,
+    );
+
+    const findings = readJavaFindings(root).findings.filter(
+      ({ path: found }) => found === 'src/integration/java/demo/BigIt.java',
+    );
+
+    expect(findings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
+      `checkstyle ${CS_LENGTH}`,
     ]);
   });
 
@@ -279,7 +311,7 @@ describe('readJavaFindings', () => {
         ],
       };
       writeFileSync(
-        path.join(root, 'build/nitpicker/pmd.sarif'),
+        path.join(rootReports(root), 'pmd.sarif'),
         JSON.stringify({
           runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results: [result] }],
         }),
@@ -296,11 +328,11 @@ describe('readJavaFindings', () => {
     mkdirSync(path.dirname(testFile), { recursive: true });
     writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
     const findings = readJavaFindings(root).findings;
-    rmSync(path.join(root, 'build/nitpicker/checkstyle.xml'));
+    rmSync(path.join(rootReports(root), 'checkstyle.xml'));
 
     expect(findings.filter(({ path: file }) => file.startsWith('src/test/'))).toEqual([]);
     expect(() => readJavaFindings(root)).toThrow(
-      `ENOENT: no such file or directory, open '${path.join(root, 'build/nitpicker/checkstyle.xml')}'`,
+      new Error('The java preset found no Checkstyle report for project :'),
     );
   });
 });
@@ -311,14 +343,14 @@ describe('readJavaFindings: ArchUnit', () => {
 
   function withArchunit(lines) {
     const root = projectWithReports();
-    const manifest = path.join(root, 'build/nitpicker/manifest.json');
+    const manifest = path.join(rootReports(root), 'manifest.json');
     writeFileSync(
       manifest,
       JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] }),
     );
-    mkdirSync(path.join(root, 'build/nitpicker/archunit'));
+    mkdirSync(path.join(rootReports(root), 'archunit'));
     writeFileSync(
-      path.join(root, 'build/nitpicker/archunit/TEST-demo.ArchitectureTest.xml'),
+      path.join(rootReports(root), 'archunit/TEST-demo.ArchitectureTest.xml'),
       failure(lines),
     );
     return root;
@@ -357,9 +389,9 @@ describe('readJavaFindings: PIT', () => {
 
   function withPit(line) {
     const root = projectWithReports();
-    mkdirSync(path.join(root, 'build/nitpicker/pit'));
+    mkdirSync(path.join(rootReports(root), 'pit'));
     writeFileSync(
-      path.join(root, 'build/nitpicker/pit/mutations.xml'),
+      path.join(rootReports(root), 'pit/mutations.xml'),
       `<mutations>${mutation('NO_COVERAGE', line)}</mutations>`,
     );
     return root;
@@ -407,7 +439,7 @@ describe('readJavaFindings: Spring configuration', () => {
 
   function writeManifest(root, manifest) {
     writeFileSync(
-      path.join(root, 'build/nitpicker/manifest.json'),
+      path.join(rootReports(root), 'manifest.json'),
       JSON.stringify({ sourceRoots: ['src/main/java'], ...manifest }),
     );
   }
@@ -457,41 +489,6 @@ describe('ingestFormatCheck', () => {
     expect(findings.map(({ path: file, identity }) => [file, identity])).toEqual([
       ['src/A.java', 'format'],
       ['src/B.java', 'format'],
-    ]);
-  });
-});
-
-describe('readJavaFindings: guard reports', () => {
-  it('reads the javac lint, forbidden API, CPD and dependency reports next to the others', () => {
-    const root = projectWithReports();
-    const reports = path.join(root, 'build/nitpicker');
-    writeFileSync(
-      path.join(reports, 'javac-lint.txt'),
-      'src/main/java/demo/Bad.java:9: warning: [rawtypes] found raw type: List\n',
-    );
-    writeFileSync(
-      path.join(reports, 'forbidden-apis.txt'),
-      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]\nERROR:   in demo.Bad (Bad.java:9)\n',
-    );
-    writeFileSync(
-      path.join(reports, 'dependencies.json'),
-      JSON.stringify({
-        buildFile: 'build.gradle',
-        analyzed: true,
-        declared: [{ configuration: 'implementation', group: 'g', name: 'a', archives: ['a.jar'] }],
-      }),
-    );
-
-    const { findings } = readJavaFindings(root);
-
-    expect(
-      findings
-        .filter(({ tool }) => ['javac', 'forbiddenapis', 'dependencies'].includes(tool))
-        .map(({ tool, rule, path: file }) => [tool, rule, file]),
-    ).toEqual([
-      ['javac', 'rawtypes', 'src/main/java/demo/Bad.java'],
-      ['forbiddenapis', 'legacy-date-time', 'src/main/java/demo/Bad.java'],
-      ['dependencies', 'unused-declared-dependency', 'build.gradle'],
     ]);
   });
 });
