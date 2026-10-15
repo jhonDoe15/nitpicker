@@ -165,9 +165,7 @@ function bundledGoogleChecks(checkstyleJar) {
     });
     const file = path.join(directory, 'google_checks.xml');
     if (result.status !== 0 || !existsSync(file)) {
-      throw new Error(
-        `could not read google_checks.xml from ${checkstyleJar}: ${result.stderr ?? ''}`,
-      );
+      throw new Error(`could not read google_checks.xml from ${checkstyleJar}: ${result.stderr}`);
     }
     return readFileSync(file, 'utf8');
   } finally {
@@ -221,26 +219,41 @@ function checkstyleSetup({ reportDir, tools, configs, pinned }) {
   return { config, properties };
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned }) {
-  const setup = checkstyleSetup({ reportDir, tools, configs, pinned });
-  const run = (roots, reportName, always) => {
-    const report = path.join(reportDir, reportName);
-    const files = javaFiles(roots);
-    if (files.length === 0) {
-      if (always) {
-        writeFileSync(report, `<checkstyle version="${pinned.checkstyle}"></checkstyle>`);
-      }
-      return;
+function checkstyleReport({ module, setup, tools, pinned, roots, report, always }) {
+  const files = javaFiles(roots);
+  if (files.length === 0) {
+    if (always) {
+      writeFileSync(report, `<checkstyle version="${pinned.checkstyle}"></checkstyle>`);
     }
-    runJava({
-      tool: 'Checkstyle',
-      classpath: tools.checkstyle,
-      mainClass: 'com.puppycrawl.tools.checkstyle.Main',
-      args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
-      cwd: module.basedir,
-      accept: () => existsSync(report),
-    });
+    return;
+  }
+  runJava({
+    tool: 'Checkstyle',
+    classpath: tools.checkstyle,
+    mainClass: 'com.puppycrawl.tools.checkstyle.Main',
+    args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
+    cwd: module.basedir,
+    accept: () => existsSync(report),
+  });
+}
+
+export function runCheckstyle({ module, reportDir, tools, configs, pinned }) {
+  const context = {
+    module,
+    tools,
+    pinned,
+    setup: checkstyleSetup({ reportDir, tools, configs, pinned }),
   };
-  run(module.sourceRoots, 'checkstyle.xml', true);
-  run(module.testSourceRoots, 'checkstyle-test.xml', false);
+  checkstyleReport({
+    ...context,
+    roots: module.sourceRoots,
+    report: path.join(reportDir, 'checkstyle.xml'),
+    always: true,
+  });
+  checkstyleReport({
+    ...context,
+    roots: module.testSourceRoots,
+    report: path.join(reportDir, 'checkstyle-test.xml'),
+    always: false,
+  });
 }

@@ -32,15 +32,21 @@ function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   return roots;
 }
 
+function mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name }) {
+  writeFileSync(
+    path.join(reportRoot, name),
+    moduleDirs
+      .map((moduleDir) => readFileSync(path.join(moduleDir, reportDirectory, name), 'utf8'))
+      .join('\n'),
+  );
+}
+
 function projectCoupling(projectRoot, moduleDirs, { reportDirectory, sourceRoots }) {
   const reportRoot = path.join(projectRoot, reportDirectory);
   mkdirSync(reportRoot, { recursive: true });
-  const read = (name) =>
-    moduleDirs
-      .map((moduleDir) => readFileSync(path.join(moduleDir, reportDirectory, name), 'utf8'))
-      .join('\n');
-  writeFileSync(path.join(reportRoot, 'jdeps.txt'), read('jdeps.txt'));
-  writeFileSync(path.join(reportRoot, 'jdeps-classes.txt'), read('jdeps-classes.txt'));
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt']) {
+    mergeModuleReports(moduleDirs, { reportDirectory, reportRoot, name });
+  }
   return readCouplingFindings(reportRoot, { projectRoot, sourceRoots });
 }
 

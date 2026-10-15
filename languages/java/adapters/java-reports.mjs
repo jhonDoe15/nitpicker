@@ -17,7 +17,7 @@ import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
-import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { ingestSarif, prepareSarif, projectRelative } from '../ingest/sarif.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -44,13 +44,7 @@ export function readJavaFindings(
 ) {
   const kotlin = preset === 'kotlin';
   const reportRoot = path.join(projectRoot, reportDirectory);
-  if (reportDirectory === REPORT_DIRECTORY) {
-    requireGradleReports(projectRoot, preset);
-  }
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  if (kotlin) {
-    requireKotlinManifest(manifest);
-  }
+  const manifest = readManifest(projectRoot, { reportDirectory, preset });
   const context = {
     projectRoot,
     reportRoot,
@@ -72,26 +66,42 @@ export function readJavaFindings(
       ...crapFindings(context, context.jacoco, crapLimit),
       ...pitFindings(context),
       ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...(projectWide
-        ? readJavaFileLimitFindings(projectRoot, {
-            manifest,
-            kotlin,
-            policy: { thresholds: fileLimits, exclude, exceptions },
-          })
-        : []),
+      ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
       ...branchFindings(context, context.jacoco),
-      ...(projectWide
-        ? readCouplingFindings(reportRoot, {
-            projectRoot,
-            sourceRoots: context.sourceRoots,
-            kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-          })
-        : []),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
     ],
   };
+}
+
+function readManifest(projectRoot, { reportDirectory, preset }) {
+  if (reportDirectory === REPORT_DIRECTORY) {
+    requireGradleReports(projectRoot, preset);
+  }
+  const manifest = JSON.parse(
+    readFileSync(path.join(projectRoot, reportDirectory, 'manifest.json'), 'utf8'),
+  );
+  if (preset === 'kotlin') {
+    requireKotlinManifest(manifest);
+  }
+  return manifest;
+}
+
+function projectWideFindings(context, { fileLimits, exclude, exceptions }) {
+  const { projectRoot, reportRoot, manifest, kotlin } = context;
+  return [
+    ...readJavaFileLimitFindings(projectRoot, {
+      manifest,
+      kotlin,
+      policy: { thresholds: fileLimits, exclude, exceptions },
+    }),
+    ...readCouplingFindings(reportRoot, {
+      projectRoot,
+      sourceRoots: context.sourceRoots,
+      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+    }),
+  ];
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -227,67 +237,4 @@ function projectRoots(projectRoot) {
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
   return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
-}
-
-export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
-  return {
-    ...log,
-    runs: (log.runs ?? []).map((run) => ({
-      ...run,
-      results: (run.results ?? []).map((result) =>
-        prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }),
-      ),
-    })),
-  };
-}
-
-function prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }) {
-  const subject = identityKey(result);
-  const prepared = {
-    ...result,
-    level: result.level === 'error' ? 'error' : 'warning',
-    locations: (result.locations ?? []).map((location) =>
-      relocate(location, { roots, sourceRoots, projectRoot }),
-    ),
-  };
-  if (typeof subject === 'string' && subject !== '' && result.partialFingerprints === undefined) {
-    prepared.partialFingerprints = { 'nitpicker/subject': subject };
-  }
-  return prepared;
-}
-
-function relocate(location, { roots, sourceRoots, projectRoot }) {
-  const uri = location.physicalLocation?.artifactLocation?.uri;
-  if (typeof uri !== 'string') {
-    return location;
-  }
-  const resolved = resolveUri(uri, { roots, sourceRoots, projectRoot });
-  return {
-    ...location,
-    physicalLocation: {
-      ...location.physicalLocation,
-      artifactLocation: { uri: resolved },
-    },
-  };
-}
-
-function projectRelative(uri, roots) {
-  for (const root of roots) {
-    const relative = normalizeUri(uri, root);
-    if (relative !== undefined) {
-      return relative;
-    }
-  }
-  return undefined;
-}
-
-function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
-  const relative = projectRelative(uri, roots);
-  if (relative === undefined) {
-    return uri;
-  }
-  const owner = sourceRoots.find((sourceRoot) =>
-    existsSync(path.join(projectRoot, sourceRoot, relative)),
-  );
-  return owner === undefined ? relative : `${owner}/${relative}`;
 }

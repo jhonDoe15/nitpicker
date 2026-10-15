@@ -90,22 +90,16 @@ export function parseXml(text) {
     if (name === undefined) {
       continue;
     }
-    const current = stack.at(-1);
     if (closing === '/') {
-      if (stack.length === 1 || current.name !== name) {
-        throw new TypeError(`XML closing tag </${name}> does not match an open element`);
-      }
-      if (current.children.length === 0) {
-        current.text = decodeEntities(text.slice(contentStarts.get(current), match.index).trim());
-      }
-      stack.pop();
-      continue;
-    }
-    const element = { name, attrs: parseAttributes(rest), children: [] };
-    current.children.push(element);
-    if (selfClosing !== '/') {
-      contentStarts.set(element, match.index + match[0].length);
-      stack.push(element);
+      closeElement(stack, { name, text, end: match.index, contentStarts });
+    } else {
+      openElement(stack, {
+        name,
+        rest,
+        selfClosing,
+        contentStart: match.index + match[0].length,
+        contentStarts,
+      });
     }
   }
   if (stack.length !== 1) {
@@ -116,6 +110,26 @@ export function parseXml(text) {
     throw new TypeError('XML document has no root element');
   }
   return documentElement;
+}
+
+function closeElement(stack, { name, text, end, contentStarts }) {
+  const current = stack.at(-1);
+  if (stack.length === 1 || current.name !== name) {
+    throw new TypeError(`XML closing tag </${name}> does not match an open element`);
+  }
+  if (current.children.length === 0) {
+    current.text = decodeEntities(text.slice(contentStarts.get(current), end).trim());
+  }
+  stack.pop();
+}
+
+function openElement(stack, { name, rest, selfClosing, contentStart, contentStarts }) {
+  const element = { name, attrs: parseAttributes(rest), children: [] };
+  stack.at(-1).children.push(element);
+  if (selfClosing !== '/') {
+    contentStarts.set(element, contentStart);
+    stack.push(element);
+  }
 }
 
 function parseAttributes(source) {
