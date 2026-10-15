@@ -6,13 +6,13 @@ import {
   parseRunnerArguments,
 } from '../../../../languages/java/adapters/java-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
-import { runFakeAnalyzer } from '../../fixtures/fake-analyzer.mjs';
 import { progressEvent } from '../analyzer-scheduler.mjs';
 import { reportFromAnalyzerOutput } from '../process.mjs';
 import { createProgressReporter } from '../progress.mjs';
+import { runFakeAnalyzer } from './fake-analyzer.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
-const fakeAnalyzerPath = path.join(import.meta.dirname, '../../fixtures/fake-analyzer.mjs');
+const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
 const javaRunnerPath = path.resolve(
   import.meta.dirname,
   '../../../../languages/java/adapters/java-runner.mjs',
