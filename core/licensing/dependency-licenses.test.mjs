@@ -58,9 +58,11 @@ describe('licenses of what nitpicker ships', () => {
       ([, manifest]) => manifest.name,
     );
 
-    expect(names).toEqual(
-      expect.arrayContaining(['eslint', 'typescript-eslint', 'axe-core', 'minimatch']),
-    );
+    expect(
+      ['eslint', 'typescript-eslint', 'axe-core', 'minimatch'].filter(
+        (name) => !names.includes(name),
+      ),
+    ).toEqual([]);
   });
 
   it('allows only permissive or weak-copyleft pinned Java tools, all pinned exactly', () => {
@@ -70,7 +72,7 @@ describe('licenses of what nitpicker ships', () => {
   it('knows a license for every pinned Java tool and the SpotBugs plugin', () => {
     const tools = pinnedJavaTools(initScript).map(({ tool }) => tool);
 
-    expect(tools).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'findSecBugs']));
+    expect(['pmd', 'spotbugs', 'findSecBugs'].filter((tool) => !tools.includes(tool))).toEqual([]);
     expect(tools.filter((tool) => JAVA_TOOL_LICENSES[tool] === undefined)).toEqual([]);
   });
 });

@@ -102,18 +102,18 @@ function springFindings({ projectRoot, manifest, sourceRoots }) {
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   const findings = [];
-  function sarif(file, tool, identityKey, rewrite = (log) => log) {
+  function sarif(file, tool, { identityKey, rewrite = (log) => log }) {
     const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
     findings.push(...ingestSarif(rewrite(normalized), { tool }).findings);
   }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  sarif(
-    'spotbugs.sarif',
-    'spotbugs',
-    (result) => securitySubject(result, spotbugsSubject(result)),
-    withSecurityMessages,
-  );
+  sarif('pmd.sarif', 'pmd', {
+    identityKey: (result) => result.message?.text?.replace(LINE_NUMBER, 'line'),
+  });
+  sarif('spotbugs.sarif', 'spotbugs', {
+    identityKey: (result) => securitySubject(result, spotbugsSubject(result)),
+    rewrite: withSecurityMessages,
+  });
   return findings;
 }
 

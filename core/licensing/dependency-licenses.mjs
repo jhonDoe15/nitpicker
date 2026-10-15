@@ -30,12 +30,18 @@ const PINNED_BLOCK = /def pinned = \[([\s\S]*?)\n\]/;
 const PINNED_ENTRY = /^\s*(\w+)\s*:\s*'([^']*)'/gm;
 
 function findManifest(name, fromDirectory) {
-  const candidate = path.join(fromDirectory, 'node_modules', name, 'package.json');
-  if (existsSync(candidate)) {
-    return candidate;
+  const directories = [fromDirectory];
+  for (const directory of directories) {
+    const candidate = path.join(directory, 'node_modules', name, 'package.json');
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = path.dirname(directory);
+    if (parent !== directory) {
+      directories.push(parent);
+    }
   }
-  const parent = path.dirname(fromDirectory);
-  return parent === fromDirectory ? undefined : findManifest(name, parent);
+  return undefined;
 }
 
 function readJson(file) {
@@ -53,30 +59,28 @@ function dependencyNames(manifest, { requiredOnly }) {
       ];
 }
 
+function dependencyEntries(manifest, fromDirectory, requiredOnly) {
+  return dependencyNames(manifest, { requiredOnly }).map((name) => ({
+    name,
+    fromDirectory,
+    requiredOnly,
+  }));
+}
+
 export function collectShippedPackages(root) {
   const packages = new Map();
   const missing = [];
-  const visit = (name, fromDirectory, requiredOnly) => {
+  const pending = dependencyEntries(readJson(path.join(root, 'package.json')), root, true);
+  for (const { name, fromDirectory, requiredOnly } of pending) {
     const file = findManifest(name, fromDirectory);
-    if (file === undefined) {
-      if (requiredOnly) {
-        missing.push(name);
-      }
-      return;
+    if (file === undefined && requiredOnly) {
+      missing.push(name);
     }
-    if (packages.has(file)) {
-      return;
+    if (file !== undefined && !packages.has(file)) {
+      const manifest = readJson(file);
+      packages.set(file, manifest);
+      pending.push(...dependencyEntries(manifest, path.dirname(file), false));
     }
-    const manifest = readJson(file);
-    packages.set(file, manifest);
-    for (const dependency of dependencyNames(manifest, { requiredOnly })) {
-      visit(dependency, path.dirname(file), false);
-    }
-  };
-  for (const name of dependencyNames(readJson(path.join(root, 'package.json')), {
-    requiredOnly: true,
-  })) {
-    visit(name, root, true);
   }
   return { packages: [...packages.entries()], missing };
 }

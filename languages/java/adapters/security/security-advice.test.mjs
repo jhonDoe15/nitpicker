@@ -194,9 +194,9 @@ describe('find-sec-bugs advice', () => {
     for (const pattern of securityPatterns()) {
       const message = securityMessage(pattern);
 
-      expect(message).toContain(
-        `add an exception for spotbugs/${pattern} in nitpicker.config.json.`,
-      );
+      expect(
+        message.endsWith(`add an exception for spotbugs/${pattern} in nitpicker.config.json.`),
+      ).toBe(true);
       expect(message.length).toBeLessThan(330);
     }
   });
