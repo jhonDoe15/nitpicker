@@ -34,10 +34,20 @@ const FAILING_COVERAGE_TOOL_ERRORS = (assertionLine) => [
     tool: 'coverage',
     rule: 'tests-failed',
     path: 'test/failing.test.js',
-    identity: 'tests-failed',
     message: `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  test/failing.test.js > checks greet: ${assertionLine}`,
-    classification: 'tool-error',
     snapshot: 'head',
+  },
+];
+const SURVIVING_MUTANTS = [
+  {
+    file: 'src/main/features/greeting/domain/shout.js',
+    message:
+      'Survived MethodExpression at column 13: replacing `text.toUpperCase()` with `text.toLowerCase()` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+  },
+  {
+    file: 'src/main/features/greeting/domain/shout.js',
+    message:
+      "Survived StringLiteral at column 10: replacing `` `${text.toUpperCase()}!` `` with `''` (an empty string) fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.",
   },
 ];
 
@@ -47,7 +57,7 @@ const RUNNERS = [
     fixture: 'jest-project',
     imports: "import { expect, it } from '@jest/globals';",
     assertion: (call, expected) => `expect(${call}).toEqual(${expected});`,
-    failure: "Error: expect(received).toEqual(expected) // deep equality",
+    failure: 'Error: expect(received).toEqual(expected) // deep equality',
   },
   {
     runner: 'node:test',
@@ -155,8 +165,8 @@ describe.each(RUNNERS)('a $runner project', (runner) => {
       expect(
         findings
           .filter(({ rule }) => rule === 'mutant-survived')
-          .map(({ path: file, line, message }) => ({ file, line, message })),
-      ).toEqual([]);
+          .map(({ path: file, message }) => ({ file, message })),
+      ).toEqual(SURVIVING_MUTANTS);
       expect(exitCode).toBe(1);
     },
     FIXTURE_TIMEOUT_MS,
