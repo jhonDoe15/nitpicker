@@ -286,12 +286,18 @@ arguments are part of the policy hash.
 
 ## Java preset
 
-Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle project the same way: PMD,
+Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
 SpotBugs, google-java-format and JaCoCo run on the merge base and on head (through
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
 and `report.junit.xml` are the same as for TypeScript. If Gradle fails on either snapshot, the
 failure is reported as a `java/gradle-failure` tool error (exit 2 when there are no new findings), never thrown.
+A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
+is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
+at a time (findings carry the module path); a Maven failure or a failing test is a
+`java/maven-failure` tool error naming the cause. Maven runs through `mvnw` when the project has
+one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
+[Maven builds](java-preset.md#maven-builds).
 
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
