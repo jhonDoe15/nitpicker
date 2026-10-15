@@ -884,8 +884,25 @@ describe('Java analyzer', () => {
   it('records the pinned tool versions and a stable configuration hash', () => {
     const analyzer = createJavaAnalyzer();
 
+    const tools = [
+      'pmd',
+      'spotbugs',
+      'googleJavaFormat',
+      'jacoco',
+      'checkstyle',
+      'lizard',
+      'pitest',
+      'pitestJunit5',
+      'archunit',
+      'detekt',
+      'detektKotlin',
+      'ktlint',
+      'ktfmt',
+      'kotlinCompiler',
+      'jscpd',
+    ];
     expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;archunit@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
+      new RegExp(`^${tools.map((tool) => String.raw`${tool}@[\d.]+`).join(';')}$`),
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
