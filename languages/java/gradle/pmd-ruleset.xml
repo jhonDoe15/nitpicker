@@ -6,21 +6,99 @@
   <description>Nitpicker's PMD rules for main and test sources.</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
+    <exclude name="AvoidFieldNameMatchingMethodName"/>
+    <exclude name="AvoidLiteralsInIfCondition"/>
+    <exclude name="AssignmentInOperand"/>
   </rule>
-  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
+  <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
+        message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed. If it is right here, add an exception for pmd/AvoidFieldNameMatchingMethodName in nitpicker.config.json.">
     <properties>
-      <property name="testClassPattern"
-                value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+      <property name="xpath">
+        <value><![CDATA[
+//FieldDeclaration[not(pmd-java:modifiers() = 'static' and pmd-java:modifiers() = 'final')]/VariableDeclarator/VariableId
+    [some $method in ../../..[self::ClassBody or self::EnumBody]/MethodDeclaration
+     satisfies lower-case(@Name) = lower-case($method/@Name)
+       and not(@Name = $method/@Name and $method/FormalParameters[@Size < 2])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/errorprone.xml/AvoidLiteralsInIfCondition"
+        message="Use a named constant instead of this literal in the condition (-1, 0, 1 and 2 are allowed). If it is not a magic number, add an exception for pmd/AvoidLiteralsInIfCondition in nitpicker.config.json.">
+    <properties>
+      <property name="ignoreMagicNumbers" value="-1,0,1,2"/>
+      <property name="violationSuppressXPath" value=".[self::StringLiteral or self::CharLiteral]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/errorprone.xml/AssignmentInOperand"
+        message="Assign first, then use the variable. An assignment in a while condition is allowed. If it is right here, add an exception for pmd/AssignmentInOperand in nitpicker.config.json.">
+    <properties>
+      <property name="allowWhile" value="true"/>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml">
+    <exclude name="AbstractClassWithoutAbstractMethod"/>
+    <exclude name="GuardLogStatement"/>
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
   </rule>
+  <rule ref="category/java/bestpractices.xml/AbstractClassWithoutAbstractMethod">
+    <properties>
+      <property name="violationSuppressXPath"
+                value="./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass')]"/>
+    </properties>
+  </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>
-      <property name="extraAssertMethodNames" value="andExpect"/>
+      <property name="extraAssertMethodNames"
+                value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/GuardLogStatement"
+        message="Pass values as placeholders (LOG.debug(&quot;user '{'}&quot;, user)) and compute nothing in the arguments; guard the call with isDebugEnabled() only when an argument must be computed. If it is right here, add an exception for pmd/GuardLogStatement in nitpicker.config.json.">
+    <properties>
+      <property name="logLevels" value="trace,debug,finest,finer,fine"/>
+      <property name="guardsMethods" value="isTraceEnabled,isDebugEnabled,isLoggable"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+./MethodCall[ArgumentList/*[1][self::StringLiteral]]
+  [not(ArgumentList/*[position() > 1][not(
+     self::VariableAccess or self::FieldAccess or self::ThisExpression or self::StringLiteral
+     or self::NumericLiteral or self::BooleanLiteral or self::CharLiteral or self::NullLiteral
+     or (self::MethodCall[ArgumentList[@Size = 0]]
+         [*[1][self::VariableAccess or self::FieldAccess or self::ThisExpression]]))])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogStringConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass values as placeholders (LOG.info(&quot;user '{'}&quot;, user); '{'0} in System.Logger and java.util.logging), not a message built with + or String.format. If it is right here, add an exception for pmd/LogStringConcatenation in nitpicker.config.json.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = ('info', 'warn', 'error', 'log', 'config', 'warning', 'severe')]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.slf4j.spi.LoggingEventBuilder')
+    or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('java.lang.System.Logger')
+    or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')]]
+  /ArgumentList/(*[1] | *[1][not(pmd-java:typeIs('java.lang.String'))]/following-sibling::*[1])
+  [(self::InfixExpression[@Operator = '+'] and not(@CompileTimeConstant = true()))
+    or self::MethodCall[@MethodName = ('format', 'formatted')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code. If this file is generated, add an exception for pmd/GeneratedOnHandWrittenCode in nitpicker.config.json.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
+  /ModifierList/Annotation[@SimpleName = 'Generated']
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule ref="category/java/performance.xml">

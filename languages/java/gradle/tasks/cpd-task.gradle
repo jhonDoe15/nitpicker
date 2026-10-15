@@ -1,4 +1,4 @@
-def reportDir = layout.buildDirectory.dir('nitpicker')
+def reportDir = project.ext.nitpickerReportDir
 
 tasks.register('nitpickerCpd', JavaExec) {
     group = 'nitpicker'
@@ -8,10 +8,10 @@ tasks.register('nitpickerCpd', JavaExec) {
     def report = reportDir.map { it.file('cpd.xml') }
     def errors = new ByteArrayOutputStream()
     def sourceDirectories = {
-        (sourceSets.main.allJava.sourceDirectories.files + sourceSets.test.allJava.sourceDirectories.files).findAll { it.exists() }
+        sourceSets.collectMany { it.allJava.sourceDirectories.files }.unique().findAll { it.exists() }
     }
     onlyIf { !sourceDirectories().isEmpty() }
-    inputs.files(sourceSets.main.allJava, sourceSets.test.allJava).withPropertyName('sources')
+    inputs.files({ sourceSets*.allJava }).withPropertyName('sources')
     outputs.file(report).withPropertyName('report')
     doFirst {
         reportDir.get().asFile.mkdirs()
