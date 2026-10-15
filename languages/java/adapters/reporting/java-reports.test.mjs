@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { readJavaFindings } from './java-reports.mjs';
+import { fileURLToPath } from 'node:url';
 
 const temporaryRoots = [];
 
@@ -93,7 +94,7 @@ function projectWithReports({ shift = 0 } = {}) {
   writeFileSync(
     path.join(reports, 'checkstyle.xml'),
     readFileSync(
-      path.join(new URL('../', import.meta.url).pathname, 'fixtures/checkstyle.xml'),
+      path.join(fileURLToPath(new URL('../', import.meta.url)), 'fixtures/checkstyle.xml'),
       'utf8',
     )
       .replaceAll('@SOURCE@', sourceFile)
@@ -120,7 +121,7 @@ function projectWithReports({ shift = 0 } = {}) {
   // The jscpd sample report (one clone); `shift` moves its start lines like the other reports.
   const jscpd = JSON.parse(
     readFileSync(
-      path.join(new URL('../', import.meta.url).pathname, 'fixtures/jscpd-report.json'),
+      path.join(fileURLToPath(new URL('../', import.meta.url)), 'fixtures/jscpd-report.json'),
       'utf8',
     ),
   );

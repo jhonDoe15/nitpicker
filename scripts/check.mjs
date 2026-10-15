@@ -7,7 +7,13 @@ const steps = [
   ['self-gate', ['core/cli.mjs']],
   [
     'tests',
-    ['node_modules/vitest/vitest.mjs', 'run', '--config', 'vitest.config.mts', ...process.argv.slice(2)],
+    [
+      'node_modules/vitest/vitest.mjs',
+      'run',
+      '--config',
+      'vitest.config.mts',
+      ...process.argv.slice(2),
+    ],
   ],
 ];
 

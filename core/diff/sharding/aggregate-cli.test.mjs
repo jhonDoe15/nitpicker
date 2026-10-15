@@ -10,6 +10,7 @@ import {
   removeFixtures,
   writeShard,
 } from './shard-fixtures.mjs';
+import { fileURLToPath } from 'node:url';
 
 afterEach(removeFixtures);
 
@@ -141,7 +142,7 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
       [
         '--experimental-loader',
         loaderPath,
-        new URL('./aggregate-shards.mjs', import.meta.url).pathname,
+        fileURLToPath(new URL('./aggregate-shards.mjs', import.meta.url)),
         '--help',
       ],
       { encoding: 'utf8' },

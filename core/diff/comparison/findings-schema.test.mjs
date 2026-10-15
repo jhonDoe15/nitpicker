@@ -15,10 +15,11 @@ import {
 import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
+import { fileURLToPath } from 'node:url';
 
 const schema = JSON.parse(
   readFileSync(
-    path.resolve(new URL('../', import.meta.url).pathname, '../../spec/findings.schema.json'),
+    path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../spec/findings.schema.json'),
     'utf8',
   ),
 );

@@ -3,11 +3,12 @@ import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
 import { listProductionModules } from './python-sources.mjs';
+import { fileURLToPath } from 'node:url';
 
 const IMPORTS_REPORT = 'imports.json';
 const COUPLING_FAILED_RULE = 'coupling-failed';
 const COUPLING_TOOL = 'coupling';
-const SCAN_SCRIPT = path.join(new URL('../', import.meta.url).pathname, 'import-scan.py');
+const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
 const SCAN_REQUEST = 'import-scan-request.json';
 const ROOT_PACKAGE = '(root)';
 

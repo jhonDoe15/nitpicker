@@ -6,8 +6,9 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { executeAnalyzerTask } from './process.mjs';
 import { task, waitForFile } from './test-support/analyzer-task.mjs';
+import { fileURLToPath } from 'node:url';
 
-const schedulerPath = new URL('./analyzer-scheduler.mjs', import.meta.url).pathname;
+const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
 
 describe('analyzer process execution', () => {
   it('accepts findings of declared wrapped tools and rejects any other tool', async () => {
@@ -19,7 +20,7 @@ describe('analyzer process execution', () => {
       invocation: {
         command: process.execPath,
         args: ['-e', report(tool)],
-        cwd: new URL('../', import.meta.url).pathname,
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
       },
     });
 
@@ -48,7 +49,7 @@ describe('analyzer process execution', () => {
           '-e',
           "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:`${process.env.GITHUB_STEP_SUMMARY ?? 'unset'} ${process.env.KEPT}`,classification:'enforceable'}]}))",
         ],
-        cwd: new URL('../', import.meta.url).pathname,
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
         env: { ...process.env, GITHUB_STEP_SUMMARY: '/tmp/summary.md', KEPT: 'kept' },
       },
     };

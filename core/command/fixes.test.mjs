@@ -14,6 +14,7 @@ import {
   useCliFixtures,
   writeFiles,
 } from '../diff/fixtures/cli-harness.mjs';
+import { fileURLToPath } from 'node:url';
 
 useCliFixtures(nitpickerCli);
 
@@ -26,7 +27,7 @@ describe('nitpicker CLI', () => {
       'tests/placeholder.ts': 'export const placeholder = true;\n',
     });
     symlinkSync(
-      path.join(new URL('../', import.meta.url).pathname, '../node_modules'),
+      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
       path.join(repository.root, 'node_modules'),
       'dir',
     );
@@ -80,7 +81,7 @@ describe('nitpicker CLI', () => {
       'tests/placeholder.ts': 'export const placeholder = true;\n',
     });
     symlinkSync(
-      path.join(new URL('../', import.meta.url).pathname, '../node_modules'),
+      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
       path.join(repository.root, 'node_modules'),
       'dir',
     );
@@ -257,7 +258,7 @@ Base: ${repository.baseRef} (argument)
       'spec/placeholder.ts': 'export const placeholder = true;\n',
     });
     symlinkSync(
-      path.join(new URL('../', import.meta.url).pathname, '../node_modules'),
+      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
       path.join(repository.root, 'node_modules'),
       'dir',
     );

@@ -2,7 +2,7 @@ import { ESLint } from 'eslint';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../../failure-messages/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
@@ -13,7 +13,7 @@ import strictSyntaxConfig, {
 } from '../strict.config.mjs';
 
 const presetConfigUrl = pathToFileURL(
-  path.join(new URL('../', import.meta.url).pathname, '../defaults/eslint.config.mjs'),
+  path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),
 );
 const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
 const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>
@@ -225,7 +225,7 @@ describe('the preset config', () => {
       },
     });
     const eslint = new ESLint({
-      cwd: path.resolve(new URL('../', import.meta.url).pathname, '../defaults'),
+      cwd: path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../defaults'),
       overrideConfigFile: true,
       overrideConfig: config,
     });
@@ -295,7 +295,7 @@ describe('the preset config', () => {
       },
     });
     const eslint = new ESLint({
-      cwd: path.resolve(new URL('../', import.meta.url).pathname, '../defaults'),
+      cwd: path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../defaults'),
       overrideConfigFile: true,
       overrideConfig: config,
     });

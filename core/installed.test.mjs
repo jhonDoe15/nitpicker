@@ -173,7 +173,7 @@ suite('packed nitpicker in a separate consumer', () => {
         JSON.parse(readFileSync(path.join(reports(name), 'new-findings.json')));
 
       beforeAll(() => {
-        root = mkdtempSync(path.join(tmpdir(), `nitpicker-consumer-${strategy ?? 'hoisted'}-`));
+        root = mkdtempSync(path.join(tmpdir(), `nitpicker consumer-${strategy ?? 'hoisted'}-`));
         checked(root, 'git', ['init', '-b', 'main']);
         write(root, '.gitignore', 'node_modules/\nreports/\n');
         write(

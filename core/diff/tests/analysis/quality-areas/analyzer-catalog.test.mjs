@@ -6,6 +6,7 @@ import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mjs';
 import { planAnalyzerShards } from '../../../sharding/sharding.mjs';
+import { fileURLToPath } from 'node:url';
 
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',
@@ -129,9 +130,9 @@ describe('quality-area analyzer catalog', () => {
     expect(() =>
       runAnalyzers({
         analyzers: [],
-        projectRoot: new URL('../../../', import.meta.url).pathname,
-        policyRoot: new URL('../../../', import.meta.url).pathname,
-        toolRoot: new URL('../../../', import.meta.url).pathname,
+        projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+        policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+        toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
         snapshot: 'head',
       }),
     ).toThrow('liveProjectRoot is required');
@@ -152,9 +153,9 @@ describe('quality-area analyzer catalog', () => {
           },
         },
       ],
-      projectRoot: new URL('../../../', import.meta.url).pathname,
-      policyRoot: new URL('../../../', import.meta.url).pathname,
-      toolRoot: new URL('../../../', import.meta.url).pathname,
+      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
       liveProjectRoot: PACKAGE_ROOT,
       snapshot: 'head',
     });
@@ -185,7 +186,7 @@ describe('quality-area analyzer catalog', () => {
         createAnalyzer('coverage', [], () => ({
           command: process.execPath,
           args: ['--input-type=module', '-e', 'process.exit(2)'],
-          cwd: new URL('../../../', import.meta.url).pathname,
+          cwd: fileURLToPath(new URL('../../../', import.meta.url)),
         })),
         createAnalyzer('crap', ['coverage'], () => ({
           command: process.execPath,
@@ -194,12 +195,12 @@ describe('quality-area analyzer catalog', () => {
             '-e',
             'process.stdout.write(JSON.stringify({ findings: [] }))',
           ],
-          cwd: new URL('../../../', import.meta.url).pathname,
+          cwd: fileURLToPath(new URL('../../../', import.meta.url)),
         })),
       ],
-      projectRoot: new URL('../../../', import.meta.url).pathname,
-      policyRoot: new URL('../../../', import.meta.url).pathname,
-      toolRoot: new URL('../../../', import.meta.url).pathname,
+      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
       liveProjectRoot: PACKAGE_ROOT,
       snapshot: 'head',
     });

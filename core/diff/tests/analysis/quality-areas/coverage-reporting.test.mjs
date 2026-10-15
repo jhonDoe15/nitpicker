@@ -8,6 +8,7 @@ import {
 import { compareFindings } from '../../../comparison/compare.mjs';
 import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
 import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import { fileURLToPath } from 'node:url';
 
 describe('coverage reporting in the quality-area analyzers', () => {
   it('skips CRAP, without a tool error of its own, when coverage reports failing tests', () => {
@@ -20,7 +21,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
       createInvocation: () => ({
         command: process.execPath,
         args: ['-e', `process.stdout.write(${JSON.stringify(JSON.stringify(report))})`],
-        cwd: new URL('../../../', import.meta.url).pathname,
+        cwd: fileURLToPath(new URL('../../../', import.meta.url)),
       }),
     });
     const testsFailed = {
@@ -36,9 +37,9 @@ describe('coverage reporting in the quality-area analyzers', () => {
         analyzer('coverage', [], { findings: [testsFailed] }),
         analyzer('crap', ['coverage'], { findings: [] }),
       ],
-      projectRoot: new URL('../../../', import.meta.url).pathname,
-      policyRoot: new URL('../../../', import.meta.url).pathname,
-      toolRoot: new URL('../../../', import.meta.url).pathname,
+      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
+      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
       liveProjectRoot: PACKAGE_ROOT,
       snapshot: 'head',
     });

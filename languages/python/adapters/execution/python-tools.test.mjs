@@ -12,6 +12,7 @@ import {
   setEnvironment,
   temporaryRoot,
 } from './python-tools-project.mjs';
+import { fileURLToPath } from 'node:url';
 
 afterEach(restoreTemporaryState);
 
@@ -124,7 +125,7 @@ describe('running the tools', () => {
   it('names each failing step with its command and output', () => {
     const calls = ['ruff format', 'coverage run', 'mypy', 'python'];
     const structureScript = path.resolve(
-      new URL('../', import.meta.url).pathname,
+      fileURLToPath(new URL('../', import.meta.url)),
       '../metrics/structure_metrics.py',
     );
     const root = project({
@@ -213,7 +214,7 @@ describe('running the tools', () => {
     const root = project({ 'unformatted.txt': 'src/demo/a.py\n' });
     writeFileSync(
       path.join(root, '.venv/bin/ruff'),
-      `#!/bin/sh\nif [ "$1" = format ]; then echo 'something unexpected'; exit 1; fi\nexec "${process.execPath}" "${path.join(new URL('../', import.meta.url).pathname, 'fixtures/fake-python-tools.mjs')}" ruff "$@"\n`,
+      `#!/bin/sh\nif [ "$1" = format ]; then echo 'something unexpected'; exit 1; fi\nexec "${process.execPath}" "${path.join(fileURLToPath(new URL('../', import.meta.url)), 'fixtures/fake-python-tools.mjs')}" ruff "$@"\n`,
     );
     const { context } = contextFor(root);
 

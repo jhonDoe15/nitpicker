@@ -1,5 +1,6 @@
 import { existsSync, watch } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export function task(
   name,
@@ -16,7 +17,7 @@ export function task(
     invocation: {
       command: process.execPath,
       args: ['--version'],
-      cwd: new URL('../../', import.meta.url).pathname,
+      cwd: fileURLToPath(new URL('../../', import.meta.url)),
     },
   };
 }

@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const WORKER = new URL('./http-cache-worker.mjs', import.meta.url).pathname;
+const WORKER = fileURLToPath(new URL('./http-cache-worker.mjs', import.meta.url));
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
 

@@ -20,6 +20,7 @@ import {
   reactSyntaxConfigFor,
   stylingApproachFor,
 } from './react-scope.mjs';
+import { fileURLToPath } from 'node:url';
 
 const layout = resolveLayout();
 const temporaryRoots = [];
@@ -89,7 +90,7 @@ describe('React detection', () => {
 
 async function calculatedConfig(entries, file) {
   const eslint = new ESLint({
-    cwd: path.resolve(new URL('../', import.meta.url).pathname, '../defaults'),
+    cwd: path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../defaults'),
     overrideConfigFile: true,
     overrideConfig: [{ languageOptions: { parser: tseslint.parser } }, ...entries],
   });

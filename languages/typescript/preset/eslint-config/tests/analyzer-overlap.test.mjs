@@ -2,8 +2,9 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { eslintChecks } from '../../quality-checks.mjs';
+import { fileURLToPath } from 'node:url';
 
-const packageRoot = path.resolve(new URL('../', import.meta.url).pathname, '../../../..');
+const packageRoot = path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../../..');
 const ANALYZER_CONFIGS = Object.fromEntries(
   eslintChecks.map(({ name, configRelativePath }) => [name, configRelativePath]),
 );

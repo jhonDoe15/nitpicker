@@ -4,6 +4,7 @@ import { headPolicyEnvironment } from '../../../languages/typescript/preset/head
 import { analyzerName } from '../reporting/report-model.mjs';
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { fileURLToPath } from 'node:url';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -11,7 +12,7 @@ const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
-const schedulerPath = new URL('./analyzer-scheduler.mjs', import.meta.url).pathname;
+const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
 
 export function selectAnalyzers(analyzers, analyzerNames) {
   if (analyzerNames.length === 0) {

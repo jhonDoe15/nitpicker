@@ -15,8 +15,9 @@ import {
 import { resolveLayout, resolveLayoutFor } from '../../typescript/preset/layout.mjs';
 import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs';
 import { isJavascriptPolicy } from './javascript-preset.mjs';
+import { fileURLToPath } from 'node:url';
 
-const packageRoot = new URL('../../..', import.meta.url).pathname;
+const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
 
 function analyzerNames(analyzers) {

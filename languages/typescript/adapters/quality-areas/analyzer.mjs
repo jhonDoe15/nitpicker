@@ -1,6 +1,10 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const runnerPath = path.join(new URL('../', import.meta.url).pathname, 'quality-areas-runner.mjs');
+const runnerPath = path.join(
+  fileURLToPath(new URL('../', import.meta.url)),
+  'quality-areas-runner.mjs',
+);
 
 export function createQualityAreaAnalyzer({
   name,

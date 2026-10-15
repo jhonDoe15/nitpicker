@@ -1,11 +1,11 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import { resolveLayout } from '../layout.mjs';
 
-export const defaults = path.join(new URL('../', import.meta.url).pathname, 'defaults');
+export const defaults = path.join(fileURLToPath(new URL('../', import.meta.url)), 'defaults');
 
 export const customPolicy = {
   exclude: ['lib/legacy/**'],
@@ -42,7 +42,9 @@ export async function loadConfig(relativePath, policy, read = (module) => module
   const restore = setPolicyEnvironment(policy);
   try {
     policyImports.count += 1;
-    const url = pathToFileURL(path.join(new URL('../', import.meta.url).pathname, relativePath));
+    const url = pathToFileURL(
+      path.join(fileURLToPath(new URL('../', import.meta.url)), relativePath),
+    );
     url.search = `policy=${String(policyImports.count)}`;
     return read(await import(url.href));
   } finally {
