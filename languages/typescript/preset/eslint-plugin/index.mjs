@@ -36,6 +36,11 @@ import { rule as testTsconfigPinsLibAndTypes } from './rules/test-tsconfig-pins-
 import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
+import { rule as reactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
+import { rule as reactFieldHasLabel } from './rules/react/forms/react-field-has-label.mjs';
+import { rule as reactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
+import { rule as reactNoEffectEventHandling } from './rules/react/render/react-no-effect-event-handling.mjs';
+import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
 
 export const nitpickerRules = {
@@ -83,6 +88,11 @@ export const nitpickerRules = {
     'react-no-effect-data-fetching': reactNoEffectDataFetching,
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
+    'react-controlled-input': reactControlledInput,
+    'react-field-has-label': reactFieldHasLabel,
+    'react-no-direct-dom': reactNoDirectDom,
+    'react-no-effect-event-handling': reactNoEffectEventHandling,
+    'react-no-random-key': reactNoRandomKey,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
   },
 };

@@ -1,4 +1,6 @@
+import { extraAccessibilityRuleNames } from './react/accessibility-rules.mjs';
 import { EXCEPTION_HINT, GENERAL_HINT } from './react/hints.mjs';
+import { nitpickerReactRuleIds } from './react/nitpicker-rules.mjs';
 import { thirdPartyReactRuleIds } from './react/third-party-rules.mjs';
 
 export { stylingApproaches } from '../eslint-plugin/rules/react-single-styling-approach.mjs';
@@ -38,6 +40,7 @@ export const accessibilityRuleNames = [
   'role-supports-aria-props',
   'scope',
   'tabindex-no-positive',
+  ...extraAccessibilityRuleNames,
 ];
 
 export const reactRuleIds = [
@@ -48,6 +51,7 @@ export const reactRuleIds = [
   'react-hooks/rules-of-hooks',
   'react-x/no-array-index-key',
   'react-x/no-class-component',
+  ...nitpickerReactRuleIds,
   ...thirdPartyReactRuleIds,
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
