@@ -49,19 +49,9 @@ const reactSyntaxCases = [
   ],
   ['conditional hook names the same call order', panel('if (a) { useState(1); }'), 'same order'],
   [
-    'conditional hook names the config exception',
-    panel('if (a) { useState(1); }'),
-    'nitpicker.config.json',
-  ],
-  [
-    'class component names the config exception',
-    "import React from 'react'; export class Panel extends React.Component { render() { return <div />; } }",
-    'nitpicker.config.json',
-  ],
-  [
-    'missing effect dependency names the config exception',
+    'missing effect dependency names when an exception fits',
     panel('useEffect(() => { log(a); }, []);'),
-    'nitpicker.config.json',
+    'deliberately left out',
   ],
   [
     'index key names a stable id',
@@ -69,9 +59,9 @@ const reactSyntaxCases = [
     'stable id',
   ],
   [
-    'index key names the config exception',
+    'index key names when an exception fits',
     'export const List = ({ items }) => <ul>{items.map((item, index) => <li key={index}>{item}</li>)}</ul>;',
-    'nitpicker.config.json',
+    'static list that never changes order',
   ],
   [
     'derived state names computing during render',
@@ -79,9 +69,9 @@ const reactSyntaxCases = [
     'during render',
   ],
   [
-    'derived state names the config exception',
+    'derived state names when an exception fits',
     panel('const [x, setX] = useState(0); useEffect(() => { setX(a * 2); }, [a]);'),
-    'nitpicker.config.json',
+    'external system',
   ],
   [
     'data fetching in an effect names a query library',
@@ -89,9 +79,9 @@ const reactSyntaxCases = [
     'useQuery',
   ],
   [
-    'data fetching in an effect names the config exception',
+    'data fetching in an effect names when an exception fits',
     panel('useEffect(() => { fetch(`/items/${a}`); }, [a]);'),
-    'nitpicker.config.json',
+    'analytics beacon',
   ],
   [
     'inline style names className',
@@ -107,11 +97,6 @@ const reactSyntaxCases = [
     'inline style names the typed custom property',
     "export const Box = () => <div style={{ color: 'red' }} />;",
     "declare module 'csstype'",
-  ],
-  [
-    'inline style names the config exception',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    'nitpicker.config.json',
   ],
   [
     'another styling approach names the styling setting',
@@ -151,36 +136,16 @@ const reactSyntaxCases = [
     'export const Box = ({ open }) => <div onClick={open} />;',
     'keyboard listener',
   ],
-  [
-    'accessibility findings name the config exception',
-    "export const Logo = () => <img src='logo.png' />;",
-    'nitpicker.config.json',
-  ],
 ].map(reactCase);
 
 const reactTestCases = [
   ['test id query names the accessible role', "screen.getByTestId('save');", 'screen.getByRole'],
   [
-    'test id query names the config exception',
-    "screen.getByTestId('save');",
-    'nitpicker.config.json',
-  ],
-  [
     'container query names the accessible role',
     "const { container } = render(<Panel />); container.querySelector('.save');",
     'screen.getByRole',
   ],
-  [
-    'container query names the config exception',
-    "const { container } = render(<Panel />); container.querySelector('.save');",
-    'nitpicker.config.json',
-  ],
   ['fireEvent names userEvent', "fireEvent.click(screen.getByRole('button'));", 'await user.click'],
-  [
-    'fireEvent names the config exception',
-    "fireEvent.click(screen.getByRole('button'));",
-    'nitpicker.config.json',
-  ],
   [
     'unawaited userEvent names await',
     "userEvent.click(screen.getByRole('button'));",
@@ -206,11 +171,6 @@ const reactTestCases = [
     'component state names what the user sees',
     'expect(wrapper.state()).toEqual({});',
     'what the user sees',
-  ],
-  [
-    'component state names the config exception',
-    'expect(wrapper.state()).toEqual({});',
-    'nitpicker.config.json',
   ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
 ].map(reactTestCase);

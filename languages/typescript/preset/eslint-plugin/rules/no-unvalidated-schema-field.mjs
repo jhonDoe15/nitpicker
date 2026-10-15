@@ -67,7 +67,7 @@ export const rule = {
     schema: [],
     messages: {
       unvalidatedField:
-        '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). If the field is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.',
     },
   },
   create(context) {

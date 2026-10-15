@@ -1,3 +1,5 @@
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../shared/exceptions/sentence.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 
@@ -52,7 +54,7 @@ const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
 const NODE_TEST_HINT =
-  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). An exception fits only a file that must stay on node:test.';
 
 const GROWTH_ADVICE = new Map([
   [
@@ -133,9 +135,35 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],
 ]);
 
+const NO_ROUTE_RULES = new Set([
+  'eslint/unused-disable-directive',
+  'eslint/inline-config-disabled',
+]);
+
+/** `text` with the sentence that names the config entry which turns `rule` off for `path`. */
+export function withEslintRoute(text, { rule, path: relativePath }) {
+  return NO_ROUTE_RULES.has(rule)
+    ? text
+    : appendSentence(text, exceptionRoute({ rule, path: relativePath }));
+}
+
+export function metricWorseMessage(finding, plan) {
+  return withEslintRoute(
+    `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+    finding,
+  );
+}
+
 export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
   return rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
+}
+
+export function routedEslintMessage(options) {
+  return withEslintRoute(eslintMessageWithHint(options), {
+    rule: options.ruleId,
+    path: options.relativePath,
+  });
 }
 
 export function growthAdviceFor(ruleId) {

@@ -51,7 +51,7 @@ export const rule = {
     schema: jsdocOptionSchema,
     messages: {
       unknownType:
-        'domain/ code takes typed values, not unknown. Parse the input with a zod schema in adapters/ and give this parameter or property the parsed type (z.infer<typeof schema>). A caught error may be typed unknown as `cause` or `error`. If the value is genuinely opaque, add an exception for this rule in nitpicker.config.json.',
+        'domain/ code takes typed values, not unknown. Parse the input with a zod schema in adapters/ and give this parameter or property the parsed type (z.infer<typeof schema>). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.',
     },
   },
   create(context) {

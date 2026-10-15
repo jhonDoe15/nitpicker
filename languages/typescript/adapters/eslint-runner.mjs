@@ -15,7 +15,7 @@ import {
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
-import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
+import { growthAdviceFor, metricWorseMessage, routedEslintMessage } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import {
@@ -258,7 +258,7 @@ function withRatchets(findings, plans) {
       ratchet: {
         key: `metric:occurrence:${String(occurrence)}`,
         value: plan.value,
-        worseMessage: `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
+        worseMessage: metricWorseMessage(finding, plan),
       },
     };
   });
@@ -315,7 +315,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return eslintMessageWithHint({
+  return routedEslintMessage({
     ruleId,
     text: messageText,
     relativePath,

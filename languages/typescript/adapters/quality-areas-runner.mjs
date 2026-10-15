@@ -98,7 +98,7 @@ export async function runQualityArea(options) {
     )
       return [];
   }
-  return applyAreaExceptions(await runner(options), options.kind);
+  return applyAreaExceptions(await runner(options));
 }
 
 function runPolicyTests(options) {

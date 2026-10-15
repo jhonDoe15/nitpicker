@@ -5,8 +5,6 @@ const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
-const JSDOC_EXCEPTION =
-  'If this is legitimate, add an exception for nitpicker/no-comments in nitpicker.config.json.';
 const toolDirective =
   /^\s*(?:eslint\b|prettier-ignore|@ts-check\b|@vitest-environment\b|@jsx\b|@jsxImportSource\b|\/\s*<reference\b|#(?:region|endregion)\b)/;
 
@@ -97,16 +95,16 @@ export const rule = {
       eslintSuppression:
         'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
       coverageSuppression:
-        'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. If it truly cannot be tested, add an exception for nitpicker/no-comments in nitpicker.config.json.',
+        'Test this code instead; coverage and mutation ignore comments ({{directive}}) hide untested code. An exception fits only when it truly cannot be tested.',
       comment:
         'Remove the comment and put the intent in code: a descriptive identifier, a named function, or a type. Only non-suppression tool directives may be comments.',
       jsdocProse:
         'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
-      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import). ${JSDOC_EXCEPTION}`,
+      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import).`,
       jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
-      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type. ${JSDOC_EXCEPTION}`,
-      jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
-      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
+      jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type.`,
+      jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`.`,
+      jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed.`,
       internalDocComment:
         'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },

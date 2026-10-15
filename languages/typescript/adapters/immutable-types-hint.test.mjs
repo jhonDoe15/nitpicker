@@ -45,7 +45,7 @@ function messageFor(kind, code, reported) {
     projectRoot: root,
     analyzerName: 'eslint-lint',
   });
-  return finding.message;
+  return finding.message.replace(/ If a reviewer agrees this is intended, add .*$/u, '');
 }
 
 const TAIL = 'domain/ values must be deeply readonly.';

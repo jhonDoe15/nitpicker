@@ -106,9 +106,9 @@ export const rule = {
     schema: [],
     messages: {
       partialOutput:
-        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
       partialMatcher:
-        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.',
     },
   },
   create(context) {

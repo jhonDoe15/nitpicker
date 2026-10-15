@@ -1,15 +1,28 @@
-import { FUNCTION_EXCEPTION_RULES, NAME_EXCEPTION_RULES, RULE_IDS } from '../policy.mjs';
+import {
+  CODING_STANDARDS_RULE_PREFIXES,
+  CODING_STANDARDS_RULES,
+  DEAD_CODE_RULES,
+  DEPENDENCY_RULES,
+  FUNCTION_EXCEPTION_RULES,
+  NAME_EXCEPTION_RULES,
+  RULE_IDS,
+} from '../policy.mjs';
 import { functionNameOf } from './function-names.mjs';
-import { exceptionRoute } from './rule-names.mjs';
+import { exceptionRoute, toolsOf } from './rule-names.mjs';
+import { appendSentence } from './sentence.mjs';
 
 export const ROUTED_RULES = [
   RULE_IDS.mutantSurvived,
   RULE_IDS.mutantNoCoverage,
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.noProductionRuntime,
+  RULE_IDS.typeOnlyProductionDependency,
+  RULE_IDS.publicAlternativeBypass,
+  ...DEAD_CODE_RULES,
+  ...CODING_STANDARDS_RULES,
+  ...DEPENDENCY_RULES,
 ];
-
-const sentence = (text) => (text.endsWith('.') ? text : `${text}.`);
 
 function narrowing(finding) {
   if (FUNCTION_EXCEPTION_RULES.includes(finding.rule)) {
@@ -21,9 +34,15 @@ function narrowing(finding) {
     : {};
 }
 
-/** The rule an `exceptions` entry names for a finding of a rule nitpicker adds, if it has a route. */
+/**
+ * The rule an `exceptions` entry names for a finding of a rule nitpicker adds, if its message does
+ * not name the route itself: the rule must be one of its tool's.
+ */
 export function sharedRouteRule(finding) {
-  return ROUTED_RULES.includes(finding.rule) ? finding.rule : undefined;
+  const routed =
+    ROUTED_RULES.includes(finding.rule) ||
+    CODING_STANDARDS_RULE_PREFIXES.some((prefix) => finding.rule.startsWith(prefix));
+  return routed && toolsOf(finding.rule)?.includes(finding.tool) ? finding.rule : undefined;
 }
 
 /**
@@ -41,7 +60,10 @@ export function withExceptionRoutes(findings, routeRule = sharedRouteRule) {
       ? finding
       : {
           ...finding,
-          message: `${sentence(finding.message)} ${exceptionRoute({ rule, path: finding.path, ...narrowing(finding) })}`,
+          message: appendSentence(
+            finding.message,
+            exceptionRoute({ rule, path: finding.path, ...narrowing(finding) }),
+          ),
         };
   });
 }
