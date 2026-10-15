@@ -38,22 +38,9 @@ export function createStaticCheckAnalyzer({
         toolRoot,
         '--config',
         configRelativePath,
+        ...optionalArguments({ liveProjectRoot, ignoreRelativePath, includeOnly, exclude }),
+        ...patterns.flatMap((pattern) => ['--pattern', pattern]),
       ];
-      if (liveProjectRoot !== undefined) {
-        args.push('--live-project-root', liveProjectRoot);
-      }
-      if (ignoreRelativePath !== undefined) {
-        args.push('--ignore-path', ignoreRelativePath);
-      }
-      if (includeOnly !== undefined) {
-        args.push('--include-only', includeOnly);
-      }
-      if (exclude !== undefined) {
-        args.push('--exclude', exclude);
-      }
-      for (const pattern of patterns) {
-        args.push('--pattern', pattern);
-      }
       return {
         command: process.execPath,
         args,
@@ -61,4 +48,16 @@ export function createStaticCheckAnalyzer({
       };
     },
   };
+}
+
+function optionalArguments(values) {
+  const flags = {
+    liveProjectRoot: '--live-project-root',
+    ignoreRelativePath: '--ignore-path',
+    includeOnly: '--include-only',
+    exclude: '--exclude',
+  };
+  return Object.entries(flags).flatMap(([key, flag]) =>
+    values[key] === undefined ? [] : [flag, values[key]],
+  );
 }

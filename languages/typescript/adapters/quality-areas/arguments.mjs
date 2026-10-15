@@ -11,55 +11,30 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
 import { tmpdir } from 'node:os';
 
+const VALUE_ARGUMENTS = new Set([
+  '--analyzer-name',
+  '--kind',
+  '--project-root',
+  '--policy-root',
+  '--tool-root',
+  '--live-project-root',
+  '--project-policy-root',
+  '--snapshot',
+  '--baseline-root',
+  '--crap-score-limit',
+  '--legacy-inventory',
+]);
+
 export function parseArguments(arguments_) {
-  const values = new Map();
-  const remaining = arguments_.values();
-  for (const name of remaining) {
-    const { value } = remaining.next();
-    if (value === undefined) {
-      throw new Error(`${name ?? '<missing>'} requires a value`);
-    }
-    if (
-      ![
-        '--analyzer-name',
-        '--kind',
-        '--project-root',
-        '--policy-root',
-        '--tool-root',
-        '--live-project-root',
-        '--project-policy-root',
-        '--snapshot',
-        '--baseline-root',
-        '--crap-score-limit',
-        '--legacy-inventory',
-      ].includes(name)
-    ) {
-      throw new Error(`Unknown quality-area adapter argument: ${name}`);
-    }
-    values.set(name, value);
-  }
-  const kind = requiredValue(values, '--kind');
-  if (!QUALITY_AREA_RUNNERS.has(kind)) {
-    throw new Error(`Unsupported quality area: ${kind}`);
-  }
-  const snapshot = requiredValue(values, '--snapshot');
-  if (snapshot !== 'base' && snapshot !== 'head') {
-    throw new Error('--snapshot must be base or head');
-  }
-  const toolRoot = realpathSync(requiredValue(values, '--tool-root'));
-  if (toolRoot !== TRUSTED_TOOL_ROOT) {
-    throw new Error('--tool-root must be the project checkout containing this adapter');
-  }
+  const values = collectArguments(arguments_);
+  const kind = supportedKind(values);
+  const snapshot = snapshotOf(values);
+  const toolRoot = trustedToolRoot(values);
   const projectRoot = validatedSnapshotRoot(
     requiredValue(values, '--project-root'),
     '--project-root',
   );
-  const projectPolicyValue = values.get('--project-policy-root');
-  const projectPolicyRoot =
-    projectPolicyValue === undefined ? projectRoot : realpathSync(path.resolve(projectPolicyValue));
-  if (!lstatSync(projectPolicyRoot).isDirectory()) {
-    throw new Error('--project-policy-root must be a directory');
-  }
+  const projectPolicyRoot = projectPolicyRootOf(values, projectRoot);
   return {
     analyzerName: requiredValue(values, '--analyzer-name'),
     kind,
@@ -67,21 +42,76 @@ export function parseArguments(arguments_) {
     projectPolicyRoot,
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
-    liveProjectRoot:
-      values.get('--live-project-root') === undefined
-        ? PACKAGE_ROOT
-        : realpathSync(values.get('--live-project-root')),
+    liveProjectRoot: optionalValue(values.get('--live-project-root'), realpathSync, PACKAGE_ROOT),
     snapshot,
     legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,
-    crapScoreLimit:
-      values.get('--crap-score-limit') === undefined
-        ? DEFAULT_CRAP_SCORE_LIMIT
-        : parsePositiveNumber(values.get('--crap-score-limit'), '--crap-score-limit'),
-    baselineRoot:
-      values.get('--baseline-root') === undefined
-        ? undefined
-        : validatedSnapshotRoot(values.get('--baseline-root'), '--baseline-root'),
+    crapScoreLimit: optionalValue(
+      values.get('--crap-score-limit'),
+      (value) => parsePositiveNumber(value, '--crap-score-limit'),
+      DEFAULT_CRAP_SCORE_LIMIT,
+    ),
+    baselineRoot: optionalValue(
+      values.get('--baseline-root'),
+      (value) => validatedSnapshotRoot(value, '--baseline-root'),
+      undefined,
+    ),
   };
+}
+
+function collectArguments(arguments_) {
+  const values = new Map();
+  const remaining = arguments_.values();
+  for (const name of remaining) {
+    const { value } = remaining.next();
+    if (value === undefined) {
+      throw new Error(`${name ?? '<missing>'} requires a value`);
+    }
+    if (!VALUE_ARGUMENTS.has(name)) {
+      throw new Error(`Unknown quality-area adapter argument: ${name}`);
+    }
+    values.set(name, value);
+  }
+  return values;
+}
+
+function optionalValue(value, convert, fallback) {
+  return value === undefined ? fallback : convert(value);
+}
+
+function supportedKind(values) {
+  const kind = requiredValue(values, '--kind');
+  if (!QUALITY_AREA_RUNNERS.has(kind)) {
+    throw new Error(`Unsupported quality area: ${kind}`);
+  }
+  return kind;
+}
+
+function snapshotOf(values) {
+  const snapshot = requiredValue(values, '--snapshot');
+  if (snapshot !== 'base' && snapshot !== 'head') {
+    throw new Error('--snapshot must be base or head');
+  }
+  return snapshot;
+}
+
+function trustedToolRoot(values) {
+  const toolRoot = realpathSync(requiredValue(values, '--tool-root'));
+  if (toolRoot !== TRUSTED_TOOL_ROOT) {
+    throw new Error('--tool-root must be the project checkout containing this adapter');
+  }
+  return toolRoot;
+}
+
+function projectPolicyRootOf(values, projectRoot) {
+  const projectPolicyRoot = optionalValue(
+    values.get('--project-policy-root'),
+    (value) => realpathSync(path.resolve(value)),
+    projectRoot,
+  );
+  if (!lstatSync(projectPolicyRoot).isDirectory()) {
+    throw new Error('--project-policy-root must be a directory');
+  }
+  return projectPolicyRoot;
 }
 
 function validatedSnapshotRoot(value, name) {

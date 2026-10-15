@@ -19,45 +19,7 @@ export function runTypecheck(options) {
   let installedConfig;
   try {
     installedConfig = installTypeScriptConfig(options);
-    const configPath = installedConfig.targetPath;
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-    if (configFile.error !== undefined) {
-      throw new Error(formatDiagnostic(configFile.error, ts));
-    }
-    const parsedConfig = ts.parseJsonConfigFileContent(
-      configFile.config,
-      ts.sys,
-      options.projectRoot,
-      undefined,
-      configPath,
-    );
-    if (
-      parsedConfig.fileNames.length === 0 &&
-      parsedConfig.errors.every((error) => error.code === 18003)
-    )
-      return [];
-    if (parsedConfig.errors.length > 0) {
-      throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(error, ts)).join('\n'));
-    }
-    const program = ts.createProgram({
-      rootNames: parsedConfig.fileNames,
-      options: parsedConfig.options,
-      projectReferences: parsedConfig.projectReferences,
-    });
-    const layout = readLayout();
-    return normalizeTypeScriptDiagnostics({
-      typescript: ts,
-      diagnostics: ts
-        .getPreEmitDiagnostics(program)
-        .filter(
-          (diagnostic) =>
-            diagnostic.file === undefined ||
-            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
-        ),
-      projectRoot: options.projectRoot,
-      analyzerName: options.analyzerName,
-      configRelativePath: options.configRelativePath,
-    });
+    return typecheckConfig(options, ts, installedConfig.targetPath);
   } finally {
     try {
       installedConfig?.remove();
@@ -65,6 +27,52 @@ export function runTypecheck(options) {
       removeSnapshotDependencies(preparedDependencies);
     }
   }
+}
+
+function typecheckConfig(options, ts, configPath) {
+  const parsedConfig = parseTypeScriptConfig(options, ts, configPath);
+  if (
+    parsedConfig.fileNames.length === 0 &&
+    parsedConfig.errors.every((error) => error.code === 18003)
+  ) {
+    return [];
+  }
+  if (parsedConfig.errors.length > 0) {
+    throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(error, ts)).join('\n'));
+  }
+  const program = ts.createProgram({
+    rootNames: parsedConfig.fileNames,
+    options: parsedConfig.options,
+    projectReferences: parsedConfig.projectReferences,
+  });
+  const layout = readLayout();
+  return normalizeTypeScriptDiagnostics({
+    typescript: ts,
+    diagnostics: ts
+      .getPreEmitDiagnostics(program)
+      .filter(
+        (diagnostic) =>
+          diagnostic.file === undefined ||
+          !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+      ),
+    projectRoot: options.projectRoot,
+    analyzerName: options.analyzerName,
+    configRelativePath: options.configRelativePath,
+  });
+}
+
+function parseTypeScriptConfig(options, ts, configPath) {
+  const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
+  if (configFile.error !== undefined) {
+    throw new Error(formatDiagnostic(configFile.error, ts));
+  }
+  return ts.parseJsonConfigFileContent(
+    configFile.config,
+    ts.sys,
+    options.projectRoot,
+    undefined,
+    configPath,
+  );
 }
 
 function normalizeTypeScriptDiagnostics({

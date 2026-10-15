@@ -59,60 +59,68 @@ export function normalizeStructure(report, analyzerName) {
 }
 
 export function normalizeDeadCode(report, analyzerName) {
-  const findings = [];
   const occurrences = new Map();
-  for (const file of report.files ?? []) {
-    const filePath = typeof file === 'string' ? file : file?.path;
-    if (typeof filePath !== 'string' || filePath.length === 0) {
-      continue;
-    }
-    findings.push({
+  return [
+    ...(report.files ?? []).flatMap((file) => unusedFileFindings(file, analyzerName)),
+    ...(report.issues ?? []).flatMap((issue) =>
+      issueFindings({ issue, analyzerName, occurrences }),
+    ),
+  ];
+}
+
+function unusedFileFindings(file, analyzerName) {
+  const filePath = typeof file === 'string' ? file : file?.path;
+  if (typeof filePath !== 'string' || filePath.length === 0) {
+    return [];
+  }
+  return [
+    {
       tool: analyzerName,
       rule: 'files',
       path: filePath,
       identity: `file:${filePath}|source:${file?.sourceHash ?? hash(filePath)}`,
       message: `Unused file: ${filePath}. Nothing imports it: delete it, or import it where it is needed.`,
       classification: 'enforceable',
-    });
+    },
+  ];
+}
+
+function issueFindings({ issue, analyzerName, occurrences }) {
+  return Object.entries(issue)
+    .filter(([category, entries]) => category !== 'file' && Array.isArray(entries))
+    .flatMap(([category, entries]) =>
+      entries.flatMap((entry) =>
+        entryFindings({ issue, category, entry, analyzerName, occurrences }),
+      ),
+    );
+}
+
+function entryFindings({ issue, category, entry, analyzerName, occurrences }) {
+  const name = typeof entry === 'string' ? entry : entry?.name;
+  if (typeof name !== 'string' || name.length === 0) {
+    return [];
   }
-  for (const issue of report.issues ?? []) {
-    for (const [category, entries] of Object.entries(issue)) {
-      if (category === 'file' || !Array.isArray(entries)) {
-        continue;
-      }
-      for (const entry of entries) {
-        const name = typeof entry === 'string' ? entry : entry?.name;
-        if (typeof name !== 'string' || name.length === 0) {
-          continue;
-        }
-        const key = `${issue.file}\0${category}\0${name}`;
-        const occurrence = nextOccurrence(occurrences, key);
-        findings.push({
-          tool: analyzerName,
-          rule: category,
-          path: issue.file,
-          identity: `name:${name}|occurrence:${String(occurrence)}${
-            ENFORCED_DEAD_CODE_CATEGORIES.has(category)
-              ? `|source:${entry?.sourceHash ?? hash(issue.file)}`
-              : ''
-          }`,
-          message: deadCodeMessage(category, name, entry),
-          classification: ENFORCED_DEAD_CODE_CATEGORIES.has(category)
-            ? 'enforceable'
-            : 'descriptive',
-          ...(positiveInteger(entry?.line) === undefined
-            ? {}
-            : {
-                location: {
-                  line: entry.line,
-                  column: positiveInteger(entry.col) ?? 1,
-                },
-              }),
-        });
-      }
-    }
+  const occurrence = nextOccurrence(occurrences, `${issue.file}\0${category}\0${name}`);
+  const enforced = ENFORCED_DEAD_CODE_CATEGORIES.has(category);
+  const sourceSuffix = enforced ? `|source:${entry?.sourceHash ?? hash(issue.file)}` : '';
+  return [
+    {
+      tool: analyzerName,
+      rule: category,
+      path: issue.file,
+      identity: `name:${name}|occurrence:${String(occurrence)}${sourceSuffix}`,
+      message: deadCodeMessage(category, name, entry),
+      classification: enforced ? 'enforceable' : 'descriptive',
+      ...entryLocation(entry),
+    },
+  ];
+}
+
+function entryLocation(entry) {
+  if (positiveInteger(entry?.line) === undefined) {
+    return {};
   }
-  return findings;
+  return { location: { line: entry.line, column: positiveInteger(entry.col) ?? 1 } };
 }
 
 function deadCodeMessage(category, name, entry) {
