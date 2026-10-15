@@ -1,0 +1,49 @@
+import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES, PACKAGE_RULE_IDS } from './rules.mjs';
+
+const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
+const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+
+export const HYGIENE_RULES = [
+  {
+    id: HYGIENE_RULE_IDS.committedEnvFile,
+    check: 'repository-hygiene',
+    limit: 'a committed `.env` file (templates such as `.env.example` are fine)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.committedPrivateKey,
+    check: 'repository-hygiene',
+    limit: 'a committed private key: a key file, or any text file holding a private-key block',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.committedBinary,
+    check: 'repository-hygiene',
+    limit: 'a committed archive or compiled binary (`gradle-wrapper.jar` is allowed)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.largeFile,
+    check: 'repository-hygiene',
+    limit: `a file larger than ${String(LARGE_FILE_BYTES / (1024 * 1024))} MB (lockfiles are exempt)`,
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: PACKAGE_RULE_IDS.unusedDependency,
+    check: 'dead-code',
+    limit: 'a dependency in package.json that nothing imports or runs',
+    enforcedBy: TYPESCRIPT_ONLY,
+  },
+  {
+    id: PACKAGE_RULE_IDS.unlistedDependency,
+    check: 'dead-code',
+    limit: 'an import of a package that package.json does not list',
+    enforcedBy: TYPESCRIPT_ONLY,
+  },
+  {
+    id: PACKAGE_RULE_IDS.unresolvedImport,
+    check: 'dead-code',
+    limit: 'an import that resolves to no file and no package',
+    enforcedBy: TYPESCRIPT_ONLY,
+  },
+];

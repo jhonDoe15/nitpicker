@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import {
   cpSync,
   mkdirSync,
@@ -14,6 +13,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from '../languages/python/adapters/fixtures/fake-toolchain.mjs';
 import { jscpdVersion } from '../languages/java/adapters/java-duplicates.mjs';
 import { runCli } from './cli.mjs';
+import { fixtureGit as git } from './diff/fixtures/git-repository.mjs';
 
 const temporaryRoots = [];
 const savedEnvironment = {};
@@ -42,12 +42,6 @@ afterEach(() => {
     rmSync(root, { recursive: true, force: true });
   }
 });
-
-const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
-
-function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
-}
 
 function write(root, files) {
   for (const [relative, contents] of Object.entries(files)) {
@@ -169,7 +163,8 @@ function run(root, extra = []) {
     progress: { write: () => undefined },
   });
   const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, reports, json, output, text: output.out + output.err };
+  const tools = () => json('summary.json').tools.map(({ name }) => name);
+  return { exitCode, reports, json, output, text: output.out + output.err, tools };
 }
 
 function callsLog() {
@@ -195,13 +190,10 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'python',
-      'mutation',
-    ]);
-    expect(result.json('summary.json').tools.map(({ version }) => version)).toEqual([
-      `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`,
-      'mutmut@3.8.0;pytest@8.3.1',
+    expect(result.json('summary.json').tools.map(({ name, version }) => [name, version])).toEqual([
+      ['python', `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`],
+      ['mutation', 'mutmut@3.8.0;pytest@8.3.1'],
+      ['repository-hygiene', '1'],
     ]);
   });
 
@@ -562,7 +554,7 @@ describe('nitpicker with "preset": "python"', () => {
       const result = run(root);
 
       expect(result.exitCode, result.text).toBe(0);
-      expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['python']);
+      expect(result.tools()).toEqual(['python', 'repository-hygiene']);
       expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
     });
 
@@ -930,6 +922,7 @@ describe('nitpicker with "preset": "python"', () => {
         'Per-tool counts:',
         'python: total=13 enforceable=1 descriptive=12',
         'mutation: total=0 enforceable=0 descriptive=0',
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',

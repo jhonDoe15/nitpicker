@@ -7,7 +7,7 @@ const packageRoot = path.resolve(sharedRoot, '..');
 
 // Static `import ... from 'x'` and `export ... from 'x'` specifiers.
 const SPECIFIER =
-  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|import\s*['"]([^'"]+)['"]/g;
+  /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"]([^'"]+)['"]|(?<![\w-])import\s*['"]([^'"]+)['"]/g;
 
 function sharedModules(directory = sharedRoot) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
