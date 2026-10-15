@@ -172,6 +172,46 @@ describe('readJavaFindings', () => {
     ]);
   });
 
+  it('gives a find-sec-bugs result the allowed form and its exception route', () => {
+    const root = projectWithReports();
+    const result = (method) => ({
+      ruleId: 'SQL_INJECTION_SPRING_JDBC',
+      message: { text: 'Potential JDBC Injection', arguments: ['JdbcTemplate.queryForList'] },
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: 'demo/Bad.java' },
+            region: { startLine: 10 },
+          },
+          logicalLocations: [{ fullyQualifiedName: method }],
+        },
+      ],
+    });
+    writeFileSync(
+      path.join(root, 'build/nitpicker/spotbugs.sarif'),
+      JSON.stringify({
+        runs: [
+          {
+            tool: { driver: { name: 'SpotBugs' } },
+            results: [result('demo.Bad.one()'), result('demo.Bad.two()')],
+          },
+        ],
+      }),
+    );
+
+    const found = readJavaFindings(root).findings.filter(({ tool }) => tool === 'spotbugs');
+
+    expect(found.map(({ message }) => message)).toEqual([
+      expect.stringContaining('bind parameters'),
+      expect.stringContaining('bind parameters'),
+    ]);
+    expect(found[0].message).toContain('add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC');
+    expect(found.map(({ identity }) => identity)).toEqual([
+      'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.one()',
+      'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.two()',
+    ]);
+  });
+
   it('enforces PMD, SpotBugs (even at level note) and formatting; coverage only describes', () => {
     const { findings } = readJavaFindings(projectWithReports());
 

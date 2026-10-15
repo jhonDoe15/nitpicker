@@ -26,8 +26,8 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
-  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3 with the find-sec-bugs plugin
+  1.14.0, google-java-format 1.25.2, JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
   directory is the contract between the two sides.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
@@ -644,6 +644,54 @@ placement need a cross-class view and come with nitpicker's ArchUnit rules.
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
 accept.
+
+## Security checks (find-sec-bugs)
+
+SpotBugs runs with the [find-sec-bugs](https://find-sec-bugs.github.io/) plugin, pinned exactly in
+the init script's map (`findSecBugs`) and downloaded at run time like the other tools; it is
+LGPL-3.0, run unmodified (see [CONTRIBUTING.md](../CONTRIBUTING.md#licenses)). It is on for every
+Java project, at the same `-medium` confidence as SpotBugs itself, and costs about two seconds of CPU
+on a small project plus a taint analysis that grows with the code. Its findings print as
+`spotbugs/<PATTERN>` (for example `spotbugs/SQL_INJECTION_SPRING_JDBC`), which is also the `rule` of a
+config exception.
+
+Every message is rewritten to the allowed form plus the exception route, for example: "Pass values
+as bind parameters (...) and never build query text from input. If it is right here, add an
+exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json." The texts live in
+`languages/java/adapters/security/advice-groups.mjs`; a test requires one for every pattern of the
+pinned plugin version, so a plugin bump that adds a pattern fails until the pattern is either
+given advice or excluded with a reason. Identity is the sink plus the enclosing method, so two
+findings of one pattern in different methods are told apart and a move within a file does not
+re-report them.
+
+What the detectors catch, grouped: SQL, JPQL, LDAP, XPath, command, expression (SpEL, EL, OGNL,
+scripts) and template injection; path traversal and file disclosure; XXE; deserialization
+(`ObjectInputStream`, `XMLDecoder`, Jackson default typing); SSRF through `URL`; open redirects;
+XSS in servlets; HTTP response splitting and log forging; weak digests, DES, ECB, static IVs, hard
+coded keys and passwords, predictable random numbers, trust-all `TrustManager`s; and the Spring
+detectors: disabled CSRF protection, permissive CORS,
+entities returned from or bound in controllers, Spring file disclosure and unvalidated redirects.
+
+**What is left out, and why.** Two groups, both in `languages/java/gradle/security/exclude.xml`.
+The plugin's informational markers, which say where input enters the code and are not defects
+(nothing to fix, so no allowed form and no meaningful exception): the `*_ENDPOINT` patterns
+(Spring, JAX-RS, JAX-WS, Struts, Tapestry, Wicket), the `SERVLET_*` source markers and
+`COOKIE_USAGE`; they are also low confidence and would not reach the `-medium` report anyway. And
+`SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING`, which reports the same shape as
+`pmd/SpringComposedMapping` (a `@RequestMapping` without a method), so a violation would print
+twice. Everything else the plugin has stays on, including detectors for
+frameworks a project may not use (Struts, Android, JSP): they find nothing without those APIs and
+cost nothing. Rules that can flag correct code stay on and carry the exception route; the two
+common cases are `PREDICTABLE_RANDOM` for `Random` or `ThreadLocalRandom` used for jitter or
+sampling, and `WEAK_MESSAGE_DIGEST_MD5` or `_SHA1` for an ETag or a legacy interface.
+
+**Limits.** SpotBugs sees the project's classes without the dependency jars (the Kotlin preset
+passes them), because giving SpotBugs the classpath adds core `EI_EXPOSE_REP` reports on every
+injected bean. Taint through Spring and Jakarta types is therefore tracked by method signature
+only, and find-sec-bugs 1.14.0 knows the `javax.persistence` sinks but not `jakarta.persistence`,
+so `languages/java/gradle/security/jakarta-sinks.txt` adds the Jakarta `EntityManager` query
+methods as `SQL_INJECTION_JPA` sinks. Low-confidence reports (`CRLF_INJECTION_LOGS`,
+`IMPROPER_UNICODE`) are below the `-medium` threshold and not reported.
 
 ## Spring configuration files
 

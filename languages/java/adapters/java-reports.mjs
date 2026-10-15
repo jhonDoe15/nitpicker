@@ -18,6 +18,7 @@ import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { securitySubject, withSecurityMessages } from './security/security-advice.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -101,13 +102,18 @@ function springFindings({ projectRoot, manifest, sourceRoots }) {
 
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   const findings = [];
-  function sarif(file, tool, identityKey) {
+  function sarif(file, tool, identityKey, rewrite = (log) => log) {
     const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
-    findings.push(...ingestSarif(normalized, { tool }).findings);
+    findings.push(...ingestSarif(rewrite(normalized), { tool }).findings);
   }
   sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
+  sarif(
+    'spotbugs.sarif',
+    'spotbugs',
+    (result) => securitySubject(result, spotbugsSubject(result)),
+    withSecurityMessages,
+  );
   return findings;
 }
 
