@@ -660,10 +660,11 @@ A Checkstyle rule prints as its full check class, for example
 
 [`languages/java/gradle/code-smells-ruleset.xml`](../languages/java/gradle/code-smells-ruleset.xml) holds nitpicker's
 own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring
-(the init script wraps them like the guard rules: test directories excluded); test sources get
+(the init script wraps them like the guard rules: test directories excluded; a Maven build wraps
+them the same way in `languages/java/maven/maven-lint.mjs`); test sources get
 `code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
-private-method `UnusedFormalParameter`). The Java preset is the only Gradle preset with these
-rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
+private-method `UnusedFormalParameter`). The Java preset, on Gradle and Maven, is the only preset
+with these rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
 with the exception to add when the code is right: `{ "rule": "pmd/<rule>", "paths": [...], "reason": "..." }`.
 Like every PMD finding, they fail a change only when it adds one.
 
