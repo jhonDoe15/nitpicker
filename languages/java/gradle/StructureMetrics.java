@@ -11,8 +11,16 @@
 //   maxControlNesting  deepest nesting of if, for, enhanced for, while, do, switch and catch; an else if
 //                      continues the chain of its if, an if inside an else block nests one deeper
 //   parameters         declared parameters
+//   complexity         cyclomatic complexity (the CRAP input): 1 + if, for, enhanced for, while, do, catch,
+//                      ?:, &&, || and every `case` except a default one (`default`, `case null, default`);
+//                      an arrow case and a case with several constants count once
+//   signature          Owner.method(parameter types), the identity of the method in the CRAP check
+//   privateEmptyConstructor  true for `private Name() {}`, which JaCoCo often leaves out of its report
 // Members of nested classes (anonymous, local or member) are reported as methods of their own and
 // do not count towards the enclosing method; lambda bodies count towards the enclosing method.
+//
+// A syntax error (for example syntax newer than the JVM that runs Gradle) prints file:line and the compiler
+// message to stderr and exits with status 1, so the Gradle task fails instead of dropping methods.
 
 import com.sun.source.tree.*;
 import com.sun.source.util.*;
@@ -21,9 +29,21 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 import java.util.stream.*;
+import javax.lang.model.element.Modifier;
 import javax.tools.*;
 
 public final class StructureMetrics {
+  private static final int MAX_REPORTED_ERRORS = 5;
+
+  private static String relative(Path projectDir, Path file) {
+    return projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+  }
+
+  private static String describe(Path projectDir, Diagnostic<? extends JavaFileObject> d) {
+    String where = d.getSource() == null ? "" : relative(projectDir, Path.of(d.getSource().toUri()));
+    return where + ":" + d.getLineNumber() + ": " + d.getMessage(Locale.ROOT);
+  }
+
   public static void main(String[] args) throws IOException {
     Path output = Path.of(args[0]);
     Path projectDir = Path.of(args[1]).toAbsolutePath().normalize();
@@ -41,6 +61,7 @@ public final class StructureMetrics {
       throw new IllegalStateException("Running on a JRE without jdk.compiler; a JDK is required");
     }
     List<String> entries = new ArrayList<>();
+    List<String> errors = new ArrayList<>();
     try (StandardJavaFileManager fm =
         compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8)) {
       for (Path file : files) {
@@ -49,17 +70,25 @@ public final class StructureMetrics {
                 compiler.getTask(
                     null,
                     fm,
-                    d -> {},
+                    d -> {
+                      if (d.getKind() == Diagnostic.Kind.ERROR) {
+                        errors.add(describe(projectDir, d));
+                      }
+                    },
                     List.of("-proc:none"),
                     null,
                     fm.getJavaFileObjects(file.toFile()));
         SourcePositions positions = Trees.instance(task).getSourcePositions();
-        String relative =
-            projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
+        String relative = relative(projectDir, file);
         for (CompilationUnitTree unit : task.parse()) {
           new Collector(unit, positions, relative, entries).scan(unit, "");
         }
       }
+    }
+    if (!errors.isEmpty()) {
+      System.err.println("StructureMetrics could not parse the sources:");
+      errors.stream().limit(MAX_REPORTED_ERRORS).forEach(System.err::println);
+      System.exit(1);
     }
     Files.writeString(
         output, "[" + String.join(",", entries) + "]\n", StandardCharsets.UTF_8);
@@ -134,6 +163,8 @@ public final class StructureMetrics {
       long endLine = lines.getLineNumber(Math.max(start, end - 1));
       Body body = new Body();
       body.scan(tree.getBody(), 0);
+      Complexity complexity = new Complexity();
+      complexity.scan(tree.getBody(), null);
       String name =
           tree.getName().contentEquals("<init>")
               ? owner.substring(owner.lastIndexOf('.') + 1)
@@ -147,6 +178,9 @@ public final class StructureMetrics {
               + ",\"statements\":" + body.statements
               + ",\"maxControlNesting\":" + body.maxNesting
               + ",\"parameters\":" + tree.getParameters().size()
+              + ",\"complexity\":" + (1 + complexity.branches)
+              + ",\"signature\":" + quote(signature(owner, name, tree))
+              + (isPrivateEmptyConstructor(tree) ? ",\"privateEmptyConstructor\":true" : "")
               + "}");
     }
   }
@@ -207,6 +241,57 @@ public final class StructureMetrics {
     }
   }
 
+  private static final class Complexity extends TreeScanner<Void, Void> {
+    int branches = 0;
+
+    @Override
+    public Void scan(Tree tree, Void ignored) {
+      if (tree == null || tree instanceof ClassTree) {
+        return null;
+      }
+      if (isBranch(tree)) {
+        branches += 1;
+      }
+      return super.scan(tree, ignored);
+    }
+  }
+
+  private static boolean isBranch(Tree tree) {
+    return switch (tree.getKind()) {
+      case IF, FOR_LOOP, ENHANCED_FOR_LOOP, WHILE_LOOP, DO_WHILE_LOOP, CATCH, CONDITIONAL_EXPRESSION,
+          CONDITIONAL_AND, CONDITIONAL_OR -> true;
+      case CASE -> !isDefault((CaseTree) tree);
+      default -> false;
+    };
+  }
+
+  private static boolean isDefault(CaseTree tree) {
+    return tree.getLabels().stream().anyMatch(label -> label.getKind() == Tree.Kind.DEFAULT_CASE_LABEL);
+  }
+
+  private static String signature(String owner, String name, MethodTree tree) {
+    String types =
+        tree.getParameters().stream()
+            .map(parameter -> parameter.getType().toString())
+            .collect(Collectors.joining(", "));
+    return owner + "." + name + "(" + types + ")";
+  }
+
+  private static boolean isPrivateEmptyConstructor(MethodTree tree) {
+    List<? extends StatementTree> statements = tree.getBody().getStatements();
+    return tree.getName().contentEquals("<init>")
+        && tree.getModifiers().getFlags().contains(Modifier.PRIVATE)
+        && tree.getParameters().isEmpty()
+        && statements.stream().allMatch(StructureMetrics::isSuperCall);
+  }
+
+  private static boolean isSuperCall(StatementTree statement) {
+    return statement instanceof ExpressionStatementTree call
+        && call.getExpression() instanceof MethodInvocationTree invocation
+        && invocation.getMethodSelect().toString().equals("super")
+        && invocation.getArguments().isEmpty();
+  }
+
   private static boolean isControl(Tree tree) {
     return switch (tree.getKind()) {
       case IF, FOR_LOOP, ENHANCED_FOR_LOOP, WHILE_LOOP, DO_WHILE_LOOP, SWITCH, SWITCH_EXPRESSION,
@@ -221,16 +306,7 @@ public final class StructureMetrics {
       switch (c) {
         case '"' -> out.append("\\\"");
         case '\\' -> out.append("\\\\");
-        case '\n' -> out.append("\\n");
-        case '\r' -> out.append("\\r");
-        case '\t' -> out.append("\\t");
-        default -> {
-          if (c < 0x20) {
-            out.append(String.format("\\u%04x", (int) c));
-          } else {
-            out.append(c);
-          }
-        }
+        default -> out.append(c < 0x20 ? String.format("\\u%04x", (int) c) : String.valueOf(c));
       }
     }
     return out.append('"').toString();

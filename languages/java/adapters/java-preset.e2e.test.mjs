@@ -1,20 +1,23 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from './fixtures/wide-sources.mjs';
 import { runJavaDiff } from './java-diff.mjs';
+import {
+  commitBranch,
+  GRADLE_STEP_TIMEOUT_MS,
+  runGitIn,
+  summarize,
+} from './fixtures/gradle-e2e.mjs';
 
 // End-to-end test of the Java preset on a tiny Gradle project. It needs Java 21, Gradle and network
-// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), and
-// lizard (pip install lizard==<version pinned in languages/java/gradle/nitpicker.init.gradle>, on the PATH or named
-// by NITPICKER_LIZARD), so it only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`).
-// NITPICKER_GRADLE overrides `gradle`.
+// access to Maven Central (first run downloads PMD, SpotBugs, google-java-format, JaCoCo and Checkstyle), so it
+// only runs with NITPICKER_JAVA_E2E=1 (`npm run test:java`). NITPICKER_GRADLE overrides `gradle`.
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const GRADLE_STEP_TIMEOUT_MS = 15 * 60 * 1000;
 
 const LEGACY = `package demo;
 
@@ -271,36 +274,16 @@ let repository;
 const sourceDirectory = 'src/main/java/demo';
 
 function git(...args) {
-  const result = spawnSync('git', args, {
-    cwd: repository,
-    encoding: 'utf8',
-    env: {
-      ...process.env,
-      GIT_AUTHOR_NAME: 'test',
-      GIT_AUTHOR_EMAIL: 'test@example.com',
-      GIT_COMMITTER_NAME: 'test',
-      GIT_COMMITTER_EMAIL: 'test@example.com',
-    },
-  });
-  if (result.status !== 0) {
-    throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
-  }
+  runGitIn(repository, ...args);
 }
 
 function branchWith(name, files) {
-  git('checkout', '-q', '-b', name, 'main');
-  for (const [file, content] of Object.entries(files)) {
-    // A key with a slash is relative to the repository root, otherwise to the main source directory.
-    const target = file.includes('/') ? file : path.join(sourceDirectory, file);
-    mkdirSync(path.dirname(path.join(repository, target)), { recursive: true });
-    writeFileSync(path.join(repository, target), content);
-  }
-  git('add', '-A');
-  git('commit', '-q', '-m', name);
+  const rooted = Object.entries(files).map(([file, content]) => [
+    file.includes('/') ? file : path.join(sourceDirectory, file),
+    content,
+  ]);
+  commitBranch(repository, name, Object.fromEntries(rooted));
 }
-
-const summarize = (findings) =>
-  findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   beforeAll(() => {
