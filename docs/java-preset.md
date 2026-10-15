@@ -587,8 +587,9 @@ A Checkstyle rule prints as its full check class, for example
 ## Code smell rules
 
 [`languages/java/gradle/code-smells-ruleset.xml`](../languages/java/gradle/code-smells-ruleset.xml) holds nitpicker's
-own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring;
-test sources get `code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
+own PMD rules for patterns coding agents repeat. They run on main sources, with or without Spring
+(the init script wraps them like the guard rules: test directories excluded); test sources get
+`code-smells-test-ruleset.xml` instead (PMD's `AvoidDuplicateLiterals` and its
 private-method `UnusedFormalParameter`). The Java preset is the only Gradle preset with these
 rules for now: the Kotlin preset does not run them. Each message names the allowed form and ends
 with the exception to add when the code is right: `{ "rule": "pmd/<rule>", "paths": [...], "reason": "..." }`.
@@ -623,6 +624,12 @@ a link) and `comments/CommentedOutCode` (a `//` or `/* */` comment with a statem
 as `// int total = compute(items);`, reported at the line the comment starts; a run of `//` lines
 counts once). Javadoc is documentation and is only checked for TODOs. Delete the code, or give the
 TODO an issue.
+
+**Tests.** `adapters/fixtures/code-smells-project` holds a violating and a legitimate sample per
+rule, each violation marked `// violation: <rule>`. `code-smell-rules.test.mjs` checks that every
+rule is documented here, names its exception route and has a marked sample, and that the init
+script wires both rule sets; the gated `spring/java-spring.e2e.test.mjs` also runs the fixture
+through Gradle and expects exactly the marked findings in main and test sources.
 
 ## Spring rules
 
