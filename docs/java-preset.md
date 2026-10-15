@@ -102,6 +102,15 @@ field by field. Per snapshot:
   `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
   rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
   the covered test run does not change coverage.
+- **Slow-test reports.** Per module, the fresh `TEST-*.xml` files of surefire's reports directory
+  (`<reportsDirectory>` of maven-surefire-plugin, default `target/surefire-reports`) are copied to
+  `target/nitpicker/test-results/surefire/` and those of maven-failsafe-plugin's (default
+  `target/failsafe-reports`, or its `<reportsDirectory>`) to `test-results/failsafe/`, without the
+  ArchUnit rule classes (as Gradle leaves out its ArchUnit task). Only files written since the build
+  started are copied, so results left by an earlier run never count. The build runs the `test` phase
+  only, so Failsafe (`integration-test`) does not run in it and `failsafe` stays empty in practice;
+  the copy is there for a project that binds Failsafe to an earlier phase or reports to a shared
+  directory.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
   replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
   instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
@@ -471,24 +480,31 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
   as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
-  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`,
-  classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`.
+  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`
+  (Maven's `surefire` counts as `test`), classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`.
   The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
   smaller Spring context or a test slice, or moving it to an integration test source set) and the
   exception route.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
   `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
-  its slowest time. Gradle builds only: the Maven side does not copy surefire's reports there yet,
-  so a Maven build reports no slow tests.
+  its slowest time. Maven builds copy Surefire's `TEST-*.xml` to `test-results/surefire/` and
+  Failsafe's to `test-results/failsafe/` (see [Maven builds](#maven-builds)); `surefire` counts as
+  the `test` task, `failsafe` as an integration task.
 - **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
   so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
   method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
   counted when its method text differs from the base, or the file is new. A name that maps to no
   method (a custom parameterized name) is counted when its file changed. Slow tests the change does
   not touch stay baselined, and the base snapshot reports none.
-- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle and Surefire XML) and the
-  multi-project e2e fixture.
+- **Module paths.** The reader works in one module's folder, so a Maven submodule's test file is
+  found there and compared with the base file under the module path (`core/src/test/java/...`),
+  and the exception hint in the message names the project-relative path. `readModuleFindings`
+  passes each module's path (`modulePath`, `builds/module-path.mjs`); Gradle reads from the project
+  root and passes none.
+- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle, Surefire and Failsafe XML,
+  module-path baseline), `builds/java-modules.test.mjs`, `maven/results/maven-test-results.test.mjs`
+  and the multi-module Maven e2e fixture.
 
 ## Structure limits (SH5)
 

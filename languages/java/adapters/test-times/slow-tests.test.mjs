@@ -210,8 +210,8 @@ describe('readSlowTestFindings', () => {
     });
 
     expect(findings.map(({ identity, message }) => [identity, message.split(';')[1]])).toEqual([
-      ['test:shop.OrderTest#totals()', expect.stringContaining(' a unit test may take 5 s')],
       ['test:shop.Slow#crawls()', expect.stringContaining(' an integration test may take 30 s')],
+      ['test:shop.OrderTest#totals()', expect.stringContaining(' a unit test may take 5 s')],
     ]);
   });
 
