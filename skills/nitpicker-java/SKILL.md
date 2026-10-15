@@ -38,25 +38,19 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
-  `System.getLogger(Foo.class.getName())`, or the project's logger. Pass values as placeholders
-  (`LOG.info("order {}", id)`, `{0}` for `System.Logger`), never `+` or `String.format` in the
-  message, and compute nothing in a debug or trace argument (a variable, a field or `order.id()`
-  is fine).
+  `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `-1`, `0`, `1` and `2` are fine. A string literal used 4 times in a file becomes a constant.
+  `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
-  Don't name a field like a method with two or more parameters; an accessor, fluent setter or
-  builder step named exactly like its field (`name()`, `name(String)`) and constants are fine.
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
-- Never put `@Generated` on code you write: JaCoCo and PIT skip it, and the gate fails it.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
   less stable one (`stability-direction`).
@@ -88,9 +82,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - A file: at most 300 lines (test file 500). A folder: at most 6 source files and, separately, 6
   test files directly in it; group the rest into sub-packages.
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
-  coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods. A
-  `switch` expression whose cases are one-expression arrows counts once (plus its `when` guards),
-  and an `else if` does not nest deeper.
+  coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
   a method.
 
@@ -103,8 +95,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
   cannot be told apart takes an exception for `pit/mutant-survived`.
-- Every source set is linted: `src/test/java` and any other (`integrationTest`, `testFixtures`,
-  `jmh`) get the test rules.
+- Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
+  slice instead of `@SpringBootTest`.
 - Tests get the same PMD, Checkstyle and formatter checks as main code, plus the file (500 lines)
   and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection read main
   sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
