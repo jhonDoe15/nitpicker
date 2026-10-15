@@ -42,11 +42,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `0` and `-1` are fine. A string literal used 4 times in a file becomes a constant.
+  `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
-  Don't name a field like its method (`data` and `data()`); a `record` avoids that.
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
@@ -96,10 +95,13 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Mutation testing runs on your change. Assert exact values and test both sides of each boundary
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
-  redundant: delete or simplify it.
+  redundant: delete or simplify it. A `compareTo` boundary or an ignored lambda result that truly
+  cannot be told apart takes an exception for `pit/mutant-survived`.
+- Plan tests to be fast (`test-runtime/slow-test`): a fake clock instead of `Thread.sleep`, a test
+  slice instead of `@SpringBootTest`.
 - Tests get the PMD, Checkstyle and formatter checks of main code, with test rules in place of some
   main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the method
-  limits and CRAP read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
+  limits, CRAP and jscpd read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
   sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
 
 ## Editing existing code
