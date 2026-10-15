@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { compareFindings } from '../../../core/diff/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
 
@@ -119,11 +120,45 @@ describe('readLintFindings', () => {
         path: '.',
         identity: 'lint-not-run',
         classification: 'descriptive',
+        toolNotRun: true,
         message:
           'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked.',
       },
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
+  });
+
+  it('reports head warnings as descriptive when the base lint compile failed', () => {
+    const head = project(['src/main/java/demo/Raw.java']);
+    const base = project([]);
+    const baseReports = path.join(base, 'failed');
+    mkdirSync(baseReports);
+    writeFileSync(path.join(baseReports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+    const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
+      projectRoot: head,
+    });
+    const compare = (baseFindings) => compareFindings({ baseFindings, headFindings }).newFindings;
+
+    const uncompared = compare(readLintFindings(baseReports, { projectRoot: base }));
+
+    expect(uncompared.map((finding) => finding.classification)).toEqual([
+      'descriptive',
+      'descriptive',
+      'descriptive',
+      'descriptive',
+    ]);
+    expect(uncompared[0].message).toBe(
+      'found raw type: List. Add the type arguments, as in List<String>. ' +
+        'If it is right here, add an exception for javac/rawtypes in nitpicker.config.json. ' +
+        'Not enforced in this run: the base has no javac report to compare with, ' +
+        'so it is unknown whether the change added this.',
+    );
+    expect(compare([]).map((finding) => finding.classification)).toEqual([
+      'enforceable',
+      'enforceable',
+      'enforceable',
+      'enforceable',
+    ]);
   });
 });

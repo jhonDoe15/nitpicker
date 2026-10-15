@@ -55,6 +55,7 @@ function lintNotRun(reportRoot) {
       identity: LINT_NOT_RUN,
       message: `No javac lint report: the lint compile failed (${firstError.trim()}), so raw types, unchecked operations, deprecated calls and redundant casts were not checked.`,
       classification: 'descriptive',
+      toolNotRun: true,
     },
   ];
 }

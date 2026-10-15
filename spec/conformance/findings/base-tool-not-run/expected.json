@@ -1,0 +1,30 @@
+{
+  "description": "A base finding with toolNotRun marks a tool that produced no report on the base. The head's enforceable findings of that tool are reported as descriptive (nothing tells which of them the change added); other tools are compared as usual.",
+  "new": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "src/A.java",
+      "identity": "raw:a",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "pmd",
+      "rule": "EmptyCatchBlock",
+      "path": "src/A.java",
+      "identity": "catch:a",
+      "classification": "enforceable"
+    }
+  ],
+  "resolved": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run",
+      "classification": "descriptive"
+    }
+  ],
+  "unchanged": [],
+  "changedMetrics": []
+}

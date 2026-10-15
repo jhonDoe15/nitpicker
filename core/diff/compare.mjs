@@ -15,7 +15,10 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     snapshot: 'base',
   });
-  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
+  const headByKey = indexFindings({
+    findings: withoutBaseToCompare(headFindings, baseFindings),
+    snapshot: 'head',
+  });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const unmatchedBase = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -42,6 +45,21 @@ export function compareFindings({
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
   };
+}
+
+function withoutBaseToCompare(headFindings, baseFindings) {
+  const notRun = new Set(
+    baseFindings.filter((finding) => finding.toolNotRun === true).map((finding) => finding.tool),
+  );
+  return headFindings.map((finding) =>
+    notRun.has(finding.tool) && finding.classification === 'enforceable'
+      ? {
+          ...finding,
+          classification: 'descriptive',
+          message: `${finding.message} Not enforced in this run: the base has no ${finding.tool} report to compare with, so it is unknown whether the change added this.`,
+        }
+      : finding,
+  );
 }
 
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
