@@ -117,7 +117,7 @@ describe('ingestCrap', () => {
       const result = edit(fixture('lizard.csv').replace('13,9,109', '13,10,109'));
 
       expect(scoreFinding(result.newFindings).message).toBe(
-        'Calc::classify( int a , int b , String s) CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        'Calc.classify CRAP rose from 71.39 to 87.03 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       );
     });
 

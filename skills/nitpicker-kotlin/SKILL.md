@@ -52,7 +52,7 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
   flags legitimate code, stop and ask: the project adds an `exceptions` entry
   (`detekt.<ruleset>.<Rule>`, paths, reason) to `nitpicker.config.json`. A structure, CRAP,
   changed-branch coverage, duplicate or coupling finding ends with its own entry
-  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`); switching a one-way rule off in
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "<why this is intended>" }`); switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the four above. Do not call anything the project lists there.

@@ -181,8 +181,8 @@ legitimately outside the rule, such as a command line entry point that prints or
 must keep a mutable dataclass.
 
 **Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
-optional `function` in an entry of the top-level `exceptions`: the name the finding prints (`Service.run`, `outer.inner`) or its
-last part (`run`). For `changed-branch-coverage` it is required, and the entry accepts the uncovered
+optional `function` in an entry of the top-level `exceptions`: the name the finding prints
+(`Service.run`, `outer.inner`), matched exactly. For `changed-branch-coverage` it is required, and the entry accepts the uncovered
 branches inside that function only, so the rest of the file keeps every other check; a branch in no
 function (module level) can only be lifted with `exclude`. The branch is attributed to the narrowest
 function of `structure.json` that holds its line. Branch coverage is enforced by default; this is
@@ -502,9 +502,11 @@ or remove it if it can't happen. If a reviewer agrees this is intended, add
   coverage settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
-  `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
-  only this rule's. Test files are not measured, so a `.` source root does not gate them.
+  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
+  (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
+  function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
+  which drops every finding for that file, not only this rule's. Test files are not measured, so a `.` source root does not gate them.
 - **Tests.** `languages/python/ingest/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
@@ -580,7 +582,7 @@ the source root detection already does.
   version; both are read. Items of contract types that do not print import chains (acyclic
   siblings) are reported by their text, and a broken contract with nothing readable is one finding
   for the contract; these have path `.`, so their message says only to remove the import. Findings
-  on a file say how to except it: `exclude` in `nitpicker.config.json`. A run that checked no
+  on a file end with the `python.exceptions` entry for `contract-broken` on that file. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
   error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
@@ -629,9 +631,10 @@ location.
   ("failed to collect stats"); the error then adds a line to list the file under `also_copy` in
   `[tool.mutmut]`.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are in the configuration, not in the code: list the path in
-  `exclude` (the mutants of the file are dropped), or, with a `[tool.mutmut]` of your own, list it
-  in `do_not_mutate`, which also saves the run time.
+  killed by any test. The ways out are in the configuration, not in the code: an `exceptions` entry
+  for `mutant-survived` or `mutant-nocoverage` (with `function` to name one function; the message
+  prints the entry), list the path in `exclude` (the mutants of the file are dropped), or, with a
+  `[tool.mutmut]` of your own, list it in `do_not_mutate`, which also saves the run time.
 - **pytest.** mutmut 3 runs the suite with pytest, which also runs `unittest.TestCase` classes. A
   project whose runner is `unittest` therefore needs pytest installed for mutation testing; set
   `"testRunner": "unittest"` if you want coverage.py to keep running `unittest discover`.

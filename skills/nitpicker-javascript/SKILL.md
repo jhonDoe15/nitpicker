@@ -36,6 +36,11 @@ If your change edits a function that existed before it, read
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
    comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`,
    legacy entries, or weakened tests. If a finding seems wrong, stop and ask.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If a reviewer agrees this is intended, add {...} to "exceptions" in
+nitpicker.config.json`). That entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
