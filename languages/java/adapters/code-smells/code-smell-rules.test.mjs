@@ -40,17 +40,22 @@ describe('the Java code smell ruleset', () => {
     ]);
   });
 
-  it('ships both rulesets and the init script that scopes them', () => {
+  it('ships both rulesets and the init script and Maven PMD run that scope them', () => {
     const script = readFileSync(
       path.join(packageRoot, 'languages/java/gradle/nitpicker.init.gradle'),
+      'utf8',
+    );
+    const maven = readFileSync(
+      path.join(packageRoot, 'languages/java/maven/guards/maven-pmd.mjs'),
       'utf8',
     );
     const shipped = ['code-smells-ruleset.xml', 'code-smells-test-ruleset.xml'];
     expect({
       inScript: shipped.filter((file) => script.includes(`'${file}'`)),
+      inMaven: shipped.filter((file) => maven.includes(`'${file}'`)),
       shipped: shipped.filter((file) =>
         configurationFiles().includes(`languages/java/gradle/${file}`),
       ),
-    }).toEqual({ inScript: shipped, shipped });
+    }).toEqual({ inScript: shipped, inMaven: shipped, shipped });
   });
 });

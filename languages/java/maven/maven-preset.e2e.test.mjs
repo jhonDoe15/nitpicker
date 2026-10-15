@@ -9,6 +9,11 @@ import {
   GRADLE_STEP_TIMEOUT_MS,
   runGitIn,
 } from '../adapters/test-support/gradle-e2e.mjs';
+import { codeSmellRules } from '../adapters/test-support/code-smell-rules.mjs';
+import {
+  expectedViolations,
+  reportedViolations,
+} from '../adapters/test-support/violation-markers.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -156,6 +161,36 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       ).toEqual([true, true, true, true]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'reports exactly the code smell violations marked in main and test sources',
+    () => {
+      const project = withoutGradle(
+        copyOf(
+          path.join(gradleFixtures, 'code-smells-project'),
+          path.join(fixtures, 'code-smells'),
+        ),
+      );
+      collectJavaFindings(project, { maven, policy: {} });
+      const checked = new Set([
+        ...codeSmellRules().map(({ name }) => name),
+        'AvoidDuplicateLiterals',
+      ]);
+      const sarif = path.join(project, 'target/nitpicker/pmd.sarif');
+
+      expect(
+        ['main', 'test'].map((sourceSet) => {
+          const sourceRoot = path.join(project, 'src', sourceSet, 'java');
+          return reportedViolations(sarif, sourceRoot, (rule) => checked.has(rule));
+        }),
+      ).toEqual(
+        ['main', 'test'].map((sourceSet) =>
+          expectedViolations(path.join(project, 'src', sourceSet, 'java')),
+        ),
+      );
+    },
+    GRADLE_STEP_TIMEOUT_MS,
   );
 
   it(
