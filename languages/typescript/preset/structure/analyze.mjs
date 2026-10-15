@@ -1,4 +1,7 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
@@ -69,22 +72,17 @@ function functionBodyMetrics(functionNode) {
   let statements = 0;
   let maxControlNesting = 0;
 
-  function visit(node, depth) {
-    if (node !== functionNode && isFunctionNode(node)) {
-      return;
-    }
-    if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) {
-      statements += 1;
-    }
+  function children({ node, depth }) {
+    if (node !== functionNode && isFunctionNode(node)) return [];
+    const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
+    return syntaxChildren(node).map((child) => ({ node: child, depth: nextDepth }));
+  }
+  if (functionNode.body === undefined) return { statements, maxControlNesting };
+  for (const { node, depth } of depthFirst({ node: functionNode.body, depth: 0 }, children)) {
+    if (node !== functionNode && isFunctionNode(node)) continue;
+    if (node !== functionNode && ts.isStatement(node) && !ts.isBlock(node)) statements += 1;
     const nextDepth = node !== functionNode && isControlNode(node) ? depth + 1 : depth;
     maxControlNesting = Math.max(maxControlNesting, nextDepth);
-    ts.forEachChild(node, (child) => {
-      visit(child, nextDepth);
-    });
-  }
-
-  if (functionNode.body !== undefined) {
-    visit(functionNode.body, 0);
   }
   return { statements, maxControlNesting };
 }
@@ -94,7 +92,7 @@ export function analyzeSource(source, filename) {
   const functions = [];
   const classes = [];
 
-  function visit(node) {
+  for (const node of depthFirst(sourceFile, syntaxChildren)) {
     if (isFunctionNode(node)) {
       functions.push({
         source: normalizePath(filename),
@@ -120,10 +118,8 @@ export function analyzeSource(source, filename) {
         ).length,
       });
     }
-    ts.forEachChild(node, visit);
   }
 
-  visit(sourceFile);
   return {
     lines: sourceFile.getLineAndCharacterOfPosition(sourceFile.getEnd()).line + 1,
     functions,
@@ -132,34 +128,20 @@ export function analyzeSource(source, filename) {
 }
 
 function productionFiles(root, displayRoot, layout) {
-  const files = [];
-
-  function visit(current) {
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const absolute = path.join(current, entry.name);
-      const normalized = normalizePath(absolute);
-      if (isExcludedPath(normalized)) {
-        continue;
-      }
-      if (entry.isDirectory()) {
-        if (entry.name === '__tests__') {
-          continue;
-        }
-        visit(absolute);
-      } else {
-        const relative = normalizePath(path.relative(root, absolute));
-        if (
-          layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
-          !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
-        ) {
-          files.push(absolute);
-        }
-      }
-    }
+  if (!existsSync(root)) return [];
+  function skipDirectory(absolute, entry) {
+    return isExcludedPath(normalizePath(absolute)) || entry.name === '__tests__';
   }
-
-  if (existsSync(root)) visit(root);
-  return files.sort();
+  return [...filesUnder(root, { skipDirectory })]
+    .filter((absolute) => {
+      const relative = normalizePath(path.relative(root, absolute));
+      return (
+        !isExcludedPath(normalizePath(absolute)) &&
+        layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+        !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
+      );
+    })
+    .sort();
 }
 
 function percentile(values, fraction) {

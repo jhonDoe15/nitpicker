@@ -1,4 +1,4 @@
-import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
+import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
 
 const filename = 'src/main/features/billing/domain/invoice.ts';
 

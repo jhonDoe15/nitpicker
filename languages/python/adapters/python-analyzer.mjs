@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
-import { PINNED_VERSIONS_SOURCE } from './python-crap.mjs';
-import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
+import { PINNED_VERSIONS_SOURCE } from './mutation/python-crap.mjs';
+import { createToolContext, mutationVersions, toolVersions } from './execution/python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';

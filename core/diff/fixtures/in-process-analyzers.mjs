@@ -6,8 +6,9 @@ import {
   parseRunnerArguments,
 } from '../../../languages/java/adapters/java-runner.mjs';
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
-import { progressEvent, reportFromAnalyzerOutput } from '../analyzer-scheduler.mjs';
-import { createProgressReporter } from '../progress.mjs';
+import { progressEvent } from '../execution/analyzer-scheduler.mjs';
+import { reportFromAnalyzerOutput } from '../execution/process.mjs';
+import { createProgressReporter } from '../execution/progress.mjs';
 import { runFakeAnalyzer } from './fake-analyzer.mjs';
 
 // A test seam for `runAnalyzers({ runTasks })`: runs the analyzer task graph in the test process

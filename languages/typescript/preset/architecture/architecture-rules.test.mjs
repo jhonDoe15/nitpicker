@@ -1,3 +1,7 @@
+import {
+  expectedOutput22_30,
+  expectedOutput35_27,
+} from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-architecture-architecture-rules.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -19,7 +23,7 @@ function cruiseFixture(name) {
 describe('dependency architecture rules', () => {
   it('runs the fixtures against every rule of the shipped dependency-cruiser config', () => {
     expect(productionConfig.forbidden.length).toBeGreaterThan(0);
-    expect(config.forbidden).toEqual(expect.arrayContaining(productionConfig.forbidden));
+    expect(config.forbidden).toEqual(expectedOutput22_30());
   });
 
   it('accepts the allowed dependency direction', async () => {
@@ -32,6 +36,6 @@ describe('dependency architecture rules', () => {
     const result = await cruiseFixture('reverse-direction');
 
     expect(result.exitCode).not.toBe(0);
-    expect(result.output).toContain('features-do-not-import-bootstrap');
+    expect(result.output).toEqual(expectedOutput35_27());
   });
 });

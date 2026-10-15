@@ -1,4 +1,5 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { filesUnder } from '../../../shared/filesystem.mjs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { escapeRegExp, globToRegExp, globToRegExpSource } from '../../../shared/glob.mjs';
 import {
@@ -18,7 +19,7 @@ const javascriptProjectExtensionNames = [
   ...JAVASCRIPT_EXTENSIONS,
 ];
 const typescriptFormatExtensionNames = ['ts', 'tsx', 'mts', 'mjs'];
-export const builtInExcludedGlobs = [
+const builtInExcludedGlobs = [
   '**/dist/**',
   '**/build/**',
   '**/generated/**',
@@ -141,18 +142,21 @@ export function resolveLayout(layout = {}, exclude = [], { javascript = false } 
     },
     projectCodeFiles(projectRoot, roots = resolved.graphRoots) {
       const files = [];
-      function visit(directory, relative) {
-        for (const entry of readdirSync(directory, { withFileTypes: true })) {
-          const name = relative ? `${relative}/${entry.name}` : entry.name;
-          if (GENERATED_DIRECTORY.test(name)) continue;
-          if (entry.isDirectory()) visit(path.join(directory, entry.name), name);
-          else if (entry.isFile() && (resolved.isSourceFile(name) || resolved.isTestFile(name))) {
-            if (!resolved.isExcluded(name)) files.push(name);
-          }
-        }
-      }
       for (const root of existingRoots(projectRoot, roots)) {
-        visit(path.join(projectRoot, root), root);
+        function skipDirectory(absolute) {
+          return GENERATED_DIRECTORY.test(
+            path.relative(projectRoot, absolute).replaceAll('\\', '/'),
+          );
+        }
+        for (const absolute of filesUnder(path.join(projectRoot, root), { skipDirectory })) {
+          const name = path.relative(projectRoot, absolute).replaceAll('\\', '/');
+          if (
+            !GENERATED_DIRECTORY.test(name) &&
+            (resolved.isSourceFile(name) || resolved.isTestFile(name)) &&
+            !resolved.isExcluded(name)
+          )
+            files.push(name);
+        }
       }
       return files;
     },
@@ -177,12 +181,6 @@ export const sourceRoots = defaults.sourceRoots;
 export const testRoots = defaults.testRoots;
 export const sourceGlobs = defaults.sourceGlobs;
 export const testGlobs = defaults.testGlobs;
-export const codeGlobs = [...sourceGlobs, ...testGlobs];
 export const excludedGlobs = defaults.excludedGlobs;
-export const graphRoots = defaults.graphRoots;
-export const graphIncludeOnly = defaults.graphIncludeOnly;
-export const projectCodeFiles = defaults.projectCodeFiles;
-export const isTestFixture = defaults.isTestFixture;
 export const isTestFile = defaults.isTestFile;
-export const isSourceUnderRoot = defaults.isSourceUnderRoot;
 export const isSourceFile = defaults.isSourceFile;

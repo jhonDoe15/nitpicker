@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { presetAnalyzers } from '../../../core/preset-analyzers.mjs';
+import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mjs';
 import {
   applyLayout,
   applyThresholds,

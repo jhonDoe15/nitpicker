@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createToolContext } from '../python-tools.mjs';
+import { createToolContext } from '../execution/python-tools.mjs';
 import { installFakeToolchain } from './fake-toolchain.mjs';
 
 export function createScratch() {

@@ -1,3 +1,8 @@
+import {
+  expectedOutput47_29,
+  expectedOutput50_34,
+  expectedOutput91_31,
+} from '../diff/fixtures/expected-output/core-snapshot-run-snapshot.mjs';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -44,17 +49,8 @@ describe('quality snapshot run', () => {
 
     expect(report.summary.overallStatus).toBe('violations');
     expect(report.summary.enforceableFindings).toBe(1);
-    expect(report.findings).toEqual([
-      expect.objectContaining({ identity: 'existing', classification: 'enforceable' }),
-    ]);
-    expect(report.summary.tools).toEqual([
-      expect.objectContaining({
-        name: 'fake-quality-analyzer',
-        total: 1,
-        enforceable: 1,
-        descriptive: 0,
-      }),
-    ]);
+    expect(report.findings).toEqual(expectedOutput47_29());
+    expect(report.summary.tools).toEqual(expectedOutput50_34());
   });
 
   it('does not count a descriptive finding as a violation', () => {
@@ -88,9 +84,7 @@ describe('quality snapshot run', () => {
 
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.findings).toEqual([]);
-    expect(report.toolErrors).toEqual([
-      expect.objectContaining({ tool: 'fake-quality-analyzer', message: 'partial analysis' }),
-    ]);
+    expect(report.toolErrors).toEqual(expectedOutput91_31());
   });
 
   it('surfaces an analyzer crash as a tool error rather than throwing', () => {

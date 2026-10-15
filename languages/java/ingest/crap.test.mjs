@@ -1,8 +1,13 @@
+import {
+  expectedOutput31_33,
+  expectedOutput41_49,
+  expectedOutput94_31,
+} from '../../../core/diff/fixtures/expected-output/languages-java-ingest-crap.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { calculateCrap, ingestCrap, parseLizardCsv } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -28,7 +33,7 @@ describe('ingestCrap', () => {
       true,
     );
     expect(findings[0].path).toBe('src/main/java/demo/Calc.java');
-    expect(findings[0].message).toContain('CRAP 71.');
+    expect(findings[0].message).toEqual(expectedOutput31_33());
     expect(() => parseAnalyzerReport({ findings }, 'java')).not.toThrow();
   });
 
@@ -38,7 +43,7 @@ describe('ingestCrap', () => {
       false,
     );
     const higher = fixture('lizard.csv').replace('3,2,22,0,3,', '3,8,22,0,3,');
-    expect(ingest(higher).map((f) => f.symbol)).toContain('Calc::Calc::anon.run()');
+    expect([...new Set(ingest(higher).map((f) => f.symbol))].sort()).toEqual(expectedOutput41_49());
   });
 
   it('treats CRAP exactly at the limit as a failure, like the TypeScript check', () => {
@@ -91,10 +96,7 @@ describe('ingestCrap', () => {
       expect(finding.identity).toBe(
         'function:Calc::classify( int a , int b , String s):source:abc',
       );
-      expect(finding.ratchet).toMatchObject({
-        key: 'function:Calc::classify( int a , int b , String s):crap',
-        value: expect.any(Number),
-      });
+      expect(finding.ratchet).toEqual(expectedOutput94_31());
     });
 
     it('stays baselined when the score is unchanged', () => {

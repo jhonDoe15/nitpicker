@@ -1,6 +1,6 @@
-import { analyzerMetadata, analyzerName } from '../diff/report-model.mjs';
+import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../diff/run-analyzers.mjs';
+import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
 
 export function runQualitySnapshot({
   analyzers,
@@ -25,6 +25,45 @@ export function runQualitySnapshot({
     }),
   );
 
+  const { findings, tools } = collectSnapshotFindings(analyzers, reports, toolErrors);
+
+  const enforceableFindings = findings.filter(
+    (finding) => finding.classification === 'enforceable',
+  ).length;
+  const exclusions = declaredExclusions(analyzers);
+  const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
+
+  return {
+    summary: {
+      tools,
+      exclusions,
+      elapsedMs: Date.now() - startedAt,
+      overallStatus,
+      enforceableFindings,
+    },
+    findings: sortFindings(findings),
+    toolErrors: sortFindings(toolErrors.map((error) => ({ ...error, path: error.path ?? '' }))),
+  };
+}
+
+function overallStatusFor({ toolErrors, enforceableFindings }) {
+  if (toolErrors.length > 0) {
+    return 'tool-error';
+  }
+  return enforceableFindings > 0 ? 'violations' : 'clean';
+}
+
+function sortFindings(entries) {
+  return entries.sort(
+    (left, right) =>
+      (left.tool ?? '').localeCompare(right.tool ?? '') ||
+      (left.path ?? '').localeCompare(right.path ?? '') ||
+      (left.rule ?? '').localeCompare(right.rule ?? '') ||
+      (left.identity ?? '').localeCompare(right.identity ?? ''),
+  );
+}
+
+function collectSnapshotFindings(analyzers, reports, toolErrors) {
   const findings = [];
   const tools = [];
   for (const [index, analyzer] of analyzers.entries()) {
@@ -56,10 +95,11 @@ export function runQualitySnapshot({
     });
   }
 
-  const enforceableFindings = findings.filter(
-    (finding) => finding.classification === 'enforceable',
-  ).length;
-  const exclusions = [
+  return { findings, tools };
+}
+
+function declaredExclusions(analyzers) {
+  return [
     ...new Set(
       analyzers.flatMap((analyzer) =>
         typeof analyzer === 'object' && analyzer !== null && Array.isArray(analyzer.exclusions)
@@ -68,34 +108,4 @@ export function runQualitySnapshot({
       ),
     ),
   ].sort();
-  const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
-
-  return {
-    summary: {
-      tools,
-      exclusions,
-      elapsedMs: Date.now() - startedAt,
-      overallStatus,
-      enforceableFindings,
-    },
-    findings: sortFindings(findings),
-    toolErrors: sortFindings(toolErrors.map((error) => ({ ...error, path: error.path ?? '' }))),
-  };
-}
-
-function overallStatusFor({ toolErrors, enforceableFindings }) {
-  if (toolErrors.length > 0) {
-    return 'tool-error';
-  }
-  return enforceableFindings > 0 ? 'violations' : 'clean';
-}
-
-function sortFindings(entries) {
-  return entries.sort(
-    (left, right) =>
-      (left.tool ?? '').localeCompare(right.tool ?? '') ||
-      (left.path ?? '').localeCompare(right.path ?? '') ||
-      (left.rule ?? '').localeCompare(right.rule ?? '') ||
-      (left.identity ?? '').localeCompare(right.identity ?? ''),
-  );
 }

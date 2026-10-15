@@ -85,6 +85,95 @@ function byLocation(left, right) {
   return left.source.localeCompare(right.source) || left.target.localeCompare(right.target);
 }
 
+function normalizedSourceRoot(sources, requestedRoot, layout) {
+  const legacyRoot = `${requestedRoot}/main`;
+  const legacyOnly =
+    layout.sourceRoots.includes(requestedRoot) &&
+    sources.some((source) => layout.isSourceUnderRoot(source, legacyRoot)) &&
+    !sources.some(
+      (source) =>
+        layout.isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
+    );
+  return legacyOnly ? legacyRoot : requestedRoot;
+}
+
+function entryPointScope(graph, sourceRoot, options) {
+  if (!Array.isArray(graph?.modules))
+    throw new TypeError('Expected a dependency-cruiser graph with a modules array');
+  const { layout, foundationDirectories } = options;
+  const sources = graph.modules.map((module) => normalizePath(module.source));
+  const root = normalizedSourceRoot(sources, normalizePath(sourceRoot).replace(/\/$/, ''), layout);
+  const productionModules = sources.filter(
+    (source) =>
+      source.startsWith([`${root}`, '/'].join('')) && isProductionModule(source, root, layout),
+  );
+  const components = new Set(
+    productionModules
+      .map((source) => componentName(source, root))
+      .filter((name) => name !== '(root)' && !foundationDirectories.has(name)),
+  );
+  return {
+    ...options,
+    graph,
+    root,
+    productionModules,
+    components,
+    entryPoints: declaredEntryPoints({ components, productionModules, root, layout }),
+    isExportReachable: exportReachability(graph, root),
+  };
+}
+
+function crossBoundaryFinding(edge, scope) {
+  if (
+    !isProductionModule(edge.source, scope.root, scope.layout) ||
+    !isProductionModule(edge.target, scope.root, scope.layout)
+  )
+    return undefined;
+  const sourceComponent = componentName(edge.source, scope.root);
+  const targetComponent = componentName(edge.target, scope.root);
+  if (
+    scope.compositionRoots.has(relativeToRoot(edge.source, scope.root)) ||
+    sourceComponent === targetComponent ||
+    !scope.components.has(targetComponent)
+  )
+    return undefined;
+  return {
+    source: edge.source,
+    target: edge.target,
+    sourceComponent,
+    targetComponent,
+    dependencyKind: edge.kind,
+  };
+}
+
+function recordBoundaryFinding(finding, scope, groups) {
+  const entryPoint = scope.entryPoints.get(finding.targetComponent);
+  if (entryPoint === undefined) groups.missingEntryPointImports.push(finding);
+  else if (finding.target === entryPoint) groups.throughEntryPoint.push(finding);
+  else if (scope.isExportReachable(entryPoint, finding.target))
+    groups.publicAlternativeBypasses.push({ ...finding, publicEntryPoint: entryPoint });
+  else groups.unexportedTargetImports.push({ ...finding, publicEntryPoint: entryPoint });
+}
+
+function boundaryImports(scope) {
+  const groups = {
+    throughEntryPoint: [],
+    publicAlternativeBypasses: [],
+    unexportedTargetImports: [],
+    missingEntryPointImports: [],
+    concreteCrossBoundaryImports: [],
+  };
+  for (const edge of internalEdges(scope.graph, scope.root)) {
+    const finding = crossBoundaryFinding(edge, scope);
+    if (!finding) continue;
+    recordBoundaryFinding(finding, scope, groups);
+    if (concreteFilePattern(scope.layout).test(path.basename(edge.target)))
+      groups.concreteCrossBoundaryImports.push(finding);
+  }
+  for (const findings of Object.values(groups)) findings.sort(byLocation);
+  return groups;
+}
+
 export function analyzeEntryPoints(
   graph,
   sourceRoot,
@@ -94,111 +183,22 @@ export function analyzeEntryPoints(
     compositionRoots = defaultCompositionRoots(layout),
   } = {},
 ) {
-  if (!Array.isArray(graph?.modules)) {
-    throw new TypeError('Expected a dependency-cruiser graph with a modules array');
-  }
-
-  const requestedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
-  const legacyRoot = `${requestedRoot}/main`;
-  const sources = graph.modules.map((module) => normalizePath(module.source));
-  const normalizedRoot =
-    layout.sourceRoots.includes(requestedRoot) &&
-    sources.some((source) => layout.isSourceUnderRoot(source, legacyRoot)) &&
-    !sources.some(
-      (source) =>
-        layout.isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
-    )
-      ? legacyRoot
-      : requestedRoot;
-  const productionModules = sources.filter(
-    (source) =>
-      source.startsWith(`${normalizedRoot}/`) && isProductionModule(source, normalizedRoot, layout),
-  );
-  const components = new Set(
-    productionModules
-      .map((source) => componentName(source, normalizedRoot))
-      .filter((name) => name !== '(root)' && !foundationDirectories.has(name)),
-  );
-  const entryPoints = declaredEntryPoints({
-    components,
-    productionModules,
-    root: normalizedRoot,
+  const scope = entryPointScope(graph, sourceRoot, {
     layout,
+    foundationDirectories,
+    compositionRoots,
   });
-  const isExportReachable = exportReachability(graph, normalizedRoot);
-
-  const throughEntryPoint = [];
-  const bypasses = [];
-  const unexportedTargets = [];
-  const missingEntryPoints = [];
-  const concreteCrossBoundaryImports = [];
-
-  for (const edge of internalEdges(graph, normalizedRoot)) {
-    if (
-      !isProductionModule(edge.source, normalizedRoot, layout) ||
-      !isProductionModule(edge.target, normalizedRoot, layout)
-    ) {
-      continue;
-    }
-    const sourceComponent = componentName(edge.source, normalizedRoot);
-    const targetComponent = componentName(edge.target, normalizedRoot);
-    if (
-      compositionRoots.has(relativeToRoot(edge.source, normalizedRoot)) ||
-      sourceComponent === targetComponent ||
-      !components.has(targetComponent)
-    ) {
-      continue;
-    }
-
-    const finding = {
-      source: edge.source,
-      target: edge.target,
-      sourceComponent,
-      targetComponent,
-      dependencyKind: edge.kind,
-    };
-    const entryPoint = entryPoints.get(targetComponent);
-    if (entryPoint === undefined) {
-      missingEntryPoints.push(finding);
-    } else if (edge.target === entryPoint) {
-      throughEntryPoint.push(finding);
-    } else if (isExportReachable(entryPoint, edge.target)) {
-      bypasses.push({ ...finding, publicEntryPoint: entryPoint });
-    } else {
-      unexportedTargets.push({ ...finding, publicEntryPoint: entryPoint });
-    }
-
-    if (concreteFilePattern(layout).test(path.basename(edge.target))) {
-      concreteCrossBoundaryImports.push(finding);
-    }
-  }
-
-  for (const findings of [
-    throughEntryPoint,
-    bypasses,
-    unexportedTargets,
-    missingEntryPoints,
-    concreteCrossBoundaryImports,
-  ]) {
-    findings.sort(byLocation);
-  }
-
+  const groups = boundaryImports(scope);
   return {
     summary: {
-      productionModules: productionModules.length,
-      components: components.size,
-      declaredEntryPoints: entryPoints.size,
-      throughEntryPoint: throughEntryPoint.length,
-      publicAlternativeBypasses: bypasses.length,
-      unexportedTargetImports: unexportedTargets.length,
-      missingEntryPointImports: missingEntryPoints.length,
-      concreteCrossBoundaryImports: concreteCrossBoundaryImports.length,
+      productionModules: scope.productionModules.length,
+      components: scope.components.size,
+      declaredEntryPoints: scope.entryPoints.size,
+      ...Object.fromEntries(
+        Object.entries(groups).map(([key, findings]) => [key, findings.length]),
+      ),
     },
-    components: [...components].sort(),
-    throughEntryPoint,
-    publicAlternativeBypasses: bypasses,
-    unexportedTargetImports: unexportedTargets,
-    missingEntryPointImports: missingEntryPoints,
-    concreteCrossBoundaryImports,
+    components: [...scope.components].sort(),
+    ...groups,
   };
 }

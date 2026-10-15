@@ -14,7 +14,7 @@ exit 1; parser, configuration, and analyzer failures fail with exit 2.
 - Carry correlation input through asynchronous outcome callbacks; keep snapshot merging
   and external publication side effects out of source callbacks.
 - Give public contract methods a production consumer. Tests alone do not justify an API.
-- Strict set, `adapters/` (`languages/typescript/preset/eslint-config/strict-adapters.mjs`, files matching
+- Strict set, `adapters/` (`languages/typescript/preset/eslint-config/strict-adapters.config.mjs`, files matching
   `src/main/features/*/adapters/**`): parse untrusted input with a zod schema. Zod is an
   expectation of the preset, not a dependency of nitpicker. `nitpicker/no-handwritten-boundary-guard`
   reports (1) any `x is T` or `asserts x is T` return type, since a hand-written guard is the

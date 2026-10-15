@@ -4,16 +4,28 @@ import {
 } from '../../../../shared/legacy-inventory.mjs';
 import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
-import { createEslintAnalyzer } from '../../adapters/eslint.mjs';
-import { createQualityAreaAnalyzer } from '../../adapters/quality-areas.mjs';
-import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
+import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
+import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
+import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
 import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
-import { createQualityChecks, eslintVersion, hashFiles } from '../quality-checks.mjs';
+import { createQualityChecks } from '../quality-checks.mjs';
+import { eslintVersion } from '../checks/constants.mjs';
+import { hashFiles } from '../checks/hash.mjs';
 
 const ANALYZER_RUNTIME_FILES = [
-  'core/diff/analyzer-scheduler.mjs',
-  'core/diff/report-model.mjs',
-  'core/diff/run-analyzers.mjs',
+  'core/diff/execution/analyzer-scheduler.mjs',
+  'core/diff/execution/capacity.mjs',
+  'core/diff/execution/process.mjs',
+  'core/diff/execution/progress.mjs',
+  'core/diff/execution/run-analyzers.mjs',
+  'core/diff/execution/tasks.mjs',
+  'languages/typescript/preset/syntax/children.mjs',
+  'shared/filesystem.mjs',
+  'shared/traversal.mjs',
+
+  'core/diff/execution/analyzer-scheduler.mjs',
+  'core/diff/reporting/report-model.mjs',
+  'core/diff/execution/run-analyzers.mjs',
 ];
 const PROJECT_DEPENDENCY_GRAPH_FILES = [
   'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
@@ -22,12 +34,24 @@ const PROJECT_DEPENDENCY_GRAPH_FILES = [
   'core/tooling/temporary-files.mjs',
 ];
 const ESLINT_ADAPTER_FILES = [
+  'languages/typescript/adapters/eslint/analyzer.mjs',
+  'languages/typescript/adapters/eslint/arguments.mjs',
+  'languages/typescript/adapters/eslint/normalize.mjs',
+  'languages/typescript/adapters/eslint/paths.mjs',
+  'languages/typescript/adapters/eslint/policy.mjs',
+  'languages/typescript/adapters/eslint/syntax.mjs',
+  'languages/typescript/adapters/hints/eslint-hints.mjs',
+  'languages/typescript/adapters/hints/immutable-types-hint.mjs',
+  'languages/typescript/adapters/immutable-types/expressions.mjs',
+  'languages/typescript/adapters/immutable-types/kinds.mjs',
+  'languages/typescript/adapters/immutable-types/types.mjs',
+
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
-  'languages/typescript/adapters/eslint.mjs',
+  'languages/typescript/adapters/eslint/analyzer.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
-  'languages/typescript/adapters/eslint-hints.mjs',
-  'languages/typescript/adapters/eslint-config-wrapper.mjs',
+  'languages/typescript/adapters/hints/eslint-hints.mjs',
+  'languages/typescript/adapters/eslint-wrapper.config.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
@@ -39,16 +63,38 @@ const ENTRY_POINT_ADAPTER_FILES = [
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const STATIC_CHECK_ADAPTER_FILES = [
+  'languages/typescript/adapters/prettier/format-hunks.mjs',
+  'languages/typescript/adapters/prettier/prettier-layers.mjs',
+  'languages/typescript/adapters/static-checks/analyzer.mjs',
+  'languages/typescript/adapters/static-checks/arguments.mjs',
+  'languages/typescript/adapters/static-checks/dependencies.mjs',
+  'languages/typescript/adapters/static-checks/prettier.mjs',
+  'languages/typescript/adapters/static-checks/shared.mjs',
+  'languages/typescript/adapters/static-checks/typescript.mjs',
+
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
-  'languages/typescript/adapters/static-checks.mjs',
+  'languages/typescript/adapters/static-checks/analyzer.mjs',
   'languages/typescript/adapters/static-checks-runner.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const QUALITY_AREA_ADAPTER_FILES = [
+  'languages/typescript/adapters/quality-areas/analyzer.mjs',
+  'languages/typescript/adapters/quality-areas/arguments.mjs',
+  'languages/typescript/adapters/quality-areas/mutation-scope.mjs',
+  'languages/typescript/adapters/quality-areas/registry.mjs',
+  'languages/typescript/adapters/quality-areas/reporting/repository.mjs',
+  'languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs',
+  'languages/typescript/adapters/quality-areas/reporting/tests.mjs',
+  'languages/typescript/adapters/quality-areas/reporting/vitest.mjs',
+  'languages/typescript/adapters/quality-areas/runners/mutation.mjs',
+  'languages/typescript/adapters/quality-areas/runners/repository.mjs',
+  'languages/typescript/adapters/quality-areas/runners/tests.mjs',
+  'languages/typescript/adapters/quality-areas/tooling.mjs',
+
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
-  'languages/typescript/adapters/quality-areas.mjs',
+  'languages/typescript/adapters/quality-areas/analyzer.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,

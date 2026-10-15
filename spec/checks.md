@@ -36,9 +36,9 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | Check                   | Scope                              | Config                                                         | Status      |
 | ----------------------- | ---------------------------------- | -------------------------------------------------------------- | ----------- |
 | `eslint-lint`           | source and test globs              | `languages/typescript/preset/defaults/eslint.config.mjs`       | enforceable |
-| `eslint-errors`         | production source (tests excluded) | `languages/typescript/preset/eslint-config/errors.mjs`         | enforceable |
-| `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/logging.mjs`        | enforceable |
-| `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/module-effects.mjs` | enforceable |
+| `eslint-errors`         | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/errors.config.mjs`         | enforceable |
+| `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
+| `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
 ## Entry points
 

@@ -1,3 +1,8 @@
+import {
+  expectedOutput21_17,
+  expectedOutput22_18,
+  expectedOutput33_21,
+} from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-structure-structure-policy.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -18,8 +23,8 @@ describe('structural metrics report', () => {
     const add = analysis.functions.find((entry) => entry.function === 'add');
     const tiny = analysis.classes.find((entry) => entry.class === 'Tiny');
 
-    expect(add).toMatchObject({ parameters: 2, statements: 1, maxControlNesting: 0 });
-    expect(tiny).toMatchObject({ members: 1, methods: 1 });
+    expect(add).toEqual(expectedOutput21_17());
+    expect(tiny).toEqual(expectedOutput22_18());
   });
 
   it('reports independent size, nesting, statement, and parameter signals', () => {
@@ -30,7 +35,7 @@ describe('structural metrics report', () => {
     expect(report.functions.map((entry) => entry.source)).not.toEqual(
       expect.arrayContaining([expect.stringMatching(/dist|build|generated|__tests__/)]),
     );
-    expect(complex).toMatchObject({ parameters: 5, maxControlNesting: 3 });
+    expect(complex).toEqual(expectedOutput33_21());
     expect(complex.statements).toBeGreaterThan(4);
     expect(report.rankings.functionParameters[0].function).toBe('coordinate');
   });

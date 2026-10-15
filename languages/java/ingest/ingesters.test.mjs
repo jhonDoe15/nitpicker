@@ -1,13 +1,22 @@
+import {
+  expectedOutput119_33,
+  expectedOutput171_33,
+  expectedOutput203_34,
+  expectedOutput242_25,
+  expectedOutput248_25,
+  expectedOutput254_25,
+  expectedOutput258_25,
+} from '../../../core/diff/fixtures/expected-output/languages-java-ingest-ingesters.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { ingestArchunit } from './archunit.mjs';
-import { ingestCheckstyle } from './checkstyle.mjs';
+import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
-import { ingestGoCoverprofile } from './gocover.mjs';
-import { ingestJacoco } from './jacoco.mjs';
-import { ingestLcov } from './lcov.mjs';
+import { ingestGoCoverprofile } from './coverage/gocover.mjs';
+import { ingestJacoco } from './coverage/jacoco.mjs';
+import { ingestLcov } from './coverage/lcov.mjs';
 import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -116,7 +125,7 @@ describe('checkstyle', () => {
       true,
     );
     expect(findings[0].message).toBe("'42' is a magic number.");
-    expect(findings[2].message).toContain('<found 120>');
+    expect(findings[2].message).toEqual(expectedOutput119_33());
   });
 
   it('maps severities and numbers repeated messages without using lines', () => {
@@ -168,7 +177,7 @@ describe('archunit', () => {
         'enforceable',
       ],
     ]);
-    expect(findings[0].message).toContain('3 violations');
+    expect(findings[0].message).toEqual(expectedOutput171_33());
     expect(findings[0].message).not.toMatch(/\.java:\d/);
   });
 
@@ -200,7 +209,7 @@ describe('pit', () => {
       'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
     ]);
-    expect(findings[2].identity).toContain('replaced return value with "" for demo/Greeter::shout');
+    expect(findings[2].identity).toEqual(expectedOutput203_34());
     expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
   });
 
@@ -239,26 +248,15 @@ describe('pit', () => {
 describe('coverage ingesters', () => {
   it('lcov reports line coverage and uncovered functions by name', () => {
     const { findings } = ingestLcov(fixture('lcov.info'), { root: '/work/app' });
-    expect(findings[0]).toMatchObject({
-      path: 'src/util.js',
-      rule: 'line-coverage',
-      classification: 'descriptive',
-      metric: { name: 'line-coverage', value: 50 },
-    });
-    expect(findings[1]).toMatchObject({ rule: 'uncovered-function', symbol: 'format' });
+    expect(findings[0]).toEqual(expectedOutput242_25());
+    expect(findings[1]).toEqual(expectedOutput248_25());
     expect(findings[2].path).toBe('src/other.js');
   });
 
   it('jacoco reports source file coverage and uncovered methods', () => {
     const { findings } = ingestJacoco(fixture('jacoco.xml'), { sourceRoot: 'src/main/java' });
-    expect(findings[0]).toMatchObject({
-      path: 'src/main/java/com/acme/Foo.java',
-      metric: { name: 'line-coverage', value: 60 },
-    });
-    expect(findings[1]).toMatchObject({
-      rule: 'uncovered-method',
-      symbol: 'com.acme.Foo#unused(I)I',
-    });
+    expect(findings[0]).toEqual(expectedOutput254_25());
+    expect(findings[1]).toEqual(expectedOutput258_25());
     expect(() => ingestJacoco('<x/>')).toThrow('<report>');
   });
 

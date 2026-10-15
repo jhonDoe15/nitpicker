@@ -20,7 +20,7 @@ try {
       'run',
       '--config',
       'vitest.config.mts',
-      'core/diff/eslint-diff-policy.test.mjs',
+      'core/diff/tests/analysis/eslint-diff-policy.test.mjs',
       '--testTimeout=300000',
     ],
     {

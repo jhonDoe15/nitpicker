@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
-import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 const MAX_MESSAGE_LENGTH = 4000;

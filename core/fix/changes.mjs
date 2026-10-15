@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeGitPath, resolveComparison, runGit } from '../diff/git.mjs';
+import { normalizeGitPath } from '../diff/git/normalize.mjs';
+import { resolveComparison } from '../diff/git/repository/git.mjs';
+import { runGit } from '../diff/git/repository/command.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -112,7 +114,7 @@ export function readBaseFiles({ repositoryRoot, mergeBaseSha, files }) {
   return parseBatchObjects({ output: result.stdout, files, objectNames });
 }
 
-export function parseNameStatus(output) {
+function parseNameStatus(output) {
   const fields = output.split('\0');
   const records = [];
   const remaining = fields.values();

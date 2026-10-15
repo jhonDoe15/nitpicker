@@ -1,4 +1,9 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
+import { chainOf } from '../../../../shared/traversal.mjs';
+import { format as formatOutput } from 'node:util';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -51,18 +56,19 @@ function hasRuntimeExport(node) {
 }
 
 function staticCallName(expression) {
-  if (ts.isIdentifier(expression)) return expression.text;
-  if (ts.isParenthesizedExpression(expression)) return staticCallName(expression.expression);
-  if (ts.isPropertyAccessExpression(expression)) {
-    const owner = staticCallName(expression.expression);
-    return owner === undefined ? undefined : `${owner}.${expression.name.text}`;
-  }
-  if (
-    ts.isElementAccessExpression(expression) &&
-    ts.isStringLiteralLike(expression.argumentExpression)
-  ) {
-    const owner = staticCallName(expression.expression);
-    return owner === undefined ? undefined : `${owner}.${expression.argumentExpression.text}`;
+  const parts = [];
+  for (const node of chainOf(expression, (current) => current.expression)) {
+    if (ts.isIdentifier(node)) return [node.text, ...parts.toReversed()].join('.');
+    if (ts.isParenthesizedExpression(node)) continue;
+    if (ts.isPropertyAccessExpression(node)) {
+      parts.push(node.name.text);
+      continue;
+    }
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+      parts.push(node.argumentExpression.text);
+      continue;
+    }
+    return undefined;
   }
   return undefined;
 }
@@ -105,7 +111,7 @@ export function inspectModuleBoundary(source, filename, role) {
       }
     }
   }
-  function visit(node) {
+  for (const node of depthFirst(file, syntaxChildren)) {
     if (ts.isImportDeclaration(node) && hasRuntimeImport(node)) {
       dependency(node, node.moduleSpecifier, 'import');
     } else if (
@@ -130,28 +136,26 @@ export function inspectModuleBoundary(source, filename, role) {
         report(node, 'forbidden-runtime-call', name);
       }
     }
-    ts.forEachChild(node, visit);
   }
-  visit(file);
   return findings;
 }
 
-function sourceFiles(root, exclude, { layout, displayRoot }, directory = '') {
-  const found = [];
-  for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
-    const relative = path.posix.join(directory, entry.name);
-    if (matches(relative, exclude) || (entry.isDirectory() && matches(relative + '/', exclude)))
-      continue;
-    if (entry.isDirectory())
-      found.push(...sourceFiles(root, exclude, { layout, displayRoot }, relative));
-    else if (
-      entry.isFile() &&
-      layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
-      !layout.isExcluded(path.posix.join(displayRoot, relative))
-    )
-      found.push(relative);
+function sourceFiles(root, exclude, { layout, displayRoot }) {
+  function relative(absolute) {
+    return path.relative(root, absolute).replaceAll('\\', '/');
   }
-  return found.sort();
+  function skipDirectory(absolute) {
+    return matches(relative(absolute), exclude) || matches(relative(absolute) + '/', exclude);
+  }
+  return [...filesUnder(root, { skipDirectory })]
+    .map(relative)
+    .filter(
+      (file) =>
+        !matches(file, exclude) &&
+        layout.isSourceFile(`${layout.sourceRoot}/${file}`) &&
+        !layout.isExcluded(path.posix.join(displayRoot, file)),
+    )
+    .sort();
 }
 
 function validateConfiguration(configuration) {
@@ -202,10 +206,10 @@ if (
     const report = analyzeRuntimeBoundaries(
       path.resolve(process.argv[2] ?? defaultResolvedLayout.sourceRoot),
     );
-    console.log(JSON.stringify(report, null, 2));
+    process.stdout.write(formatOutput(JSON.stringify(report, null, 2)) + '\n');
     process.exitCode = report.findings.length === 0 ? 0 : 1;
   } catch (error) {
-    console.error(error);
+    process.stderr.write(formatOutput(error) + '\n');
     process.exitCode = 2;
   }
 }

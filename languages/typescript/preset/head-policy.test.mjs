@@ -1,3 +1,4 @@
+import { createGitTemplate, copyGitTemplate } from '../../../core/diff/fixtures/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import {
   existsSync,
@@ -10,8 +11,8 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { runQualityDiff } from '../../../core/diff/run-diff.mjs';
+import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
 import {
   defaultLayout,
   prettierPrecedence,
@@ -149,7 +150,7 @@ describe('head policy delivery', () => {
     const logPath = path.join(root, 'probe.log');
     const repository = path.join(root, 'repo');
     mkdirSync(repository);
-    git(repository, ['init', '-q', '-b', 'main']);
+    copyGitTemplate(gitTemplate.root, repository);
     git(repository, ['config', 'user.name', 'Policy Fixture']);
     git(repository, ['config', 'user.email', 'policy@example.invalid']);
     writeFileSync(path.join(repository, 'a.txt'), 'base\n');
@@ -222,3 +223,8 @@ const gitFixtureEnvironment = {
 function git(cwd, arguments_) {
   return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
 }
+
+const gitTemplate = { root: undefined };
+beforeAll(() => {
+  gitTemplate.root = createGitTemplate();
+});

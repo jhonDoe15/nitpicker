@@ -1,3 +1,9 @@
+import {
+  expectedOutput30_33,
+  expectedOutput58_19,
+  expectedOutput59_19,
+  expectedOutput60_19,
+} from './diff/fixtures/expected-output/core-container-image.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -27,14 +33,7 @@ describe('container image Dockerfile', () => {
   });
 
   it('installs the package from the repo source and exposes the nitpicker binary', () => {
-    expect(instruction('COPY')).toEqual(
-      expect.arrayContaining([
-        'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
-        'COPY core/ /opt/nitpicker/core/',
-        'COPY shared/ /opt/nitpicker/shared/',
-        'COPY languages/ /opt/nitpicker/languages/',
-      ]),
-    );
+    expect([...new Set(instruction('COPY'))].sort()).toEqual(expectedOutput30_33());
     expect(instruction('RUN').some((line) => line.includes('npm ci'))).toBe(true);
     expect(
       instruction('RUN').some((line) => line.includes('core/cli.mjs /usr/local/bin/nitpicker')),
@@ -55,8 +54,8 @@ describe('container image Dockerfile', () => {
 
   it('keeps dependencies and reports out of the build context', () => {
     const lines = dockerignore.split('\n');
-    expect(lines).toContain('.git');
-    expect(lines).toContain('**/node_modules');
-    expect(lines).toContain('**/reports');
+    expect([...new Set(lines)].sort()).toEqual(expectedOutput58_19());
+    expect([...new Set(lines)].sort()).toEqual(expectedOutput59_19());
+    expect([...new Set(lines)].sort()).toEqual(expectedOutput60_19());
   });
 });

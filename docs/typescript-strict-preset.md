@@ -307,7 +307,7 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
 ## How it is enforced
 
 - `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
-  `languages/typescript/preset/eslint-config/strict.mjs` to typescript-eslint's strict type-checked config. Rules that
+  `languages/typescript/preset/eslint-config/strict.config.mjs` to typescript-eslint's strict type-checked config. Rules that
   strict replaces are removed: `consistent-type-assertions`, `explicit-member-accessibility` and
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
@@ -320,9 +320,9 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
   selector to the list of its scope; a test proves that a file under `features/x/domain/` gets both
   the global and the domain bans.
-- The React scope lives in `languages/typescript/preset/eslint-config/react-scope.mjs`; see "React"
+- The React scope lives in `languages/typescript/preset/eslint-config/react/react-scope.mjs`; see "React"
   above and `docs/internals.md`. Its rules are strict rules too (`react-rules.mjs` lists them).
-- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
+- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.config.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
@@ -403,7 +403,7 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 
 1. Ship the strict preset as a new major version, with a changelog listing every rule that fails.
 2. The policy hash changes with the preset. The gate analyzes both the base worktree and the head
-   (`core/diff/run-diff.mjs`), so existing violations appear on both sides and are baselined, not
+   (`core/diff/comparison/run-diff.mjs`), so existing violations appear on both sides and are baselined, not
    failed. The upgrade PR itself should be verified once to confirm the base side is analyzed with
    the new rules (checked in S13: the base side is analyzed with the head's policy, and a test shows a legacy
    violation staying baselined when the edit is elsewhere in the file).
@@ -415,17 +415,17 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 ### How touched code is detected and held to strict rules
 
 Today the gate classifies a finding as new only when its comparison key is missing from the base.
-The key (`core/diff/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
+The key (`core/diff/comparison/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
 identity, classification and metric name. It contains no line number, so an existing violation in an
 edited file keeps matching the base and stays baselined. That is the behavior to change for strict.
 
 Recommendation: line-hunk promotion, implemented in the diff engine (folded into S13 and
-implemented there: `readChangedLines` in `core/diff/git.mjs`, applied by `compareFindings` in
-`core/diff/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
+implemented there: `readChangedLines` in `core/diff/git/repository/git.mjs`, applied by `compareFindings` in
+`core/diff/comparison/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
 
 - Compute the changed line ranges of each file on the head side from
   `git diff --unified=0 --find-renames <base>...HEAD` (the engine already shells out to git in
-  `core/diff/git.mjs` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
+  `core/diff/git/repository/git.mjs` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
 - After `compareFindings`, move a finding from `unchangedFindings` to `newFindings` when its rule
   is in the strict set and its head `location.line` falls inside a changed range of its file.
   Findings with no `location` (file- or graph-level findings) are promoted only when the file is
