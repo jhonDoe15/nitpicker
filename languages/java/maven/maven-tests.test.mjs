@@ -127,15 +127,25 @@ describe('collectTestResults', () => {
     ]);
     const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
 
-    expect(() =>
+    const listed = cases
+      .slice(0, 10)
+      .map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
+
+    expect(() => {
       collectTestResults({
         module: { basedir: '/m', surefireReports: reports },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
-      }),
-    ).toThrow(
-      /^Tests fail in \/m; nitpicker needs a passing test suite.*\n {2}shop\.OrderTest\.case0: expected 0\n[\s\S]*\n {2}and 2 more$/u,
+      });
+    }).toThrow(
+      new Error(
+        [
+          'Tests fail in /m; nitpicker needs a passing test suite for coverage and mutation testing:',
+          ...listed,
+          '  and 2 more',
+        ].join('\n'),
+      ),
     );
   });
 });

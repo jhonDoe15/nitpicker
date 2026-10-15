@@ -4,6 +4,7 @@ import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { readPinnedTools } from '../maven/maven-tools.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
@@ -69,13 +70,9 @@ export const CONFIGURATION_FILES = [
 ];
 
 export function readPinnedVersions(initScript = INIT_SCRIPT) {
-  const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
-  const versions = [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/g)].map(
-    ([, name, version]) => `${name}@${version}`,
+  const versions = Object.entries(readPinnedTools(initScript)).map(
+    ([name, version]) => `${name}@${version}`,
   );
-  if (versions.length === 0) {
-    throw new Error(`No pinned tool versions found in ${initScript}`);
-  }
   return [...versions, `jscpd@${jscpdVersion()}`].join(';');
 }
 

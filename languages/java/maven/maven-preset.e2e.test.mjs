@@ -91,19 +91,18 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       const tools = new Set(fromMaven.map((finding) => finding.tool));
 
       expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
-      expect([...tools].sort()).toEqual(
-        expect.arrayContaining([
-          'archunit',
-          'checkstyle',
-          'crap',
-          'google-java-format',
-          'jacoco',
-          'pit',
-          'pmd',
-          'spotbugs',
-          'structure',
-        ]),
-      );
+      expect([...tools].sort()).toEqual([
+        'archunit',
+        'checkstyle',
+        'coupling',
+        'crap',
+        'google-java-format',
+        'jacoco',
+        'pit',
+        'pmd',
+        'spotbugs',
+        'structure',
+      ]);
     },
     2 * GRADLE_STEP_TIMEOUT_MS,
   );
@@ -145,8 +144,18 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
       const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
 
-      expect(finding).toMatchObject({ rule: 'maven-failure', classification: 'tool-error' });
-      expect(finding.message).toContain('demo.core.AdderTest.adds: expected: <4> but was: <3>');
+      expect(finding).toEqual({
+        tool: 'java',
+        rule: 'maven-failure',
+        path: '.',
+        identity: 'maven-failure',
+        classification: 'tool-error',
+        message: [
+          `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
+            'for coverage and mutation testing:',
+          '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
+        ].join('\n'),
+      });
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
@@ -169,9 +178,12 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         ({ tool, rule, path: file }) => `${tool} ${rule} ${file}`,
       );
 
-      expect(failing).toContain('pmd EmptyCatchBlock app/src/main/java/demo/app/Parser.java');
-      expect(failing.every((line) => line.endsWith('app/src/main/java/demo/app/Parser.java'))).toBe(
-        true,
+      expect(failing).toEqual(
+        [
+          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck',
+          'pit mutant-nocoverage',
+          'pmd EmptyCatchBlock',
+        ].map((finding) => `${finding} app/src/main/java/demo/app/Parser.java`),
       );
     },
     2 * GRADLE_STEP_TIMEOUT_MS,

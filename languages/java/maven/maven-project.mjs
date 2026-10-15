@@ -107,8 +107,7 @@ export function readReactor(projectRoot, effectivePom) {
   const byCoordinates = new Map(projects.map((project) => [coordinates(project), project]));
   const modules = [];
   const pending = [path.join(projectRoot, 'pom.xml')];
-  while (pending.length > 0) {
-    const pomFile = pending.shift();
+  for (const pomFile of pending) {
     const project = existsSync(pomFile) ? byCoordinates.get(rawCoordinates(pomFile)) : undefined;
     if (
       project === undefined ||
@@ -144,12 +143,14 @@ export function parseDependencyList(text) {
 }
 
 export function moduleClasspaths(module, dependencies) {
-  const files = (scopes) =>
-    dependencies
-      .filter((entry) => scopes === undefined || scopes.has(entry.scope))
-      .map((entry) => entry.file);
   return {
-    mainCompile: files(MAIN_COMPILE_SCOPES),
-    testRuntime: [module.testOutputDirectory, module.outputDirectory, ...files(undefined)],
+    mainCompile: dependencies
+      .filter((entry) => MAIN_COMPILE_SCOPES.has(entry.scope))
+      .map((entry) => entry.file),
+    testRuntime: [
+      module.testOutputDirectory,
+      module.outputDirectory,
+      ...dependencies.map((entry) => entry.file),
+    ],
   };
 }

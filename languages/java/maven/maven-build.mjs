@@ -128,16 +128,19 @@ function runJdeps(module, reportDir) {
   writeFileSync(path.join(reportDir, 'jdeps.txt'), result.stdout);
 }
 
+function relativeRoots(module, roots) {
+  return roots.map((root) => relativeTo(module.basedir, root));
+}
+
 function writeManifest({ module, reportDir, pinned, classpaths }) {
-  const relative = (roots) => roots.map((root) => relativeTo(module.basedir, root));
   writeFileSync(
     path.join(reportDir, 'manifest.json'),
     JSON.stringify({
       versions: pinned,
       build: 'maven',
-      sourceRoots: relative(module.sourceRoots),
-      testSourceRoots: relative(module.testSourceRoots),
-      resourceRoots: relative(module.resourceRoots),
+      sourceRoots: relativeRoots(module, module.sourceRoots),
+      testSourceRoots: relativeRoots(module, module.testSourceRoots),
+      resourceRoots: relativeRoots(module, module.resourceRoots),
       spring: classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry))),
     }),
   );
@@ -164,6 +167,34 @@ function analyzeModule({ module, work, tools, pinned, configs, since }) {
   writeManifest({ module, reportDir, pinned, classpaths });
 }
 
+function readModules(projectRoot, maven, work) {
+  const modules = readReactor(projectRoot, readEffectivePom(projectRoot, maven, work)).filter(
+    (module) => module.packaging !== 'pom',
+  );
+  if (modules.length === 0) {
+    throw new Error(
+      `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
+    );
+  }
+  for (const module of modules) {
+    rmSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true, force: true });
+    mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
+  }
+  return modules;
+}
+
+function missingLauncherVersions(modules, work) {
+  const versions = modules.map((module) =>
+    junitLauncherVersion(
+      moduleClasspaths(
+        module,
+        parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
+      ).testRuntime,
+    ),
+  );
+  return [...new Set(versions.filter((version) => version !== undefined))];
+}
+
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   if (policy.preset === 'kotlin') {
     throw new Error('The kotlin preset runs on Gradle builds only; this project builds with Maven');
@@ -171,34 +202,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
-    const modules = readReactor(projectRoot, readEffectivePom(projectRoot, maven, work)).filter(
-      (module) => module.packaging !== 'pom',
-    );
-    if (modules.length === 0) {
-      throw new Error(
-        `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
-      );
-    }
-    for (const module of modules) {
-      rmSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true, force: true });
-      mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
-    }
+    const modules = readModules(projectRoot, maven, work);
     const since = Date.now() - 2000;
     buildAndTest({ projectRoot, maven, work, pinned });
-    const launcherVersions = [
-      ...new Set(
-        modules
-          .map((module) =>
-            junitLauncherVersion(
-              moduleClasspaths(
-                module,
-                parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8')),
-              ).testRuntime,
-            ),
-          )
-          .filter(Boolean),
-      ),
-    ];
+    const launcherVersions = missingLauncherVersions(modules, work);
     const tools = resolveTools({ projectRoot, maven, pinned, launcherVersions });
     for (const module of modules) {
       analyzeModule({ module, work, tools, pinned, configs, since });
@@ -217,13 +224,16 @@ const GRADLE_BUILD_FILES = [
 ];
 
 export function detectJavaBuild(projectRoot) {
-  const has = (name) => existsSync(path.join(projectRoot, name));
-  const gradle = GRADLE_BUILD_FILES.some(has);
-  if (!has('pom.xml')) {
+  const present = new Set(
+    ['pom.xml', 'mvnw', 'gradlew', ...GRADLE_BUILD_FILES].filter((name) =>
+      existsSync(path.join(projectRoot, name)),
+    ),
+  );
+  if (!present.has('pom.xml')) {
     return 'gradle';
   }
-  if (!gradle) {
+  if (!GRADLE_BUILD_FILES.some((name) => present.has(name))) {
     return 'maven';
   }
-  return has('mvnw') && !has('gradlew') ? 'maven' : 'gradle';
+  return present.has('mvnw') && !present.has('gradlew') ? 'maven' : 'gradle';
 }

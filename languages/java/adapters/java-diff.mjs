@@ -35,7 +35,7 @@ function kotlinProperties(projectRoot, { preset, kotlinFormatter, kotlinDetektCo
     : [];
 }
 
-export function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
+function toolConfigChoices(projectRoot, { toolPrecedence = {}, policyRoot } = {}) {
   return Object.fromEntries(
     [...PROJECT_TOOL_CONFIGS].map(([tool, file]) => {
       const precedence = toolPrecedence[tool] ?? ['nitpicker'];

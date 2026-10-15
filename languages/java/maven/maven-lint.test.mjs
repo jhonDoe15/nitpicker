@@ -7,6 +7,11 @@ import { readPinnedTools, toolDependencies } from './maven-tools.mjs';
 
 const roots = [];
 
+function dependency(groupId, artifactId, version, extra = '') {
+  const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`;
+  return `<dependency>${id}<version>${version}</version>${extra}</dependency>`;
+}
+
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -25,10 +30,15 @@ describe('nitpickerCheckstyleConfig', () => {
       '</module>',
     ].join('\n');
 
-    const text = nitpickerCheckstyleConfig(bundled);
-
-    expect(text).not.toMatch(/Suppress/u);
-    expect(text).toContain('<module name="TreeWalker">');
+    expect(nitpickerCheckstyleConfig(bundled)).toBe(
+      [
+        '<module name="Checker">',
+        '  ',
+        '  ',
+        '  <module name="TreeWalker"></module>',
+        '</module>',
+      ].join('\n'),
+    );
   });
 });
 
@@ -49,30 +59,52 @@ describe('javaFiles', () => {
 
 describe('maven tools', () => {
   it('reads the versions pinned in the Gradle init script', () => {
-    const pinned = readPinnedTools();
-
-    expect(Object.keys(pinned)).toEqual(
-      expect.arrayContaining([
-        'pmd',
-        'spotbugs',
-        'googleJavaFormat',
-        'jacoco',
-        'checkstyle',
-        'pitest',
-        'pitestJunit5',
-      ]),
-    );
+    expect(Object.keys(readPinnedTools())).toEqual([
+      'pmd',
+      'spotbugs',
+      'googleJavaFormat',
+      'jacoco',
+      'checkstyle',
+      'lizard',
+      'pitest',
+      'pitestJunit5',
+      'detekt',
+      'detektKotlin',
+      'ktlint',
+      'ktfmt',
+      'kotlinCompiler',
+    ]);
   });
 
   it('keeps the project JUnit Platform for PIT and adds a launcher per missing version', () => {
-    const tools = toolDependencies(readPinnedTools(), ['1.11.4']);
+    const pinned = readPinnedTools();
+    const exclusions = [
+      'org.junit.platform',
+      'org.junit.jupiter',
+      'org.opentest4j',
+      'org.apiguardian',
+    ]
+      .map(
+        (group) => `<exclusion><groupId>${group}</groupId><artifactId>*</artifactId></exclusion>`,
+      )
+      .join('');
 
-    expect(tools.pit[1]).toContain(
-      '<exclusion><groupId>org.junit.platform</groupId><artifactId>*</artifactId></exclusion>',
-    );
-    expect(tools['launcher-1.11.4']).toEqual([
-      '<dependency><groupId>org.junit.platform</groupId><artifactId>junit-platform-launcher</artifactId><version>1.11.4</version></dependency>',
+    const tools = toolDependencies(pinned, ['1.11.4']);
+
+    expect(tools.pit).toEqual([
+      dependency('org.pitest', 'pitest-command-line', pinned.pitest),
+      dependency(
+        'org.pitest',
+        'pitest-junit5-plugin',
+        pinned.pitestJunit5,
+        `<exclusions>${exclusions}</exclusions>`,
+      ),
     ]);
-    expect(tools.jacoco[0]).toContain('<classifier>nodeps</classifier>');
+    expect(tools['launcher-1.11.4']).toEqual([
+      dependency('org.junit.platform', 'junit-platform-launcher', '1.11.4'),
+    ]);
+    expect(tools.jacoco).toEqual([
+      dependency('org.jacoco', 'org.jacoco.cli', pinned.jacoco, '<classifier>nodeps</classifier>'),
+    ]);
   });
 });

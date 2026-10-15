@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runMaven } from './maven-command.mjs';
 
-export const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
+const INIT_SCRIPT = path.resolve(import.meta.dirname, '../gradle/nitpicker.init.gradle');
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
@@ -18,12 +18,16 @@ const JUNIT_PLATFORM_EXCLUSIONS = [
 
 export function readPinnedTools(initScript = INIT_SCRIPT) {
   const block = /def pinned = \[([^\]]*)\]/u.exec(readFileSync(initScript, 'utf8'));
-  return Object.fromEntries(
+  const pinned = Object.fromEntries(
     [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/gu)].map(([, name, version]) => [
       name,
       version,
     ]),
   );
+  if (Object.keys(pinned).length === 0) {
+    throw new Error(`No pinned tool versions found in ${initScript}`);
+  }
+  return pinned;
 }
 
 export function jacocoPlugin(pinned) {

@@ -45,7 +45,10 @@ function effective(root) {
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
           <executions>
-            <execution><goals><goal>add-source</goal></goals><configuration><sources><source>src/generated/java</source></sources></configuration></execution>
+            <execution>
+              <goals><goal>add-source</goal></goals>
+              <configuration><sources><source>src/generated/java</source></sources></configuration>
+            </execution>
           </executions>
         </plugin>
         <plugin>
@@ -70,6 +73,24 @@ function effective(root) {
 `;
 }
 
+function defaultModule(basedir, coordinates, packaging) {
+  const target = path.join(basedir, 'target');
+  return {
+    basedir,
+    coordinates,
+    packaging,
+    buildDirectory: target,
+    outputDirectory: path.join(target, 'classes'),
+    testOutputDirectory: path.join(target, 'test-classes'),
+    sourceRoots: [path.join(basedir, 'src/main/java')],
+    testSourceRoots: [path.join(basedir, 'src/test/java')],
+    resourceRoots: [],
+    surefireReports: path.join(target, 'surefire-reports'),
+    jacocoDestFile: undefined,
+    archunitIncludes: undefined,
+  };
+}
+
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -85,7 +106,7 @@ describe('readReactor', () => {
     });
     const [parent, core, app] = readReactor(root, effective(root));
 
-    expect(parent).toMatchObject({ basedir: root, packaging: 'pom' });
+    expect(parent).toEqual(defaultModule(root, 'demo:parent', 'pom'));
     expect(core).toEqual({
       basedir: path.join(root, 'core'),
       coordinates: 'demo:core',
@@ -100,14 +121,7 @@ describe('readReactor', () => {
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
     });
-    expect(app).toMatchObject({
-      basedir: path.join(root, 'tools'),
-      packaging: 'war',
-      outputDirectory: path.join(root, 'tools/target/classes'),
-      sourceRoots: [path.join(root, 'tools/src/main/java')],
-      surefireReports: path.join(root, 'tools/target/surefire-reports'),
-      jacocoDestFile: undefined,
-    });
+    expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
   });
 
   it('reads a single-module effective POM', () => {

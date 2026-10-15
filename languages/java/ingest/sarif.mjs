@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const ENFORCEABLE_LEVELS = new Set(['error', 'warning']);
 const SKIPPED_KINDS = new Set(['pass', 'notApplicable']);
@@ -178,4 +180,67 @@ function nonEmpty(value) {
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
+  return {
+    ...log,
+    runs: (log.runs ?? []).map((run) => ({
+      ...run,
+      results: (run.results ?? []).map((result) =>
+        prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }),
+      ),
+    })),
+  };
+}
+
+function prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }) {
+  const subject = identityKey(result);
+  const prepared = {
+    ...result,
+    level: result.level === 'error' ? 'error' : 'warning',
+    locations: (result.locations ?? []).map((location) =>
+      relocate(location, { roots, sourceRoots, projectRoot }),
+    ),
+  };
+  if (typeof subject === 'string' && subject !== '' && result.partialFingerprints === undefined) {
+    prepared.partialFingerprints = { 'nitpicker/subject': subject };
+  }
+  return prepared;
+}
+
+function relocate(location, { roots, sourceRoots, projectRoot }) {
+  const uri = location.physicalLocation?.artifactLocation?.uri;
+  if (typeof uri !== 'string') {
+    return location;
+  }
+  const resolved = resolveUri(uri, { roots, sourceRoots, projectRoot });
+  return {
+    ...location,
+    physicalLocation: {
+      ...location.physicalLocation,
+      artifactLocation: { uri: resolved },
+    },
+  };
+}
+
+export function projectRelative(uri, roots) {
+  for (const root of roots) {
+    const relative = normalizeUri(uri, root);
+    if (relative !== undefined) {
+      return relative;
+    }
+  }
+  return undefined;
+}
+
+function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
+  const relative = projectRelative(uri, roots);
+  if (relative === undefined) {
+    return uri;
+  }
+  const owner = sourceRoots.find((sourceRoot) =>
+    existsSync(path.join(projectRoot, sourceRoot, relative)),
+  );
+  return owner === undefined ? relative : `${owner}/${relative}`;
 }
