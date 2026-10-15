@@ -3,11 +3,33 @@ import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls
 
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
 const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);
+const TWO_PATH_FUNCTIONS = new Set(['rename', 'copyFile'].flatMap((name) => [name, `${name}Sync`]));
 const FS_FUNCTIONS = new Set(
-  ['readFile', 'writeFile', 'appendFile', 'readdir', 'unlink', 'rm', 'createReadStream']
+  [
+    'readFile',
+    'writeFile',
+    'appendFile',
+    'readdir',
+    'unlink',
+    'rm',
+    'stat',
+    'access',
+    'mkdir',
+    'open',
+    'readlink',
+    'truncate',
+    'createReadStream',
+  ]
     .flatMap((name) => [name, `${name}Sync`])
-    .concat(['createWriteStream']),
+    .concat(['createWriteStream', ...TWO_PATH_FUNCTIONS]),
 );
+const RESPONSE_SINKS = new Set(['sendFile']);
+const WRAPPED_EXPRESSIONS = new Set([
+  'TSAsExpression',
+  'TSNonNullExpression',
+  'TSSatisfiesExpression',
+  'ChainExpression',
+]);
 const PATH_BUILDERS = new Set(['join', 'resolve']);
 const MAX_TAINT_STEPS = 50;
 const FUNCTION_TYPES = new Set([
@@ -29,33 +51,47 @@ function isParameter(sourceCode, identifier) {
   );
 }
 
-function taintSources(sourceCode, expression) {
+function callTaintSources(call, pathModule) {
+  return importedCalleeName(call.callee, pathModule) === 'basename'
+    ? []
+    : [call.callee, ...call.arguments];
+}
+
+function taintSources(scope, expression) {
+  if (WRAPPED_EXPRESSIONS.has(expression.type)) {
+    return [expression.expression];
+  }
   switch (expression.type) {
     case 'Identifier': {
-      const initializer = constantInitializer(sourceCode, expression);
+      const initializer = constantInitializer(scope.sourceCode, expression);
       return initializer === undefined ? [] : [initializer];
     }
     case 'MemberExpression':
       return [expression.object];
     case 'CallExpression':
-      return [expression.callee];
+      return callTaintSources(expression, scope.pathModule);
     case 'TemplateLiteral':
       return expression.expressions;
     case 'BinaryExpression':
+    case 'LogicalExpression':
       return [expression.left, expression.right];
+    case 'ConditionalExpression':
+      return [expression.consequent, expression.alternate];
+    case 'SpreadElement':
+      return [expression.argument];
     default:
       return [];
   }
 }
 
-function isTainted(sourceCode, expression) {
+function isTainted(scope, expression) {
   const pending = [expression];
   for (const current of pending) {
-    if (current.type === 'Identifier' && isParameter(sourceCode, current)) {
+    if (current.type === 'Identifier' && isParameter(scope.sourceCode, current)) {
       return true;
     }
     if (pending.length < MAX_TAINT_STEPS) {
-      pending.push(...taintSources(sourceCode, current));
+      pending.push(...taintSources(scope, current));
     }
   }
   return false;
@@ -77,19 +113,43 @@ function checksContainment(sourceCode, owner, name) {
     return false;
   }
   const variable = escaped(name);
-  const check = new RegExp(
-    String.raw`\b${variable}\.startsWith\(|\brelative\([^)]*\b${variable}\b`,
-    'u',
-  );
+  const checks = [
+    String.raw`\b${variable}\.startsWith\(`,
+    String.raw`\bresolve\(\s*${variable}\s*\)\.startsWith\(`,
+    String.raw`\brelative\([^)]*\b${variable}\b`,
+  ];
+  const check = new RegExp(checks.join('|'), 'u');
   return check.test(sourceCode.getText(owner));
 }
 
-function isUnsafeBuild(sourceCode, call, pathModule) {
+function isUnsafeBuild(scope, call) {
   return (
     call?.type === 'CallExpression' &&
-    PATH_BUILDERS.has(importedCalleeName(call.callee, pathModule)) &&
-    call.arguments.slice(1).some((segment) => isTainted(sourceCode, segment))
+    PATH_BUILDERS.has(importedCalleeName(call.callee, scope.pathModule)) &&
+    call.arguments.slice(1).some((segment) => isTainted(scope, segment))
   );
+}
+
+function fsBindings(program) {
+  const bindings = moduleBindings(program, FS_MODULES);
+  for (const [local, imported] of bindings.named) {
+    if (imported === 'promises') {
+      bindings.namespaces.add(local);
+    }
+  }
+  return bindings;
+}
+
+function sinkPaths(call, fs) {
+  const name = importedCalleeName(call.callee, fs);
+  if (FS_FUNCTIONS.has(name)) {
+    return call.arguments.slice(0, TWO_PATH_FUNCTIONS.has(name) ? 2 : 1);
+  }
+  const isResponseSink =
+    call.callee.type === 'MemberExpression' &&
+    !call.callee.computed &&
+    RESPONSE_SINKS.has(call.callee.property.name);
+  return isResponseSink ? call.arguments.slice(0, 1) : [];
 }
 
 export const rule = {
@@ -105,23 +165,24 @@ export const rule = {
   create(context) {
     const sourceCode = context.sourceCode;
     let fs = { named: new Map(), namespaces: new Set() };
-    let pathModule = { named: new Map(), namespaces: new Set() };
+    const scope = { sourceCode, pathModule: { named: new Map(), namespaces: new Set() } };
+
+    function isUnsafeSink(node, argument) {
+      const { call, name } = joinedPath(sourceCode, argument);
+      if (!isUnsafeBuild(scope, call)) {
+        return false;
+      }
+      const owner = ancestorsOf(node).find((ancestor) => FUNCTION_TYPES.has(ancestor.type));
+      return !checksContainment(sourceCode, owner, name);
+    }
 
     return {
       Program(node) {
-        fs = moduleBindings(node, FS_MODULES);
-        pathModule = moduleBindings(node, PATH_MODULES);
+        fs = fsBindings(node);
+        scope.pathModule = moduleBindings(node, PATH_MODULES);
       },
       CallExpression(node) {
-        if (!FS_FUNCTIONS.has(importedCalleeName(node.callee, fs))) {
-          return;
-        }
-        const { call, name } = joinedPath(sourceCode, node.arguments[0]);
-        if (!isUnsafeBuild(sourceCode, call, pathModule)) {
-          return;
-        }
-        const owner = ancestorsOf(node).find((ancestor) => FUNCTION_TYPES.has(ancestor.type));
-        if (!checksContainment(sourceCode, owner, name)) {
+        if (sinkPaths(node, fs).some((argument) => isUnsafeSink(node, argument))) {
           context.report({ node, messageId: 'unsafePath' });
         }
       },
