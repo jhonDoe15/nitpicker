@@ -433,8 +433,12 @@ describe('validateJavaConfig', () => {
       rule: 'checkstyle/com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
     };
 
-    expect(() => validateJavaConfig({ preset: 'java', exceptions: [exception] })).not.toThrow();
-    expect(() => validateJavaConfig({ preset: 'java', exceptions: [byClass] })).toThrow(
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [exception] });
+    }).not.toThrow();
+    expect(() => {
+      validateJavaConfig({ preset: 'java', exceptions: [byClass] });
+    }).toThrow(
       `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
     );
   });
