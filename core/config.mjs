@@ -61,6 +61,7 @@ function readConfigFile(projectRoot) {
   } catch (error) {
     throw new Error(
       `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
     );
   }
   return validateConfig(parsed);

@@ -1,5 +1,5 @@
-export const POLICY_TOOL = 'nitpicker-config';
-export const POLICY_RULE = 'policy-loosened';
+const POLICY_TOOL = 'nitpicker-config';
+const POLICY_RULE = 'policy-loosened';
 
 const ACCEPT_ROUTE =
   'A change that loosens nitpicker.config.json fails until a person accepts it: rerun with ' +
