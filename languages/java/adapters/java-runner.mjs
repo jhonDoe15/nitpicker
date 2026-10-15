@@ -38,7 +38,7 @@ const USAGE =
   'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
   ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
-  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
+  ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--pmd-precedence <layers>] [--checkstyle-precedence <layers>]';
 
 function parseException(value) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
@@ -96,7 +96,8 @@ export function parseRunnerArguments(arguments_) {
     projectRoot: values.get('--project-root'),
     policy: {
       crapLimit,
-      fileLimits: parseFileLimits(values.get('--file-limits')),
+      fileLimits: parseJsonObject(values.get('--file-limits'), '--file-limits'),
+      testSeconds: parseJsonObject(values.get('--test-seconds'), '--test-seconds'),
       exclude,
       exceptions,
       legacyInventory: values.get('--legacy-inventory'),
@@ -139,15 +140,16 @@ const RUNNER_OPTIONS = [
   '--pmd-precedence',
   '--checkstyle-precedence',
   '--file-limits',
+  '--test-seconds',
 ];
 
-function parseFileLimits(text) {
+function parseJsonObject(text, option) {
   if (text === undefined) {
     return undefined;
   }
   const parsed = JSON.parse(text);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error('--file-limits must be a JSON object');
+    throw new Error(`${option} must be a JSON object`);
   }
   return parsed;
 }

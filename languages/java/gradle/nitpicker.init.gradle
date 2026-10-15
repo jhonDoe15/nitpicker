@@ -404,6 +404,12 @@ allprojects {
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
             dependsOn { tasks.withType(Checkstyle) }
             doLast {
+                tasks.withType(Test).findAll { it.name != 'nitpickerArchunit' && gradle.taskGraph.hasTask(it) }.each { testTask ->
+                    copy {
+                        from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml' }
+                        into reportDir.get().dir("test-results/${testTask.name}")
+                    }
+                }
                 def roots = mainSources.files.collect { relativeToRoot(it) }
                 def testRoots = testSourceDirectories().collect { relativeToRoot(it) }
                 def resourceRoots = sourceSets.main.resources.srcDirs.collect { relativeToRoot(it) }

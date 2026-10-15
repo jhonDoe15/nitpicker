@@ -28,6 +28,8 @@ export const CONFIGURATION_FILES = [
   'languages/java/adapters/gradle-reports/report-modules.mjs',
   'languages/java/ingest/sarif-paths/sarif-relocation.mjs',
   'languages/java/adapters/jpa/jpa-source-filters.mjs',
+  'languages/java/adapters/test-times/slow-tests.mjs',
+  'languages/java/adapters/test-times/test-methods.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
   'languages/java/adapters/kotlin-metrics.mjs',
   'languages/java/adapters/kotlin-options.mjs',

@@ -185,7 +185,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
     the main and test source sets (branch coverage and duplicates have fixed limits). Line length
-    is Checkstyle's; `thresholds.lineLength` is a config error.
+    is Checkstyle's; `thresholds.lineLength` is a config error. `unitTestSeconds` and
+    `integrationTestSeconds` are the [slow test](#slow-tests) budgets.
   - `exclude` drops findings whose project-relative path matches a glob (`**`, `*`, `?`, `{a,b}`);
     the tools still run on those files.
   - `legacyInventory` (default `nitpicker.legacy.json`) lists existing sites as
@@ -390,6 +391,28 @@ resolved plus a new finding, as in the TypeScript check.
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
+
+## Slow tests
+
+- **Rule.** `test-runtime/slow-test` fails a test the change adds or edits when it takes more than 5 s
+  as a unit test, or more than 30 s as an integration test (`thresholds.unitTestSeconds` and
+  `thresholds.integrationTestSeconds`). Integration tests are those of a test task other than `test`,
+  classes named `*IT`, `*ITCase` or `*IntegrationTest(s)`, and classes annotated `@SpringBootTest`.
+  The message names the budget, the measured time, the fixes (no `Thread.sleep` or other waits, a
+  smaller Spring context or a test slice, or moving it to an integration test source set) and the
+  exception route.
+- **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
+  `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
+  `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
+  its slowest time.
+- **Edited or added.** Each test is keyed by class and testcase name (Gradle writes the display name,
+  so a parameterized case is keyed by its `[n] ...` name; Surefire writes the method name). The test
+  method is found in the source by that name or its `@DisplayName`, with its annotations; a test is
+  counted when its method text differs from the base, or the file is new. A name that maps to no
+  method (a custom parameterized name) is counted when its file changed. Slow tests the change does
+  not touch stay baselined, and the base snapshot reports none.
+- **Tests.** `adapters/test-times/slow-tests.test.mjs` (sample Gradle and Surefire XML) and the
+  multi-project e2e fixture.
 
 ## Structure limits (SH5)
 
