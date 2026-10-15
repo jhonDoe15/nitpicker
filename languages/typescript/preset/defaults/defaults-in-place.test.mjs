@@ -42,6 +42,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
+  'languages/typescript/preset/eslint-plugin/type-identity',
   'shared',
 ];
 const temporaryRoots = [];

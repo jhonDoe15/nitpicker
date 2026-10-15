@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { readLayout } from '../head-policy.mjs';
+import { EXCLUDED_PATH_PATTERN } from '../layout.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
@@ -10,8 +11,8 @@ const dependencyCruiser = path.join(
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
 const config = path.join(import.meta.dirname, 'config.mjs');
-export const EXCLUDED_PATH_PATTERN =
-  '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+export { EXCLUDED_PATH_PATTERN };
+const excludedPath = new RegExp(EXCLUDED_PATH_PATTERN);
 export const ARCHITECTURE_CONFIG =
   'languages/typescript/preset/defaults/dependency-cruiser.config.mjs';
 export const POLICY_TYPESCRIPT_CONFIG =
@@ -91,11 +92,7 @@ export function normalizePath(value) {
 
 export function isExcludedPath(value) {
   const normalized = normalizePath(value);
-  return (
-    /(?:^|\/)(?:node_modules|dist|build|generated|coverage|reports|target)(?:\/|$)/.test(
-      normalized,
-    ) || normalized.endsWith('.d.ts')
-  );
+  return excludedPath.test(normalized) || normalized.endsWith('.d.ts');
 }
 
 export function isTypeOnlyDependency(dependency) {

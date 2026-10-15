@@ -286,9 +286,7 @@ export function analyzeProductionCallbacks({
     return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
       const fullPath = path.join(directory, entry.name);
       if (entry.isDirectory())
-        return /^(?:__tests__|tests|dist|build|node_modules)$/.test(entry.name)
-          ? []
-          : sources(fullPath);
+        return /^(?:__tests__|tests|node_modules)$/.test(entry.name) ? [] : sources(fullPath);
       const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
       return entry.isFile() &&
         layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&

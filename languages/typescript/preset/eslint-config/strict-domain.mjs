@@ -1,6 +1,6 @@
-import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
 export function domainGlobsFor(sourceRoots) {
@@ -95,7 +95,7 @@ export const strictDomainConfig = [
   {
     files: domainGlobs,
     languageOptions: { parser: tseslint.parser },
-    plugins: { functional, nitpicker: nitpickerRules },
+    plugins: { functional: functionalPlugin, nitpicker: nitpickerRules },
     rules: {
       ...domainFunctionalRules,
       'no-restricted-syntax': ['error', ...domainRestrictedSyntax],

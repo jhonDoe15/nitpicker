@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  defaultResolvedLayout,
+  globToRegExp,
   sourceGlobs,
   testGlobs,
   isSourceFile,
@@ -36,8 +38,34 @@ describe('common layout', () => {
     }
     expect(isSourceFile('src/service.ts')).toBe(true);
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
-    expect(isSourceFile('src/generated/service.ts')).toBe(false);
+    expect(isSourceFile('src/generated/service.ts')).toBe(true);
+    expect(isSourceFile('src/main/features/reports/domain/service.ts')).toBe(true);
+    expect(isSourceFile('generated/service.ts')).toBe(false);
     expect(isSourceFile('src/service.d.ts')).toBe(false);
+  });
+});
+
+const readConfig = (name) =>
+  JSON.parse(readFileSync(path.join(import.meta.dirname, 'defaults', name), 'utf8'));
+
+describe('built-in excluded globs', () => {
+  it('match build output folders only at the project root', () => {
+    const matches = (file) =>
+      defaultResolvedLayout.excludedGlobs.some((glob) => globToRegExp(glob).test(file));
+
+    for (const folder of ['dist', 'build', 'generated', 'coverage', 'reports', 'target']) {
+      expect(matches(`${folder}/a.ts`)).toBe(true);
+      expect(matches(`src/main/features/${folder}/domain/a.ts`)).toBe(false);
+    }
+    expect(matches('src/node_modules/pkg/a.ts')).toBe(true);
+  });
+
+  it('lint and type-check hand-written declaration files but keep them out of runtime checks', () => {
+    expect(defaultResolvedLayout.excludedGlobs).not.toContain('**/*.d.ts');
+    expect(defaultResolvedLayout.runtimeExcludedGlobs).toContain('**/*.d.ts');
+    expect(readConfig('tsconfig.quality.json').exclude).not.toContain('**/*.d.ts');
+    expect(readConfig('tsconfig.quality.json').compilerOptions.noEmit).toBe(true);
+    expect(readConfig('tsconfig.stryker.json').exclude).not.toContain('**/*.d.ts');
   });
 });
 

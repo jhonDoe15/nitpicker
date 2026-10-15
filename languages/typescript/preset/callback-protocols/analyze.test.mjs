@@ -99,19 +99,21 @@ describe('callback protocol architecture rules', () => {
     try {
       mkdirSync(path.join(root, 'arbitrary', 'nested'), { recursive: true });
       mkdirSync(path.join(root, '__tests__'));
-      mkdirSync(path.join(root, 'dist'));
+      mkdirSync(path.join(root, 'node_modules'));
+      mkdirSync(path.join(root, 'build'));
       const broken = `const c = new WorkLoop({produce: () => c.snapshot()});`;
       for (const file of [
         'one.ts',
         'arbitrary/nested/two.ts',
         '__tests__/skip.ts',
-        'dist/skip.ts',
+        'node_modules/skip.ts',
         'ignored.test.ts',
       ])
         writeFileSync(path.join(root, file), broken);
+      writeFileSync(path.join(root, 'build/kept.ts'), broken);
       const result = analyzeProductionCallbacks({ sourceRoot: root, contracts });
-      expect(result.filesScanned).toBe(2);
-      expect(result.findings).toHaveLength(2);
+      expect(result.filesScanned).toBe(3);
+      expect(result.findings).toHaveLength(3);
       expect(result.findings.every((finding) => finding.line === 1 && finding.column > 0)).toBe(
         true,
       );
