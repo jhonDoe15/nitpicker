@@ -1,6 +1,12 @@
+import { ESLint } from 'eslint';
+import functional from 'eslint-plugin-functional';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
-import { strictDomainConfig } from './strict-domain.mjs';
+import { domainTypeAwareFunctionalRules, strictDomainConfig } from './strict-domain.mjs';
 
 function messagesFor(filename, code) {
   return lintFixture({ config: strictDomainConfig, filename, code })
@@ -52,5 +58,39 @@ export function total(lines: readonly Line[]) {
 
   it('applies to nested domain files of every feature', () => {
     expect(messagesFor('src/main/features/other/domain/deep/x.ts', 'let n = 1;')).toHaveLength(1);
+  });
+
+  it('keeps parameters, return types and module values readonly but not locals inside functions', async () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-domain-readonly-'));
+    const eslint = new ESLint({
+      cwd: root,
+      overrideConfigFile: true,
+      overrideConfig: [
+        {
+          files: ['**/*.ts'],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: {
+              projectService: { allowDefaultProject: ['*.ts'] },
+              tsconfigRootDir: root,
+            },
+          },
+          plugins: { functional },
+          rules: domainTypeAwareFunctionalRules,
+        },
+      ],
+    });
+    const code = [
+      'export const ids = [1, 2, 3];',
+      'export function evens(xs: number[]): number[] {',
+      '  const kept = xs.filter((x) => x % 2 === 0);',
+      '  const seen = new Set(kept);',
+      '  return [...seen];',
+      '}',
+    ].join('\n');
+
+    const [result] = await eslint.lintText(code, { filePath: path.join(root, 'invoice.ts') });
+
+    expect(result.messages.map(({ line }) => line)).toEqual([1, 2, 2]);
   });
 });

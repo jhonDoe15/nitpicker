@@ -45,8 +45,10 @@ config file is an exception like any other.
 
 ## Inside `domain/`
 
-- `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters and data types
-  are `readonly`.
+- `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters, return types,
+  module-level values and data types are `readonly`. A variable inside a function needs no
+  `readonly` annotation: the mutation bans below already cover it, and annotating every
+  intermediate `map` or `filter` result only made agents write worse code to satisfy the rule.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
