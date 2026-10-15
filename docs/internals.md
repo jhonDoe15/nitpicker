@@ -19,7 +19,7 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
 - **Policy links.** Without `transform` the package-owned policy file is linked into the analyzed tree; with one (the layout changed) it is a rewritten copy, still derived from the head policy and never from the analyzed tree.
 - **Shared build directory.** `runScheduler` creates one directory per side (`NITPICKER_SHARED_BUILD_DIRECTORY`, inherited by every analyzer process) and removes it when the scheduler exits. `buildOnce(key, build)` runs `build` in the first process to take `<key>.lock`; the others poll for `<key>.result` (or `<key>.failure`, rethrown so a broken build is not repeated). A lock whose owning process is gone (or an empty one left by a crash) is taken over by renaming it aside and re-checking it. A build killed by a signal records nothing, so a waiter builds instead; other failures are recorded. Without the variable, `buildOnce` just builds, so direct runs and tests are unchanged.
 - **Temporary files.** Register before creating the file so it is removed on exit or interruption even if the runner's `finally` blocks never run.
-- **Presets.** `preset` is explicit; there is no Gradle auto-detection. Injected analyzers win over the preset.
+- **Presets.** `preset` is explicit; there is no Gradle auto-detection. Injected analyzers win over the preset. Within the Java preset the build tool is detected (`detectJavaBuild`): Maven when the root has a `pom.xml` and no Gradle build file, or both but only `mvnw` and no `gradlew`; Gradle otherwise.
 
 ## Shared rules (`shared/`, `spec/`)
 
@@ -63,6 +63,9 @@ The JavaScript preset reuses the TypeScript pipeline; `languages/javascript/pres
 ## Java preset (`languages/java/`)
 
 Gradle runs once and yields findings for all tools; reports land in `<projectRoot>/build/nitpicker`. Ingesters turn tool reports into findings:
+
+- **Maven builds.** `detectJavaBuild` (`languages/java/builds/java-build.mjs`) picks the build; `languages/java/maven/` writes the same reports per module in `<module>/target/nitpicker` and `readModuleFindings` (`builds/java-modules.mjs`) prefixes each module's findings. The tool versions on both sides come from the init script's `def pinned = [...]` map, parsed by `readPinnedTools` with a regex, so keep that map one `name: 'version'` pair per entry. Surefire reports and coverage files count as fresh when modified at most 2 s before the build started (file systems with coarse timestamps); our JaCoCo file is `target/nitpicker-jacoco.exec`. The resolved tool classpaths are cached per user in `$XDG_CACHE_HOME/nitpicker` (else `~/.cache/nitpicker`), keyed by a hash of the tool coordinates; base and head run one after the other, so they never resolve at the same time.
+- **XML text.** `parseXml` sets `text` on a leaf element (entities decoded, comments dropped, CDATA kept verbatim); an empty leaf has no `text`.
 
 - **Common.** Repeats of one identity within a report get `#n` in report order. The XML parser reads elements and attributes only and throws `TypeError` when malformed.
 - **SARIF** (PMD, SpotBugs). Identity is `partialFingerprints` (sorted) when present, else a hash of rule, path and symbol. Absolute `file://` URIs (PMD) and source-root-relative paths (SpotBugs) are made project-relative; results outside the project are skipped. SpotBugs `note`-level results are promoted because the tool already runs at the configured threshold, and its subject comes from message arguments since the text is generic.

@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
+import { detectJavaBuild } from '../builds/java-build.mjs';
 import { GRADLE_PRESETS } from './gradle-presets.mjs';
 import { EXCEPTION_SEPARATOR } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
@@ -8,23 +9,32 @@ import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
+export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 
 export function analyzeJavaSnapshot(
   projectRoot,
-  { gradle = process.env.NITPICKER_GRADLE, policy } = {},
+  { gradle = process.env.NITPICKER_GRADLE, maven = process.env.NITPICKER_MAVEN, policy } = {},
 ) {
   try {
-    return { findings: collectJavaFindings(projectRoot, { gradle: gradle || undefined, policy }) };
+    return {
+      findings: collectJavaFindings(projectRoot, {
+        gradle: gradle || undefined,
+        maven: maven || undefined,
+        policy,
+      }),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const rule =
+      detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
     return {
       findings: [
         {
           tool: policy?.preset ?? 'java',
-          rule: GRADLE_FAILURE_RULE,
+          rule,
           path: '.',
-          identity: GRADLE_FAILURE_RULE,
+          identity: rule,
           message:
             message.length > MAX_MESSAGE_LENGTH
               ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...`
