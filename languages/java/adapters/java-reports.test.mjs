@@ -209,7 +209,7 @@ describe('readJavaFindings', () => {
       ['function-parameters-limit', 'Bad.decode'],
       ['changed-branch-coverage', 'Bad.decode'],
     ]);
-    expect(routed.map(({ message }) => message.match(/If this is intended.*$/)[0])).toEqual([
+    expect(routed.map(({ message }) => message.match(/If a reviewer.*$/)[0])).toEqual([
       'If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       'If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       'If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
@@ -217,7 +217,7 @@ describe('readJavaFindings', () => {
     const lifted = applyJavaPolicy(findings, {
       exceptions: [
         entry('function-parameters-limit', 'Bad.decode'),
-        entry('crap-score-limit', 'decode'),
+        entry('crap-score-limit', 'Bad.decode'),
         entry('changed-branch-coverage', 'Bad.decode'),
       ],
     });

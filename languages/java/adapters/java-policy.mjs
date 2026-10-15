@@ -9,8 +9,9 @@ import { configError } from '../../../shared/config.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
-import { withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
+import { sharedRouteRule, withExceptionRoutes } from '../../../shared/exceptions/routes.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
 import { canonicalRule } from '../../../shared/exceptions/rule-names.mjs';
 
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
@@ -133,6 +134,14 @@ function hashWithArguments(configurationHash, adapterArguments) {
         .digest('hex');
 }
 
+const LINT_TOOLS = ['pmd', 'checkstyle', 'spotbugs', 'archunit'];
+
+function javaRouteRule(finding) {
+  return LINT_TOOLS.includes(finding.tool) && finding.rule !== INLINE_SUPPRESSION_RULE
+    ? `${finding.tool}/${finding.rule}`
+    : sharedRouteRule(finding);
+}
+
 export function applyJavaPolicy(
   findings,
   {
@@ -150,6 +159,7 @@ export function applyJavaPolicy(
   const kept = applyFindingExceptions(
     withExceptionRoutes(
       findings.filter((finding) => !excluders.some((matcher) => matcher.test(finding.path))),
+      javaRouteRule,
     ),
     exceptions,
   );

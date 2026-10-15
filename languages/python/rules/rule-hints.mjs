@@ -1,3 +1,5 @@
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+
 export const RULES_TOOL = 'python-rules';
 const TYPE_CHECK_TOOLS = ['mypy', 'pyright'];
 const HINTED_TOOLS = ['ruff', ...TYPE_CHECK_TOOLS, RULES_TOOL];
@@ -82,9 +84,7 @@ export const RULE_HINTS = [
     tool: RULES_TOOL,
     rules: ['no-inline-suppression'],
     describe: (subject) => `Inline suppression \`# ${subject}\``,
-    allowed:
-      'Remove the comment and fix the code. If it must stay, add a "python.exceptions" entry for no-inline-suppression for this path.',
-    exception: false,
+    allowed: 'Remove the comment and fix the code.',
   },
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   {
@@ -110,10 +110,6 @@ function matches(hint, finding) {
 
 export function hintFor(finding) {
   return RULE_HINTS.find((hint) => matches(hint, finding));
-}
-
-export function exceptionSentence(rule) {
-  return `To allow it for some paths, add a "python.exceptions" entry for ${rule} in nitpicker.config.json.`;
 }
 
 export function describeRuleFinding(rule, subject) {
@@ -143,7 +139,9 @@ export function withHint(finding) {
   const sentences = [
     `${finding.message.replace(/\.$/, '')}.`,
     ...(hint === undefined ? [] : [hint.allowed]),
-    ...(hint?.exception === false ? [] : [exceptionSentence(finding.rule)]),
+    ...(hint?.exception === false
+      ? []
+      : [exceptionRoute({ rule: finding.rule, path: finding.path, key: 'python.exceptions' })]),
   ];
   return { ...finding, message: sentences.join(' ') };
 }

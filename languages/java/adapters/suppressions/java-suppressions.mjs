@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 
-const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
+export const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
 const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
 
 const LITERALS_AND_COMMENTS =

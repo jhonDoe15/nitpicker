@@ -90,7 +90,7 @@ describe('python config validation', () => {
     [{ exceptions: ['T201'] }, '"python.exceptions[0]" must be an object'],
     [
       { exceptions: [{ rule: 'T201', paths: ['a'], reason: 'r', why: 'x' }] },
-      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, function, reason',
+      'unknown key "why" in "python.exceptions[0]". Allowed keys: rule, paths, function, name, reason',
     ],
     [
       { exceptions: [{ paths: ['a'], reason: 'r' }] },
