@@ -1,6 +1,6 @@
-import { collectArchitectureReports } from './coverage/architecture-reports.mjs';
-import { runJacocoReport } from './coverage/jacoco-report.mjs';
-import { runPit } from './coverage/pit.mjs';
+import { collectArchitectureReports } from './measure/architecture-reports.mjs';
+import { runJacocoReport } from './measure/jacoco-report.mjs';
+import { runPit } from './measure/pit.mjs';
 import { runCheckstyle } from './lint/checkstyle.mjs';
 import { runFormat } from './lint/format.mjs';
 import { runPmd } from './lint/pmd.mjs';

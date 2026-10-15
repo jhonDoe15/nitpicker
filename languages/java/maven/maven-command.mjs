@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { condenseFailure } from '../adapters/gradle-wrapper/failure-text.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { testFailureSummary } from './context/failure-summary.mjs';
 
 export const MAVEN_COMMAND_VARIABLE = 'NITPICKER_MAVEN';
 const BASE_ARGUMENTS = ['-B', '-q'];
@@ -46,7 +47,8 @@ export function createMavenRunner({ projectRoot, configured, deadline, spawn = s
       throw result.error;
     }
     if (result.status !== 0) {
-      const detail = condenseFailure(`${result.stdout}\n${result.stderr}`, MAX_FAILURE_LENGTH);
+      const output = `${result.stdout}\n${result.stderr}`;
+      const detail = testFailureSummary(output) ?? condenseFailure(output, MAX_FAILURE_LENGTH);
       throw new Error(`${label} failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
     }
     return result.stdout;
