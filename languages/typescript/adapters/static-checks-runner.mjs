@@ -28,7 +28,7 @@ import {
   prettierPrecedence,
   readLayout,
   typecheckEngine,
-  usesProjectConfig,
+  usesLayeredPrettier,
 } from '../preset/head-policy.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
@@ -101,9 +101,8 @@ async function runPrettier(options) {
     return [];
   const installedPolicy = installPrettierPolicy(options);
   try {
-    const precedence = prettierPrecedence();
-    if (usesProjectConfig(precedence)) {
-      return await layeredFormattingFindings(options, installedPolicy, precedence);
+    if (usesLayeredPrettier()) {
+      return await layeredFormattingFindings(options, installedPolicy, prettierPrecedence());
     }
     const unformattedFiles = listUnformattedFiles(options, installedPolicy);
     return await formattingFindingsOf(options, unformattedFiles, installedPolicy.configPath);
@@ -121,6 +120,7 @@ function listUnformattedFiles(options, installedPolicy) {
       installedPolicy.configPath,
       '--ignore-path',
       installedPolicy.ignorePath,
+      '--no-editorconfig',
       '--list-different',
       '--no-error-on-unmatched-pattern',
       ...options.patterns,

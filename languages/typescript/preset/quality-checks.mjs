@@ -26,7 +26,6 @@ export const jscpdVersion = 'unresolved';
 export const knipVersion = 'unresolved';
 export const crapVersion = 'unresolved';
 export const strykerVersion = 'unresolved';
-
 const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 const POLICY_FILES = [
@@ -202,6 +201,7 @@ function prettierCheckFor(layout, exclusions) {
     shardWeight: 8,
     configurationFiles: [
       'languages/typescript/adapters/prettier-layers.mjs',
+      'languages/typescript/conventions/prettier-conventions.mjs',
       'languages/typescript/preset/layout.mjs',
       'languages/typescript/preset/head-policy.mjs',
       JAVASCRIPT_PRESET_FILE,
