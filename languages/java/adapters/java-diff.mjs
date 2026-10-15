@@ -1,23 +1,23 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isTestResultFinding, testFailuresOf } from '../../../core/diff/base-red/unknown-base.mjs';
-import { compareFindings } from '../../../core/diff/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import {
-  captureWorkingTree,
-  readChangedLines,
-  readRenameMap,
-  resolveComparison,
-} from '../../../core/diff/git.mjs';
-import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
+  isTestResultFinding,
+  testFailuresOf,
+} from '../../../core/diff/comparison/base-red/unknown-base.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
+import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
+import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
+import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
 import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
-import { runJavaDuplicates } from './java-duplicates.mjs';
-import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
+import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
+import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyJavaPolicy } from './java-policy.mjs';
 import { PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
-import { kotlinGradleArguments } from './kotlin-tools.mjs';
+import { readJavaFindings, requireGradleReports } from './reporting/java-reports.mjs';
+import { kotlinGradleArguments } from './kotlin/kotlin-tools.mjs';
 import { gradleFailure, isBaseTestFailure, testsFailedFinding } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 
@@ -123,13 +123,14 @@ export function collectJavaFindings(projectRoot, options = {}) {
 }
 
 function collectSides({ repositoryRoot, projectRelativePath, comparison, options }) {
-  const collectAt = (sha, snapshot) =>
-    withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
+  function collectAt(sha, snapshot) {
+    return withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
       collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
         ...options,
         policy: { ...options.policy, snapshot },
       }),
     );
+  }
   const collectedBase = collectAt(comparison.mergeBaseSha, 'base');
   const notes = testFailuresOf({ findings: collectedBase });
   return {

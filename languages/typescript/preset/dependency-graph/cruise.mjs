@@ -9,7 +9,7 @@ const dependencyCruiser = path.join(
   projectRoot,
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
-const config = path.join(import.meta.dirname, 'config.mjs');
+const config = path.join(import.meta.dirname, 'dependency-cruiser.config.mjs');
 export const EXCLUDED_PATH_PATTERN =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
 export const ARCHITECTURE_CONFIG =
@@ -31,38 +31,31 @@ function withProjectTypeScriptConfig({ policyRoot, projectRoot: root, name }, op
   }
 }
 
-export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
-  if (paths.length === 0) return { modules: [] };
-  const result = withProjectTypeScriptConfig(
+function spawnDependencyCruiser(paths, environment) {
+  return spawnSync(
+    process.execPath,
+    [
+      dependencyCruiser,
+      ...paths,
+      '--config',
+      config,
+      '--exclude',
+      [EXCLUDED_PATH_PATTERN, readLayout().excludePattern]
+        .filter((pattern) => pattern !== undefined)
+        .join('|'),
+      '--output-type',
+      'json',
+    ],
     {
-      policyRoot: projectRoot,
-      projectRoot: path.resolve(projectRoot, typeScriptRoot),
-      name: `dependency-graph-${String(process.pid)}`,
+      cwd: projectRoot,
+      env: { ...process.env, ...environment },
+      encoding: 'utf8',
+      maxBuffer: 50 * 1024 * 1024,
     },
-    (environment) =>
-      spawnSync(
-        process.execPath,
-        [
-          dependencyCruiser,
-          ...paths,
-          '--config',
-          config,
-          '--exclude',
-          [EXCLUDED_PATH_PATTERN, readLayout().excludePattern]
-            .filter((pattern) => pattern !== undefined)
-            .join('|'),
-          '--output-type',
-          'json',
-        ],
-        {
-          cwd: projectRoot,
-          env: { ...process.env, ...environment },
-          encoding: 'utf8',
-          maxBuffer: 50 * 1024 * 1024,
-        },
-      ),
   );
+}
 
+function assertSuccessful(result) {
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -71,10 +64,12 @@ export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
       `dependency-cruiser failed with exit ${String(result.status)}:\n${result.stderr || result.stdout}`,
     );
   }
+}
 
+function parseGraph(stdout) {
   let graph;
   try {
-    graph = JSON.parse(result.stdout);
+    graph = JSON.parse(stdout);
   } catch (error) {
     throw new Error('dependency-cruiser did not produce valid JSON', { cause: error });
   }
@@ -83,6 +78,20 @@ export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
   return graph;
+}
+
+export function cruise(paths, { typeScriptRoot = projectRoot } = {}) {
+  if (paths.length === 0) return { modules: [] };
+  const result = withProjectTypeScriptConfig(
+    {
+      policyRoot: projectRoot,
+      projectRoot: path.resolve(projectRoot, typeScriptRoot),
+      name: `dependency-graph-${String(process.pid)}`,
+    },
+    (environment) => spawnDependencyCruiser(paths, environment),
+  );
+  assertSuccessful(result);
+  return parseGraph(result.stdout);
 }
 
 export function normalizePath(value) {
@@ -105,43 +114,44 @@ export function isTypeOnlyDependency(dependency) {
   );
 }
 
+function isWithinRoot(file, root) {
+  return !isExcludedPath(file) && (file === root || file.startsWith(`${root}/`));
+}
+
+function internalTarget(dependency, { modulePaths, root }) {
+  if (typeof dependency.resolved !== 'string') return undefined;
+  const target = normalizePath(dependency.resolved);
+  return modulePaths.has(target) && isWithinRoot(target, root) ? target : undefined;
+}
+
+function recordEdge(edgeKinds, { source, target, dependency }) {
+  const key = `${source}\0${target}`;
+  const kind = isTypeOnlyDependency(dependency) ? 'type-only' : 'runtime';
+  if (edgeKinds.get(key) !== 'runtime') {
+    edgeKinds.set(key, kind);
+  }
+}
+
+function recordModuleEdges(edgeKinds, module, context) {
+  const source = normalizePath(module.source);
+  if (!isWithinRoot(source, context.root)) return;
+  for (const dependency of module.dependencies ?? []) {
+    const target = internalTarget(dependency, context);
+    if (target !== undefined) recordEdge(edgeKinds, { source, target, dependency });
+  }
+}
+
 export function internalEdges(graph, sourceRoot) {
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
 
-  const normalizedRoot = normalizePath(sourceRoot).replace(/\/$/, '');
-  const modulePaths = new Set(graph.modules.map((module) => normalizePath(module.source)));
+  const context = {
+    root: normalizePath(sourceRoot).replace(/\/$/, ''),
+    modulePaths: new Set(graph.modules.map((module) => normalizePath(module.source))),
+  };
   const edgeKinds = new Map();
-
-  for (const module of graph.modules) {
-    const source = normalizePath(module.source);
-    if (
-      isExcludedPath(source) ||
-      (source !== normalizedRoot && !source.startsWith(`${normalizedRoot}/`))
-    ) {
-      continue;
-    }
-    for (const dependency of module.dependencies ?? []) {
-      if (typeof dependency.resolved !== 'string') {
-        continue;
-      }
-      const target = normalizePath(dependency.resolved);
-      if (
-        isExcludedPath(target) ||
-        !modulePaths.has(target) ||
-        (target !== normalizedRoot && !target.startsWith(`${normalizedRoot}/`))
-      ) {
-        continue;
-      }
-
-      const key = `${source}\0${target}`;
-      const kind = isTypeOnlyDependency(dependency) ? 'type-only' : 'runtime';
-      if (edgeKinds.get(key) !== 'runtime') {
-        edgeKinds.set(key, kind);
-      }
-    }
-  }
+  for (const module of graph.modules) recordModuleEdges(edgeKinds, module, context);
 
   return [...edgeKinds].map(([key, kind]) => {
     const [source, target] = key.split('\0');

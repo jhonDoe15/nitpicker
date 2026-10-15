@@ -1,21 +1,26 @@
+import {
+  createGitTemplate,
+  copyGitTemplate,
+} from '../../../core/diff/git/test-support/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../core/diff/run-analyzers.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
 
+const packageAnalyzers = configuredAnalyzers();
 // Every runner and tool is pointed at a project whose sources live in `lib/` and whose tests live
 // in `spec/`, and told to leave `lib/legacy/` and `spec/legacy/` alone. Each analyzer must report
 // the violation planted in `lib/live/` (the custom root is analyzed) and none from the excluded
 // copies of the same violation (the exclusion is honored).
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
-const TOOL_TIMEOUT_MS = 240_000;
+const TOOL_TIMEOUT_MS = 60_000;
 const temporaryRoots = [];
 
 const customConfig = {
@@ -23,7 +28,7 @@ const customConfig = {
   layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
 };
 const customPolicy = resolveHeadPolicy(customConfig);
-const customAnalyzers = applyLayout(configuredAnalyzers, customPolicy);
+const customAnalyzers = applyLayout(packageAnalyzers, customPolicy);
 
 const ANALYZER_NAMES = [
   'eslint-lint',
@@ -79,32 +84,40 @@ describe('custom layout and exclude across runners and tools', () => {
     const paths = findingPaths(run, 'coupling', { includeDescriptive: true }).filter(
       (findingPath) => findingPath !== '.',
     );
-    expect(paths).toContain('lib/live/uses-spec.ts');
+    expect([...new Set(paths)].sort()).toEqual([
+      'lib/alpha/index.ts',
+      'lib/alpha/internal.ts',
+      'lib/live/assertion.ts',
+      'lib/live/bypass.ts',
+      'lib/live/dup-a.ts',
+      'lib/live/dup-b.ts',
+      'lib/live/format.ts',
+      'lib/live/lint.ts',
+      'lib/live/types.ts',
+      'lib/live/unused.ts',
+      'lib/live/uses-spec.ts',
+    ]);
     expect(paths.filter(isExcludedPath)).toEqual([]);
     expect(paths.filter((findingPath) => findingPath.startsWith('src/'))).toEqual([]);
   });
 
-  it(
-    'finds nothing in lib/ and spec/ when the config does not change the layout',
-    () => {
-      const defaultRun = analyze(
-        ['dependency-architecture', 'typescript-typecheck', 'entry-points', 'test-runtime'],
-        fixtureFiles(),
-        resolveHeadPolicy({}),
-        configuredAnalyzers,
-      );
-      expect(defaultRun.toolErrors).toEqual([]);
-      for (const name of [
-        'dependency-architecture',
-        'typescript-typecheck',
-        'entry-points',
-        'test-runtime',
-      ]) {
-        expect(findingPaths(defaultRun, name)).toEqual([]);
-      }
-    },
-    TOOL_TIMEOUT_MS,
-  );
+  it('finds nothing in lib/ and spec/ when the config does not change the layout', () => {
+    const defaultRun = analyze(
+      ['dependency-architecture', 'typescript-typecheck', 'entry-points', 'test-runtime'],
+      fixtureFiles(),
+      resolveHeadPolicy({}),
+      packageAnalyzers,
+    );
+    expect(defaultRun.toolErrors).toEqual([]);
+    for (const name of [
+      'dependency-architecture',
+      'typescript-typecheck',
+      'entry-points',
+      'test-runtime',
+    ]) {
+      expect(findingPaths(defaultRun, name)).toEqual([]);
+    }
+  });
 });
 
 describe('with many exclude globs', () => {
@@ -115,104 +128,107 @@ describe('with many exclude globs', () => {
       ['dependency-architecture'],
       fixtureFiles(),
       policy,
-      applyLayout(configuredAnalyzers, policy),
+      applyLayout(packageAnalyzers, policy),
     );
     expect(run.toolErrors).toEqual([]);
   });
 });
 
 describe('without exclude', () => {
-  it(
-    'reports the same violations from lib/legacy, so the exclusions above are what hides them',
-    () => {
+  it.each(['dependency-architecture', 'typescript-typecheck', 'entry-points', 'prettier-format'])(
+    'reports the same %s violations from lib/legacy, so the exclusions above are what hides them',
+    (name) => {
       const layoutOnly = resolveHeadPolicy({ layout: customConfig.layout });
-      const names = [
-        'dependency-architecture',
-        'typescript-typecheck',
-        'entry-points',
-        'prettier-format',
-      ];
       const withoutExclude = analyze(
-        names,
+        [name],
         fixtureFiles(),
         layoutOnly,
-        applyLayout(configuredAnalyzers, layoutOnly),
+        applyLayout(packageAnalyzers, layoutOnly),
       );
+
       expect(withoutExclude.toolErrors).toEqual([]);
-      for (const name of names) {
-        expect(findingPaths(withoutExclude, name).filter(isExcludedPath)).not.toEqual([]);
-      }
+      expect(findingPaths(withoutExclude, name).filter(isExcludedPath)).not.toEqual([]);
     },
-    TOOL_TIMEOUT_MS,
   );
 });
 
 describe('custom layout and exclude for tools that need project dependencies', () => {
-  it(
-    'limits knip dead-code analysis to the custom roots and skips excluded files',
-    () => {
-      const run = analyze(['dead-code'], {
-        ...fixtureFiles(),
-        'package.json': readPackageFile('package.json'),
-        'package-lock.json': readPackageFile('package-lock.json'),
-      });
-      expect(run.toolErrors).toEqual([]);
-      const paths = findingPaths(run, 'dead-code');
-      expect(paths).toContain('lib/live/unused.ts');
-      expect(paths).toContain('spec/helper.ts');
-      expect(paths.filter(isExcludedPath)).toEqual([]);
-    },
-    TOOL_TIMEOUT_MS,
-  );
+  it('limits knip dead-code analysis to the custom roots and skips excluded files', () => {
+    const run = analyze(['dead-code'], {
+      ...fixtureFiles(),
+      'package.json': readPackageFile('package.json'),
+      'package-lock.json': readPackageFile('package-lock.json'),
+    });
+    expect(run.toolErrors).toEqual([]);
+    const paths = findingPaths(run, 'dead-code');
+    expect([...new Set(paths)].sort()).toEqual([
+      'lib/alpha/index.ts',
+      'lib/alpha/internal.ts',
+      'lib/live/assertion.ts',
+      'lib/live/bypass.ts',
+      'lib/live/dup-a.ts',
+      'lib/live/dup-b.ts',
+      'lib/live/format.ts',
+      'lib/live/lint.ts',
+      'lib/live/types.ts',
+      'lib/live/unused.ts',
+      'lib/live/uses-spec.ts',
+      'spec/helper.ts',
+    ]);
+    expect(paths.filter(isExcludedPath)).toEqual([]);
+  });
 
-  it(
-    'measures coverage and CRAP over the custom roots without running excluded tests',
-    () => {
-      const run = analyze(['coverage', 'crap'], {
-        'lib/greet.ts':
-          'export function greet(name: string): string {\n  return name.length > 0 ? `Hello, ${name}` : "Hello";\n}\n',
-        'spec/greet.test.ts':
-          "import { expect, it } from 'vitest';\nimport { greet } from '../lib/greet.js';\n\nit('greets', () => {\n  expect(greet('world')).toBe('Hello, world');\n});\n",
-        'lib/legacy/old.ts': 'export const old = 1;\n',
-        'spec/legacy/old.test.ts':
-          "import { expect, it } from 'vitest';\nimport { old } from '../../lib/legacy/old.js';\n\nit('is broken on purpose', () => {\n  expect(old).toBe(2);\n});\n",
-        'package.json': readPackageFile('package.json'),
-        'package-lock.json': readPackageFile('package-lock.json'),
-      });
-      expect(run.toolErrors).toEqual([]);
-      const coveragePaths = findingPaths(run, 'coverage', { includeDescriptive: true });
-      expect(coveragePaths).toContain('lib/greet.ts');
-      expect(coveragePaths.filter(isExcludedPath)).toEqual([]);
-      // CRAP selects files from the layout roots: only lib/greet.ts, not lib/legacy/old.ts.
-      expect(metricValue(run, 'crap', 'summary:files')).toBe(1);
-      expect(metricValue(run, 'crap', 'summary:functions')).toBe(1);
-    },
-    TOOL_TIMEOUT_MS * 2,
-  );
+  it('measures coverage and CRAP over the custom roots without running excluded tests', () => {
+    const run = analyze(['coverage', 'crap'], {
+      'lib/greet.ts':
+        'export function greet(name: string): string {\n  return name.length > 0 ? `Hello, ${name}` : "Hello";\n}\n',
+      'spec/greet.test.ts':
+        "import { beforeAll, expect, it } from 'vitest';\nimport { greet } from '../lib/greet.js';\n\nit('greets', () => {\n  expect(greet('world')).toBe('Hello, world');\n});\n",
+      'lib/legacy/old.ts': 'export const old = 1;\n',
+      'spec/legacy/old.test.ts':
+        "import { beforeAll, expect, it } from 'vitest';\nimport { old } from '../../lib/legacy/old.js';\n\nit('is broken on purpose', () => {\n  expect(old).toBe(2);\n});\n",
+      'package.json': readPackageFile('package.json'),
+      'package-lock.json': readPackageFile('package-lock.json'),
+    });
+    expect(run.toolErrors).toEqual([]);
+    const coveragePaths = findingPaths(run, 'coverage', { includeDescriptive: true });
+    expect([...new Set(coveragePaths)].sort()).toEqual(['.', 'lib/greet.ts']);
+    expect(coveragePaths.filter(isExcludedPath)).toEqual([]);
+    // CRAP selects files from the layout roots: only lib/greet.ts, not lib/legacy/old.ts.
+    expect(metricValue(run, 'crap', 'summary:files')).toBe(1);
+    expect(metricValue(run, 'crap', 'summary:functions')).toBe(1);
+  });
 });
 
 describe('custom layout through the command line', () => {
-  it(
-    'reads layout and exclude from nitpicker.config.json for a full snapshot run',
-    () => {
-      const projectRoot = createGitProject({
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
+  it('reads layout and exclude from nitpicker.config.json for a full snapshot run', () => {
+    const projectRoot = createGitProject(
+      {
         ...fixtureFiles(),
         'nitpicker.config.json': `${JSON.stringify(customConfig)}\n`,
-      });
-      const chunks = [];
-      const exitCode = runCli({
-        arguments_: ['--all', '--analyzer', 'dependency-architecture', '--output', 'out'],
-        currentProjectRoot: projectRoot,
-        stdout: { write: (text) => chunks.push(text) },
-        stderr: { write: (text) => chunks.push(text) },
-      });
-      const output = chunks.join('');
-      expect(exitCode).toBe(1);
-      expect(output).toContain('lib/live/uses-spec.ts');
-      expect(output).not.toContain('lib/legacy');
-    },
-    TOOL_TIMEOUT_MS,
-  );
+      },
+      gitTemplateRoot,
+    );
+    const chunks = [];
+    const exitCode = runCli({
+      arguments_: ['--all', '--analyzer', 'dependency-architecture', '--output', 'out'],
+      currentProjectRoot: projectRoot,
+      stdout: { write: (text) => chunks.push(text) },
+      stderr: { write: (text) => chunks.push(text) },
+    });
+    const output = chunks.join('');
+    expect(exitCode).toBe(1);
+    expect(output).toEqual(
+      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts\n',
+    );
+    expect(output).not.toContain('lib/legacy');
+  });
 });
 
 describe('applyLayout', () => {
@@ -223,10 +239,40 @@ describe('applyLayout', () => {
       policyRoot: '/p',
       toolRoot: packageRoot,
     });
-    expect(invocation.args).toContain('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(invocation.args).toContain('spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+    expect(new Set(invocation.args)).toEqual(
+      new Set([
+        '--analyzer-name',
+        '--config',
+        '--pattern',
+        '--policy-file',
+        '--policy-root',
+        '--project-root',
+        '--tool-root',
+        '/p',
+        packageRoot,
+        `${packageRoot}/languages/typescript/adapters/eslint-runner.mjs`,
+        'eslint-lint',
+        'languages/typescript/preset/defaults/eslint.config.mjs',
+        'languages/typescript/preset/defaults/tsconfig.quality.json',
+        'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+        'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      ]),
+    );
     expect(invocation.args).not.toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(eslint.exclusions).toContain('lib/legacy/**');
+    expect([...new Set(eslint.exclusions)].sort()).toEqual([
+      '**/*.d.ts',
+      '**/build/**',
+      '**/coverage/**',
+      '**/dist/**',
+      '**/generated/**',
+      '**/node_modules/**',
+      '**/reports/**',
+      '**/target/**',
+      '.stryker-tmp/**',
+      'lib/legacy/**',
+      'spec/legacy/**',
+    ]);
     const entryPoints = customAnalyzers
       .find(({ name }) => name === 'entry-points')
       .createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot });
@@ -237,10 +283,8 @@ describe('applyLayout', () => {
   });
 
   it('keeps the shared default analyzers when the config changes neither', () => {
-    expect(applyLayout(configuredAnalyzers, resolveHeadPolicy({}))).toBe(configuredAnalyzers);
-    expect(applyLayout(configuredAnalyzers, resolveHeadPolicy({ layout: {} }))).toBe(
-      configuredAnalyzers,
-    );
+    expect(applyLayout(packageAnalyzers, resolveHeadPolicy({}))).toBe(packageAnalyzers);
+    expect(applyLayout(packageAnalyzers, resolveHeadPolicy({ layout: {} }))).toBe(packageAnalyzers);
   });
 
   it('leaves custom and injected analyzers alone', () => {
@@ -286,7 +330,7 @@ function fixtureFiles() {
 }
 
 function passingTest() {
-  return "import { expect, it } from 'vitest';\n\nit('checks', () => {\n  expect(1).toBe(1);\n});\n";
+  return "import { beforeAll, expect, it } from 'vitest';\n\nit('checks', () => {\n  expect(1).toBe(1);\n});\n";
 }
 
 // One file per tool, planted in `lib/<directory>/`: formatting, a type error, a lint error, a
@@ -352,13 +396,17 @@ function createProject(files) {
   return projectRoot;
 }
 
-function createGitProject(files) {
+function createGitProject(files, templateRoot) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-cli-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'repo');
   writeFiles(projectRoot, files);
-  const git = (...arguments_) => execFileSync('git', arguments_, { cwd: projectRoot });
-  git('init', '-q', '-b', 'main');
+  const git = (...arguments_) =>
+    execFileSync('git', arguments_, {
+      cwd: projectRoot,
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
+  copyGitTemplate(templateRoot, projectRoot);
   git('config', 'user.name', 'Layout Fixture');
   git('config', 'user.email', 'layout@example.invalid');
   git('add', '-A');

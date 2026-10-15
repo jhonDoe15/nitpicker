@@ -2,7 +2,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runGitIn, summarize } from '../fixtures/gradle-e2e.mjs';
+import { runGitIn, summarize } from '../test-support/gradle-e2e.mjs';
 import { runJavaDiff } from '../java-diff.mjs';
 
 // End-to-end tests of a change that repairs a base whose tests fail, with real Gradle. They need
