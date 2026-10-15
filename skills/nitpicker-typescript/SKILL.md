@@ -53,16 +53,15 @@ If your change edits a function that existed before it, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
-- Put new code under the source roots (`src/` unless the project sets `layout.sourceRoots`) and import only from there. An import of a file outside them fails, and a changed `.ts` file outside them prints a notice and is not checked at all.
+- New code goes under the source roots (`layout.sourceRoots`); the gate reports anything outside.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way
 
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
-- `type`, never `interface` (except to merge into a `declare module`/`declare global` augmentation or
-  a global `.d.ts` such as `vite-env.d.ts`); string-literal unions, never `enum`; no classes except
-  `Error` subclasses.
+- `type`, never `interface`; string-literal unions, never `enum`; no classes except `Error`
+  subclasses.
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
