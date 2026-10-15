@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   readJavaFindings,
   rootReports,
-  reportBaseOf,
   mutation,
   projectWithKotlinReports,
   removeTemporaryProjects,

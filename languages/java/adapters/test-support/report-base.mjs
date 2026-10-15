@@ -1,8 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const REPORT_BASE = 'gradle-reports';
-export const ROOT_KEY = 'root';
+const REPORT_BASE = 'gradle-reports';
+const ROOT_KEY = 'root';
 
 export function reportBaseOf(root) {
   return path.join(root, REPORT_BASE);
