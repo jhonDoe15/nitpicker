@@ -29,7 +29,8 @@ config file is an exception like any other.
 - `features/<name>/adapters/` performs I/O and calls `domain/`. A feature with neither I/O nor UI
   has no `adapters/` folder. React components and hooks live in `adapters/` (the UI is I/O with the
   user), or in `shared/ui/` when several features use them. `domain/` may not import `react`,
-  `react-dom`, `react-native` or `preact`.
+  `react-dom`, `react-native` or `preact`, also through `require` or `import = require`
+  (`nitpicker/no-ui-framework-in-domain`, so an exception lifts only this ban).
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
 - Objects are constructed only in the composition root. Dependencies are passed explicitly. No

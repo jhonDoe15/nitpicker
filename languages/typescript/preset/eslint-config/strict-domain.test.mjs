@@ -46,7 +46,8 @@ export function total(lines: readonly Line[]) {
 
   it('keeps react and other UI frameworks out of domain/', () => {
     const message =
-      'domain/ does not import react, react-dom, react-native or preact: components and hooks live in adapters/ (or shared/ui) and call the logic in domain/.';
+      'domain/ does not import react, react-dom, react-native or preact: components and hooks live in adapters/ (or shared/ui) and call the logic in domain/. ' +
+      'If a framework requires this file in domain/, add an exception for this rule for those paths in nitpicker.config.json.';
     const banned = [
       "import { useState } from 'react'; export const y = useState;",
       "import { createRoot } from 'react-dom/client'; export const y = createRoot;",
@@ -56,6 +57,8 @@ export function total(lines: readonly Line[]) {
       "export const load = () => import('react');",
       "export { useState } from 'react';",
       "export * from 'react';",
+      "const react = require('react'); export const y = react;",
+      "import React = require('react'); export const y = React;",
     ];
     expect(banned.map((code) => messagesFor(domainFile, code))).toEqual(
       banned.map(() => [message]),
@@ -76,5 +79,15 @@ export function total(lines: readonly Line[]) {
 
   it('applies to nested domain files of every feature', () => {
     expect(messagesFor('src/main/features/other/domain/deep/x.ts', 'let n = 1;')).toHaveLength(1);
+  });
+
+  it('bans UI frameworks under a rule id of their own', () => {
+    const ruleIds = lintFixture({
+      config: strictDomainConfig,
+      filename: domainFile,
+      code: "import { useState } from 'react'; export const y = useState;",
+    }).map(({ ruleId }) => ruleId);
+
+    expect(ruleIds).toEqual(['nitpicker/no-ui-framework-in-domain']);
   });
 });
