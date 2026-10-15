@@ -37,7 +37,11 @@ const policy = [
 const files = {
   'policy.mjs': policy,
   'package.json': [JSON.stringify({ name: 'app', dependencies: { react: '19.0.0' } })],
-  'tsconfig.json': [JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } })],
+  'tsconfig.json': [
+    JSON.stringify({
+      compilerOptions: { types: [], lib: ['ES2022'], paths: { '@/*': ['./src/*'] } },
+    }),
+  ],
   'src/main/ui/app.tsx': ['export function App() { return <main />; }'],
   'test/support/render-app.tsx': [
     "import { render } from '@testing-library/react';",

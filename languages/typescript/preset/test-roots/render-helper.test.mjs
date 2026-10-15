@@ -52,7 +52,11 @@ const projectFiles = {
     Object.entries(helpers).map(([file, source]) => [`test/support/${file}`, source]),
   ),
   'src/main/ui/app.tsx': ['export function App() { return <main />; }'],
-  'tsconfig.json': [JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } })],
+  'tsconfig.json': [
+    JSON.stringify({
+      compilerOptions: { types: [], lib: ['ES2022'], paths: { '@/*': ['./src/*'] } },
+    }),
+  ],
 };
 
 for (const [file, source] of Object.entries(projectFiles)) {
