@@ -75,7 +75,7 @@ field by field. Per snapshot:
 3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
    `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
    exist), so the project's `settings.xml` mirrors apply.
-4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
+4. Per module, outside Maven: PMD, SpotBugs (with the find-sec-bugs plugin, its exclusion filter and the same sink files, resolved as a `spotbugsPlugins` tool), google-java-format, Checkstyle (the bundled Google checks
    without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
    JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
    auxiliary classpath is the main and test compile classpaths plus both class directories). The
