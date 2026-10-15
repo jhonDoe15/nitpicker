@@ -188,7 +188,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
       expect(failing).toEqual(
         [
-          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck',
+          'checkstyle EmptyCatchBlock',
           'pit mutant-nocoverage',
           'pmd EmptyCatchBlock',
         ].map((finding) => `${finding} app/src/main/java/demo/app/Parser.java`),
