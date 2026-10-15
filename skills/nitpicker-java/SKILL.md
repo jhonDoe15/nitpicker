@@ -5,25 +5,26 @@ description: Use before writing or changing Java in a project that runs nitpicke
 
 # nitpicker for Java
 
-nitpicker gates a Gradle project (Java 21) with PMD, SpotBugs, Checkstyle, google-java-format,
-JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on findings your
-change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
+nitpicker gates a Gradle or Maven project (Java 21) with PMD, SpotBugs, Checkstyle,
+google-java-format, JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on
+findings your change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
 start; the gate is a backstop.
 
 ## Finish with the gate
 
-1. Run the project's tests (`./gradlew test`). Failing tests or compile errors make the gate exit 2.
+1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
+   errors make the gate exit 2.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
    `--replace`). `npx nitpicker --fix` does not touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
-   code. It runs Gradle on the merge base and on head and takes minutes. It uses the project's
-   `./gradlew` when there is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides
-   both).
+   code. It runs the build on the merge base and on head and takes minutes. It uses the project's
+   `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
+   (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
 4. Act on the exit code:
    - 0: done.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
-   - 2: no new findings, but a tool failed (Gradle, a compile error, a test failure). Fix the
+   - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
@@ -131,7 +132,7 @@ Each finding names the safe form; the exception route is `spotbugs/<PATTERN>` or
   reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.
 - A violated ArchUnit rule is a finding (`archunit/<rule>`) on the offending class. Run the
-  `*ArchTest` class with Gradle to read the full violation, and fix the code.
+  `*ArchTest` class with the build's test task to read the full violation, and fix the code.
 
 ## Kotlin projects
 
