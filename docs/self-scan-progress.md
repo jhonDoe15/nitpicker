@@ -93,9 +93,17 @@ the complete refactored branch.
 Focused runs passed for the scheduler (28 tests), traversal and rule behavior
 (285), callback/public-contract behavior (13), and transitive cache hashing (3).
 The full uncached self-scan completed in 51.4 seconds, with 157 findings and zero
-tool errors. `git diff --check` passed.
+tool errors. `git diff --check` passed. All 454 changed JavaScript modules
+also passed `node --check`.
 
 ## Remaining blockers
+
+While this audit was running, main advanced to
+`32171099a0b71870291aaebe78b74a95c07be555` with the oxlint integration from PR #197.
+This checkpoint is based on the earlier audit commit, and GitHub reports merge
+conflicts. Integrating those changes is an additional blocker. The 708-to-157
+comparison describes the audited base and this branch, not a scan of the new main.
+
 
 | Rule | Findings |
 |---|---:|
