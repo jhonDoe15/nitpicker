@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { DEFAULT_LEGACY_INVENTORY } from '../../shared/legacy-inventory.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import {
@@ -5,7 +6,6 @@ import {
   PYTHON_ANALYZER_NAME,
 } from '../../languages/python/adapters/python-analyzer.mjs';
 import { configureJavaAnalyzer } from '../../languages/java/adapters/java-policy.mjs';
-import { addCustomAnalyzers } from './custom-analyzer.mjs';
 import {
   applyLayout,
   applyLegacyInventory,
@@ -48,4 +48,42 @@ function applyJavaConfig(analyzers, config) {
         })
       : analyzer,
   );
+}
+
+function createCustomAnalyzer({ name, command, args = [] }) {
+  return {
+    name,
+    version: 'custom',
+    configurationHash: createHash('sha256')
+      .update(JSON.stringify({ name, command, args }))
+      .digest('hex'),
+    exclusions: [],
+    createInvocation({ projectRoot, snapshot }) {
+      return {
+        command,
+        args,
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          NITPICKER_ANALYZER: name,
+          NITPICKER_PROJECT_ROOT: projectRoot,
+          ...(snapshot === undefined ? {} : { NITPICKER_SNAPSHOT: snapshot }),
+        },
+      };
+    },
+  };
+}
+
+function addCustomAnalyzers(analyzers, entries = []) {
+  const taken = new Set(analyzers.map(({ name }) => name));
+  const custom = entries.map((entry) => {
+    if (taken.has(entry.name)) {
+      throw new Error(
+        `nitpicker.config.json: analyzers entry "${entry.name}" clashes with another analyzer name`,
+      );
+    }
+    taken.add(entry.name);
+    return createCustomAnalyzer(entry);
+  });
+  return [...analyzers, ...custom];
 }

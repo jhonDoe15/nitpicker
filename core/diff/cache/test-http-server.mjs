@@ -13,7 +13,12 @@ const server = http.createServer((request, response) => {
     const url = request.url;
     if (url === '/__control') {
       const control = JSON.parse(Buffer.concat(chunks).toString() || '{}');
-      if (control.reset) { objects.clear(); requests.length = 0; failWith = 0; } if (control.failWith !== undefined) failWith = control.failWith;
+      if (control.reset) {
+        objects.clear();
+        requests.length = 0;
+        failWith = 0;
+      }
+      if (control.failWith !== undefined) failWith = control.failWith;
       response.end(JSON.stringify({ requests, keys: [...objects.keys()] }));
       return;
     }

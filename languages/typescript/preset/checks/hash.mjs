@@ -1,15 +1,15 @@
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import ts from 'typescript';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
+const RELATIVE_SPECIFIER =
+  /(?:\bfrom\s*|\bimport\s*\(\s*|^\s*import\s*)(['"])(\.{1,2}\/[^'"]+)\1/gmu;
+
 function importedFiles(relativePath, source, root) {
-  return ts
-    .preProcessFile(source, true, true)
-    .importedFiles.map(({ fileName }) => fileName)
-    .filter((name) => name.startsWith('.'))
+  return [...source.matchAll(RELATIVE_SPECIFIER)]
+    .map((match) => match[2])
     .map((name) => path.resolve(root, path.dirname(relativePath), name.split(/[?#]/u)[0]))
     .filter((absolute) => existsSync(absolute) && statSync(absolute).isFile())
     .map((absolute) => path.relative(root, absolute).split(path.sep).join('/'))

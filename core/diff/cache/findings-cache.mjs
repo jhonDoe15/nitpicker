@@ -43,34 +43,42 @@ export function createFindingsCache({
   function keyFor(analyzer) {
     return cacheKey({ mergeBaseSha, projectRelativePath, analyzer, configOverrides, headPolicy });
   }
+  function readReport(analyzer) {
+    const key = keyFor(analyzer);
+    const text = backend.get(key);
+    if (text === undefined) {
+      return undefined;
+    }
+    const entry = JSON.parse(text);
+    if (entry?.key !== key) {
+      return undefined;
+    }
+    const report = parseAnalyzerReport(entry, analyzer.name);
+    backend.keep?.(key, text);
+    return report;
+  }
+  function writeReport(analyzer, report) {
+    const key = keyFor(analyzer);
+    return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
+  }
   return {
     read(analyzer) {
-      try {
-        const key = keyFor(analyzer);
-        const text = backend.get(key);
-        if (text === undefined) {
-          return undefined;
-        }
-        const entry = JSON.parse(text);
-        if (entry?.key !== key) {
-          return undefined;
-        }
-        const report = parseAnalyzerReport(entry, analyzer.name);
-        backend.keep?.(key, text);
-        return report;
-      } catch {
-        return undefined;
-      }
+      const outcome = attempt(() => readReport(analyzer));
+      return outcome.kind === 'done' ? outcome.value : undefined;
     },
     write(analyzer, report) {
-      try {
-        const key = keyFor(analyzer);
-        return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
-      } catch {
-        return false;
-      }
+      const outcome = attempt(() => writeReport(analyzer, report));
+      return outcome.kind === 'done' ? outcome.value : false;
     },
   };
+}
+
+function attempt(action) {
+  try {
+    return { kind: 'done', value: action() };
+  } catch (error) {
+    return { kind: 'failed', error };
+  }
 }
 
 export function runBaseWithCache({ cache, analyzers, run, resolveContext, onCached }) {

@@ -98,9 +98,9 @@ export function resolveMetadata({ analyzers, liveProjectRoot, policyRoot, inputR
     return errors;
   try {
     const headSha = readJson(path.join(inputRoot, '0'), 'summary.json', 0).headSha;
-    withHeadProjectRoot(liveProjectRoot, headSha, (headProjectRoot) =>
-      resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, errors),
-    );
+    withHeadProjectRoot(liveProjectRoot, headSha, (headProjectRoot) => {
+      resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, errors);
+    });
   } catch (error) {
     recordConfigurationErrors(analyzers, error, errors);
   }
