@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createIdentityCounter, hashIdentity } from '../ingest/common.mjs';
+import { exceptionRoute } from './advice/exception-route.mjs';
 
 const LINT_TOOL = 'javac';
 const LINT_REPORT = 'javac-lint.txt';
@@ -23,7 +24,7 @@ function warningFinding({ file, line, rule, text }, unique) {
     rule,
     path: file,
     identity: unique(hashIdentity('javac', [rule, file, text])),
-    message: `${text}. ${advice} If it is right here, add an exception for ${LINT_TOOL}/${rule} in nitpicker.config.json.`,
+    message: `${text}. ${advice} ${exceptionRoute(LINT_TOOL, rule)}`,
     classification: 'enforceable',
     location: { line },
   };

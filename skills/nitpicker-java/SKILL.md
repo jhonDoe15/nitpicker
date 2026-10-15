@@ -41,12 +41,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `-1`, `0`, `1` and `2` are fine anywhere else, and any other number in main code becomes a
-  `private static final` constant. A string literal used 4 times in a file becomes a constant.
-  Constants of primitive, `String`, boxed, `BigDecimal` or `Duration` type are `UPPER_SNAKE_CASE`
-  (a logger may be `log` or `logger`); a `static final` object reference such as `mapper` is not.
+  `if`; `0` and `-1` are fine. A string literal used 4 times in a file becomes a constant.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused imports, fields, locals, private methods, assignments.
+  for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
   Don't name a field like its method (`data` and `data()`); a `record` avoids that.
 - Mutable state: don't return or store a caller's array or collection directly. Return
@@ -57,37 +54,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
-  less stable one (`stability-direction`), and packages must not depend on each other in a loop
-  (`package-cycle`, one finding per package in the loop): move the shared type down, or invert one
-  side behind an interface. A sealed type that `permits` subtypes in another package is fine.
-- Optional: return it from methods and take the plain value as a field or parameter (a Spring
-  `@RequestParam`/`@PathVariable`-style parameter may be `Optional`). Unwrap with
-  `orElseThrow()`, `orElse`, `map` or `ifPresent`, never `get()`. Return an empty collection, not
-  `Optional<List<...>>`.
-- Types and casts: no raw types (`List<String>`, not `List`) and no unchecked casts; javac lints
-  them, and `@SuppressWarnings` does not hide them. Replace `instanceof` plus a cast with a pattern
-  (`if (shape instanceof Circle c)`) or a `switch` over a sealed type (Java 16 and later).
-- Shared state: fields are `private` (a `record` for data; `public final` and the `protected`
-  fields of a `@MappedSuperclass` are fine); no non-final `static` field, no public `static`
-  collection and none that is changed after class loading (build it with `List.of`, `Map.of`,
-  `Map.copyOf`; a private static `ConcurrentHashMap` cache is fine). No `@SneakyThrows`: declare
-  the exception or wrap it.
-- Time, threads and processes: take a `java.time.Clock` and call `now(clock)`; use `java.time`, not
-  `Date`, `Calendar` or `SimpleDateFormat`. No `Thread.sleep` and no `new Thread` in main code;
-  submit work to an injected executor. Restore the flag when you catch `InterruptedException`
-  (`Thread.currentThread().interrupt()`) or rethrow. Run commands with `ProcessBuilder` and an
-  argument list, never `Runtime.exec(String)`. No `ObjectInputStream`: read JSON.
-- Streams: `map` and `collect` or `Stream.toList()`, not `collect(Collectors.toList())` (a
-  downstream `toList()` in `groupingBy` is fine), and no `forEach` or `peek` that fills a
-  collection or an array. Open `Files.lines`, `list`, `walk` and `find` in try-with-resources, or
-  return the stream to a caller that does.
-- Signatures and throwing: declare the checked exceptions a method throws (never `throws Exception`,
-  except an override or a Spring Security `HttpSecurity` bean method) and throw `IllegalArgumentException`, `IllegalStateException` or a project exception, never
-  `RuntimeException`, `Exception` or `Error`.
-- Security: SQL values go in `?` parameters of a `PreparedStatement`, never `+` or
-  `String.format`. Hash with SHA-256 or better, not MD5 or SHA-1. Never repeat a group whose body
-  is one repeated item, such as `(a+)+` or `(\s*)*`. Join a path from a parameter to a fixed
-  base, then `normalize()` and check `startsWith(base)`.
+  less stable one (`stability-direction`).
 - Names and declarations: abbreviations are words (`parseUrl`, `HttpClient`, `userId`, never
   `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
   overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
@@ -95,9 +62,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security and the rules above), forbiddenapis, javac lint and Google checks. A project's
-  `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only when
-  `nitpicker.config.json` opts in under `tools`; then read it too.
+  security and its own guard rules), forbiddenapis, javac lint and Google checks. Each finding names
+  the allowed form. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
+  when `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
 
@@ -119,11 +86,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method. A copy with renamed variables or other literals, 100 tokens or more, fails too, in main
-  and in test sources; in tests use a helper or a `@ParameterizedTest`.
-- Dependencies: an `implementation` or `api` dependency no main class references is removed, or
-  declared `runtimeOnly` when it is only needed at run time (a JDBC driver) or `compileOnly` when
-  only its source-retained annotations are used (`unused-declared-dependency`).
+  a method.
 
 ## Tests
 
@@ -133,19 +96,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it.
-- Tests get the PMD categories, Checkstyle (without `MagicNumber` and `VisibilityModifier`) and
-  formatter checks of main code, plus the file (500 lines) and folder (6 files) limits. The main-code
-  guards (Optional, streams, SQL, regexes, forbidden APIs, javac lint) and the Spring rules read main
-  sources only; SpotBugs, the method limits and CRAP too. PMD's copy-paste check reads tests as well.
-- Tests have their own rules: no `Thread.sleep` (`TestSleep`: wait for the condition with a
-  deadline), no `@Disabled`/`@Ignore` (`DisabledTest`), no assertion inside an `if` or `switch`
-  (`AssertionInControlFlow`: split the test or use `@ParameterizedTest`), no try/catch
-  (`TryCatchInTest`: use `assertThrows`), `assertEquals` instead of `assertTrue(a.equals(b))`
-  (`AssertTrueOnEquality`), no assertion that cannot fail (`TautologicalAssertion`), no mocked
-  `String`, number, date, collection, `Optional` or record (`MockedValueType`: build a real one), and
-  no `@TestMethodOrder`/`@Order` (`TestOrderDependence`). A static field of a test is `final`
-  unless `@BeforeAll` sets it. If a PMD rule flags test code that is right, add an exception for
-  `pmd/<rule>`.
+- Tests get the PMD, Checkstyle and formatter checks of main code, with test rules in place of some
+  main-code ones, plus the file (500 lines) and folder (6 files) limits. SpotBugs, the method
+  limits and CRAP read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
+  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
 
 ## Editing existing code
 

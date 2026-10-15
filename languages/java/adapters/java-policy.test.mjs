@@ -1,11 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { CONFIGURATION_FILES, createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { applyJavaPolicy, configureJavaAnalyzer } from './java-policy.mjs';
-import { toolConfigProperties } from './java-diff.mjs';
+import { baselineProperties, toolConfigProperties } from './java-diff.mjs';
 import { parseRunnerArguments } from './java-runner.mjs';
 
 const roots = [];
@@ -220,6 +220,16 @@ describe('project tool configs', () => {
     ).toThrow(
       new Error('"tools.pmd.precedence" lists "project" but config/pmd/ruleset.xml is missing'),
     );
+  });
+});
+
+describe('baselineProperties', () => {
+  it('hands the base project to Gradle on the head side only, for the differential lint', () => {
+    expect(baselineProperties({ snapshot: 'head', baselineRoot: '/base/app' })).toEqual([
+      '-Pnitpicker.baselineRoot=/base/app',
+    ]);
+    expect(baselineProperties({ snapshot: 'base', baselineRoot: '/base/app' })).toEqual([]);
+    expect(baselineProperties({ snapshot: 'head' })).toEqual([]);
   });
 });
 
@@ -450,5 +460,26 @@ describe('createJavaAnalyzer', () => {
       new RegExp(`^${tools.map((tool) => `${tool}@[\\d.]+`).join(';')}$`, 'u'),
     );
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
+  });
+
+  it('hashes every rule, task and guard file, so changing one invalidates cached findings', () => {
+    const packageRoot = path.resolve(import.meta.dirname, '../../..');
+    const listed = [
+      'languages/java/gradle/rules',
+      'languages/java/gradle/tasks',
+      'languages/java/guards',
+    ]
+      .flatMap((directory) =>
+        readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
+          .filter((entry) => entry.isFile() && !entry.name.endsWith('.test.mjs'))
+          .map((entry) =>
+            path
+              .relative(packageRoot, path.join(entry.parentPath, entry.name))
+              .replaceAll(path.sep, '/'),
+          ),
+      )
+      .filter((file) => !CONFIGURATION_FILES.includes(file));
+
+    expect(listed).toEqual([]);
   });
 });
