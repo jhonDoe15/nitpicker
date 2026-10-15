@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<modules>
+    <module name="ConstantName">
+      <property name="format" value="^([A-Z][A-Z0-9]*(_[A-Z0-9]+)*|log|logger)$"/>
+      <message key="name.invalidPattern" value="Constant ''{0}'' must be UPPER_SNAKE_CASE (a logger may be log or logger). If it is right here, add an exception for checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ConstantNameCheck in nitpicker.config.json."/>
+    </module>
+</modules>

@@ -1,0 +1,30 @@
+def reportDir = layout.buildDirectory.dir('nitpicker')
+
+tasks.register('nitpickerCpd', JavaExec) {
+    group = 'nitpicker'
+    classpath = configurations.nitpickerPmd
+    mainClass = 'net.sourceforge.pmd.cli.PmdCli'
+    ignoreExitValue = true
+    def report = reportDir.map { it.file('cpd.xml') }
+    def errors = new ByteArrayOutputStream()
+    def sourceDirectories = {
+        (sourceSets.main.allJava.sourceDirectories.files + sourceSets.test.allJava.sourceDirectories.files).findAll { it.exists() }
+    }
+    onlyIf { !sourceDirectories().isEmpty() }
+    doFirst {
+        reportDir.get().asFile.mkdirs()
+        standardOutput = new FileOutputStream(report.get().asFile)
+        errorOutput = errors
+        args(['cpd', '--minimum-tokens', '100', '--ignore-identifiers', '--ignore-literals', '--language', 'java',
+              '--format', 'xml', '--no-fail-on-error', '--relativize-paths-with', projectDir.absolutePath] +
+            sourceDirectories().collectMany { ['--dir', it.absolutePath] })
+    }
+    doLast {
+        def code = executionResult.get().exitValue
+        if (!(code in [0, 4])) {
+            throw new GradleException("PMD CPD failed with exit code ${code}: ${errors.toString('UTF-8').trim()}")
+        }
+    }
+}
+
+tasks.named('nitpickerJava') { dependsOn 'nitpickerCpd' }

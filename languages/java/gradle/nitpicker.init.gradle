@@ -18,6 +18,8 @@
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
+//   build/nitpicker/javac-lint.txt, forbidden-apis.txt, cpd.xml, dependencies.json, pmd-guards-main.xml,
+//                                    pmd-test-honesty.xml  guard reports (docs/internals.md, "Guard reports")
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
@@ -41,6 +43,7 @@
 
 def pinned = [
     pmd             : '7.7.0',
+    forbiddenapis   : '3.10',
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     jacoco          : '0.8.12',
@@ -74,8 +77,22 @@ def springOnMainSources = { File springRuleset, Collection<File> testDirectories
         + ["  <rule ref=\"${escape(springRuleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
 }
 
+def scopedRuleset = { String name, File ruleset, Collection<File> directories, boolean onlyThere ->
+    def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
+    def kind = onlyThere ? 'include' : 'exclude'
+    def patterns = directories.collect { directory ->
+        "  <${kind}-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</${kind}-pattern>"
+    }
+    (['<?xml version="1.0" encoding="UTF-8"?>',
+      "<ruleset name=\"${name}\" xmlns=\"http://pmd.sourceforge.net/ruleset/2.0.0\">",
+      "  <description>${name}</description>"]
+        + patterns
+        + ["  <rule ref=\"${escape(ruleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
+}
+
 allprojects {
     plugins.withId('java') {
+        project.ext.nitpickerPinned = pinned
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
@@ -111,13 +128,19 @@ allprojects {
             'SuppressionCommentFilter', 'SuppressWithNearbyCommentFilter', 'SuppressWithNearbyTextFilter',
             'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
+        def nitpickerCheckstyleTestConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle-test.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
         def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
         def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+        def checkstyleModules = { String file ->
+            def text = new File(initScriptDir, "rules/${file}").text
+            (text =~ /(?s)<modules>(.*)<\/modules>/)[0][1]
+        }
         def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
             group = 'nitpicker'
             inputs.files(checkstyleJar)
-            outputs.file(nitpickerCheckstyleConfig)
+            inputs.dir(new File(initScriptDir, 'rules'))
+            outputs.files(nitpickerCheckstyleConfig, nitpickerCheckstyleTestConfig)
             doLast {
                 def text = bundledCheckstyleConfig.asString()
                 inlineCheckstyleFilters.each { name ->
@@ -127,21 +150,28 @@ allprojects {
                 if (!left.isEmpty()) {
                     throw new GradleException("nitpicker could not remove ${left} from google_checks.xml")
                 }
-                def target = nitpickerCheckstyleConfig.get().asFile
-                target.parentFile.mkdirs()
-                target.text = text
+                if (!text.contains('<module name="TreeWalker">')) {
+                    throw new GradleException('nitpicker could not find TreeWalker in google_checks.xml')
+                }
+                [(nitpickerCheckstyleConfig): ['checkstyle-all.xml', 'checkstyle-main.xml'],
+                 (nitpickerCheckstyleTestConfig): ['checkstyle-all.xml']].each { target, additions ->
+                    def file = target.get().asFile
+                    file.parentFile.mkdirs()
+                    file.text = text.replace('<module name="TreeWalker">',
+                        '<module name="TreeWalker">\n' + additions.collect { checkstyleModules(it) }.join('\n'))
+                }
             }
         }
         checkstyle { toolVersion = pinned.checkstyle }
         afterEvaluate {
-            tasks.withType(Checkstyle).configureEach {
+            tasks.withType(Checkstyle).configureEach { task ->
                 ignoreFailures = true
                 maxWarnings = Integer.MAX_VALUE
                 if (projectCheckstyleConfig) {
                     configFile = file(projectCheckstyleConfig)
                 } else {
                     dependsOn writeCheckstyleConfig
-                    configFile = nitpickerCheckstyleConfig.get().asFile
+                    configFile = (task.name == 'checkstyleMain' ? nitpickerCheckstyleConfig : nitpickerCheckstyleTestConfig).get().asFile
                     configProperties = ['org.checkstyle.google.suppressionfilter.config':
                         new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
                 }
@@ -194,7 +224,19 @@ allprojects {
                     .collect { it.absolutePath }.join('\n')
                 def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
                 springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSources.files)
-                def rulesets = nitpickerRulesets && usesSpring() ? "${ruleset},${springMainRuleset.absolutePath}" : ruleset
+                def guardRulesets = []
+                if (nitpickerRulesets) {
+                    def guardsMain = reportDir.get().file('pmd-guards-main.xml').asFile
+                    guardsMain.text = scopedRuleset('nitpicker-guards-main', new File(initScriptDir, 'rules/guards-ruleset.xml'), testSources.files, false)
+                    guardRulesets << guardsMain.absolutePath
+                    def existingTests = testSources.files.findAll { it.exists() }
+                    if (!existingTests.isEmpty()) {
+                        def honesty = reportDir.get().file('pmd-test-honesty.xml').asFile
+                        honesty.text = scopedRuleset('nitpicker-test-honesty', new File(initScriptDir, 'rules/test-honesty-ruleset.xml'), existingTests, true)
+                        guardRulesets << honesty.absolutePath
+                    }
+                }
+                def rulesets = ([ruleset] + guardRulesets + (nitpickerRulesets && usesSpring() ? [springMainRuleset.absolutePath] : [])).findAll { it }.join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
@@ -420,6 +462,9 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+            project.apply from: new File(initScriptDir, "tasks/${it}")
+        }
         // --- end coupling ---
 
         // --- kotlin (KT1): detekt, a ktlint or ktfmt format check and JaCoCo on Kotlin classes ---

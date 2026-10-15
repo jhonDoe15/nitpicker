@@ -443,3 +443,37 @@ describe('ingestFormatCheck', () => {
     ]);
   });
 });
+
+describe('readJavaFindings: guard reports', () => {
+  it('reads the javac lint, forbidden API, CPD and dependency reports next to the others', () => {
+    const root = projectWithReports();
+    const reports = path.join(root, 'build/nitpicker');
+    writeFileSync(
+      path.join(reports, 'javac-lint.txt'),
+      'src/main/java/demo/Bad.java:9: warning: [rawtypes] found raw type: List\n',
+    );
+    writeFileSync(
+      path.join(reports, 'forbidden-apis.txt'),
+      'ERROR: Forbidden class/interface use: java.util.Date [legacy-date-time: Use java.time.]\nERROR:   in demo.Bad (Bad.java:9)\n',
+    );
+    writeFileSync(
+      path.join(reports, 'dependencies.json'),
+      JSON.stringify({
+        buildFile: 'build.gradle',
+        declared: [{ group: 'g', name: 'a', version: '2.+' }],
+      }),
+    );
+
+    const { findings } = readJavaFindings(root);
+
+    expect(
+      findings
+        .filter(({ tool }) => ['javac', 'forbiddenapis', 'dependencies'].includes(tool))
+        .map(({ tool, rule, path: file }) => [tool, rule, file]),
+    ).toEqual([
+      ['javac', 'rawtypes', 'src/main/java/demo/Bad.java'],
+      ['forbiddenapis', 'legacy-date-time', 'src/main/java/demo/Bad.java'],
+      ['dependencies', 'dependency-version-not-pinned', 'build.gradle'],
+    ]);
+  });
+});

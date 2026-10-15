@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="nitpicker-guards"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker's own PMD rules for main sources.</description>
+  <rule name="OptionalGet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(). If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.">
+    <description>Optional.get() hides the empty case.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.Optional#get()')]
+]]></value></property></properties>
+  </rule>
+  <rule name="OptionalAsFieldOrParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not use Optional as a field, parameter or record component. Take the plain value (or add an overload) and return Optional only from methods. If it is right here, add an exception for pmd/OptionalAsFieldOrParameter in nitpicker.config.json.">
+    <description>Optional is a return type, not state or an argument.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//(FieldDeclaration | FormalParameter | RecordComponent)/ClassType[@SimpleName = 'Optional']
+]]></value></property></properties>
+  </rule>
+  <rule name="OptionalOfCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Return an empty collection instead of an Optional of a collection.">
+    <description>An empty collection already means nothing was found.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassType[@SimpleName = 'Optional']/TypeArguments/(ClassType[@SimpleName = ('List', 'Set', 'Map', 'Collection', 'Iterable')] | ArrayType)
+]]></value></property></properties>
+  </rule>
+  <rule name="InstanceofThenCast" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use pattern matching (x instanceof Circle c) or a switch over a sealed type instead of instanceof followed by a cast. If it is right here, add an exception for pmd/InstanceofThenCast in nitpicker.config.json.">
+    <description>A cast after instanceof repeats the type test; pattern matching does both.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//InfixExpression[@Operator = 'instanceof'][TypeExpression/ClassType][VariableAccess]
+  [let $type := TypeExpression/ClassType/@SimpleName, $variable := VariableAccess/@Name return
+    ancestor::Block[1]/descendant::CastExpression[ClassType/@SimpleName = $type][VariableAccess/@Name = $variable]]
+]]></value></property></properties>
+  </rule>
+  <rule name="SneakyThrows" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Declare the checked exception or wrap it in a specific unchecked exception. @SneakyThrows hides it from callers. If it is right here, add an exception for pmd/SneakyThrows in nitpicker.config.json.">
+    <description>@SneakyThrows throws checked exceptions without declaring them.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[@SimpleName = 'SneakyThrows']
+]]></value></property></properties>
+  </rule>
+  <rule name="SwallowedInterruptedException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Restore the interrupt with Thread.currentThread().interrupt() or rethrow when catching InterruptedException.">
+    <description>Swallowing InterruptedException hides a cancellation request.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//CatchClause[CatchParameter/(ClassType | UnionType/ClassType)[@SimpleName = 'InterruptedException']]
+  [not(.//MethodCall[@MethodName = 'interrupt'] or .//ThrowStatement)]
+]]></value></property></properties>
+  </rule>
+  <rule name="CollectorsToList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use Stream.toList(). For a mutable result use collect(Collectors.toCollection(ArrayList::new)). If it is right here, add an exception for pmd/CollectorsToList in nitpicker.config.json.">
+    <description>Stream.toList() is the short form of collect(Collectors.toList()).</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.stream.Collectors#toList()')]
+]]></value></property></properties>
+  </rule>
+  <rule name="StreamResourceNotClosed" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Open Files.lines, list, walk and find in try-with-resources: the stream holds a file handle.">
+    <description>A file stream that is never closed leaks a file handle.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.nio.file.Files#lines(_*)') or pmd-java:matchesSig('java.nio.file.Files#list(_*)')
+    or pmd-java:matchesSig('java.nio.file.Files#walk(_*)') or pmd-java:matchesSig('java.nio.file.Files#find(_*)')]
+  [not(ancestor::Resource)]
+]]></value></property></properties>
+  </rule>
+  <rule name="ForEachSideEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not change a captured collection, array or field inside forEach or peek. Build the result with map(...) and collect or toList(), or use a for loop. If it is right here, add an exception for pmd/ForEachSideEffect in nitpicker.config.json.">
+    <description>Side effects on shared state inside a stream pipeline are order-dependent and unsafe in parallel streams.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'offer', 'push', 'merge', 'compute', 'computeIfAbsent', 'computeIfPresent', 'remove', 'set', 'addFirst', 'addLast', 'increment', 'incrementAndGet', 'getAndIncrement') return
+//MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'peek')]/ArgumentList/(
+  LambdaExpression[let $lambda := . return (
+    .//MethodCall[@MethodName = $mutators][*[1][self::VariableAccess or self::FieldAccess]]
+      [not(*[1]/@Name = $lambda//VariableId/@Name)]
+    | .//AssignmentExpression[not(*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][1]/@Name = $lambda//VariableId/@Name)]
+    | .//UnaryExpression[@Operator = ('++', '--')]
+      [not(*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][1]/@Name = $lambda//VariableId/@Name)])]
+  | MethodReference[@MethodName = $mutators][*[1][self::VariableAccess or self::FieldAccess]]
+)
+]]></value></property></properties>
+  </rule>
+  <rule name="SqlConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Pass values to the database as ? parameters of a PreparedStatement; never build SQL with + or String.format. If it is right here, add an exception for pmd/SqlConcatenation in nitpicker.config.json.">
+    <description>String-built SQL is open to injection.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[
+    pmd-java:matchesSig('java.sql.Statement#executeQuery(_*)') or pmd-java:matchesSig('java.sql.Statement#execute(_*)')
+    or pmd-java:matchesSig('java.sql.Statement#executeUpdate(_*)') or pmd-java:matchesSig('java.sql.Statement#executeLargeUpdate(_*)')
+    or pmd-java:matchesSig('java.sql.Statement#addBatch(_*)') or pmd-java:matchesSig('java.sql.Connection#prepareStatement(_*)')
+    or pmd-java:matchesSig('java.sql.Connection#prepareCall(_*)')]
+  /ArgumentList/*[1][
+    self::InfixExpression[@Operator = '+'][@CompileTimeConstant = false()]
+    or self::MethodCall[@MethodName = ('format', 'formatted', 'concat', 'join')]]
+]]></value></property></properties>
+  </rule>
+  <rule name="WeakHash" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use SHA-256 or stronger. MD5 and SHA-1 are broken; for passwords use a password encoder such as bcrypt or Argon2. If it is right here, add an exception for pmd/WeakHash in nitpicker.config.json.">
+    <description>MD5 and SHA-1 collide and are fast to brute force.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.security.MessageDigest#getInstance(_*)')]
+  /ArgumentList/StringLiteral[matches(@Image, '^"(MD2|MD4|MD5|SHA-?1)"$', 'i')]
+|
+//MethodCall[@MethodName = ('md5', 'md5Hex', 'sha1', 'sha1Hex')][pmd-java:matchesSig('org.apache.commons.codec.digest.DigestUtils#_(_*)')]
+]]></value></property></properties>
+  </rule>
+  <rule name="NestedQuantifierRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This regex can backtrack exponentially: a quantified group ends in a quantifier, as in (a+)+. Remove the inner or the outer quantifier. If it is right here, add an exception for pmd/NestedQuantifierRegex in nitpicker.config.json.">
+    <description>Nested quantifiers allow catastrophic backtracking (ReDoS).</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(_*)') or pmd-java:matchesSig('java.util.regex.Pattern#matches(_*)')
+    or pmd-java:matchesSig('java.lang.String#matches(_*)') or pmd-java:matchesSig('java.lang.String#replaceAll(_*)')
+    or pmd-java:matchesSig('java.lang.String#replaceFirst(_*)') or pmd-java:matchesSig('java.lang.String#split(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][matches(@Image, '\([^()]*[^()\\][*+]\??\)([*+]|\{\d+,\})')]
+]]></value></property></properties>
+  </rule>
+  <rule name="PathFromParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Resolve the path against a fixed base directory, then call normalize() and check startsWith(base) before using it. If it is right here, add an exception for pmd/PathFromParameter in nitpicker.config.json.">
+    <description>A path built from a method parameter can escape the base directory with ../.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+(
+  //MethodCall[pmd-java:matchesSig('java.nio.file.Path#of(_*)') or pmd-java:matchesSig('java.nio.file.Paths#get(_*)')][count(ArgumentList/*) >= 2]
+  | //ConstructorCall[pmd-java:typeIs('java.io.File')][count(ArgumentList/*) = 2]
+  | //MethodCall[pmd-java:matchesSig('java.nio.file.Path#resolve(java.lang.String)')]
+)[let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1] return
+    ArgumentList/VariableAccess[@Name = $method/FormalParameters/FormalParameter/VariableId/@Name]
+    and not($method//MethodCall[@MethodName = ('normalize', 'toRealPath', 'getCanonicalPath', 'getCanonicalFile', 'startsWith')])]
+]]></value></property></properties>
+  </rule>
+  <rule ref="category/java/design.xml/SignatureDeclareThrowsException"
+        message="Declare the checked exceptions the method throws (IOException, SQLException or a project exception), not Exception or Throwable. If it is right here, add an exception for pmd/SignatureDeclareThrowsException in nitpicker.config.json."/>
+  <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"
+        message="Throw a specific exception (IllegalArgumentException, IllegalStateException or a project exception), not RuntimeException, Exception, Throwable or Error. If it is right here, add an exception for pmd/AvoidThrowingRawExceptionTypes in nitpicker.config.json."/>
+</ruleset>

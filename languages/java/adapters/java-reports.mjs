@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readCouplingFindings } from './java-coupling.mjs';
+import { readGuardFindings } from '../guards/index.mjs';
 import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
@@ -68,16 +69,30 @@ export function readJavaFindings(
         policy: { thresholds: fileLimits, exclude, exceptions },
       }),
       ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, {
-        projectRoot,
-        sourceRoots: context.sourceRoots,
-        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-      }),
+      ...couplingFindings(context),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
+      ...guardFindings(context),
       ...springFindings(context),
     ],
   };
+}
+
+function couplingFindings({ projectRoot, reportRoot, sourceRoots, kotlin }) {
+  return readCouplingFindings(reportRoot, {
+    projectRoot,
+    sourceRoots,
+    kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+  });
+}
+
+function guardFindings({ projectRoot, reportRoot, manifest, lintedRoots: roots }) {
+  return readGuardFindings({
+    reportRoot,
+    projectRoot,
+    manifest,
+    locate: sourceLocator(projectRoot, roots),
+  });
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {

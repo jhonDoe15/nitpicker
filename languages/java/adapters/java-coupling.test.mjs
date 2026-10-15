@@ -243,3 +243,35 @@ describe('Kotlin classes', () => {
     ).toEqual([{ rule: 'stability-direction', identity: 'package-edge:stable->churn' }]);
   });
 });
+
+describe('cycles', () => {
+  it('reports a package cycle and a class cycle from the jdeps graph', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cycle-coupling-'));
+    temporaryRoots.push(root);
+    const reportRoot = path.join(root, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(
+      path.join(reportRoot, 'jdeps.txt'),
+      `classes -> java.base
+   cyc.a.Alpha    -> cyc.b.Beta     classes
+   cyc.b.Beta     -> cyc.a.Alpha    classes
+   cyc.b.Beta     -> java.lang.Object    java.base
+`,
+    );
+    writeFileSync(path.join(reportRoot, 'jdeps-classes.txt'), 'cyc.a.Alpha\ncyc.b.Beta\n');
+
+    const findings = readCouplingFindings(reportRoot, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings
+        .filter((finding) => finding.classification === 'enforceable')
+        .map(({ rule, path: file }) => ({ rule, path: file })),
+    ).toEqual([
+      { rule: 'package-cycle', path: 'src/main/java/cyc/a/Alpha.java' },
+      { rule: 'class-cycle', path: 'src/main/java/cyc/a/Alpha.java' },
+    ]);
+  });
+});
