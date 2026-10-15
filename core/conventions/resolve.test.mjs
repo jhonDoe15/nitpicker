@@ -172,6 +172,10 @@ describe('conventions config key', () => {
     const config = { preset: 'java', conventions: { 'java.indentation': '4' } };
 
     expect(validateConfig(config)).toEqual(config);
+    expect(validateConfig({ ...config, preset: 'kotlin' })).toEqual({
+      ...config,
+      preset: 'kotlin',
+    });
     expect(describeConfigOverrides(config)).toEqual([
       'preset: "java"',
       'conventions: {"java.indentation":"4"}',
