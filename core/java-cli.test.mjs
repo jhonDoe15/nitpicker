@@ -882,28 +882,11 @@ describe('a root project without Nitpicker reports', () => {
 
 describe('Java analyzer', () => {
   it('records the pinned tool versions and a stable configuration hash', () => {
+    const javaTools = 'pmd spotbugs googleJavaFormat jacoco checkstyle lizard pitest pitestJunit5';
+    const tools = `${javaTools} archunit detekt detektKotlin ktlint ktfmt kotlinCompiler jscpd`;
     const analyzer = createJavaAnalyzer();
 
-    const tools = [
-      'pmd',
-      'spotbugs',
-      'googleJavaFormat',
-      'jacoco',
-      'checkstyle',
-      'lizard',
-      'pitest',
-      'pitestJunit5',
-      'archunit',
-      'detekt',
-      'detektKotlin',
-      'ktlint',
-      'ktfmt',
-      'kotlinCompiler',
-      'jscpd',
-    ];
-    expect(analyzer.version).toMatch(
-      new RegExp(`^${tools.map((tool) => String.raw`${tool}@[\d.]+`).join(';')}$`),
-    );
+    expect(analyzer.version).toMatch(new RegExp(`^${tools.replaceAll(' ', '@[\\d.]+;')}@[\\d.]+$`));
     expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
   });
 
