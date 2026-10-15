@@ -1,60 +1,99 @@
 import { coverageMetricFinding, normalizeReportPath, uncoveredFinding } from '../common.mjs';
 
+const RECORD_HANDLERS = [
+  ['DA:', recordLineHits],
+  ['FN:', recordFunctionDeclaration],
+  ['FNDA:', recordFunctionHits],
+];
+
 export function ingestLcov(text, options = {}) {
   const tool = options.tool ?? 'lcov';
-  const findings = [];
+  const findings = parseRecords(text, options.root).flatMap((record) =>
+    recordFindings(record, tool),
+  );
+  return { findings };
+}
+
+function parseRecords(text, root) {
+  const records = [];
   let record;
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();
     if (line.startsWith('SF:')) {
-      record = {
-        path: normalizeReportPath(line.slice(3), options.root),
-        lines: new Map(),
-        functions: new Map(),
-      };
-    } else if (record === undefined) {
+      record = startRecord(line, root);
       continue;
-    } else if (line.startsWith('DA:')) {
-      const [lineNumber, hits] = line.slice(3).split(',');
-      record.lines.set(lineNumber, Number(hits) > 0);
-    } else if (line.startsWith('FN:')) {
-      const name = line.slice(3).split(',').slice(1).join(',');
-      record.functions.set(name, record.functions.get(name) ?? 0);
-    } else if (line.startsWith('FNDA:')) {
-      const [hits, ...nameParts] = line.slice(5).split(',');
-      record.functions.set(nameParts.join(','), Number(hits));
-    } else if (line === 'end_of_record') {
-      findings.push(...recordFindings(record, tool));
-      record = undefined;
     }
+    if (record === undefined) {
+      continue;
+    }
+    if (line === 'end_of_record') {
+      records.push(record);
+      record = undefined;
+      continue;
+    }
+    applyRecordLine(record, line);
   }
-  return { findings };
+  return records;
+}
+
+function startRecord(line, root) {
+  return {
+    path: normalizeReportPath(line.slice(3), root),
+    lines: new Map(),
+    functions: new Map(),
+  };
+}
+
+function applyRecordLine(record, line) {
+  const handler = RECORD_HANDLERS.find(([prefix]) => line.startsWith(prefix));
+  if (handler !== undefined) {
+    handler[1](record, line.slice(handler[0].length));
+  }
+}
+
+function recordLineHits(record, payload) {
+  const [lineNumber, hits] = payload.split(',');
+  record.lines.set(lineNumber, Number(hits) > 0);
+}
+
+function recordFunctionDeclaration(record, payload) {
+  const name = payload.split(',').slice(1).join(',');
+  record.functions.set(name, record.functions.get(name) ?? 0);
+}
+
+function recordFunctionHits(record, payload) {
+  const [hits, ...nameParts] = payload.split(',');
+  record.functions.set(nameParts.join(','), Number(hits));
 }
 
 function recordFindings(record, tool) {
   if (record.path === undefined) {
     return [];
   }
-  const found = [];
+  return [...lineCoverageFindings(record, tool), ...uncoveredFunctionFindings(record, tool)];
+}
+
+function lineCoverageFindings(record, tool) {
   const total = record.lines.size;
-  if (total > 0) {
-    const covered = [...record.lines.values()].filter(Boolean).length;
-    found.push(
-      coverageMetricFinding({ tool, path: record.path, name: 'line-coverage', covered, total }),
+  if (total === 0) {
+    return [];
+  }
+  const covered = [...record.lines.values()].filter(Boolean).length;
+  return [
+    coverageMetricFinding({ tool, path: record.path, name: 'line-coverage', covered, total }),
+  ];
+}
+
+function uncoveredFunctionFindings(record, tool) {
+  return [...record.functions]
+    .filter(([name, hits]) => hits === 0 && name !== '')
+    .map(([name]) =>
+      uncoveredFinding({
+        tool,
+        rule: 'uncovered-function',
+        path: record.path,
+        symbol: name,
+        message: `Function ${name} is not covered`,
+      }),
     );
-  }
-  for (const [name, hits] of record.functions) {
-    if (hits === 0 && name !== '') {
-      found.push(
-        uncoveredFinding({
-          tool,
-          rule: 'uncovered-function',
-          path: record.path,
-          symbol: name,
-          message: `Function ${name} is not covered`,
-        }),
-      );
-    }
-  }
-  return found;
 }
