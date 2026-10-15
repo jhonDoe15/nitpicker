@@ -25,3 +25,8 @@ export function exceptionEntryText({ rule, path, glob, function: functionName, n
 export function exceptionSentence(entryText, key = 'exceptions') {
   return `If a reviewer agrees this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
 }
+
+/** `message` ended with a full stop, then `sentence`. */
+export function appendSentence(message, sentence) {
+  return `${message.endsWith('.') ? message : `${message}.`} ${sentence}`;
+}

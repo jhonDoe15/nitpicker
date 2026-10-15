@@ -18,7 +18,7 @@ export const rule = {
     schema: [],
     messages: {
       nodeProcessPerTest:
-        'Do not start a Node process (process.execPath, node, npx or a node_modules/.bin script) from a test or beforeEach. Import the function and call it in-process; start the application as a process only through the AppProcess harness in the test fixtures. If this test checks the process boundary itself (exit codes, signals, stdout), add an exception for this rule in nitpicker.config.json.',
+        'Do not start a Node process (process.execPath, node, npx or a node_modules/.bin script) from a test or beforeEach. Import the function and call it in-process; start the application as a process only through the AppProcess harness in the test fixtures. An exception fits only when this test checks the process boundary itself (exit codes, signals, stdout).',
     },
   },
   create(context) {

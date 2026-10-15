@@ -11,35 +11,70 @@ const finding = (rule, overrides = {}) => ({
   ...overrides,
 });
 
+const route = (entry) =>
+  `If a reviewer agrees this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+
 describe('withExceptionRoutes', () => {
   it.each([
-    ['mutant-survived'],
-    ['mutant-nocoverage'],
-    ['duplicate-clone'],
-    ['stability-direction'],
-  ])('appends the entry that accepts %s for its path', (rule) => {
-    expect(withExceptionRoutes([finding(rule)])).toEqual([
+    ['mutant-survived', 'mutation'],
+    ['mutant-nocoverage', 'pit'],
+    ['duplicate-clone', 'duplicates'],
+    ['stability-direction', 'coupling'],
+    ['no-production-runtime', 'test-runtime'],
+    ['type-only-production-dependency', 'test-runtime'],
+    ['public-alternative-bypass', 'entry-points'],
+    ['files', 'dead-code'],
+    ['public-contract-production-use', 'coding-standards'],
+    ['runtime-boundary/no-fetch', 'coding-standards'],
+    ['callback-protocol/no-promise-callback', 'coding-standards'],
+    ['no-production-cycles', 'dependency-architecture'],
+    ['domain-does-not-import-adapters', 'dependency-architecture'],
+  ])('appends the entry that accepts %s for its path', (rule, tool) => {
+    expect(withExceptionRoutes([finding(rule, { tool })])).toEqual([
       finding(rule, {
-        message: `The base message. If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
+        tool,
+        message: `The base message. ${route(`{"rule":"${rule}","paths":["src/a.ts"],"reason":"<why this is intended>"}`)}`,
       }),
     ]);
+  });
+
+  it('names the function of a mutant and the declaration of an unused export', () => {
+    expect(
+      withExceptionRoutes([
+        finding('mutant-survived', { tool: 'pit', symbol: 'demo.Calc#save(IIII)I' }),
+        finding('exports', { tool: 'dead-code', symbol: 'helper' }),
+      ]).map(({ message }) => message),
+    ).toEqual([
+      `The base message. ${route('{"rule":"mutant-survived","paths":["src/a.ts"],"function":"Calc.save","reason":"<why this is intended>"}')}`,
+      `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"name":"helper","reason":"<why this is intended>"}')}`,
+    ]);
+  });
+
+  it('escapes the glob characters of a printed path', () => {
+    expect(
+      withExceptionRoutes([
+        finding('duplicate-clone', { tool: 'duplicates', path: 'src/[id]/{x}/a.ts' }),
+      ])[0].message,
+    ).toBe(
+      `The base message. ${route('{"rule":"duplicate-clone","paths":["src/\\\\[id\\\\]/\\\\{x\\\\}/a.ts"],"reason":"<why this is intended>"}')}`,
+    );
   });
 
   it('ends a message that has no full stop before the entry', () => {
     expect(
-      withExceptionRoutes([finding('stability-direction', { message: 'a depends on b' })]),
-    ).toEqual([
-      finding('stability-direction', {
-        message:
-          'a depends on b. If a reviewer agrees this is intended, add {"rule":"stability-direction","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      }),
-    ]);
+      withExceptionRoutes([
+        finding('stability-direction', { tool: 'coupling', message: 'a depends on b' }),
+      ])[0].message,
+    ).toBe(
+      `a depends on b. ${route('{"rule":"stability-direction","paths":["src/a.ts"],"reason":"<why this is intended>"}')}`,
+    );
   });
 
-  it('leaves descriptive findings and other rules alone', () => {
+  it('leaves descriptive findings, other rules and rules of another tool alone', () => {
     const findings = [
-      finding('mutant-survived', { classification: 'descriptive' }),
-      finding('function-lines-limit'),
+      finding('mutant-survived', { tool: 'mutation', classification: 'descriptive' }),
+      finding('function-lines-limit', { tool: 'structure' }),
+      finding('files', { tool: 'eslint' }),
     ];
     expect(withExceptionRoutes(findings)).toEqual(findings);
   });
@@ -47,8 +82,7 @@ describe('withExceptionRoutes', () => {
   it('routes the rules it is given', () => {
     expect(withExceptionRoutes([finding('exports')], ['exports'])).toEqual([
       finding('exports', {
-        message:
-          'The base message. If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
+        message: `The base message. ${route('{"rule":"exports","paths":["src/a.ts"],"reason":"<why this is intended>"}')}`,
       }),
     ]);
   });

@@ -53,11 +53,10 @@ export const rule = {
     schema: [],
     messages: {
       componentInternals:
-        'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+        'Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`.',
       fiberInternals:
-        'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
-      hookSpy:
-        'Do not spy on the React hook `{{ name }}`. Use `renderHook`. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+        'Do not read React internals ({{ name }}). Assert what the user sees with `screen.getByRole(...)`.',
+      hookSpy: 'Do not spy on the React hook `{{ name }}`. Use `renderHook`.',
     },
   },
   create: inReactTestFilesOnly((context) => {

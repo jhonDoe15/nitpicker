@@ -30,6 +30,11 @@ import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import {
+  architectureFindings,
+  normalizedRelativePath,
+  requiredString,
+} from './architecture/violations.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -270,7 +275,7 @@ function runArchitecture(options) {
     includeOnly: options.includeOnly,
     configRelativePath: options.configRelativePath,
   });
-  return normalizeArchitectureViolations(report, options.analyzerName);
+  return architectureFindings(report, options.analyzerName);
 }
 
 export function normalizeTypeScriptDiagnostics({
@@ -319,51 +324,6 @@ export function normalizeTypeScriptDiagnostics({
     }
     return finding;
   });
-}
-
-export function normalizeArchitectureViolations(report, analyzerName) {
-  if (!Array.isArray(report?.summary?.violations)) {
-    throw new TypeError('dependency-cruiser report is missing summary.violations');
-  }
-  const occurrences = new Map();
-  return report.summary.violations.map((violation, index) => {
-    const context = `dependency-cruiser violation ${String(index)}`;
-    const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
-    const severity = requiredString(violation?.rule?.severity, `${context}.rule.severity`);
-    const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
-    const to = normalizedRelativePath(requiredString(violation.to, `${context}.to`), context);
-    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
-    const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
-    const canonicalPath = cycle?.[0] ?? from;
-    const occurrenceKey = JSON.stringify([rule, canonicalPath, semanticIdentity]);
-    const occurrence = (occurrences.get(occurrenceKey) ?? 0) + 1;
-    occurrences.set(occurrenceKey, occurrence);
-    return {
-      tool: analyzerName,
-      rule,
-      path: canonicalPath,
-      identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-      message:
-        cycle === undefined
-          ? `${from} must not depend on ${to}`
-          : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
-      classification: severity === 'error' ? 'enforceable' : 'descriptive',
-    };
-  });
-}
-
-function canonicalCycle(value, context) {
-  if (!Array.isArray(value) || value.length < 2) {
-    throw new TypeError(`${context}.cycle must contain at least two modules`);
-  }
-  const names = value.map((item, index) =>
-    normalizedRelativePath(
-      requiredString(item?.name, `${context}.cycle[${String(index)}].name`),
-      context,
-    ),
-  );
-  const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
-  return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
 }
 
 function installTypeScriptConfig(options) {
@@ -695,20 +655,6 @@ function normalizedPattern(value) {
   return value.replaceAll('\\', '/');
 }
 
-function normalizedRelativePath(value, context) {
-  const normalizedPath = path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
-  if (
-    normalizedPath.length === 0 ||
-    normalizedPath === '..' ||
-    normalizedPath.startsWith('../') ||
-    path.posix.isAbsolute(normalizedPath) ||
-    /^[A-Za-z]:\//.test(normalizedPath)
-  ) {
-    throw new Error(`${context} must stay within the analyzed snapshot`);
-  }
-  return normalizedPath;
-}
-
 function formatDiagnostic(diagnostic) {
   return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
@@ -737,11 +683,4 @@ function hash(value) {
 
 function requiredValue(values, name) {
   return requiredString(values.get(name), name);
-}
-
-function requiredString(value, context) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`${context} must be a non-empty string`);
-  }
-  return value;
 }

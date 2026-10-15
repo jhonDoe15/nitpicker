@@ -132,7 +132,7 @@ describe('ESLint messages carry the allowed form without changing the finding id
     );
 
     expect(finding.message).toBe(
-      'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`.',
+      'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`. If a reviewer agrees this is intended, add {"rule":"functional/prefer-immutable-types","paths":["src/main/features/a/domain/x.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.identity.split('|').slice(0, 2)).toEqual([
       'message:variable',

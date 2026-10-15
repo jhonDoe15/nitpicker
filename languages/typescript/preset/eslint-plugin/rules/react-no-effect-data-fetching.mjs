@@ -38,7 +38,7 @@ export const rule = {
     schema: [],
     messages: {
       fetchInEffect:
-        'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. If this request is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
+        'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. An exception fits only when this request is not data for rendering (an analytics beacon).',
     },
   },
   create(context) {

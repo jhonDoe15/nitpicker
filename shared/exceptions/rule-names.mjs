@@ -30,10 +30,10 @@ export function exceptionRoute({ rule, path, function: functionName, name, key }
   );
 }
 
-function toolsOf(rule) {
+/** The tools that print `rule` when nitpicker adds it, or undefined. */
+export function toolsOf(rule) {
   return (
-    RULE_TOOLS.get(rule) ??
-    PREFIXED_RULE_TOOLS.find(([prefix]) => rule.startsWith(prefix))?.[1]
+    RULE_TOOLS.get(rule) ?? PREFIXED_RULE_TOOLS.find(([prefix]) => rule.startsWith(prefix))?.[1]
   );
 }
 
@@ -48,7 +48,9 @@ function splitPrinted(rule) {
 /** The rule an `exceptions` entry names: `<tool>/<rule>`, as a finding prints it, names `<rule>` too. */
 export function canonicalRule(rule) {
   const printed = splitPrinted(rule);
-  return printed !== undefined && toolsOf(printed.rest).includes(printed.tool) ? printed.rest : rule;
+  return printed !== undefined && toolsOf(printed.rest).includes(printed.tool)
+    ? printed.rest
+    : rule;
 }
 
 /** Whether `rule` is one nitpicker adds, bare or as printed. */

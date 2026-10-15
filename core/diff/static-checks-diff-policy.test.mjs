@@ -4,10 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createStaticCheckAnalyzer } from '../../languages/typescript/adapters/static-checks.mjs';
-import {
-  dependencyPreparationMode,
-  normalizeArchitectureViolations,
-} from '../../languages/typescript/adapters/static-checks-runner.mjs';
+import { normalizeArchitectureViolations } from '../../languages/typescript/adapters/architecture/violations.mjs';
+import { dependencyPreparationMode } from '../../languages/typescript/adapters/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { withDefaultAnalyzerParallelism } from './fixtures/analyzer-parallelism.mjs';
 import { runQualityDiff } from './run-diff.mjs';

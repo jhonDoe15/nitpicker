@@ -106,7 +106,7 @@ export const rule = {
     schema: [],
     messages: {
       derivedState:
-        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). If this effect synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
+        'Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). An exception fits only when this effect synchronizes with an external system.',
     },
   },
   create(context) {

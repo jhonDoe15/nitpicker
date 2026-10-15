@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeArchitectureViolations } from '../../languages/typescript/adapters/static-checks-runner.mjs';
+import { normalizeArchitectureViolations } from '../../languages/typescript/adapters/architecture/violations.mjs';
 import {
   normalizeCoupling,
   normalizeCrap,

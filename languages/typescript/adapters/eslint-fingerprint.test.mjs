@@ -225,6 +225,8 @@ describe('a finding in an edited function stays baselined while the function has
 describe('a new throw in a legacy function', () => {
   const NO_THROW = 'nitpicker/no-throw';
   const NO_THROW_MESSAGE = 'Return a discriminated-union failure result instead of throwing.';
+  const NO_THROW_ROUTE =
+    'If a reviewer agrees this is intended, add {"rule":"nitpicker/no-throw","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
   const oneThrow = [
     'export function parse(text: string): string {',
     "  if (text === '') {",
@@ -269,20 +271,24 @@ describe('a new throw in a legacy function', () => {
     const result = compareWithInserted(throws(oneThrow), throws(twoThrows), [[5, 7]]);
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      `${NO_THROW_MESSAGE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.`,
+      `${NO_THROW_MESSAGE} ${NO_THROW_ROUTE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.`,
     ]);
   });
 
   it('keeps the plain message when the base function had no throw', () => {
     const result = compareWithInserted(throws(withoutThrow), throws(oneThrow), [[3, 3]]);
 
-    expect(result.newFindings.map(({ message }) => message)).toEqual([NO_THROW_MESSAGE]);
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${NO_THROW_MESSAGE} ${NO_THROW_ROUTE}`,
+    ]);
   });
 });
 
 describe('a complexity finding fails only when the number rises', () => {
   const complexity = (amount) =>
-    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions. If it must stay this way, add an exception for this rule in nitpicker.config.json.`;
+    `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions.`;
+  const COMPLEXITY_ROUTE =
+    'If a reviewer agrees this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
 
   const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
   const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
@@ -319,7 +325,7 @@ describe('a complexity finding fails only when the number rises', () => {
     const result = compare(find(build, reported, 16), find(build, reported, 60));
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'total cognitive complexity grew from 16 to 60. Put new code in a new function.',
+      'total cognitive complexity grew from 16 to 60. Put new code in a new function. If a reviewer agrees this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -335,6 +341,8 @@ describe('a complexity finding fails only when the number rises', () => {
   it.each(cases)('fails %s that is over the limit for the first time', (_name, build, reported) => {
     const result = compare([], find(build, reported, 16));
 
-    expect(result.newFindings.map(({ message }) => message)).toEqual([complexity(16)]);
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      `${complexity(16)} ${COMPLEXITY_ROUTE}`,
+    ]);
   });
 });

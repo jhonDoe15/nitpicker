@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
+import { eslintMessageWithHint, growthAdviceFor, routedEslintMessage } from './eslint-hints.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
@@ -232,5 +232,42 @@ describe('eslintMessageWithHint', () => {
         relativePath: 'a.ts',
       }),
     ).toBe('Unexpected debugger.');
+  });
+});
+
+describe('routedEslintMessage', () => {
+  const route = (rule) =>
+    `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+
+  it('ends the message of any rule with the entry that turns it off for the path', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: '@typescript-eslint/no-explicit-any',
+        text: 'Unexpected any.',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(`Unexpected any. ${route('@typescript-eslint/no-explicit-any')}`);
+  });
+
+  it('ends the hint of a rule it rewrites with the entry', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'vitest/expect-expect',
+        text: 'Test has no assertions',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe(
+      `Test has no assertions. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test. ${route('vitest/expect-expect')}`,
+    );
+  });
+
+  it('names no entry for a directive eslint reports without a rule', () => {
+    expect(
+      routedEslintMessage({
+        ruleId: 'eslint/unused-disable-directive',
+        text: 'Unused eslint-disable directive',
+        relativePath: 'src/a.ts',
+      }),
+    ).toBe('Unused eslint-disable directive');
   });
 });
