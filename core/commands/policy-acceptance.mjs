@@ -1,4 +1,4 @@
-export const ACCEPT_POLICY_CHANGE_VARIABLE = 'NITPICKER_ACCEPT_POLICY_CHANGE';
+const ACCEPT_POLICY_CHANGE_VARIABLE = 'NITPICKER_ACCEPT_POLICY_CHANGE';
 
 export function policyAcceptance(options, environment) {
   return {
