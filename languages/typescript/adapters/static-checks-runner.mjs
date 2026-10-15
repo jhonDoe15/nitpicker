@@ -67,6 +67,7 @@ export function normalizeArchitectureViolations(report, analyzerName) {
     throw new TypeError('dependency-cruiser report is missing summary.violations');
   }
   const occurrences = new Map();
+  const comments = ruleComments(report);
   return report.summary.violations.map((violation, index) => {
     const context = `dependency-cruiser violation ${String(index)}`;
     const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
@@ -84,10 +85,12 @@ export function normalizeArchitectureViolations(report, analyzerName) {
       rule,
       path: canonicalPath,
       identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-      message:
+      message: withComment(
         cycle === undefined
-          ? `${from} must not depend on ${to}`
+          ? `${from} must not depend on ${to}${viaText(violation.via, context)}`
           : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
+        comments.get(rule),
+      ),
       classification: severity === 'error' ? 'enforceable' : 'descriptive',
     };
   });
@@ -105,4 +108,32 @@ function canonicalCycle(value, context) {
   );
   const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
   return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
+}
+
+function ruleComments(report) {
+  const rules = report.summary.ruleSetUsed?.forbidden ?? [];
+  return new Map(
+    rules
+      .filter((rule) => typeof rule?.name === 'string' && typeof rule.comment === 'string')
+      .map((rule) => [rule.name, rule.comment]),
+  );
+}
+
+function withComment(message, comment) {
+  return comment === undefined ? message : `${message}. ${comment}`;
+}
+
+function viaText(via, context) {
+  if (!Array.isArray(via) || via.length < 2) {
+    return '';
+  }
+  const steps = via
+    .slice(0, -1)
+    .map((step, index) =>
+      normalizedRelativePath(
+        requiredString(step?.name, `${context}.via[${String(index)}].name`),
+        context,
+      ),
+    );
+  return ` through ${steps.join(' -> ')}`;
 }

@@ -38,6 +38,10 @@ afterAll(() => {
   }
 });
 
+function describeFinding({ rule, path: file }) {
+  return `${rule} ${file}`;
+}
+
 function writeFiles(root, files) {
   for (const [relativePath, contents] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
@@ -68,7 +72,7 @@ function prepareDependencies(temporaryRoot, projectRoot, files, dependencies) {
   }
 }
 
-function architectureFindings(files, dependencies = 'installed') {
+function architectureFindings(files, dependencies = 'installed', describe = describeFinding) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   roots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'head');
@@ -89,10 +93,7 @@ function architectureFindings(files, dependencies = 'installed') {
   );
   return {
     toolErrors: run.toolErrors,
-    findings: run.reports
-      .get('dependency-architecture')
-      ?.findings.map(({ rule, path: file }) => `${rule} ${file}`)
-      .toSorted(),
+    findings: run.reports.get('dependency-architecture')?.findings.map(describe).toSorted(),
   };
 }
 
@@ -109,4 +110,32 @@ describe('domain rules on installed npm packages', () => {
       });
     },
   );
+});
+
+describe('architecture findings', () => {
+  it('name the allowed form, the exception route and the shared module on the way', () => {
+    const route = [
+      ' If it is deliberate, add an exception for this rule in nitpicker.config.json',
+      ' (paths are the importing files).',
+    ].join('');
+    const idLibraries = [
+      'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker).',
+      ' Take the ID as a parameter from adapters/.',
+    ].join('');
+    const reach = [
+      'domain/ reaches Node I/O or a client through a shared/ module it imports.',
+      ' Move that dependency out of the shared module,',
+      ' or do the work in adapters/ and pass the result into domain/ as a parameter.',
+    ].join('');
+    expect(architectureFindings(project, 'absent', ({ message }) => message)).toEqual({
+      toolErrors: [],
+      findings: [
+        `src/main/features/orders/domain/order-id.ts must not depend on uuid. ${idLibraries}${route}`,
+        [
+          'src/main/features/orders/domain/order-total.ts must not depend on pg',
+          ` through src/main/shared/database.ts. ${reach}${route}`,
+        ].join(''),
+      ],
+    });
+  });
 });
