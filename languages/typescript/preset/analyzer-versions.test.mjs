@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { policyHash } from '../../../core/diff/report-model.mjs';
 import { ESLINT_PLUGIN_PACKAGES, resolveAnalyzerVersion } from './analyzer-versions.mjs';
 
@@ -34,4 +35,20 @@ describe('ESLint analyzer versions', () => {
   it('leaves non-ESLint analyzer versions free of plugin versions', () => {
     expect(resolveAnalyzerVersion('prettier-format', '/project', fakeResolver())).toBe('1.0.0');
   });
+});
+
+describe('package-bundled analyzer versions', () => {
+  it.each(['crap', 'structure'])(
+    'resolves %s from the TypeScript package of nitpicker, not from the project',
+    (analyzer) => {
+      const calls = [];
+      const resolve = (name, options) => {
+        calls.push({ name, projectRoot: options.projectRoot });
+        return { version: '5.4.3' };
+      };
+
+      expect(resolveAnalyzerVersion(analyzer, '/project', resolve)).toBe('5.4.3');
+      expect(calls).toEqual([{ name: 'typescript', projectRoot: PACKAGE_ROOT }]);
+    },
+  );
 });

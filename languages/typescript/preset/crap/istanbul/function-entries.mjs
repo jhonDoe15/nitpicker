@@ -1,0 +1,94 @@
+import { isPlainObject } from '../../../../../shared/config.mjs';
+import { comparePosition, parseLineSpan, parsePosition, parseSpan, spanKey } from './spans.mjs';
+
+const SPAN_SOURCE_RANK = { loc: 0, decl: 1, line: 2 };
+
+function resolvedSpan(entry) {
+  const loc = parseSpan(entry.loc);
+  if (loc) {
+    return { span: loc, spanSource: 'loc' };
+  }
+  const decl = parseSpan(entry.decl);
+  if (decl) {
+    return { span: decl, spanSource: 'decl' };
+  }
+  const line = parseLineSpan(entry.line);
+  return line ? { span: line, spanSource: 'line' } : null;
+}
+
+function functionEntryOf(value) {
+  if (!isPlainObject(value)) {
+    return null;
+  }
+  const resolved = resolvedSpan(value);
+  if (!resolved) {
+    return null;
+  }
+  const declarationStart = isPlainObject(value.decl) ? parsePosition(value.decl.start) : null;
+  return {
+    ...resolved,
+    ...(typeof value.name === 'string' && value.name ? { name: value.name } : {}),
+    ...(declarationStart ? { declarationStart } : {}),
+  };
+}
+
+function identityKey(entry) {
+  if (entry.name && entry.declarationStart) {
+    return `decl:${entry.name}:${entry.declarationStart.line}:${entry.declarationStart.column}`;
+  }
+  return entry.name
+    ? `named-span:${entry.name}:${spanKey(entry.span)}`
+    : `span:${spanKey(entry.span)}`;
+}
+
+function lineCount(span) {
+  return span.endLine - span.startLine;
+}
+
+function compareSpecificity(left, right) {
+  const rank = (entry) => SPAN_SOURCE_RANK[entry.spanSource] ?? 3;
+  return (
+    rank(left) - rank(right) ||
+    lineCount(left.span) - lineCount(right.span) ||
+    comparePosition(
+      right.span.startLine,
+      right.span.startColumn,
+      left.span.startLine,
+      left.span.startColumn,
+    ) ||
+    comparePosition(
+      left.span.endLine,
+      left.span.endColumn,
+      right.span.endLine,
+      right.span.endColumn,
+    )
+  );
+}
+
+function canonicalOf(entries) {
+  const bySpan = new Map();
+  for (const entry of entries) {
+    const key = spanKey(entry.span);
+    const existing = bySpan.get(key);
+    if (!existing || compareSpecificity(entry, existing) < 0) {
+      bySpan.set(key, entry);
+    }
+  }
+  return [...bySpan.values()].sort(compareSpecificity)[0];
+}
+
+export function deduplicateFunctions(entries) {
+  const grouped = new Map();
+  for (const entry of entries) {
+    const key = identityKey(entry);
+    grouped.set(key, [...(grouped.get(key) ?? []), entry]);
+  }
+  return [...grouped.values()].map(canonicalOf);
+}
+
+export function parseFunctions(functionMap) {
+  if (!isPlainObject(functionMap)) {
+    return [];
+  }
+  return deduplicateFunctions(Object.values(functionMap).map(functionEntryOf).filter(Boolean));
+}

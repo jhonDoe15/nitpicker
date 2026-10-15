@@ -1,0 +1,927 @@
+[
+  {
+    "source": "src/main/commonjs.cjs",
+    "function": "helpers.double",
+    "lines": {
+      "start": 2,
+      "end": 4
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/commonjs.cjs",
+    "function": "helpers.triple",
+    "lines": {
+      "start": 5,
+      "end": 5
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 6
+  },
+  {
+    "source": "src/main/commonjs.cjs",
+    "function": "exports.label",
+    "lines": {
+      "start": 10,
+      "end": 12
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 6
+  },
+  {
+    "source": "src/main/commonjs.cjs",
+    "function": "module.exports.pick",
+    "lines": {
+      "start": 14,
+      "end": 19
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 66.66666666666666,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2.5
+  },
+  {
+    "source": "src/main/commonjs.cjs",
+    "function": "module.exports.unused",
+    "lines": {
+      "start": 21,
+      "end": 23
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 6
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.create",
+    "lines": {
+      "start": 4,
+      "end": 6
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.constructor",
+    "lines": {
+      "start": 8,
+      "end": 12
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2.5
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.get value",
+    "lines": {
+      "start": 14,
+      "end": 16
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.set value",
+    "lines": {
+      "start": 18,
+      "end": 20
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2.5
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.increment",
+    "lines": {
+      "start": 22,
+      "end": 24
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.#reset",
+    "lines": {
+      "start": 26,
+      "end": 28
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.clear",
+    "lines": {
+      "start": 30,
+      "end": 32
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter.handler",
+    "lines": {
+      "start": 34,
+      "end": 34
+    },
+    "complexity": 3,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 3
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "Counter['computed' + 'Name']",
+    "lines": {
+      "start": 36,
+      "end": 38
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "plain",
+    "lines": {
+      "start": 41,
+      "end": 43
+    },
+    "complexity": 4,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 6
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "default",
+    "lines": {
+      "start": 45,
+      "end": 47
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2.5
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "arrow",
+    "lines": {
+      "start": 49,
+      "end": 57
+    },
+    "complexity": 3,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 3
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "registry.run",
+    "lines": {
+      "start": 60,
+      "end": 62
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "registry.nested.deep",
+    "lines": {
+      "start": 64,
+      "end": 66
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "registry.nested.lazy",
+    "lines": {
+      "start": 67,
+      "end": 67
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "registry.load",
+    "lines": {
+      "start": 69,
+      "end": 71
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "table.switchy",
+    "lines": {
+      "start": 75,
+      "end": 84
+    },
+    "complexity": 3,
+    "statementCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 33.33333333333333,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 33.33333333333333,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 5.666666666666668
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "overloaded",
+    "lines": {
+      "start": 89,
+      "end": 91
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "withTry",
+    "lines": {
+      "start": 93,
+      "end": 99
+    },
+    "complexity": 3,
+    "statementCoverage": {
+      "percent": 66.66666666666666,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 4.125
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "callbacks",
+    "lines": {
+      "start": 101,
+      "end": 103
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "holder.fn",
+    "lines": {
+      "start": 106,
+      "end": 108
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "sleepThenFind",
+    "lines": {
+      "start": 110,
+      "end": 112
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "neverCalled",
+    "lines": {
+      "start": 114,
+      "end": 119
+    },
+    "complexity": 3,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 12
+  },
+  {
+    "source": "src/main/constructs.ts",
+    "function": "interfaceOnly",
+    "lines": {
+      "start": 121,
+      "end": 125
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "classify",
+    "lines": {
+      "start": 1,
+      "end": 5
+    },
+    "complexity": 4,
+    "statementCoverage": {
+      "percent": 60,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 33.33333333333333,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 33.33333333333333,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 8.740740740740742
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "Box.constructor",
+    "lines": {
+      "start": 8,
+      "end": 10
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2.5
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "Box.first",
+    "lines": {
+      "start": 12,
+      "end": 14
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "Box.of",
+    "lines": {
+      "start": 16,
+      "end": 18
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 0,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "compose",
+    "lines": {
+      "start": 21,
+      "end": 21
+    },
+    "complexity": 1,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 1
+  },
+  {
+    "source": "src/main/module.mjs",
+    "function": "generate",
+    "lines": {
+      "start": 23,
+      "end": 27
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/plain.js",
+    "function": "sum",
+    "lines": {
+      "start": 1,
+      "end": 7
+    },
+    "complexity": 2,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": null,
+      "status": "structural_na",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 2
+  },
+  {
+    "source": "src/main/plain.js",
+    "function": "maybe",
+    "lines": {
+      "start": 9,
+      "end": 9
+    },
+    "complexity": 4,
+    "statementCoverage": {
+      "percent": 100,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "branchCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "effectiveCoverage": {
+      "percent": 50,
+      "status": "measured",
+      "unknownReason": null
+    },
+    "crap": 6
+  }
+]
