@@ -6,6 +6,7 @@ import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/no-raised-test-t
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
 import { strictPresetConfig } from './strict.mjs';
+import { promiseChainSelectors } from './strict-control-flow.mjs';
 import strictTestsConfig, {
   strictTestConfigFor,
   strictTestHelperRules,
@@ -17,8 +18,7 @@ const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =
   'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
 const forEachMessage = 'Use a for...of loop instead of forEach.';
-const chainMessage =
-  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.';
+const [{ message: chainMessage }] = promiseChainSelectors;
 const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';
 const angleMessage =

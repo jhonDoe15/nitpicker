@@ -3,6 +3,7 @@ import { reactSyntaxConfigFor } from '../eslint-config/react-scope.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { browserCases } from './react/browser-cases.mjs';
 import { correctnessCases } from './react/correctness-cases.mjs';
+import { exceptionHintCases } from './react/exception-hint-cases.mjs';
 
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
@@ -222,4 +223,5 @@ export const reactFailureMessageCases = [
   ...reactTestCases,
   ...correctnessCases,
   ...browserCases,
+  ...exceptionHintCases,
 ];

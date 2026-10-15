@@ -1,3 +1,5 @@
+import { SYNTAX_EXCEPTION_HINT } from './rule-hints.mjs';
+
 const nullLiteral = "Literal[raw='null']";
 const strictEqualityOperand = 'BinaryExpression[operator=/^[!=]==$/] > Literal';
 const jsonStringifyArgument =
@@ -8,7 +10,7 @@ const reactNullHost =
 
 function nullMessageFor({ react }) {
   const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
-  return `Use \`undefined\` for an absent value. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.`;
+  return `Use \`undefined\` for an absent value. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
 }
 
 export const typeAssertionSelectors = [
