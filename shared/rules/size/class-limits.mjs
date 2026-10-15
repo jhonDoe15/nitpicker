@@ -1,4 +1,5 @@
-import { CLASS_LIMIT_DEFAULTS, RULE_IDS } from '../../policy.mjs';
+import { CLASS_LIMIT_DEFAULTS } from '../../policy-size.mjs';
+import { RULE_IDS } from '../../policy.mjs';
 import { nextOccurrence } from '../finding-helpers.mjs';
 import { exceptionMatcher, exceptionText, messagesFor, ratchetedFinding } from '../file-limits.mjs';
 
@@ -12,7 +13,7 @@ export function classLimitFindings(classes, options) {
   const limits = { ...CLASS_LIMIT_DEFAULTS, ...options.thresholds };
   const isExcepted = exceptionMatcher(options.exceptions ?? []);
   const occurrences = new Map();
-  return classes.flatMap((entry) => {
+  const found = classes.flatMap((entry) => {
     const occurrence = nextOccurrence(occurrences, `${entry.file}\0${entry.name}`);
     return LIMITS.filter(({ metric, threshold, messages }) => {
       const rule = RULE_IDS[messages];
@@ -26,11 +27,33 @@ export function classLimitFindings(classes, options) {
       }),
     );
   });
+  return largestFirstPerFile(found);
+}
+
+function largestFirstPerFile(found) {
+  const slots = Map.groupBy(
+    found.keys(),
+    (index) => `${found[index].path}\0${found[index].ratchet.key}`,
+  );
+  const ordered = [...found];
+  for (const indices of slots.values()) {
+    const largestFirst = indices
+      .map((index) => found[index])
+      .toSorted((left, right) => right.ratchet.value - left.ratchet.value);
+    for (const [position, index] of indices.entries()) {
+      ordered[index] = largestFirst[position];
+    }
+  }
+  return ordered;
 }
 
 function classFinding(analyzerName, { entry, occurrence, limit, max }) {
   const rule = RULE_IDS[limit.messages];
   const value = entry[limit.metric];
+  const messages =
+    entry.kind === 'record' && limit.messages === 'classFields'
+      ? 'recordComponents'
+      : limit.messages;
   const label = `${entry.kind[0].toUpperCase()}${entry.kind.slice(1)} ${entry.name}`;
   const finding = ratchetedFinding(
     { analyzerName },
@@ -38,9 +61,9 @@ function classFinding(analyzerName, { entry, occurrence, limit, max }) {
       rule,
       path: entry.file,
       identity: `${limit.metric}:${entry.name}:occurrence:${String(occurrence)}:${String(value)}`,
-      key: `${limit.metric}:${entry.name}:occurrence:${String(occurrence)}`,
+      key: limit.metric,
       value,
-      messages: messagesFor(limit.messages, {
+      messages: messagesFor(messages, {
         name: label,
         value,
         limit: max,
@@ -49,5 +72,5 @@ function classFinding(analyzerName, { entry, occurrence, limit, max }) {
       }),
     },
   );
-  return { ...finding, symbol: entry.name, location: { line: entry.start } };
+  return { ...finding, location: { line: entry.start } };
 }

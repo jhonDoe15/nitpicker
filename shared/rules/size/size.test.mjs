@@ -126,7 +126,7 @@ describe('class limits', () => {
       `Class Big has 11 fields (limit 10). Group related fields into a record or a class of their own. ${HINT('class-fields-limit', file)}`,
       `Class Big extends 4 classes deep (limit 3). Hold the shared part as a field and delegate to it instead of extending. ${HINT('inheritance-depth-limit', file)}`,
     ]);
-    expect(findings[0]).toMatchObject({ symbol: 'Big', location: { line: 3 } });
+    expect(findings[0].location).toEqual({ line: 3 });
   });
 
   it('takes the limits from thresholds and names the kind of type', () => {
@@ -134,7 +134,7 @@ describe('class limits', () => {
       thresholds: { classFields: 2, classMethods: 2 },
     });
     expect(findings.map(({ message }) => message.split('.')[0])).toEqual([
-      'Record R has 3 fields (limit 2)',
+      'Record R has 3 components (limit 2)',
     ]);
   });
 
@@ -153,6 +153,31 @@ describe('class limits', () => {
     expect(classFindings([entry(big), entry(big)]).map(({ identity }) => identity)).toEqual([
       'methods:A:occurrence:1:30',
       'methods:A:occurrence:2:30',
+    ]);
+  });
+
+  it('keeps a legacy class held when it is renamed with its file, or others are added and removed', () => {
+    const compare = (base, head, renames = new Map()) =>
+      compareFindings({
+        baseFindings: parsed(classFindings(base)),
+        headFindings: parsed(classFindings(head)),
+        baseToHeadRenames: renames,
+      });
+    const renamed = new Map([['src/main/java/Old.java', 'src/main/java/New.java']]);
+    const old = entry({ file: 'src/main/java/Old.java', name: 'Old', methods: 25 });
+    const moved = entry({ file: 'src/main/java/New.java', name: 'New', methods: 25 });
+
+    expect(compare([old], [moved], renamed).newFindings).toEqual([]);
+    expect(compare([old], [{ ...moved, methods: 26 }], renamed).newFindings).toHaveLength(1);
+    const two = [entry({ name: 'First', methods: 25 }), entry({ name: 'Second', methods: 30 })];
+    const reordered = [
+      entry({ name: 'Second', methods: 30, start: 3 }),
+      entry({ name: 'First', methods: 25, start: 50 }),
+    ];
+    expect(compare(two, reordered).newFindings).toEqual([]);
+    const grown = [entry({ name: 'First', methods: 26 }), entry({ name: 'Second', methods: 30 })];
+    expect(compare(two, grown).newFindings.map(({ message }) => message.split(' ')[1])).toEqual([
+      'First',
     ]);
   });
 
