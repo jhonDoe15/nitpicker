@@ -8,7 +8,7 @@ import {
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
 import { GRADLE_PRESETS, JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
-import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];

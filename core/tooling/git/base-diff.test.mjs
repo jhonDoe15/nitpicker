@@ -1,15 +1,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  fixtureGit,
-  removeGitRepositories,
-} from '../../diff/fixtures/git-repository.mjs';
-import { runGit } from '../../diff/git.mjs';
+import { describe, expect, it } from 'vitest';
+import { runGit } from '../../diff/git/repository/command.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { diffFromBase } from './base-diff.mjs';
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 function repositoryWithBaseWorktree() {
   const { root } = createGitRepository({ 'app/a.txt': 'one\n', 'app/b.txt': 'two\n' });

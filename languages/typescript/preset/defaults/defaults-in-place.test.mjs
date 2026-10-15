@@ -11,11 +11,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
-import { createEslintAnalyzer } from '../../adapters/eslint.mjs';
-import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
-import { createQualityAreaAnalyzer } from '../../adapters/quality-areas.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/run-analyzers.mjs';
+import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
+import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
+import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
 import {
   entryPointsCheck,
   eslintChecks,
@@ -30,7 +30,7 @@ const POLICY_PATHS = [
   'core/tooling/jscpd/skipped-folders.mjs',
   'languages/typescript/preset/defaults',
   'languages/javascript/preset/javascript-preset.mjs',
-  'languages/javascript/preset/jsdoc.mjs',
+  'languages/javascript/preset/documentation/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -43,6 +43,11 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
+  'languages/typescript/adapters/static-checks',
+  'languages/typescript/adapters/quality-areas',
+  'languages/typescript/adapters/eslint',
+  'languages/typescript/adapters/immutable-types',
+  'languages/typescript/preset/syntax',
   'shared',
 ];
 const temporaryRoots = [];

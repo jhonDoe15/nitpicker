@@ -1,8 +1,8 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../../core/diff/finding-schema.mjs';
-import { CONFIGURATION_FILES, createJavaAnalyzer } from '../java-analyzer.mjs';
+import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';
 import {
@@ -16,7 +16,7 @@ import {
   resource,
   rules,
   sourceRoots,
-} from '../fixtures/spring-config-projects.mjs';
+} from './test-support/spring-config-projects.mjs';
 
 afterEach(removeProjects);
 
@@ -387,6 +387,10 @@ describe('Java analyzer declaration', () => {
       'languages/java/adapters/spring/spring-secrets.mjs',
     ];
 
-    expect(CONFIGURATION_FILES.filter((file) => modules.includes(file)).sort()).toEqual(modules);
+    expect(
+      configurationFiles()
+        .filter((file) => modules.includes(file))
+        .sort(),
+    ).toEqual(modules);
   });
 });

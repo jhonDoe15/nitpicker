@@ -38,11 +38,18 @@ describe('configureJavaAnalyzer', () => {
     const parsed = parseJavaRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
-    expect(parsed.policy).toMatchObject({
+    expect(parsed.policy).toEqual({
       crapLimit: 12,
+      fileLimits: undefined,
       exclude: ['a/**', 'b/*.java'],
+      exceptions: [],
       legacyInventory: 'legacy.json',
+      policyRoot: '/tmp',
+      baselineRoot: '/tmp',
       snapshot: 'head',
+      preset: undefined,
+      kotlinFormatter: undefined,
+      kotlinDetektConfig: undefined,
     });
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
@@ -105,7 +112,20 @@ describe('configureJavaAnalyzer', () => {
 
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
-    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+    expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
+      'archunit',
+      'checkstyle',
+      'coupling',
+      'crap',
+      'duplicates',
+      'google-java-format',
+      'jacoco',
+      'pit',
+      'pmd',
+      'spotbugs',
+      'spring',
+      'structure',
+    ]);
   });
 });
 

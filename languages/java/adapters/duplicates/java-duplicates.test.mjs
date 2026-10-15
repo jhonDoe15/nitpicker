@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { readDuplicateFindings, runJavaDuplicates } from '../java-duplicates.mjs';
-import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin-duplicates.mjs';
+import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mjs';
+import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 
 const roots = [];
 
