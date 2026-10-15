@@ -187,8 +187,14 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is one of the ids above or, for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or
-`changed-branch-coverage` with an optional `function` (required for the last one); anything else is
-a config error naming them. Findings of that rule
+`changed-branch-coverage` with an optional `function` (required for the last one); `file-lines-limit`,
+`folder-files-limit`, `duplicate-clone` and `stability-direction` (the package name as printed, for
+example `"paths": ["stable"]`) per path; and, for the Java sources of the project, a Java finding as
+it is printed, `<tool>/<rule>` (`pmd/UnusedPrivateField`) or `mutant-survived` and `mutant-nocoverage`
+for the PIT mutants of Java classes (Kotlin mutants are report-only and need none). Anything else is
+a config error naming them. `function` is the name the finding prints, matched exactly:
+`Big.run`, `Boot.<init>` for an `init` block, `Boot.table` for a property initializer that holds a
+block, a backtick name in full. Findings of that rule
 under the globs are dropped on both snapshots, like `exclude`, and the exception changes the
 analyzer's cache key. The rule is lifted for the whole file, so one exception for
 `kotlin.run` also lifts `kotlin.with`, `kotlin.also` and `runBlocking` there (they share a
@@ -410,7 +416,7 @@ or was edited without getting worse, stays baselined. That is the shared "only i
 keyed by function name and occurrence in the file, with a hash of the function text in the identity.
 The exception mechanisms are in `nitpicker.config.json`: an `exceptions` entry for the rule accepts
 one function (`{ "rule": "function-lines-limit", "paths": ["src/main/kotlin/app/Big.kt"],
-"function": "Big.run", "reason": "..." }`, `function` optional here) or the whole path, and the
+"function": "Big.run", "reason": "<why this is intended>" }`, `function` optional here) or the whole path, and the
 message of each finding prints the entry; `exclude` drops every finding under a path (generated code);
 `thresholds.crapLimit` changes the CRAP limit; there are no inline disables.
 
@@ -548,7 +554,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts the
 [one-way rules](#one-way-rules) and the rules nitpicker adds (file limits, structure, CRAP, coverage,
-mutation, duplicates, stability) per path, and the structure, CRAP and coverage rules per function.
+duplicates, stability, and the mutants of Java classes) per path, and the structure, CRAP and
+coverage rules per function. Java rule ids are accepted for the Java sources of the project.
 `layout` is a config error.
 
 ## File limits

@@ -50,10 +50,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   surviving mutant fails: assert the exact value, so a changed line breaks a test.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
   `nitpicker.config.json`, under `python.exceptions`, with an entry such as
-  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
+  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "<why this is intended>" }`, the rule being the id in the
   message. A structure, CRAP, changed-branch coverage, mutation, duplicate or coupling finding ends
   with its own entry for the top-level `exceptions`
-  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`).
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "<why this is intended>" }`).
   Don't add one to get past the gate: stop and ask.
 
 ## Size

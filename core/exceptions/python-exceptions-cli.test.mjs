@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../shared/policy.mjs';
 import {
   commit,
+  LEGACY_VIOLATION,
   pythonRepository,
   run,
   usePythonCli,
@@ -68,6 +69,26 @@ describe('exceptions with "preset": "python"', () => {
       'structure-data.json': JSON.stringify([wide]),
     });
     write(root, { 'nitpicker.config.json': config(), 'src/demo/b.py': 'VALUE = 1\n' });
+    commit(root, 'drop the exception');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(0);
+    expect(enforceable(result)).toEqual([]);
+  });
+
+  it('keeps a legacy print unchanged when the change removes the python.exceptions entry that lifted it', () => {
+    const lintedConfig = (...entries) =>
+      `${JSON.stringify({ preset: 'python', python: { exceptions: entries } })}\n`;
+    const root = pythonRepository({
+      'nitpicker.config.json': lintedConfig({
+        rule: 'T201',
+        paths: ['scripts/**'],
+        reason: 'A reviewed reason.',
+      }),
+      'violations.txt': `${LEGACY_VIOLATION}T201|scripts/run.py|\`print\` found\n`,
+    });
+    write(root, { 'nitpicker.config.json': lintedConfig(), 'src/demo/b.py': 'VALUE = 1\n' });
     commit(root, 'drop the exception');
 
     const result = run(root);

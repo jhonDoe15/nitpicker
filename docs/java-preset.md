@@ -183,12 +183,17 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
     `mutant-nocoverage`, `duplicate-clone` and `stability-direction`. `function` names one method
-    (`Big.run` or `run`, parameter lists ignored) for the structure, CRAP and coverage rules, and is
-    required for `changed-branch-coverage`. A branch is attributed to the narrowest method of
-    `structure.json` that holds its line, so the name in the entry is the one the structure findings
-    print. Matching findings are dropped on both snapshots. The entries reach the runner as
+    (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
+    `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
+    `changed-branch-coverage`. A branch is attributed to the narrowest method of `structure.json`
+    that holds its line, or to a unit that is not a method: a `static { }` block
+    (`Big.<clinit>`), an instance initializer block (`Big.<init>`) and a field initializer, lambdas
+    included (`Big.field`), found by a scan of the source, so every branch of Java code can be
+    named. The name in the entry is the one the finding prints. `stability-direction` takes the
+    package name as printed (`"paths": ["stable"]`), not a source path. Matching findings are dropped on both snapshots. The entries reach the runner as
     `--exception <json>`, one per entry, are listed in the report and change the analyzer's
-    configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it.
+    configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
+    Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout`, `react` and `tools` configure TypeScript source roots, React and tool configs; they
     have no Java meaning and stay a config error with `"preset": "java"` instead of being ignored.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
@@ -410,7 +415,7 @@ resolved plus a new finding, as in the TypeScript check.
   `typeOnlyDependencies` summaries are not reported. (3) A second top-level class in a file named
   after another class is attributed to `<package>/<Class>.java`, which may not exist; only the
   metric path is affected. (4) Reflection and other references that are not in the bytecode are
-  invisible to jdeps. (5) Test classes and library classes are not part of the graph.
+  invisible to jdeps. (5) Test classes and library classes are not part of the graph. (6) The `path` of a `stability-direction` finding is the package name (`stable`), not a file, so its `exceptions` entry names the package: `"paths": ["stable"]`; a glob over source directories never matches it.
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.
@@ -454,7 +459,7 @@ Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
-"reason": "..." }`.
+"reason": "<why this is intended>" }`.
 
 **Limits.** Rules are per file. `JpaVersion` checks the root of each entity hierarchy: an `@Entity`
 without a superclass, or a `@MappedSuperclass` that declares the `@Id`, so the `@Version` field
@@ -542,7 +547,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   profile files (`application-test.yml`, `application-prod.yml`) has none. Identity is the relaxed
   key (plus `#2`, `#3` for repeats in one file); never the line, and never a secret's value.
 - **Exceptions.** The printed id works in `exceptions`, for example
-  `{ "rule": "spring/open-in-view", "paths": ["src/main/resources/**"], "reason": "..." }`.
+  `{ "rule": "spring/open-in-view", "paths": ["src/main/resources/**"], "reason": "<why this is intended>" }`.
 - **Limits.** Placeholders (`${...}`) are not judged, except the default of a literal-secret
   value. YAML anchors and aliases are not resolved: `base: &b` followed by a nested map keeps
   its nesting, but `<<: *b` merges and `*ref` values are not expanded. A flow map or sequence that

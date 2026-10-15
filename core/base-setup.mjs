@@ -27,11 +27,25 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
   };
 }
 
+function withoutExceptions(settings) {
+  return Object.fromEntries(Object.entries(settings ?? {}).filter(([key]) => key !== 'exceptions'));
+}
+
 function withHeadExceptions(baseConfig, headConfig) {
+  const headPython = headConfig.python?.exceptions;
+  const python = {
+    ...withoutExceptions(baseConfig.python),
+    ...(headPython === undefined ? {} : { exceptions: headPython }),
+  };
+  const hasPython = Object.keys(python).length > 0 || headConfig.python !== undefined;
   const rest = Object.fromEntries(
-    Object.entries(baseConfig).filter(([key]) => key !== 'exceptions'),
+    Object.entries({ ...baseConfig, python: hasPython ? python : undefined }).filter(
+      ([key, value]) => key !== 'exceptions' && value !== undefined,
+    ),
   );
-  return headConfig.exceptions === undefined ? rest : { ...rest, exceptions: headConfig.exceptions };
+  return headConfig.exceptions === undefined
+    ? rest
+    : { ...rest, exceptions: headConfig.exceptions };
 }
 
 function baseSetupFromConfig({ baseConfig: ownConfig, headConfig, injectedAnalyzers, analyzers }) {
