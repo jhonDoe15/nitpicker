@@ -39,7 +39,7 @@ export async function runCodingStandards(options) {
     rule: signal.rule,
     path: signal.file,
     identity: `source:${hash(signal.source)}|count:${String(signal.count)}`,
-    message: `New coding-standard site: ${signal.source}`,
+    message: signal.message ?? `New coding-standard site: ${signal.source}`,
     classification: 'enforceable',
   }));
   if (options.snapshot === 'head' && options.baselineRoot !== undefined) {
