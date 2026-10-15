@@ -842,9 +842,8 @@ function compareCrapSites(left, right) {
 }
 
 function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence }) {
-  const sourceHash =
-    entry.sourceHash ??
-    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`);
+  const { start, end } = entry.lines ?? {};
+  const sourceHash = entry.sourceHash ?? hash(`${entry.source}:${String(start)}:${String(end)}`);
   const violationIdentity = `function:${entry.function}:occurrence:${String(occurrence)}:source:${sourceHash}`;
   findings.push(
     ...crapFindings(
@@ -854,8 +853,8 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           name: entry.function,
           identity: violationIdentity,
           ratchetKey: `function:${entry.function}:occurrence:${String(occurrence)}:crap`,
-          line: entry.lines?.start,
-          endLine: entry.lines?.end,
+          line: start,
+          endLine: end,
           crap: entry.crap,
         },
       ],

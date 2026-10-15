@@ -122,6 +122,23 @@ export function collectJavaFindings(projectRoot, options = {}) {
   return readPresetFindings(projectRoot, options);
 }
 
+function collectSides({ repositoryRoot, projectRelativePath, comparison, options }) {
+  const collectAt = (sha, snapshot) =>
+    withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
+      collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+        ...options,
+        policy: { ...options.policy, snapshot },
+      }),
+    );
+  const collectedBase = collectAt(comparison.mergeBaseSha, 'base');
+  const notes = testFailuresOf({ findings: collectedBase });
+  return {
+    notes,
+    baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
+    headFindings: collectAt(comparison.headSha, 'head'),
+  };
+}
+
 export function runJavaDiff({
   repositoryRoot,
   projectRelativePath = '.',
@@ -142,18 +159,12 @@ export function runJavaDiff({
     projectRelativePath,
   });
   const options = { gradle, initScript, policy };
-  const collectAt = (sha, snapshot) =>
-    withTemporaryWorktree(repositoryRoot, sha, (worktreeRoot) =>
-      collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
-        ...options,
-        policy: { ...policy, snapshot },
-      }),
-    );
-
-  const collectedBase = collectAt(comparison.mergeBaseSha, 'base');
-  const notes = testFailuresOf({ findings: collectedBase });
-  const baseFindings = collectedBase.filter((finding) => !notes.includes(finding));
-  const headFindings = collectAt(comparison.headSha, 'head');
+  const { notes, baseFindings, headFindings } = collectSides({
+    repositoryRoot,
+    projectRelativePath,
+    comparison,
+    options,
+  });
   const touchedCode = {
     changedLines: readChangedLines({
       repositoryRoot,

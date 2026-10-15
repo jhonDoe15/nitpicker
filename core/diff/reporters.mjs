@@ -57,6 +57,28 @@ export function absoluteTextReportPath(outputRoot) {
   return path.resolve(outputRoot, TEXT_REPORT_FILE_NAME);
 }
 
+function toolCountLine(tool) {
+  const counts = [
+    ['base', tool.base],
+    ['head', tool.head],
+    ['new', tool.new],
+    ['resolved', tool.resolved],
+    ['unchanged', tool.unchanged],
+    ['changed-metrics', tool.changedMetrics],
+  ].map(([name, count]) => `${name}=${String(count)}`);
+  const skipped =
+    tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`;
+  return `${tool.name}: ${counts.join(' ')} elapsed=${formatSeconds(tool.elapsedMs ?? 0)}${skipped}`;
+}
+
+function appendToolCounts(lines, tools) {
+  if (tools.length === 0) {
+    lines.push('Analyzers: none configured');
+    return;
+  }
+  lines.push('', 'Per-tool counts:', ...tools.map((tool) => toolCountLine(tool)));
+}
+
 export function renderTextReport(report) {
   const lines = [
     'Nitpicker quality diff',
@@ -77,16 +99,7 @@ export function renderTextReport(report) {
     lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
   }
 
-  if (report.summary.tools.length === 0) {
-    lines.push('Analyzers: none configured');
-  } else {
-    lines.push('', 'Per-tool counts:');
-    for (const tool of report.summary.tools) {
-      lines.push(
-        `${tool.name}: base=${String(tool.base)} head=${String(tool.head)} new=${String(tool.new)} resolved=${String(tool.resolved)} unchanged=${String(tool.unchanged)} changed-metrics=${String(tool.changedMetrics)} elapsed=${formatSeconds(tool.elapsedMs ?? 0)}${tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`}`,
-      );
-    }
-  }
+  appendToolCounts(lines, report.summary.tools);
 
   appendFindingSection(lines, 'New findings', report.newFindings);
   appendHeldSection(lines, report.unchangedFindings);
