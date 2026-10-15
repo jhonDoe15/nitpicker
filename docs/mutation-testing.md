@@ -25,9 +25,32 @@ base side runs no mutants: a mutant on a line the change wrote has no counterpar
 every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
 findings.
 
-What this gives up: a change that weakens existing tests, or changes a dependency or config, can
-let mutants survive in lines it did not touch, and a comparison does not see them. `--all` (for
-example on a schedule) still mutates every source file.
+### Changed tests
+
+When the change adds, edits, renames or deletes a test file, head also mutates, whole, every
+production module that a changed test imports directly by a relative path (read with TypeScript's
+`preProcessFile` from the head version of the test, and from the base version for an edited,
+renamed or deleted test). A module that exists on only one side is skipped, and a module that is
+also a changed source file is mutated whole instead of by its changed lines. Imports through path
+aliases or packages, and modules reached only through another module, are not followed.
+
+The usual findings still come only from the changed lines. A mutant elsewhere in those modules
+fails only when the change let it escape: head reports it `Survived` or `NoCoverage`, and the base
+tests caught it (`Killed` or `Timeout`). To find that out, the base checkout runs Stryker on just
+those mutants: the line range of each escaped mutant when the module did not change (matched by
+line and column), the whole module when it did (matched by mutator, replacement and mutated source
+text, in order). The base run skips the TypeScript checker, since head's checker already accepted
+those mutants. The finding keeps the `mutant-survived` or `mutant-nocoverage` rule and says "This
+change weakened the tests of <module>: the base tests caught this <mutator> mutant (...), but it
+survives now". A change that touches no test mutates nothing extra, and when no mutant of those
+modules outside the changed lines escapes on head, the base run is skipped.
+
+On the sandbox project (33 lines in three modules), deleting one assertion took about 2.5 minutes
+for the mutation analyzer, against about 1 minute for a one-line source change.
+
+What this gives up: a change of a dependency or a config can still let mutants survive in lines it
+did not touch, and a comparison does not see them. `--all` (for example on a schedule) still
+mutates every source file.
 
 Before this scope, both sides mutated the whole source area. On ufo (1,575 source lines, 1,017
 mutants) that took 426 s with the TypeScript checker; the changed lines of a three-line function

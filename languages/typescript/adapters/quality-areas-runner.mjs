@@ -39,6 +39,14 @@ import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
+import { testedSourceModules } from './test-weakening/tested-modules.mjs';
+import {
+  baseMutationTargets,
+  changedCodeMutants,
+  hasWeakeningCandidates,
+  mutationTargetsWithTestedModules,
+  weakenedTestFindings,
+} from './test-weakening/weakened-mutants.mjs';
 import { crapUnknownMessage } from './quality-messages/crap-unknown-message.mjs';
 import { unhandledErrors, unhandledErrorText } from './quality-messages/failure-text.mjs';
 import { formatVitestFailures, vitestFailures } from './quality-messages/vitest-failures.mjs';
@@ -483,8 +491,36 @@ function runCrap(options) {
 }
 
 async function runMutation(options) {
-  const targets = mutationTargets(options, readLayout());
-  if (targets?.length === 0) return [];
+  const layout = readLayout();
+  const targets = mutationTargets(options, layout);
+  const testedModules = testedSourceModules(options, layout);
+  if (targets?.length === 0 && testedModules.length === 0) return [];
+  const mutationScope = { targets: targets ?? [], testedModules };
+  const head = await mutationReport(
+    options,
+    targets && mutationTargetsWithTestedModules(targets, testedModules),
+  );
+  if (head.skipped !== undefined) return head.skipped;
+  const changed = normalizeMutation(
+    changedCodeMutants(head.report, mutationScope),
+    options.analyzerName,
+  );
+  if (!hasWeakeningCandidates(head.report, mutationScope)) return changed;
+  const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
+  const base = await mutationReport(baseOptions, baseMutationTargets(head.report, mutationScope));
+  if (base.skipped !== undefined) return [...changed, ...base.skipped];
+  return [
+    ...changed,
+    ...weakenedTestFindings({
+      headReport: head.report,
+      baseReport: base.report,
+      mutationScope,
+      analyzerName: options.analyzerName,
+    }),
+  ];
+}
+
+async function mutationReport(options, targets) {
   const sourceConfig = (
     await importPolicyModule(options, STRYKER_CONFIG_PATH, `?run=${Date.now().toString()}`)
   ).default;
@@ -492,15 +528,14 @@ async function runMutation(options) {
   const createdFiles = [];
   try {
     writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath);
-    if (skippedFindings !== undefined) {
-      return skippedFindings;
-    }
-    const report = readMutationReport(options.projectRoot);
-    return normalizeMutation(
-      withMutationSourceHashes(report, options.projectRoot),
-      options.analyzerName,
-    );
+    const skipped = runStrykerOrExplainSkip(options, configPath);
+    if (skipped !== undefined) return { skipped };
+    return {
+      report: withMutationSourceHashes(
+        readMutationReport(options.projectRoot),
+        options.projectRoot,
+      ),
+    };
   } finally {
     for (const filePath of createdFiles.reverse()) {
       rmSync(filePath, { force: true });
@@ -509,7 +544,10 @@ async function runMutation(options) {
 }
 
 function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
-  const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
+  const typeChecked = options.snapshot !== 'base';
+  const tsconfigPath = typeChecked
+    ? installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles)
+    : undefined;
   const vitestConfigPath = installMutationCompanion(
     options,
     [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
@@ -517,10 +555,11 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
   );
   const config = {
     ...rebaseMutationConfig(sourceConfig, {
-      tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
+      tsconfigFile: tsconfigPath && relativeProjectPath(options.projectRoot, tsconfigPath),
       vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
     }),
     ...(targets === undefined ? {} : { mutate: targets }),
+    ...(typeChecked ? {} : { checkers: [] }),
     reporters: ['json'],
     jsonReporter: { fileName: MUTATION_REPORT_PATH },
   };
