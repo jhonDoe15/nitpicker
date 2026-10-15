@@ -5,8 +5,8 @@ describe('outsideRootsNotices', () => {
   it('names a changed TypeScript file that no source or test root covers', () => {
     expect(outsideRootsNotices(['src/a.ts', 'scripts/slop.ts'], {})).toEqual([
       '1 changed TypeScript file is outside layout.sourceRoots and layout.testRoots, so nothing checks it: ' +
-        'scripts/slop.ts. Add its folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json ' +
-        'to silence this.',
+        'scripts/slop.ts. Move it under a root or add its folder to layout.sourceRoots; to leave it unchecked, ' +
+        'list it in "exclude" in nitpicker.config.json.',
     ]);
   });
 
@@ -15,8 +15,8 @@ describe('outsideRootsNotices', () => {
 
     expect(outsideRootsNotices(files, {})).toEqual([
       '4 changed TypeScript files are outside layout.sourceRoots and layout.testRoots, so nothing checks them: ' +
-        'lib/a.ts, lib/b.cts, lib/c.mts, and 1 more. Add their folders to layout.sourceRoots, or list them in ' +
-        '"exclude" in nitpicker.config.json to silence this.',
+        'lib/a.ts, lib/b.cts, lib/c.mts, and 1 more. Move them under a root or add their folders to ' +
+        'layout.sourceRoots; to leave them unchecked, list them in "exclude" in nitpicker.config.json.',
     ]);
   });
 

@@ -137,11 +137,15 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 
 ## Slice 2: CLI and reporter integration
 
-- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. There is no
-  auto-detection of `build.gradle`: a repository with both a `package.json` and a Gradle build
-  would otherwise change meaning silently. Without the key, nitpicker runs the TypeScript preset as
-  before. The key is read from the head checkout and applies to both snapshots, like the rest of
-  the config.
+- **Selection.** Explicit only: `"preset": "java"` in `nitpicker.config.json`. A Gradle or Maven
+  build is never picked up silently, because a repository with both a `package.json` and a Gradle
+  build would otherwise change meaning. Without the key, nitpicker runs the TypeScript preset, unless
+  the project has a Java build file and no TypeScript or JavaScript sources under its source roots
+  (bundled assets such as `src/main/resources/static/*.js` do not count): then it
+  stops with a config error that names `"preset": "java"` (`rejectUndeclaredPreset`, best-effort, see
+  [Using nitpicker](usage.md#configuration)). The head is measured with the head's config and the
+  base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
+  changed in this change"; declaring `java` on a project that had no preset is not a loosening.
 - **One analyzer, several tools.** The preset is a single analyzer, `java` (one Gradle run per
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as

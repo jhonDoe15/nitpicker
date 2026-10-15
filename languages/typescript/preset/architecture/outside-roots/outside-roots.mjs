@@ -1,9 +1,10 @@
 import { escapeRegExp } from '../../../../../shared/glob.mjs';
+import { GENERATED_CODE_PATTERN } from '../../layout.mjs';
 
 export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
 
 const EXCEPTION_ROUTE =
-  'Move it under a source root, add its folder to layout.sourceRoots, or list it in "exclude" in nitpicker.config.json.';
+  'Move it under a source root or add its folder to layout.sourceRoots; to leave it unchecked, list it in "exclude" in nitpicker.config.json.';
 const NON_PROJECT_DEPENDENCIES = [
   'core',
   'npm',
@@ -24,7 +25,13 @@ export function outsideRootsRule({ productionSource, roots, excludePattern }) {
     severity: 'error',
     from: { path: productionSource },
     to: {
-      pathNot: [insideRoots, '(?:^|/)node_modules/', '\\.json$', excludePattern]
+      pathNot: [
+        insideRoots,
+        '(?:^|/)node_modules/',
+        GENERATED_CODE_PATTERN,
+        '\\.json$',
+        excludePattern,
+      ]
         .filter((pattern) => pattern !== undefined)
         .join('|'),
       dependencyTypesNot: NON_PROJECT_DEPENDENCIES,

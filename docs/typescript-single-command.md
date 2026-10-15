@@ -54,8 +54,10 @@ Optional; zero config must work. Overrides are limited to:
 Every override appears in the report and changes the policy hash, so a weakened check is visible in
 review.
 
-The file is `nitpicker.config.json` at the project root, read from the head checkout and applied to
-both sides. Keys are `base`, `preset` (only `typescript`), `disable` (analyzer names),
+The file is `nitpicker.config.json` at the project root. The head is measured with the head's config
+and the base with its own when it differs (see [Using nitpicker](usage.md#configuration)); a change
+that checks less fails until a person accepts it. Keys are `base`, `preset` (`typescript`,
+`javascript`, `java`, `kotlin` or `python`), `disable` (analyzer names),
 `thresholds` (`crapLimit` replaces the old `QUALITY_CRAP_SCORE_LIMIT` variable), `exclude`,
 `layout`, `exceptions`, `analyzers`, and `legacyInventory`. Unknown keys are an error. `exclude` and `layout` are
 applied everywhere (see below); `analyzers` are run as custom analyzers (see below).
@@ -167,7 +169,7 @@ To adopt nitpicker without fixing everything first:
    code to the inventory.
 
 The file is read from the head commit and applied to both sides, and its content is part of the
-policy hash. The old nitpicker-internal path `languages/typescript/preset/coding-standards/legacy-sites.json` is no
+policy hash. An entry the head adds, or a raised `count`, fails as `baseline-expansion`. The old nitpicker-internal path `languages/typescript/preset/coding-standards/legacy-sites.json` is no
 longer read.
 
 ## Packaging
@@ -175,9 +177,9 @@ longer read.
 Status: implemented. The consumer installs one npm dev dependency and runs `npx nitpicker`.
 
 - The preset comes from the installed nitpicker package. Only project-owned files, such as the
-  config file and the coding-standards legacy inventory, come from the analyzed commits. They are
-  read from the head commit and applied to both sides of the comparison, so base and head are
-  measured with one policy.
+  config file and the coding-standards legacy inventory, come from the analyzed commits. The legacy
+  inventory is read from the head commit and applied to both sides; each side is measured with its
+  own config, and a config change that checks less fails until a person accepts it.
 - Tools nitpicker owns are exact-pinned dependencies, loaded from its own package, and must match
   the pinned versions. Neither the base nor the head tree can choose them.
 - `vitest`, `@vitest/coverage-v8`, and `typescript` are required peer dependencies from the

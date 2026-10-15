@@ -24,7 +24,9 @@ export const builtInExcludedGlobs = [
   '**/node_modules/**',
 ];
 const declarationGlobs = ['**/*.d.ts'];
-export const EXCLUDED_PATH_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)|(?:^|/)node_modules(?:/|$)`;
+export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
+export const GENERATED_CODE_PATTERN = '^generated/';
+export const EXCLUDED_PATH_PATTERN = `^(?:${ROOT_OUTPUT_FOLDERS.join('|')})(?:/|$)|${DEPENDENCY_PATH_PATTERN}`;
 const GENERATED_DIRECTORY = new RegExp(EXCLUDED_PATH_PATTERN);
 
 function normalizeRoot(root) {
