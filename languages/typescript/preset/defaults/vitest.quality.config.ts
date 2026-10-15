@@ -5,7 +5,7 @@ import { configDefaults, defineConfig, type TestProjectConfiguration } from 'vit
 
 const policyFile = process.env.NITPICKER_POLICY;
 type NitpickerPolicy = {
-  layout?: { sourceRoots?: string[]; testRoots?: string[] };
+  layout?: { sourceRoots?: string[]; testRoots?: string[]; colocatedTests?: boolean };
   exclude?: string[];
 };
 function isPolicy(value: unknown): value is NitpickerPolicy {
@@ -22,6 +22,7 @@ const policy = readPolicy(policyFile);
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
 const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests'];
 const exclude: string[] = policy.exclude ?? [];
+const testSupportDirectories = policy.layout?.colocatedTests === true ? ['test-support'] : [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];
 
@@ -157,6 +158,7 @@ const coverage = {
   exclude: [
     ...sourceRoots.flatMap((root) => [
       `${root}/**/__tests__/**`,
+      ...testSupportDirectories.map((directory) => `${root}/**/${directory}/**`),
       `${root}/**/*.{test,spec}.${codeExtensions}`,
     ]),
     '**/dist/**',

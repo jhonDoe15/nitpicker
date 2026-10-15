@@ -284,7 +284,8 @@ alone.
   `test/test-support/`; a `test-support/` folder under a source root is reported too. When no test
   root exists and the tests sit next to the code, a `test-support/` folder beside the code it
   serves is the allowed place for test-only modules and is not reported; the other helper folders
-  and names are.
+  and names are. The layout then counts those files as test code, so coverage, CRAP and mutation
+  leave them out.
 - `nitpicker/no-internal-module-mocks` also reports `vi.spyOn(namespace, ...)` on a namespace import
   (`import * as domain`) of production code.
 - `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in

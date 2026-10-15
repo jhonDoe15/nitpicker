@@ -42,6 +42,16 @@ describe('copied vitest configs', () => {
       'lib/vitest.config.ts',
     ]);
   });
+  it('the copied vitest config leaves test-support/ out of coverage in a colocated layout', async () => {
+    const colocated = { ...policy, layout: { ...policy.layout, colocatedTests: true } };
+    const coverage = await resolveVitestConfig('defaults/vitest.quality.config.ts', colocated);
+    const separate = await resolveVitestConfig('defaults/vitest.quality.config.ts', policy);
+    expect(
+      coverage.test.coverage.exclude.filter(
+        (glob) => !separate.test.coverage.exclude.includes(glob),
+      ),
+    ).toEqual(['lib/**/test-support/**']);
+  });
   it('the copied vitest configs keep the default roots without a policy', async () => {
     const coverage = await resolveVitestConfig('defaults/vitest.quality.config.ts', undefined);
     expect(coverage.test.maxWorkers).toBe(4);
