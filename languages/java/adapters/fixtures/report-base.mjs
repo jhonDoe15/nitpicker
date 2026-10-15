@@ -13,8 +13,9 @@ export function rootReports(root) {
 }
 
 export function writeModules(root, modules = [{ key: ROOT_KEY, path: ':', dir: '' }]) {
-  mkdirSync(reportBaseOf(root), { recursive: true });
+  mkdirSync(rootReports(root), { recursive: true });
   writeFileSync(path.join(reportBaseOf(root), 'modules.json'), JSON.stringify(modules));
+  return rootReports(root);
 }
 
 export function readingFrom(readFindings) {

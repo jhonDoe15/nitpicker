@@ -131,16 +131,21 @@ function springFindings(projectRoot, manifest) {
     : [];
 }
 
-function sarifFindings({ reportRoot, roots, sourceRoots, allSourceRoots, projectRoot }) {
-  const prepared = (file, identityKey) =>
-    prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
-      roots,
-      sourceRoots,
-      projectRoot,
-      identityKey,
-    });
-  const pmd = prepared('pmd.sarif', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  const spotbugs = prepared('spotbugs.sarif', spotbugsSubject);
+function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
+  return prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
+    roots,
+    sourceRoots,
+    projectRoot,
+    identityKey,
+  });
+}
+
+function sarifFindings(context) {
+  const { allSourceRoots, projectRoot } = context;
+  const pmd = preparedReport('pmd.sarif', context, (result) =>
+    result.message?.text?.replace(LINE_NUMBER, 'line'),
+  );
+  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   return [
     ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
       projectRoot,

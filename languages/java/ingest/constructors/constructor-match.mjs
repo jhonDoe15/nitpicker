@@ -12,32 +12,21 @@ const PRIMITIVE_NAMES = new Set(Object.values(PRIMITIVES));
 const TYPE_VARIABLE = /^[A-Z][A-Z0-9]?$/u;
 const ARRAY_SUFFIX = /(?:\[\])+$/u;
 
-export function descriptorTypes(descriptor) {
-  const types = [];
-  let index = descriptor?.indexOf('(') ?? -1;
-  if (index < 0) {
-    return undefined;
-  }
-  index += 1;
-  while (descriptor[index] !== ')' && index < descriptor.length) {
-    let dimensions = '';
-    while (descriptor[index] === '[') {
-      dimensions += '[]';
-      index += 1;
-    }
-    if (descriptor[index] === 'L') {
-      const end = descriptor.indexOf(';', index);
-      types.push(`${simpleClassName(descriptor.slice(index + 1, end))}${dimensions}`);
-      index = end + 1;
-    } else {
-      types.push(`${PRIMITIVES[descriptor[index]] ?? descriptor[index]}${dimensions}`);
-      index += 1;
-    }
-  }
-  return types;
+const DESCRIPTOR_TYPE = /(\[*)(?:L([^;]+);|([BCDFIJSZ]))/gu;
+
+function descriptorType([, dimensions, className, primitive]) {
+  const name = className === undefined ? PRIMITIVES[primitive] : simpleClassName(className);
+  return `${name}${'[]'.repeat(dimensions.length)}`;
 }
 
-function simpleClassName(internalName) {
+export function descriptorTypes(descriptor) {
+  const parameters = /^\(([^)]*)\)/u.exec(descriptor ?? '');
+  return parameters === null
+    ? undefined
+    : [...parameters[1].matchAll(DESCRIPTOR_TYPE)].map((match) => descriptorType(match));
+}
+
+export function simpleClassName(internalName) {
   return internalName.split('/').at(-1).split('$').at(-1).replace(/^\d+/u, '');
 }
 

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const MODULES_FILE = 'modules.json';
+const MODULES_FILE = 'modules.json';
 const MANIFEST_FILE = 'manifest.json';
 const ROOT_LISTS = [
   'sourceRoots',
@@ -19,7 +19,7 @@ function moduleLabel({ path: projectPath, dir }) {
   return dir === '' ? `project ${projectPath}` : `project ${projectPath} (${dir})`;
 }
 
-export function mergeManifests(modules) {
+function mergeManifests(modules) {
   const declared = ROOT_LISTS.filter((list) =>
     modules.some(({ manifest }) => Array.isArray(manifest[list])),
   );

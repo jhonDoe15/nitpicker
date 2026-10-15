@@ -256,7 +256,7 @@ beforeAll(() => {
     stderr: result.stderr,
     structure: JSON.parse(readFileSync(result.output, 'utf8')),
   };
-}, 120_000);
+});
 
 afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
