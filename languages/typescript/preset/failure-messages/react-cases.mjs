@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import { reactSyntaxConfigFor } from '../eslint-config/react-scope.mjs';
+import { reactSyntaxConfigFor } from '../eslint-config/react/react-scope.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
 const filename = 'src/main/ui/fixture.tsx';

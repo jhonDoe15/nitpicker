@@ -33,7 +33,7 @@ export function createIdentityCounter() {
   };
 }
 
-export function percent(covered, total) {
+function percent(covered, total) {
   return Math.round((covered / total) * 10000) / 100;
 }
 
@@ -80,8 +80,14 @@ function safeCodePoint(codePoint, fallback) {
 }
 
 export function parseXml(text) {
-  const tokens =
-    /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
+  const tokens = new RegExp(
+    [
+      '<!--[\\s\\S]*?-->|<!\\[CDATA\\[[\\s\\S]*?\\]\\]>|<\\?[\\s\\S]*?\\?>',
+      '|<!DOCTYPE[^>[]*(?:\\[[\\s\\S]*?\\])?\\s*>|<(\\/?)([^\\s/>]+)(',
+      '(?:[^>"\']|"[^"]*"|\'[^\']*\')*?)(\\/?)>',
+    ].join(''),
+    'gi',
+  );
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
   for (const match of text.matchAll(tokens)) {
@@ -89,19 +95,7 @@ export function parseXml(text) {
     if (name === undefined) {
       continue;
     }
-    const current = stack.at(-1);
-    if (closing === '/') {
-      if (stack.length === 1 || current.name !== name) {
-        throw new TypeError(`XML closing tag </${name}> does not match an open element`);
-      }
-      stack.pop();
-      continue;
-    }
-    const element = { name, attrs: parseAttributes(rest), children: [] };
-    current.children.push(element);
-    if (selfClosing !== '/') {
-      stack.push(element);
-    }
+    consumeXmlTag({ closing, name, rest, selfClosing }, stack);
   }
   if (stack.length !== 1) {
     throw new TypeError(`XML element <${stack.at(-1).name}> is not closed`);
@@ -125,9 +119,18 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
-export function descendantsNamed(element, name) {
-  return element.children.flatMap((child) => [
-    ...(child.name === name ? [child] : []),
-    ...descendantsNamed(child, name),
-  ]);
+function consumeXmlTag({ closing, name, rest, selfClosing }, stack) {
+  const current = stack.at(-1);
+  if (closing === '/') {
+    if (stack.length === 1 || current.name !== name) {
+      throw new TypeError(`XML closing tag </${name}> does not match an open element`);
+    }
+    stack.pop();
+    return;
+  }
+  const element = { name, attrs: parseAttributes(rest), children: [] };
+  current.children.push(element);
+  if (selfClosing !== '/') {
+    stack.push(element);
+  }
 }

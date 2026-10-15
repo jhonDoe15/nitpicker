@@ -21,7 +21,7 @@ const projectRoot = path.resolve(import.meta.dirname, '../../../../..');
 // tsconfig used for each call is the linked one passed below, so the imported path is only a placeholder.
 const previousEnvironment = process.env[TYPESCRIPT_CONFIG_ENVIRONMENT];
 process.env[TYPESCRIPT_CONFIG_ENVIRONMENT] = path.join(projectRoot, POLICY_TYPESCRIPT_CONFIG);
-const { default: config } = await import('../config.mjs');
+const { default: config } = await import('../dependency-cruiser.config.mjs');
 if (previousEnvironment === undefined) {
   delete process.env[TYPESCRIPT_CONFIG_ENVIRONMENT];
 } else {

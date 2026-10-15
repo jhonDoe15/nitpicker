@@ -8,10 +8,10 @@ import {
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mjs';
-import { applyPythonExceptions } from './python-exceptions.mjs';
-import { mutationFindings } from './python-mutation.mjs';
+import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
+import { mutationFindings } from './mutation/python-mutation.mjs';
 import { readPythonFindings } from './python-reports.mjs';
-import { createToolContext, runPythonTools } from './python-tools.mjs';
+import { createToolContext, runPythonTools } from './execution/python-tools.mjs';
 
 const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',

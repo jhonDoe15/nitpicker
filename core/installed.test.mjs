@@ -1,4 +1,10 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import {
+  expectedOutput254_35,
+  expectedOutput264_30,
+  expectedOutput310_33,
+} from './diff/fixtures/expected-output/core-installed.mjs';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
@@ -82,7 +88,8 @@ suite('packed nitpicker in a separate consumer', () => {
     packRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-packed-'));
     checked(packageRoot, 'npm', ['pack', '--pack-destination', packRoot]);
     const tarballs = readdirSync(packRoot).filter((file) => file.endsWith('.tgz'));
-    expect(tarballs).toHaveLength(1);
+    if (tarballs.length !== 1)
+      throw new Error(`Expected one packed tarball, received ${String(tarballs.length)}`);
     tarball = path.join(packRoot, tarballs[0]);
   }, 180_000);
   afterAll(() => {
@@ -90,7 +97,7 @@ suite('packed nitpicker in a separate consumer', () => {
   });
 
   for (const strategy of layouts) {
-    describe(strategy ?? 'hoisted', () => {
+    describe(`dependency layout: ${strategy ?? 'hoisted'}`, () => {
       let root;
       let before;
       let clean;
@@ -218,7 +225,7 @@ suite('packed nitpicker in a separate consumer', () => {
       }, 600_000);
       afterAll(() => {
         if (root) rmSync(root, { recursive: true, force: true });
-      }, 120_000);
+      });
 
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));
@@ -236,32 +243,22 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(
           existsSync(path.join(packageLocation, 'languages/java/gradle/nitpicker.init.gradle')),
         ).toBe(true);
-        if (!strategy) {
-          const eslint = path.dirname(
-            execFileSync(
-              process.execPath,
-              ['-p', 'require.resolve("eslint/package.json", {paths: [process.cwd()]})'],
-              { cwd: root, encoding: 'utf8' },
-            ).trim(),
+      });
+      it.skipIf(strategy !== undefined)(
+        'resolves the hoisted ESLint installation from the consumer',
+        () => {
+          const eslint = realpathSync(
+            createRequire(path.join(root, 'package.json')).resolve('eslint/package.json'),
           );
           expect(eslint.startsWith(realpathSync(packageLocation) + path.sep)).toBe(false);
-        }
-      });
+        },
+      );
       it('exits zero on clean branch and reports both new findings on dirty branch', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({ tool: 'prettier-format', path: 'src/main/example.ts' }),
-            expect.objectContaining({
-              tool: 'eslint-lint',
-              rule: 'no-debugger',
-              path: 'src/main/example.ts',
-            }),
-          ]),
-        );
-        expect(dirty.output).toContain('example.ts');
+        expect(findings('dirty')).toEqual(expectedOutput254_35());
+        expect(dirty.output).toEqual(expectedOutput264_30({ root }));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -307,7 +304,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toContain('src/main/example.ts');
+        expect(snapshot.output).toEqual(expectedOutput310_33());
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);

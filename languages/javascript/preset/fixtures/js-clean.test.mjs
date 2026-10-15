@@ -203,7 +203,9 @@ describe('the analyzers that could not read JavaScript', () => {
       );
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.js:1');
       expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/messy.cjs:1');
-      expect(stdoutText).toContain('prettier-format/prettier/prettier src/main/format/unformatted.ts:1');
+      expect(stdoutText).toContain(
+        'prettier-format/prettier/prettier src/main/format/unformatted.ts:1',
+      );
       expect(stdoutText).toContain('eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1');
       expect(stdoutText).toContain('duplicates/duplicate-clone src/main/dup/a.js:5');
       expect(stdoutText).toContain(

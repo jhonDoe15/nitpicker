@@ -1,3 +1,4 @@
+import { createGitTemplate, copyGitTemplate } from '../diff/fixtures/git-repository.mjs';
 import {
   mkdtempSync,
   mkdirSync,
@@ -10,14 +11,13 @@ import {
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, expect, it } from 'vitest';
+import { beforeAll, afterEach, expect, it } from 'vitest';
 import { PACKAGE_ROOT, resolveProjectRoot, resolveTool } from './tool-resolution.mjs';
 import {
   applyLegacyInventory,
   configuredAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
-import { execFileSync } from 'node:child_process';
 
 const temporaryRoots = [];
 afterEach(() => {
@@ -203,7 +203,7 @@ function writeManifest(packageRoot, manifest) {
 it('finds the nearest package or nitpicker config bounded by the git repository', () => {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
   temporaryRoots.push(root);
-  execFileSync('git', ['init', '-q'], { cwd: root });
+  copyGitTemplate(gitTemplate.root, root);
   writeFileSync(path.join(root, 'package.json'), '{}');
   mkdirSync(path.join(root, 'packages/leaf'), { recursive: true });
   writeFileSync(path.join(root, 'packages/package.json'), '{}');
@@ -213,8 +213,13 @@ it('finds the nearest package or nitpicker config bounded by the git repository'
   expect(resolveProjectRoot(path.join(root, 'service/src'))).toBe(path.join(root, 'service'));
   const emptyRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-project-')));
   temporaryRoots.push(emptyRoot);
-  execFileSync('git', ['init', '-q'], { cwd: emptyRoot });
+  copyGitTemplate(gitTemplate.root, emptyRoot);
   expect(() => resolveProjectRoot(emptyRoot)).toThrow(
     'No package.json or nitpicker.config.json found',
   );
+});
+
+const gitTemplate = { root: undefined };
+beforeAll(() => {
+  gitTemplate.root = createGitTemplate();
 });

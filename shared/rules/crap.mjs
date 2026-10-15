@@ -16,7 +16,7 @@ import { positiveInteger } from './finding-helpers.mjs';
 //   `crap-score-limit` (enforceable) when `crap` >= `limit`.
 // `ratchetKey` names the function without its source hash. With it, a function that was already
 // over the limit on the base and was edited fails only when its score rose (see the ratchet in
-// core/diff/compare.mjs); without it, every edit of an over-limit function is a new finding.
+// core/diff/comparison/compare.mjs); without it, every edit of an over-limit function is a new finding.
 
 export function crapFindings(
   functions,

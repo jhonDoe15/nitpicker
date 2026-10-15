@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { RULES_REPORT, checkRules } from '../adapters/python-ast-rules.mjs';
-import { createToolContext } from '../adapters/python-tools.mjs';
+import { RULES_REPORT, checkRules } from '../adapters/analysis/python-ast-rules.mjs';
+import { createToolContext } from '../adapters/execution/python-tools.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const roots = [];

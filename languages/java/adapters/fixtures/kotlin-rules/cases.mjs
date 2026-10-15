@@ -1,4 +1,4 @@
-import { SUPPRESSION_RULE } from '../../kotlin-rules.mjs';
+import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';

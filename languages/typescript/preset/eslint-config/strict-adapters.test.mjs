@@ -1,3 +1,4 @@
+import { expectedOutput110_33 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-eslint-config-strict-adapters.mjs';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -5,7 +6,7 @@ import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
-import strictAdaptersConfig, { strictAdaptersTypedConfig } from './strict-adapters.mjs';
+import strictAdaptersConfig, { strictAdaptersTypedConfig } from './strict-adapters.config.mjs';
 
 const adapterFile = 'src/main/features/billing/adapters/store.ts';
 
@@ -78,7 +79,13 @@ describe('strict adapters type-aware rules', () => {
   writeFileSync(
     path.join(root, 'tsconfig.json'),
     JSON.stringify({
-      compilerOptions: { strict: true, target: 'ES2022', module: 'ESNext', lib: ['ES2022'] },
+      compilerOptions: {
+        strict: true,
+        target: 'ES2022',
+        module: 'ESNext',
+        lib: ['ES2022'],
+        types: [],
+      },
       include: ['src/**/*'],
     }),
   );
@@ -107,7 +114,7 @@ describe('strict adapters type-aware rules', () => {
     expect(messages.map((message) => message.ruleId)).toEqual([
       '@typescript-eslint/no-floating-promises',
     ]);
-    expect(messages[0].message).toContain('awaited');
+    expect(messages[0].message).toEqual(expectedOutput110_33());
   });
 
   it('accepts an awaited promise', async () => {

@@ -1,11 +1,11 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { rule as noWaitFor } from './rules/no-wait-for-with-fake-timers.mjs';
-import { rule as noInternalMocks } from './rules/no-internal-module-mocks.mjs';
-import { rule as preserveErrorCause } from './rules/preserve-error-cause.mjs';
-import { rule as structuredCatchLogging } from './rules/structured-catch-logging.mjs';
-import { rule as noExternalExecutables } from './rules/no-external-executables-in-unit-tests.mjs';
+import { rule as noWaitFor } from './rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
+import { rule as noInternalMocks } from './rules/testing/assertions/no-internal-module-mocks.mjs';
+import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
+import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
+import { rule as noExternalExecutables } from './rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 
 Object.assign(RuleTester, {
   afterAll,

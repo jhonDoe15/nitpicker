@@ -1,4 +1,4 @@
-import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
+import strictAdaptersConfig from '../eslint-config/strict-adapters.config.mjs';
 
 const filename = 'src/main/features/billing/adapters/http.ts';
 

@@ -1,3 +1,7 @@
+import {
+  expectedOutput65_27,
+  expectedOutput132_24,
+} from '../../../core/diff/fixtures/expected-output/languages-java-adapters-java-policy.mjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -62,12 +66,7 @@ describe('configureJavaAnalyzer', () => {
     const parsed = parseRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
-    expect(parsed.policy).toMatchObject({
-      crapLimit: 12,
-      exclude: ['a/**', 'b/*.java'],
-      legacyInventory: 'legacy.json',
-      snapshot: 'head',
-    });
+    expect(parsed.policy).toEqual(expectedOutput65_27());
     expect(configured.configurationHash).not.toBe(analyzer.configurationHash);
     expect(
       configureJavaAnalyzer(analyzer, { thresholds: { crapLimit: 13 } }).configurationHash,
@@ -129,7 +128,7 @@ describe('configureJavaAnalyzer', () => {
 
   it('declares every tool the Java reports produce', () => {
     expect(createJavaAnalyzer().reportedTools).toEqual(JAVA_TOOLS);
-    expect(JAVA_TOOLS).toEqual(expect.arrayContaining(['pmd', 'spotbugs', 'archunit']));
+    expect([...new Set(JAVA_TOOLS)].sort()).toEqual(expectedOutput132_24());
   });
 });
 

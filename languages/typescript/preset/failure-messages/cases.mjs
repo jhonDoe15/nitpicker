@@ -1,13 +1,13 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import path from 'node:path';
-import loggingConfig from '../eslint-config/logging.mjs';
-import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.mjs';
+import loggingConfig from '../eslint-config/policies/logging.config.mjs';
+import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.config.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
-import { strictDomainConfig } from '../eslint-config/strict-domain.mjs';
-import strictAdaptersConfig from '../eslint-config/strict-adapters.mjs';
+import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
+import strictAdaptersConfig from '../eslint-config/strict-adapters.config.mjs';
 import { adapterFailureMessageCases } from './adapter-cases.mjs';
-import { strictCompositionRootConfig } from '../eslint-config/strict-composition-root.mjs';
+import { strictCompositionRootConfig } from '../eslint-config/strict/strict-composition-root.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
 

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { eslintMessageWithHint } from '../../typescript/adapters/eslint-hints.mjs';
+import { eslintMessageWithHint } from '../../typescript/adapters/hints/eslint-hints.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../typescript/preset/head-policy.mjs';
 
 const originalPolicy = process.env.NITPICKER_POLICY;

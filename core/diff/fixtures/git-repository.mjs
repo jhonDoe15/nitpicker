@@ -87,3 +87,16 @@ function buildTemplate(files) {
   ]);
   return { root, sha: fixtureGit(root, ['rev-parse', 'HEAD']).trim() };
 }
+
+export function createGitTemplate() {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-git-template-')));
+  fixtureGit(root, ['init', '-q', '--initial-branch=main']);
+  fixtureGit(root, ['config', 'user.name', 'Nitpicker Fixture']);
+  fixtureGit(root, ['config', 'user.email', 'nitpicker@example.invalid']);
+  process.once('exit', () => rmSync(root, { recursive: true, force: true }));
+  return root;
+}
+
+export function copyGitTemplate(template, root) {
+  cpSync(path.join(template, '.git'), path.join(root, '.git'), { recursive: true });
+}

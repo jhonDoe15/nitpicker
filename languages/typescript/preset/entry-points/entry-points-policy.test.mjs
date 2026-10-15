@@ -1,3 +1,8 @@
+import {
+  expectedOutput31_28,
+  expectedOutput37_75,
+  expectedOutput43_46,
+} from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-entry-points-entry-points-policy.mjs';
 import { describe, expect, it } from 'vitest';
 import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
 import { analyzeEntryPoints } from './analyze.mjs';
@@ -28,26 +33,11 @@ describe('production entry-point policy', () => {
       options,
     );
 
-    expect(report.summary).toMatchObject({
-      publicAlternativeBypasses: 3,
-      unexportedTargetImports: 1,
-      missingEntryPointImports: 1,
-      concreteCrossBoundaryImports: 1,
-    });
-    expect(report.publicAlternativeBypasses.map((entry) => entry.target)).toEqual(
-      expect.arrayContaining([
-        expect.stringMatching(/beta\/public\.ts$/),
-        expect.stringMatching(/beta\/beta-client\.ts$/),
-      ]),
-    );
-    expect(report.publicAlternativeBypasses).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          source: expect.stringMatching(/root-plugin\.ts$/),
-          target: expect.stringMatching(/beta\/public\.ts$/),
-        }),
-      ]),
-    );
+    expect(report.summary).toEqual(expectedOutput31_28());
+    expect(
+      [...new Set(report.publicAlternativeBypasses.map((entry) => entry.target))].sort(),
+    ).toEqual(expectedOutput37_75());
+    expect(report.publicAlternativeBypasses).toEqual(expectedOutput43_46({ sourceRoot }));
   });
 
   it('fails visibly for a malformed analyzer graph', () => {

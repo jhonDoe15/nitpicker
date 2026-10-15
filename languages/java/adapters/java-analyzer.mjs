@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from './java-duplicates.mjs';
+import { jscpdVersion } from './metrics/java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 
@@ -13,23 +13,23 @@ export const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/adapters/java-analyzer.mjs',
-  'languages/java/adapters/java-coupling.mjs',
+  'languages/java/adapters/metrics/java-coupling.mjs',
   'languages/java/adapters/java-diff.mjs',
-  'languages/java/adapters/java-duplicates.mjs',
+  'languages/java/adapters/metrics/java-duplicates.mjs',
   'languages/java/adapters/java-policy.mjs',
-  'languages/java/adapters/java-reports.mjs',
+  'languages/java/adapters/reporting/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
   'languages/java/adapters/spring/java-spring.mjs',
-  'languages/java/adapters/java-structure.mjs',
+  'languages/java/adapters/metrics/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',
-  'languages/java/adapters/kotlin-duplicates.mjs',
-  'languages/java/adapters/kotlin-metrics.mjs',
-  'languages/java/adapters/kotlin-options.mjs',
-  'languages/java/adapters/kotlin-reports.mjs',
-  'languages/java/adapters/kotlin-rules.mjs',
-  'languages/java/adapters/kotlin-suppressions.mjs',
+  'languages/java/adapters/kotlin/kotlin-duplicates.mjs',
+  'languages/java/adapters/kotlin/kotlin-metrics.mjs',
+  'languages/java/adapters/kotlin/kotlin-options.mjs',
+  'languages/java/adapters/reporting/kotlin-reports.mjs',
+  'languages/java/adapters/kotlin/rules/kotlin-rules.mjs',
+  'languages/java/adapters/kotlin/rules/kotlin-suppressions.mjs',
   'languages/java/detekt/nitpicker-detekt.yml',
-  'languages/java/adapters/kotlin-tools.mjs',
+  'languages/java/adapters/kotlin/kotlin-tools.mjs',
   'languages/java/detekt/detekt-validation.yml',
   'languages/java/gradle/KotlinMetrics.java',
   'languages/java/adapters/suppressions/java-suppressions.mjs',
@@ -47,19 +47,19 @@ export const CONFIGURATION_FILES = [
   'shared/rules/baseline-expansion.mjs',
   'shared/rules/coupling.mjs',
   'shared/rules/finding-helpers.mjs',
-  'languages/java/ingest/checkstyle.mjs',
+  'languages/java/ingest/formatting/checkstyle.mjs',
   'languages/java/ingest/common.mjs',
   'languages/java/ingest/archunit.mjs',
   'languages/java/ingest/crap.mjs',
-  'languages/java/ingest/format-check.mjs',
-  'languages/java/ingest/jacoco.mjs',
-  'languages/java/ingest/jacoco-branches.mjs',
-  'languages/java/ingest/kotlin-branches.mjs',
+  'languages/java/ingest/formatting/format-check.mjs',
+  'languages/java/ingest/coverage/jacoco.mjs',
+  'languages/java/ingest/coverage/jacoco-branches.mjs',
+  'languages/java/ingest/coverage/kotlin-branches.mjs',
   'languages/java/ingest/pit.mjs',
   'languages/java/ingest/sarif.mjs',
 ];
 
-export function readPinnedVersions(initScript = INIT_SCRIPT) {
+function readPinnedVersions(initScript = INIT_SCRIPT) {
   const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
   const versions = [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/g)].map(
     ([, name, version]) => `${name}@${version}`,

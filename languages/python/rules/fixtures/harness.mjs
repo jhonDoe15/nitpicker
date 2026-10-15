@@ -2,9 +2,9 @@ import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ingestRulesReport } from '../../ingest/rules-report.mjs';
-import { RULES_REPORT, checkRules } from '../../adapters/python-ast-rules.mjs';
+import { RULES_REPORT, checkRules } from '../../adapters/analysis/python-ast-rules.mjs';
 import { ruffFindings, typeFindings } from '../../adapters/python-reports.mjs';
-import { RUFF_REPORT, createToolContext, lint } from '../../adapters/python-tools.mjs';
+import { RUFF_REPORT, createToolContext, lint } from '../../adapters/execution/python-tools.mjs';
 import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
 import { applyRuleHints } from '../rule-hints.mjs';
 

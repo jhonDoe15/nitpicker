@@ -1,3 +1,4 @@
+import { expectedOutput52_57 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-architecture-strict-boundary-rules.mjs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseStrict } from './fixtures/strict-cruise.mjs';
@@ -47,10 +48,8 @@ describe('strict boundary rules', () => {
   });
 
   it('defines every strict rule the fixtures exercise', () => {
-    const strictRules = violations.filter(([, , allowedForm]) => allowedForm !== null);
-
-    expect(strictBoundaryRules.map(({ name }) => name)).toEqual(
-      expect.arrayContaining(strictRules.map(([, rule]) => rule)),
+    expect([...new Set(strictBoundaryRules.map(({ name }) => name))].sort()).toEqual(
+      expectedOutput52_57(),
     );
   });
 

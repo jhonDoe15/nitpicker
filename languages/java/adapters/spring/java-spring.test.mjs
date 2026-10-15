@@ -1,7 +1,7 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { CONFIGURATION_FILES, createJavaAnalyzer } from '../java-analyzer.mjs';
 import { applyJavaPolicy } from '../java-policy.mjs';
 import { readSpringConfigFindings } from './java-spring.mjs';

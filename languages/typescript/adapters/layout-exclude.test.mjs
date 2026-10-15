@@ -1,3 +1,14 @@
+import { createGitTemplate, copyGitTemplate } from '../../../core/diff/fixtures/git-repository.mjs';
+import {
+  expectedOutput82_19,
+  expectedOutput161_21,
+  expectedOutput162_21,
+  expectedOutput184_29,
+  expectedOutput211_22,
+  expectedOutput226_29,
+  expectedOutput227_29,
+  expectedOutput229_31,
+} from '../../../core/diff/fixtures/expected-output/languages-typescript-adapters-layout-exclude.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -5,7 +16,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../core/diff/run-analyzers.mjs';
+import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
 
@@ -79,7 +90,7 @@ describe('custom layout and exclude across runners and tools', () => {
     const paths = findingPaths(run, 'coupling', { includeDescriptive: true }).filter(
       (findingPath) => findingPath !== '.',
     );
-    expect(paths).toContain('lib/live/uses-spec.ts');
+    expect([...new Set(paths)].sort()).toEqual(expectedOutput82_19());
     expect(paths.filter(isExcludedPath)).toEqual([]);
     expect(paths.filter((findingPath) => findingPath.startsWith('src/'))).toEqual([]);
   });
@@ -158,8 +169,8 @@ describe('custom layout and exclude for tools that need project dependencies', (
       });
       expect(run.toolErrors).toEqual([]);
       const paths = findingPaths(run, 'dead-code');
-      expect(paths).toContain('lib/live/unused.ts');
-      expect(paths).toContain('spec/helper.ts');
+      expect([...new Set(paths)].sort()).toEqual(expectedOutput161_21());
+      expect([...new Set(paths)].sort()).toEqual(expectedOutput162_21());
       expect(paths.filter(isExcludedPath)).toEqual([]);
     },
     TOOL_TIMEOUT_MS,
@@ -172,16 +183,16 @@ describe('custom layout and exclude for tools that need project dependencies', (
         'lib/greet.ts':
           'export function greet(name: string): string {\n  return name.length > 0 ? `Hello, ${name}` : "Hello";\n}\n',
         'spec/greet.test.ts':
-          "import { expect, it } from 'vitest';\nimport { greet } from '../lib/greet.js';\n\nit('greets', () => {\n  expect(greet('world')).toBe('Hello, world');\n});\n",
+          "import { beforeAll, expect, it } from 'vitest';\nimport { greet } from '../lib/greet.js';\n\nit('greets', () => {\n  expect(greet('world')).toBe('Hello, world');\n});\n",
         'lib/legacy/old.ts': 'export const old = 1;\n',
         'spec/legacy/old.test.ts':
-          "import { expect, it } from 'vitest';\nimport { old } from '../../lib/legacy/old.js';\n\nit('is broken on purpose', () => {\n  expect(old).toBe(2);\n});\n",
+          "import { beforeAll, expect, it } from 'vitest';\nimport { old } from '../../lib/legacy/old.js';\n\nit('is broken on purpose', () => {\n  expect(old).toBe(2);\n});\n",
         'package.json': readPackageFile('package.json'),
         'package-lock.json': readPackageFile('package-lock.json'),
       });
       expect(run.toolErrors).toEqual([]);
       const coveragePaths = findingPaths(run, 'coverage', { includeDescriptive: true });
-      expect(coveragePaths).toContain('lib/greet.ts');
+      expect([...new Set(coveragePaths)].sort()).toEqual(expectedOutput184_29());
       expect(coveragePaths.filter(isExcludedPath)).toEqual([]);
       // CRAP selects files from the layout roots: only lib/greet.ts, not lib/legacy/old.ts.
       expect(metricValue(run, 'crap', 'summary:files')).toBe(1);
@@ -208,7 +219,7 @@ describe('custom layout through the command line', () => {
       });
       const output = chunks.join('');
       expect(exitCode).toBe(1);
-      expect(output).toContain('lib/live/uses-spec.ts');
+      expect(output).toEqual(expectedOutput211_22());
       expect(output).not.toContain('lib/legacy');
     },
     TOOL_TIMEOUT_MS,
@@ -223,10 +234,10 @@ describe('applyLayout', () => {
       policyRoot: '/p',
       toolRoot: packageRoot,
     });
-    expect(invocation.args).toContain('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(invocation.args).toContain('spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
+    expect([...new Set(invocation.args)].sort()).toEqual(expectedOutput226_29({ packageRoot }));
+    expect([...new Set(invocation.args)].sort()).toEqual(expectedOutput227_29({ packageRoot }));
     expect(invocation.args).not.toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect(eslint.exclusions).toContain('lib/legacy/**');
+    expect([...new Set(eslint.exclusions)].sort()).toEqual(expectedOutput229_31());
     const entryPoints = customAnalyzers
       .find(({ name }) => name === 'entry-points')
       .createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot });
@@ -286,7 +297,7 @@ function fixtureFiles() {
 }
 
 function passingTest() {
-  return "import { expect, it } from 'vitest';\n\nit('checks', () => {\n  expect(1).toBe(1);\n});\n";
+  return "import { beforeAll, expect, it } from 'vitest';\n\nit('checks', () => {\n  expect(1).toBe(1);\n});\n";
 }
 
 // One file per tool, planted in `lib/<directory>/`: formatting, a type error, a lint error, a
@@ -357,8 +368,12 @@ function createGitProject(files) {
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'repo');
   writeFiles(projectRoot, files);
-  const git = (...arguments_) => execFileSync('git', arguments_, { cwd: projectRoot });
-  git('init', '-q', '-b', 'main');
+  const git = (...arguments_) =>
+    execFileSync('git', arguments_, {
+      cwd: projectRoot,
+      env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    });
+  copyGitTemplate(gitTemplate.root, projectRoot);
   git('config', 'user.name', 'Layout Fixture');
   git('config', 'user.email', 'layout@example.invalid');
   git('add', '-A');
@@ -373,3 +388,8 @@ function writeFiles(root, files) {
     writeFileSync(filePath, contents);
   }
 }
+
+const gitTemplate = { root: undefined };
+beforeAll(() => {
+  gitTemplate.root = createGitTemplate();
+});
