@@ -43,7 +43,7 @@ function insideModuleConstant(node) {
     if (current.parent?.type === 'VariableDeclarator' && current.parent.init === current) {
       return isModuleLevelConstant(current.parent);
     }
-    if (current.parent !== undefined) {
+    if (typeof current.parent?.type === 'string') {
       chain.push(current.parent);
     }
   }
