@@ -9,10 +9,26 @@ export function domainGlobsFor(sourceRoots) {
 
 const domainGlobs = domainGlobsFor(['src']);
 
-const CLOCK_AND_RANDOM_MESSAGE =
-  'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.';
-const IO_GLOBAL_MESSAGE =
-  'domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter.';
+const EXCEPTION_ROUTE =
+  ' If it is deliberate, add an exception for this rule in nitpicker.config.json.';
+const CLOCK_AND_RANDOM_MESSAGE = `domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.${EXCEPTION_ROUTE}`;
+const IO_GLOBAL_MESSAGE = `domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter.${EXCEPTION_ROUTE}`;
+const DATE_FNS_CLOCK_FUNCTIONS = [
+  'isToday',
+  'isTomorrow',
+  'isYesterday',
+  'isPast',
+  'isFuture',
+  'isThis[A-Z]\\w*',
+  'startOfToday',
+  'endOfToday',
+  'startOfTomorrow',
+  'endOfTomorrow',
+  'startOfYesterday',
+  'endOfYesterday',
+  'formatDistanceToNow',
+  'formatDistanceToNowStrict',
+].join('|');
 
 const IO_GLOBALS = [
   'process',
@@ -77,6 +93,15 @@ export const domainRestrictedSyntax = [
   {
     selector:
       "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
+    message: CLOCK_AND_RANDOM_MESSAGE,
+  },
+  {
+    selector: [
+      "CallExpression[callee.object.name=/^(dayjs|moment)$/][callee.property.name='utc'][arguments.length=0]",
+      'CallExpression[callee.property.name=/^(fromNow|toNow)$/]',
+      "MemberExpression[object.name='Temporal'][property.name='Now']",
+      `ImportDeclaration[source.value=/^date-fns/] ImportSpecifier[imported.name=/^(${DATE_FNS_CLOCK_FUNCTIONS})$/]`,
+    ].join(', '),
     message: CLOCK_AND_RANDOM_MESSAGE,
   },
   {

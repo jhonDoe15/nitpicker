@@ -188,7 +188,17 @@ const domainOnlyBans = [
     selector:
       "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
     message:
-      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.',
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
+  },
+  {
+    selector: [
+      "CallExpression[callee.object.name=/^(dayjs|moment)$/][callee.property.name='utc'][arguments.length=0]",
+      'CallExpression[callee.property.name=/^(fromNow|toNow)$/]',
+      "MemberExpression[object.name='Temporal'][property.name='Now']",
+      String.raw`ImportDeclaration[source.value=/^date-fns/] ImportSpecifier[imported.name=/^(isToday|isTomorrow|isYesterday|isPast|isFuture|isThis[A-Z]\w*|startOfToday|endOfToday|startOfTomorrow|endOfTomorrow|startOfYesterday|endOfYesterday|formatDistanceToNow|formatDistanceToNowStrict)$/]`,
+    ].join(', '),
+    message:
+      'domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
   },
   {
     selector:
