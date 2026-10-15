@@ -66,10 +66,22 @@ describe('production policy scope', () => {
       })[0].message;
 
     expect(message(domain)).toBe(
-      "'Math.random' is restricted from being used. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/.",
+      "'Math.random' is restricted from being used. domain/ code does not read the clock or randomness: take the time, ID or random value as a parameter from adapters/. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
     );
     expect(message(adapter)).toBe(
       "'Math.random' is restricted from being used. Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.",
+    );
+  });
+
+  it('names the exception route for I/O in domain/', () => {
+    const findings = lintFixture({
+      config: [...productionPolicyConfigFor(layout), ...strictSyntaxConfigFor(layout)],
+      filename: domain,
+      code: 'export function load() { return fetch("/x"); }',
+    });
+
+    expect(findings.find(({ ruleId }) => ruleId === 'no-restricted-globals')?.message).toBe(
+      "Unexpected use of 'fetch'. domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
     );
   });
 
@@ -242,5 +254,29 @@ describe('magic numbers and other basics', () => {
     expect(ruleIds(domain, 'export function now(): number { return dayjs().valueOf(); }')).toEqual([
       'no-restricted-syntax',
     ]);
+  });
+
+  it.each([
+    ['dayjs.utc()', 'export const now = dayjs.utc();'],
+    ['moment.utc()', 'export const now = moment.utc();'],
+    ['Temporal.Now', 'export const now = Temporal.Now.instant();'],
+    ['a date-fns clock function', "import { isPast } from 'date-fns'; export const past = isPast;"],
+    [
+      'a date-fns this-period check',
+      "import { isThisWeek } from 'date-fns'; export const f = isThisWeek;",
+    ],
+    ['fromNow()', 'export function ago(at: Dayjs): string { return at.fromNow(); }'],
+  ])('keeps domain/ from reading the clock through %s', (_name, code) => {
+    expect(ruleIds(domain, code)).toEqual(['no-restricted-syntax']);
+  });
+
+  it.each([
+    [
+      'dayjs.utc on a given value',
+      'export function f(at: string): string { return dayjs.utc(at).format(); }',
+    ],
+    ['a date-fns formatter', "import { format } from 'date-fns'; export const f = format;"],
+  ])('lets domain/ use %s', (_name, code) => {
+    expect(ruleIds(domain, code)).toEqual([]);
   });
 });

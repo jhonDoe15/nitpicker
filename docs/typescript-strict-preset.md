@@ -29,7 +29,9 @@ config file is an exception like any other.
   and subpaths like `path/posix` and `assert/strict` are fine), network or database clients, the
   logger, module state, or ID and random-data libraries (`uuid`, `nanoid`, `cuid`, `ulid`, `faker`).
   Date libraries (`dayjs`, `luxon`, `date-fns`) are fine for arithmetic on a given value; reading
-  the clock through them (`dayjs()`, `moment()`, `DateTime.now()`) is reported like `Date.now()`.
+  the clock through them (`dayjs()`, `dayjs.utc()`, `moment()`, `DateTime.now()`, `Temporal.Now`,
+  `.fromNow()`, and date-fns `isToday`, `isPast`, `startOfToday` or `formatDistanceToNow`) is reported
+  like `Date.now()`.
   It may not reach Node I/O or a client through a `shared/` module it imports
   (`domain-does-not-reach-io-through-shared`). Time, IDs, and randomness arrive as parameters. A
   dependency-cruiser rule that flags legitimate code is lifted with an `exceptions` entry that names
