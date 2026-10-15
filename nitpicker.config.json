@@ -1,7 +1,7 @@
 {
   "preset": "typescript",
   "layout": {
-    "sourceRoots": ["core", "languages"],
+    "sourceRoots": ["core", "languages", "shared"],
     "entryPoints": [
       "core/diff/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
@@ -20,7 +20,6 @@
     ]
   },
   "exclude": [
-    "shared/**",
     "languages/java/ingest/fixtures/**",
     "languages/java/adapters/fixtures/**",
     "languages/javascript/preset/fixtures/**",

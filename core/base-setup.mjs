@@ -4,6 +4,7 @@ import { CONFIG_FILE_NAME } from '../shared/config.mjs';
 import { resolveHeadPolicy } from '../shared/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
+import { baseConfigCoveringHead } from './policy-changes/base-coverage.mjs';
 import { policyChangeFields } from './policy-changes/describe-policy-changes.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 
@@ -32,18 +33,17 @@ function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyz
   if (JSON.stringify(baseConfig) === JSON.stringify(headConfig)) {
     return {};
   }
-  const baseHeadPolicy = resolveHeadPolicy(baseConfig);
+  const measured = baseConfigCoveringHead(baseConfig, headConfig);
+  const baseHeadPolicy = resolveHeadPolicy(measured);
   const configured = new Map(
-    configureAnalyzers(
-      presetAnalyzers(baseConfig, injectedAnalyzers),
-      baseConfig,
-      baseHeadPolicy,
-    ).map((analyzer) => [analyzer.name, analyzer]),
+    configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
+      (analyzer) => [analyzer.name, analyzer],
+    ),
   );
   return {
     analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
     headPolicy: baseHeadPolicy,
-    configOverrides: describeConfigOverrides(baseConfig),
+    configOverrides: describeConfigOverrides(measured),
     ...policyChangeFields(baseConfig, headConfig),
   };
 }
