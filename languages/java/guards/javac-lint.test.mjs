@@ -151,8 +151,7 @@ describe('readLintFindings', () => {
     expect(uncompared[0].message).toBe(
       'found raw type: List. Add the type arguments, as in List<String>. ' +
         'If it is right here, add an exception for javac/rawtypes in nitpicker.config.json. ' +
-        'Not enforced in this run: the base has no javac report to compare with, ' +
-        'so it is unknown whether the change added this.',
+        'Not enforced: no base javac report shows whether the change added it.',
     );
     expect(compare([]).map((finding) => finding.classification)).toEqual([
       'enforceable',

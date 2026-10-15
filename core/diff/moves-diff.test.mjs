@@ -349,3 +349,54 @@ describe('a config that changed between base and head', () => {
     expect(setup.headPolicy.exclude).toEqual([]);
   });
 });
+
+describe('a tool that produced no report on one side', () => {
+  const notRun = `// FINDING ${JSON.stringify({
+    identity: 'not-run',
+    rule: 'not-run',
+    classification: 'descriptive',
+    toolNotRun: true,
+  })}\n`;
+
+  it('fails the run as a tool error when only the head lacks the report', () => {
+    const root = createRepository({ 'src/a.mjs': `${filler('a')}${finding('a-site')}` });
+    write(root, { 'src/a.mjs': `${filler('a')}${notRun}` });
+    commitHead(root);
+
+    const report = compare(root);
+
+    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(report.toolErrors).toEqual([
+      {
+        tool: 'probe',
+        snapshot: 'head',
+        rule: 'not-run',
+        path: 'src/a.mjs',
+        message: 'probe finding The base produced this probe report, so the change broke it.',
+      },
+    ]);
+    expect(report.newFindings).toEqual([]);
+  });
+
+  it('reports the head findings without failing when only the base lacks the report', () => {
+    const root = createRepository({ 'src/a.mjs': `${filler('a')}${notRun}` });
+    write(root, { 'src/a.mjs': `${filler('a')}${finding('a-site')}` });
+    commitHead(root);
+
+    const report = compare(root);
+
+    expect(report.toolErrors).toEqual([]);
+    expect(report.newFindings).toEqual([
+      {
+        tool: 'probe',
+        rule: 'probe-rule',
+        path: 'src/a.mjs',
+        identity: 'a-site',
+        classification: 'descriptive',
+        location: { line: 13, column: 1 },
+        message:
+          'probe finding Not enforced: no base probe report shows whether the change added it.',
+      },
+    ]);
+  });
+});

@@ -15,10 +15,8 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     snapshot: 'base',
   });
-  const headByKey = indexFindings({
-    findings: withoutBaseToCompare(headFindings, baseFindings),
-    snapshot: 'head',
-  });
+  const comparedHead = againstMissingReports(headFindings, baseFindings);
+  const headByKey = indexFindings({ findings: comparedHead, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const unmatchedBase = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -47,19 +45,29 @@ export function compareFindings({
   };
 }
 
-function withoutBaseToCompare(headFindings, baseFindings) {
-  const notRun = new Set(
+const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change broke it.';
+const NOT_COMPARED = 'Not enforced: no base {tool} report shows whether the change added it.';
+
+function reclassified(finding, classification, sentence) {
+  return {
+    ...Object.fromEntries(Object.entries(finding).filter(([field]) => field !== 'toolNotRun')),
+    classification,
+    message: `${finding.message} ${sentence.replace('{tool}', finding.tool)}`,
+  };
+}
+
+function againstMissingReports(headFindings, baseFindings) {
+  const missingOnBase = new Set(
     baseFindings.filter((finding) => finding.toolNotRun === true).map((finding) => finding.tool),
   );
-  return headFindings.map((finding) =>
-    notRun.has(finding.tool) && finding.classification === 'enforceable'
-      ? {
-          ...finding,
-          classification: 'descriptive',
-          message: `${finding.message} Not enforced in this run: the base has no ${finding.tool} report to compare with, so it is unknown whether the change added this.`,
-        }
-      : finding,
-  );
+  return headFindings.map((finding) => {
+    if (finding.toolNotRun === true && !missingOnBase.has(finding.tool)) {
+      return reclassified(finding, 'tool-error', BROKEN_ON_HEAD);
+    }
+    return finding.classification === 'enforceable' && missingOnBase.has(finding.tool)
+      ? reclassified(finding, 'descriptive', NOT_COMPARED)
+      : finding;
+  });
 }
 
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
