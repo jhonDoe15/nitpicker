@@ -46,24 +46,11 @@ function toolCountLines(tools) {
 }
 
 function toolCountLine(tool) {
-  return [
-    tool.name,
-    ': base=',
-    String(tool.base),
-    ' head=',
-    String(tool.head),
-    ' new=',
-    String(tool.new),
-    ' resolved=',
-    String(tool.resolved),
-    ' unchanged=',
-    String(tool.unchanged),
-    ' changed-metrics=',
-    String(tool.changedMetrics),
-    ' elapsed=',
-    formatSeconds(tool.elapsedMs ?? 0),
-    tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`,
-  ].join('');
+  const skipped =
+    tool.skippedBecause === undefined ? '' : ` skipped (${tool.skippedBecause} failed)`;
+  const counts = `base=${tool.base} head=${tool.head} new=${tool.new} resolved=${tool.resolved}`;
+  const unchanged = `unchanged=${tool.unchanged} changed-metrics=${tool.changedMetrics}`;
+  return `${tool.name}: ${counts} ${unchanged} elapsed=${formatSeconds(tool.elapsedMs ?? 0)}${skipped}`;
 }
 
 export function renderRuleFilterSection(report, ruleFilters) {
@@ -107,24 +94,8 @@ function appendMetricSection(lines, metrics) {
   }
   lines.push('', 'Changed metrics:');
   for (const metric of metrics) {
-    lines.push(
-      [
-        metric.tool,
-        '/',
-        metric.rule,
-        ' ',
-        metric.path,
-        ' ',
-        metric.metric,
-        ': ',
-        String(metric.baseValue),
-        ' -> ',
-        String(metric.headValue),
-        ' (',
-        formatDelta(metric.delta),
-        ')',
-      ].join(''),
-    );
+    const change = `${metric.baseValue} -> ${metric.headValue} (${formatDelta(metric.delta)})`;
+    lines.push(`${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${change}`);
   }
 }
 

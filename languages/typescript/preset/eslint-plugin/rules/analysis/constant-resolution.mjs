@@ -1,4 +1,3 @@
-import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { scopeChain } from './ancestry.mjs';
 
 const MAX_RESOLVE_DEPTH = 8;
@@ -39,16 +38,12 @@ function constantInitializer(context, node, depth) {
 }
 
 export function resolveConstant(context, node, depth = 0) {
-  let current = node;
-  for (const currentDepth of Array.from(
-    { length: Math.max(0, MAX_RESOLVE_DEPTH - depth + 1) },
-    (_, index) => depth + index,
-  )) {
-    const next = constantInitializer(context, current, currentDepth);
-    if (!next) return current;
-    current = next;
+  const chain = [node];
+  for (const current of chain) {
+    const next = constantInitializer(context, current, depth + chain.length - 1);
+    if (next) chain.push(next);
   }
-  return current;
+  return chain.at(-1);
 }
 
 export function resolveFunction(context, node) {
@@ -70,32 +65,50 @@ const NUMBER_OPERATORS = {
   '/': (left, right) => left / right,
 };
 
-function numericChildren(frame, context) {
-  if (frame.depth > MAX_RESOLVE_DEPTH) return [];
-  frame.resolved = resolveConstant(context, frame.node);
-  const node = frame.resolved;
-  let children = [];
-  if (node?.type === 'UnaryExpression' && ['-', '+'].includes(node.operator))
-    children = [node.argument];
-  if (node?.type === 'BinaryExpression' && Object.hasOwn(NUMBER_OPERATORS, node.operator))
-    children = [node.left, node.right];
-  frame.children = children.map((child) => ({ node: child, depth: frame.depth + 1 }));
-  return frame.children;
+function operandNodes(node) {
+  if (node?.type === 'UnaryExpression' && ['-', '+'].includes(node.operator)) {
+    return [node.argument];
+  }
+  if (node?.type === 'BinaryExpression' && Object.hasOwn(NUMBER_OPERATORS, node.operator)) {
+    return [node.left, node.right];
+  }
+  return [];
 }
 
-function numericValue(frame, values) {
-  const node = frame.resolved;
+function numericEntry(context, node, depth, parent) {
+  return {
+    node: depth > MAX_RESOLVE_DEPTH ? undefined : resolveConstant(context, node),
+    depth,
+    parent,
+  };
+}
+
+function numericEntries(context, root, depth) {
+  const entries = [numericEntry(context, root, depth, undefined)];
+  for (const entry of entries) {
+    const operands = operandNodes(entry.node);
+    entries.push(
+      ...operands.map((operand) => numericEntry(context, operand, entry.depth + 1, entry)),
+    );
+  }
+  return entries;
+}
+
+function numericValue(node, operands) {
   if (node?.type === 'Literal' && typeof node.value === 'number') return node.value;
-  const operands = frame.children?.map((child) => values.get(child)) ?? [];
-  if (operands.length === 0 || operands.some((value) => value === undefined)) return undefined;
+  if (operands.length === 0 || operands.includes(undefined)) return undefined;
   if (node.type === 'UnaryExpression') return node.operator === '-' ? -operands[0] : operands[0];
   return NUMBER_OPERATORS[node.operator](...operands);
 }
 
 export function constantNumber(context, node, depth = 0) {
-  const root = { node, depth };
-  const frames = [...depthFirst(root, (frame) => numericChildren(frame, context))];
+  const entries = numericEntries(context, node, depth);
   const values = new Map();
-  for (const frame of frames.toReversed()) values.set(frame, numericValue(frame, values));
-  return values.get(root);
+  for (const entry of entries.toReversed()) {
+    const operands = entries
+      .filter(({ parent }) => parent === entry)
+      .map((operand) => values.get(operand));
+    values.set(entry, numericValue(entry.node, operands));
+  }
+  return values.get(entries[0]);
 }

@@ -49,10 +49,10 @@ export function prepareSnapshotDependencies(options) {
   const dependencyPath = path.join(options.projectRoot, dependencyHook.directory);
   if (existsSync(dependencyPath)) {
     validatePreparedDependencies({
-      mode: mode,
-      dependencyPath: dependencyPath,
+      mode,
+      dependencyPath,
       liveProjectRoot: options.liveProjectRoot ?? PACKAGE_ROOT,
-      dependencyHook: dependencyHook,
+      dependencyHook,
     });
     return undefined;
   }

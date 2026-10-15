@@ -126,7 +126,7 @@ function runEslintFix({ projectRoot, policyEnvironment, executeFixCommand }, esl
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
     },
     input: undefined,
-    executeFixCommand: executeFixCommand,
+    executeFixCommand,
   });
 }
 
@@ -172,7 +172,7 @@ function runBaseCheck(
         filePath: path.join(projectRoot, file.basePath),
       })),
     }),
-    executeFixCommand: executeFixCommand,
+    executeFixCommand,
   });
 }
 
@@ -218,7 +218,7 @@ function writeLayeredPrettier({ projectRoot, policyEnvironment, executeFixComman
     acceptedStatuses: [0],
     environment: policyEnvironment,
     input: JSON.stringify({ projectRoot, files: safeFiles.map(({ path: name }) => name) }),
-    executeFixCommand: executeFixCommand,
+    executeFixCommand,
   });
 }
 
@@ -239,7 +239,7 @@ function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand
     acceptedStatuses: [0],
     environment: policyEnvironment,
     input: undefined,
-    executeFixCommand: executeFixCommand,
+    executeFixCommand,
   });
 }
 
