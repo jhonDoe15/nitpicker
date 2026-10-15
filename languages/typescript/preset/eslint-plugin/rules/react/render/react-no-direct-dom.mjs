@@ -14,6 +14,7 @@ const contentProperties = new Set([
   'textContent',
 ]);
 const classListMethods = new Set(['add', 'remove', 'toggle', 'replace']);
+const rootMounts = new Set(['createRoot', 'hydrateRoot']);
 
 function propertyName(member) {
   return member.type === 'MemberExpression' && !member.computed ? member.property.name : undefined;
@@ -26,6 +27,10 @@ function isDocumentQuery(callee) {
     callee.object.name === 'document' &&
     queryMethods.has(propertyName(callee))
   );
+}
+
+function isRootMount(callee) {
+  return rootMounts.has(callee.type === 'Identifier' ? callee.name : propertyName(callee));
 }
 
 function isClassListMutation(callee) {
@@ -56,26 +61,32 @@ export const rule = {
     },
   },
   create(context) {
-    const found = [];
+    const queries = [];
+    const changes = [];
     let rendersJsx = false;
+    let mountsRoot = false;
 
     return {
       JSXElement() {
         rendersJsx = true;
       },
       CallExpression(node) {
-        if (isDocumentQuery(node.callee) || isClassListMutation(node.callee)) {
-          found.push(node);
+        mountsRoot ||= isRootMount(node.callee);
+        if (isDocumentQuery(node.callee)) {
+          queries.push(node);
+        }
+        if (isClassListMutation(node.callee)) {
+          changes.push(node);
         }
       },
       AssignmentExpression(node) {
         if (isDomAssignment(node.left)) {
-          found.push(node);
+          changes.push(node);
         }
       },
       'Program:exit'() {
         if (rendersJsx) {
-          for (const node of found) {
+          for (const node of mountsRoot ? changes : [...queries, ...changes]) {
             context.report({ node, messageId: 'directDom' });
           }
         }

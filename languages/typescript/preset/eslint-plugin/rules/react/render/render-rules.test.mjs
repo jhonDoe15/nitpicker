@@ -76,6 +76,8 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     "export function readRoot() { return document.querySelector('#root'); }",
     "export const el = document.getElementById('app'); el.innerHTML = '';",
     "export function set(el) { el.innerHTML = '<b/>'; el.style.color = 'red'; el.classList.add('x'); }",
+    "const root = document.getElementById('root'); if (root) { createRoot(root).render(<App />); }",
+    "ReactDOM.hydrateRoot(document.querySelector('#app'), <App />);",
   ].map(valid),
   invalid: [
     invalid(inPanel("document.getElementById('banner');"), { messageId: 'directDom' }),
@@ -86,6 +88,13 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     invalid(inPanel("document.getElementsByName('x');"), { messageId: 'directDom' }),
     invalid(inPanel("ref.current.innerText = 'direct';"), { messageId: 'directDom' }),
     invalid(inPanel("el.innerHTML = '<b/>';"), { messageId: 'directDom' }),
+    invalid(
+      "const root = document.getElementById('root'); root.className = 'x'; createRoot(root).render(<App />);",
+      { messageId: 'directDom' },
+    ),
+    invalid("document.getElementById('banner'); createRoot.name; export const P = () => <i />;", {
+      messageId: 'directDom',
+    }),
     invalid(inPanel("el.outerHTML = '<b/>';"), { messageId: 'directDom' }),
     invalid(inPanel("el.textContent = 'x';"), { messageId: 'directDom' }),
     invalid(inPanel("el.className = 'x';"), { messageId: 'directDom' }),

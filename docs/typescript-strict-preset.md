@@ -303,7 +303,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   JSX. `document.getElementById`/`querySelector`/`querySelectorAll`, `getElementsBy*`, assignments
   to `.innerHTML`, `.innerText`, `.textContent`, `.className` or `.style.*`, and `classList.add`,
   `remove`, `toggle`, `replace` are flagged: state and props drive the DOM, and a ref is for
-  focusing and measuring. Glue for a third-party widget needs an exception.
+  focusing and measuring. The file that mounts the app with `createRoot` or `hydrateRoot` may look
+  up its container. Glue for a third-party widget needs an exception.
 - **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
   `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
   `<label htmlFor>` points to, `aria-label` or `aria-labelledby` (hidden, submit, reset, button
