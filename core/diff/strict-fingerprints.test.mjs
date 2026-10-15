@@ -3,11 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../languages/typescript/adapters/eslint-runner.mjs';
-import { failureMessageCases } from '../../languages/typescript/preset/failure-messages/cases.mjs';
+import { failureMessageCases as baseCases } from '../../languages/typescript/preset/failure-messages/cases.mjs';
+import { testHonestyFailureMessageCases } from '../../languages/typescript/preset/failure-messages/honesty/test-honesty-cases.mjs';
 import { lintFixture } from '../../languages/typescript/preset/failure-messages/harness.mjs';
 import { compareFindings } from './compare.mjs';
 
 const temporaryRoots = [];
+const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
 
 afterAll(() => {
   for (const root of temporaryRoots) {

@@ -251,9 +251,10 @@ alone.
   (`import * as domain`) of production code.
 - `nitpicker/no-production-imports-in-setup-files`: a file the project's Vitest or Vite config lists in
   `setupFiles` or `globalSetup` may not import production code (a setup file runs before every test
-  file, so calls made there would count as covered). A test may not mention `__stryker__` or
-  `STRYKER_*` either (`no-restricted-syntax`): behaviour that depends on the mutation harness hides
-  every mutant.
+  file, so calls made there would count as covered). A test may not mention `__stryker__`,
+  `STRYKER_*` or `activeMutant` either (`no-restricted-syntax`): behaviour that depends on the
+  mutation harness hides every mutant. For the same reason a test reads a global by its name
+  (`globalThis.name`), not by a computed key (`Reflect.get(globalThis, key)`, `globalThis[key]`).
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
