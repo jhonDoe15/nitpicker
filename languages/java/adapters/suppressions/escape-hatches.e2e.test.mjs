@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -102,7 +101,6 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
   });
 
   afterAll(() => {
-    spawnSync(gradle, ['--stop'], { stdio: 'ignore' });
     rmSync(repository, { recursive: true, force: true });
   });
 
