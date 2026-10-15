@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createBatchUploader } from '../src/main/features/uploads/index.js';
 import {
   makeItems,
   settle,
@@ -24,7 +25,7 @@ describe('option validation', () => {
   ])(
     'rejects batchSize %j with concurrency %j naming %s',
     async (batchSize, concurrency, field) => {
-      const run = harness();
+      const run = harness(createBatchUploader);
       await expect(
         run.uploader.uploadAll(makeItems(3), options(batchSize, concurrency)),
       ).rejects.toThrow(new RangeError(`${field} must be a positive integer`));
@@ -40,7 +41,7 @@ describe('option validation', () => {
 
 describe('batching', () => {
   it('resolves an empty list to an empty done summary without calling anything', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     expect(await run.uploader.uploadAll([], options(3, 2))).toEqual({
       kind: 'done',
       uploaded: 0,
@@ -50,7 +51,7 @@ describe('batching', () => {
   });
 
   it('resolves an empty list as done even when the signal is already aborted', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     controller.abort();
     expect(await run.uploader.uploadAll([], options(3, 2, controller.signal))).toEqual({
@@ -61,7 +62,7 @@ describe('batching', () => {
   });
 
   it('uploads consecutive batches in order, the last one smaller', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const controller = new AbortController();
     const done = run.uploader.uploadAll(makeItems(7), options(3, 1, controller.signal));
     for (const round of [1, 2, 3]) {
@@ -83,7 +84,7 @@ describe('batching', () => {
   });
 
   it('makes a single batch when batchSize exceeds the item count', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(2), options(10, 3));
     await waitForCalls(run.calls, 1);
     callAt(run.calls, 0).finish();
@@ -92,7 +93,7 @@ describe('batching', () => {
   });
 
   it('makes no extra batch when the count divides evenly', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(4), options(2, 5));
     await waitForCalls(run.calls, 2);
     await settle();
@@ -106,7 +107,7 @@ describe('batching', () => {
 
 describe('concurrency', () => {
   it('starts batches in index order up to the limit and refills freed slots', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(5), options(1, 2));
     await waitForCalls(run.calls, 2);
     await settle();
@@ -127,7 +128,7 @@ describe('concurrency', () => {
   });
 
   it('starts every batch at once when the limit exceeds the batch count', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(3), options(1, 1_000_000_000));
     await waitForCalls(run.calls, 3);
     for (const call of run.calls) {
@@ -138,7 +139,7 @@ describe('concurrency', () => {
   });
 
   it('keeps independent limits for two concurrent calls on one uploader', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const first = run.uploader.uploadAll(makeItems(3), options(1, 1));
     const second = run.uploader.uploadAll(makeItems(3), options(1, 1));
     await waitForCalls(run.calls, 2);
@@ -156,7 +157,7 @@ describe('concurrency', () => {
   });
 
   it('handles many batches without exceeding the limit', async () => {
-    const run = harness();
+    const run = harness(createBatchUploader);
     const done = run.uploader.uploadAll(makeItems(40), options(2, 4));
     for (const step of Array.from({ length: 20 }, (_, index) => index)) {
       await waitForCalls(run.calls, Math.min(step + 4, 20));

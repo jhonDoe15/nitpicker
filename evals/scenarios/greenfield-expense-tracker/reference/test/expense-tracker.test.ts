@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { createExpenseTracker } from '../src/main/composition-root.js';
 import { createDisk, open, csvOf, reportText, HEADER } from './support/expense-harness.js';
 
 describe('importing CSV', () => {
   it('imports valid rows and stores amounts as integer cents', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     const result = await tracker.importCsv(
       csvOf('2024-03-05,12.34,Food,Lunch', '2024-03-06,7,Food,', '2024-03-07,0.5,Transport,Bus'),
     );
@@ -16,7 +17,7 @@ describe('importing CSV', () => {
   });
 
   it('does not lose cents to floating point', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(
       csvOf(
         '2024-03-01,1.15,A,',
@@ -49,7 +50,7 @@ describe('importing CSV', () => {
   });
 
   it('accepts one or two decimals and leading zeros', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     const result = await tracker.importCsv(
       csvOf('2024-03-01,12.3,A,', '2024-03-02,007,B,', '2024-03-03,0.05,C,'),
     );
@@ -58,7 +59,7 @@ describe('importing CSV', () => {
   });
 
   it('parses quoted fields with commas, doubled quotes and padding', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     const result = await tracker.importCsv(
       csvOf(
         '2024-03-08,"1234.50","Dining, out","He said ""hi"", twice"',
@@ -80,7 +81,7 @@ describe('importing CSV', () => {
   });
 
   it('trims unquoted fields', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf(' 2024-03-10 , 5.00 , Food , a note '));
     expect(await tracker.largest('2024-03')).toEqual([
       { date: '2024-03-10', amountCents: 500, category: 'Food', note: 'a note' },
@@ -88,7 +89,7 @@ describe('importing CSV', () => {
   });
 
   it('accepts CRLF line endings and a trailing newline', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     const result = await tracker.importCsv(
       `${HEADER}\r\n2024-03-01,1.00,A,x\r\n2024-03-02,2.00,B,y\r\n`,
     );
@@ -97,7 +98,7 @@ describe('importing CSV', () => {
 
   it('reports invalid lines with their line number and imports the valid ones', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     const result = await tracker.importCsv(
       [
         HEADER,
@@ -170,19 +171,22 @@ describe('importing CSV', () => {
     ['2024-03-10,0,,x', 'Amount must be positive'],
   ])('reports %j as %j', async (row, reason) => {
     const disk = createDisk({}, '2024-03-15');
-    const result = await open(disk).importCsv(csvOf(row));
+    const result = await open(createExpenseTracker, disk).importCsv(csvOf(row));
     expect(result).toEqual({ imported: 0, errors: [{ line: 2, reason }] });
     expect(disk.writes).toEqual([]);
   });
 
   it('skips a blank line without reporting it', async () => {
     const disk = createDisk();
-    expect(await open(disk).importCsv(csvOf(''))).toEqual({ imported: 0, errors: [] });
+    expect(await open(createExpenseTracker, disk).importCsv(csvOf(''))).toEqual({
+      imported: 0,
+      errors: [],
+    });
     expect(disk.writes).toEqual([]);
   });
 
   it('accepts the last day of the year', async () => {
-    const tracker = open(createDisk({}, '2024-12-31'));
+    const tracker = open(createExpenseTracker, createDisk({}, '2024-12-31'));
     const result = await tracker.importCsv(
       csvOf('2024-12-31,5.00,Food,x', '2024-01-01,5.00,Food,y'),
     );
@@ -190,7 +194,7 @@ describe('importing CSV', () => {
   });
 
   it('accepts a leap day and today itself', async () => {
-    const tracker = open(createDisk({}, '2024-03-15'));
+    const tracker = open(createExpenseTracker, createDisk({}, '2024-03-15'));
     const result = await tracker.importCsv(
       csvOf('2024-02-29,5.00,Food,x', '2024-03-15,5.00,Food,y'),
     );
@@ -199,7 +203,7 @@ describe('importing CSV', () => {
 
   it('rejects the whole import when the header is wrong or missing', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     const invalid = { imported: 0, errors: [{ line: 1, reason: 'Invalid header' }] };
     expect(await tracker.importCsv('2024-03-01,5.00,Food,x')).toEqual(invalid);
     expect(await tracker.importCsv('date,amount,category\n2024-03-01,5.00,Food,x')).toEqual(
@@ -214,13 +218,16 @@ describe('importing CSV', () => {
 
   it('imports nothing from a header-only file', async () => {
     const disk = createDisk();
-    expect(await open(disk).importCsv(HEADER)).toEqual({ imported: 0, errors: [] });
+    expect(await open(createExpenseTracker, disk).importCsv(HEADER)).toEqual({
+      imported: 0,
+      errors: [],
+    });
     expect(disk.writes).toEqual([]);
   });
 
   it('reads today() on every call, not once at creation', async () => {
     const disk = createDisk({}, '2024-03-10');
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     expect(await tracker.importCsv(csvOf('2024-03-20,5.00,Food,x'))).toEqual({
       imported: 0,
       errors: [{ line: 2, reason: 'Date is in the future' }],
@@ -233,7 +240,7 @@ describe('importing CSV', () => {
   });
 
   it('appends to expenses imported earlier', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,10.00,Food,a'));
     await tracker.importCsv(csvOf('2024-03-02,20.00,Food,b'));
     expect(await tracker.report('2024-03')).toBe(

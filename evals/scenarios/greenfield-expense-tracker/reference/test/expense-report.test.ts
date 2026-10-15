@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { createExpenseTracker } from '../src/main/composition-root.js';
 import { createDisk, open, savedJson, csvOf, reportText } from './support/expense-harness.js';
 
 describe('monthly report', () => {
   async function marchTracker() {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.importCsv(
       csvOf(
         '2024-03-01,1200.00,Rent,March rent',
@@ -71,7 +72,7 @@ describe('monthly report', () => {
 
   it('follows today() when it moves to another month', async () => {
     const disk = createDisk({}, '2024-03-20');
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.importCsv(csvOf('2024-02-10,10.00,Food,x', '2024-03-10,20.00,Food,y'));
     expect(await tracker.report()).toBe(
       reportText(
@@ -115,14 +116,14 @@ describe('monthly report', () => {
   });
 
   it('reports an empty month', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     expect(await tracker.report('2024-05')).toBe(
       'Expense report for 2024-05\n\nNo expenses.\n\nTotal: 0.00\n\nLargest expenses:\nNone\n',
     );
   });
 
   it('lists budgeted categories of a month without expenses', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.setBudget('2024-05', 'Food', 2500);
     expect(await tracker.report('2024-05')).toBe(
       [
@@ -140,7 +141,7 @@ describe('monthly report', () => {
   });
 
   it('is not over budget when spending equals the budget', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,50.00,Food,'));
     await tracker.setBudget('2024-03', 'Food', 5000);
     expect(await tracker.report('2024-03')).toBe(
@@ -171,7 +172,7 @@ describe('monthly report', () => {
   });
 
   it('treats a zero budget as a budget', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,0.05,Food,'));
     await tracker.setBudget('2024-03', 'Food', 0);
     expect(await tracker.report('2024-03')).toBe(
@@ -189,7 +190,7 @@ describe('monthly report', () => {
   });
 
   it('orders categories by total spent, largest first', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(
       csvOf('2024-03-01,1.00,Low,', '2024-03-02,3.00,High,', '2024-03-03,2.00,Mid,'),
     );
@@ -201,7 +202,7 @@ describe('monthly report', () => {
   });
 
   it('breaks equal totals by category in plain character order', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(
       csvOf('2024-03-01,10.00,apple,', '2024-03-02,10.00,Zed,', '2024-03-03,10.00,Mid,'),
     );
@@ -215,7 +216,7 @@ describe('monthly report', () => {
   });
 
   it('keeps categories that differ in case apart', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,10.00,food,', '2024-03-02,5.00,Food,'));
     expect(await tracker.report('2024-03')).toBe(
       reportText(
@@ -234,7 +235,7 @@ describe('monthly report', () => {
   });
 
   it('formats money without separators and with two digits', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(
       csvOf('2024-03-01,1234567.89,Big,', '2024-03-02,0.05,Small,', '2024-03-03,1,Exact,'),
     );
@@ -257,7 +258,7 @@ describe('monthly report', () => {
   });
 
   it('answers invalid months with a message', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     expect(await tracker.report('2024-3')).toBe('Invalid month: 2024-3\n');
     expect(await tracker.report('2024-13')).toBe('Invalid month: 2024-13\n');
     expect(await tracker.report('')).toBe('Invalid month: \n');
@@ -268,7 +269,7 @@ describe('monthly report', () => {
 
   it('does not write anything', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.report('2024-03');
     await tracker.largest('2024-03');
     expect(disk.writes).toEqual([]);
@@ -277,7 +278,7 @@ describe('monthly report', () => {
 
 describe('largest expenses', () => {
   it('returns the three largest of the month, ties by earlier date then import order', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(
       csvOf(
         '2024-03-09,50.00,B,first',
@@ -296,14 +297,14 @@ describe('largest expenses', () => {
   });
 
   it('returns fewer than three when the month has fewer', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,1.00,A,', '2024-03-02,2.00,B,'));
     expect(await tracker.largest('2024-03')).toHaveLength(2);
     expect(await tracker.largest('2024-04')).toEqual([]);
   });
 
   it('omits the note separator when the note is empty', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,1.00,A,', '2024-03-02,2.00,B,two'));
     expect((await tracker.report('2024-03')).split('Largest expenses:\n')[1]).toBe(
       '1. 2024-03-02 B 2.00 - two\n2. 2024-03-01 A 1.00\n',
@@ -311,7 +312,7 @@ describe('largest expenses', () => {
   });
 
   it('returns an empty list for an invalid month', async () => {
-    const tracker = open(createDisk());
+    const tracker = open(createExpenseTracker, createDisk());
     await tracker.importCsv(csvOf('2024-03-01,1.00,A,'));
     expect(await tracker.largest('2024-3')).toEqual([]);
     expect(await tracker.largest('')).toEqual([]);
@@ -319,8 +320,8 @@ describe('largest expenses', () => {
 
   it('survives a round trip through the fake file system', async () => {
     const disk = createDisk();
-    await open(disk).importCsv(csvOf('2024-03-01,12.34,Food,"a, b"'));
-    expect(await open(disk).largest('2024-03')).toEqual([
+    await open(createExpenseTracker, disk).importCsv(csvOf('2024-03-01,12.34,Food,"a, b"'));
+    expect(await open(createExpenseTracker, disk).largest('2024-03')).toEqual([
       { date: '2024-03-01', amountCents: 1234, category: 'Food', note: 'a, b' },
     ]);
     expect(disk.files.has('data/expenses.json')).toBe(true);
@@ -331,7 +332,7 @@ describe('largest expenses', () => {
 describe('unreadable budget files', () => {
   it('names the file and keeps the cause', async () => {
     const disk = createDisk({ 'data/budgets.json': 'not json' });
-    const failure = open(disk).report('2024-03');
+    const failure = open(createExpenseTracker, disk).report('2024-03');
     await expect(failure).rejects.toThrow('Cannot read data/budgets.json');
     await expect(failure).rejects.toHaveProperty('cause');
   });

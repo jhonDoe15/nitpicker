@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { createExpenseTracker } from '../src/main/composition-root.js';
 import { createDisk, open, savedJson, csvOf, reportText } from './support/expense-harness.js';
 
 describe('budgets', () => {
   it('persists budgets as JSON sorted by month then category', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     expect(await tracker.setBudget('2024-04', 'Rent', 100000)).toEqual({ kind: 'saved' });
     expect(await tracker.setBudget('2024-03', 'Food', 5000)).toEqual({ kind: 'saved' });
     expect(await tracker.setBudget('2024-03', 'Fun', 0)).toEqual({ kind: 'saved' });
@@ -22,7 +23,7 @@ describe('budgets', () => {
 
   it('sorts by month before category', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.setBudget('2024-04', 'Alpha', 100);
     await tracker.setBudget('2024-03', 'Zed', 200);
     expect(savedJson(disk, 'data/budgets.json')).toEqual({
@@ -35,7 +36,7 @@ describe('budgets', () => {
 
   it('keeps the budget of the same category in other months', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.setBudget('2024-03', 'Food', 100);
     await tracker.setBudget('2024-04', 'Food', 200);
     await tracker.setBudget('2024-03', 'Rent', 300);
@@ -51,7 +52,7 @@ describe('budgets', () => {
 
   it('sorts categories by plain character order', async () => {
     const disk = createDisk();
-    const tracker = open(disk);
+    const tracker = open(createExpenseTracker, disk);
     await tracker.setBudget('2024-03', 'apple', 100);
     await tracker.setBudget('2024-03', 'Zed', 200);
     expect(savedJson(disk, 'data/budgets.json')).toEqual({
@@ -71,7 +72,7 @@ describe('budgets', () => {
         ],
       }),
     });
-    await open(disk).setBudget('2024-03', 'Fun', 2000);
+    await open(createExpenseTracker, disk).setBudget('2024-03', 'Fun', 2000);
     expect(savedJson(disk, 'data/budgets.json')).toEqual({
       budgets: [
         { month: '2024-03', category: 'Food', limitCents: 5000 },
@@ -98,16 +99,18 @@ describe('budgets', () => {
     [['2024-03', '', -1], 'invalid-category'],
   ] as const)('rejects %j as %s without writing', async ([month, category, cents], kind) => {
     const disk = createDisk();
-    expect(await open(disk).setBudget(month, category, cents)).toEqual({ kind });
+    expect(await open(createExpenseTracker, disk).setBudget(month, category, cents)).toEqual({
+      kind,
+    });
     expect(disk.writes).toEqual([]);
   });
 
   it('treats a new tracker over the same files as the same tracker', async () => {
     const disk = createDisk();
-    const first = open(disk);
+    const first = open(createExpenseTracker, disk);
     await first.importCsv(csvOf('2024-03-02,80.00,Food,shop'));
     await first.setBudget('2024-03', 'Food', 10000);
-    const second = open(disk);
+    const second = open(createExpenseTracker, disk);
     expect(await second.report('2024-03')).toBe(await first.report('2024-03'));
     expect(await second.report('2024-03')).toBe(
       reportText(
@@ -128,7 +131,7 @@ describe('budgets', () => {
     const disk = createDisk({
       'data/budgets.json': '{"budgets":[{"month":"2024-03","category":"Food","limitCents":12345}]}',
     });
-    expect(await open(disk).report('2024-03')).toBe(
+    expect(await open(createExpenseTracker, disk).report('2024-03')).toBe(
       reportText(
         'Expense report for 2024-03',
         '',
@@ -150,7 +153,7 @@ describe('budgets', () => {
       '[]',
     ]) {
       const disk = createDisk({ 'data/budgets.json': content });
-      const tracker = open(disk);
+      const tracker = open(createExpenseTracker, disk);
       await expect(tracker.setBudget('2024-03', 'Food', 100)).rejects.toThrow();
       await expect(tracker.report('2024-03')).rejects.toThrow();
       expect(disk.files.get('data/budgets.json')).toBe(content);
