@@ -31,12 +31,15 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](internals.md#java-report-directory)). A build script
-  therefore cannot rewrite the reports nitpicker reads. Run by hand without the property, the task
+  that writes to `build/nitpicker` therefore changes nothing nitpicker reads. Run by hand without the property, the task
   writes to `build/nitpicker/` of each project.
 - **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
-  the plugin, or a project whose reports are missing, is a tool error, never a pass.
+  the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
+  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
+  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -81,8 +84,8 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
   `*ArchitectureTest` are selected; `-Pnitpicker.archunit.includes=<Gradle class patterns,
 comma-separated>` changes that. Those classes are excluded from the regular `test` task in
   Nitpicker runs, so a violated rule produces findings instead of failing the JaCoCo step. No
-  matching classes means no `build/nitpicker/archunit` directory and no findings.
-- **Report.** Gradle's JUnit XML, one file per test class, in `build/nitpicker/archunit/`.
+  matching classes means no `archunit` report directory and no findings.
+- **Report.** Gradle's JUnit XML, one file per test class, in `archunit/` of the report directory.
   `manifest.json` additionally lists `testSourceRoots`.
 - **Ingester.** `languages/java/ingest/archunit.mjs` (`ingestArchunit`). Per failed test case it parses
   the violation lines of the assertion message (`Method <a.B.run()> calls ... in (B.java:12)`) and
@@ -114,7 +117,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
-  `build/nitpicker/pit/mutations.xml`. Tests are named class by class (`--targetTests`), and
+  `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
@@ -250,14 +253,14 @@ Notes on the glue in `java-reports.mjs`:
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
-| Rule                               | What passes                                                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `AvoidLiteralsInIfCondition`       | `-1`, `0`, `1` and `2`; any other number in a condition is a named constant.                                |
-| `AvoidFieldNameMatchingMethodName` | `static final` constants, and a no-argument accessor named exactly like its field (`name()` for `name`).    |
-| `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                        |
-| `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders; a guard only when an argument is computed.   |
-| `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`. |
-| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.            |
+| Rule                               | What passes                                                                                                                                                                                        |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AvoidLiteralsInIfCondition`       | `-1`, `0`, `1` and `2`, and any string or char literal (`"abc".equals(s)`); any other number in a condition is a named constant.                                                                   |
+| `AvoidFieldNameMatchingMethodName` | `static final` constants, and a method named exactly like its field with at most one parameter: an accessor (`name()`), a fluent setter or builder step (`name(String)`).                          |
+| `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
+| `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
+| `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
+| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
 
 ## Slice 3: Checkstyle
 
@@ -288,7 +291,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
   [Structure limits (SH5)](#structure-limits-sh5)) writes the
-  cyclomatic complexity of each method and constructor into `build/nitpicker/structure.json`
+  cyclomatic complexity of each method and constructor into `structure.json` in the report directory
   (`complexity`), so the CRAP check needs no tool beyond the JDK that runs Gradle. It is
   McCabe's count: 1 plus each `if`, `for`, enhanced `for`, `while`,
   `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not a default one (an arrow case and a case with
@@ -337,13 +340,13 @@ identity when the value changes: editing such a line counts as a resolved plus a
 ## Slice 6: duplicates
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
-  does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
+  does not touch). After the Gradle task has written `manifest.json` in the report directory,
   `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
   per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
   (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. It runs
   once for the whole build, over the source roots of every Gradle project. Reports go to `jscpd/<n>/`
-  in the report directory and are merged into its `duplicates.json`. Clones across two source roots are not detected. A jscpd
+  in the report directory and are merged into its `duplicates.json`. Clones across two source roots, and so across two Gradle projects, are not detected (running jscpd once over all roots would detect them, at the price of changing the identity of every existing Java clone finding). A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
@@ -399,7 +402,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
   source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
-  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. A syntax error (for
+  `structure.json` in the report directory). It needs no dependency and no pin beyond the JDK. A syntax error (for
   example syntax newer than the JVM that runs Gradle) is not skipped: the program prints `file:line` and
   the compiler message of up to five errors and exits with status 1, so the task fails and the run is a
   tool error instead of a report with missing or shortened methods. All four
@@ -433,7 +436,7 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **What runs.** The init script's `nitpickerJdeps` task (a dependency of `nitpickerJava`) runs the
   JDK's `jdeps -verbose:class -filter:none` over the main class directories and writes
-  `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
+  `jdeps.txt` in the report directory plus `jdeps-classes.txt` (the main classes, one binary name per line).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
 - **Conversion.** `languages/java/adapters/java-coupling.mjs` parses the class graph, folds nested classes
@@ -472,7 +475,7 @@ Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/g
 added to its PMD run, next to nitpicker's rule set `pmd-ruleset.xml` (and the project's own `config/pmd/ruleset.xml` when
 `tools.pmd.precedence` lists `"project"` too). Every
 project's PMD run now gets the main and test compile classpaths and the main and test classes as
-its auxiliary classpath (`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and
+its auxiliary classpath (`pmd-aux-classpath.txt` in the report directory), so the rules match annotation and
 supertype names exactly; `nitpickerPmd` therefore compiles the main and test classes first, and a
 test compile error stops it. The manifest records `spring` and the
 main `resourceRoots`.
@@ -535,10 +538,11 @@ plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `Runtim
 forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
 also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
 `WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
-`verifyComplete` and friends), and a class named like a test but without test methods fails
-(`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
-ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
-`build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
+`verifyComplete` and friends), and a class in test sources named like a test but without test
+methods fails (`TestClassWithoutTestCases`, which runs from `pmd-tests.xml`, excluding the main
+source directories, so a main class such as `TestDataGenerator` is not a test), except `*ArchTest`
+and `*ArchitectureTest` classes, which hold ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
+`pmd-spring-main.xml` in the report directory with an exclude pattern per test source directory, since
 field injection and package-private test methods are the norm in tests. A PMD rule that flags
 legitimate test code, such as `SystemPrintln` in a test of console output, or `CloseResource` on a
 `PrintStream` handed to `System.setOut`, takes an exception like any other: `{ "rule": "pmd/<rule>", "paths": [...],

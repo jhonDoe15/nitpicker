@@ -381,7 +381,7 @@ mutation reports for now. Enforcing it needs a filter validated on real projects
 that is a follow-up, and flipping it is the single `reportOnlyKotlinMutants` call in
 `languages/java/adapters/java-reports.mjs`. To reproduce the numbers: run
 `gradle -Pnitpicker.kotlin=true -I <nitpicker>/languages/java/gradle/nitpicker.init.gradle nitpickerPit`
-in that project and read `build/nitpicker/pit/mutations.xml`.
+in that project and read `pit/mutations.xml` in the report directory.
 
 ## Structure limits
 
@@ -399,7 +399,7 @@ there are no inline disables.
 
 **Metric source (decision).** `languages/java/gradle/KotlinMetrics.java` parses the Kotlin sources
 (parse only, no compilation) with the PSI parser of the Kotlin compiler and writes
-`build/nitpicker/kotlin-metrics.json`. It runs in Java's single-file source mode in the JVM that
+`kotlin-metrics.json` in the report directory. It runs in Java's single-file source mode in the JVM that
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
