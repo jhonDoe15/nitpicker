@@ -91,10 +91,11 @@ describe('detectConventions', () => {
     expect(detect(files)['demo.indentation'].counts).toEqual({ 2: 200, 4: 200 });
   });
 
-  it('reduces the result to the choices the policy carries', () => {
-    expect(conventionChoices(detect({ 'a.demo': '{\n    x\n}' }))).toEqual({
+  it('carries only the choices that differ from the preset default', () => {
+    expect(conventionChoices(detect({ 'a.demo': '{\n    x\n}' }), [indentation])).toEqual({
       'demo.indentation': '4',
     });
+    expect(conventionChoices(detect({ 'a.demo': '{\n  x\n}' }), [indentation])).toEqual({});
   });
 });
 

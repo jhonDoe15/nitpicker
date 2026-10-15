@@ -6,8 +6,9 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../languages/typescript/adapters/static-checks-runner.mjs';
+import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { baseSetupResolver } from './base-setup.mjs';
-import { publishHeadPolicy, runHeadPolicy } from './conventions/resolve.mjs';
+import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
@@ -20,7 +21,7 @@ import { runQualitySnapshot } from './snapshot/run-snapshot.mjs';
 import { parseDrillDownOptions } from './diff/cli.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveBase } from './diff/base-ref.mjs';
-import { captureWorkingTree, runGit } from './diff/git.mjs';
+import { captureWorkingTree, resolveComparison, runGit } from './diff/git.mjs';
 import { withTemporaryWorktree } from './diff/worktree.mjs';
 import {
   absoluteTextReportPath,
@@ -109,7 +110,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
-  const headPolicy = runHeadPolicy({ cli, config, projectRoot: currentProjectRoot });
+  const headPolicy = resolveHeadPolicy(config, currentProjectRoot);
   const analyzers = configureAnalyzers(
     presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers),
     config,
@@ -121,7 +122,7 @@ function runConfigured(cli) {
         options,
         currentProjectRoot,
         analyzers,
-        headPolicy,
+        headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         runTasks,
       });
@@ -130,7 +131,6 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
-      resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
       config,
       headPolicy,
     });
@@ -268,7 +268,7 @@ function parseArguments(arguments_) {
 }
 
 function runComparisonCli(cli) {
-  const { options, currentProjectRoot, config, headPolicy } = cli;
+  const { options, currentProjectRoot, config } = cli;
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
@@ -282,8 +282,10 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const fixResult = fixIfRequested(cli, repositoryRoot, base);
   clearDiffReports(outputRoot);
+  const analyzers = selectComparisonAnalyzers(cli);
+  const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
+  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -291,13 +293,13 @@ function runComparisonCli(cli) {
     headProjectRoot: currentProjectRoot,
     requestedBaseRef: base.baseRef,
     outputRoot,
-    analyzers: selectComparisonAnalyzers(cli),
+    analyzers,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
-    resolveBaseSetup: cli.resolveBaseSetup,
+    resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });

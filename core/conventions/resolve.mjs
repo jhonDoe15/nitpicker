@@ -1,62 +1,70 @@
-import { realpathSync } from 'node:fs';
-import path from 'node:path';
 import { conventionChoices, detectConventions } from '../../shared/conventions/detect.mjs';
 import { describeConventions } from '../../shared/conventions/settings.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { resolveBase } from '../diff/base-ref.mjs';
-import { resolveComparison, runGit } from '../diff/git.mjs';
 import { conventionDefinitions } from './definitions.mjs';
-import { commitSource, workingTreeSource } from './sources.mjs';
+import { commitSource, headCommit, workingTreeSource } from './sources.mjs';
 
-export function runHeadPolicy({ cli, config, projectRoot }) {
-  const { options, environment, stdout } = cli;
-  const definitions = conventionDefinitions(config.preset);
-  const headPolicy = resolveHeadPolicy(config, projectRoot);
-  if (definitions.length === 0) {
-    return headPolicy;
-  }
-  const detected = detect({
-    definitions,
+export function comparisonPolicy(run, resolveComparison) {
+  const { config, currentProjectRoot, headPolicy, stdout, repositoryRoot, base } = run;
+  return followConventions({
     config,
-    exclude: headPolicy.exclude,
-    projectRoot,
-    measuredSource: options.all
-      ? undefined
-      : () => mergeBaseSource({ projectRoot, baseRef: options.baseRef, config, environment }),
+    projectRoot: currentProjectRoot,
+    headPolicy,
+    commit: () => ({
+      repositoryRoot,
+      commitSha: resolveComparison(repositoryRoot, base.baseRef).mergeBaseSha,
+    }),
+    stdout,
   });
-  const lines = describeConventions(detected, definitions);
-  stdout.write(
-    `Following this project's conventions:\n${lines.map((line) => `  ${line}\n`).join('')}`,
-  );
-  return { ...headPolicy, conventions: conventionChoices(detected) };
+}
+
+export function snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }) {
+  return followConventions({ config, projectRoot: currentProjectRoot, headPolicy, stdout });
 }
 
 export function publishHeadPolicy(config, projectRoot) {
+  return followConventions({
+    config,
+    projectRoot,
+    headPolicy: resolveHeadPolicy(config, projectRoot),
+    commit: () => headCommit(projectRoot),
+  });
+}
+
+function followConventions({ config, projectRoot, headPolicy, commit, stdout }) {
   const definitions = conventionDefinitions(config.preset);
-  const headPolicy = resolveHeadPolicy(config, projectRoot);
   if (definitions.length === 0) {
     return headPolicy;
   }
   const detected = detect({
     definitions,
-    config,
+    pinned: config.conventions ?? {},
     exclude: headPolicy.exclude,
     projectRoot,
-    measuredSource: () => headCommitSource(projectRoot),
+    commit,
   });
-  return { ...headPolicy, conventions: conventionChoices(detected) };
+  const conventions = conventionChoices(detected, definitions);
+  const followed = definitions.filter(({ id }) => conventions[id] !== undefined);
+  if (stdout !== undefined && followed.length > 0) {
+    const lines = describeConventions(detected, followed).map((line) => `  ${line}\n`);
+    stdout.write(`Following this project's conventions:\n${lines.join('')}`);
+  }
+  return Object.keys(conventions).length === 0 ? headPolicy : { ...headPolicy, conventions };
 }
 
-function detect({ definitions, config, exclude, projectRoot, measuredSource }) {
-  const pinned = config.conventions ?? {};
+function detect({ definitions, pinned, exclude, projectRoot, commit }) {
   if (definitions.every(({ id }) => pinned[id] !== undefined)) {
     return detectConventions({ definitions, pinned, exclude, source: undefined });
   }
   const settings = { pinned, exclude };
-  if (measuredSource === undefined) {
+  if (commit === undefined) {
     return detectConventions({ ...settings, definitions, source: workingTreeSource(projectRoot) });
   }
-  const measured = detectConventions({ ...settings, definitions, source: measuredSource() });
+  const measured = detectConventions({
+    ...settings,
+    definitions,
+    source: commitSource({ ...commit(), projectRoot }),
+  });
   const unmeasured = definitions.filter(({ id }) => isUnmeasured(measured[id]));
   return unmeasured.length === 0
     ? measured
@@ -72,27 +80,4 @@ function detect({ definitions, config, exclude, projectRoot, measuredSource }) {
 
 function isUnmeasured({ source, counts }) {
   return source === 'default' && Object.values(counts).every((count) => count === 0);
-}
-
-function headCommitSource(projectRoot) {
-  const { repositoryRoot, projectRelativePath } = locate(projectRoot);
-  const commitSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
-  return commitSource({ repositoryRoot, commitSha, projectRelativePath });
-}
-
-function mergeBaseSource({ projectRoot, baseRef, config, environment }) {
-  const { repositoryRoot, projectRelativePath } = locate(projectRoot);
-  const base = resolveBase({
-    repositoryRoot,
-    explicitBase: baseRef,
-    configuredBase: config.base,
-    environment,
-  });
-  const { mergeBaseSha } = resolveComparison(repositoryRoot, base.baseRef);
-  return commitSource({ repositoryRoot, commitSha: mergeBaseSha, projectRelativePath });
-}
-
-function locate(projectRoot) {
-  const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
-  return { repositoryRoot, projectRelativePath: path.relative(repositoryRoot, projectRoot) || '.' };
 }

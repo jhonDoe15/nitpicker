@@ -1,14 +1,15 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const MAX_FILE_BYTES = 512 * 1024;
 const MAX_LISTING_BYTES = 1024 * 1024 * 1024;
 const BLOB_MODES = new Set(['100644', '100755']);
 
-export function commitSource({ repositoryRoot, commitSha, projectRelativePath }) {
+export function commitSource({ repositoryRoot, commitSha, projectRoot }) {
+  const projectRelativePath = path.relative(repositoryRoot, projectRoot);
   const prefix =
-    projectRelativePath === '.' ? '' : `${projectRelativePath.split(path.sep).join('/')}/`;
+    projectRelativePath === '' ? '' : `${projectRelativePath.split(path.sep).join('/')}/`;
   const blobs = new Map();
   const listing = git(repositoryRoot, [
     'ls-tree',
@@ -33,6 +34,14 @@ export function commitSource({ repositoryRoot, commitSha, projectRelativePath })
         files.map((file) => blobs.get(file)),
       ),
   };
+}
+
+export function headCommit(projectRoot) {
+  const repositoryRoot = realpathSync(
+    git(projectRoot, ['rev-parse', '--show-toplevel']).toString('utf8').trim(),
+  );
+  const commitSha = git(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).toString('utf8').trim();
+  return { repositoryRoot, commitSha };
 }
 
 export function workingTreeSource(projectRoot) {
