@@ -28,11 +28,16 @@ findings.
 ### Changed tests
 
 When the change adds, edits, renames or deletes a test file, head also mutates, whole, every
-production module that a changed test imports directly by a relative path (read with TypeScript's
-`preProcessFile` from the head version of the test, and from the base version for an edited,
-renamed or deleted test). A module that exists on only one side is skipped, and a module that is
-also a changed source file is mutated whole instead of by its changed lines. Imports through path
-aliases or packages, and modules reached only through another module, are not followed.
+production module that a changed test imports directly (read with TypeScript's `preProcessFile`
+from the head version of the test, and from the base version for an edited, renamed or deleted
+test). Imports resolve with TypeScript's module resolution and the project's `tsconfig.json` (or
+`jsconfig.json`), so relative paths, `paths` aliases such as `@/` and `baseUrl` imports are
+followed, including settings inherited through `extends` and those of the configs listed in
+`references` (the usual Vite layout keeps `paths` in `tsconfig.app.json`). Without a config the
+bundler resolution applies. Packages, an alias that points into `node_modules` included, and
+modules reached only through another module are not followed. A module that exists on only one
+side is skipped, and a module that is also a changed source file is mutated whole instead of by its
+changed lines.
 
 The usual findings still come only from the changed lines. A mutant elsewhere in those modules
 fails only when the change let it escape: head reports it `Survived` or `NoCoverage`, and the base
