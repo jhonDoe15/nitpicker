@@ -1,6 +1,5 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { readCouplingFindings } from '../metrics/java-coupling.mjs';
 import { ingestCheckstyle } from '../../ingest/formatting/checkstyle.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
@@ -19,11 +18,7 @@ import {
 } from '../gradle-reports/report-modules.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
-import {
-  methodText,
-  readJavaFileLimitFindings,
-  readJavaStructureFindings,
-} from '../metrics/java-structure.mjs';
+import { methodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
@@ -31,7 +26,7 @@ import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
-import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
+import { projectWideFindings } from '../../builds/project-wide.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
@@ -44,6 +39,7 @@ const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
+const PROJECT_REPORTS = 'project';
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
@@ -62,20 +58,19 @@ export function readJavaFindings(projectRoot, options = {}) {
       ...moduleFindings,
       ...readDuplicateFindings(reportBase),
       ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
-      ...(projectWide ? fileLimitFindings(projectRoot, { manifest, options }) : []),
+      ...(projectWide
+        ? projectWideFindings(projectRoot, {
+            reportRoots: modules.map((module) => module.reportRoot),
+            mergedRoot: path.join(reportBase, PROJECT_REPORTS),
+            manifest,
+            kotlin: kotlinPreset,
+            policy: options,
+          })
+        : []),
       ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
       ...springFindings(projectRoot, manifest),
     ],
   };
-}
-
-function fileLimitFindings(projectRoot, { manifest, options }) {
-  const { fileLimits, exclude, exceptions } = options;
-  return readJavaFileLimitFindings(projectRoot, {
-    manifest,
-    kotlin: options.preset === 'kotlin',
-    policy: { thresholds: fileLimits, exclude, exceptions },
-  });
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, options }) {
@@ -91,7 +86,6 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
-      projectWide: options.projectWide ?? true,
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
@@ -103,7 +97,7 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
 }
 
 function readModuleFindings(context, crapLimit) {
-  const { reportRoot, projectRoot, sourceRoots, kotlin, jacoco } = context;
+  const { reportRoot, projectRoot, kotlin, jacoco } = context;
   return [
     ...sarifFindings(context),
     ...formatFindings(context),
@@ -114,13 +108,6 @@ function readModuleFindings(context, crapLimit) {
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...branchFindings(context, jacoco),
-    ...(context.projectWide
-      ? readCouplingFindings(reportRoot, {
-          projectRoot,
-          sourceRoots,
-          kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-        })
-      : []),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readSlowTestFindings({
       reportRoot,
