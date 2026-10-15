@@ -33,7 +33,7 @@ export function createIdentityCounter() {
   };
 }
 
-export function percent(covered, total) {
+function percent(covered, total) {
   return Math.round((covered / total) * 10000) / 100;
 }
 
@@ -79,29 +79,21 @@ function safeCodePoint(codePoint, fallback) {
   return codePoint > 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : fallback;
 }
 
+const XML_TOKEN_PARTS = [
+  String.raw`<!--[\s\S]*?-->`,
+  String.raw`<!\[CDATA\[[\s\S]*?\]\]>`,
+  String.raw`<\?[\s\S]*?\?>`,
+  String.raw`<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>`,
+  String.raw`<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>`,
+];
+
 export function parseXml(text) {
-  const tokens =
-    /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
+  const tokens = new RegExp(XML_TOKEN_PARTS.join('|'), 'gi');
   const root = { name: '#document', attrs: {}, children: [] };
   const stack = [root];
+  const contentStarts = new Map();
   for (const match of text.matchAll(tokens)) {
-    const [, closing, name, rest, selfClosing] = match;
-    if (name === undefined) {
-      continue;
-    }
-    const current = stack.at(-1);
-    if (closing === '/') {
-      if (stack.length === 1 || current.name !== name) {
-        throw new TypeError(`XML closing tag </${name}> does not match an open element`);
-      }
-      stack.pop();
-      continue;
-    }
-    const element = { name, attrs: parseAttributes(rest), children: [] };
-    current.children.push(element);
-    if (selfClosing !== '/') {
-      stack.push(element);
-    }
+    consumeXmlTag(match, { stack, text, contentStarts });
   }
   if (stack.length !== 1) {
     throw new TypeError(`XML element <${stack.at(-1).name}> is not closed`);
@@ -111,6 +103,40 @@ export function parseXml(text) {
     throw new TypeError('XML document has no root element');
   }
   return documentElement;
+}
+
+function closeElement(stack, { name, text, end, contentStarts }) {
+  const current = stack.at(-1);
+  if (stack.length === 1 || current.name !== name) {
+    throw new TypeError(`XML closing tag </${name}> does not match an open element`);
+  }
+  const content =
+    current.children.length === 0 ? elementText(text.slice(contentStarts.get(current), end)) : '';
+  if (content !== '') {
+    current.text = content;
+  }
+  stack.pop();
+}
+
+function elementText(raw) {
+  return raw
+    .split(/(<!\[CDATA\[[\s\S]*?\]\]>)/u)
+    .map((part) =>
+      part.startsWith('<![CDATA[')
+        ? part.slice('<![CDATA['.length, -']]>'.length)
+        : decodeEntities(part.replace(/<!--[\s\S]*?-->/gu, '')),
+    )
+    .join('')
+    .trim();
+}
+
+function openElement(stack, { name, rest, selfClosing, contentStart, contentStarts }) {
+  const element = { name, attrs: parseAttributes(rest), children: [] };
+  stack.at(-1).children.push(element);
+  if (selfClosing !== '/') {
+    contentStarts.set(element, contentStart);
+    stack.push(element);
+  }
 }
 
 function parseAttributes(source) {
@@ -125,9 +151,20 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
-export function descendantsNamed(element, name) {
-  return element.children.flatMap((child) => [
-    ...(child.name === name ? [child] : []),
-    ...descendantsNamed(child, name),
-  ]);
+function consumeXmlTag(match, { stack, text, contentStarts }) {
+  const [, closing, name, rest, selfClosing] = match;
+  if (name === undefined) {
+    return;
+  }
+  if (closing === '/') {
+    closeElement(stack, { name, text, end: match.index, contentStarts });
+    return;
+  }
+  openElement(stack, {
+    name,
+    rest,
+    selfClosing,
+    contentStart: match.index + match[0].length,
+    contentStarts,
+  });
 }

@@ -1,4 +1,9 @@
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { depthFirst } from '../../../../shared/traversal.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
+import { chainOf } from '../../../../shared/traversal.mjs';
+import { format as formatOutput } from 'node:util';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
@@ -51,107 +56,134 @@ function hasRuntimeExport(node) {
 }
 
 function staticCallName(expression) {
-  if (ts.isIdentifier(expression)) return expression.text;
-  if (ts.isParenthesizedExpression(expression)) return staticCallName(expression.expression);
-  if (ts.isPropertyAccessExpression(expression)) {
-    const owner = staticCallName(expression.expression);
-    return owner === undefined ? undefined : `${owner}.${expression.name.text}`;
-  }
-  if (
-    ts.isElementAccessExpression(expression) &&
-    ts.isStringLiteralLike(expression.argumentExpression)
-  ) {
-    const owner = staticCallName(expression.expression);
-    return owner === undefined ? undefined : `${owner}.${expression.argumentExpression.text}`;
+  const parts = [];
+  for (const node of chainOf(expression, (current) => current.expression)) {
+    if (ts.isIdentifier(node)) return [node.text, ...parts.toReversed()].join('.');
+    if (ts.isParenthesizedExpression(node)) continue;
+    if (ts.isPropertyAccessExpression(node)) {
+      parts.push(node.name.text);
+      continue;
+    }
+    if (ts.isElementAccessExpression(node) && ts.isStringLiteralLike(node.argumentExpression)) {
+      parts.push(node.argumentExpression.text);
+      continue;
+    }
+    return undefined;
   }
   return undefined;
 }
 
-export function inspectModuleBoundary(source, filename, role) {
-  validateRole(role);
+function parseSource(source, filename) {
   const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
-  if (file.parseDiagnostics.length > 0) {
-    const messages = file.parseDiagnostics.map((diagnostic) =>
-      ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
-    );
-    throw new SyntaxError(`Unable to parse ${filename}: ${messages.join('; ')}`);
-  }
-  const findings = [];
-  function report(node, rule, target) {
-    const location = file.getLineAndCharacterOfPosition(node.getStart(file));
-    findings.push({
-      source: filename,
-      role: role.name,
-      rule,
-      target,
-      line: location.line + 1,
-      column: location.character + 1,
-    });
-  }
-  function dependency(node, specifier, form) {
-    if (specifier === undefined || !ts.isStringLiteralLike(specifier)) {
-      report(node, 'unresolved-runtime-dependency', form);
-    } else {
-      const normalized = specifier.text.startsWith('.')
-        ? path.posix
-            .normalize(path.posix.join(path.posix.dirname(filename), specifier.text))
-            .replace(/^(\.\.\/)+/, '')
-        : specifier.text;
-      if (
-        matches(specifier.text, role.forbiddenDependencies) ||
-        matches(normalized, role.forbiddenDependencies)
-      ) {
-        report(node, 'forbidden-runtime-dependency', specifier.text);
-      }
-    }
-  }
-  function visit(node) {
-    if (ts.isImportDeclaration(node) && hasRuntimeImport(node)) {
-      dependency(node, node.moduleSpecifier, 'import');
-    } else if (
-      ts.isExportDeclaration(node) &&
-      node.moduleSpecifier !== undefined &&
-      hasRuntimeExport(node)
-    ) {
-      dependency(node, node.moduleSpecifier, 'export');
-    } else if (
-      ts.isImportEqualsDeclaration(node) &&
-      !node.isTypeOnly &&
-      ts.isExternalModuleReference(node.moduleReference)
-    ) {
-      dependency(node, node.moduleReference.expression, 'require');
-    } else if (ts.isCallExpression(node)) {
-      const name = staticCallName(node.expression);
-      if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
-        dependency(node, node.arguments[0], 'import');
-      } else if (name === 'require') {
-        dependency(node, node.arguments[0], 'require');
-      } else if (name !== undefined && matches(name, role.forbiddenCalls)) {
-        report(node, 'forbidden-runtime-call', name);
-      }
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(file);
-  return findings;
+  if (file.parseDiagnostics.length === 0) return file;
+  const messages = file.parseDiagnostics.map((diagnostic) =>
+    ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
+  );
+  throw new SyntaxError(`Unable to parse ${filename}: ${messages.join('; ')}`);
 }
 
-function sourceFiles(root, exclude, { layout, displayRoot }, directory = '') {
-  const found = [];
-  for (const entry of readdirSync(path.join(root, directory), { withFileTypes: true })) {
-    const relative = path.posix.join(directory, entry.name);
-    if (matches(relative, exclude) || (entry.isDirectory() && matches(relative + '/', exclude)))
-      continue;
-    if (entry.isDirectory())
-      found.push(...sourceFiles(root, exclude, { layout, displayRoot }, relative));
-    else if (
-      entry.isFile() &&
-      layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
-      !layout.isExcluded(path.posix.join(displayRoot, relative))
-    )
-      found.push(relative);
+function report(context, node, { rule, target }) {
+  const location = context.file.getLineAndCharacterOfPosition(node.getStart(context.file));
+  context.findings.push({
+    source: context.filename,
+    role: context.role.name,
+    rule,
+    target,
+    line: location.line + 1,
+    column: location.character + 1,
+  });
+}
+
+function normalizedSpecifier(filename, text) {
+  if (!text.startsWith('.')) return text;
+  return path.posix
+    .normalize(path.posix.join(path.posix.dirname(filename), text))
+    .replace(/^(\.\.\/)+/, '');
+}
+
+function recordDependency(context, node, { specifier, form }) {
+  if (specifier === undefined || !ts.isStringLiteralLike(specifier)) {
+    report(context, node, { rule: 'unresolved-runtime-dependency', target: form });
+    return;
   }
-  return found.sort();
+  const { forbiddenDependencies } = context.role;
+  const normalized = normalizedSpecifier(context.filename, specifier.text);
+  if (
+    matches(specifier.text, forbiddenDependencies) ||
+    matches(normalized, forbiddenDependencies)
+  ) {
+    report(context, node, { rule: 'forbidden-runtime-dependency', target: specifier.text });
+  }
+}
+
+function moduleDependencyOf(node) {
+  if (ts.isImportDeclaration(node) && hasRuntimeImport(node)) {
+    return { specifier: node.moduleSpecifier, form: 'import' };
+  }
+  if (
+    ts.isExportDeclaration(node) &&
+    node.moduleSpecifier !== undefined &&
+    hasRuntimeExport(node)
+  ) {
+    return { specifier: node.moduleSpecifier, form: 'export' };
+  }
+  if (
+    ts.isImportEqualsDeclaration(node) &&
+    !node.isTypeOnly &&
+    ts.isExternalModuleReference(node.moduleReference)
+  ) {
+    return { specifier: node.moduleReference.expression, form: 'require' };
+  }
+  return undefined;
+}
+
+function recordCall(context, node) {
+  if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+    recordDependency(context, node, { specifier: node.arguments[0], form: 'import' });
+    return;
+  }
+  const name = staticCallName(node.expression);
+  if (name === 'require') {
+    recordDependency(context, node, { specifier: node.arguments[0], form: 'require' });
+    return;
+  }
+  if (name !== undefined && matches(name, context.role.forbiddenCalls)) {
+    report(context, node, { rule: 'forbidden-runtime-call', target: name });
+  }
+}
+
+function inspectNode(context, node) {
+  const dependency = moduleDependencyOf(node);
+  if (dependency !== undefined) {
+    recordDependency(context, node, dependency);
+    return;
+  }
+  if (ts.isCallExpression(node)) recordCall(context, node);
+}
+
+export function inspectModuleBoundary(source, filename, role) {
+  validateRole(role);
+  const context = { file: parseSource(source, filename), filename, role, findings: [] };
+  for (const node of depthFirst(context.file, syntaxChildren)) inspectNode(context, node);
+  return context.findings;
+}
+
+function sourceFiles(root, exclude, { layout, displayRoot }) {
+  function relative(absolute) {
+    return path.relative(root, absolute).replaceAll('\\', '/');
+  }
+  function skipDirectory(absolute) {
+    return matches(relative(absolute), exclude) || matches(relative(absolute) + '/', exclude);
+  }
+  return [...filesUnder(root, { skipDirectory })]
+    .map(relative)
+    .filter(
+      (file) =>
+        !matches(file, exclude) &&
+        layout.isSourceFile(`${layout.sourceRoot}/${file}`) &&
+        !layout.isExcluded(path.posix.join(displayRoot, file)),
+    )
+    .sort();
 }
 
 function validateConfiguration(configuration) {
@@ -202,10 +234,10 @@ if (
     const report = analyzeRuntimeBoundaries(
       path.resolve(process.argv[2] ?? defaultResolvedLayout.sourceRoot),
     );
-    console.log(JSON.stringify(report, null, 2));
+    process.stdout.write(formatOutput(JSON.stringify(report, null, 2)) + '\n');
     process.exitCode = report.findings.length === 0 ? 0 : 1;
   } catch (error) {
-    console.error(error);
+    process.stderr.write(formatOutput(error) + '\n');
     process.exitCode = 2;
   }
 }

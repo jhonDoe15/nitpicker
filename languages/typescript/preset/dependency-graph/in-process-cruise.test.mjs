@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cruise } from './cruise.mjs';
-import { cruiseInProcess } from './fixtures/in-process-cruise.mjs';
+import { cruiseInProcess } from './test-support/in-process-cruise.mjs';
 
 describe('in-process dependency graph fixture', () => {
   // The only test that runs the production `cruise()` CLI call (one dependency-cruiser process). The
