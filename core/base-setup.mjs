@@ -27,7 +27,15 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
   };
 }
 
-function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
+function withHeadExceptions(baseConfig, headConfig) {
+  const rest = Object.fromEntries(
+    Object.entries(baseConfig).filter(([key]) => key !== 'exceptions'),
+  );
+  return headConfig.exceptions === undefined ? rest : { ...rest, exceptions: headConfig.exceptions };
+}
+
+function baseSetupFromConfig({ baseConfig: ownConfig, headConfig, injectedAnalyzers, analyzers }) {
+  const baseConfig = withHeadExceptions(ownConfig, headConfig);
   if (JSON.stringify(baseConfig) === JSON.stringify(headConfig)) {
     return {};
   }
