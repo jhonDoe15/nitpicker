@@ -17,7 +17,7 @@ import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
-import { ingestSarif, normalizeUri } from '../../ingest/sarif.mjs';
+import { ingestSarif, prepareSarif, projectRelative } from '../../ingest/sarif.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { kotlinModules, readKotlinMetrics } from '../kotlin/kotlin-metrics.mjs';
 import {
@@ -28,15 +28,34 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-const REPORT_DIRECTORY = 'build/nitpicker';
+export const REPORT_DIRECTORY = 'build/nitpicker';
 const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+  {
+    crapLimit,
+    preset = 'java',
+    fileLimits,
+    exclude,
+    exceptions,
+    reportDirectory = REPORT_DIRECTORY,
+    projectWide = true,
+  } = {},
 ) {
-  const context = reportContext(projectRoot, preset);
-  const { reportRoot, manifest, kotlin } = context;
+  const kotlin = preset === 'kotlin';
+  const reportRoot = path.join(projectRoot, reportDirectory);
+  const manifest = readManifest(projectRoot, { reportDirectory, preset });
+  const context = {
+    projectRoot,
+    reportRoot,
+    manifest,
+    sourceRoots: manifest.sourceRoots ?? [],
+    lintedRoots: lintedRoots(manifest),
+    roots: projectRoots(projectRoot),
+    kotlin,
+    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
+  };
   return {
     findings: applyRuleMessages(
       [
@@ -49,17 +68,8 @@ export function readJavaFindings(
         ...crapFindings(context, context.jacoco, crapLimit),
         ...pitFindings(context),
         ...readJavaStructureFindings(reportRoot, projectRoot),
-        ...readJavaFileLimitFindings(projectRoot, {
-          manifest,
-          kotlin,
-          policy: { thresholds: fileLimits, exclude, exceptions },
-        }),
+        ...(projectWide ? projectWideFindings(context, { fileLimits, exclude, exceptions }) : []),
         ...branchFindings(context, context.jacoco),
-        ...readCouplingFindings(reportRoot, {
-          projectRoot,
-          sourceRoots: context.sourceRoots,
-          kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-        }),
         ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
         ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
         ...springFindings(context),
@@ -69,24 +79,33 @@ export function readJavaFindings(
   };
 }
 
-function reportContext(projectRoot, preset) {
-  const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
-  requireGradleReports(projectRoot, preset);
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  if (kotlin) {
+function readManifest(projectRoot, { reportDirectory, preset }) {
+  if (reportDirectory === REPORT_DIRECTORY) {
+    requireGradleReports(projectRoot, preset);
+  }
+  const manifest = JSON.parse(
+    readFileSync(path.join(projectRoot, reportDirectory, 'manifest.json'), 'utf8'),
+  );
+  if (preset === 'kotlin') {
     requireKotlinManifest(manifest);
   }
-  return {
-    projectRoot,
-    reportRoot,
-    manifest,
-    sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: lintedRoots(manifest),
-    roots: projectRoots(projectRoot),
-    kotlin,
-    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
-  };
+  return manifest;
+}
+
+function projectWideFindings(context, { fileLimits, exclude, exceptions }) {
+  const { projectRoot, reportRoot, manifest, kotlin } = context;
+  return [
+    ...readJavaFileLimitFindings(projectRoot, {
+      manifest,
+      kotlin,
+      policy: { thresholds: fileLimits, exclude, exceptions },
+    }),
+    ...readCouplingFindings(reportRoot, {
+      projectRoot,
+      sourceRoots: context.sourceRoots,
+      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+    }),
+  ];
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -222,67 +241,4 @@ function projectRoots(projectRoot) {
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
   return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
-}
-
-export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
-  return {
-    ...log,
-    runs: (log.runs ?? []).map((run) => ({
-      ...run,
-      results: (run.results ?? []).map((result) =>
-        prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }),
-      ),
-    })),
-  };
-}
-
-function prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }) {
-  const subject = identityKey(result);
-  const prepared = {
-    ...result,
-    level: result.level === 'error' ? 'error' : 'warning',
-    locations: (result.locations ?? []).map((location) =>
-      relocate(location, { roots, sourceRoots, projectRoot }),
-    ),
-  };
-  if (typeof subject === 'string' && subject !== '' && result.partialFingerprints === undefined) {
-    prepared.partialFingerprints = { 'nitpicker/subject': subject };
-  }
-  return prepared;
-}
-
-function relocate(location, { roots, sourceRoots, projectRoot }) {
-  const uri = location.physicalLocation?.artifactLocation?.uri;
-  if (typeof uri !== 'string') {
-    return location;
-  }
-  const resolved = resolveUri(uri, { roots, sourceRoots, projectRoot });
-  return {
-    ...location,
-    physicalLocation: {
-      ...location.physicalLocation,
-      artifactLocation: { uri: resolved },
-    },
-  };
-}
-
-function projectRelative(uri, roots) {
-  for (const root of roots) {
-    const relative = normalizeUri(uri, root);
-    if (relative !== undefined) {
-      return relative;
-    }
-  }
-  return undefined;
-}
-
-function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
-  const relative = projectRelative(uri, roots);
-  if (relative === undefined) {
-    return uri;
-  }
-  const owner = sourceRoots.find((sourceRoot) =>
-    existsSync(path.join(projectRoot, sourceRoot, relative)),
-  );
-  return owner === undefined ? relative : `${owner}/${relative}`;
 }
