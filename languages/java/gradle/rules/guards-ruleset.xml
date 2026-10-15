@@ -37,8 +37,10 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //InfixExpression[@Operator = 'instanceof'][TypeExpression/ClassType][VariableAccess]
-  [let $type := TypeExpression/ClassType/@SimpleName, $variable := VariableAccess/@Name return
-    ancestor::Block[1]/descendant::CastExpression[ClassType/@SimpleName = $type][VariableAccess/@Name = $variable]]
+  [let $type := TypeExpression/ClassType/@SimpleName, $variable := VariableAccess/@Name,
+       $generic := exists(TypeExpression/ClassType/TypeArguments) return
+    ancestor::Block[1]/descendant::CastExpression[ClassType[@SimpleName = $type][$generic or not(TypeArguments)]]
+      [VariableAccess/@Name = $variable]]
 ]]></value></property></properties>
   </rule>
   <rule name="SneakyThrows" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -75,6 +77,8 @@
 //MethodCall[pmd-java:matchesSig('java.nio.file.Files#lines(_*)') or pmd-java:matchesSig('java.nio.file.Files#list(_*)')
     or pmd-java:matchesSig('java.nio.file.Files#walk(_*)') or pmd-java:matchesSig('java.nio.file.Files#find(_*)')]
   [not(ancestor::Resource)][not(parent::ReturnStatement)]
+  [not(parent::VariableDeclarator[let $name := VariableId/@Name return
+    ancestor::Block[1]//Resource/VariableAccess[@Name = $name]])]
 ]]></value></property></properties>
   </rule>
   <rule name="ForEachSideEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -154,7 +158,9 @@ let $mutators := ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'append', 'of
 //(MethodDeclaration | ConstructorDeclaration)[ThrowsList/ClassType[@SimpleName = ('Exception', 'Throwable')]]
   [not(@Overridden = true())]
   [not(ModifierList/Annotation[@SimpleName = 'Override'])]
-  [not(FormalParameters/FormalParameter/ClassType[@SimpleName = 'HttpSecurity'])]
+  [not(FormalParameters/FormalParameter/ClassType[@SimpleName = ('HttpSecurity', 'WebSecurity',
+    'AuthenticationConfiguration', 'AuthenticationManagerBuilder')])]
+  [not(@Name = 'getObject' and ancestor::ClassDeclaration[1]/ImplementsList/ClassType[@SimpleName = 'FactoryBean'])]
 ]]></value></property></properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidThrowingRawExceptionTypes"

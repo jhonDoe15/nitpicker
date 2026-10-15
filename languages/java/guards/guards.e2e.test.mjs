@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../adapters/java-diff.mjs';
 import { runJavaDuplicates } from '../adapters/java-duplicates.mjs';
 import { readJavaFindings } from '../adapters/java-reports.mjs';
+import { readLintFindings } from './javac-lint.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -92,12 +93,12 @@ function reportedViolations(root) {
     .sort();
 }
 
-function gradleTask(fixture, task) {
+function gradleTasks(fixture, tasks) {
   const projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-guards-')), fixture);
   cpSync(path.join(fixtures, fixture), projectRoot, { recursive: true });
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, task],
+    ['--console=plain', '--quiet', '--no-configuration-cache', '-I', INIT_SCRIPT, ...tasks],
     { cwd: projectRoot, encoding: 'utf8', timeout: 15 * 60 * 1000 },
   );
   if (result.status !== 0) {
@@ -118,9 +119,9 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
 
   beforeAll(
     () => {
-      roots.push(gradleTask('guards-project', 'nitpickerJava'));
+      roots.push(gradleTasks('guards-project', ['nitpickerJava']));
       runJavaDuplicates(roots[0]);
-      roots.push(gradleTask('guards-release-11', 'nitpickerPmd'));
+      roots.push(gradleTasks('guards-compile-modes', ['nitpickerLint', ':legacy:nitpickerPmd']));
     },
     30 * 60 * 1000,
   );
@@ -146,6 +147,23 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   it('skips the Java 16 rules on a project compiled for an older release', () => {
     const watched = ['OptionalGet', 'InstanceofThenCast', 'CollectorsToList'];
 
-    expect(pmdRules(roots[1]).filter((rule) => watched.includes(rule))).toEqual(['OptionalGet']);
+    expect(
+      pmdRules(path.join(roots[1], 'legacy')).filter((rule) => watched.includes(rule)),
+    ).toEqual(['OptionalGet']);
+  });
+
+  it('lints a project with a javac plug-in, preview features or a module descriptor', () => {
+    const lint = (module) => {
+      const projectRoot = path.join(roots[1], module);
+      return readLintFindings(path.join(projectRoot, 'build', 'nitpicker'), { projectRoot }).map(
+        ({ path: file, rule, location }) => `${module}/${file}:${String(location?.line)} ${rule}`,
+      );
+    };
+
+    expect(['plugged', 'preview', 'modular'].flatMap((module) => lint(module))).toEqual([
+      'plugged/src/main/java/plugged/Names.java:7 rawtypes',
+      'preview/src/main/java/preview/Names.java:7 rawtypes',
+      'modular/src/main/java/modular/shapes/Shape.java:10 rawtypes',
+    ]);
   });
 });
