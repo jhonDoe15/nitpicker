@@ -246,6 +246,17 @@ describe('Java file limits', () => {
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
+  it('hands the test time budgets to the runner', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
+      thresholds: { unitTestSeconds: 2, integrationTestSeconds: 40 },
+    });
+
+    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+
+    expect(parsed.policy.testSeconds).toEqual({ unitTestSeconds: 2, integrationTestSeconds: 40 });
+    expect(parsed.policy.fileLimits).toBeUndefined();
+  });
+
   it('rejects file limits that are not a JSON object', () => {
     expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
       '--file-limits must be a JSON object',

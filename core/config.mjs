@@ -109,7 +109,7 @@ function validateDisable(disable) {
 
 function validateOptional(config) {
   if (config.thresholds !== undefined) {
-    validateThresholds(config.thresholds);
+    validateThresholds(config.thresholds, config.preset);
   }
   if (config.exclude !== undefined) {
     validateStringArray(config.exclude, 'exclude');

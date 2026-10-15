@@ -26,6 +26,7 @@ export const RULE_IDS = {
   fileLines: 'file-lines-limit',
   lineLength: 'line-length-limit',
   folderFiles: 'folder-files-limit',
+  slowTest: 'slow-test',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -47,6 +48,9 @@ export const FILE_LIMIT_DEFAULTS = {
   lineLength: 120,
   folderFiles: 6,
 };
+
+/** Seconds one test may take (Java and Kotlin), keyed by their `thresholds` name. */
+export const TEST_TIME_DEFAULTS = { unitTestSeconds: 5, integrationTestSeconds: 30 };
 
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [
@@ -110,6 +114,7 @@ export const MESSAGES = {
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
+  slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. Remove Thread.sleep and other waits, start a smaller Spring context or a test slice{move}. ${EXCEPTION_HINT}`,
 };
 
 export function renderMessage(template, values) {
@@ -271,5 +276,11 @@ export const RULES = [
     check: 'structure',
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
+  },
+  {
+    id: RULE_IDS.slowTest,
+    check: 'test-runtime',
+    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
+    enforcedBy: withKotlin({ ...BOTH, typescript: false }, true),
   },
 ];

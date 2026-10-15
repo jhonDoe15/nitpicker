@@ -116,6 +116,11 @@ export function collectJavaFindings(projectRoot, options = {}) {
         fileLimits: options.policy?.fileLimits,
         exclude: options.policy?.exclude,
         exceptions: options.policy?.exceptions,
+        testSeconds: options.policy?.testSeconds,
+        baseline: {
+          snapshot: options.policy?.snapshot,
+          baselineRoot: options.policy?.baselineRoot,
+        },
       }),
       preset,
     );

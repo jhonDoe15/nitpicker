@@ -27,6 +27,7 @@ import {
 } from './java-structure.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestFormatCheck } from '../ingest/format-check.mjs';
+import { readSlowTestFindings } from './test-times/slow-tests.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
@@ -45,10 +46,16 @@ const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
-export function readJavaFindings(
-  projectRoot,
-  { reportBase, report, crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
-) {
+export function readJavaFindings(projectRoot, options = {}) {
+  const {
+    reportBase,
+    report,
+    crapLimit,
+    preset = 'java',
+    fileLimits,
+    exclude,
+    exceptions,
+  } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
   if (kotlinPreset) {
@@ -70,6 +77,7 @@ export function readJavaFindings(
             kotlin: kotlinPreset && module.manifest.kotlin === true,
             jacoco: readModuleJacoco(module, preset),
             mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
+            testTimes: { limits: options.testSeconds, baseline: options.baseline },
           },
           crapLimit,
         ),
@@ -110,6 +118,15 @@ function readModuleFindings(context, crapLimit) {
       kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
     }),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+    ...readSlowTestFindings({
+      reportRoot,
+      projectRoot,
+      testRoots: [
+        ...(context.manifest.testSourceRoots ?? []),
+        ...(context.manifest.kotlinTestSourceRoots ?? []),
+      ],
+      ...context.testTimes,
+    }),
   ];
 }
 

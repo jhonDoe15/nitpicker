@@ -23,7 +23,10 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-multi-project-'));
     cpSync(fixture, root, { recursive: true });
-    findings = collectJavaFindings(root, { gradle, policy: { preset: 'java' } });
+    findings = collectJavaFindings(root, {
+      gradle,
+      policy: { preset: 'java', testSeconds: { unitTestSeconds: 0.0001 } },
+    });
   }, GRADLE_STEP_TIMEOUT_MS);
 
   afterAll(() => {
@@ -59,6 +62,20 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
   it('lints the integrationTest source set with the test rules', () => {
     expect(located(findings, 'pmd', 'SystemPrintln')).toEqual([
       'app/src/integrationTest/java/demo/app/GreeterRun.java',
+    ]);
+  });
+
+  it('times every test of the test task from its JUnit XML, under the module path', () => {
+    expect(
+      findings
+        .filter((finding) => finding.rule === 'slow-test')
+        .map((finding) => [finding.path, finding.identity, finding.location]),
+    ).toEqual([
+      [
+        'app/src/test/java/demo/app/GreeterTest.java',
+        'test:demo.app.GreeterTest#greetsByName()',
+        { line: 9 },
+      ],
     ]);
   });
 });
