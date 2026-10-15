@@ -41,9 +41,6 @@ const cases = [
     'export const P = ({ el }) => { useEffect(() => { const o = new ResizeObserver(measure); o.observe(el); }, []); return <i />; };',
     'observer.disconnect()',
   ],
-];
-
-cases.push(
   [
     'unlabelled field names label, htmlFor and aria-label',
     'export const P = () => <input />;',
@@ -89,7 +86,7 @@ cases.push(
     "export const P = () => <a href='/x'>click here</a>;",
     'context',
   ],
-);
+];
 
 const exceptionRoutes = [
   ['dangerouslySetInnerHTML', cases[0][1]],

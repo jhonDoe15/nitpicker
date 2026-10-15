@@ -44,6 +44,26 @@ export function total(lines: readonly Line[]) {
     expect(ruleIds).toEqual(['nitpicker/no-unknown-in-domain']);
   });
 
+  it('keeps react and other UI frameworks out of domain/', () => {
+    const sources = ['react', 'react-dom/client', 'react-native', 'preact/hooks'];
+    sources.forEach((source) => {
+      expect(messagesFor(domainFile, `import { x } from '${source}'; export const y = x;`)).toEqual(
+        [expect.stringContaining('components and hooks live in adapters/ (or shared/ui)')],
+      );
+    });
+    expect(
+      messagesFor(domainFile, "import type { ReactNode } from 'react'; export type A = ReactNode;"),
+    ).toHaveLength(1);
+    expect(messagesFor(domainFile, "export const load = () => import('react');")).toHaveLength(1);
+    expect(messagesFor(domainFile, "export { useState } from 'react';")).toHaveLength(1);
+    expect(
+      messagesFor(domainFile, "import { x } from 'react-query-lite'; export const y = x;"),
+    ).toEqual([]);
+    expect(messagesFor('src/main/features/billing/adapters/view.ts', "import 'react';")).toEqual(
+      [],
+    );
+  });
+
   it('does not apply outside domain/', () => {
     const code = 'let n = 1; for (const x of [1]) { n += x; } class A {}';
     expect(messagesFor('src/main/features/billing/adapters/db.ts', code)).toEqual([]);

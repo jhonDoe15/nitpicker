@@ -9,6 +9,11 @@ function domainCase(name, banned, allowed) {
 export const domainFailureMessageCases = [
   domainCase('let names const', 'let total = 1;', 'const'),
   domainCase(
+    'react import names adapters/',
+    "import { useState } from 'react'; export const run = useState;",
+    'components and hooks live in adapters/ (or shared/ui)',
+  ),
+  domainCase(
     'for loop names map',
     'const run = (xs: readonly number[]) => { for (const x of xs) { x; } };',
     'map, filter, flatMap',

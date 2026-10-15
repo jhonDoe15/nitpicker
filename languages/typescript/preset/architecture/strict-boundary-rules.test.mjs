@@ -30,8 +30,6 @@ const violations = [
   ['domain-imports-adapters', 'domain-does-not-import-adapters', 'adapters/ implement it'],
   ['domain-imports-node-io', 'domain-does-not-import-node-io', 'only pure Node modules'],
   ['domain-imports-client', 'domain-does-not-import-network-or-database-clients', 'from adapters/'],
-  ['domain-imports-react', 'domain-does-not-import-ui-frameworks', 'live in adapters/'],
-  ['domain-imports-react-dom', 'domain-does-not-import-ui-frameworks', 'shared/ui'],
   ['domain-imports-logger', 'domain-does-not-import-the-logger', 'adapters/ log it'],
   [
     'domain-imports-state',
