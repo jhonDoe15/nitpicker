@@ -1,4 +1,8 @@
+import { EXCEPTION_HINT, GENERAL_HINT } from './react/hints.mjs';
+import { thirdPartyReactRuleIds } from './react/third-party-rules.mjs';
+
 export { stylingApproaches } from '../eslint-plugin/rules/react-single-styling-approach.mjs';
+export { EXCEPTION_HINT, GENERAL_HINT };
 
 export const defaultStylingApproach = 'class-names';
 
@@ -44,11 +48,9 @@ export const reactRuleIds = [
   'react-hooks/rules-of-hooks',
   'react-x/no-array-index-key',
   'react-x/no-class-component',
+  ...thirdPartyReactRuleIds,
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
-
-export const EXCEPTION_HINT = 'add an exception for this rule in nitpicker.config.json.';
-export const GENERAL_HINT = ` If this is intentional, ${EXCEPTION_HINT}`;
 
 export const testingLibraryHints = {
   'await-async-events': `. Await the call: \`await user.<event>(...)\`. On user-event v13, whose calls are synchronous, ${EXCEPTION_HINT}`,

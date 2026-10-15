@@ -1,6 +1,8 @@
 import tseslint from 'typescript-eslint';
 import { reactSyntaxConfigFor } from '../eslint-config/react-scope.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { browserCases } from './react/browser-cases.mjs';
+import { correctnessCases } from './react/correctness-cases.mjs';
 
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
@@ -215,4 +217,9 @@ const reactTestCases = [
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],
 ].map(reactTestCase);
 
-export const reactFailureMessageCases = [...reactSyntaxCases, ...reactTestCases];
+export const reactFailureMessageCases = [
+  ...reactSyntaxCases,
+  ...reactTestCases,
+  ...correctnessCases,
+  ...browserCases,
+];

@@ -148,14 +148,17 @@ describe('the styling approach', () => {
 
 describe('the React scope config', () => {
   it('configures exactly the listed React rule ids', async () => {
-    const [production, tests] = await reactSyntaxConfigFor(layout);
+    const [production, tests, typed] = await reactScopeConfigFor(layout);
+    const typedReactRules = Object.keys(typed.rules).filter((id) => id.startsWith('react-x/'));
 
-    expect(Object.keys(production.rules).toSorted()).toEqual(reactRuleIds.toSorted());
+    expect([...Object.keys(production.rules), ...typedReactRules].toSorted()).toEqual(
+      reactRuleIds.toSorted(),
+    );
     expect(Object.keys(tests.rules).toSorted()).toEqual(reactTestRuleIds.toSorted());
   });
 
   it('registers an implementation for every plugin rule it configures', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
+    for (const entry of await reactScopeConfigFor(layout)) {
       for (const id of Object.keys(entry.rules)) {
         const [pluginName, ...rest] = id.split('/');
         expect(entry.plugins[pluginName].rules[rest.join('/')], id).toBeDefined();
@@ -164,7 +167,7 @@ describe('the React scope config', () => {
   });
 
   it('runs every rule as an error', async () => {
-    for (const entry of await reactSyntaxConfigFor(layout)) {
+    for (const entry of await reactScopeConfigFor(layout)) {
       for (const [id, setting] of Object.entries(entry.rules)) {
         expect([setting].flat()[0], id).toBe('error');
       }
