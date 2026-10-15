@@ -4,10 +4,14 @@ import {
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
 
-const TOOL_SETTING_KEYS = new Map([['prettier', ['precedence']]]);
+const TOOL_SETTING_KEYS = new Map([
+  ['prettier', ['precedence']],
+  ['eslint', ['engine']],
+]);
 const GRADLE_TOOL_SETTING_KEYS = new Map(
   [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
 );
+const LINT_ENGINES = ['oxlint', 'eslint'];
 const SINGLE_CONFIG_TOOLS = ['checkstyle'];
 const ORDERED_PRECEDENCE_TOOLS = ['prettier'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
@@ -40,10 +44,22 @@ function validateToolSettings(name, settings, toolSettingKeys) {
       `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
     );
   }
+  if (name === 'eslint') {
+    validateLintEngine(settings.engine);
+    return;
+  }
   validatePrecedence(settings.precedence, name);
   if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
     throw configError(
       `"tools.${name}.precedence" must be ["nitpicker"] or ["project"]: ${name} runs one configuration, so the two cannot be merged`,
+    );
+  }
+}
+
+function validateLintEngine(engine) {
+  if (engine !== undefined && !LINT_ENGINES.includes(engine)) {
+    throw configError(
+      `"tools.eslint.engine" must be "oxlint" or "eslint". "oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint`,
     );
   }
 }
