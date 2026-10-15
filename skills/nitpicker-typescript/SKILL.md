@@ -51,6 +51,7 @@ If your change edits a function that existed before it, read
 - `src/main/composition-root.ts` only passes things in, through named functions. A new feature is
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
+- Put new code under the source roots (`src/` unless the project sets `layout.sourceRoots`) and import only from there. An import of a file outside them fails, and a changed `.ts` file outside them prints a notice and is not checked at all.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
 
 ## Write it this way

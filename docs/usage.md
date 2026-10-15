@@ -79,7 +79,7 @@ The base ref is the first match of:
 1. `--base <ref>`
 2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
    `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
-3. `base` in `nitpicker.config.json`
+3. `base` in `nitpicker.config.json` (not `HEAD` or the commit you are on)
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
@@ -90,8 +90,11 @@ In CI, fetch enough history to contain the merge base (for example `fetch-depth:
 
 Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
 `report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override and a
-policy hash. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
+`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
+policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
+is information that never fails the run; today it names changed TypeScript files that lie outside
+`layout.sourceRoots` and `layout.testRoots`, so nothing checks them. Add their folder to
+`layout.sourceRoots`, or list it in `exclude`, to settle it. Choose another directory with `--output <dir>`. Set `NO_COLOR` to disable colored
 console output.
 
 ## Exit codes
@@ -161,11 +164,16 @@ See [typescript-single-command.md](typescript-single-command.md) for the full mo
 
 ## Configuration
 
-Optional. Put `nitpicker.config.json` at the project root. It is read from the head checkout and
-applied to **both** sides of the comparison, so base and head are measured with the same policy. A
-branch cannot weaken the check by editing the base. Unknown keys and invalid values are an error
-(exit 2). Every override is listed in the report and changes the policy hash, so a weakened check
-is visible in review.
+Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
+config. The base is measured with the base's own `nitpicker.config.json` when it has one that
+differs, so a finding is new only if the change added it under the rules each side declared; with no
+config on the base, or an identical one, the head's config applies to both sides. Because the head
+controls its own config, a change that loosens it (an added `exclude`, `disable` or `exceptions`
+entry, a raised threshold, a removed custom analyzer, a changed setting) is printed in the console
+summary and in `report.txt` as "Policy changed in this change", and listed in `summary.json` under
+`policyChanges`. The block is information for the reviewer and never fails the run. Unknown keys and
+invalid values are an error (exit 2). Every override is listed in the report and changes the policy
+hash, so a weakened check is visible in review.
 
 ```json
 {
@@ -190,11 +198,11 @@ is visible in review.
 
 | Key               | Type                                                               | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `base`            | string                                                             | Base ref used when neither `--base` nor a CI target branch is given. It must differ from the commit you are on: `HEAD`, `@` or a SHA equal to `HEAD` is a config error, because the change would be compared with itself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin: their line length is Checkstyle's and detekt's, and setting it with `"preset": "java"` or `"kotlin"` is a config error. Generated sources a build registers (Java, Kotlin) belong in `exclude`. |
-| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`, `coverage`, `reports`, `target` and `*.d.ts`). Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Hand-written `*.d.ts` files under the source roots are linted and type-checked; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                              |
 | `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file limits (`file-lines-limit`, `folder-files-limit` and `line-length-limit`), and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit` and `folder-files-limit`; with the other presets also `line-length-limit`; `paths` a non-empty glob array, `reason` a non-empty text. A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset).                                                                                                                         |
 | `react`           | object                                                             | TypeScript preset. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -303,8 +311,9 @@ What the preset does not support:
   finding only). Support for both runners is tracked in issue #162.
 - **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
   `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
-- **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. A `.jsx` or `.tsx` file is outside
-  the JavaScript layout: no analyzer reads it.
+- **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. No analyzer reads a `.jsx` or
+  `.tsx` file, so a project with one under its source or test roots is a config error (exit 2) rather
+  than a green gate that checks nothing. Use the TypeScript preset, or list those files in `exclude`.
 
 TypeScript files are part of a JavaScript project, so a project can migrate one file at a time:
 `.ts`, `.mts` and `.cts` files get the full TypeScript rules of the strict preset (`as`, `enum` and
@@ -475,14 +484,21 @@ new and touched code must comply.
   `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
+- **Imports stay inside the roots**: production code imports only from files under
+  `layout.sourceRoots` (plus packages and `.json` files). An import of another project folder fails
+  with a message naming the three ways out: move the file under a root, add its folder to
+  `layout.sourceRoots`, or list it in `exclude`.
+- **`/* eslint-env */`**: ESLint no longer supports the comment. It is reported as one lint finding
+  on the file instead of stopping the lint analyzers.
 
 A small project that follows all of this is kept in `languages/typescript/preset/fixtures/strict-clean` of the nitpicker
 repository, and its tests assert that `nitpicker --all` reports no enforceable findings for it.
 
 ### Upgrading from the earlier rules
 
-Strict replaced the earlier ESLint rules in a single release. nitpicker analyzes the base checkout
-with the head's policy, so the existing violations appear on both sides and stay baselined; the
+Strict replaced the earlier ESLint rules in a single release. Unless the base carries its own
+`nitpicker.config.json`, nitpicker analyzes the base checkout with the head's policy, so the
+existing violations appear on both sides and stay baselined; the
 policy hash changes. Violations on lines your changes touch fail, so adoption is gradual and driven
 by ordinary edits. Add an `exceptions` entry for a rule you cannot adopt yet.
 
@@ -496,7 +512,8 @@ own tools do:
   (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`,
   `useUnknownInCatchVariables` and the
   rest of the strict family) plus `noEmit` and `skipLibCheck`. The files checked are the source and
-  test roots.
+  test roots. Because `noEmit` is set, `.js` files that the project's tsconfig includes no longer
+  fail with TS5055; they get the JavaScript lint rules, `no-var` and `prefer-const` among them.
 - **Mutation testing** type-checks mutants with the same policy flags, so a mutant such as
   `rows[0]?.text` to `rows[0].text` is discarded as a compile error instead of surviving. The
   flags are only added when the project already type-checks with them; otherwise mutants are checked

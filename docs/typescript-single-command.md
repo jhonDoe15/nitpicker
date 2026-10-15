@@ -104,8 +104,10 @@ Decision (proposed, pending owner review):
   (no absolute paths, `..` or globs), `entryPoints`: an array of globs of files started or loaded by path rather than imported (the dead-code check adds them to knip's entries), and `excludedGlobs`: an array of globs that replaces the
   built-in exclusions. Other keys are an error. The defaults stay `["src"]` and
   `["test", "tests"]`. `exclude` is a list of globs relative to the project root (`**`, `*`, `?`,
-  `{a,b}`) that is added to the built-in exclusions (`dist`, `build`, `generated`, `node_modules`,
-  `coverage`, `reports`, `target`, `*.d.ts`).
+  `{a,b}`) that is added to the built-in exclusions: the project-root folders `dist`, `build`,
+  `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth. Hand-written
+  `*.d.ts` files under the source roots are linted and type-checked; `runtimeExcludedGlobs` in the
+  resolved layout adds them back for coverage, CRAP and mutation, which cannot instrument them.
 - `languages/typescript/preset/layout.mjs` exposes `resolveLayout(layout, exclude)`, which derives every glob, regular
   expression and predicate (`isSourceFile`, `isTestFile`, `isExcluded`, `projectCodeFiles`, ...)
   from the roots and exclusions. `readLayout()` in `languages/typescript/preset/head-policy.mjs` resolves the delivered
