@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { strictSyntaxConfigFor } from '../strict.mjs';
 import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mjs';

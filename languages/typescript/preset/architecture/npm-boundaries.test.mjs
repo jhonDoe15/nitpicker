@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/run-analyzers.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
 import { configuredAnalyzers } from '../diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
 
@@ -49,7 +49,7 @@ function architectureFindings(files) {
   const run = withDefaultAnalyzerParallelism(() =>
     withHeadPolicyFile(resolveHeadPolicy({}), (headPolicyFile) =>
       runAnalyzers({
-        analyzers: configuredAnalyzers.filter(({ name }) => name === 'dependency-architecture'),
+        analyzers: configuredAnalyzers().filter(({ name }) => name === 'dependency-architecture'),
         projectRoot,
         policyRoot: projectRoot,
         toolRoot: packageRoot,

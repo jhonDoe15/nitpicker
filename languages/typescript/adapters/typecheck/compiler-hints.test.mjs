@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { normalizeTypeScriptDiagnostics } from '../static-checks-runner.mjs';
+import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mjs';
 import { loadTypeScript } from './typescript-program.mjs';
 
 const ts = loadTypeScript();

@@ -66,7 +66,32 @@ function isAllowedPascalCase(node) {
   return isSchemaConstant(node) || isComponentParameter(node);
 }
 
-export const rule = withReportFilter(
-  baseRule,
-  (descriptor) => !isAllowedPascalCase(descriptor.node),
-);
+const filtered = withReportFilter(baseRule, (descriptor) => !isAllowedPascalCase(descriptor.node));
+
+function hasSyntaxServices(services) {
+  return services?.esTreeNodeToTSNodeMap != null && services.tsNodeToESTreeNodeMap != null;
+}
+
+function withSyntaxServices(context) {
+  const { sourceCode } = context;
+  if (hasSyntaxServices(sourceCode.parserServices)) {
+    return context;
+  }
+  const parserServices = {
+    esTreeNodeToTSNodeMap: new WeakMap(),
+    tsNodeToESTreeNodeMap: new WeakMap(),
+    program: undefined,
+  };
+  return Object.create(context, {
+    sourceCode: { value: Object.create(sourceCode, { parserServices: { value: parserServices } }) },
+    report: { value: (descriptor) => context.report(descriptor) },
+  });
+}
+
+export const rule = {
+  ...filtered,
+  meta: { ...filtered.meta, docs: { ...filtered.meta.docs, requiresTypeChecking: false } },
+  create(context) {
+    return filtered.create(withSyntaxServices(context));
+  },
+};

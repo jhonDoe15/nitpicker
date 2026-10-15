@@ -1,5 +1,5 @@
-import { variableNamed } from '../ancestry.mjs';
-import { importedCalleeName, moduleBindings } from '../test-code-analysis.mjs';
+import { variableNamed } from '../analysis/ancestry.mjs';
+import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
 const SHELL_STRING_CALLS = new Set(['exec', 'execSync']);

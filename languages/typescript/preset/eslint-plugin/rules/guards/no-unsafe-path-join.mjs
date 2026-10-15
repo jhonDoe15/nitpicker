@@ -1,5 +1,5 @@
-import { ancestorsOf, variableNamed } from '../ancestry.mjs';
-import { importedCalleeName, moduleBindings } from '../test-code-analysis.mjs';
+import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
 const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);

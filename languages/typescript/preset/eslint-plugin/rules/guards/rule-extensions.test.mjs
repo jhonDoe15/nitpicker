@@ -1,13 +1,13 @@
 import { createRuleTester } from './rule-tester.mjs';
-import { rule as noBranchInCompositionRoot } from '../no-branch-in-composition-root.mjs';
-import { rule as noHandwrittenBoundaryGuard } from '../no-handwritten-boundary-guard.mjs';
-import { rule as noManagedResource } from '../no-managed-resource-construction-outside-composition-roots.mjs';
-import { rule as noProductionConsole } from '../no-production-console.mjs';
-import { rule as noSelfRecursion } from '../no-self-recursion.mjs';
-import { rule as noUnknownInDomain } from '../no-unknown-in-domain.mjs';
-import { rule as noUnvalidatedSchemaField } from '../no-unvalidated-schema-field.mjs';
-import { rule as preserveErrorCause } from '../preserve-error-cause.mjs';
-import { rule as reportModuleLoadEffects } from '../report-module-load-effects.mjs';
+import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
+import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
+import { rule as noProductionConsole } from '../modules/no-production-console.mjs';
+import { rule as noSelfRecursion } from '../control/no-self-recursion.mjs';
+import { rule as noUnknownInDomain } from '../boundaries/no-unknown-in-domain.mjs';
+import { rule as noUnvalidatedSchemaField } from '../boundaries/no-unvalidated-schema-field.mjs';
+import { rule as preserveErrorCause } from '../errors/preserve-error-cause.mjs';
+import { rule as reportModuleLoadEffects } from '../modules/report-module-load-effects.mjs';
 
 const tester = createRuleTester();
 const root = '/repo/src/main/composition-root.ts';
