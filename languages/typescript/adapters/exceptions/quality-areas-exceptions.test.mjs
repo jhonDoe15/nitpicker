@@ -5,13 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
-import {
-  normalizeCoverage,
-  normalizeCrap,
-  normalizeStructure,
-  parseArguments,
-  runQualityArea,
-} from '../quality-areas-runner.mjs';
+import { parseArguments } from '../quality-areas/arguments.mjs';
+import { normalizeCoverage, normalizeCrap } from '../quality-areas/reporting/tests.mjs';
+import { normalizeStructure } from '../quality-areas/reporting/repository.mjs';
+import { runQualityArea } from '../quality-areas-runner.mjs';
 
 const roots = [];
 const originalPolicy = process.env[HEAD_POLICY_ENV];

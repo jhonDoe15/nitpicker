@@ -59,7 +59,7 @@ describe('strict test rules', () => {
   it('apply to test files under the test roots and next to sources', () => {
     for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
       expect(messages(raisedTimeout, file)).toEqual([
-        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. A genuinely long end-to-end suite can add an exception for this rule in nitpicker.config.json.',
+        'Do not raise a test or hook timeout above 10000 ms, the testTimeout nitpicker runs tests with. Make the test faster instead: import code rather than spawning it, and share expensive setup in beforeAll. An exception fits only a genuinely long end-to-end suite.',
       ]);
     }
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
