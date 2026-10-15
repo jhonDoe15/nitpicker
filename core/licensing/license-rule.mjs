@@ -1,4 +1,4 @@
-export const PERMISSIVE_LICENSES = new Set([
+const PERMISSIVE_LICENSES = new Set([
   '0BSD',
   'Apache-2.0',
   'BSD-2-Clause',
@@ -12,7 +12,7 @@ export const PERMISSIVE_LICENSES = new Set([
   'Unlicense',
 ]);
 
-export const WEAK_COPYLEFT_LICENSES = new Set([
+const WEAK_COPYLEFT_LICENSES = new Set([
   'EPL-1.0',
   'EPL-2.0',
   'LGPL-2.0',
@@ -75,13 +75,16 @@ function classifyFlat(expression) {
   return pick(alternatives, (right, left) => right > left);
 }
 
-export function classifyExpression(expression) {
+function collapseInnermostGroup(expression) {
   const group = INNERMOST_GROUP.exec(expression);
   return group === null
-    ? classifyFlat(expression.trim())
-    : classifyExpression(
-        expression.replace(INNERMOST_GROUP, ` ${VERDICT_PREFIX}${classifyFlat(group[1].trim())} `),
-      );
+    ? expression
+    : expression.replace(INNERMOST_GROUP, ` ${VERDICT_PREFIX}${classifyFlat(group[1].trim())} `);
+}
+
+export function classifyExpression(expression) {
+  const groups = expression.split('(').slice(1);
+  return classifyFlat(groups.reduce(collapseInnermostGroup, expression).trim());
 }
 
 export function declaredExpression(manifest) {

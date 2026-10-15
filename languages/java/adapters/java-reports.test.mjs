@@ -201,11 +201,9 @@ describe('readJavaFindings', () => {
 
     const found = readJavaFindings(root).findings.filter(({ tool }) => tool === 'spotbugs');
 
-    expect(found.map(({ message }) => message)).toEqual([
-      expect.stringContaining('bind parameters'),
-      expect.stringContaining('bind parameters'),
-    ]);
-    expect(found[0].message).toContain('add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC');
+    const advice =
+      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC in nitpicker.config.json.';
+    expect(found.map(({ message }) => message)).toEqual([advice, advice]);
     expect(found.map(({ identity }) => identity)).toEqual([
       'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.one()',
       'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.two()',
