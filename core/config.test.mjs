@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { applyDisable, describeConfigOverrides, validateConfig } from './config.mjs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { applyDisable, describeConfigOverrides, loadConfig, validateConfig } from './config.mjs';
 import { policyHash } from './diff/report-model.mjs';
 
 describe('config file', () => {
@@ -490,5 +493,55 @@ describe('react keys', () => {
 
     expect(overrides).toEqual(['react: {"styling":"css-in-js"}']);
     expect(policyHash(analyzers, overrides)).not.toBe(policyHash(analyzers, []));
+  });
+});
+
+describe('config checks that need the project', () => {
+  const roots = [];
+  afterEach(() => {
+    for (const root of roots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  function project(config, files) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-'));
+    roots.push(root);
+    writeFileSync(path.join(root, 'nitpicker.config.json'), JSON.stringify(config));
+    for (const file of files) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), 'export {};\n');
+    }
+    return root;
+  }
+
+  it.each(['HEAD', '@'])('rejects "base": "%s" as a comparison with itself', (base) => {
+    expect(() => validateConfig({ base })).toThrow(/compared with itself/);
+    expect(validateConfig({ base: 'origin/main' })).toEqual({ base: 'origin/main' });
+  });
+
+  it.each(['src/App.tsx', 'test/ui/View.jsx'])(
+    'rejects the javascript preset when %s would go unanalyzed',
+    (file) => {
+      const root = project({ preset: 'javascript' }, [file, 'src/a.js']);
+      expect(() => loadConfig(root)).toThrow(`${file} is one. Use "preset": "typescript"`);
+    },
+  );
+
+  it('accepts the javascript preset for .ts files, an excluded .tsx file and other presets', () => {
+    const javascript = { preset: 'javascript' };
+    expect(loadConfig(project(javascript, ['src/a.js', 'src/b.ts']))).toEqual(javascript);
+    const excluded = { preset: 'javascript', exclude: ['src/legacy/**'] };
+    expect(loadConfig(project(excluded, ['src/legacy/Old.tsx']))).toEqual(excluded);
+    const typescript = { preset: 'typescript' };
+    expect(loadConfig(project(typescript, ['src/App.tsx']))).toEqual(typescript);
+  });
+
+  it('looks in the configured roots, not only in src', () => {
+    const config = { preset: 'javascript', layout: { sourceRoots: ['lib'] } };
+    expect(() => loadConfig(project(config, ['lib/deep/View.tsx']))).toThrow(
+      /lib\/deep\/View\.tsx/,
+    );
+    expect(loadConfig(project(config, ['src/View.tsx']))).toEqual(config);
   });
 });

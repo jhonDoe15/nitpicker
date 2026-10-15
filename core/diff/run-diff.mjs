@@ -9,7 +9,7 @@ import {
   resolveBaseProjectPath,
   resolveComparison,
 } from './git.mjs';
-import { analyzerMetadata, analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
+import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import {
   prepareSnapshotDependencies,
@@ -23,6 +23,7 @@ import {
 import { createFindingsCache, runBaseWithCache } from './findings-cache.mjs';
 import { cachedLine } from './progress.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
+import { declaredExclusions, toolSummary } from './summary/tool-summary.mjs';
 import { withNamedTemporaryWorktree, withTemporaryWorktree } from './worktree.mjs';
 
 export function runQualityDiff(options) {
@@ -113,6 +114,7 @@ function compareSnapshots(context) {
     analyzers: settings.analyzers,
     headPolicy: settings.headPolicy,
     configOverrides: settings.configOverrides,
+    policyChanges: [],
     ...settings.resolveBaseSetup?.({
       baseProjectRoot: roots.baseProjectRoot,
       baseProjectRelativePath: layout.baseProjectRelativePath,
@@ -173,6 +175,7 @@ function runAndCombine(context) {
     startedAt,
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
+    policyChanges: context.baseSetup.policyChanges,
   });
 }
 
@@ -301,45 +304,13 @@ function compareOrReportError(context) {
   }
 }
 
-function toolSummary({ analyzer, name, baseRun, headRun, baseFindings, headFindings, result }) {
-  const baseElapsedMs = baseRun.timings.get(name);
-  const headElapsedMs = headRun.timings.get(name);
-  const skippedBecause = headRun.skipped?.get(name) ?? baseRun.skipped?.get(name);
-  return {
-    name,
-    ...(skippedBecause === undefined ? {} : { skippedBecause }),
-    version: analyzerMetadata(analyzer, 'version'),
-    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
-    base: baseFindings.length,
-    head: headFindings.length,
-    new: result.newFindings.length,
-    resolved: result.resolvedFindings.length,
-    unchanged: result.unchangedFindings.length,
-    changedMetrics: result.changedMetrics.length,
-    baseElapsedMs,
-    headElapsedMs,
-    elapsedMs: (baseElapsedMs ?? 0) + (headElapsedMs ?? 0),
-  };
-}
-
 function collect(outcomes, key) {
   return outcomes.flatMap(({ result }) => result[key]);
 }
 
-function declaredExclusions(analyzers) {
-  return [
-    ...new Set(
-      analyzers.flatMap((analyzer) =>
-        typeof analyzer === 'object' && analyzer !== null && Array.isArray(analyzer.exclusions)
-          ? analyzer.exclusions.filter((exclusion) => typeof exclusion === 'string')
-          : [],
-      ),
-    ),
-  ].sort();
-}
-
 function buildReport(context) {
-  const { analyzers, outcomes, toolErrors, comparison, startedAt, configOverrides } = context;
+  const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
+  const { configOverrides, policyChanges } = context;
   const newFindings = collect(outcomes, 'newFindings');
   return {
     summary: {
@@ -349,6 +320,7 @@ function buildReport(context) {
       headSha: comparison.headSha,
       policyHash: policyHash(analyzers, configOverrides),
       configOverrides,
+      policyChanges,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

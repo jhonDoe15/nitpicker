@@ -13,7 +13,7 @@ import {
   renderConsoleSummary,
   writeDiffReports,
 } from './reporters.mjs';
-import { analyzerName, policyHash, sortByToolAndPath } from './report-model.mjs';
+import { analyzerName, summaryFields, policyHash, sortByToolAndPath } from './report-model.mjs';
 import { planAnalyzerShards } from './sharding.mjs';
 import { takeOptionValue } from './cli.mjs';
 import { runGit } from './git.mjs';
@@ -81,7 +81,7 @@ export function aggregateShardReports({
   const summary = {
     ...commonSummary(shardReports[0].summary),
     policyHash: policyHash(analyzers, configOverrides),
-    configOverrides,
+    ...summaryFields(configOverrides, shardReports[0].summary),
     tools: analyzers.map(({ name }) => toolsByName.get(name)),
     exclusions: analyzerExclusions(analyzers),
     elapsedMs: Math.max(...shardReports.map(({ summary: shardSummary }) => shardSummary.elapsedMs)),

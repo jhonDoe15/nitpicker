@@ -4,12 +4,13 @@ import { CONFIG_FILE_NAME } from '../shared/config.mjs';
 import { resolveHeadPolicy } from '../shared/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
+import { describePolicyChanges } from './policy-changes/describe-policy-changes.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 
 export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = () => undefined }) {
   return ({ baseProjectRoot, analyzers }) => {
     if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
-      return {};
+      return { policyChanges: describePolicyChanges({}, headConfig) };
     }
     try {
       return baseSetupFromConfig({
@@ -43,5 +44,6 @@ function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyz
     analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
     headPolicy: baseHeadPolicy,
     configOverrides: describeConfigOverrides(baseConfig),
+    policyChanges: describePolicyChanges(baseConfig, headConfig),
   };
 }

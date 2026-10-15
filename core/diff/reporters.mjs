@@ -6,6 +6,8 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../shared/rules/finding-helpers.mjs';
 import { comparisonKey } from './fingerprint.mjs';
+import { appendMetricSection } from './summary/metric-section.mjs';
+import { appendPolicyChangeSummary, policyChangeSection } from './summary/policy-changes.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 const JUNIT_REPORT_FILE_NAME = 'report.junit.xml';
@@ -71,6 +73,7 @@ export function renderTextReport(report) {
   if (configOverrides.length > 0) {
     lines.push('', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`));
   }
+  lines.push(...policyChangeSection(report.summary.policyChanges));
 
   if (report.summary.tools.length === 0) {
     lines.push('Analyzers: none configured');
@@ -109,6 +112,9 @@ export function renderConsoleSummary(
   ];
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
+  appendPolicyChangeSummary(lines, report.summary?.policyChanges, (text) =>
+    style(text, [ANSI.bold, ANSI.yellow], color),
+  );
   appendHeldSummary(lines, report.unchangedFindings, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
@@ -384,18 +390,6 @@ function errorHeadline(message) {
     : headline;
 }
 
-function appendMetricSection(lines, metrics) {
-  if (metrics.length === 0) {
-    return;
-  }
-  lines.push('', 'Changed metrics:');
-  for (const metric of metrics) {
-    lines.push(
-      `${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${String(metric.baseValue)} -> ${String(metric.headValue)} (${formatDelta(metric.delta)})`,
-    );
-  }
-}
-
 function appendToolErrorSection(lines, toolErrors) {
   if (toolErrors.length === 0) {
     return;
@@ -404,10 +398,6 @@ function appendToolErrorSection(lines, toolErrors) {
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
   }
-}
-
-function formatDelta(delta) {
-  return delta > 0 ? `+${String(delta)}` : String(delta);
 }
 
 function formatSeconds(elapsedMs) {
