@@ -9,6 +9,8 @@
       "core/fix/prettier-write-runner.mjs",
       "languages/typescript/adapters/entry-points-runner.mjs",
       "languages/typescript/adapters/eslint-config-wrapper.mjs",
+      "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
+      "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
       "languages/typescript/preset/defaults/stryker.config.mjs",
@@ -46,7 +48,8 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/java/adapters/java-preset.e2e.test.mjs",
-        "languages/java/adapters/spring/java-spring.e2e.test.mjs"
+        "languages/java/adapters/spring/java-spring.e2e.test.mjs",
+        "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs"
       ],
       "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
