@@ -15,6 +15,12 @@ const instanceMethods = new Set([
   'findByProps',
   'findAllByProps',
 ]);
+const stateMethods = new Set(['state', 'setState']);
+const wrapperFactories = new Map([
+  ['enzyme', new Set(['mount', 'shallow', 'render'])],
+  ['react-test-renderer', new Set(['create'])],
+]);
+const factoryNames = new Set([...wrapperFactories.values()].flatMap((names) => [...names]));
 const fiberProperties = new Set([
   '_reactInternals',
   '_reactInternalFiber',
@@ -98,6 +104,63 @@ function reactMock(node, visitorKeys) {
   return name === REACT_MODULE ? name : undefined;
 }
 
+function factoryBindings(program) {
+  const bindings = { functions: new Set(), namespaces: new Set() };
+  for (const statement of program.body) {
+    const names =
+      statement.type === 'ImportDeclaration' && wrapperFactories.get(statement.source.value);
+    for (const specifier of names ? statement.specifiers : []) {
+      if (specifier.type !== 'ImportSpecifier') {
+        bindings.namespaces.add(specifier.local.name);
+      } else if (names.has(specifier.imported.name)) {
+        bindings.functions.add(specifier.local.name);
+      }
+    }
+  }
+  return bindings;
+}
+
+function isWrapperFactoryCall(node, bindings) {
+  const callee = node?.type === 'AwaitExpression' ? node.argument?.callee : node?.callee;
+  if (node === undefined || node === null || callee === undefined) {
+    return false;
+  }
+  if (callee.type === 'Identifier') {
+    return bindings.functions.has(callee.name);
+  }
+  return (
+    callee.type === 'MemberExpression' &&
+    callee.object.type === 'Identifier' &&
+    bindings.namespaces.has(callee.object.name) &&
+    factoryNames.has(memberName(callee))
+  );
+}
+
+function wrapperNames(nodes, bindings) {
+  const assigned = nodes.flatMap((node) => {
+    if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier') {
+      return isWrapperFactoryCall(node.init, bindings) ? [node.id.name] : [];
+    }
+    const assigns = node.type === 'AssignmentExpression' && node.left.type === 'Identifier';
+    return assigns && isWrapperFactoryCall(node.right, bindings) ? [node.left.name] : [];
+  });
+  return new Set(assigned);
+}
+
+function usesComponentInternals(callee, method, wrappers) {
+  if (method === undefined || !instanceMethods.has(method)) {
+    return false;
+  }
+  if (!stateMethods.has(method)) {
+    return true;
+  }
+  const receiver = callee.object;
+  return (
+    (receiver.type === 'Identifier' && wrappers.names.has(receiver.name)) ||
+    isWrapperFactoryCall(receiver, wrappers.bindings)
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -118,11 +181,14 @@ export const rule = {
   },
   create: inReactTestFilesOnly((context) => {
     const reactNames = reactBindingNames(context.sourceCode, globalReactNames);
+    const bindings = factoryBindings(context.sourceCode.ast);
+    const nodes = descendants(context.sourceCode.ast, context.sourceCode.visitorKeys);
+    const wrappers = { bindings, names: wrapperNames(nodes, bindings) };
     return {
       CallExpression(node) {
         const callee = node.callee;
         const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
-        if (method !== undefined && instanceMethods.has(method)) {
+        if (usesComponentInternals(callee, method, wrappers)) {
           context.report({ node, messageId: 'componentInternals', data: { name: `${method}()` } });
         }
         const mocked = reactMock(node, context.sourceCode.visitorKeys);

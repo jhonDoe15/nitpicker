@@ -1,5 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
-import path from 'node:path';
+import { helperReaches } from './test-must-use-production-runtime.mjs';
 
 const REACT_PACKAGE = 'react';
 const reactTestModule = /^(?:@testing-library\/.+|react(?:-[^/]+)?(?:\/.*)?|enzyme(?:\/.*)?)$/;
@@ -8,54 +7,14 @@ const testingLibraryModule =
 const testingLibraryQueryModule = /^@testing-library\/(?!user-event$|jest-dom(?:\/|$)).+$/u;
 const componentFile = /\.[cm]?[jt]sx$/u;
 const browserTestModule = /^(?:@playwright\/|cypress(?:\/|$))/u;
-const relativeModule = /^\.{1,2}\//u;
-const compiledExtension = /\.(?:[cm]?js|jsx)$/u;
-const scriptExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
-const moduleSource = /(?:\bfrom|\bimport|\brequire\s*\()\s*\(?\s*['"]([^'"\n]+)['"]/gu;
-const runtimeImport = String.raw`\b(?:import|export)(?!\s+type\b)(?:\s*\(|[^'";()=]*?\bfrom)?`;
-const quotedSource = String.raw`\s*['"]([^'"\n]+)['"]`;
-const runtimeModuleSource = new RegExp(
-  `${runtimeImport}${quotedSource}|\\brequire\\s*\\(${quotedSource}`,
-  'gu',
-);
-
 function isReactTestModule(source) {
   return typeof source === 'string' && reactTestModule.test(source);
 }
 
-function isFile(candidate) {
-  return statSync(candidate, { throwIfNoEntry: false })?.isFile() === true;
-}
-
-function helperFile(testFile, source) {
-  const target = path.resolve(path.dirname(testFile), source);
-  const stem = target.replace(compiledExtension, '');
-  return [
-    target,
-    ...scriptExtensions.map((extension) => `${stem}${extension}`),
-    ...scriptExtensions.map((extension) => path.join(target, `index${extension}`)),
-  ].find(isFile);
-}
-
 function helperImportsTestingLibrary(testFile, source) {
-  const file = relativeModule.test(source) ? helperFile(testFile, source) : undefined;
-  return (
-    file !== undefined &&
-    [...readFileSync(file, 'utf8').matchAll(moduleSource)].some(([, imported]) =>
-      testingLibraryModule.test(imported),
-    )
+  return helperReaches(testFile, source, (_helper, reference) =>
+    testingLibraryModule.test(reference.source),
   );
-}
-
-export function helperRuntimeImports(testFile, source) {
-  const file = relativeModule.test(source) ? helperFile(testFile, source) : undefined;
-  const sources =
-    file === undefined
-      ? []
-      : [...readFileSync(file, 'utf8').matchAll(runtimeModuleSource)].map(
-          ([, imported, required]) => imported ?? required,
-        );
-  return { file, sources };
 }
 
 function requiredSource(node) {
@@ -67,6 +26,22 @@ function requiredSource(node) {
   return argument?.type === 'Literal' ? argument.value : undefined;
 }
 
+const mockRunners = new Set(['vi', 'jest']);
+const mockMethods = new Set(['mock', 'doMock']);
+
+function mockedSource(node) {
+  const isMock =
+    node?.type === 'CallExpression' &&
+    node.callee.type === 'MemberExpression' &&
+    node.callee.object.type === 'Identifier' &&
+    mockRunners.has(node.callee.object.name) &&
+    !node.callee.computed &&
+    mockMethods.has(node.callee.property.name);
+  const [argument] = isMock ? node.arguments : [];
+  const source = argument?.type === 'ImportExpression' ? argument.source : argument;
+  return source?.type === 'Literal' ? source.value : undefined;
+}
+
 function statementSources(statement) {
   switch (statement.type) {
     case 'ImportDeclaration':
@@ -76,7 +51,7 @@ function statementSources(statement) {
     case 'TSImportEqualsDeclaration':
       return [statement.moduleReference.expression?.value];
     case 'ExpressionStatement':
-      return [requiredSource(statement.expression)];
+      return [requiredSource(statement.expression), mockedSource(statement.expression)];
     case 'VariableDeclaration':
       return statement.declarations.map((declarator) => requiredSource(declarator.init));
     default:

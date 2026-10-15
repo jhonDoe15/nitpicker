@@ -321,7 +321,7 @@ describe('the React scope config', () => {
     const rules = lintFixture({
       config,
       filename: 'test/ui/a.test.ts',
-      code: `${importLine} wrapper.state();`,
+      code: `${importLine} wrapper.instance();`,
     }).map(({ ruleId }) => ruleId);
 
     expect(rules).toEqual(['nitpicker/react-test-no-implementation-details']);

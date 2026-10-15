@@ -278,6 +278,7 @@ tester.run('react-single-styling-approach: inline style', reactSingleStylingAppr
 const testFilename = '/repo/test/ui/panel.test.tsx';
 const plainTestFilename = '/repo/test/domain/store.test.ts';
 const reactTestingImport = "import { render } from '@testing-library/react'; ";
+const enzymeWrapper = "import { mount } from 'enzyme'; const wrapper = mount(Panel); ";
 
 function componentInternalsError(name) {
   return { messageId: 'componentInternals', data: { name } };
@@ -318,6 +319,9 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
     'vi.mock(name, () => ({ useState: vi.fn() }));',
     "mock('react', () => ({ useState: vi.fn() }));",
     "vi.fn('react', () => ({ useState: vi.fn() }));",
+    'useStore.setState({ count: 0 });',
+    'expect(machine.state()).toEqual({});',
+    "import { mount } from 'other-mount'; mount(Panel).setState({});",
   ]
     .map((code) => ({ filename: testFilename, code: `${reactTestingImport}${code}` }))
     .concat(
@@ -341,18 +345,20 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         "const R = await import('react'); vi.spyOn(R, 'createElement');",
         "import { default as Preact } from 'preact'; vi.spyOn(Preact, 'useState');",
         "vi.spyOn(require('preact'), 'useState');",
-        "vi.mock('react', () => ({ useState: vi.fn() }));",
       ].map((code) => ({ filename: plainTestFilename, code })),
     ),
   invalid: [
     { code: 'wrapper.instance();', errors: [componentInternalsError('instance()')] },
     { code: 'renderer.getInstance();', errors: [componentInternalsError('getInstance()')] },
-    { code: 'expect(wrapper.state()).toEqual({});', errors: [componentInternalsError('state()')] },
-    {
-      code: 'wrapper.setState({ open: true });',
-      errors: [componentInternalsError('setState()')],
-    },
-    { code: 'wrapper["state"]();', errors: [componentInternalsError('state()')] },
+    ...[
+      `${enzymeWrapper}expect(wrapper.state()).toEqual({});`,
+      `${enzymeWrapper}wrapper["state"]();`,
+      "import * as enzyme from 'enzyme'; let view; view = enzyme.shallow(Panel); view.state();",
+    ].map((code) => ({ code, errors: [componentInternalsError('state()')] })),
+    ...[
+      `${enzymeWrapper}wrapper.setState({ open: true });`,
+      "import { shallow as s } from 'enzyme'; s(Panel).setState({});",
+    ].map((code) => ({ code, errors: [componentInternalsError('setState()')] })),
     ...['findByType', 'findAllByType', 'findByProps', 'findAllByProps'].map((method) => ({
       code: `renderer.root.${method}(Panel);`,
       errors: [componentInternalsError(`${method}()`)],
@@ -422,7 +428,7 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
       ["vi.mock('react', () => ({ createElement: vi.fn() }));", 'react'],
     ].map(([code, name]) => ({ code, errors: [{ messageId: 'reactMock', data: { name } }] })),
     {
-      code: 'vi.spyOn(React, "useState"); wrapper.state();',
+      code: `${enzymeWrapper}vi.spyOn(React, "useState"); wrapper.state();`,
       errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
     },
   ]
@@ -445,6 +451,16 @@ tester.run('react-test-no-implementation-details', reactTestNoImplementationDeta
         filename: plainTestFilename,
         code: `${importLine} wrapper.instance();`,
         errors: [componentInternalsError('instance()')],
+      })),
+    )
+    .concat(
+      [
+        "vi.mock('react', () => ({ useState: vi.fn() }));",
+        "jest.mock('react-dom', () => ({ useFormStatus: jest.fn() }));",
+      ].map((code) => ({
+        filename: plainTestFilename,
+        code,
+        errors: [{ messageId: 'reactMock' }],
       })),
     )
     .concat(
