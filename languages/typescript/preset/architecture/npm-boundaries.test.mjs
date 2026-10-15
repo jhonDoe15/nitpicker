@@ -139,3 +139,22 @@ describe('architecture findings', () => {
     });
   });
 });
+
+describe('domain rules on a local folder named like a package', () => {
+  it('report nothing for shared/ws/ and shared/uuid/ imported from domain/', () => {
+    expect(
+      architectureFindings({
+        'package.json': JSON.stringify({ name: 'fixture' }),
+        'src/main/shared/ws/frames.ts': 'export const frameSize = 4;\n',
+        'src/main/shared/uuid/format.ts': 'export const separator = 4;\n',
+        'src/main/features/orders/domain/frames.ts': [
+          "import { frameSize } from '../../../shared/ws/frames.js';",
+          "import { separator } from '../../../shared/uuid/format.js';",
+          '',
+          'export const total = frameSize + separator;',
+          '',
+        ].join('\n'),
+      }),
+    ).toEqual({ toolErrors: [], findings: [] });
+  });
+});

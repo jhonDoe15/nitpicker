@@ -109,3 +109,35 @@ describe('strict boundary rules', () => {
     expect(output).toContain(allowedForm ?? '');
   });
 });
+
+describe('npm package patterns in the domain rules', () => {
+  const packageRules = [
+    ['domain-does-not-import-network-or-database-clients', 'pg'],
+    ['domain-does-not-import-the-logger', 'pino'],
+    ['domain-does-not-import-id-libraries', 'uuid'],
+    ['domain-does-not-reach-io-through-shared', 'pg'],
+  ];
+
+  function matches(ruleName, target) {
+    const rule = strictBoundaryRules.find(({ name }) => name === ruleName);
+    return [rule.to.path].flat().some((pattern) => new RegExp(pattern).test(target));
+  }
+
+  it.each(packageRules)('%s matches %s unresolved, installed and under pnpm', (ruleName, name) => {
+    expect(
+      [
+        name,
+        `node_modules/${name}/lib/index.js`,
+        `node_modules/.pnpm/${name}@8.11.0/node_modules/${name}/lib/index.js`,
+      ].map((target) => matches(ruleName, target)),
+    ).toEqual([true, true, true]);
+  });
+
+  it.each(packageRules)('%s does not match a local folder named %s', (ruleName, name) => {
+    expect(
+      [`src/main/shared/${name}/frames.ts`, `src/${name}/x.ts`].map((target) =>
+        matches(ruleName, target),
+      ),
+    ).toEqual([false, false]);
+  });
+});
