@@ -5,14 +5,13 @@ import { reportedRuleKey } from './oxlint-translation.mjs';
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
-const REMOVED_OPTION = /Option '([^']+)' has been removed/u;
-const MISSING_TYPES = /Cannot find type definition file for '([^']+)'/u;
 
 export function eslintShapedResults(stage, diagnostics, naming) {
-  const configErrors = diagnostics.filter((diagnostic) => diagnostic.code === TSCONFIG_ERROR_CODE);
-  if (configErrors.length > 0) throw new Error(typeAwareRulesSkipped(configErrors));
+  naming.configErrors.push(
+    ...diagnostics.filter((diagnostic) => diagnostic.code === TSCONFIG_ERROR_CODE),
+  );
   const reported = distinctDiagnostics(diagnostics).filter(
-    (diagnostic) => !isIgnoredDiagnostic(diagnostic),
+    (diagnostic) => diagnostic.code !== TSCONFIG_ERROR_CODE && !isIgnoredDiagnostic(diagnostic),
   );
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
@@ -47,23 +46,6 @@ function isNeutralizerWhitespace(message, neutralized) {
     message.ruleId === IRREGULAR_WHITESPACE_RULE &&
     neutralized.has(`${String(message.line)}:${String(message.column)}`)
   );
-}
-
-function typeAwareRulesSkipped(configErrors) {
-  const reasons = new Set(configErrors.map((diagnostic) => configErrorReason(diagnostic)));
-  return `Type-aware rules cannot run: ${[...reasons].join(' ')}`;
-}
-
-function configErrorReason({ message, help }) {
-  const text = (help ?? message).split('\n')[0];
-  const removed = REMOVED_OPTION.exec(text)?.[1];
-  if (removed !== undefined) {
-    return `TypeScript 7 removed tsconfig option '${removed}'; remove it from the project tsconfig.`;
-  }
-  const missingTypes = MISSING_TYPES.exec(text)?.[1];
-  return missingTypes === undefined
-    ? `TypeScript 7 rejects the lint tsconfig: ${text}`
-    : `no type definitions found for '${missingTypes}' in the tsconfig types.`;
 }
 
 function isIgnoredDiagnostic(diagnostic) {

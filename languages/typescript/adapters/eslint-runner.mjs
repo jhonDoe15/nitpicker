@@ -10,6 +10,7 @@ import {
   lstatIfExists,
   removeOwnedLink,
 } from '../../../core/tooling/policy-links.mjs';
+import { requiredDependencies } from './dependency-hooks.mjs';
 import { eslintMessageWithHint, growthAdviceFor } from './eslint-hints.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { runLintEngine } from './lint-engine/lint-engine.mjs';
@@ -52,10 +53,7 @@ if (
 }
 
 function runEslint(options) {
-  const dependencyRoot = realpathSync(path.join(options.liveProjectRoot, 'node_modules'));
-  if (!statSync(dependencyRoot).isDirectory()) {
-    throw new Error(`Installed ESLint dependencies are missing at ${dependencyRoot}`);
-  }
+  const dependencyRoot = requiredDependencies(options.liveProjectRoot);
 
   let linkedDependencies = [];
   let installedPolicyFiles = [];

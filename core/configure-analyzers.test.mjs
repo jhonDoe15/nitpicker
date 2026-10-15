@@ -1,4 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { requiredDependencies } from '../languages/typescript/adapters/dependency-hooks.mjs';
+import { prepareSnapshotDependencies } from '../languages/typescript/adapters/static-checks-runner.mjs';
 import { configuredAnalyzers } from '../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../languages/python/adapters/python-analyzer.mjs';
@@ -28,6 +33,22 @@ describe('configureAnalyzers', () => {
     );
 
     expect(declared).toEqual([true, true]);
+  });
+
+  it('leaves a missing node_modules for each analyzer to report, with the install command', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-dependencies-'));
+    const [liveProjectRoot, projectRoot] = ['live', 'snapshot'].map((name) =>
+      path.join(root, name),
+    );
+    for (const directory of [liveProjectRoot, projectRoot]) mkdirSync(directory);
+    try {
+      expect(prepareSnapshotDependencies({ projectRoot, liveProjectRoot })).toBeUndefined();
+      expect(() => requiredDependencies(liveProjectRoot)).toThrow(
+        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Run npm ci first.`,
+      );
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('hands the exclude globs and the snapshot to both Python analyzers', () => {

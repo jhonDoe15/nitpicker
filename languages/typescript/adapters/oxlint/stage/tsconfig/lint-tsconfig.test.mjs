@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { eslintShapedResults } from '../../oxlint-diagnostics.mjs';
 import { lintWithOxlint } from '../../oxlint-runner.mjs';
 import { lintTypeScriptConfig } from './lint-tsconfig.mjs';
 import { typeScript7Options } from './typescript7-options.mjs';
@@ -32,8 +31,9 @@ afterAll(() => {
 });
 
 function project(projectFiles, specifier) {
-  const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-lint-tsconfig-')));
-  roots.push(projectRoot);
+  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-lint-tsconfig-')));
+  roots.push(parent);
+  const projectRoot = path.join(parent, 'project');
   const files = {
     'policy.mjs': TYPED_POLICY,
     'src/lib/value.ts': "export const sure: string = 'x';\n",
@@ -47,7 +47,7 @@ function project(projectFiles, specifier) {
   return projectRoot;
 }
 
-function lintUse(projectFiles, specifier = '@/lib/value') {
+function lintProject(projectFiles, specifier) {
   const projectRoot = project(projectFiles, specifier);
   const projectConfigPath = path.join(projectRoot, 'tsconfig.nitpicker.json');
   const lintResults = lintWithOxlint({
@@ -63,9 +63,20 @@ function lintUse(projectFiles, specifier = '@/lib/value') {
       throw new Error('no rule needs ESLint here');
     },
   });
-  return lintResults
-    .find((entry) => entry.filePath === path.join(projectRoot, 'src/use.ts'))
-    ?.messages.map(({ ruleId, line }) => ({ ruleId, line }));
+  return (relativePath) =>
+    lintResults
+      .find((entry) => entry.filePath === path.join(projectRoot, relativePath))
+      ?.messages.map(({ ruleId, line, message }) => ({ ruleId, line, message }));
+}
+
+function lintUse(projectFiles, specifier = '@/lib/value') {
+  return lintProject(
+    projectFiles,
+    specifier,
+  )('src/use.ts')?.map(({ ruleId, line }) => ({
+    ruleId,
+    line,
+  }));
 }
 
 function layered(extended) {
@@ -96,6 +107,37 @@ describe('lintWithOxlint with the project tsconfig paths', () => {
     ['a nested baseUrl', { baseUrl: './src', paths: { '@/*': ['*'] } }],
   ])('resolves an alias the project declares with %s', (_form, compilerOptions) => {
     expect(lintUse(projectOptions(compilerOptions))).toEqual(RESOLVED);
+  });
+
+  it.each([
+    ['typeRoots', { types: ['shared-globals'], typeRoots: ['../shared-types'] }, './lib/value'],
+    ['paths', { paths: { '@shared/*': ['../shared/*'] } }, '@shared/value'],
+  ])('resolves %s outside the project directory', (_option, compilerOptions, specifier) => {
+    const projectFiles = {
+      ...projectOptions(compilerOptions),
+      '../shared-types/shared-globals/index.d.ts': 'declare const sharedGlobal: string;\n',
+      '../shared/value.ts': "export const sure: string = 'x';\n",
+    };
+
+    expect(lintUse(projectFiles, specifier)).toEqual(RESOLVED);
+  });
+
+  it('resolves paths that a package config writes with ${configDir}', () => {
+    const projectFiles = {
+      'node_modules/@fixture/base/tsconfig.json': JSON.stringify({
+        compilerOptions: { ...PINNED, paths: { '@/*': ['${configDir}/src/*'] } },
+      }),
+      'tsconfig.json': JSON.stringify({ extends: '@fixture/base/tsconfig.json' }),
+      'tsconfig.nitpicker.json': layered('./tsconfig.json'),
+    };
+
+    expect(lintUse(projectFiles)).toEqual(RESOLVED);
+  });
+
+  it('names a paths entry that is not an array', () => {
+    expect(() => staged(projectOptions({ paths: { '@/*': './src/*' } }))).toThrow(
+      'The tsconfig "paths" entry "@/*" must be an array of locations, such as ["./src/*"].',
+    );
   });
 
   it('resolves a bare import through baseUrl alone', () => {
@@ -223,31 +265,19 @@ describe('the staged lint tsconfig', () => {
 });
 
 describe('type-aware rules that cannot run', () => {
-  it('names the tsconfig error TypeScript 7 rejects', () => {
-    expect(() => lintUse(projectOptions({ declarationMap: true }), './lib/value')).toThrow(
-      "Type-aware rules cannot run: TypeScript 7 rejects the lint tsconfig: Option 'declarationMap' " +
-        "cannot be specified without specifying option 'declaration' or option 'composite'.",
-    );
-  });
+  it('reports the tsconfig error as a notice on the project tsconfig and lints the rest', () => {
+    const lint = lintProject(projectOptions({ declarationMap: true }), './lib/value');
 
-  it('names a removed option the staged config has no replacement for', () => {
-    const configError = (help) => ({
-      message: 'Invalid tsconfig',
-      code: 'typescript(tsconfig-error)',
-      filename: 'tsconfig.json',
-      help,
-      labels: [],
-    });
-    const diagnostics = [
-      configError(
-        "Option 'futureOption' has been removed. Please remove it from your configuration.\nSee the tsgolint issue.",
-      ),
-      configError("Cannot find type definition file for 'absent-types'."),
-    ];
-
-    expect(() => eslintShapedResults(tmpdir(), diagnostics, {})).toThrow(
-      "Type-aware rules cannot run: TypeScript 7 removed tsconfig option 'futureOption'; " +
-        "remove it from the project tsconfig. no type definitions found for 'absent-types' in the tsconfig types.",
-    );
+    expect(lint('src/use.ts')).toBeUndefined();
+    expect(lint('tsconfig.json')).toEqual([
+      {
+        ruleId: 'nitpicker/type-aware-rules-skipped',
+        line: 1,
+        message:
+          "Type-aware rules did not run: TypeScript 7 rejects the lint tsconfig: Option 'declarationMap' " +
+          "cannot be specified without specifying option 'declaration' or option 'composite'. To lint " +
+          'with ESLint instead, set {"tools":{"eslint":{"engine":"eslint"}}} in nitpicker.config.json.',
+      },
+    ]);
   });
 });

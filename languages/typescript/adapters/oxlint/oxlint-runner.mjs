@@ -25,6 +25,8 @@ import {
   hideNestedTypeScriptConfigs,
   writeStageConfigs,
 } from './stage/oxlint-stage.mjs';
+import { lintConfigSources } from './stage/tsconfig/lint-tsconfig.mjs';
+import { typeAwareSkipNotice } from './stage/tsconfig/skip-notice.mjs';
 
 const MAX_ARGUMENT_BYTES = 1024 * 1024;
 const MAX_CONFIGURATION_ATTEMPTS = 20;
@@ -47,7 +49,7 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
     }
     const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
     const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
-    const { translation, results } = lintUntilAccepted({
+    const { translation, results, configErrors } = lintUntilAccepted({
       plan,
       stage,
       projectRoot: options.projectRoot,
@@ -62,6 +64,7 @@ export function lintWithOxlint({ options, environment, projectConfigPath, runEsl
     return mergeResults([
       ...results,
       ...inlineConfig.results,
+      ...skipNotices(options.projectRoot, projectConfigPath, configErrors),
       ...residualResults(options.projectRoot, translation.residual, runEslintCli),
     ]).map((result) => ({ ...result, filePath: path.join(options.projectRoot, result.filePath) }));
   } finally {
@@ -118,14 +121,13 @@ function lintAttempt({
     ruleNames: translation.ruleNames,
     messageIdOf: messageIdResolver(plan.ruleMessages),
     neutralized,
+    configErrors: [],
   };
   try {
-    return {
-      translation,
-      results: configs.flatMap((config) =>
-        lintStage({ stage, ...config, typeAware: translation.typeAware, naming, ...run }),
-      ),
-    };
+    const results = configs.flatMap((config) =>
+      lintStage({ stage, ...config, typeAware: translation.typeAware, naming, ...run }),
+    );
+    return { translation, results, configErrors: naming.configErrors };
   } catch (error) {
     bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
     return { translation, results: undefined };
@@ -164,6 +166,12 @@ function lintStage({ stage, configPath, files, typeAware, naming, environment, t
     );
     return eslintShapedResults(stage, report.diagnostics, naming);
   });
+}
+
+function skipNotices(projectRoot, projectConfigPath, configErrors) {
+  if (configErrors.length === 0) return [];
+  const sources = projectConfigPath === undefined ? [] : lintConfigSources(projectConfigPath);
+  return [typeAwareSkipNotice({ configErrors, sources, projectRoot })];
 }
 
 function argumentChunks(files) {

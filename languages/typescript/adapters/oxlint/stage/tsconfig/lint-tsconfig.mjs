@@ -5,6 +5,29 @@ import { relativeLocation } from './relative-paths.mjs';
 import { typeScript7Options } from './typescript7-options.mjs';
 
 export function lintTypeScriptConfig(projectConfigPath) {
+  const { config, directory, extended, parsed } = parseLintConfig(projectConfigPath);
+  const layers = [...extended.values()].map((entry) => entry.extendedConfig?.raw);
+  const options = flattenedOptions([...layers, config], parsed.options, directory);
+  const context = { directory, resolvedOptions: parsed.options };
+  return JSON.stringify({
+    compilerOptions: { ...typeScript7Options(options, context), noEmit: true },
+    files: parsed.fileNames.map((fileName) => relativeLocation(directory, fileName)),
+    ...(config.references === undefined ? {} : { references: config.references }),
+  });
+}
+
+export function lintConfigSources(projectConfigPath) {
+  const { config, extended } = parseLintConfig(projectConfigPath);
+  return [
+    ...[...extended].map(([file, entry]) => ({
+      file,
+      options: entry.extendedConfig?.raw?.compilerOptions ?? {},
+    })),
+    { file: projectConfigPath, options: config.compilerOptions ?? {} },
+  ];
+}
+
+function parseLintConfig(projectConfigPath) {
   const { config, error } = ts.parseConfigFileTextToJson(
     projectConfigPath,
     readFileSync(projectConfigPath, 'utf8'),
@@ -24,14 +47,7 @@ export function lintTypeScriptConfig(projectConfigPath) {
     undefined,
     extended,
   );
-  const layers = [...extended.values()].map((entry) => entry.extendedConfig?.raw);
-  const options = flattenedOptions([...layers, config], parsed.options, directory);
-  const context = { directory, resolvedOptions: parsed.options };
-  return JSON.stringify({
-    compilerOptions: { ...typeScript7Options(options, context), noEmit: true },
-    files: parsed.fileNames.map((fileName) => relativeLocation(directory, fileName)),
-    ...(config.references === undefined ? {} : { references: config.references }),
-  });
+  return { config, directory, extended, parsed };
 }
 
 function flattenedOptions(layers, resolvedOptions, directory) {

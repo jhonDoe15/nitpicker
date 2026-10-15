@@ -22,7 +22,7 @@ import {
 } from '../../../core/tooling/tool-resolution.mjs';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
-import { resolveDependencyHook } from './dependency-hooks.mjs';
+import { installedDependencies, resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import {
   prettierPrecedence,
@@ -478,12 +478,11 @@ function validatePreparedDependencies(mode, dependencyPath, liveProjectRoot, dep
 }
 
 function linkDependencies(options, dependencyHook) {
-  if (options.projectRoot === (options.liveProjectRoot ?? PACKAGE_ROOT)) {
+  const liveRoot = options.liveProjectRoot ?? PACKAGE_ROOT;
+  const dependencyRoot = installedDependencies(liveRoot, dependencyHook);
+  if (options.projectRoot === liveRoot || dependencyRoot === undefined) {
     return undefined;
   }
-  const dependencyRoot = realpathSync(
-    path.join(options.liveProjectRoot ?? PACKAGE_ROOT, dependencyHook.directory),
-  );
   const linkPath = path.join(options.projectRoot, dependencyHook.directory);
   if (existsSync(linkPath)) {
     const entry = lstatSync(linkPath);

@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, rmSync } from 'node:fs';
+import { existsSync, lstatSync, realpathSync, rmSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -49,4 +49,21 @@ export function resolveDependencyHook(language = 'typescript') {
     throw new Error(`No dependency preparation hook for language: ${language}`);
   }
   return hook;
+}
+
+export function installedDependencies(liveProjectRoot, hook = resolveDependencyHook()) {
+  const dependencyPath = path.join(liveProjectRoot, hook.directory);
+  return existsSync(dependencyPath) && statSync(dependencyPath).isDirectory()
+    ? realpathSync(dependencyPath)
+    : undefined;
+}
+
+export function requiredDependencies(liveProjectRoot, hook = resolveDependencyHook()) {
+  const dependencyRoot = installedDependencies(liveProjectRoot, hook);
+  if (dependencyRoot === undefined) {
+    throw new Error(
+      `Dependencies are not installed: ${path.join(liveProjectRoot, hook.directory)} is missing. Run npm ci first.`,
+    );
+  }
+  return dependencyRoot;
 }
