@@ -9,8 +9,17 @@ export function withHint(rule, hint) {
   };
 }
 
+const closingPunctuation = /[.!?:;]$/u;
+
+function withSentenceEnd(text) {
+  const trimmed = text.trimEnd();
+  return closingPunctuation.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
 function hintedMessages(messages, hint) {
-  return Object.fromEntries(Object.entries(messages).map(([id, text]) => [id, `${text}${hint}`]));
+  return Object.fromEntries(
+    Object.entries(messages).map(([id, text]) => [id, `${withSentenceEnd(text)}${hint}`]),
+  );
 }
 
 function hintedContext(context, hint) {
@@ -22,7 +31,7 @@ function hintedContext(context, hint) {
 function hintedDescriptor(descriptor, hint) {
   return descriptor.message === undefined
     ? descriptor
-    : { ...descriptor, message: `${descriptor.message}${hint}` };
+    : { ...descriptor, message: `${withSentenceEnd(descriptor.message)}${hint}` };
 }
 
 function omit(object, keys) {

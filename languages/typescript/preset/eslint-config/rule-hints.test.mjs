@@ -22,6 +22,18 @@ const plainMessageRule = {
   }),
 };
 
+function ruleReporting(text) {
+  return {
+    meta: { type: 'problem', schema: [], messages: { byId: text } },
+    create: (context) => ({
+      Program(node) {
+        context.report({ node, messageId: 'byId' });
+        context.report({ node, message: text });
+      },
+    }),
+  };
+}
+
 const optionsRule = {
   meta: { type: 'problem', schema: [{ type: 'string' }], messages: { seen: 'Option {{value}}.' } },
   create: (context) => ({
@@ -50,6 +62,22 @@ describe('withHint', () => {
   it('appends the hint to messages that are reported as text', () => {
     expect(messagesOf(withHint(plainMessageRule, hint), 'foo;')).toEqual([
       `Plain text of foo;.${hint}`,
+    ]);
+  });
+
+  it.each([
+    [
+      'no closing punctuation',
+      'Cannot access refs during render',
+      'Cannot access refs during render.',
+    ],
+    ['a closing period', 'Cannot access refs during render.', 'Cannot access refs during render.'],
+    ['a question mark', 'Is this a ref?', 'Is this a ref?'],
+    ['trailing space', 'Cannot access refs during render ', 'Cannot access refs during render.'],
+  ])('ends a message with %s as one sentence before the hint', (_name, text, sentence) => {
+    expect(messagesOf(withHint(ruleReporting(text), hint), 'foo;')).toEqual([
+      `${sentence}${hint}`,
+      `${sentence}${hint}`,
     ]);
   });
 
