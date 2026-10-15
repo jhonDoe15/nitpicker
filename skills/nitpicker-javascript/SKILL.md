@@ -63,7 +63,7 @@ If your change edits a function that existed before it, read
 - Export only what another module imports: an exported function or `@typedef` that nothing imports
   fails dead-code.
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
-  outside the preset: a project holding them under its roots is a config error.
+  outside the preset.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
 
