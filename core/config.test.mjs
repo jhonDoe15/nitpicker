@@ -369,7 +369,7 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
