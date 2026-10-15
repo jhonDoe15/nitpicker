@@ -118,6 +118,18 @@ describe('isLiteralSecret: values', () => {
       isLiteralSecret('app.client-secret', 'header'),
     ]).toEqual([false, false, true, true, true, true]);
   });
+
+  it('skips algorithm and identifier values for an owner key, not for a named secret key', () => {
+    expect([
+      isLiteralSecret('jwt.key', 'RS256'),
+      isLiteralSecret('encryption.key', 'AES256'),
+      isLiteralSecret('api.key', 'read'),
+      isLiteralSecret('signing.key', 'SECRET_KEY_ID'),
+      isLiteralSecret('jwt.key', 'c2VjcmV0LWtleS0xMjM0NTY3ODkw'),
+      isLiteralSecret('app.api-key', 'read'),
+      isLiteralSecret('app.api-key', 'AKIAIOSFODNN7EXAMPLE'),
+    ]).toEqual([false, false, false, false, true, true, true]);
+  });
 });
 
 describe('credentialUrl', () => {
@@ -129,6 +141,11 @@ describe('credentialUrl', () => {
     'amqp://:Sup3rS3cret@broker',
     'https://example.com/hook?token=abc123',
     '${DB_URL:jdbc:postgresql://db/shop?password=Sup3rS3cret}',
+    'https://api.example.com/v1?access_token=abc123',
+    'https://login.example.com/token?client_secret=abc123',
+    'jdbc:postgresql://db/shop?sslpassword=abc123',
+    'jdbc:oracle:thin:scott/tiger@db:1521:orcl',
+    'jdbc:oracle:thin:scott/tiger@//db:1521/shop',
   ])('flags %s', (value) => {
     expect(credentialUrl(value)).toBe(true);
   });
@@ -142,6 +159,13 @@ describe('credentialUrl', () => {
     'https://example.com:8443/path',
     'https://example.com/a?passwordless=true',
     'password=abc',
+    'https://api.example.com/v1?token={token}',
+    'https://api.example.com/v1?token=%s',
+    'https://api.example.com/v1?api_key=<api-key>',
+    'https://user:{0}@example.com',
+    'https://api.example.com/v1?token_type=bearer',
+    'jdbc:oracle:thin:@db:1521:orcl',
+    'jdbc:oracle:thin:@//db:1521/shop',
   ])('does not flag %j', (value) => {
     expect(credentialUrl(value)).toBe(false);
   });

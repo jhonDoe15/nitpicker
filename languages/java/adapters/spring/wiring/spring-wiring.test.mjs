@@ -45,7 +45,7 @@ function problems(files) {
 }
 
 describe('missing-enable', () => {
-  it('reports the first use of an annotation nobody enables', () => {
+  it('reports a use of an annotation nobody enables', () => {
     expect(problems({ [`${MAIN}/Jobs.java`]: SCHEDULED })).toEqual([
       {
         path: `${MAIN}/Jobs.java`,
@@ -55,6 +55,60 @@ describe('missing-enable', () => {
           '@Scheduled does nothing: no class has @EnableScheduling. Add @EnableScheduling to one @Configuration class.',
       },
     ]);
+  });
+
+  it('reports every use in a file, not only the first', () => {
+    const twice = SCHEDULED.replace(
+      '  void run() {}',
+      '  void run() {}\n  @Scheduled(fixedDelay = 5)\n  void other() {}',
+    );
+
+    expect(problems({ [`${MAIN}/Jobs.java`]: twice }).map(({ line }) => line)).toEqual([4, 6]);
+  });
+
+  it('scans Kotlin sources for uses and enabling annotations', () => {
+    const kotlin = [
+      'package demo',
+      'import org.springframework.scheduling.annotation.Scheduled',
+      'class Jobs {',
+      '  @Scheduled(fixedDelay = 1000)',
+      '  fun run() {}',
+      '}',
+    ].join('\n');
+    const config =
+      'package demo\nimport org.springframework.scheduling.annotation.EnableScheduling\n@EnableScheduling\nclass C';
+
+    expect(
+      springWiringProblems(sources({ 'src/main/kotlin/demo/Jobs.kt': kotlin }), [
+        'src/main/kotlin',
+      ]),
+    ).toEqual([
+      {
+        path: 'src/main/kotlin/demo/Jobs.kt',
+        line: 4,
+        key: 'enable-scheduling',
+        message:
+          '@Scheduled does nothing: no class has @EnableScheduling. Add @EnableScheduling to one @Configuration class.',
+      },
+    ]);
+    expect(
+      springWiringProblems(
+        sources({ 'src/main/kotlin/demo/Jobs.kt': kotlin, 'src/main/kotlin/demo/C.kt': config }),
+        ['src/main/kotlin'],
+      ),
+    ).toEqual([]);
+  });
+
+  it('is satisfied by XML annotation-driven configuration in the resources', () => {
+    const xml =
+      '<beans xmlns:task="http://www.springframework.org/schema/task">\n  <task:annotation-driven/>\n</beans>';
+    const root = sources({
+      [`${MAIN}/Jobs.java`]: SCHEDULED,
+      'src/main/resources/context.xml': xml,
+    });
+
+    expect(springWiringProblems(root, sourceRoots, ['src/main/resources'])).toEqual([]);
+    expect(springWiringProblems(root, sourceRoots)).toHaveLength(1);
   });
 
   it('is satisfied by one enabling class anywhere in the main sources', () => {

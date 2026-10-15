@@ -7,6 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.ConfigurableEnvironment;
+import org.springframework.core.env.Environment;
 
 @Configuration(proxyBeanMethods = false)
 public class SecretsConfig {
@@ -26,11 +27,22 @@ public class SecretsConfig {
   }
 
   @Bean
+  String lowercase(@Value("${app.token:changeme}") String token) { // violation: SpringValueSecretDefault
+    return token;
+  }
+
+  @Bean
+  String fromEnvironment(Environment environment) {
+    return environment.getProperty("app.client-secret", "changeme"); // violation: SpringValueSecretDefault
+  }
+
+  @Bean
   String required(
       @Value("${jwt.secret}") String secret,
       @Value("${jwt.secret:}") String optional,
       @Value("${auth.token-type:bearer}") String type,
-      @Value("${auth.reset-token:header}") String where,
+      @Value("${auth.token-ttl:3600}") String ttl,
+      @Value("${app.secret-name:signing}") String secretName,
       @Value("${app.region:eu}") String region,
       @Value("${db.password:${DB_PASSWORD}}") String password,
       @Value("${db.passwordless:true}") String passwordless) {
