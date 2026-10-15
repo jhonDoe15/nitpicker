@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { validateConfig } from '../config.mjs';
 import {
   commitAll,
   runTypescript,
@@ -16,7 +17,7 @@ const enforceable = (result) =>
     .json('new-findings.json')
     .filter(({ classification }) => classification === 'enforceable')
     .map(({ rule, symbol }) => [rule, symbol]);
-const config = (...exceptions) => `${JSON.stringify({ exceptions })}\n`;
+const config = (...exceptions) => `${JSON.stringify(validateConfig({ exceptions }))}\n`;
 const lifted = {
   rule: 'function-parameters-limit',
   paths: ['src/main/a.ts'],
@@ -87,7 +88,7 @@ describe('exceptions in the differential gate', () => {
     const result = runTypescript(root, ['structure']);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.text).toContain(
+    expect(result.text.slice(result.text.indexOf('Note:'))).toBe(
       'Note: 1 exception matching no file (not failing; remove or fix it):\n  exceptions[1] (function-parameters-limit) matches no file: src/old/**\n',
     );
   });

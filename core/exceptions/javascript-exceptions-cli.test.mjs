@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { validateConfig } from '../config.mjs';
 import {
   commitAll,
   runTypescript,
@@ -10,7 +11,8 @@ import {
 useTypescriptCli();
 
 const WIDE = 'export function wide(a, b, c, d) {\n  return a + b + c + d;\n}\n';
-const config = (...exceptions) => `${JSON.stringify({ preset: 'javascript', exceptions })}\n`;
+const config = (...exceptions) =>
+  `${JSON.stringify(validateConfig({ preset: 'javascript', exceptions }))}\n`;
 
 describe('exceptions with "preset": "javascript"', () => {
   it('names the entry that accepts a wide function, and the entry accepts it', () => {

@@ -1,27 +1,11 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { createGitRepository, removeGitRepositories } from '../diff/fixtures/git-repository.mjs';
 import { staleExceptionLines } from './stale-exceptions.mjs';
 
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(removeGitRepositories);
 
 function repository(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-stale-')));
-  roots.push(root);
-  execFileSync('git', ['init', '-q'], { cwd: root });
-  for (const file of files) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), '');
-  }
-  return root;
+  return createGitRepository(Object.fromEntries(files.map((file) => [file, '']))).root;
 }
 
 const entry = (rule, paths) => ({ rule, paths, reason: 'A reviewed reason.' });
