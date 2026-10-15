@@ -9,7 +9,7 @@ import {
   SIGN_NEGATIVE,
   SIGN_POSITIVE,
   signsTest,
-} from './python-preset-data.mjs';
+} from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   fixture,
@@ -20,7 +20,7 @@ import {
   removeRepositories,
   repository,
   write,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 
 describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', () => {
   let project;

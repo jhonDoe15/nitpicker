@@ -12,7 +12,7 @@ import {
   restoreTemporaryState,
   setEnvironment,
   temporaryRoot,
-} from './python-tools-project.mjs';
+} from './test-support/python-tools-project.mjs';
 
 afterEach(restoreTemporaryState);
 
