@@ -51,6 +51,7 @@ export const rule = {
     type: 'problem',
     docs: {
       description: 'Disallow fetching data inside useEffect',
+      requiresTypeChecking: true,
     },
     schema: [],
     messages: {

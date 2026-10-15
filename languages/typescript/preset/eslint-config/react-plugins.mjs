@@ -12,18 +12,30 @@ import {
   testingLibraryHints,
 } from './react-rules.mjs';
 import { accessibilityOptionOverrides } from './react/accessibility-rules.mjs';
-import { reactDomHints, reactWebApiHints, reactXHints } from './react/third-party-rules.mjs';
+import {
+  reactDomHints,
+  reactWebApiHints,
+  reactXHints,
+  typedReactXRules,
+} from './react/third-party-rules.mjs';
 import { withHint, withoutFixes } from './rule-hints.mjs';
 import { createdByCallOnly } from './react/static-components.mjs';
 
 const accessibilityRulePrefix = 'jsx-a11y-x';
 
-function hintedRules(plugin, hints) {
+function typeChecked(rule) {
+  return {
+    ...rule,
+    meta: { ...rule.meta, docs: { ...rule.meta.docs, requiresTypeChecking: true } },
+  };
+}
+
+function hintedRules(plugin, hints, typedNames = []) {
   return Object.fromEntries(
-    Object.entries(hints).map(([name, hint]) => [
-      name,
-      withoutFixes(withHint(plugin.rules[name], hint)),
-    ]),
+    Object.entries(hints).map(([name, hint]) => {
+      const rule = withoutFixes(withHint(plugin.rules[name], hint));
+      return [name, typedNames.includes(name) ? typeChecked(rule) : rule];
+    }),
   );
 }
 
@@ -49,6 +61,7 @@ export const reactPlugins = {
           },
         },
         reactXHints,
+        typedReactXRules,
       ),
       'no-class-component': withHint(reactX.rules['no-class-component'], GENERAL_HINT),
       'no-array-index-key': withHint(
