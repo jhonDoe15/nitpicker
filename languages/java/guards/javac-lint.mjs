@@ -61,13 +61,24 @@ function lintNotRun(reportRoot) {
   ];
 }
 
+function projectFileCheck(projectRoot) {
+  const known = new Map();
+  return (file) => {
+    if (!known.has(file)) {
+      known.set(file, existsSync(path.join(projectRoot, file)));
+    }
+    return known.get(file);
+  };
+}
+
 export function readLintFindings(reportRoot, { projectRoot }) {
   const report = path.join(reportRoot, LINT_REPORT);
   if (!existsSync(report)) {
     return lintNotRun(reportRoot);
   }
   const unique = createIdentityCounter();
+  const inProject = projectFileCheck(projectRoot);
   return parseLintWarnings(readFileSync(report, 'utf8'))
-    .filter(({ file }) => existsSync(path.join(projectRoot, file)))
+    .filter(({ file }) => inProject(file))
     .map((warning) => warningFinding(warning, unique));
 }
