@@ -125,16 +125,6 @@ public final class Bad {
 }
 `;
 
-export // What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required).
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
-
-export const CHECKSTYLE_ON_BAD = [
-  'blocks.EmptyCatchBlockCheck',
-  'indentation.IndentationCheck',
-  'regexp.RegexpSinglelineJavaCheck',
-  'whitespace.EmptyLineSeparatorCheck',
-];
-
 export // Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
 // with otherwise clean code.
 const STAMP = `package demo;

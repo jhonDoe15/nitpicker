@@ -1,103 +1,25 @@
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import {
-  mkdirSync,
-  writeFileSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  cpSync,
-  rmSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
-import { runCli } from '../../../../core/cli.mjs';
-import { describe, beforeAll, afterAll, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   GREETER_HI,
   GREETER_HI_TEST,
+  HIDDEN_ERROR,
   LEGACY_MOVED,
-  VIOLATION,
-  TYPE_ERROR,
   ONE_WAY_VIOLATIONS,
+  TYPE_ERROR,
+  VIOLATION,
   WEAKENED_MYPY,
   WEAKENED_PYRIGHT,
-  HIDDEN_ERROR,
-  LEGACY_WEAKER,
-  PRICING_WITH_UNUSED,
-  PRICING_TEST,
-  PRICING,
-  PRICING_FULL_TEST,
-} from '../fixtures/python-preset-data.mjs';
-
-// End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
-// ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
-// environments), so it only runs with NITPICKER_PYTHON_E2E=1 (`npm run test:python`).
-
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-
-export const fixture = path.resolve(
-  new URL('../', import.meta.url).pathname,
-  'fixtures/python-project',
-);
-
-const gitEnvironment = {
-  ...process.env,
-  GIT_AUTHOR_NAME: 'test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-function command(cwd, program, args) {
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', env: gitEnvironment });
-  if (result.status !== 0) {
-    throw new Error(`${program} ${args.join(' ')} failed: ${result.stderr}${result.stdout}`);
-  }
-}
-
-function git(root, ...args) {
-  command(root, 'git', args);
-}
-
-function write(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-}
-
-function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
-  write(root, files);
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', name);
-}
-
-function gate(root, branch, extra = []) {
-  git(root, 'checkout', '-q', branch);
-  const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
-  const output = { text: '' };
-  const exitCode = runCli({
-    arguments_: ['--base', 'main', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    stderr: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    progress: { write: () => undefined },
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, json, text: output.text, reports };
-}
+} from './python-preset-data.mjs';
+import {
+  commitBranch,
+  fixtureRepository,
+  gate,
+  pythonE2eEnabled,
+  removeRepositories,
+  summarize,
+} from './python-e2e-support.mjs';
 
 const enforceable = (result) =>
   summarize(
@@ -108,39 +30,10 @@ const enforceable = (result) =>
 
 const withoutMutants = (summaries) => summaries.filter((summary) => !summary.startsWith('mutmut '));
 
-const summarize = (findings) =>
-  findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
-
-const roots = [];
-
-function repository() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-')));
-  roots.push(root);
-  return root;
-}
-
-describe.skipIf(!enabled)('Python preset end to end', () => {
+describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end to end', () => {
   let project;
   beforeAll(() => {
-    project = repository();
-    cpSync(fixture, project, { recursive: true });
-    git(project, 'init', '-q', '-b', 'main');
-    git(project, 'add', '-A');
-    git(project, 'commit', '-q', '-m', 'base with one legacy violation');
-    command(project, 'uv', ['venv', '-q', '.venv']);
-    command(project, 'uv', [
-      'pip',
-      'install',
-      '-q',
-      '--python',
-      '.venv',
-      '-e',
-      '.',
-      'coverage',
-      'mutmut',
-      'pytest',
-      'mypy',
-    ]);
+    project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
     commitBranch(project, 'clean', {
       'src/demo/greeter.py': GREETER_HI,
       'tests/test_greeter.py': GREETER_HI_TEST,
@@ -176,27 +69,8 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       'pyrightconfig.json': `${WEAKENED_PYRIGHT}\n`,
     });
     commitBranch(project, 'hidden-from-types', { 'src/demo/hidden.py': HIDDEN_ERROR });
-    commitBranch(project, 'weaker-source', { 'src/demo/legacy.py': LEGACY_WEAKER });
-    commitBranch(project, 'survivors', {
-      'src/demo/pricing.py': PRICING_WITH_UNUSED,
-      'tests/test_pricing.py': PRICING_TEST,
-    });
-    commitBranch(project, 'killed', {
-      'src/demo/pricing.py': PRICING,
-      'tests/test_pricing.py': PRICING_FULL_TEST,
-    });
-    commitBranch(project, 'failing-tests', {
-      'tests/test_greeter.py': GREETER_HI_TEST,
-    });
-    commitBranch(project, 'broken-environment', {
-      'nitpicker.config.json': '{ "preset": "python", "python": { "environment": "nowhere" } }\n',
-    });
   });
-  afterAll(() => {
-    for (const root of roots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+  afterAll(removeRepositories);
   it('passes a change that alters behaviour: base tests run against base code, not the editable head install', () => {
     const result = gate(project, 'clean');
 
@@ -310,50 +184,28 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
     expect(result.text).toMatch(/Remove the decorator and annotate the code/);
   });
-  it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
-    const result = gate(project, 'survivors');
+  it('reports line coverage as a descriptive finding', () => {
+    const result = gate(project, 'violation');
 
-    expect(result.exitCode, result.text).toBe(1);
-    const mutants = result
-      .json('new-findings.json')
-      .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary');
-    expect(new Set(mutants.map(({ rule }) => rule))).toEqual(
-      new Set(['mutant-survived', 'mutant-nocoverage']),
-    );
-    expect(new Set(mutants.map(({ path: file }) => file))).toEqual(
-      new Set(['src/demo/pricing.py']),
-    );
-    expect(mutants.find(({ rule }) => rule === 'mutant-survived')).toEqual({
-      tool: 'mutmut',
-      rule: 'mutant-survived',
-      path: 'src/demo/pricing.py',
-      identity: 'discount|-→+#1',
-      message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
-      classification: 'enforceable',
-      symbol: 'discount',
-      location: { line: 2 },
-    });
-  });
-  it('passes new code whose mutants are all killed', () => {
-    const result = gate(project, 'killed');
-
-    expect(result.exitCode, result.text).toBe(0);
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary'),
-    ).toEqual([]);
-  });
-  it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
-    const result = gate(project, 'weaker-source');
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable')
-        .map(({ tool, rule, symbol }) => `${tool} ${rule} ${symbol}`),
-    ).toEqual(['mutmut mutant-survived value']);
+    expect(result.json('new-findings.json').filter(({ tool }) => tool === 'coverage')).toEqual([
+      {
+        tool: 'coverage',
+        rule: 'line-coverage',
+        path: 'src/demo/bad.py',
+        identity: 'line-coverage',
+        message: 'line-coverage 0% (0/3)',
+        classification: 'descriptive',
+        metric: { name: 'line-coverage', value: 0 },
+      },
+      {
+        tool: 'coverage',
+        rule: 'uncovered-function',
+        path: 'src/demo/bad.py',
+        identity: expect.any(String),
+        message: 'Function f is not covered',
+        classification: 'descriptive',
+        symbol: 'f',
+      },
+    ]);
   });
 });

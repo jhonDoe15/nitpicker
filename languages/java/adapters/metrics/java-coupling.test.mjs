@@ -1,12 +1,3 @@
-import {
-  expectedOutput65_21,
-  expectedOutput66_79,
-  expectedOutput76_41,
-  expectedOutput83_41,
-  expectedOutput84_40,
-  expectedOutput85_39,
-  expectedOutput86_41,
-} from '../../../../core/diff/fixtures/expected-output/languages-java-adapters-java-coupling.mjs';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -71,20 +62,90 @@ describe('analyzeJavaCoupling', () => {
 
     expect(report.summary).toEqual({ modules: 7, dependencies: 8, packages: 5 });
     const stableS = report.modules.find((entry) => entry.file.endsWith('/stable/S.java'));
-    expect(stableS).toEqual(expectedOutput65_21());
-    expect(report.modules.find((entry) => entry.file.endsWith('/Main.java'))).toEqual(
-      expectedOutput66_79(),
-    );
+    expect(stableS).toEqual({
+      file: 'src/main/java/stable/S.java',
+      fanIn: 3,
+      fanOut: 2,
+      totalCoupling: 5,
+      instability: 0.4,
+    });
+    expect(report.modules.find((entry) => entry.file.endsWith('/Main.java'))).toEqual({
+      file: 'src/main/java/Main.java',
+      fanIn: 0,
+      fanOut: 1,
+      totalCoupling: 1,
+      instability: 1,
+    });
   });
 
   it('computes package fan-in, fan-out and instability from files outside the package', () => {
     const report = analyze();
 
-    expect(packageOf(report, 'client')).toEqual(expectedOutput76_41());
-    expect(packageOf(report, 'stable')).toEqual(expectedOutput83_41());
-    expect(packageOf(report, 'churn')).toEqual(expectedOutput84_40());
-    expect(packageOf(report, 'leaf')).toEqual(expectedOutput85_39());
-    expect(packageOf(report, '(root)')).toEqual(expectedOutput86_41());
+    expect(packageOf(report, 'client')).toEqual({
+      name: 'client',
+      modules: 3,
+      fanIn: 1,
+      fanOut: 1,
+      instability: 0.5,
+      cohesion: {
+        internalEdges: 1,
+        edgeDensity: 0.1667,
+        connectedComponents: 2,
+        largestComponentShare: 0.6667,
+      },
+    });
+    expect(packageOf(report, 'stable')).toEqual({
+      name: 'stable',
+      modules: 1,
+      fanIn: 3,
+      fanOut: 2,
+      instability: 0.4,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: null,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
+    expect(packageOf(report, 'churn')).toEqual({
+      name: 'churn',
+      modules: 1,
+      fanIn: 1,
+      fanOut: 1,
+      instability: 0.5,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: null,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
+    expect(packageOf(report, 'leaf')).toEqual({
+      name: 'leaf',
+      modules: 1,
+      fanIn: 2,
+      fanOut: 0,
+      instability: 0,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: null,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
+    expect(packageOf(report, '(root)')).toEqual({
+      name: '(root)',
+      modules: 1,
+      fanIn: 0,
+      fanOut: 1,
+      instability: 1,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: null,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
   });
 
   it('lists package edges that point at a less stable package', () => {

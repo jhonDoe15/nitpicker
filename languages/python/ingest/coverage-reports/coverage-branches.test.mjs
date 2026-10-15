@@ -7,7 +7,8 @@ import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lin
 import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
 import { ingestCoverageBranches } from './coverage-branches.mjs';
 
-const fixture = (name) => readFileSync(path.join(import.meta.dirname, '..', 'fixtures', name), 'utf8');
+const fixture = (name) =>
+  readFileSync(path.join(import.meta.dirname, '..', 'fixtures', name), 'utf8');
 const report = fixture('coverage-branches.json');
 const SOURCE = fixture('branches.py');
 const FILE = 'src/demo/branches.py';
@@ -27,7 +28,7 @@ describe('ingestCoverageBranches', () => {
   it('reports every line with branch coverage below 95%, and only those', () => {
     const findings = ingest();
 
-    expect(findings.map((f) => [f.location.line, f.message])).toEqual([
+    expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
       [
         2,
         "Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can't happen. To exempt a file, add it to exclude in nitpicker.config.json.",
@@ -47,18 +48,18 @@ describe('ingestCoverageBranches', () => {
     ]);
     expect(
       findings.every(
-        (f) =>
-          f.tool === 'coverage-py' &&
-          f.rule === 'changed-branch-coverage' &&
-          f.path === FILE &&
-          f.classification === 'enforceable',
+        (finding) =>
+          finding.tool === 'coverage-py' &&
+          finding.rule === 'changed-branch-coverage' &&
+          finding.path === FILE &&
+          finding.classification === 'enforceable',
       ),
     ).toBe(true);
     expect(() => parseAnalyzerReport({ findings }, 'python')).not.toThrow();
   });
 
   it('honors the minimum and tool options', () => {
-    expect(ingest({ minimum: 40 }).map((f) => f.location.line)).toEqual([13]);
+    expect(ingest({ minimum: 40 }).map((finding) => finding.location.line)).toEqual([13]);
     expect(ingest({ tool: 'cov' })[0].tool).toBe('cov');
   });
 
@@ -77,7 +78,7 @@ describe('ingestCoverageBranches', () => {
     expect(ingest({}, JSON.stringify({ files: { [FILE]: {} } }))).toEqual([]);
     expect(
       ingest({}, reportOf([[2, 3], 'x', [4], [null, 5]], [['a', 1], 7, [2, 4], [2, 6]])).map(
-        (f) => f.location.line,
+        (finding) => finding.location.line,
       ),
     ).toEqual([2]);
     expect(ingest({ sourceText: () => '\n\n' })).toEqual([]);
@@ -115,7 +116,7 @@ describe('ingestCoverageBranches', () => {
       sourceText: () => SOURCE,
     }).findings;
 
-    expect(findings.map((f) => f.path)).toEqual([FILE]);
+    expect(findings.map((finding) => finding.path)).toEqual([FILE]);
   });
 
   it.each(['{}', '[]', 'null', '{"files": 3}', '{"files": null}'])('rejects %s', (text) => {
@@ -150,7 +151,9 @@ describe('ingestCoverageBranches', () => {
       sourceText: () => `# header\n# more\n${SOURCE}`,
     }).findings;
 
-    expect(after.map((f) => f.identity)).toEqual(before.map((f) => f.identity));
+    expect(after.map((finding) => finding.identity)).toEqual(
+      before.map((finding) => finding.identity),
+    );
     expect(after[0].location.line).toBe(before[0].location.line + 2);
     for (const finding of before) {
       expect(finding.identity).toMatch(/^branch-source:[0-9a-f]{16}(#\d+)?$/);
@@ -181,8 +184,8 @@ describe('ingestCoverageBranches', () => {
       sourceText: () => source,
     }).findings;
 
-    expect(new Set(findings.map((f) => f.identity)).size).toBe(4);
-    expect(findings.every((f) => !f.identity.includes('#'))).toBe(true);
+    expect(new Set(findings.map((finding) => finding.identity)).size).toBe(4);
+    expect(findings.every((finding) => !finding.identity.includes('#'))).toBe(true);
   });
 
   it('tells identical lines apart by order and ignores indentation and spacing', () => {
@@ -201,8 +204,12 @@ describe('ingestCoverageBranches', () => {
 
     const findings = ingestCoverageBranches(text, { sourceText: () => source }).findings;
 
-    expect(findings.map((f) => f.identity.replace(/^[^#]+/, ''))).toEqual(['', '#2', '#3']);
-    expect(new Set(findings.map((f) => f.identity.split('#')[0])).size).toBe(1);
+    expect(findings.map((finding) => finding.identity.replace(/^[^#]+/, ''))).toEqual([
+      '',
+      '#2',
+      '#3',
+    ]);
+    expect(new Set(findings.map((finding) => finding.identity.split('#')[0])).size).toBe(1);
   });
 });
 
@@ -231,10 +238,10 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -13 +13 @@')),
     });
 
-    expect(result.newFindings.map((f) => f.location.line)).toEqual([13]);
-    expect(result.unchangedFindings.map((f) => f.location.line).sort((a, b) => a - b)).toEqual([
-      2, 5, 7,
-    ]);
+    expect(result.newFindings.map((finding) => finding.location.line)).toEqual([13]);
+    expect(
+      result.unchangedFindings.map((finding) => finding.location.line).sort((a, b) => a - b),
+    ).toEqual([2, 5, 7]);
   });
 
   it('fails a newly added uncovered branch', () => {
@@ -244,7 +251,7 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -12,0 +13,3 @@')),
     });
 
-    expect(added.newFindings.map((f) => f.location.line)).toEqual([13]);
+    expect(added.newFindings.map((finding) => finding.location.line)).toEqual([13]);
   });
 
   it('keeps a legacy gap baselined when an identical line is added above it in another function', () => {
@@ -265,8 +272,8 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -0,0 +1,6 @@')),
     });
 
-    expect(result.newFindings.map((f) => f.location.line)).toEqual([2]);
-    expect(result.unchangedFindings.map((f) => f.location.line)).toEqual([8]);
+    expect(result.newFindings.map((finding) => finding.location.line)).toEqual([2]);
+    expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([8]);
   });
 
   it('applies to the Python tool only, not to the TypeScript coverage check of the same rule', () => {
