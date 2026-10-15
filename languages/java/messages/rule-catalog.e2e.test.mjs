@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../adapters/java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../adapters/fixtures/gradle-e2e.mjs';
+import { GRADLE_STEP_TIMEOUT_MS } from '../adapters/test-support/gradle-e2e.mjs';
 import { readCatalog } from './rule-messages.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

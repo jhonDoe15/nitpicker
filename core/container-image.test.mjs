@@ -12,6 +12,27 @@ const instructions = dockerfile
   .map((line) => line.trim())
   .filter((line) => line !== '' && !line.startsWith('#'));
 
+const expectedCopyInstructions = [
+  'COPY core/ /opt/nitpicker/core/',
+  'COPY languages/ /opt/nitpicker/languages/',
+  'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
+  'COPY shared/ /opt/nitpicker/shared/',
+];
+const expectedDockerignoreLines = [
+  '',
+  '**/*.test.mjs',
+  '**/.nitpicker-*',
+  '**/.stryker-tmp',
+  '**/coverage',
+  '**/fixtures',
+  '**/node_modules',
+  '**/reports',
+  '.claude',
+  '.git',
+  '.github',
+  'docs',
+];
+
 function instruction(name) {
   return instructions.filter((line) => line.startsWith(`${name} `));
 }
@@ -27,14 +48,7 @@ describe('container image Dockerfile', () => {
   });
 
   it('installs the package from the repo source and exposes the nitpicker binary', () => {
-    expect(instruction('COPY')).toEqual(
-      expect.arrayContaining([
-        'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
-        'COPY core/ /opt/nitpicker/core/',
-        'COPY shared/ /opt/nitpicker/shared/',
-        'COPY languages/ /opt/nitpicker/languages/',
-      ]),
-    );
+    expect([...new Set(instruction('COPY'))].sort()).toEqual(expectedCopyInstructions);
     expect(instruction('RUN').some((line) => line.includes('npm ci'))).toBe(true);
     expect(
       instruction('RUN').some((line) => line.includes('core/cli.mjs /usr/local/bin/nitpicker')),
@@ -54,9 +68,6 @@ describe('container image Dockerfile', () => {
   });
 
   it('keeps dependencies and reports out of the build context', () => {
-    const lines = dockerignore.split('\n');
-    expect(lines).toContain('.git');
-    expect(lines).toContain('**/node_modules');
-    expect(lines).toContain('**/reports');
+    expect([...new Set(dockerignore.split('\n'))].sort()).toEqual(expectedDockerignoreLines);
   });
 });

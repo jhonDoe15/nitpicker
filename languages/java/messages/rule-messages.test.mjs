@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { CONFIGURATION_FILES } from '../adapters/java-analyzer.mjs';
+import { configurationFiles } from '../adapters/java-analyzer.mjs';
 import {
   CATALOG_TOOLS,
   LAYOUT_FIX,
@@ -120,6 +120,6 @@ describe('rule catalogs', () => {
       .map((name) => `languages/java/messages/${name}`)
       .sort();
 
-    expect(CONFIGURATION_FILES.filter((file) => files.includes(file)).sort()).toEqual(files);
+    expect(configurationFiles().filter((file) => files.includes(file))).toEqual(files);
   });
 });
