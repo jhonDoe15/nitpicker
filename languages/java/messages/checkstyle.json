@@ -22,7 +22,7 @@
     "mayBeIntended": false
   },
   "AvoidEscapedUnicodeCharacters": {
-    "fix": "Write the real character in the UTF-8 source, for example é, instead of a \\u escape; keep an escape only for a control character.",
+    "fix": "Write the real character, such as é, in the UTF-8 source instead of a \\u escape; keep escapes only for control and invisible characters.",
     "mayBeIntended": true
   },
   "AvoidStarImport": {
@@ -61,12 +61,11 @@
     "mayBeIntended": false
   },
   "FallThrough": {
-    "fix": "End each case with break, return or throw, or merge the labels as case A, B ->; use an arrow switch to rule out fall-through.",
+    "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
     "mayBeIntended": false
   },
   "FileTabCharacter": {
-    "fix": null,
-    "layout": true,
+    "fix": "Run google-java-format for indentation tabs; inside a string, char literal or text block write the escape \\t instead of a real tab.",
     "mayBeIntended": false
   },
   "GenericWhitespace": {
@@ -92,7 +91,7 @@
     "mayBeIntended": false
   },
   "JavadocMethod": {
-    "fix": "Make the Javadoc match the signature: @param only for real parameter names, @throws only for declared exceptions, and @return only on non-void methods.",
+    "fix": "Make the Javadoc match the signature: @param only for real parameter names, and no @return on a void method or constructor.",
     "mayBeIntended": false
   },
   "JavadocParagraph": {
@@ -100,8 +99,9 @@
     "mayBeIntended": false
   },
   "JavadocTagContinuationIndentation": {
-    "fix": "Indent every continuation line of a Javadoc block tag at least 4 spaces past the asterisk.",
-    "mayBeIntended": false
+    "fix": null,
+    "mayBeIntended": false,
+    "layout": true
   },
   "LambdaParameterName": {
     "fix": "Name the lambda parameter lowerCamelCase, one letter or two or more characters with a lowercase or digit second, such as o or order.",
@@ -118,7 +118,7 @@
     "mayBeIntended": false
   },
   "LineLength": {
-    "fix": "Break the line at an operator or argument, or extract a long expression or string into a named local or constant.",
+    "fix": "Run google-java-format first; it wraps code, strings and comments. Then shorten what remains, such as a long name or a text-block line.",
     "mayBeIntended": true
   },
   "LocalVariableName": {
@@ -130,7 +130,7 @@
     "mayBeIntended": false
   },
   "MethodName": {
-    "fix": "Name methods lowerCamelCase, like rejectsNegativeQuantity; @Test methods may join lowerCamelCase parts with underscores, like evaluate_rightSide_validCases.",
+    "fix": "Name methods lowerCamelCase with a lowercase or digit second character (xCoord fails, total passes); @Test methods may join such parts with underscores.",
     "mayBeIntended": false
   },
   "MethodParamPad": {
@@ -143,7 +143,7 @@
     "mayBeIntended": false
   },
   "MissingJavadocMethod": {
-    "fix": "Add a Javadoc comment whose first sentence says what the method does, or leave a short method undocumented only if it is not public.",
+    "fix": "Add a Javadoc comment whose first sentence says what the method does.",
     "mayBeIntended": true
   },
   "MissingJavadocType": {
@@ -155,7 +155,7 @@
     "mayBeIntended": false
   },
   "ModifierOrder": {
-    "fix": "Order modifiers as public protected private abstract default static sealed non-sealed final transient volatile synchronized native strictfp.",
+    "fix": "Put every annotation before the modifier keywords, @Deprecated public void x(), not public @Deprecated; google-java-format then sorts the keywords.",
     "mayBeIntended": false
   },
   "MultipleVariableDeclarations": {
@@ -190,8 +190,9 @@
     "mayBeIntended": false
   },
   "OneStatementPerLine": {
-    "fix": "Put each statement on its own line.",
-    "mayBeIntended": false
+    "fix": null,
+    "mayBeIntended": false,
+    "layout": true
   },
   "OneTopLevelClass": {
     "fix": "Keep one top-level type per file; move the extra types to files of their own, or nest them inside the main type.",
@@ -236,13 +237,13 @@
     "mayBeIntended": false
   },
   "RegexpSinglelineJava": {
-    "fix": null,
-    "layout": true,
-    "mayBeIntended": false
+    "fix": "Write an empty block as {} with no space inside; if the match is inside a string or comment, remove the spaces between the braces there.",
+    "mayBeIntended": true
   },
   "RequireEmptyLineBeforeBlockTagGroup": {
-    "fix": "Put one empty Javadoc line (a bare asterisk) between the description and the first block tag such as @param.",
-    "mayBeIntended": false
+    "fix": null,
+    "mayBeIntended": false,
+    "layout": true
   },
   "RightCurlyAlone": {
     "fix": null,
@@ -280,8 +281,9 @@
     "mayBeIntended": false
   },
   "SingleLineJavadoc": {
-    "fix": "Keep a one-line Javadoc free of block tags like @param; write it over several lines, or use inline tags such as {@link Order}.",
-    "mayBeIntended": false
+    "fix": null,
+    "mayBeIntended": false,
+    "layout": true
   },
   "SummaryJavadoc": {
     "fix": "Start the Javadoc with a one-sentence summary ending in a period, and do not open with @return, This method returns or A {@code X} is a.",
