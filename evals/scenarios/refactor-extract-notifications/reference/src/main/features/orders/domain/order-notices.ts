@@ -8,11 +8,13 @@ import type { Message, Recipient } from '../../notifications/index.js';
 import { orderTotalCents } from './order.js';
 import type { Order } from './order.js';
 
+function lineText(line: Order['lines'][number]): string {
+  const total = formatMoney(line.quantity * line.unitCents);
+  return `${String(line.quantity)} x ${line.name} @ ${formatMoney(line.unitCents)} = ${total}`;
+}
+
 export function orderReceipt(order: Order, customer: Recipient, now: string): Message {
-  const items: readonly string[] = order.lines.map(
-    (line) =>
-      `${String(line.quantity)} x ${line.name} @ ${formatMoney(line.unitCents)} = ${formatMoney(line.quantity * line.unitCents)}`,
-  );
+  const items = order.lines.map(lineText);
   return receiptMessage({
     recipient: customer,
     now,
