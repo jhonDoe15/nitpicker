@@ -18,8 +18,9 @@ function prefixed(prefix, relativePath) {
 
 export function prefixedFinding(finding, prefix) {
   const findingPath = prefixed(prefix, finding.path);
-  const retarget = (text) =>
-    text === undefined ? text : retargetSentence(text, finding.path, findingPath);
+  function retarget(text) {
+    return text === undefined ? text : retargetSentence(text, finding.path, findingPath);
+  }
   const { ratchet } = finding;
   return {
     ...finding,
