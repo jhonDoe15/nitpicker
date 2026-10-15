@@ -1,7 +1,7 @@
 import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule as noPartialOutputAssertion } from '../rules/no-partial-output-assertion.mjs';
+import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noSwitchedOffTests } from './no-switched-off-tests.mjs';
 
 Object.assign(RuleTester, {

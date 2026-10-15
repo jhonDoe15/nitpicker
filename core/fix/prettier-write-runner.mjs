@@ -6,7 +6,7 @@ import { prettierPrecedence } from '../../languages/typescript/preset/head-polic
 import {
   isIgnoredByLayers,
   layeredPrettierOptions,
-} from '../../languages/typescript/adapters/prettier-layers.mjs';
+} from '../../languages/typescript/adapters/prettier/prettier-layers.mjs';
 
 try {
   const input = JSON.parse(await text(process.stdin));

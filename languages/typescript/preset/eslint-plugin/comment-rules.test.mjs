@@ -1,7 +1,7 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { rule as noComments } from './rules/no-comments.mjs';
+import { rule as noComments } from './rules/modules/no-comments.mjs';
 
 RuleTester.afterAll = afterAll;
 RuleTester.afterEach = afterEach;
