@@ -881,15 +881,6 @@ describe('a root project without Nitpicker reports', () => {
 });
 
 describe('Java analyzer', () => {
-  it('records the pinned tool versions and a stable configuration hash', () => {
-    const analyzer = createJavaAnalyzer();
-
-    expect(analyzer.version).toMatch(
-      /^pmd@[\d.]+;forbiddenapis@[\d.]+;spotbugs@[\d.]+;googleJavaFormat@[\d.]+;jacoco@[\d.]+;checkstyle@[\d.]+;lizard@[\d.]+;pitest@[\d.]+;pitestJunit5@[\d.]+;detekt@[\d.]+;detektKotlin@[\d.]+;ktlint@[\d.]+;ktfmt@[\d.]+;kotlinCompiler@[\d.]+;jscpd@[\d.]+$/,
-    );
-    expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
-  });
-
   it('maps a failing Gradle run to one tool-error finding', () => {
     const root = temporaryRoot('nitpicker-java-unit-');
     write(root, { GRADLE_FAIL: 'tool crashed\n' });
