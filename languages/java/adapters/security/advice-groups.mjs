@@ -1,7 +1,7 @@
 import { PLATFORM_ADVICE } from './advice-platforms.mjs';
 
 const BIND =
-  'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA) and never build query text from input.';
+  'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input.';
 const SECRETS =
   'Read secrets from configuration or a secret store, never from a constant in the code.';
 const DTO = 'Return and accept a DTO record, not a JPA entity.';

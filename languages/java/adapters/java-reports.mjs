@@ -18,7 +18,12 @@ import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
-import { securitySubject, withSecurityMessages } from './security/security-advice.mjs';
+import {
+  securitySubject,
+  stableName,
+  withoutDuplicateSites,
+  withSecurityMessages,
+} from './security/security-advice.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -103,7 +108,7 @@ function springFindings({ projectRoot, manifest, sourceRoots }) {
 function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   const findings = [];
   function sarif(file, tool, { identityKey, rewrite = (log) => log }) {
-    const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
+    const log = readSarifLog(reportRoot, file);
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
     findings.push(...ingestSarif(rewrite(normalized), { tool }).findings);
   }
@@ -112,9 +117,14 @@ function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
   });
   sarif('spotbugs.sarif', 'spotbugs', {
     identityKey: (result) => securitySubject(result, spotbugsSubject(result)),
-    rewrite: withSecurityMessages,
+    rewrite: (log) =>
+      withSecurityMessages(withoutDuplicateSites(log, readSarifLog(reportRoot, 'pmd.sarif'))),
   });
   return findings;
+}
+
+function readSarifLog(reportRoot, file) {
+  return JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
 }
 
 function formatFindings({ reportRoot, roots }) {
@@ -218,7 +228,8 @@ function projectRoots(projectRoot) {
 
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  const subject = Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  return typeof subject === 'string' ? stableName(subject) : subject;
 }
 
 export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {

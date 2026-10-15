@@ -172,16 +172,16 @@ describe('readJavaFindings', () => {
     ]);
   });
 
-  it('gives a find-sec-bugs result the allowed form and its exception route', () => {
+  it('gives a find-sec-bugs result the allowed form and its exception route, unless PMD reports the query', () => {
     const root = projectWithReports();
-    const result = (method) => ({
+    const result = (method, line = 10) => ({
       ruleId: 'SQL_INJECTION_SPRING_JDBC',
       message: { text: 'Potential JDBC Injection', arguments: ['JdbcTemplate.queryForList'] },
       locations: [
         {
           physicalLocation: {
             artifactLocation: { uri: 'demo/Bad.java' },
-            region: { startLine: 10 },
+            region: { startLine: line },
           },
           logicalLocations: [{ fullyQualifiedName: method }],
         },
@@ -193,16 +193,24 @@ describe('readJavaFindings', () => {
         runs: [
           {
             tool: { driver: { name: 'SpotBugs' } },
-            results: [result('demo.Bad.one()'), result('demo.Bad.two()')],
+            results: [
+              result('demo.Bad.one()'),
+              result('demo.Bad.two()'),
+              result('demo.Bad.three()', 8),
+            ],
           },
         ],
       }),
     );
+    const pmdFile = path.join(root, 'build/nitpicker/pmd.sarif');
+    const pmd = JSON.parse(readFileSync(pmdFile, 'utf8'));
+    pmd.runs[0].results.push({ ...pmd.runs[0].results[0], ruleId: 'SpringQueryConcatenation' });
+    writeFileSync(pmdFile, JSON.stringify(pmd));
 
     const found = readJavaFindings(root).findings.filter(({ tool }) => tool === 'spotbugs');
 
     const advice =
-      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC in nitpicker.config.json.';
+      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_SPRING_JDBC in nitpicker.config.json.';
     expect(found.map(({ message }) => message)).toEqual([advice, advice]);
     expect(found.map(({ identity }) => identity)).toEqual([
       'fp:nitpicker/subject=JdbcTemplate.queryForList demo.Bad.one',

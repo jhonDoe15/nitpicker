@@ -1,6 +1,7 @@
 package shop.outbound;
 
 import java.net.URI;
+import java.net.http.HttpRequest;
 import java.util.Map;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
@@ -8,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestOperations;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 public class Outbound {
@@ -51,5 +53,76 @@ public class Outbound {
     Object d = web.get().uri("/rates/{currency}", currency).retrieve().bodyToMono(String.class);
     Object e = client.get().uri(uri -> uri.path("/rates").queryParam("c", currency).build());
     return a;
+  }
+
+  public Object chained(String url) {
+    String first = url;
+    String second = first.trim() + "/rates";
+    Object a = template.getForObject(second, String.class); // violation: SpringOutboundUrl
+    String again = BASE;
+    again = url;
+    Object b = template.getForObject(again, String.class); // violation: SpringOutboundUrl
+    return a;
+  }
+
+  public record Target(String url, String currency) {}
+
+  public Object accessors(Target target) {
+    Object a = client.get().uri(target.url()).retrieve().body(String.class); // violation: SpringOutboundUrl
+    String address = target.url().trim();
+    Object b = template.getForObject(address, String.class); // violation: SpringOutboundUrl
+    Object c = template.getForObject(BASE + "/rates/{currency}", String.class, target.currency());
+    return a;
+  }
+
+  public Object lambdas(String host, String currency) {
+    Object a = web.get().uri(uri -> uri.scheme("https").host(host).build()).retrieve().bodyToMono(String.class); // violation: SpringOutboundUrl
+    Object b = web.get().uri(uri -> uri.path("/rates/{c}").build(currency)).retrieve().bodyToMono(String.class);
+    return a;
+  }
+
+  public Object jdk(String url, String currency) {
+    HttpRequest a = HttpRequest.newBuilder(URI.create(url)).build(); // violation: SpringOutboundUrl
+    HttpRequest b = HttpRequest.newBuilder().uri(URI.create(url)).build(); // violation: SpringOutboundUrl
+    HttpRequest c = HttpRequest.newBuilder(URI.create(BASE + "/rates")).build();
+    return a;
+  }
+
+  public Object templated(String currency) {
+    URI uri = UriComponentsBuilder.fromUriString(BASE).path("/rates/{c}").buildAndExpand(currency).toUri();
+    Object a = template.getForObject(uri, Object.class);
+    return a;
+  }
+
+  public Object viaHelpers(String url) {
+    fixed(BASE);
+    return fetch(url);
+  }
+
+  private Object fetch(String address) {
+    return template.getForObject(address, String.class); // violation: SpringOutboundUrl
+  }
+
+  private Object fixed(String address) {
+    return template.getForObject(address, String.class);
+  }
+
+  public Object constantCaller() {
+    String address = BASE + "/rates";
+    return viaConstantLocal(address);
+  }
+
+  private Object viaConstantLocal(String address) {
+    return template.getForObject(address, String.class);
+  }
+
+  public Object reassignedCaller(String url) {
+    String address = BASE;
+    address = url;
+    return viaReassignedLocal(address);
+  }
+
+  private Object viaReassignedLocal(String address) {
+    return template.getForObject(address, String.class); // violation: SpringOutboundUrl
   }
 }

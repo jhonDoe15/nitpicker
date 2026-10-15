@@ -41,6 +41,7 @@ function projectWith(packages) {
     const directory = path.join(root, 'node_modules', name);
     mkdirSync(directory, { recursive: true });
     for (const [file, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
       writeFileSync(path.join(directory, file), text);
     }
   }
@@ -99,6 +100,63 @@ describe('npm license violations', () => {
     });
 
     expect(npmLicenseViolations(root)).toEqual([]);
+  });
+
+  it('accepts an LGPL package that ships the GPL text next to the lesser license', () => {
+    const root = projectWith({
+      lesser: {
+        manifest: { license: 'LGPL-3.0-or-later' },
+        files: {
+          COPYING: 'GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007',
+          'COPYING.LESSER': 'GNU LESSER GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007',
+        },
+      },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([]);
+  });
+
+  it('accepts an MIT license that only mentions another license by name', () => {
+    const root = projectWith({
+      mention: {
+        manifest: { license: 'MIT' },
+        files: { LICENSE: 'MIT License\n\nUnlike PolyForm or the Elastic License, this is free.' },
+      },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([]);
+  });
+
+  it('reads the files of a license directory and does not fail on one', () => {
+    const root = projectWith({
+      reuse: {
+        manifest: { license: 'MIT' },
+        files: {
+          'LICENSES/MIT.txt': 'MIT License',
+          'LICENSES/GPL-3.0-or-later.txt': 'GNU GENERAL PUBLIC LICENSE\nVersion 3',
+        },
+      },
+      folder: { manifest: { license: 'MIT' }, files: { 'LICENSE/notes.txt': 'MIT License' } },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([
+      'reuse@1.0.0: LICENSES/GPL-3.0-or-later.txt is GPL or AGPL, which is not allowed',
+    ]);
+  });
+
+  it('catches a short GPL notice in a package that declares a permissive license', () => {
+    const root = projectWith({
+      notice: {
+        manifest: { license: 'MIT' },
+        files: {
+          COPYING: 'This is free software under the terms of the GNU General Public License',
+        },
+      },
+    });
+
+    expect(npmLicenseViolations(root)).toEqual([
+      'notice@1.0.0: COPYING is GPL or AGPL, which is not allowed',
+    ]);
   });
 
   it('rejects a package whose LICENSE file is source-available although the lock says LGPL', () => {

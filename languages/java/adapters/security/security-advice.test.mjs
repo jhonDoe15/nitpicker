@@ -9,6 +9,8 @@ import {
   securityMessage,
   securityPatterns,
   securitySubject,
+  stableName,
+  withoutDuplicateSites,
   withSecurityMessages,
 } from './security-advice.mjs';
 
@@ -165,24 +167,28 @@ const excludeFilter = readFileSync(
   path.join(path.dirname(fileURLToPath(import.meta.url)), '../../gradle/security/exclude.xml'),
   'utf8',
 );
-const sinks = readFileSync(
-  path.join(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../../gradle/security/jakarta-sinks.txt',
-  ),
-  'utf8',
-);
+function sinkFile(name) {
+  return readFileSync(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '../../gradle/security', name),
+    'utf8',
+  );
+}
+
+function sinkLines(text) {
+  return text.split('\n').filter((line) => line !== '');
+}
 
 function queryOffsetFromTop(line) {
   const parameters = /\(([^)]*)\)/.exec(line)[1];
-  return (parameters.match(/L[^;]+;/g) ?? []).length - 1;
+  return (parameters.match(/\[*(?:L[^;]+;|[BCDFIJSZ])/g) ?? []).length - 1;
 }
 
 function sinkOffsetErrors(text) {
-  return text
-    .split('\n')
-    .filter((line) => line !== '')
-    .filter((line) => Number(line.split(':').at(-1)) !== queryOffsetFromTop(line));
+  return sinkLines(text).filter(
+    (line) =>
+      !/\(Ljava\/lang\/String;/.test(line) ||
+      Number(line.split(':').at(-1)) !== queryOffsetFromTop(line),
+  );
 }
 
 const excluded = [...excludeFilter.matchAll(/pattern="([^"]*)"/g)].flatMap(([, list]) =>
@@ -210,21 +216,34 @@ describe('find-sec-bugs advice', () => {
     expect([...covered, ...excluded].sort()).toEqual([...FIND_SEC_BUGS_PATTERNS].sort());
   });
 
+  it('excludes exactly the markers and the PMD duplicates, and gives none of them advice', () => {
+    expect([...excluded].sort()).toEqual([
+      'COOKIE_USAGE',
+      'JAXRS_ENDPOINT',
+      'JAXWS_ENDPOINT',
+      'SERVLET_CONTENT_TYPE',
+      'SERVLET_HEADER',
+      'SERVLET_HEADER_REFERER',
+      'SERVLET_HEADER_USER_AGENT',
+      'SERVLET_PARAMETER',
+      'SERVLET_QUERY_STRING',
+      'SERVLET_SERVER_NAME',
+      'SERVLET_SESSION_ID',
+      'SPRING_CSRF_PROTECTION_DISABLED',
+      'SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING',
+      'SPRING_ENDPOINT',
+      'STRUTS1_ENDPOINT',
+      'STRUTS2_ENDPOINT',
+      'TAPESTRY_ENDPOINT',
+      'WICKET_ENDPOINT',
+    ]);
+    expect(excluded.filter((pattern) => securityPatterns().includes(pattern))).toEqual([]);
+  });
+
   it('gives each pattern one piece of advice', () => {
     const listed = ADVICE_GROUPS.flatMap(({ patterns }) => patterns);
 
     expect(new Set(listed).size).toBe(listed.length);
-  });
-
-  it('excludes only markers that are not defects and the duplicates of PMD rules', () => {
-    expect(
-      excluded.filter(
-        (pattern) =>
-          !/ENDPOINT|^SERVLET_|^COOKIE_USAGE$|^SPRING_CSRF_(?:UNRESTRICTED_REQUEST_MAPPING|PROTECTION_DISABLED)$/.test(
-            pattern,
-          ),
-      ),
-    ).toEqual([]);
   });
 
   it('names the allowed form and the exception route, briefly', () => {
@@ -240,7 +259,7 @@ describe('find-sec-bugs advice', () => {
 
   it('writes the SQL advice for the Spring and JPA cases', () => {
     expect(securityMessage('SQL_INJECTION_JPA')).toBe(
-      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json.',
+      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json.',
     );
   });
 
@@ -300,28 +319,68 @@ describe('security results', () => {
     expect(after).toBe(before);
   });
 
+  it('keeps the identity when an unrelated lambda shifts the lambda counter', () => {
+    const before = securitySubject(result('XXE_SAXPARSER', 'a.B.lambda$digester$1()'), 'text');
+    const after = securitySubject(result('XXE_SAXPARSER', 'a.B.lambda$digester$3(String)'), 'text');
+
+    expect(after).toBe(before);
+    expect(before).toBe('text a.B.lambda$digester');
+  });
+
   it('leaves the identity of a core SpotBugs result alone', () => {
     expect(securitySubject(result('DM_DEFAULT_ENCODING', 'a.B.run()'), 'text')).toBe('text');
   });
 });
 
-describe('jakarta-sinks.txt', () => {
-  it('marks the query text, counted from the last argument, as the sink', () => {
-    expect(sinkOffsetErrors(sinks)).toEqual([]);
+describe('sink files', () => {
+  it('mark the query text, counted from the last argument, as the sink', () => {
+    expect(sinkOffsetErrors(sinkFile('jakarta-sinks.txt'))).toEqual([]);
+    expect(sinkOffsetErrors(sinkFile('spring-jdbc-sinks.txt'))).toEqual([]);
+    expect(sinkLines(sinkFile('path-sinks.txt')).map((line) => line.split('(')[0])).toEqual([
+      'java/nio/file/Path.of',
+      'java/nio/file/Path.of',
+    ]);
   });
 
-  it('lists the five EntityManager query methods', () => {
-    expect(
-      sinks
-        .split('\n')
-        .filter((line) => line !== '')
-        .map((line) => line.split('(')[0]),
-    ).toEqual([
+  it('list the five EntityManager query methods', () => {
+    expect(sinkLines(sinkFile('jakarta-sinks.txt')).map((line) => line.split('(')[0])).toEqual([
       'jakarta/persistence/EntityManager.createQuery',
       'jakarta/persistence/EntityManager.createQuery',
       'jakarta/persistence/EntityManager.createNativeQuery',
       'jakarta/persistence/EntityManager.createNativeQuery',
       'jakarta/persistence/EntityManager.createNativeQuery',
+    ]);
+  });
+
+  it('list the named JDBC template, its interface and JdbcClient.sql', () => {
+    const owners = new Set(
+      sinkLines(sinkFile('spring-jdbc-sinks.txt')).map((line) => line.split('.')[0].split('(')[0]),
+    );
+
+    expect([...owners]).toEqual([
+      'org/springframework/jdbc/core/namedparam/NamedParameterJdbcOperations',
+      'org/springframework/jdbc/core/namedparam/NamedParameterJdbcTemplate',
+      'org/springframework/jdbc/core/simple/JdbcClient',
+    ]);
+  });
+
+  it('name every query method of the named JDBC template', () => {
+    const methods = new Set(
+      sinkLines(sinkFile('spring-jdbc-sinks.txt'))
+        .filter((line) => line.includes('NamedParameterJdbcTemplate.'))
+        .map((line) => /\.(\w+)\(/.exec(line)[1]),
+    );
+
+    expect([...methods].sort()).toEqual([
+      'batchUpdate',
+      'execute',
+      'query',
+      'queryForList',
+      'queryForMap',
+      'queryForObject',
+      'queryForRowSet',
+      'queryForStream',
+      'update',
     ]);
   });
 });
@@ -330,11 +389,102 @@ describe('sinkOffsetErrors', () => {
   it('counts the query text from the last argument', () => {
     expect(queryOffsetFromTop('a.b(Ljava/lang/String;)V:0')).toBe(0);
     expect(queryOffsetFromTop('a.b(Ljava/lang/String;Ljava/lang/Class;)V:1')).toBe(1);
+    expect(queryOffsetFromTop('a.b(Ljava/lang/String;[Ljava/lang/Object;I)V:2')).toBe(2);
   });
 
   it('reports a line with the wrong offset', () => {
     expect(
       sinkOffsetErrors('a.b(Ljava/lang/String;Ljava/lang/Class;)V:0\na.c(Ljava/lang/String;)V:0\n'),
     ).toEqual(['a.b(Ljava/lang/String;Ljava/lang/Class;)V:0']);
+  });
+});
+
+describe('stableName', () => {
+  it('drops the counters of lambdas and anonymous classes', () => {
+    expect(stableName('a.B.lambda$run$12')).toBe('a.B.lambda$run');
+    expect(stableName('a.Outer$1.run')).toBe('a.Outer.run');
+    expect(stableName('a.Outer$1$2.run')).toBe('a.Outer.run');
+  });
+
+  it('keeps nested and local class names', () => {
+    expect(stableName('a.Outer$Inner.run')).toBe('a.Outer$Inner.run');
+    expect(stableName('a.Outer$1Local.run')).toBe('a.Outer$1Local.run');
+  });
+});
+
+function placed(ruleId, uri, start, end = start) {
+  return {
+    ruleId,
+    locations: [
+      {
+        physicalLocation: { artifactLocation: { uri }, region: { startLine: start, endLine: end } },
+      },
+    ],
+  };
+}
+
+function rulesAfter(spotbugs, pmd = []) {
+  return withoutDuplicateSites(
+    { runs: [{ results: spotbugs }] },
+    { runs: [{ results: pmd }] },
+  ).runs[0].results.map(({ ruleId }) => ruleId);
+}
+
+describe('duplicate sites', () => {
+  it('reports one cipher problem per call: the algorithm or mode over its integrity siblings', () => {
+    expect(
+      rulesAfter([
+        placed('CIPHER_INTEGRITY', 'a/B.java', 8),
+        placed('PADDING_ORACLE', 'a/B.java', 8),
+        placed('DES_USAGE', 'a/B.java', 8),
+      ]),
+    ).toEqual(['DES_USAGE']);
+    expect(
+      rulesAfter([placed('CIPHER_INTEGRITY', 'a/B.java', 8), placed('ECB_MODE', 'a/B.java', 8)]),
+    ).toEqual(['ECB_MODE']);
+    expect(
+      rulesAfter([
+        placed('CIPHER_INTEGRITY', 'a/B.java', 8),
+        placed('PADDING_ORACLE', 'a/B.java', 8),
+      ]),
+    ).toEqual(['PADDING_ORACLE']);
+  });
+
+  it('keeps a cipher pattern that has no sibling on its line', () => {
+    expect(
+      rulesAfter([placed('CIPHER_INTEGRITY', 'a/B.java', 8), placed('DES_USAGE', 'a/B.java', 9)]),
+    ).toEqual(['CIPHER_INTEGRITY', 'DES_USAGE']);
+    expect(
+      rulesAfter([placed('CIPHER_INTEGRITY', 'a/B.java', 8), placed('DES_USAGE', 'a/C.java', 8)]),
+    ).toEqual(['CIPHER_INTEGRITY', 'DES_USAGE']);
+  });
+
+  it('leaves a query to the PMD rule that reports its text', () => {
+    const pmd = [placed('SpringQueryConcatenation', 'file:///work/src/main/java/a/B.java', 11, 13)];
+
+    expect(
+      rulesAfter([placed('SQL_INJECTION_SPRING_JDBC', 'src/main/java/a/B.java', 10)], pmd),
+    ).toEqual([]);
+    expect(rulesAfter([placed('SQL_INJECTION_JPA', 'src/main/java/a/B.java', 12)], pmd)).toEqual(
+      [],
+    );
+  });
+
+  it('keeps a query that PMD does not report', () => {
+    const pmd = [placed('SpringQueryConcatenation', 'file:///work/src/main/java/a/B.java', 11, 13)];
+
+    expect(
+      rulesAfter([placed('SQL_INJECTION_SPRING_JDBC', 'src/main/java/a/B.java', 20)], pmd),
+    ).toEqual(['SQL_INJECTION_SPRING_JDBC']);
+    expect(
+      rulesAfter([placed('SQL_INJECTION_SPRING_JDBC', 'src/main/java/a/C.java', 12)], pmd),
+    ).toEqual(['SQL_INJECTION_SPRING_JDBC']);
+    expect(rulesAfter([placed('COMMAND_INJECTION', 'src/main/java/a/B.java', 12)], pmd)).toEqual([
+      'COMMAND_INJECTION',
+    ]);
+  });
+
+  it('tolerates a log without runs', () => {
+    expect(withoutDuplicateSites({}, {})).toEqual({ runs: [] });
   });
 });

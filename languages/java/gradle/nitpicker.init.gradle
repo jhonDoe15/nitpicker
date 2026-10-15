@@ -213,7 +213,11 @@ allprojects {
             classpath = configurations.nitpickerSpotbugs
             mainClass = 'edu.umd.cs.findbugs.FindBugs2'
             systemProperty 'findsecbugs.injection.customconfigfile.SqlInjectionDetector',
-                "${new File(initScriptDir, 'security/jakarta-sinks.txt').absolutePath}|SQL_INJECTION_JPA".toString()
+                ["${new File(initScriptDir, 'security/jakarta-sinks.txt').absolutePath}|SQL_INJECTION_JPA",
+                 "${new File(initScriptDir, 'security/spring-jdbc-sinks.txt').absolutePath}|SQL_INJECTION_SPRING_JDBC"]
+                    .join(File.pathSeparator)
+            systemProperty 'findsecbugs.injection.customconfigfile.PathTraversalDetector',
+                "${new File(initScriptDir, 'security/path-sinks.txt').absolutePath}|PATH_TRAVERSAL_IN".toString()
             ignoreExitValue = true
             doFirst {
                 reportDir.get().asFile.mkdirs()

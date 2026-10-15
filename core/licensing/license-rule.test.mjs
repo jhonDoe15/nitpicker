@@ -80,8 +80,13 @@ describe('forbiddenLicenseText', () => {
     ['Sonar Source-Available License v1.0', 'SSALv1'],
     ['Business Source License 1.1', 'BSL'],
     ['Elastic License 2.0', 'Elastic License'],
-    ['MIT with Commons Clause', 'Commons Clause'],
-    ['PolyForm Noncommercial', 'PolyForm'],
+    ['"Commons Clause" License Condition v1.0', 'Commons Clause'],
+    ['PolyForm Noncommercial License 1.0.0', 'PolyForm'],
+    ['PolyForm-Shield License 1.0.0', 'PolyForm'],
+    [
+      'This program is distributed under the terms of the GNU General Public License.',
+      'GPL or AGPL',
+    ],
     ['Functional Source License, Version 1.1', 'Functional Source License'],
   ])('flags %j', (text, name) => {
     expect(forbiddenLicenseText(text)).toBe(name);
@@ -95,6 +100,24 @@ describe('forbiddenLicenseText', () => {
         'GNU LESSER GENERAL PUBLIC LICENSE\nincorporates the terms of version 3 of the GNU General Public License.',
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('forbiddenLicenseText on license text that only mentions a name', () => {
+  it('accepts an MIT license that mentions the products by name', () => {
+    expect(
+      forbiddenLicenseText(
+        'MIT License. Not based on PolyForm, the Elastic License or the Business Source License.',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('accepts the GPL text next to an LGPL license only when allowed', () => {
+    const gpl = 'GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007';
+
+    expect(forbiddenLicenseText(gpl)).toBe('GPL or AGPL');
+    expect(forbiddenLicenseText(gpl, { allowGpl: true })).toBeUndefined();
+    expect(forbiddenLicenseText('Business Source License 1.1', { allowGpl: true })).toBe('BSL');
   });
 });
 
