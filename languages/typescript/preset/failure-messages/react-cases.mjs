@@ -204,12 +204,12 @@ const reactTestCases = [
   ],
   [
     'component state names what the user sees',
-    'expect(wrapper.state()).toEqual({});',
+    "import { mount } from 'enzyme'; const wrapper = mount(Panel); expect(wrapper.state()).toEqual({});",
     'what the user sees',
   ],
   [
     'component state names the config exception',
-    'expect(wrapper.state()).toEqual({});',
+    "import { mount } from 'enzyme'; const wrapper = mount(Panel); expect(wrapper.state()).toEqual({});",
     'nitpicker.config.json',
   ],
   ['hook spy names renderHook', "vi.spyOn(React, 'useState');", '`renderHook`'],

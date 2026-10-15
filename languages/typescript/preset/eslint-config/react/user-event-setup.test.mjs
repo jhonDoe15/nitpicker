@@ -48,4 +48,13 @@ describe('testing-library/prefer-user-event-setup', () => {
 
     expect(await setupMessages(importLine, 'events')).toEqual([{ line: 3, method: 'click' }]);
   });
+
+  it.each([
+    ['userEvent', 'UE.userEvent'],
+    ['default', 'UE.default'],
+  ])('follows a namespace import through its %s member', async (_name, receiver) => {
+    const importLine = "import * as UE from '@testing-library/user-event';";
+
+    expect(await setupMessages(importLine, receiver)).toEqual([{ line: 3, method: 'click' }]);
+  });
 });

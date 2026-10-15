@@ -30,11 +30,34 @@ const helpers = {
     `import type { AppProps } from '${appModule}';`,
     'export function renderApp(props: AppProps) { return render(<main {...props} />); }',
   ],
+  'inline-type.tsx': [
+    renderLine,
+    `import { type AppProps } from '${appModule}';`,
+    'export function renderApp(props: AppProps) { return render(<main {...props} />); }',
+  ],
+  'commented.tsx': [
+    renderLine,
+    `const note = "import { App } from '${appModule}'";`,
+    'export function renderApp() { return render(<main title={note} />); }',
+  ],
+  'chain.ts': ["export * from './reexport.js';"],
+  'aliased.tsx': [
+    renderLine,
+    "import { App } from '@/main/ui/app.js';",
+    'export function renderApp() { return render(<App />); }',
+  ],
+};
+const projectFiles = {
+  ...Object.fromEntries(
+    Object.entries(helpers).map(([file, source]) => [`test/support/${file}`, source]),
+  ),
+  'src/main/ui/app.tsx': ['export function App() { return <main />; }'],
+  'tsconfig.json': [JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } })],
 };
 
-for (const [file, source] of Object.entries(helpers)) {
-  mkdirSync(path.join(root, 'test/support'), { recursive: true });
-  writeFileSync(path.join(root, 'test/support', file), `${source.join('\n')}\n`);
+for (const [file, source] of Object.entries(projectFiles)) {
+  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  writeFileSync(path.join(root, file), `${source.join('\n')}\n`);
 }
 
 afterAll(() => {
@@ -55,10 +78,24 @@ new RuleTester({
     parserOptions: { ecmaFeatures: { jsx: true } },
   },
 }).run('test-must-use-production-runtime through a test helper', testMustUseProductionRuntime, {
-  valid: [throughHelper('render-app.js'), throughHelper('reexport'), throughHelper('render-app')],
+  valid: [
+    throughHelper('render-app.js'),
+    throughHelper('reexport'),
+    throughHelper('render-app'),
+    throughHelper('chain.js'),
+    throughHelper('aliased.js'),
+    { filename: testFile, code: "import { App } from '@/main/ui/app.js';\nApp();" },
+  ],
   invalid: [
     { ...throughHelper('library-only.js'), errors: [{ messageId: 'missingRuntime' }] },
     { ...throughHelper('type-only.js'), errors: [{ messageId: 'missingRuntime' }] },
+    { ...throughHelper('inline-type.js'), errors: [{ messageId: 'missingRuntime' }] },
+    { ...throughHelper('commented.js'), errors: [{ messageId: 'missingRuntime' }] },
+    {
+      filename: testFile,
+      code: "import { App } from '@/main/ui/missing.js';\nApp();",
+      errors: [{ messageId: 'missingRuntime' }],
+    },
     { ...throughHelper('missing.js'), errors: [{ messageId: 'missingRuntime' }] },
   ],
 });

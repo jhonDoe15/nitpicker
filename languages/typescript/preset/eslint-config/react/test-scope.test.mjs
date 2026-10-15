@@ -13,6 +13,8 @@ const files = {
     "import { render } from '@testing-library/react';\nexport function renderApp() { return render(<main />); }\n",
   'test/support/rtl/index.ts': "export * from '@testing-library/react';\n",
   'test/support/fixtures.ts': 'export function renderApp() { return { container: {} }; }\n',
+  'test/support/chain.ts': "export * from './rtl';\n",
+  'tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@test/*': ['./test/*'] } } }),
 };
 
 afterAll(() => {
@@ -51,6 +53,8 @@ describe('the React test rules', () => {
       'a folder that re-exports Testing Library',
       "import { render as renderApp } from '../support/rtl';",
     ],
+    ['a re-export chain', "import { render as renderApp } from '../support/chain';"],
+    ['a path alias', "import { renderApp } from '@test/support/render-app.js';"],
   ])('apply to a test that reaches Testing Library through %s', async (_name, importLine) => {
     expect(
       await ruleIdsFor('test/ui/via-helper.test.ts', `${importLine}\n${helperQueries}`),
@@ -68,7 +72,7 @@ describe('the React test rules', () => {
   });
 
   it('apply to every .tsx and .jsx test, whatever it imports', async () => {
-    const code = "import { Panel } from '../../src/main/ui/panel.js';\nwrapper.state(<Panel />);";
+    const code = "import { Panel } from '../../src/main/ui/panel.js';\nwrapper.instance(<Panel />);";
 
     expect(await ruleIdsFor('test/ui/panel.test.tsx', code)).toEqual([
       'nitpicker/react-test-no-implementation-details',

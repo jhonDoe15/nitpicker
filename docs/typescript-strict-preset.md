@@ -310,8 +310,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
   (`testing-library/no-manual-cleanup`). Do not test implementation details
-  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
-  test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
+  (`nitpicker/react-test-no-implementation-details`): no `.instance()`, no `.state()` or `.setState()` on
+  an enzyme or test-renderer wrapper (a store's `setState` is fine), no test-renderer
+  `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn` on a React hook (`vi.spyOn(React, 'useState')`,
   `jest.spyOn(R, 'useEffect')`, `vi.spyOn(require('react'), 'useState')`, with `React` or any
   binding of `react`: a default, namespace, `{ default as R }`, `import = require`, `require`

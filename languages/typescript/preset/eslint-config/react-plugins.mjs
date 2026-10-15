@@ -71,12 +71,30 @@ function namedUserEvent(declaration) {
   )?.local.name;
 }
 
-function directCall(node, local) {
+function namespaceUserEvent(declaration) {
+  return declaration.specifiers.find(({ type }) => type === 'ImportNamespaceSpecifier')?.local.name;
+}
+
+const namespaceMembers = new Set(['userEvent', 'default']);
+
+function isUserEventReceiver(node, locals) {
+  if (node.type === 'Identifier') {
+    return node.name === locals.named;
+  }
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.object.type === 'Identifier' &&
+    node.object.name === locals.namespace &&
+    namespaceMembers.has(node.property.name)
+  );
+}
+
+function directCall(node, locals) {
   const { callee } = node;
   return callee.type === 'MemberExpression' &&
     !callee.computed &&
-    callee.object.type === 'Identifier' &&
-    callee.object.name === local &&
+    isUserEventReceiver(callee.object, locals) &&
     callee.property.name !== 'setup'
     ? callee
     : undefined;
@@ -91,15 +109,18 @@ function withNamedUserEventImport(rule) {
       const hasDefault = imports.some((declaration) =>
         declaration.specifiers.some(({ type }) => type === 'ImportDefaultSpecifier'),
       );
-      const local = imports.map(namedUserEvent).find((name) => name !== undefined);
-      if (hasDefault || local === undefined) {
+      const locals = {
+        named: imports.map(namedUserEvent).find((name) => name !== undefined),
+        namespace: imports.map(namespaceUserEvent).find((name) => name !== undefined),
+      };
+      if (hasDefault || (locals.named === undefined && locals.namespace === undefined)) {
         return upstream;
       }
       return {
         ...upstream,
         CallExpression(node) {
           upstream.CallExpression?.(node);
-          const callee = directCall(node, local);
+          const callee = directCall(node, locals);
           if (callee !== undefined) {
             context.report({
               node: callee,
