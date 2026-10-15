@@ -72,13 +72,24 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     inPanel('document[query]("a");'),
     inPanel('document.createElement("a");'),
     inPanel('model.style = "x";'),
-    "document.getElementById('root');",
-    "export function readRoot() { return document.querySelector('#root'); }",
-    "export const el = document.getElementById('app'); el.innerHTML = '';",
-    "export function set(el) { el.innerHTML = '<b/>'; el.style.color = 'red'; el.classList.add('x'); }",
     "const root = document.getElementById('root'); if (root) { createRoot(root).render(<App />); }",
     "ReactDOM.hydrateRoot(document.querySelector('#app'), <App />);",
-  ].map(valid),
+    inPanel('canvasRef.current.style.width = `${width}px`;'),
+    inPanel('ref.current?.classList.add("open");'),
+    inPanel('const canvas = canvasRef.current; canvas.style.height = "10px";'),
+    inPanel('document.documentElement.classList.toggle("dark", dark);'),
+    inPanel('document.body.style.overflow = "hidden";'),
+    inPanel('window.document.body.className = "locked";'),
+  ]
+    .map(valid)
+    .concat(
+      [
+        "document.getElementById('root');",
+        "export function readRoot() { return document.querySelector('#root'); }",
+        "export const el = document.getElementById('app'); el.innerHTML = '';",
+        "export function set(el) { el.innerHTML = '<b/>'; el.style.color = 'red'; el.classList.add('x'); }",
+      ].map((code) => ({ filename: '/repo/src/main/adapters/dom.ts', code })),
+    ),
   invalid: [
     invalid(inPanel("document.getElementById('banner');"), { messageId: 'directDom' }),
     invalid(inPanel("document.querySelector('.x');"), { messageId: 'directDom' }),
@@ -113,6 +124,14 @@ tester.run('react-no-direct-dom', reactNoDirectDom, {
     invalid("function setup(el) { el.innerHTML = 'x'; } export const A = () => <div />;", {
       messageId: 'directDom',
     }),
+    invalid(inPanel("window.document.querySelector('.x');"), { messageId: 'directDom' }),
+    invalid(inPanel("globalThis.document.getElementById('x');"), { messageId: 'directDom' }),
+    invalid(inPanel("document.body.innerHTML = '';"), { messageId: 'directDom' }),
+    ...['/repo/src/main/ui/banner.ts', '/repo/src/main/adapters/use-banner.ts'].map((path) => ({
+      filename: path,
+      code: "export function hide() { document.querySelector('.banner')?.remove(); }",
+      errors: [{ messageId: 'directDom' }],
+    })),
   ],
 });
 
