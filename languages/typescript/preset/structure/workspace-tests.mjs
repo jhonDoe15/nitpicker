@@ -21,8 +21,8 @@ function isSkipped(entry) {
 function readJson(file) {
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
-  } catch {
-    return undefined;
+  } catch (error) {
+    return { kind: 'unreadable-json', reason: String(error) };
   }
 }
 
