@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commit, pythonRepository, run, usePythonFixtures, write } from './python-cli-harness.mjs';
+import { commit, pythonRepository, run, usePythonFixtures, write } from '../../diff/fixtures/python-cli-harness.mjs';
 
 usePythonFixtures();
 

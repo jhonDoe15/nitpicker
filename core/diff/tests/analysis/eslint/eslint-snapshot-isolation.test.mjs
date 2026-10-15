@@ -1,9 +1,10 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mjs';
+import { runEslint } from '../../../../../languages/typescript/adapters/eslint-runner.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import {
   toolRoot,
   fakeEslintCliPath,
@@ -17,9 +18,6 @@ import {
   writeFiles,
   commit,
 } from './eslint-fixtures.mjs';
-
-const eslintRunnerPath = path.join(toolRoot, 'languages/typescript/adapters/eslint-runner.mjs');
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 
 registerEslintRepositoryLifecycle();
 
@@ -76,10 +74,8 @@ describe('ESLint snapshot isolation and failures', () => {
       'package.json': '{"name":"fixture","version":"2.0.0"}\n',
     });
 
-    const result = spawnSync(
-      process.execPath,
-      [
-        eslintRunnerPath,
+    const findings = runEslint(
+      parseArguments([
         '--analyzer-name',
         'eslint-lint',
         '--project-root',
@@ -92,13 +88,10 @@ describe('ESLint snapshot isolation and failures', () => {
         'eslint.config.mjs',
         '--pattern',
         'src/main/**/*.ts',
-      ],
-      { encoding: 'utf8' },
+      ]),
     );
 
-    expect(result.stderr).toBe('');
-    expect(result.status).toBe(0);
-    expect(JSON.parse(result.stdout).findings).toEqual([
+    expect(findings).toEqual([
       {
         tool: 'eslint-lint',
         rule: 'no-debugger',

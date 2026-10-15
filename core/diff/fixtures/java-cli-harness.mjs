@@ -12,11 +12,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { runCli as runCliWithSubprocesses } from '../../cli.mjs';
-import { runTasksInProcess } from '../../diff/fixtures/in-process-analyzers.mjs';
+import { runTasksInProcess } from './in-process-analyzers.mjs';
 
 export const fakeGradle = path.resolve(
-  new URL('../../', import.meta.url).pathname,
-  '../languages/java/adapters/fixtures/fake-gradle.mjs',
+  import.meta.dirname,
+  '../../../languages/java/adapters/fixtures/fake-gradle.mjs',
 );
 
 const temporaryRoots = [];

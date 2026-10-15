@@ -9,7 +9,7 @@ import {
   temporaryRoot,
   usePythonFixtures,
   write,
-} from './python-cli-harness.mjs';
+} from '../../diff/fixtures/python-cli-harness.mjs';
 
 usePythonFixtures();
 

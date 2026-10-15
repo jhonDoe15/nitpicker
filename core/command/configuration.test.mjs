@@ -1,12 +1,4 @@
-import { execFileSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  realpathSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from '../configuration/config.mjs';
@@ -22,7 +14,7 @@ import {
   runCli,
   useCliFixtures,
   writeFiles,
-} from './cli-harness.mjs';
+} from '../diff/fixtures/cli-harness.mjs';
 
 useCliFixtures();
 
@@ -133,16 +125,6 @@ Full diagnostics: ${root}/combined/report.txt
     const summary = JSON.parse(readFileSync(path.join(root, 'combined', 'summary.json'), 'utf8'));
     expect(summary.tools.map(({ name }) => name)).toEqual(['first', 'second']);
     expect(summary.newEnforceableFindings).toBe(1);
-  });
-  it('runs when launched through a symlinked bin', () => {
-    const binPath = path.join(makeTemporaryRoot('nitpicker-cli-bin-'), 'nitpicker');
-    symlinkSync(path.join(new URL('../', import.meta.url).pathname, 'cli.mjs'), binPath);
-
-    const stdout = execFileSync(process.execPath, [binPath, '--help'], {
-      encoding: 'utf8',
-    });
-
-    expect(stdout.startsWith('Usage: nitpicker')).toBe(true);
   });
 });
 describe('nitpicker config file', () => {

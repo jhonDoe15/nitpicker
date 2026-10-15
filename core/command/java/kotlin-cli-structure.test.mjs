@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commit, kotlinRepository, run, useGradleFixtures, write } from './java-cli-harness.mjs';
+import { commit, kotlinRepository, run, useGradleFixtures, write } from '../../diff/fixtures/java-cli-harness.mjs';
 
 useGradleFixtures();
 
