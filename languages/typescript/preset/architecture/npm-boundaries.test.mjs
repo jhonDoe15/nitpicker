@@ -8,7 +8,6 @@ import { configuredAnalyzers } from '../diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const GATE_TIMEOUT_MS = 240_000;
 const roots = [];
 
 function installedPackage(name) {
@@ -70,17 +69,13 @@ function architectureFindings(files) {
 }
 
 describe('domain rules on installed npm packages', () => {
-  it(
-    'reports an installed ID library and a client reached through shared/',
-    () => {
-      expect(architectureFindings(project)).toEqual({
-        toolErrors: [],
-        findings: [
-          'domain-does-not-import-id-libraries src/main/features/orders/domain/order-id.ts',
-          'domain-does-not-reach-io-through-shared src/main/features/orders/domain/order-total.ts',
-        ],
-      });
-    },
-    GATE_TIMEOUT_MS,
-  );
+  it('reports an installed ID library and a client reached through shared/', () => {
+    expect(architectureFindings(project)).toEqual({
+      toolErrors: [],
+      findings: [
+        'domain-does-not-import-id-libraries src/main/features/orders/domain/order-id.ts',
+        'domain-does-not-reach-io-through-shared src/main/features/orders/domain/order-total.ts',
+      ],
+    });
+  });
 });
