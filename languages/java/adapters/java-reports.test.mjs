@@ -433,15 +433,13 @@ describe('readJavaFindings: Spring configuration', () => {
 });
 
 describe('readJavaFindings: Spring architecture rules', () => {
-  const violations = [
-    { rule: 'spring-layout', className: 'demo.Bad', fileName: 'Bad.java', detail: '' },
-    {
-      rule: 'spring-test-placement',
-      className: 'demo.BadTest',
-      fileName: 'BadTest.java',
-      detail: '',
-    },
-  ];
+  const at = (rule, className) => ({
+    rule,
+    className,
+    fileName: `${className.slice(5)}.java`,
+    detail: '',
+  });
+  const violations = [at('spring-layout', 'demo.Bad'), at('spring-test-placement', 'demo.BadTest')];
 
   function withReport(manifest, writeReport = true) {
     const root = projectWithReports();
@@ -454,7 +452,7 @@ describe('readJavaFindings: Spring architecture rules', () => {
       }),
     );
     mkdirSync(path.join(root, 'src/test/java/demo'), { recursive: true });
-    writeFileSync(path.join(root, 'src/test/java/demo/BadTest.java'), 'class BadTest {}\n');
+    writeFileSync(path.join(root, 'src/test/java/demo/BadTest.java'), '');
     if (writeReport) {
       writeFileSync(
         path.join(root, 'build/nitpicker/spring-arch.json'),
