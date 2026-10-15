@@ -25,8 +25,9 @@ start; the gate is a backstop.
    - 2: no new findings, but a tool failed (Gradle, a missing lizard, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
-5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, config `exclude`/`disable`/`exceptions`,
-   legacy entries, or weakened tests. If a finding seems wrong, stop and ask.
+5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
+   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. If a
+   finding seems wrong, stop and ask.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
@@ -60,8 +61,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- A project's own `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` replaces the
-  default PMD rules (errorprone, bestpractices; main sources only) and Google checks. Read them.
+- nitpicker runs its own PMD rules (errorprone, bestpractices; main sources only) and Google
+  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
+  when `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
 
@@ -113,6 +115,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `"serial"` or `"fallthrough"` is itself a finding (`pmd/InlineSuppression`). The one allowed
   marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
   SQL ([spring.md](spring.md)).
+- `@SuppressFBWarnings` is a finding too (`spotbugs/InlineSuppression`). Checkstyle's
+  `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
+  nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
   that names the finding as printed, for example `pmd/UnusedPrivateField`, with its paths and a
   reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a

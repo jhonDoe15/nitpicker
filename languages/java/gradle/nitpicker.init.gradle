@@ -63,13 +63,15 @@ def lizardExecutable = System.getenv('NITPICKER_LIZARD') ?: 'lizard'
 def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
+def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+
 allprojects {
     plugins.withId('java') {
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
         def reportDir = layout.buildDirectory.dir('nitpicker')
-        def kotlinPreset = findProperty('nitpicker.kotlin') == 'true'
+        def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -96,21 +98,44 @@ allprojects {
             }
         }
         jacoco { toolVersion = pinned.jacoco }
-        // Violations are findings, not a build failure. The consumer's config/checkstyle/checkstyle.xml
-        // wins; without one, Checkstyle's bundled google_checks.xml (matches google-java-format), with
-        // Javadoc allowed but not required, the same doc comment rule as the TypeScript preset.
-        checkstyle {
-            toolVersion = pinned.checkstyle
-            ignoreFailures = true
-            maxWarnings = Integer.MAX_VALUE
-            def consumerConfig = rootProject.file('config/checkstyle/checkstyle.xml')
-            if (consumerConfig.exists()) {
-                configFile = consumerConfig
-            } else {
-                def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
-                config = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
-                configProperties = ['org.checkstyle.google.suppressionfilter.config':
-                    new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
+        def inlineCheckstyleFilters = ['SuppressWarningsFilter', 'SuppressWarningsHolder',
+            'SuppressionCommentFilter', 'SuppressWithNearbyCommentFilter', 'SuppressWithNearbyTextFilter',
+            'SuppressionXpathFilter']
+        def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
+        def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
+        def checkstyleJar = configurations.checkstyle.filter { it.name == "checkstyle-${pinned.checkstyle}.jar".toString() }
+        def bundledCheckstyleConfig = resources.text.fromArchiveEntry(checkstyleJar, 'google_checks.xml')
+        def writeCheckstyleConfig = tasks.register('nitpickerCheckstyleConfig') {
+            group = 'nitpicker'
+            inputs.files(checkstyleJar)
+            outputs.file(nitpickerCheckstyleConfig)
+            doLast {
+                def text = bundledCheckstyleConfig.asString()
+                inlineCheckstyleFilters.each { name ->
+                    text = text.replaceAll("(?s)<module name=\"${name}\"\\s*(?:/>|>.*?</module>)", '')
+                }
+                def left = inlineCheckstyleFilters.findAll { text.contains("\"${it}\"") }
+                if (!left.isEmpty()) {
+                    throw new GradleException("nitpicker could not remove ${left} from google_checks.xml")
+                }
+                def target = nitpickerCheckstyleConfig.get().asFile
+                target.parentFile.mkdirs()
+                target.text = text
+            }
+        }
+        checkstyle { toolVersion = pinned.checkstyle }
+        afterEvaluate {
+            tasks.withType(Checkstyle).configureEach {
+                ignoreFailures = true
+                maxWarnings = Integer.MAX_VALUE
+                if (projectCheckstyleConfig) {
+                    configFile = file(projectCheckstyleConfig)
+                } else {
+                    dependsOn writeCheckstyleConfig
+                    configFile = nitpickerCheckstyleConfig.get().asFile
+                    configProperties = ['org.checkstyle.google.suppressionfilter.config':
+                        new File(initScriptDir, 'checkstyle-suppressions.xml').absolutePath]
+                }
             }
         }
         tasks.named('checkstyleMain') {
@@ -139,9 +164,10 @@ allprojects {
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
-            def rulesetFile = rootProject.file('config/pmd/ruleset.xml')
-            def ruleset = rulesetFile.exists() ? rulesetFile.absolutePath
-                : 'category/java/errorprone.xml,category/java/bestpractices.xml'
+            def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
+            def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
+            def ruleset = ((nitpickerRulesets ? ['category/java/errorprone.xml', 'category/java/bestpractices.xml'] : [])
+                + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the compile classpath and the main classes, so rules can match
@@ -150,7 +176,7 @@ allprojects {
                 auxClasspath.text = (sourceSets.main.compileClasspath.files
                     + sourceSets.main.output.classesDirs.files).findAll { it.exists() }
                     .collect { it.absolutePath }.join('\n')
-                def rulesets = usesSpring()
+                def rulesets = nitpickerRulesets && usesSpring()
                     ? "${ruleset},${new File(initScriptDir, 'spring-ruleset.xml').absolutePath}"
                     : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
@@ -439,7 +465,7 @@ allprojects {
                 }
                 def hasJavaSources = { !sourceSets.main.java.files.isEmpty() }
                 def hasJavaClasses = { analyzedClassDirs().any { it.exists() && it.list()?.length } }
-                def kotlinFormatter = { findProperty('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
+                def kotlinFormatter = { nitpickerArgument('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
                 def writeFormatList = { List<String> files ->
                     reportDir.get().asFile.mkdirs()
                     reportDir.get().file('ktfmt.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
@@ -505,7 +531,7 @@ allprojects {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log
                         errorOutput = log
-                        def projectConfig = findProperty('nitpicker.kotlin.detektConfig')
+                        def projectConfig = nitpickerArgument('nitpicker.kotlin.detektConfig')
                         def libraries = sourceSets.main.compileClasspath.files.findAll {
                             it.exists() && !it.name.startsWith('kotlin-stdlib')
                         }
@@ -562,10 +588,10 @@ allprojects {
                     doFirst {
                         standardOutput = changed
                         errorOutput = errors
-                        def style = "--${findProperty('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
+                        def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
                         def argumentFile = new File(temporaryDir, 'ktfmt.args')
                         argumentFile.text = ([style, '--dry-run'] +
-                            (findProperty('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
+                            (nitpickerArgument('nitpicker.kotlin.editorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
                             kotlinFiles().collect { relative(it) }).collect { it + '\n' }.join('')
                         args("@${argumentFile.absolutePath}".toString())
                     }
