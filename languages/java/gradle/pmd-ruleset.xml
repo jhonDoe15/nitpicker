@@ -6,6 +6,7 @@
   <description>Nitpicker's PMD rules for main and test sources.</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
+    <exclude name="AvoidDuplicateLiterals"/>
   </rule>
   <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">
     <properties>
@@ -17,6 +18,7 @@
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="UnusedFormalParameter"/>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>

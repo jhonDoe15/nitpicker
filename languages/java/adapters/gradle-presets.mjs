@@ -21,4 +21,5 @@ export const JAVA_TOOLS = [
   'forbiddenapis',
   'dependencies',
   'spring',
+  'comments',
 ];
