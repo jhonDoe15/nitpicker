@@ -432,15 +432,28 @@ resolved plus a new finding, as in the TypeScript check.
   plugin of the project cannot move them. A compile error in this second compile fails the task
   with javac's errors (a `tool-error` on the CLI path); it never becomes an empty report.
   `module-info.java` is left out, so the sources compile in the unnamed module. Kotlin preset:
-  Java sources only, like PMD and SpotBugs.
+  Java sources only, like PMD and SpotBugs. Maven builds run the same `ErrorProneReport.java` from
+  `languages/java/maven/errorprone/` after `mvn test`, with the module's compile classpaths, the
+  `maven-compiler-plugin` release, encoding and compiler arguments, and its
+  `annotationProcessorPaths` (resolved like the other tools, versions taken from
+  `dependencyManagement` when a path names none); without `annotationProcessorPaths` the
+  processors come from the classpath, as javac finds them. The Maven e2e test checks that both
+  builds give the same findings. The runner itself turns `checks.json` into Error Prone flags, finds
+  the project's packages from the main classes, and decides `--release` and the kept compiler
+  options, so the two builds cannot drift apart.
 - **Findings.** `languages/java/ingest/errorprone/errorprone.mjs`, through
   `languages/java/adapters/errorprone/java-errorprone.mjs`: tool `errorprone`, rule the check
   name (`errorprone/FutureReturnValueIgnored`, `errorprone/NullAway`), every finding enforceable.
   The message is the diagnostic's first line plus Error Prone's `Did you mean ...` fix when it has
-  one; NullAway, which has no fix text, gets the allowed form instead (annotate with JSpecify's
-  `@Nullable` and check before use, or give a non-null value), so no skill line is needed for
-  it. Diagnostics outside the main and test source roots (annotation-processor output) are
-  dropped. Identity: a hash of the check and the message, with `line <n>` inside the message
+  one; NullAway, which has no fix text, gets the allowed form instead (annotate with the
+  `@Nullable` the project already uses, JSpecify's only when it uses none, and check before use, or
+  give a non-null value), so no skill line is needed for it. In the java preset, a finding of a
+  check that can hit intended code (every check but Error Prone's ERROR-severity ones, listed as
+  `certainBugs` in `checks.json`) ends with the exceptions route, in the same words as the other
+  tools (`If this is intended, add {"rule":"errorprone/<Check>",...} to "exceptions" ...`, with the
+  file as the path). The route is added after the identity is computed, so it does not change it.
+  Diagnostics outside the main and test source roots (annotation-processor output) are dropped.
+  Identity: a hash of the check and the message, with `line <n>` inside the message
   removed, and `#2`, `#3` for repeats in one file in source order; no line and no path, so moved
   code stays baselined and a renamed file follows the rename map. Editing the flagged line changes
   the `Did you mean` text and with it the identity, so the finding is new.
@@ -466,35 +479,51 @@ resolved plus a new finding, as in the TypeScript check.
   unused-variable rules skip names starting with `unused`).
 - **NullAway.** `AnnotatedPackages` is the same list: the project's code is non-null unless
   marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway
-  accepts any annotation of that simple name; JSpecify's `org.jspecify.annotations.Nullable` is the
-  one to add, and Spring Framework 7 already depends on it). Libraries without nullness annotations
-  are trusted. Without main classes in a named package, `CheckReturnValue` keeps its defaults and
-  NullAway is off.
-- **No inline escape.** Error Prone runs with `-XepIgnoreSuppressionAnnotations` (the flag is in
-  2.50.0's `ErrorProneOptions`; the e2e test pins its effect), so `@SuppressWarnings("<Check>")`,
-  and even `"all"`, does nothing for its checks, and the `@Generated` skip
-  (`-XepDisableWarningsInGeneratedCode`) is not used. NullAway reads `@SuppressWarnings("NullAway")`
-  and `"NullAway.Init"` itself and still honors them, so the inline suppression scan reports both
-  as `errorprone/InlineSuppression`. Code that is right despite a check takes an exception:
+  accepts any annotation of that simple name, so whichever one the project uses is right and never
+  flagged; JSpecify's `org.jspecify.annotations.Nullable` is the one to add when it has none, and
+  Spring Framework 7 already depends on it). Libraries without nullness annotations are trusted.
+  Without main classes in a named package, `CheckReturnValue` keeps its defaults and NullAway is
+  off.
+- **No inline escape.** Error Prone honors `@SuppressWarnings`, because Lombok marks the members
+  it generates with `@SuppressWarnings("all")` and Error Prone must skip them. The inline
+  suppression scan reads the source the project wrote, where Lombok's annotations are not, and
+  reports every `@SuppressWarnings` value that would silence a check nitpicker runs (its name or an
+  alternative name such as `"dep-ann"`, the `suppressible` list in `checks.json`) or NullAway
+  (`"NullAway"`, `"NullAway.Init"`) as `errorprone/InlineSuppression`; `"all"` and `"unused"` are
+  already `pmd/InlineSuppression`. So a suppression still fails the gate, as with PMD. Code that is
+  right despite a check takes an exception:
   `{ "rule": "errorprone/<Check>", "paths": [...], "reason": "..." }`.
+- **Lombok.** Lombok runs as an annotation processor of the second compile (Gradle's
+  `annotationProcessor` path, Maven's `annotationProcessorPaths` or classpath), so `@Data`,
+  `@Builder`, `@RequiredArgsConstructor`, `@Slf4j` and the rest compile. Lombok gives generated
+  members the position of the annotation that asked for them; the runner drops any Error Prone
+  diagnostic that starts at a Lombok annotation (such as `UnnecessarySemicolon` on every generated
+  member), except NullAway's: a generated constructor that leaves a non-null field unset is
+  reported there, as NullAway reports the same field without Lombok. Not supported:
+  `lombok.addSuppressWarnings = false` in a `lombok.config`, with which Error Prone 2.50.0 checks
+  (`StringConcatToTextBlock`, `StatementSwitchToExpressionSwitch`) crash on generated code and the
+  task fails.
 - **Measured** (findings on the whole project, main and test code; see the review for each check):
   crank 79, PetClinic 97, the `gradle-project` fixture 1, the `spring-project` fixture 2. NullAway
   alone: 8, 8, 0 and 1, nearly all `@Nullable` values returned or passed where a non-null one is
   declared.
 - **Cost.** A second compile of main and test sources: about 6 s on the fixtures and 30 s on crank
   and PetClinic, most of it JVM start-up and Error Prone's own class loading.
-- **Limits.** Lombok projects are untested (Lombok runs as an annotation processor of the second
-  compile too). A project whose own build already runs Error Prone gets nitpicker's run in
+- **Limits.** A project whose own build already runs Error Prone gets nitpicker's run in
   addition; its Error Prone jars are taken off the processor path of the second compile.
 - **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report `ingest/fixtures/errorprone.json`
   from crank, schema validity, line-shift stability), `adapters/errorprone/java-errorprone.test.mjs`
-  (paths, source roots, missing report, and that every check turned off is listed below), the
-  inline suppression cases in `suppressions/java-suppressions.test.mjs`, and the gated
-  `adapters/errorprone/error-prone.e2e.test.mjs` (part of `npm run test:java`): an ignored
-  `Future`, ignored results of the project's own methods in main and test code (one under an
-  ignored `@SuppressWarnings`) and a returned `null` give exactly those four findings; the regular
-  classes are byte-identical; a source that only the second compile sees fails the build with
-  javac's error and no report.
+  (paths, source roots, missing report, the exceptions route, and that every check turned off is
+  listed below), `maven/errorprone/maven-compiler.test.mjs` (Maven compiler settings and processor
+  paths), the inline suppression cases in `suppressions/java-suppressions.test.mjs`, and, in
+  `npm run test:java`: `adapters/errorprone/error-prone.e2e.test.mjs` (an ignored `Future`, an
+  ignored result of the project's own method in test code and a returned `null` give exactly those
+  three findings, a `@SuppressWarnings` in main code is honored; the regular classes are
+  byte-identical; a source that only the second compile sees fails the build with javac's error and
+  no report), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle and on Maven
+  runs the whole preset with no tool error and only the finding in written code), and
+  `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
+  Gradle build of the same sources).
 
 ### Checks that are off
 

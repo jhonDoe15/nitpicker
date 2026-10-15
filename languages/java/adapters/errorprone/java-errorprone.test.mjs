@@ -65,6 +65,33 @@ describe('readErrorProneFindings', () => {
     ]);
   });
 
+  it('ends findings of checks that can hit intended code with the exceptions route, in the java preset only', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      {
+        file: path.join(root, 'src/main/java/demo/A.java'),
+        line: 3,
+        message: '[JdkObsolete] Stack is a nonstandard class',
+      },
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+    ]);
+    const read = (kotlin) =>
+      readErrorProneFindings({
+        reportRoot,
+        roots: [projectRoot],
+        lintedRoots: ['src'],
+        kotlin,
+      }).map((finding) => finding.message);
+
+    expect(read(false)).toEqual([
+      'Stack is a nonstandard class. If this is intended, add {"rule":"errorprone/JdkObsolete","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      "Exception created but not thrown. Did you mean 'throw new X();'?",
+    ]);
+    expect(read(true)).toEqual([
+      'Stack is a nonstandard class',
+      "Exception created but not thrown. Did you mean 'throw new X();'?",
+    ]);
+  });
+
   it('reads no findings when the report is absent', () => {
     const { projectRoot, reportRoot } = reportRootWith();
 

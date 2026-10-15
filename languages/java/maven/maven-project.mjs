@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../ingest/common.mjs';
+import { compilerSettings } from './errorprone/maven-compiler.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
@@ -100,6 +101,7 @@ function describeModule(project, basedir) {
       : path.join(buildDirectory, 'surefire-reports'),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
+    compiler: compilerSettings(project),
   };
 }
 

@@ -21,6 +21,7 @@ import {
   runPit,
 } from './maven-tests.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
@@ -160,6 +161,7 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
   runPmd({ module, reportDir, tools, classpaths, configs, spring });
   runSpotbugs({ module, reportDir, tools });
+  runErrorProne({ module, reportDir, tools, classpaths });
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
   runStructure(module, reportDir);
@@ -224,6 +226,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
       maven,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
+      extraTools: modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     });
     for (const { module, classpaths } of analyzed) {
       analyzeModule({ module, classpaths, tools, pinned, configs, since });

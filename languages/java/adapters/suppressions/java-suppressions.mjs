@@ -33,9 +33,13 @@ const MESSAGE =
   'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 const SPOTBUGS_MESSAGE =
   'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
-const NULLAWAY_MESSAGE =
-  'Do not silence NullAway inline: mark what may be null with @Nullable, or add an exception for errorprone/NullAway in nitpicker.config.json. Error Prone itself ignores @SuppressWarnings; NullAway does not.';
-const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: NULLAWAY_MESSAGE };
+const ERROR_PRONE_MESSAGE =
+  'Do not silence Error Prone or NullAway inline: fix the finding (for NullAway, annotate what may be null with @Nullable), or add an exception for errorprone/<check> in nitpicker.config.json.';
+const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: ERROR_PRONE_MESSAGE };
+const ERROR_PRONE_NAMES = new Set(
+  JSON.parse(readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'))
+    .suppressible,
+);
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -69,7 +73,7 @@ export function fileFindings(source, filePath) {
     : SUPPRESS_WARNINGS;
   const suppressions = [
     ...pmdSuppressions(views, javaLangAnnotations),
-    ...nullAwaySuppressions(views, javaLangAnnotations),
+    ...errorProneSuppressions(views, javaLangAnnotations),
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
@@ -94,18 +98,16 @@ function pmdSuppressions(views, annotations) {
   }));
 }
 
-function nullAwaySuppressions(views, annotations) {
+function silencesErrorProne(value) {
+  return ERROR_PRONE_NAMES.has(value) || /^NullAway(?:\.|$)/.test(value);
+}
+
+function errorProneSuppressions(views, annotations) {
   return suppressWarningsValues(views, annotations).flatMap(({ offset, values }) => {
-    const silencesNullAway = values.filter((value) => /^NullAway(?:\.|$)/.test(value));
-    return silencesNullAway.length === 0
+    const silenced = values.filter((value) => silencesErrorProne(value));
+    return silenced.length === 0
       ? []
-      : [
-          {
-            tool: 'errorprone',
-            offset,
-            found: silencesNullAway.map((value) => `"${value}"`).join(', '),
-          },
-        ];
+      : [{ tool: 'errorprone', offset, found: silenced.map((value) => `"${value}"`).join(', ') }];
   });
 }
 
