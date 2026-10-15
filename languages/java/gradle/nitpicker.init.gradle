@@ -3,12 +3,15 @@
 // Every tool version is pinned exactly; bump them here only.
 //
 // Output contract (relative to each project directory), read by the Nitpicker side:
-//   build/nitpicker/pmd.sarif        PMD, SARIF 2.1.0 (plus languages/java/gradle/spring-ruleset.xml when the
-//                                    compile classpath has spring-context or spring-boot)
+//   build/nitpicker/pmd.sarif        PMD over main and test sources, SARIF 2.1.0 (plus
+//                                    languages/java/gradle/spring-ruleset.xml when the compile classpath has
+//                                    spring-context or spring-boot)
 //   build/nitpicker/spotbugs.sarif   SpotBugs, SARIF 2.1.0
-//   build/nitpicker/format.txt       google-java-format --dry-run: one file needing a reformat per line
+//   build/nitpicker/format.txt       google-java-format --dry-run over main and test sources: one file needing
+//                                    a reformat per line
 //   build/nitpicker/jacoco.xml       JaCoCo XML report
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
+//   build/nitpicker/checkstyle-test.xml  Checkstyle XML report (test sources; absent without any)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
 //   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
 //   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters (languages/java/gradle/StructureMetrics.java)
@@ -64,6 +67,18 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+
+def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
+    def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
+    def excludes = testDirectories.collect { directory ->
+        "  <exclude-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</exclude-pattern>"
+    }
+    (['<?xml version="1.0" encoding="UTF-8"?>',
+      '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+      '  <description>Nitpicker\'s Spring rules on main sources only.</description>']
+        + excludes
+        + ["  <rule ref=\"${escape(springRuleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
+}
 
 allprojects {
     plugins.withId('java') {
@@ -138,15 +153,19 @@ allprojects {
                 }
             }
         }
-        tasks.named('checkstyleMain') {
-            reports {
-                xml.required = true
-                xml.outputLocation = reportDir.map { it.file('checkstyle.xml') }
-                html.required = false
+        [checkstyleMain: 'checkstyle.xml', checkstyleTest: 'checkstyle-test.xml'].each { task, report ->
+            tasks.named(task) {
+                reports {
+                    xml.required = true
+                    xml.outputLocation = reportDir.map { it.file(report) }
+                    html.required = false
+                }
             }
         }
 
         def mainSources = sourceSets.main.allJava.sourceDirectories
+        def testSources = sourceSets.test.allJava.sourceDirectories
+        def lintedSources = { (mainSources.files + testSources.files).findAll { it.exists() } }
         def analyzedClassDirs = {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
@@ -160,31 +179,34 @@ allprojects {
 
         tasks.register('nitpickerPmd', JavaExec) {
             group = 'nitpicker'
-            dependsOn tasks.named('classes')
+            dependsOn tasks.named('classes'), tasks.named('testClasses')
             classpath = configurations.nitpickerPmd
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
             def nitpickerRulesets = nitpickerArgument('nitpicker.pmd.nitpickerConfig') != 'false'
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
-            def ruleset = ((nitpickerRulesets ? ['category/java/errorprone.xml', 'category/java/bestpractices.xml'] : [])
+            def ruleset = ((nitpickerRulesets ? [new File(initScriptDir, 'pmd-ruleset.xml').absolutePath] : [])
                 + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
-                // Type resolution: the compile classpath and the main classes, so rules can match
-                // annotation and supertype names exactly.
+                // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
+                // main one only) and the main and test classes, so rules can match annotation and
+                // supertype names exactly.
                 def auxClasspath = reportDir.get().file('pmd-aux-classpath.txt').asFile
                 auxClasspath.text = (sourceSets.main.compileClasspath.files
-                    + sourceSets.main.output.classesDirs.files).findAll { it.exists() }
+                    + sourceSets.test.compileClasspath.files
+                    + sourceSets.main.output.classesDirs.files
+                    + sourceSets.test.output.classesDirs.files).findAll { it.exists() }.unique()
                     .collect { it.absolutePath }.join('\n')
-                def rulesets = nitpickerRulesets && usesSpring()
-                    ? "${ruleset},${new File(initScriptDir, 'spring-ruleset.xml').absolutePath}"
-                    : ruleset
+                def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
+                springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSources.files)
+                def rulesets = nitpickerRulesets && usesSpring() ? "${ruleset},${springMainRuleset.absolutePath}" : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
                     '--aux-classpath', "file:${auxClasspath.absolutePath}",
                     '--suppress-marker', 'NITPICKER-NO-INLINE-SUPPRESSION',
-                    '--dir', mainSources.files.findAll { it.exists() }.join(',')
+                    '--dir', lintedSources().join(',')
             }
         }
 
@@ -219,7 +241,7 @@ allprojects {
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
-                def files = mainSources.asFileTree.matching { include '**/*.java' }.files.sort()
+                def files = (mainSources.asFileTree + testSources.asFileTree).matching { include '**/*.java' }.files.sort()
                 args(['--dry-run'] + files*.absolutePath)
             }
         }
@@ -388,7 +410,7 @@ allprojects {
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
             description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, lizard, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerStructure', 'nitpickerPit'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
@@ -463,7 +485,7 @@ allprojects {
                 def kotlinFiles = {
                     kotlinSourceDirs().collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
                 }
-                def hasJavaSources = { !sourceSets.main.java.files.isEmpty() }
+                def hasJavaSources = { !(sourceSets.main.java.files + sourceSets.test.java.files).isEmpty() }
                 def hasJavaClasses = { analyzedClassDirs().any { it.exists() && it.list()?.length } }
                 def kotlinFormatter = { nitpickerArgument('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
                 def writeFormatList = { List<String> files ->

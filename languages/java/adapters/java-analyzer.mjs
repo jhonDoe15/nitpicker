@@ -11,6 +11,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
 export const CONFIGURATION_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
+  'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-coupling.mjs',

@@ -28,6 +28,7 @@ import {
 } from './kotlin-reports.mjs';
 
 export const REPORT_DIRECTORY = 'build/nitpicker';
+const LINE_NUMBER = /\bline \d+\b/g;
 
 export function readJavaFindings(
   projectRoot,
@@ -45,6 +46,7 @@ export function readJavaFindings(
     reportRoot,
     manifest,
     sourceRoots: manifest.sourceRoots ?? [],
+    lintedRoots: lintedRoots(manifest),
     roots: projectRoots(projectRoot),
     kotlin,
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
@@ -72,10 +74,14 @@ export function readJavaFindings(
         kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
       }),
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.sourceRoots),
+      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
     ],
   };
+}
+
+function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
+  return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
 export function requireGradleReports(projectRoot, preset) {
@@ -100,7 +106,7 @@ function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
     const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
     findings.push(...ingestSarif(normalized, { tool }).findings);
   }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text);
+  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
   sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
   return findings;
 }
@@ -116,12 +122,18 @@ function formatFindings({ reportRoot, roots }) {
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  const checkstyle = readFileSync(path.join(reportRoot, 'checkstyle.xml'), 'utf8');
-  return roots.flatMap((root) =>
-    ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-      existsSync(path.join(projectRoot, finding.path)),
-    ),
-  );
+  const testReport = path.join(reportRoot, 'checkstyle-test.xml');
+  return [
+    path.join(reportRoot, 'checkstyle.xml'),
+    ...(existsSync(testReport) ? [testReport] : []),
+  ].flatMap((report) => {
+    const checkstyle = readFileSync(report, 'utf8');
+    return roots.flatMap((root) =>
+      ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+        existsSync(path.join(projectRoot, finding.path)),
+      ),
+    );
+  });
 }
 
 function jacocoFindings(context, jacoco) {

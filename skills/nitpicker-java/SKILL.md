@@ -61,7 +61,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices; main sources only) and Google
+- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
   checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
   when `nitpicker.config.json` opts in under `tools`; then read it too.
 
@@ -70,8 +70,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
   returns a failure value, logs and recovers, or rethrows with the cause:
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
-- Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Throwable)` and
-  `catch (NullPointerException)` fail. Keep the `try` around the one call that throws.
+- Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
+  `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
+  the `try` around the one call that throws.
 - Expected failures are values: a `sealed interface` result returning
   `new QuantityParse.Invalid(text)` beats throwing.
 
@@ -94,8 +95,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it.
-- PMD, SpotBugs, Checkstyle, the formatter, the method limits, CRAP and duplicate detection read
-  main sources only. Tests get only the file (500 lines) and folder (6 files) limits.
+- Tests get the same PMD, Checkstyle and formatter checks as main code, plus the file (500 lines)
+  and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection read main
+  sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
+  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
 
 ## Editing existing code
 
