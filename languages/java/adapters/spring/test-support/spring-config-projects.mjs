@@ -25,9 +25,11 @@ export function project(files, { jpa = true } = {}) {
 }
 
 export const sourceRoots = ['src/main/java'];
-export const resource = (name) => `src/main/resources/${name}`;
+export function resource(name) {
+  return `src/main/resources/${name}`;
+}
 
-export const OPEN_IN_VIEW_MESSAGE =
+const OPEN_IN_VIEW_MESSAGE =
   'Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries. Set spring.jpa.open-in-view=false.';
 export const MAIN_PROPERTIES = 'src/main/resources/application.properties';
 

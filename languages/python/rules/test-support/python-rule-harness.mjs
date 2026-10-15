@@ -8,8 +8,10 @@ import { RUFF_REPORT, createToolContext, lint } from '../../adapters/execution/p
 import { TYPES_REPORT, typeCheck } from '../../adapters/python-types.mjs';
 import { applyRuleHints } from '../rule-hints.mjs';
 
-const fixtures = import.meta.dirname;
-const read = (reportRoot, name) => readFileSync(path.join(reportRoot, name), 'utf8');
+const fixtures = path.join(import.meta.dirname, '../fixtures');
+function read(reportRoot, name) {
+  return readFileSync(path.join(reportRoot, name), 'utf8');
+}
 
 const COLLECTORS = {
   ruff: (context, roots) => {
@@ -29,7 +31,7 @@ const COLLECTORS = {
   },
 };
 
-export function findingsFor({ fixture, tool }, side) {
+function findingsFor({ fixture, tool }, side) {
   const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-case-')));
   try {

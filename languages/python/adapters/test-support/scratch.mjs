@@ -4,6 +4,22 @@ import path from 'node:path';
 import { createToolContext } from '../execution/python-tools.mjs';
 import { installFakeToolchain } from './fake-toolchain.mjs';
 
+function writeFiles(root, files) {
+  for (const [relative, contents] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+    writeFileSync(path.join(root, relative), contents);
+  }
+  return root;
+}
+
+function assignEnvironment(name, value) {
+  if (value === undefined) {
+    Reflect.deleteProperty(process.env, name);
+  } else {
+    process.env[name] = value;
+  }
+}
+
 export function createScratch() {
   const roots = [];
   const savedEnvironment = new Map();
@@ -14,27 +30,15 @@ export function createScratch() {
     return root;
   }
 
-  function write(root, files) {
-    for (const [relative, contents] of Object.entries(files)) {
-      mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-      writeFileSync(path.join(root, relative), contents);
-    }
-    return root;
-  }
-
   function setEnvironment(name, value) {
     if (!savedEnvironment.has(name)) {
       savedEnvironment.set(name, process.env[name]);
     }
-    if (value === undefined) {
-      Reflect.deleteProperty(process.env, name);
-    } else {
-      process.env[name] = value;
-    }
+    assignEnvironment(name, value);
   }
 
   function project({ files = {}, tools } = {}) {
-    const root = write(directory(), files);
+    const root = writeFiles(directory(), files);
     installFakeToolchain(path.join(root, '.venv/bin'), tools);
     const reportRoot = directory();
     return {
@@ -46,11 +50,7 @@ export function createScratch() {
 
   function cleanup() {
     for (const [name, value] of savedEnvironment) {
-      if (value === undefined) {
-        Reflect.deleteProperty(process.env, name);
-      } else {
-        process.env[name] = value;
-      }
+      assignEnvironment(name, value);
     }
     savedEnvironment.clear();
     for (const root of roots.splice(0)) {
@@ -58,5 +58,5 @@ export function createScratch() {
     }
   }
 
-  return { directory, write, setEnvironment, project, cleanup };
+  return { directory, write: writeFiles, setEnvironment, project, cleanup };
 }

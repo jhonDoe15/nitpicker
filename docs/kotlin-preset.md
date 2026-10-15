@@ -122,7 +122,7 @@ no separate build to ship), turned on and configured. Every message names the al
 form (in detekt's text, or in a sentence the gate appends when detekt's text does not name it) and
 ends with the exception route, which the gate appends to all of them. The `inline-suppression`
 message names the fix and both routes. Each rule has a banned and an allowed fixture in
-`languages/java/adapters/fixtures/kotlin-rules/cases.mjs`.
+`languages/java/adapters/kotlin/rules/test-support/kotlin-rule-cases.mjs`.
 
 | Spot              | Banned                                | Allowed                                                           | Rule (detekt)                                                            |
 | ----------------- | ------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
@@ -554,7 +554,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
 - `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
 - `languages/java/adapters/kotlin/rules/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
-  `fixtures/kotlin-rules/cases.mjs` gets its message from the recorded detekt text and must name the
+  `kotlin/rules/test-support/kotlin-rule-cases.mjs` gets its message from the recorded detekt text and must name the
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.

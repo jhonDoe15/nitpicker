@@ -1,4 +1,8 @@
-import { kotlinRuleCases, fixturePath, fixtureSource } from '../../fixtures/kotlin-rules/cases.mjs';
+import {
+  kotlinRuleCases,
+  fixturePath,
+  fixtureSource,
+} from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 
 export function ruleFixtures(variant) {
   return Object.fromEntries(

@@ -6,7 +6,11 @@ import {
   HOSTILE_DETEKT_CONFIG,
   ruleFixtures,
 } from './test-support/kotlin-one-way-data.mjs';
-import { expectedMessage, fixturePath, kotlinRuleCases } from '../fixtures/kotlin-rules/cases.mjs';
+import {
+  expectedMessage,
+  fixturePath,
+  kotlinRuleCases,
+} from '../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import { SUPPRESSION_RULE, addOneWayHint } from '../kotlin/rules/kotlin-rules.mjs';
 import {
   commitBranch,
