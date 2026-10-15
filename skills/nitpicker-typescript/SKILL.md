@@ -78,6 +78,8 @@ If your change edits a function that existed before it, read
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+- Exported functions declare their return type: `export function total(rows: readonly Row[]): number`;
+  a component returns `ReactElement` (`import type { ReactElement } from 'react'`).
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules

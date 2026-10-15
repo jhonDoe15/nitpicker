@@ -262,6 +262,19 @@ describe('hints for the production policy rules', () => {
     );
   });
 
+  it.each([
+    [
+      'Missing return type on function.',
+      'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.',
+    ],
+    [
+      "Argument 'rows' should be typed.",
+      "Argument 'rows' should be typed. Write the parameter type in the signature: `(rows: readonly Row[])`.",
+    ],
+  ])('names the typed signature for a module boundary finding: %s', (text, expected) => {
+    expect(hint('@typescript-eslint/explicit-module-boundary-types', text)).toBe(expected);
+  });
+
   it('names the allowed casing for a naming-convention finding', () => {
     expect(
       hint('@typescript-eslint/naming-convention', 'Function name `a_b` must match camelCase'),

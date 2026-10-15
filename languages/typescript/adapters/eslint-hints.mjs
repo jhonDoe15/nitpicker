@@ -71,6 +71,13 @@ const NAMING_HINT = `. Types are PascalCase; functions, variables and parameters
 
 const REGEXP_HINT = ` Rewrite the pattern without nested or overlapping quantifiers, or use a string method. If the input is bounded and trusted, ${EXCEPTION_ROUTE}.`;
 
+const RETURN_TYPE_TEXT = 'Missing return type on function.';
+
+const RETURN_TYPE_MESSAGE =
+  'Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`.';
+
+const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: readonly Row[])`.';
+
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
 const GROWTH_ADVICE = new Map([
@@ -138,6 +145,10 @@ function floatingPromiseMessage({ text }) {
     : `${text} ${EXCEPTION_ROUTE}.`;
 }
 
+function boundaryTypesMessage({ text }) {
+  return text === RETURN_TYPE_TEXT ? RETURN_TYPE_MESSAGE : `${text}${ARGUMENT_TYPE_HINT}`;
+}
+
 function appendHint(hint) {
   return ({ text }) => `${text}${hint}`;
 }
@@ -163,6 +174,7 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
   ['@typescript-eslint/no-magic-numbers', appendHint(MAGIC_NUMBER_HINT)],
   ['@typescript-eslint/naming-convention', appendHint(NAMING_HINT)],
+  ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
   ['no-eval', () => EVAL_MESSAGE],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
