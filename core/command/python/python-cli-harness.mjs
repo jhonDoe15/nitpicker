@@ -1,0 +1,126 @@
+import { execFileSync } from 'node:child_process';
+import {
+  cpSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { installFakeToolchain } from '../../../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { runCli } from '../../cli.mjs';
+
+export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
+
+const temporaryRoots = [];
+const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
+const fixtureState = { templateRoot: undefined };
+
+export function temporaryRoot(prefix) {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
+  temporaryRoots.push(root);
+  return root;
+}
+
+function git(root, args) {
+  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
+}
+
+export function write(root, files) {
+  for (const [relative, contents] of Object.entries(files)) {
+    const target = path.join(root, relative);
+    mkdirSync(path.dirname(target), { recursive: true });
+    writeFileSync(target, contents);
+  }
+}
+
+export function commit(root, message) {
+  git(root, ['add', '-A']);
+  git(root, ['commit', '-q', '-m', message]);
+}
+
+export function usePythonFixtures() {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+  beforeAll(() => {
+    const templateRoot = realpathSync(
+      mkdtempSync(path.join(tmpdir(), 'nitpicker-python-template-')),
+    );
+    fixtureState.templateRoot = templateRoot;
+    git(templateRoot, ['init', '-q', '--initial-branch=main']);
+    git(templateRoot, ['config', 'user.name', 'Nitpicker Python Fixture']);
+    git(templateRoot, ['config', 'user.email', 'nitpicker-python@example.invalid']);
+    write(templateRoot, {
+      'nitpicker.config.json': '{ "preset": "python" }\n',
+      '.gitignore': '.venv/\n',
+      'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\n',
+      'src/demo/a.py': 'import os\n\n\ndef value():\n    return 1\n',
+      'violations.txt': LEGACY_VIOLATION,
+    });
+    installFakeToolchain(path.join(templateRoot, '.venv/bin'));
+    commit(templateRoot, 'base');
+    git(templateRoot, ['branch', 'comparison-base']);
+  });
+  afterAll(() => {
+    rmSync(fixtureState.templateRoot, { recursive: true, force: true });
+  });
+}
+
+export function pythonRepository(files = {}) {
+  const root = temporaryRoot('nitpicker-python-cli-');
+  cpSync(fixtureState.templateRoot, root, { recursive: true });
+  if (Object.keys(files).length > 0) {
+    write(root, files);
+    commit(root, 'base');
+    git(root, ['branch', '-f', 'comparison-base']);
+  }
+  return root;
+}
+
+export function run(root, extra = []) {
+  const output = { out: '', err: '' };
+  const reports = path.join(temporaryRoot('nitpicker-python-out-'), 'reports');
+  const exitCode = runCli({
+    arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
+    environment: { NO_COLOR: '1' },
+    currentProjectRoot: root,
+    stdout: {
+      write: (value) => {
+        output.out += value;
+      },
+    },
+    stderr: {
+      write: (value) => {
+        output.err += value;
+      },
+    },
+    progress: { write: () => undefined },
+  });
+  function json(name) {
+    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+  }
+  return { exitCode, reports, json, output, text: output.out + output.err };
+}
+
+export function callsLog() {
+  const log = path.join(temporaryRoot('nitpicker-python-log-'), 'calls.jsonl');
+  writeFileSync(log, '');
+  vi.stubEnv('FAKE_PYTHON_LOG', log);
+  return () =>
+    readFileSync(log, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+}
+
+export function newFindings(result, rule) {
+  return result.json('new-findings.json').filter((finding) => finding.rule === rule);
+}
