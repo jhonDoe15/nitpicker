@@ -112,6 +112,12 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   adding another of the same kind in the file is new. Don't rename or move a file that has
   findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
+## Repository files
+
+- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries
+  (the Gradle wrapper jar is fine), or a file over 1 MB. If one is really needed, stop and ask:
+  the project adds an `exceptions` entry (rule, paths, reason) to `nitpicker.config.json`.
+
 ## Exceptions and suppressions
 
 - `// NOPMD` does nothing, and a `@SuppressWarnings` naming `"PMD..."`, `"all"`, `"unused"`,

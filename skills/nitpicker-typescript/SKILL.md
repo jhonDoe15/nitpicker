@@ -40,8 +40,8 @@ If your change edits a function that existed before it, read
 - Export only what another module imports; an exported type nobody imports fails dead-code.
   Callers in another feature derive result types: `Awaited<ReturnType<typeof importContacts>>`;
   inside a feature, extend the named type (`TransitionResult | { kind: 'blank-reason' }`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
-  if it isn't a dependency). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it to
+  `dependencies` if it isn't listed). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the first issue's
   `path` (`[index, field]`) names the bad record.
@@ -52,6 +52,15 @@ If your change edits a function that existed before it, read
   a new directory, never a new `if`, `?:` or `??` in a shared entry point: lookups and their
   missing-value checks go in the feature's `adapters/`.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist.
+
+## Dependencies and files
+
+- Every package you import is listed in `package.json`: `dependencies` for production code (zod
+  too), `devDependencies` for tests and tooling. Remove a dependency nothing imports. Production
+  code importing a `devDependency` fails.
+- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries,
+  or a file over 1 MB. If one is really needed, stop and ask: the project adds an `exceptions`
+  entry (rule, paths, reason) to `nitpicker.config.json`.
 
 ## Write it this way
 

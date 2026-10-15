@@ -53,6 +53,12 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
   message. Don't add one to get past the gate: stop and ask.
 
+## Repository files
+
+- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries
+  (the Gradle wrapper jar is fine), or a file over 1 MB. If one is really needed, stop and ask:
+  the project adds an `exceptions` entry (rule, paths, reason) to `nitpicker.config.json`.
+
 ## Size
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters;

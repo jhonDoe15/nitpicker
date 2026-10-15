@@ -115,8 +115,9 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `lineLength` and `folderFiles`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), and the `python` object
 below. `layout` describes TypeScript source roots and stays a config error with this preset. The
-top-level `exceptions` is accepted only for the file limits shared by every language
-(`file-lines-limit`, `line-length-limit`, `folder-files-limit`); the Python equivalent of
+top-level `exceptions` is accepted only for the rules shared by every language: the file limits
+(`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and the
+[dependency and repository checks](usage.md#dependency-and-repository-checks); the Python equivalent of
 `exceptions` for every other rule is `python.exceptions`. `python` is an error with any other preset.
 
 ```json
