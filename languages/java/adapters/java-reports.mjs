@@ -11,8 +11,13 @@ import {
   dropInheritedVersions,
   withExposureAdvice,
 } from './jpa/jpa-source-filters.mjs';
-import { readReportModules } from './gradle-reports/report-modules.mjs';
-import { prepareSarif, projectRelative } from './gradle-reports/sarif-relocation.mjs';
+import {
+  isEmptyModule,
+  readMainCheckstyle,
+  readModuleJacoco,
+  readReportModules,
+} from './gradle-reports/report-modules.mjs';
+import { prepareSarif, projectRelative } from '../ingest/sarif-paths/sarif-relocation.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
@@ -38,6 +43,7 @@ import {
 const LINE_NUMBER = /\bline \d+\b/g;
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
 const MODULE_IDENTITY_SEPARATOR = '@';
+const ROOT_MODULE = 'root';
 
 export function readJavaFindings(
   projectRoot,
@@ -49,25 +55,27 @@ export function readJavaFindings(
     requireKotlinManifest(manifest);
   }
   const roots = projectRoots(projectRoot);
-  const moduleFindings = modules.flatMap((module) =>
-    withModuleIdentity(
-      readModuleFindings(
-        {
-          projectRoot,
-          roots,
-          reportRoot: module.reportRoot,
-          manifest: module.manifest,
-          sourceRoots: module.manifest.sourceRoots ?? [],
-          allSourceRoots: manifest.sourceRoots,
-          kotlin: kotlinPreset && module.manifest.kotlin === true,
-          jacoco: readFileSync(path.join(module.reportRoot, 'jacoco.xml'), 'utf8'),
-        },
-        crapLimit,
+  const moduleFindings = modules
+    .filter((module) => !isEmptyModule(projectRoot, module))
+    .flatMap((module) =>
+      withModuleIdentity(
+        readModuleFindings(
+          {
+            projectRoot,
+            roots,
+            reportRoot: module.reportRoot,
+            manifest: module.manifest,
+            sourceRoots: module.manifest.sourceRoots ?? [],
+            allSourceRoots: manifest.sourceRoots,
+            kotlin: kotlinPreset && module.manifest.kotlin === true,
+            jacoco: readModuleJacoco(module, preset),
+            mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
+          },
+          crapLimit,
+        ),
+        module,
       ),
-      module,
-      modules.length > 1,
-    ),
-  );
+    );
   return {
     findings: [
       ...moduleFindings,
@@ -105,17 +113,17 @@ function readModuleFindings(context, crapLimit) {
   ];
 }
 
-function withModuleIdentity(findings, module, several) {
-  return several
-    ? findings.map((finding) =>
+function withModuleIdentity(findings, module) {
+  return module.key === ROOT_MODULE
+    ? findings
+    : findings.map((finding) =>
         finding.path === '.'
           ? {
               ...finding,
               identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
             }
           : finding,
-      )
-    : findings;
+      );
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -167,19 +175,20 @@ function formatFindings({ reportRoot, roots }) {
   }).findings;
 }
 
-function checkstyleFindings({ reportRoot, roots, projectRoot }) {
+function checkstyleFindings({ reportRoot, roots, projectRoot, mainCheckstyle }) {
   const sourceSetReports = readdirSync(reportRoot)
     .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
     .sort()
-    .map((name) => path.join(reportRoot, name));
-  return [path.join(reportRoot, 'checkstyle.xml'), ...sourceSetReports].flatMap((report) => {
-    const checkstyle = readFileSync(report, 'utf8');
-    return roots.flatMap((root) =>
-      ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
-        existsSync(path.join(projectRoot, finding.path)),
+    .map((name) => readFileSync(path.join(reportRoot, name), 'utf8'));
+  return [mainCheckstyle, ...sourceSetReports]
+    .filter(Boolean)
+    .flatMap((checkstyle) =>
+      roots.flatMap((root) =>
+        ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
+          existsSync(path.join(projectRoot, finding.path)),
+        ),
       ),
     );
-  });
 }
 
 function jacocoFindings(context, jacoco) {

@@ -37,16 +37,31 @@ gradle.projectsEvaluated {
     }
 }
 
-def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
-    def escape = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
-    def excludes = testDirectories.collect { directory ->
-        "  <exclude-pattern>${escape(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</exclude-pattern>"
+def escapeXml = { String text -> groovy.xml.XmlUtil.escapeXml(text) }
+
+def rulesetExcluding = { String name, String description, List<String> rules, Collection<File> excludedDirectories ->
+    def excludes = excludedDirectories.collect { directory ->
+        "  <exclude-pattern>${escapeXml(java.util.regex.Pattern.quote(directory.absolutePath + File.separator))}.*</exclude-pattern>"
     }
     (['<?xml version="1.0" encoding="UTF-8"?>',
-      '<ruleset name="nitpicker-spring-main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
-      '  <description>Nitpicker\'s Spring rules on main sources only.</description>']
-        + excludes
-        + ["  <rule ref=\"${escape(springRuleset.absolutePath)}\"/>", '</ruleset>', '']).join('\n')
+      "<ruleset name=\"${name}\" xmlns=\"http://pmd.sourceforge.net/ruleset/2.0.0\">",
+      "  <description>${description}</description>"]
+        + excludes + rules + ['</ruleset>', '']).join('\n')
+}
+
+def springOnMainSources = { File springRuleset, Collection<File> testDirectories ->
+    rulesetExcluding('nitpicker-spring-main', "Nitpicker's Spring rules on main sources only.",
+        ["  <rule ref=\"${escapeXml(springRuleset.absolutePath)}\"/>"], testDirectories)
+}
+
+def testRulesOnTestSources = { Collection<File> mainDirectories ->
+    rulesetExcluding('nitpicker-tests', "Nitpicker's test-only rules on test sources only.",
+        ['  <rule ref="category/java/errorprone.xml/TestClassWithoutTestCases">',
+         '    <properties>',
+         '      <property name="testClassPattern"',
+         '                value="^(?:.*\\.)?Test[^\\.]*$|^(?:.*\\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\\.)?.*TestCase$"/>',
+         '    </properties>',
+         '  </rule>'], mainDirectories)
 }
 
 allprojects {
@@ -54,8 +69,8 @@ allprojects {
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
-        def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace(':', '--')
-        def reportDir = reportBase
+        def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
+        def reportDir = reportBase && gradle.parent == null
             ? objects.directoryProperty().fileValue(new File(reportBase.toString(), moduleKey))
             : layout.buildDirectory.dir('nitpicker')
         if (project.projectDir.toPath().startsWith(analysisRoot.toPath())) {
@@ -125,6 +140,7 @@ allprojects {
         afterEvaluate {
             tasks.withType(Checkstyle).configureEach {
                 ignoreFailures = true
+                showViolations = false
                 maxWarnings = Integer.MAX_VALUE
                 if (projectCheckstyleConfig) {
                     configFile = file(projectCheckstyleConfig)
@@ -184,7 +200,11 @@ allprojects {
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def springMainRuleset = reportDir.get().file('pmd-spring-main.xml').asFile
                 springMainRuleset.text = springOnMainSources(new File(initScriptDir, 'spring-ruleset.xml'), testSourceDirectories())
-                def rulesets = nitpickerRulesets && usesSpring() ? "${ruleset},${springMainRuleset.absolutePath}" : ruleset
+                def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
+                testRuleset.text = testRulesOnTestSources(mainSources.files)
+                def nitpickerExtras = [testRuleset] + (usesSpring() ? [springMainRuleset] : [])
+                def rulesets = nitpickerRulesets
+                    ? ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',') : ruleset
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
@@ -327,8 +347,16 @@ allprojects {
                 }
             }
         }
+        def emptyExecutionData = reportDir.map { it.file('jacoco-empty.exec') }
+        def writeEmptyExecutionData = tasks.register('nitpickerJacocoEmptyData') {
+            group = 'nitpicker'
+            outputs.file(emptyExecutionData)
+            doLast { emptyExecutionData.get().asFile.with { parentFile.mkdirs(); bytes = new byte[0] } }
+        }
         tasks.named('jacocoTestReport') {
             reports { xml.required = true }
+            dependsOn writeEmptyExecutionData
+            executionData(emptyExecutionData)
         }
         gradle.projectsEvaluated {
             tasks.withType(Test).configureEach {

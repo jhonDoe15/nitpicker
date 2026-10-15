@@ -310,7 +310,7 @@ describe('readJavaFindings', () => {
 
     expect(findings.filter(({ path: file }) => file.startsWith('src/test/'))).toEqual([]);
     expect(() => readJavaFindings(root)).toThrow(
-      `ENOENT: no such file or directory, open '${path.join(rootReports(root), 'checkstyle.xml')}'`,
+      new Error('The java preset found no Checkstyle report for project :'),
     );
   });
 });

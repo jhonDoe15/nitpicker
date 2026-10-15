@@ -1,8 +1,13 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const MODULES_FILE = 'modules.json';
 const MANIFEST_FILE = 'manifest.json';
+const JACOCO_FILE = 'jacoco.xml';
+const MAIN_CLASSES_FILE = 'jdeps-classes.txt';
+const CHECKSTYLE_FILE = 'checkstyle.xml';
+const SOURCE_EXTENSIONS = ['.java', '.kt'];
+const EMPTY_JACOCO_REPORT = '<report name="no main classes"></report>';
 const ROOT_LISTS = [
   'sourceRoots',
   'testSourceRoots',
@@ -57,4 +62,50 @@ export function readReportModules(reportBase, preset) {
       return { ...entry, reportRoot, manifest: readJson(manifestFile) };
     });
   return { modules, manifest: mergeManifests(modules) };
+}
+
+function hasMainClasses(reportRoot) {
+  const file = path.join(reportRoot, MAIN_CLASSES_FILE);
+  return existsSync(file) && readFileSync(file, 'utf8').trim() !== '';
+}
+
+export function readModuleJacoco(module, preset) {
+  const file = path.join(module.reportRoot, JACOCO_FILE);
+  if (existsSync(file)) {
+    return readFileSync(file, 'utf8');
+  }
+  if (!hasMainClasses(module.reportRoot)) {
+    return EMPTY_JACOCO_REPORT;
+  }
+  throw new Error(`The ${preset} preset found no JaCoCo report for ${moduleLabel(module)}`);
+}
+
+function hasSourceFiles(projectRoot, roots, extensions) {
+  return roots.some((root) => {
+    const directory = path.join(projectRoot, root);
+    return (
+      existsSync(directory) &&
+      readdirSync(directory, { recursive: true }).some((name) =>
+        extensions.some((extension) => String(name).endsWith(extension)),
+      )
+    );
+  });
+}
+
+export function isEmptyModule(projectRoot, module) {
+  const roots = ROOT_LISTS.flatMap((list) => module.manifest[list] ?? []);
+  return (
+    !hasMainClasses(module.reportRoot) && !hasSourceFiles(projectRoot, roots, SOURCE_EXTENSIONS)
+  );
+}
+
+export function readMainCheckstyle(projectRoot, module, preset) {
+  const file = path.join(module.reportRoot, CHECKSTYLE_FILE);
+  if (existsSync(file)) {
+    return readFileSync(file, 'utf8');
+  }
+  if (!hasSourceFiles(projectRoot, module.manifest.sourceRoots ?? [], ['.java'])) {
+    return undefined;
+  }
+  throw new Error(`The ${preset} preset found no Checkstyle report for ${moduleLabel(module)}`);
 }

@@ -14,10 +14,20 @@ afterEach(() => {
   }
 });
 
+const SOURCES = ['src/main/java/demo/A.java', 'src/main/kotlin/demo/K.kt'];
+
+function withSources(files) {
+  const folders = ['', ...(files['modules.txt'] ?? '').split('\n').filter(Boolean)];
+  const sources = folders.flatMap((folder) =>
+    SOURCES.map((source) => [path.join(folder, source), 'package demo;\n']),
+  );
+  return { ...Object.fromEntries(sources), ...files };
+}
+
 function project(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-modules-'));
   roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
+  for (const [name, text] of Object.entries(withSources(files))) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
@@ -47,14 +57,57 @@ describe('a Gradle build with several projects', () => {
     ]);
   });
 
-  it('keeps project-wide findings of each project apart by the project path', () => {
+  it('keeps project-wide findings of each project apart, the root ones as in a one-project build', () => {
     const root = project({ 'modules.txt': 'lib\n', 'mutations.xml': KILLED_MUTANT });
 
     const identities = collect(root)
       .filter((finding) => finding.path === '.' && finding.tool === 'pit')
       .map((finding) => finding.identity);
 
-    expect(identities.toSorted()).toEqual(['status:Killed@:', 'status:Killed@:lib']);
+    expect(identities.toSorted()).toEqual(['status:Killed', 'status:Killed@:lib']);
+  });
+
+  it('reads the Kotlin reports of every project with the kotlin preset', () => {
+    const root = project({ 'modules.txt': 'lib\n', 'detekt.txt': 'Magic number 42\n' });
+
+    const paths = collectJavaFindings(root, { gradle: fakeGradle, policy: { preset: 'kotlin' } })
+      .filter((finding) => finding.tool === 'detekt')
+      .map((finding) => finding.path);
+
+    expect(paths.toSorted()).toEqual([
+      'lib/src/main/kotlin/demo/K.kt',
+      'src/main/kotlin/demo/K.kt',
+    ]);
+  });
+
+  it('reads a project without main classes or JaCoCo report as untested', () => {
+    const root = project({ 'modules.txt': 'lib\n', NO_JACOCO_IN: 'lib' });
+
+    expect(() => collect(root)).not.toThrow();
+  });
+
+  it('gives the root project the same identities with one project or several', () => {
+    const rootIdentities = (files) =>
+      collect(project({ 'mutations.xml': KILLED_MUTANT, ...files }))
+        .filter((finding) => finding.path === '.' && !finding.identity.includes('@'))
+        .map((finding) => `${finding.rule} ${finding.identity}`);
+
+    expect(rootIdentities({ 'modules.txt': 'extra\n' })).toEqual(rootIdentities({}));
+  });
+
+  it('skips a project with no sources and no classes, which writes no reports', () => {
+    const root = project({ 'modules.txt': 'empty\n', EMPTY_MODULES: 'empty' });
+    rmSync(path.join(root, 'empty'), { recursive: true });
+
+    expect(collect(root).filter((finding) => finding.path.startsWith('empty/'))).toEqual([]);
+  });
+
+  it('names the project whose JaCoCo report is missing, and never the report directory', () => {
+    const root = project({ 'modules.txt': 'lib\n', NO_JACOCO_IN: 'lib', MAIN_CLASSES: '' });
+
+    expect(() => collect(root)).toThrow(
+      new Error('The java preset found no JaCoCo report for project :lib (lib)'),
+    );
   });
 
   it('fails when no project applies the java plugin, instead of passing with no findings', () => {

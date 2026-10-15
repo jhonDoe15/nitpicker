@@ -13,12 +13,6 @@ import {
 } from './fixtures/kotlin-rules/cases.mjs';
 import { addOneWayHint, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
-// End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs
-// Java 21, Gradle and network access to Maven Central and
-// the Gradle plugin portal (the Kotlin Gradle plugin, detekt, ktlint and ktfmt are downloaded on
-// the first run), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`).
-// NITPICKER_GRADLE overrides `gradle`. The script raises the test timeout to 15 minutes per step.
-
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const kotlinPolicy = { preset: 'kotlin' };
@@ -826,8 +820,11 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
 
   it('does not ask for coverage of branches the Kotlin compiler generated', () => {
     git('checkout', '-q', 'generated-branches');
-    const findings = collectJavaFindings(repository, { gradle, policy: kotlinPolicy });
-    const report = readFileSync(path.join(repository, 'build/nitpicker/jacoco.xml'), 'utf8');
+    const reportDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-'));
+    const options = { gradle, policy: kotlinPolicy, reportDirectory };
+    const findings = collectJavaFindings(repository, options);
+    const report = readFileSync(path.join(reportDirectory, 'root/jacoco.xml'), 'utf8');
+    rmSync(reportDirectory, { recursive: true, force: true });
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
     const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
       ([, line]) => Number(line),

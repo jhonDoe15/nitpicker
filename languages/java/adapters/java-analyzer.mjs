@@ -26,7 +26,7 @@ export const CONFIGURATION_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-command.mjs',
   'languages/java/adapters/gradle-wrapper/failure-text.mjs',
   'languages/java/adapters/gradle-reports/report-modules.mjs',
-  'languages/java/adapters/gradle-reports/sarif-relocation.mjs',
+  'languages/java/ingest/sarif-paths/sarif-relocation.mjs',
   'languages/java/adapters/jpa/jpa-source-filters.mjs',
   'languages/java/adapters/kotlin-duplicates.mjs',
   'languages/java/adapters/kotlin-metrics.mjs',
