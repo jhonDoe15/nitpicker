@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -111,7 +111,10 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     'reads every module of a reactor under the module path, with coupling across modules',
     () => {
       const project = copyOf(path.join(fixtures, 'multi-module'));
-      const findings = collectJavaFindings(project, { maven, policy: {} });
+      const findings = collectJavaFindings(project, {
+        maven,
+        policy: { testSeconds: { unitTestSeconds: -1 } },
+      });
       const metrics = (file) =>
         findings
           .filter((finding) => finding.path === file && finding.metric !== undefined)
@@ -137,7 +140,23 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'checks/src/test/java/demo/checks/AdderIT.java',
         'core',
         'core/src/main/java/demo/core/Adder.java',
+        'core/src/test/java/demo/core/AdderTest.java',
       ]);
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'test-runtime')
+          .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
+      ).toEqual([
+        'slow-test core/src/test/java/demo/core/AdderTest.java test:demo.core.AdderTest#adds',
+      ]);
+      expect(
+        existsSync(
+          path.join(
+            project,
+            'core/target/nitpicker/test-results/surefire/TEST-demo.core.AdderTest.xml',
+          ),
+        ),
+      ).toBe(true);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );
