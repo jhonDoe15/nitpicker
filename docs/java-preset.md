@@ -102,9 +102,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 ## Slice 7: mutation with PIT
 
 - **Profile.** As decided in [`mutation-testing.md`](mutation-testing.md) (X10): one default
-  profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (the
-  packages found in the compiled main classes), against the project's own tests. The only profile
-  can produce enforceable findings.
+  profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
+  path of the compiled main classes, the first package that holds classes: a project rooted in
+  `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
+  so classes directly in `org` are named one by one), against the project's own tests. The only
+  profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `build/nitpicker/pit/mutations.xml`. Tests are named class by class (`--targetTests`), and
@@ -616,11 +618,13 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs` and `languages/java/gradle/pit-targets.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.
+  `pit-targets.e2e.test.mjs` runs `nitpickerPit` on a project whose packages sit under `org.acme`
+  and a class directly in `org`, and checks that PIT starts and mutates every class.
 - The conformance suite (`npm run test:conformance`) already covers the comparison itself. The
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via
