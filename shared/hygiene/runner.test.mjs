@@ -43,6 +43,35 @@ describe('runHygieneCheck', () => {
     ).toEqual(['.env', 'vendor/.env']);
   });
 
+  it('matches a build output exception against the folder, and reports the manifest', () => {
+    const { root } = createGitRepository({
+      'svc/package.json': '{"name":"svc"}\n',
+      'svc/build/app.class': 'x',
+    });
+    const check = (paths) =>
+      runHygieneCheck({
+        check: 'repository-hygiene',
+        projectRoot: root,
+        policy: { exceptions: [{ rule: 'committed-build-output', paths, reason: 'fixture' }] },
+      });
+
+    expect(check(['other/**'])).toEqual([
+      {
+        tool: 'repository-hygiene',
+        rule: 'committed-build-output',
+        path: 'svc/package.json',
+        identity: 'svc/build|build-output',
+        message:
+          'svc/build/ looks like build output tracked in git. If it holds sources or build scripts, add ' +
+          '{"rule":"committed-build-output","paths":["svc/build/**"],"reason":"..."} to "exceptions" in ' +
+          'nitpicker.config.json, or rename it. Otherwise untrack it with `git rm -r --cached svc/build`, ' +
+          'add `svc/build/` to .gitignore, and let CI produce it.',
+        classification: 'enforceable',
+      },
+    ]);
+    expect(check(['svc/build'])).toEqual([]);
+  });
+
   it('rejects a check it does not know', () => {
     const { root } = createGitRepository(FILES);
 
@@ -120,6 +149,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
       'hygiene/files/known-files.mjs',
+      'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',

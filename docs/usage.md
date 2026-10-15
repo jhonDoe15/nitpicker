@@ -256,8 +256,13 @@ LFS is sized by its pointer.
 A build output folder is fine when what runs from the checkout points into it: a GitHub Action's
 `action.yml` (`runs.main`, `pre`, `post`), or the `main`, `module`, `types`, `bin`, `exports` or
 `browser` of a `package.json` that is not `private` and has no `prepare` script, so a consumer that
-installs it from git gets no build step. Files in a flagged folder are not also reported as binaries
-or large files.
+installs it from git gets no build step. Such a library's committed `dist` is therefore never flagged.
+A `build`, `out`, `target` or `coverage` folder is also fine when it holds only source, script, config,
+doc or icon files (no compiled classes, archives, HTML, source maps, `.d.ts`, minified or hashed
+bundles), or when its manifest names a file in it (`"build": "node build/build.js"`). The finding is
+reported once per folder on the nearest manifest, so moving the folder with its project keeps it
+unchanged; an `exceptions` path of `svc/build`, `svc/build/` or `svc/build/**` lifts it. Files in a
+flagged folder are not also reported as binaries or large files.
 
 For the TypeScript and JavaScript presets the `dead-code` analyzer also fails a new `unused-dependency`
 (listed in `package.json`, imported or run by nothing), `unlisted-dependency` (imported, not listed) and
