@@ -2,6 +2,8 @@ import path from 'node:path';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
+import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
+import { exceptionHint } from '../../../../shared/policy.mjs';
 
 export const fakeGradle = path.resolve(
   import.meta.dirname,
@@ -45,4 +47,9 @@ export function useGradleFixtures(runNitpickerCli) {
     run: fixtures.run,
     runCli: fixtures.runCli,
   };
+}
+
+export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
 }
