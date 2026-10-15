@@ -3,20 +3,31 @@
   "layout": {
     "sourceRoots": ["core", "languages"],
     "entryPoints": [
-      "core/diff/http-cache-worker.mjs",
+      "core/diff/cache/http-cache-worker.mjs",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
       "core/fix/prettier-write-runner.mjs",
       "languages/typescript/adapters/entry-points-runner.mjs",
-      "languages/typescript/adapters/eslint-config-wrapper.mjs",
+      "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
       "languages/typescript/preset/defaults/stryker.config.mjs",
-      "languages/typescript/preset/eslint-config/coding-standards.mjs",
-      "languages/typescript/preset/eslint-config/errors.mjs",
-      "languages/typescript/preset/eslint-config/module-effects.mjs"
+      "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
+      "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
+      "languages/typescript/preset/eslint-config/policies/module-effects.config.mjs",
+      "core/cli.mjs",
+      "core/diff/sharding/aggregate-shards.mjs",
+      "core/diff/execution/analyzer-scheduler.mjs",
+      "core/diff/execution/test-support/fake-analyzer.mjs",
+      "languages/java/adapters/java-runner.mjs",
+      "languages/typescript/adapters/eslint-runner.mjs",
+      "languages/typescript/adapters/quality-areas-runner.mjs",
+      "languages/typescript/adapters/static-checks-runner.mjs",
+      "languages/typescript/preset/architecture/public-contract-usage.mjs",
+      "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
+      "languages/typescript/preset/coding-standards/check.mjs"
     ]
   },
   "exclude": [
@@ -45,14 +56,42 @@
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
     },
     {
+      "rule": "nitpicker/no-node-process-per-test",
+      "paths": [
+        "core/cli-bin.test.mjs",
+        "core/diff/execution/analyzer-process.test.mjs",
+        "core/diff/sharding/aggregate-cli.test.mjs"
+      ],
+      "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
+    },
+    {
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
-        "languages/java/adapters/java-preset.e2e.test.mjs",
+        "languages/java/adapters/java-e2e/java-preset.e2e.test.mjs",
         "languages/java/adapters/spring/java-spring.e2e.test.mjs",
         "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs",
         "languages/java/gradle/pit-targets.e2e.test.mjs"
       ],
       "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
+    },
+    {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": ["core/installed.test.mjs"],
+      "reason": "Opt-in end-to-end suite that packs the package and runs real npm installs for three dependency layouts (minutes per layout, and removing each installed tree takes long enough to need its own hook timeout); it is skipped unless NITPICKER_INSTALLED_TEST=1."
+    },
+    {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": ["languages/typescript/adapters/layout-exclude.test.mjs"],
+      "reason": "The shared hook runs ten real analyzers (eslint, prettier, tsc, dependency-cruiser, jscpd and others) side by side over one fixture project, as they run for a user; that takes about eight seconds on an idle four-CPU machine, too close to the ten-second hook limit for a shared CI runner."
+    },
+    {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": [
+        "languages/javascript/preset/clean-project/js-clean.test.mjs",
+        "languages/typescript/preset/clean-projects/react-project.test.mjs",
+        "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
+      ],
+      "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },
     {
       "rule": "@typescript-eslint/no-unsafe-member-access",
