@@ -21,13 +21,11 @@ export function validateConventions(value, definitions) {
 }
 
 export function describeConventions(detected, definitions) {
-  return definitions
-    .filter((definition) => detected[definition.id] !== undefined)
-    .map((definition) => describeOne(definition, detected[definition.id]));
+  return definitions.map((definition) => describeOne(definition, detected[definition.id]));
 }
 
 function describeOne(definition, { choice, source, counts }) {
-  const label = `${definition.label}: ${definition.optionLabels?.[choice] ?? choice}`;
+  const label = `${definition.label}: ${definition.optionLabels[choice]}`;
   if (source === 'pinned') {
     return `${label} (set in nitpicker.config.json)`;
   }

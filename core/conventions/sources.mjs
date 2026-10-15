@@ -1,34 +1,52 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { runGit } from '../diff/git.mjs';
-import { spawnSync } from 'node:child_process';
 
 const MAX_FILE_BYTES = 512 * 1024;
+const MAX_LISTING_BYTES = 1024 * 1024 * 1024;
+const BLOB_MODES = new Set(['100644', '100755']);
 
 export function commitSource({ repositoryRoot, commitSha, projectRelativePath }) {
-  const prefix = projectRelativePath === '.' ? '' : `${projectRelativePath.replaceAll('\\', '/')}/`;
+  const prefix =
+    projectRelativePath === '.' ? '' : `${projectRelativePath.split(path.sep).join('/')}/`;
+  const blobs = new Map();
+  const listing = git(repositoryRoot, [
+    'ls-tree',
+    '-r',
+    '-z',
+    '-l',
+    commitSha,
+    '--',
+    prefix || '.',
+  ]);
+  for (const entry of listing.toString('utf8').split('\0')) {
+    const blob = parseTreeEntry(entry, prefix);
+    if (blob !== undefined) {
+      blobs.set(blob.file, blob);
+    }
+  }
   return {
-    paths: () =>
-      runGit(repositoryRoot, ['ls-tree', '-r', '-z', '--name-only', commitSha, '--', prefix || '.'])
-        .split('\0')
-        .filter((file) => file.length > 0 && file.startsWith(prefix))
-        .map((file) => file.slice(prefix.length)),
-    readMany: (files) => readBlobs({ repositoryRoot, commitSha, prefix, files }),
+    paths: () => [...blobs.keys()],
+    readMany: (files) =>
+      readBlobs(
+        repositoryRoot,
+        files.map((file) => blobs.get(file)),
+      ),
   };
 }
 
 export function workingTreeSource(projectRoot) {
+  const listing = git(projectRoot, [
+    'ls-files',
+    '-z',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+  ]);
   return {
     paths: () =>
-      runGit(projectRoot, [
-        'ls-files',
-        '-z',
-        '--cached',
-        '--others',
-        '--exclude-standard',
-        '--',
-        '.',
-      ])
+      listing
+        .toString('utf8')
         .split('\0')
         .filter((file) => file.length > 0),
     readMany: (files) =>
@@ -41,44 +59,54 @@ export function workingTreeSource(projectRoot) {
   };
 }
 
-function readSmallFile(file) {
-  try {
-    return statSync(file).size > MAX_FILE_BYTES ? undefined : readFileSync(file, 'utf8');
-  } catch {
+function parseTreeEntry(entry, prefix) {
+  const tab = entry.indexOf('\t');
+  const [mode, type, oid, size] = entry.slice(0, tab).split(/ +/);
+  const file = entry.slice(tab + 1);
+  if (
+    tab < 0 ||
+    type !== 'blob' ||
+    !BLOB_MODES.has(mode) ||
+    Number(size) > MAX_FILE_BYTES ||
+    !file.startsWith(prefix)
+  ) {
     return undefined;
   }
+  return { file: file.slice(prefix.length), oid, size: Number(size) };
 }
 
-function readBlobs({ repositoryRoot, commitSha, prefix, files }) {
-  if (files.length === 0) {
+function readSmallFile(file) {
+  const stats = statSync(file, { throwIfNoEntry: false });
+  return stats?.isFile() === true && stats.size <= MAX_FILE_BYTES
+    ? readFileSync(file, 'utf8')
+    : undefined;
+}
+
+function readBlobs(repositoryRoot, blobs) {
+  if (blobs.length === 0) {
     return new Map();
   }
-  const result = spawnSync('git', ['cat-file', '--batch'], {
-    cwd: repositoryRoot,
-    input: files.map((file) => `${commitSha}:${prefix}${file}\n`).join(''),
-    maxBuffer: files.length * (MAX_FILE_BYTES + 256),
-  });
-  if (result.error !== undefined || result.status !== 0) {
-    throw new Error(`git cat-file --batch failed in ${repositoryRoot}`, { cause: result.error });
-  }
-  return parseBatch(result.stdout, files);
-}
-
-function parseBatch(output, files) {
+  const output = git(
+    repositoryRoot,
+    ['cat-file', '--batch'],
+    blobs.map(({ oid }) => `${oid}\n`).join(''),
+  );
   const texts = new Map();
   let offset = 0;
-  for (const file of files) {
-    const headerEnd = output.indexOf(0x0a, offset);
-    const header = output.subarray(offset, headerEnd).toString('utf8').split(' ');
-    offset = headerEnd + 1;
-    if (header[1] === 'missing' || header.length < 3) {
-      continue;
-    }
-    const size = Number(header[2]);
-    if (header[1] === 'blob' && size <= MAX_FILE_BYTES) {
-      texts.set(file, output.subarray(offset, offset + size).toString('utf8'));
-    }
+  for (const { file, size } of blobs) {
+    offset = output.indexOf(0x0a, offset) + 1;
+    texts.set(file, output.subarray(offset, offset + size).toString('utf8'));
     offset += size + 1;
   }
   return texts;
+}
+
+function git(cwd, args, input) {
+  const result = spawnSync('git', args, { cwd, input, maxBuffer: MAX_LISTING_BYTES });
+  if (result.error !== undefined || result.status !== 0) {
+    throw new Error(
+      `git ${args.join(' ')} failed in ${cwd}: ${result.error?.message ?? result.stderr.toString('utf8').trim()}`,
+    );
+  }
+  return result.stdout;
 }

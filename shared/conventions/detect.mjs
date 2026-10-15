@@ -3,13 +3,17 @@ import { globToRegExp } from '../glob.mjs';
 export const SAMPLE_LIMIT = 400;
 
 export function detectConventions({ definitions, source, pinned = {}, exclude = [] }) {
-  const excluded = exclude.map(globToRegExp);
-  const candidates = source.paths().filter((file) => !excluded.some((glob) => glob.test(file)));
   const measured = definitions.filter((definition) => pinned[definition.id] === undefined);
+  const excluded = exclude.map(globToRegExp);
+  const candidates =
+    measured.length === 0
+      ? []
+      : source.paths().filter((file) => !excluded.some((glob) => glob.test(file)));
   const samples = new Map(
     measured.map((definition) => [definition.id, sampleFor(definition, candidates)]),
   );
-  const texts = source.readMany([...new Set([...samples.values()].flat())]);
+  const texts =
+    measured.length === 0 ? new Map() : source.readMany([...new Set([...samples.values()].flat())]);
   return Object.fromEntries(
     definitions.map((definition) => [
       definition.id,
@@ -36,7 +40,7 @@ function measureConvention(definition, sample, texts) {
   const counts = Object.fromEntries(definition.options.map((option) => [option, 0]));
   for (const file of sample) {
     const text = texts.get(file);
-    const option = text === undefined ? undefined : definition.measure(text, file);
+    const option = text === undefined ? undefined : definition.measure(text);
     if (option !== undefined && option in counts) {
       counts[option] += 1;
     }

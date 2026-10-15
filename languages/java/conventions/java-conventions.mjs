@@ -1,7 +1,7 @@
-const OPENS_BLOCK = /\{\s*$/;
+const OPENS_BLOCK = /\{\s*(?:\/\/.*)?$/;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/;
 
-export const JAVA_INDENTATION = {
+const JAVA_INDENTATION = {
   id: 'java.indentation',
   label: 'Java indentation',
   options: ['2', '4'],
@@ -18,9 +18,10 @@ export function indentationStep(text) {
     .split(/\r?\n/)
     .filter((line) => line.trim().length > 0 && !COMMENT_LINE.test(line));
   const steps = new Map();
-  for (let index = 1; index < lines.length; index += 1) {
-    if (OPENS_BLOCK.test(lines[index - 1]) && !lines[index].startsWith('\t')) {
-      const step = leadingSpaces(lines[index]) - leadingSpaces(lines[index - 1]);
+  for (const [index, line] of lines.slice(1).entries()) {
+    const previous = lines[index];
+    if (OPENS_BLOCK.test(previous) && !line.startsWith('\t')) {
+      const step = leadingSpaces(line) - leadingSpaces(previous);
       steps.set(step, (steps.get(step) ?? 0) + 1);
     }
   }

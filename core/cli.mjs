@@ -6,7 +6,7 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../languages/typescript/adapters/static-checks-runner.mjs';
-import { createBaseSetupResolver } from './base-setup.mjs';
+import { baseSetupResolver } from './base-setup.mjs';
 import { publishHeadPolicy, runHeadPolicy } from './conventions/resolve.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
@@ -130,12 +130,7 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
-      resolveBaseSetup: createBaseSetupResolver({
-        headConfig: config,
-        conventions: headPolicy.conventions,
-        injectedAnalyzers: cli.analyzers,
-        warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
-      }),
+      resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
       config,
       headPolicy,
     });
