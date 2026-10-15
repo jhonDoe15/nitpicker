@@ -1,10 +1,12 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -227,13 +229,38 @@ function projectWith(files) {
   return root;
 }
 
+function compiledMetrics() {
+  const source = readFileSync(METRICS_SOURCE);
+  const hash = createHash('sha256').update(source).digest('hex').slice(0, 16);
+  const classes = path.join(tmpdir(), `nitpicker-structure-metrics-${hash}`);
+  if (!existsSync(classes)) {
+    const staging = mkdtempSync(`${classes}-`);
+    const compiled = spawnSync('javac', ['-d', staging, METRICS_SOURCE], { encoding: 'utf8' });
+    if (compiled.status !== 0) {
+      throw new Error(`javac failed: ${compiled.stderr}`);
+    }
+    try {
+      renameSync(staging, classes);
+    } catch {
+      rmSync(staging, { recursive: true, force: true });
+    }
+  }
+  return classes;
+}
+
+const METRICS_CLASSES = compiledMetrics();
+
 function measure(root) {
   const output = path.join(root, 'structure.json');
-  const result = spawnSync('java', [METRICS_SOURCE, output, root, SOURCE_ROOT], {
-    cwd: root,
-    encoding: 'utf8',
-    timeout: 120_000,
-  });
+  const result = spawnSync(
+    'java',
+    ['-cp', METRICS_CLASSES, 'StructureMetrics', output, root, SOURCE_ROOT],
+    {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 120_000,
+    },
+  );
   const stderr = result.stderr
     .split('\n')
     .filter((line) => !line.startsWith('Picked up '))
