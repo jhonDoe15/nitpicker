@@ -93,6 +93,11 @@
       "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },
     {
+      "rule": "nitpicker/no-test-helpers-in-source",
+      "paths": ["**/test-support/**"],
+      "reason": "This repository keeps modules used only by tests in test-support/ folders next to the code they serve. package.json `files` leaves **/test-support/** out of the npm package and the self-gate disables mutation, so they are neither shipped nor mutation-tested."
+    },
+    {
       "rule": "@typescript-eslint/no-unsafe-member-access",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
