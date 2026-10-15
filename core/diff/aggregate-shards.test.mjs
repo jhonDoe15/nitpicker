@@ -49,6 +49,8 @@ function writeShard(
     elapsedMs = 10,
     policyChanges,
     notices,
+    policyLoosenings,
+    policyChangeAccepted,
   },
 ) {
   const shardRoot = path.join(inputRoot, String(index));
@@ -76,6 +78,7 @@ function writeShard(
     exclusions: ['generated/**'],
     ...(policyChanges === undefined ? {} : { policyChanges }),
     ...(notices === undefined ? {} : { notices }),
+    ...(policyLoosenings === undefined ? {} : { policyLoosenings, policyChangeAccepted }),
     renamedPaths: 0,
     elapsedMs,
     overallStatus,
@@ -140,8 +143,18 @@ describe('quality shard aggregation', () => {
     const carried = {
       policyChanges: ['exclude added: src/vendor/**'],
       notices: ['1 changed TypeScript file is outside layout.sourceRoots'],
+      policyLoosenings: ['exclude added: src/vendor/**'],
+      policyChangeAccepted: false,
     };
-    writeShard(fixture.inputRoot, 0, { tools: ['first'], ...carried });
+    const loosening = {
+      tool: 'nitpicker-config',
+      rule: 'policy-loosened',
+      path: 'nitpicker.config.json',
+      identity: 'exclude added: src/vendor/**',
+      message: 'exclude added: src/vendor/**. Stop and ask a person to review this change.',
+      classification: 'enforceable',
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [loosening], ...carried });
     writeShard(fixture.inputRoot, 1, { tools: ['second'], ...carried });
 
     const report = aggregateShardReports({
@@ -154,8 +167,11 @@ describe('quality shard aggregation', () => {
     const heading = 'Policy changed in this change (nitpicker.config.json, head against base):';
     const start = text.indexOf(heading);
 
-    expect([report.summary.policyChanges, report.summary.notices]).toEqual(Object.values(carried));
-    expect([summary.policyChanges, summary.notices]).toEqual(Object.values(carried));
+    const fields = (entry) => Object.keys(carried).map((key) => entry[key]);
+
+    expect(fields(report.summary)).toEqual(Object.values(carried));
+    expect(fields(summary)).toEqual(Object.values(carried));
+    expect([report.newFindings, report.summary.newEnforceableFindings]).toEqual([[loosening], 1]);
     expect(text.slice(start, start + 5)).toEqual([
       heading,
       '  exclude added: src/vendor/**',

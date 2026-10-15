@@ -327,18 +327,31 @@ describe('a config that changed between base and head', () => {
   it('falls back to the head config when the base has none or it does not load', () => {
     const warnings = [];
     const resolve = createBaseSetupResolver({
-      headConfig: {},
+      headConfig: { exclude: ['src/vendor/**'] },
       injectedAnalyzers: [probeAnalyzer()],
       warn: (message) => warnings.push(message),
     });
-    const root = createRepository({ 'nitpicker.config.json': '{not json' });
-
-    expect(resolve({ baseProjectRoot: root, analyzers: [probeAnalyzer()] })).toEqual({});
-    expect(warnings).toEqual([expect.stringContaining('cannot be applied')]);
-    expect(resolve({ baseProjectRoot: path.join(root, 'missing'), analyzers: [] })).toEqual({
-      policyChanges: [],
-      policyLoosenings: [],
+    const root = createRepository({
+      'nitpicker.config.json': '{not json',
+      'src/vendor/a.ts': 'export {};\n',
     });
+    const comparedWithDefaults = {
+      policyChanges: ['exclude added: src/vendor/**'],
+      policyLoosenings: ['exclude added: src/vendor/**'],
+      notices: [],
+    };
+
+    expect(
+      resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [probeAnalyzer()] }),
+    ).toEqual(comparedWithDefaults);
+    expect(warnings).toEqual([expect.stringContaining('cannot be applied')]);
+    expect(
+      resolve({
+        baseProjectRoot: path.join(root, 'missing'),
+        headSnapshotRoot: root,
+        analyzers: [],
+      }),
+    ).toEqual(comparedWithDefaults);
     expect(warnings).toHaveLength(1);
   });
 
@@ -350,7 +363,7 @@ describe('a config that changed between base and head', () => {
       injectedAnalyzers: [probeAnalyzer(), { ...probeAnalyzer(), name: 'other' }],
     });
 
-    const setup = resolve({ baseProjectRoot: root, analyzers: [headOnly] });
+    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [headOnly] });
 
     expect(setup.analyzers).toEqual([headOnly]);
     expect(setup.headPolicy.exclude).toEqual([]);

@@ -1,5 +1,6 @@
 import { isPlainObject } from '../../shared/config.mjs';
-import { SWITCH_SETTINGS, describeLoosenings } from './loosenings.mjs';
+import { coveredPathChanges } from './covered-paths.mjs';
+import { listedChanges, loosensSetting } from './loosenings.mjs';
 
 const LISTED_KEYS = new Set(['exclude', 'disable', 'exceptions', 'thresholds', 'analyzers']);
 const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
@@ -43,34 +44,33 @@ function show(value) {
 function changedSettings(baseConfig, headConfig) {
   const before = settingLeaves(baseConfig);
   const after = settingLeaves(headConfig);
-  return [...new Set([...before.keys(), ...after.keys()])].flatMap((setting) =>
-    JSON.stringify(before.get(setting)) === JSON.stringify(after.get(setting))
+  return [...new Set([...before.keys(), ...after.keys()])].flatMap((setting) => {
+    const change = { setting, before: before.get(setting), after: after.get(setting) };
+    return JSON.stringify(change.before) === JSON.stringify(change.after)
       ? []
-      : [
-          {
-            setting,
-            text: `${setting}: ${show(before.get(setting))} -> ${show(after.get(setting))}`,
-          },
-        ],
-  );
+      : [{ ...change, text: `${setting}: ${show(change.before)} -> ${show(change.after)}` }];
+  });
 }
 
-function isSwitch({ setting }) {
-  return SWITCH_SETTINGS.some((pattern) => pattern.test(setting));
-}
-
-export function describePolicyChanges(baseConfig, headConfig) {
+export function describePolicyChanges(baseConfig, headConfig, scope) {
   const settings = changedSettings(baseConfig, headConfig);
+  const parts = [
+    ...coveredPathChanges(baseConfig, headConfig, scope),
+    ...listedChanges(baseConfig, headConfig),
+  ];
   return {
     loosened: [
-      ...describeLoosenings(baseConfig, headConfig),
-      ...settings.filter(isSwitch).map(({ text }) => text),
+      ...parts.flatMap((part) => part.loosened),
+      ...settings.filter(loosensSetting).map(({ text }) => text),
     ],
-    changed: settings.filter((entry) => !isSwitch(entry)).map(({ text }) => text),
+    changed: [
+      ...parts.flatMap((part) => part.changed),
+      ...settings.filter((entry) => !loosensSetting(entry)).map(({ text }) => text),
+    ],
   };
 }
 
-export function policyChangeFields(baseConfig, headConfig) {
-  const { loosened, changed } = describePolicyChanges(baseConfig, headConfig);
+export function policyChangeFields(baseConfig, headConfig, scope) {
+  const { loosened, changed } = describePolicyChanges(baseConfig, headConfig, scope);
   return { policyChanges: [...loosened, ...changed], policyLoosenings: loosened };
 }

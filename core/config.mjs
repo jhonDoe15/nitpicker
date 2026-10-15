@@ -50,7 +50,7 @@ export function loadConfig(projectRoot) {
   return config;
 }
 
-function readConfigFile(projectRoot) {
+export function readConfigFile(projectRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
   if (!existsSync(configPath)) {
     return {};

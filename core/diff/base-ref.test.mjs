@@ -97,6 +97,18 @@ describe('resolveBase', () => {
     ).toThrow(/compared with itself/);
   });
 
+  it('rejects a configured base that follows HEAD, and accepts a remote branch at HEAD', () => {
+    const repositoryRoot = createRepository();
+    setRemoteBranch(repositoryRoot, 'origin', 'main');
+    const resolve = (configuredBase) => () =>
+      resolveBase({ repositoryRoot, configuredBase, environment: {} });
+
+    for (const configuredBase of ['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main']) {
+      expect(resolve(configuredBase)).toThrow(`"base" is ${configuredBase}, the commit you are on`);
+    }
+    expect(resolve('origin/main')()).toEqual({ baseRef: 'origin/main', source: 'config' });
+  });
+
   it('accepts a configured commit id that is not the checked commit, and an explicit base at HEAD', () => {
     const repositoryRoot = createRepository();
     const sha = git(repositoryRoot, ['rev-parse', 'HEAD']).trim();

@@ -1,10 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mjs';
+import { createPolicyScope, rootSets } from './policy-scope.mjs';
 
 const exception = { rule: 'nitpicker/no-comments', paths: ['src/legacy/**'], reason: 'Legacy' };
+const FILES = [
+  'src/a.ts',
+  'src/legacy/old.ts',
+  'src/vendor/lib.ts',
+  'src/new/b.ts',
+  'src/cli/run.ts',
+  'lib/c.ts',
+  'tools/gen.ts',
+  'docs/readme.md',
+];
+const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function loosened(baseConfig, headConfig) {
-  return describePolicyChanges(baseConfig, headConfig).loosened;
+function scopeOf(baseConfig, headConfig, files = FILES, moves = undefined) {
+  return createPolicyScope({
+    files,
+    baseRoots: rootSets(baseConfig, '.'),
+    headRoots: rootSets(headConfig, '.'),
+    headConfig,
+    moves,
+  });
+}
+
+function changes(baseConfig, headConfig, files = FILES, moves = undefined) {
+  return describePolicyChanges(
+    baseConfig,
+    headConfig,
+    scopeOf(baseConfig, headConfig, files, moves),
+  );
+}
+
+function loosened(baseConfig, headConfig, files = FILES) {
+  return changes(baseConfig, headConfig, files).loosened;
 }
 
 describe('describePolicyChanges', () => {
@@ -12,8 +42,8 @@ describe('describePolicyChanges', () => {
     const config = { exclude: ['a/**'], exceptions: [exception], thresholds: { crapLimit: 12 } };
     const none = { loosened: [], changed: [] };
 
-    expect(describePolicyChanges(config, structuredClone(config))).toEqual(none);
-    expect(describePolicyChanges({}, {})).toEqual(none);
+    expect(changes(config, structuredClone(config))).toEqual(none);
+    expect(changes({}, {})).toEqual(none);
   });
 
   it('counts added excludes, disabled analyzers and exceptions as loosening', () => {
@@ -28,111 +58,257 @@ describe('describePolicyChanges', () => {
       ),
     ).toEqual([
       'exclude added: src/vendor/**',
+      'exception added: nitpicker/no-comments for src/legacy/** (Legacy)',
       'analyzer disabled: crap',
       'analyzer disabled: coverage',
-      'exception added: nitpicker/no-comments for src/legacy/** (Legacy)',
     ]);
   });
 
-  it('counts only the paths an exception gains, and not a narrowed or reworded one', () => {
-    const widened = { ...exception, paths: ['src/legacy/**', 'src/new/**'] };
-    const narrowed = { ...exception, paths: [] };
+  it('lists an exclude or exception that covers no newly checked file without counting it', () => {
+    const outsideRoots = { exclude: ['tools/**', 'docs/**'] };
+    const narrowed = { ...exception, paths: ['src/legacy/old.ts'] };
     const reworded = { ...exception, reason: 'Still legacy' };
+    const moved = { ...exception, paths: ['src/old/**', 'src/new/**'] };
+
+    expect(changes({}, outsideRoots)).toEqual({
+      loosened: [],
+      changed: [
+        `exclude added: tools/** (${NOTHING_NEW})`,
+        `exclude added: docs/** (${NOTHING_NEW})`,
+      ],
+    });
+    expect(loosened({ exclude: ['src/vendor/**'] }, { exclude: ['src/vendor/lib.ts'] })).toEqual(
+      [],
+    );
+    expect(loosened({ exceptions: [exception] }, { exceptions: [narrowed] })).toEqual([]);
+    expect(loosened({ exceptions: [exception] }, { exceptions: [reworded] })).toEqual([]);
+    expect(
+      changes(
+        { exceptions: [{ ...exception, paths: ['src/old/**'] }] },
+        { exceptions: [moved] },
+        FILES,
+        { files: new Map([['src/old/b.ts', 'src/new/b.ts']]), directories: new Map() },
+      ).loosened,
+    ).toEqual([]);
+  });
+
+  it('counts only the paths an exception gains', () => {
+    const widened = { ...exception, paths: ['src/legacy/**', 'src/new/**'] };
 
     expect(loosened({ exceptions: [exception] }, { exceptions: [widened] })).toEqual([
       'exception added: nitpicker/no-comments for src/new/** (Legacy)',
     ]);
-    expect(loosened({ exceptions: [exception] }, { exceptions: [narrowed] })).toEqual([]);
-    expect(loosened({ exceptions: [exception] }, { exceptions: [reworded] })).toEqual([]);
   });
 
   it('counts a python exception like a top-level one', () => {
-    expect(
-      loosened({ python: { exceptions: [] } }, { python: { exceptions: [exception] } }),
-    ).toEqual(['exception added: nitpicker/no-comments for src/legacy/** (Legacy)']);
+    const python = (exceptions) => ({
+      preset: 'python',
+      python: { sourceRoots: ['src'], exceptions },
+    });
+
+    expect(loosened(python([]), python([exception]), ['src/legacy/old.py'])).toEqual([
+      'exception added: nitpicker/no-comments for src/legacy/** (Legacy)',
+    ]);
   });
 
-  it('counts a threshold raised above the base or the default, not a lowered one', () => {
+  it('counts a threshold raised above the base or the default, or dropped back to a looser default', () => {
     expect(
       loosened(
-        { thresholds: { crapLimit: 12, fileLines: 400 } },
-        { thresholds: { crapLimit: 20, fileLines: 300, folderFiles: 8, lineLength: 100 } },
+        { thresholds: { crapLimit: 12, fileLines: 400, lineLength: 100 } },
+        { thresholds: { crapLimit: 20, fileLines: 300, folderFiles: 8 } },
       ),
     ).toEqual([
       'threshold crapLimit raised from 12 to 20',
+      'threshold lineLength raised from 100 to 120',
       'threshold folderFiles raised from 6 to 8',
     ]);
   });
 
-  it('counts a removed custom analyzer', () => {
+  it('counts a removed or changed custom analyzer and lists an added one', () => {
     expect(
-      loosened(
+      changes(
         {
           analyzers: [
             { name: 'a', command: 'x' },
             { name: 'b', command: 'y' },
           ],
         },
-        { analyzers: [{ name: 'b', command: 'y' }] },
+        {
+          analyzers: [
+            { name: 'b', command: 'y', args: ['--quiet'] },
+            { name: 'c', command: 'z' },
+          ],
+        },
       ),
-    ).toEqual(['analyzer removed: a']);
+    ).toEqual({
+      loosened: ['analyzer removed: a', 'analyzer changed: b'],
+      changed: ['analyzer added: c'],
+    });
   });
 
-  it('counts added layout exclusions and entry points, and lists a root change without counting it', () => {
+  it('counts layout exclusions and entry points that cover more files, and removed roots', () => {
     expect(
-      describePolicyChanges(
-        { layout: { sourceRoots: ['src', 'lib'], entryPoints: ['bin/*.mjs'] } },
+      changes(
+        { layout: { sourceRoots: ['src', 'lib'], entryPoints: ['src/a.ts'] } },
         {
           layout: {
             sourceRoots: ['src', 'app'],
             excludedGlobs: ['dist/**', '**/vendor/**'],
-            entryPoints: ['bin/*.mjs', 'scripts/*.mjs'],
+            entryPoints: ['src/a.ts', 'src/cli/*.ts'],
           },
         },
       ),
     ).toEqual({
       loosened: [
         'layout.excludedGlobs added: **/vendor/**',
-        'layout.entryPoints added: scripts/*.mjs',
+        'layout.entryPoints added: src/cli/*.ts',
+        'layout.sourceRoots removed: lib',
       ],
       changed: ['layout.sourceRoots: ["src","lib"] -> ["src","app"]'],
     });
   });
 
-  it('counts a changed preset, react.enabled and tool precedence as loosening, other settings not', () => {
+  it('does not count a root renamed together with its files, or an exclude moved to excludedGlobs', () => {
+    const renamed = { layout: { sourceRoots: ['source'] } };
+
+    expect(loosened({}, renamed, ['source/a.ts'])).toEqual([]);
     expect(
-      describePolicyChanges(
+      loosened(
+        { exclude: ['src/vendor/**'] },
+        { layout: { excludedGlobs: ['dist/**', 'src/vendor/**'] } },
+      ),
+    ).toEqual([]);
+    expect(loosened({ layout: { testRoots: ['test', 'spec'] } }, {}, ['spec/a.test.ts'])).toEqual([
+      'layout.testRoots removed: spec',
+    ]);
+  });
+
+  it('counts a python source root that no longer covers its files', () => {
+    const python = (sourceRoots) => ({ preset: 'python', python: { sourceRoots } });
+
+    expect(loosened(python(['src', 'tools']), python(['src']), ['tools/run.py'])).toEqual([
+      'python.sourceRoots removed: tools',
+    ]);
+  });
+
+  it('compares the preset that runs, not the preset that is written', () => {
+    const presetChange = (before, after) =>
+      loosened(
+        before === undefined ? {} : { preset: before },
+        after === undefined ? {} : { preset: after },
+      );
+
+    expect(presetChange(undefined, 'typescript')).toEqual([]);
+    expect(presetChange('typescript', undefined)).toEqual([]);
+    expect(presetChange(undefined, 'java')).toEqual([]);
+    expect(presetChange(undefined, 'python')).toEqual([]);
+    expect(presetChange('javascript', 'typescript')).toEqual([]);
+    expect(presetChange('javascript', undefined)).toEqual([]);
+    expect(presetChange(undefined, 'javascript')).toEqual(['preset: not set -> "javascript"']);
+    expect(presetChange('typescript', 'javascript')).toEqual([
+      'preset: "typescript" -> "javascript"',
+    ]);
+    expect(presetChange('java', 'kotlin')).toEqual(['preset: "java" -> "kotlin"']);
+    expect(presetChange('java', undefined)).toEqual(['preset: "java" -> not set']);
+  });
+
+  it('counts turning a check off or giving the project config precedence, not a tool swap', () => {
+    expect(
+      changes(
         {
-          preset: 'typescript',
           base: 'origin/main',
-          react: { styling: 'css-modules' },
-          tools: { prettier: { precedence: ['nitpicker'] } },
+          react: { enabled: true, styling: 'css-modules' },
+          tools: {
+            prettier: { precedence: ['nitpicker'] },
+            eslint: { engine: 'oxlint' },
+            typescript: { engine: 'native' },
+          },
         },
         {
-          preset: 'javascript',
           base: 'origin/develop',
           react: { enabled: false, styling: 'css-modules' },
-          tools: { prettier: { precedence: ['project'] } },
+          tools: {
+            prettier: { precedence: ['project', 'nitpicker'] },
+            eslint: { engine: 'eslint' },
+            typescript: { engine: 'project' },
+          },
           legacyInventory: 'legacy.json',
         },
       ),
     ).toEqual({
       loosened: [
-        'preset: "typescript" -> "javascript"',
-        'tools.prettier.precedence: ["nitpicker"] -> ["project"]',
-        'react.enabled: not set -> false',
+        'react.enabled: true -> false',
+        'tools.prettier.precedence: ["nitpicker"] -> ["project","nitpicker"]',
       ],
       changed: [
         'base: "origin/main" -> "origin/develop"',
+        'tools.eslint.engine: "oxlint" -> "eslint"',
+        'tools.typescript.engine: "native" -> "project"',
         'legacyInventory: not set -> "legacy.json"',
       ],
     });
   });
 
+  it('counts precedence by what the tool runs', () => {
+    const precedence = (tool, before, after) =>
+      loosened(
+        { preset: 'java', tools: { [tool]: { precedence: before } } },
+        { preset: 'java', tools: { [tool]: { precedence: after } } },
+      );
+
+    expect(precedence('pmd', ['nitpicker'], ['project', 'nitpicker'])).toEqual([]);
+    expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
+      'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
+    ]);
+    expect(precedence('checkstyle', ['project'], ['nitpicker'])).toEqual([]);
+    expect(precedence('checkstyle', ['nitpicker'], ['project'])).toEqual([
+      'tools.checkstyle.precedence: ["nitpicker"] -> ["project"]',
+    ]);
+  });
+
+  it('counts python and kotlin switches that turn a check off, not a swapped tool', () => {
+    expect(
+      changes(
+        {
+          preset: 'python',
+          python: { importLinter: true, typeChecker: 'mypy', formatter: 'ruff' },
+        },
+        {
+          preset: 'python',
+          python: { importLinter: false, typeChecker: 'pyright', formatter: 'black' },
+        },
+        [],
+      ),
+    ).toEqual({
+      loosened: ['python.importLinter: true -> false'],
+      changed: ['python.typeChecker: "mypy" -> "pyright"', 'python.formatter: "ruff" -> "black"'],
+    });
+    expect(
+      changes(
+        { preset: 'kotlin', kotlin: { formatter: 'ktlint', detektConfig: 'config/detekt.yml' } },
+        { preset: 'kotlin', kotlin: { formatter: 'none' } },
+        [],
+      ).loosened,
+    ).toEqual([
+      'kotlin.formatter: "ktlint" -> "none"',
+      'kotlin.detektConfig: "config/detekt.yml" -> not set',
+    ]);
+    expect(
+      loosened(
+        { preset: 'kotlin', kotlin: { formatter: 'ktlint' } },
+        { preset: 'kotlin', kotlin: { formatter: 'ktfmt' } },
+        [],
+      ),
+    ).toEqual([]);
+  });
+
   it('lists the loosening changes first in the summary fields', () => {
-    expect(policyChangeFields({ base: 'a' }, { base: 'b', exclude: ['x/**'] })).toEqual({
-      policyChanges: ['exclude added: x/**', 'base: "a" -> "b"'],
-      policyLoosenings: ['exclude added: x/**'],
+    const base = { base: 'a' };
+    const head = { base: 'b', exclude: ['src/vendor/**'] };
+
+    expect(policyChangeFields(base, head, scopeOf(base, head))).toEqual({
+      policyChanges: ['exclude added: src/vendor/**', 'base: "a" -> "b"'],
+      policyLoosenings: ['exclude added: src/vendor/**'],
     });
   });
 });

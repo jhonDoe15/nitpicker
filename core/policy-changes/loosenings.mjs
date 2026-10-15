@@ -1,65 +1,90 @@
 import { DEFAULT_CRAP_SCORE_LIMIT, FILE_LIMIT_DEFAULTS } from '../../shared/policy.mjs';
-import { resolveLayout } from '../../languages/typescript/preset/layout.mjs';
 
 const THRESHOLD_DEFAULTS = { crapLimit: DEFAULT_CRAP_SCORE_LIMIT, ...FILE_LIMIT_DEFAULTS };
+const DEFAULT_PRESET = 'typescript';
+const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
+const DEFAULT_PRECEDENCE = ['nitpicker'];
+const UNION_PRECEDENCE_TOOLS = new Set(['pmd']);
 
-export const SWITCH_SETTINGS = [/^preset$/u, /^react\.enabled$/u, /^tools\.[^.]+\.precedence$/u];
-
-function addedEntries(baseEntries = [], headEntries = []) {
-  const known = new Set(baseEntries.map((entry) => JSON.stringify(entry)));
-  return headEntries.filter((entry) => !known.has(JSON.stringify(entry)));
+function presetLoosened(before, after) {
+  const from = before ?? DEFAULT_PRESET;
+  const to = after ?? DEFAULT_PRESET;
+  if (from === to || STRICTER_PRESET.get(from) === to) {
+    return false;
+  }
+  return before !== undefined || to === 'javascript';
 }
 
-function widenedExceptions(baseExceptions = [], headExceptions = []) {
-  return headExceptions.flatMap(({ rule, paths, reason }) => {
-    const covered = new Set(
-      baseExceptions.filter((entry) => entry.rule === rule).flatMap((entry) => entry.paths),
-    );
-    const added = paths.filter((glob) => !covered.has(glob));
-    return added.length === 0
-      ? []
-      : [`exception added: ${rule} for ${added.join(', ')} (${reason})`];
-  });
+function projectWeight(precedence) {
+  if (precedence[0] !== 'project') {
+    return 0;
+  }
+  return precedence.includes('nitpicker') ? 1 : 2;
+}
+
+function precedenceLoosened(before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECEDENCE, setting) {
+  const tool = setting.split('.')[1];
+  return UNION_PRECEDENCE_TOOLS.has(tool)
+    ? before.includes('nitpicker') && !after.includes('nitpicker')
+    : projectWeight(after) > projectWeight(before);
+}
+
+function turnedOff(offValue) {
+  return (before, after) => after === offValue && before !== offValue;
+}
+
+const LOOSENING_SETTINGS = [
+  [/^preset$/u, presetLoosened],
+  [/^react\.enabled$/u, turnedOff(false)],
+  [/^python\.importLinter$/u, turnedOff(false)],
+  [/^kotlin\.formatter$/u, turnedOff('none')],
+  [/^kotlin\.detektConfig$/u, () => true],
+  [/^tools\.[^.]+\.precedence$/u, precedenceLoosened],
+];
+
+export function loosensSetting({ setting, before, after }) {
+  return LOOSENING_SETTINGS.some(
+    ([pattern, loosens]) => pattern.test(setting) && loosens(before, after, setting),
+  );
 }
 
 function raisedThresholds(baseThresholds = {}, headThresholds = {}) {
-  return Object.entries(headThresholds).flatMap(([key, value]) => {
+  const keys = [...new Set([...Object.keys(baseThresholds), ...Object.keys(headThresholds)])];
+  return keys.flatMap((key) => {
     const before = baseThresholds[key] ?? THRESHOLD_DEFAULTS[key];
-    return value > before
-      ? [`threshold ${key} raised from ${String(before)} to ${String(value)}`]
+    const after = headThresholds[key] ?? THRESHOLD_DEFAULTS[key];
+    return after > before
+      ? [`threshold ${key} raised from ${String(before)} to ${String(after)}`]
       : [];
   });
 }
 
-function removedAnalyzers(baseAnalyzers = [], headAnalyzers = []) {
-  const kept = new Set(headAnalyzers.map(({ name }) => name));
-  return baseAnalyzers
-    .filter(({ name }) => !kept.has(name))
-    .map(({ name }) => `analyzer removed: ${name}`);
+function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
+  const heads = new Map(headAnalyzers.map((entry) => [entry.name, entry]));
+  const bases = new Set(baseAnalyzers.map(({ name }) => name));
+  return {
+    loosened: baseAnalyzers.flatMap((entry) => {
+      const head = heads.get(entry.name);
+      if (head === undefined) {
+        return [`analyzer removed: ${entry.name}`];
+      }
+      return JSON.stringify(head) === JSON.stringify(entry)
+        ? []
+        : [`analyzer changed: ${entry.name}`];
+    }),
+    changed: headAnalyzers
+      .filter(({ name }) => !bases.has(name))
+      .map(({ name }) => `analyzer added: ${name}`),
+  };
 }
 
-function layoutLoosenings(baseLayout = {}, headLayout = {}) {
+export function listedChanges(baseConfig, headConfig) {
+  const disabled = (headConfig.disable ?? []).filter(
+    (name) => !(baseConfig.disable ?? []).includes(name),
+  );
   return [
-    ...addedEntries(
-      resolveLayout(baseLayout).excludedGlobs,
-      resolveLayout(headLayout).excludedGlobs,
-    ).map((glob) => `layout.excludedGlobs added: ${glob}`),
-    ...addedEntries(baseLayout.entryPoints, headLayout.entryPoints).map(
-      (glob) => `layout.entryPoints added: ${glob}`,
-    ),
-  ];
-}
-
-export function describeLoosenings(baseConfig, headConfig) {
-  return [
-    ...addedEntries(baseConfig.exclude, headConfig.exclude).map((glob) => `exclude added: ${glob}`),
-    ...addedEntries(baseConfig.disable, headConfig.disable).map(
-      (name) => `analyzer disabled: ${name}`,
-    ),
-    ...widenedExceptions(baseConfig.exceptions, headConfig.exceptions),
-    ...widenedExceptions(baseConfig.python?.exceptions, headConfig.python?.exceptions),
-    ...raisedThresholds(baseConfig.thresholds, headConfig.thresholds),
-    ...removedAnalyzers(baseConfig.analyzers, headConfig.analyzers),
-    ...layoutLoosenings(baseConfig.layout, headConfig.layout),
+    { loosened: disabled.map((name) => `analyzer disabled: ${name}`), changed: [] },
+    { loosened: raisedThresholds(baseConfig.thresholds, headConfig.thresholds), changed: [] },
+    analyzerChanges(baseConfig.analyzers, headConfig.analyzers),
   ];
 }
