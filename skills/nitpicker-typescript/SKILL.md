@@ -147,13 +147,6 @@ Applies when `react` is in `package.json`.
   styles with CSS-in-JS (or `react.styling` says so), follow that instead.
 - `null` only as the argument of `useRef` and `createContext`; elsewhere `undefined`.
 - Accessible markup: `alt` on images, buttons for clicks, labels on inputs.
-- Component tests: query through `screen` (`screen.getByRole`, `within(...)` for part of the page),
-  not test ids, class selectors, `container` or queries destructured from `render`, also when a
-  helper renders; `const user = userEvent.setup()` and `await user.click(...)`, not `fireEvent`;
-  `getBy*` for presence, `queryBy*` for absence; no `act` around `render` or `user` calls, no
-  `screen.debug()`, no manual `cleanup`; assert what the user sees, never component state,
-  instances or hook internals, and never `spyOn` or `vi.mock` React hooks (`renderHook` tests a
-  custom hook).
-- Component test setup (Vitest): `environment: 'jsdom'` and `globals: true` in the Vitest config,
-  `import '@testing-library/jest-dom/vitest'` in a `setupFiles` entry, and
-  `import { userEvent } from '@testing-library/user-event'` (named, not default).
+- Component tests: query through `screen` (`screen.getByRole`), not test ids or `container`;
+  `await user.click(...)`, not `fireEvent`; assert what the user sees, never component state or
+  hook internals. The `testing-library/*` findings name the allowed form.
