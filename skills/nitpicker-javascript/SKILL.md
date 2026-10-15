@@ -113,7 +113,6 @@ line) is a finding.
 - `for...of` is the only loop, and no recursion: a retry is `for...of` over attempt numbers.
 - A file stays within 300 lines (a test file 500) and a line within 120 characters. A folder holds
   at most 6 source files and 6 test files directly: group the rest into subfolders by what they do.
-  Below `features/<feature>/<layer>/` go at most 1 folder deeper; past that, split the feature.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`), in source or tests, fails:
   extract a function.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
