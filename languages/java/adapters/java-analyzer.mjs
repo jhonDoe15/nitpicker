@@ -20,6 +20,7 @@ export const CONFIGURATION_FILES = [
   'languages/java/adapters/java-policy.mjs',
   'languages/java/adapters/java-reports.mjs',
   'languages/java/adapters/java-runner.mjs',
+  'languages/java/adapters/red-base/tests-failed.mjs',
   'languages/java/adapters/spring/java-spring.mjs',
   'languages/java/adapters/java-structure.mjs',
   'languages/java/adapters/gradle-presets.mjs',

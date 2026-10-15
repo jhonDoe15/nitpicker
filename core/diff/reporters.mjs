@@ -1,11 +1,14 @@
-import { createHash } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../shared/rules/finding-helpers.mjs';
-import { comparisonKey } from './fingerprint.mjs';
+import { appendNoteSection, appendNoteSummary } from './render/notes.mjs';
+import { renderJunitReport, renderSarifReport } from './render/machine-reports.mjs';
+import { ANSI, pluralize, singleLine, style } from './render/text-format.mjs';
+
+export { renderJunitReport, renderSarifReport };
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 const JUNIT_REPORT_FILE_NAME = 'report.junit.xml';
@@ -18,6 +21,7 @@ export const REPORT_FILE_NAMES = [
   'changed-metrics.json',
   'held-findings.json',
   'tool-errors.json',
+  'notes.json',
   TEXT_REPORT_FILE_NAME,
   JUNIT_REPORT_FILE_NAME,
   SARIF_REPORT_FILE_NAME,
@@ -40,6 +44,7 @@ export function writeDiffReports(outputRoot, report) {
     report.unchangedFindings.filter((finding) => finding.heldAtBase !== undefined),
   );
   writeJson(path.join(outputRoot, 'tool-errors.json'), report.toolErrors);
+  writeJson(path.join(outputRoot, 'notes.json'), report.notes ?? []);
 
   const text = renderTextReport(report);
   writeFileSync(path.join(outputRoot, TEXT_REPORT_FILE_NAME), text);
@@ -88,6 +93,7 @@ export function renderTextReport(report) {
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
   appendMetricSection(lines, report.changedMetrics);
   appendToolErrorSection(lines, report.toolErrors);
+  appendNoteSection(lines, report.notes);
   return `${lines.join('\n')}\n`;
 }
 
@@ -110,6 +116,7 @@ export function renderConsoleSummary(
 
   appendViolationSummary(lines, { violations, incomplete: report.toolErrors.length > 0 }, color);
   appendHeldSummary(lines, report.unchangedFindings, color);
+  appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
@@ -127,95 +134,6 @@ export function renderRuleFilterSection(report, ruleFilters) {
   appendFindingSection(lines, '  Unchanged', report.unchangedFindings.filter(matches));
   appendFindingSection(lines, '  Resolved', report.resolvedFindings.filter(matches));
   return `${lines.join('\n')}\n`;
-}
-
-export function renderJunitReport(report) {
-  const testCases = report.summary.tools.map(
-    (tool) =>
-      `  <testcase classname="quality.diff" name="${escapeXml(tool.name)}" time="${((tool.elapsedMs ?? 0) / 1000).toFixed(3)}"></testcase>`,
-  );
-  const violations = report.newFindings.filter(
-    ({ classification }) => classification === 'enforceable',
-  );
-  for (const finding of violations) {
-    const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
-    const name = `${finding.tool}/${finding.rule} ${finding.path}${location}`;
-    testCases.push(
-      `  <testcase classname="quality.diff.new-findings" name="${escapeXml(name)}" time="0"><failure message="${escapeXml(singleLine(finding.message))}" type="${escapeXml(`${finding.tool}/${finding.rule}`)}">${escapeXml(finding.message)}</failure></testcase>`,
-    );
-  }
-  for (const error of report.toolErrors) {
-    testCases.push(
-      `  <testcase classname="quality.diff" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
-    );
-  }
-  if (testCases.length === 0) {
-    testCases.push('  <testcase classname="quality.diff" name="framework" time="0"></testcase>');
-  }
-  const failures = violations.length + report.toolErrors.length;
-  const tests = testCases.length;
-  return [
-    '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.diff" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
-    ...testCases,
-    '</testsuite>',
-    '',
-  ].join('\n');
-}
-
-const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
-const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
-
-export function renderSarifReport(report) {
-  const rules = new Map();
-  const results = report.newFindings.map((finding) => {
-    const ruleId = `${finding.tool}/${finding.rule}`;
-    if (!rules.has(ruleId)) {
-      rules.set(ruleId, { id: ruleId, name: finding.rule });
-    }
-    const physicalLocation = { artifactLocation: { uri: finding.path } };
-    if (finding.location !== undefined) {
-      physicalLocation.region = {
-        startLine: finding.location.line,
-        ...(finding.location.column === undefined ? {} : { startColumn: finding.location.column }),
-      };
-    }
-    return {
-      ruleId,
-      level: finding.classification === 'enforceable' ? 'error' : 'note',
-      message: { text: finding.message },
-      locations: [{ physicalLocation }],
-      partialFingerprints: {
-        [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(comparisonKey(finding)).digest('hex'),
-      },
-    };
-  });
-  const log = {
-    $schema: SARIF_SCHEMA_URL,
-    version: '2.1.0',
-    runs: [
-      {
-        tool: {
-          driver: {
-            name: 'nitpicker',
-            informationUri: 'https://github.com/jhonDoe15/nitpicker',
-            rules: [...rules.values()],
-          },
-        },
-        invocations: [
-          {
-            executionSuccessful: report.toolErrors.length === 0,
-            toolExecutionNotifications: report.toolErrors.map((error) => ({
-              level: 'error',
-              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
-            })),
-          },
-        ],
-        results,
-      },
-    ],
-  };
-  return `${JSON.stringify(log, null, 2)}\n`;
 }
 
 function appendFindingSection(lines, heading, findings) {
@@ -418,37 +336,6 @@ function sumToolCount(tools, property) {
   return tools.reduce((total, tool) => total + tool[property], 0);
 }
 
-function singleLine(value) {
-  return String(value).replaceAll(/\s+/g, ' ').trim();
-}
-
-function pluralize(noun, count) {
-  return count === 1 ? noun : `${noun}s`;
-}
-
-function style(value, codes, color) {
-  return color ? `${codes.join('')}${value}${ANSI.reset}` : value;
-}
-
-const ANSI = {
-  reset: '\u001B[0m',
-  bold: '\u001B[1m',
-  dim: '\u001B[2m',
-  red: '\u001B[31m',
-  green: '\u001B[32m',
-  yellow: '\u001B[33m',
-};
-
 function writeJson(filePath, value) {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
-}
-
-function escapeXml(value) {
-  return String(value)
-    .replaceAll(/[^\t\n\r -퟿-�\u{10000}-\u{10FFFF}]/gu, '�')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
 }

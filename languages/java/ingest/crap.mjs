@@ -48,6 +48,7 @@ export function ingestCrapRows(parsed, options, resolve) {
       identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
       ratchetKey: `${key}:crap`,
       line: fn.start,
+      endLine: fn.end,
       crap: coverage === undefined ? undefined : calculateCrap(fn.ccn, coverage),
     });
   }

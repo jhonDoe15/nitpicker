@@ -611,7 +611,7 @@ const SKIP_MESSAGES = {
     typecheck:
       'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
     tests:
-      'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+      'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
   },
 };
 
@@ -855,6 +855,7 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           identity: violationIdentity,
           ratchetKey: `function:${entry.function}:occurrence:${String(occurrence)}:crap`,
           line: entry.lines?.start,
+          endLine: entry.lines?.end,
           crap: entry.crap,
         },
       ],

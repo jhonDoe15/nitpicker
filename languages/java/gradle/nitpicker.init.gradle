@@ -20,6 +20,9 @@
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
 //   build/nitpicker/manifest.json    tool versions and the source roots the reports are relative to
 //
+// With -Pnitpicker.testsFailed=true (the Nitpicker side sets it for a base whose tests fail) `test`, JaCoCo and PIT
+// do not run, so jacoco.xml and pit/mutations.xml are absent and manifest.json says testsFailed: true.
+//
 // With -Pnitpicker.kotlin=true (the Kotlin preset) Kotlin JVM modules (org.jetbrains.kotlin.jvm) also write:
 //   build/nitpicker/detekt.sarif  detekt, SARIF 2.1.0
 //   build/nitpicker/ktlint.sarif  ktlint, SARIF 2.1.0 (when the formatter is ktlint)
@@ -81,6 +84,7 @@ allprojects {
 
         def reportDir = layout.buildDirectory.dir('nitpicker')
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def testsFailed = nitpickerArgument('nitpicker.testsFailed') == 'true'
 
         configurations {
             nitpickerPmd { canBeConsumed = false }
@@ -265,6 +269,7 @@ allprojects {
         tasks.register('nitpickerPit', JavaExec) {
             group = 'nitpicker'
             dependsOn tasks.named('classes'), tasks.named('testClasses')
+            mustRunAfter tasks.named('test')
             classpath = configurations.nitpickerPit
             mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
             def pitDir = reportDir.map { it.dir('pit') }
@@ -312,7 +317,7 @@ allprojects {
                       '--failWhenNoMutations', 'false',
                       '--verbose', 'false'])
             }
-            onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
+            onlyIf { !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
                 // PIT writes no report when it found nothing to mutate.
                 def report = pitDir.get().file('mutations.xml').asFile
@@ -324,7 +329,10 @@ allprojects {
 
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
-            dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
+            if (!testsFailed) {
+                dependsOn tasks.named('test'), tasks.named('jacocoTestReport')
+            }
+            onlyIf { !testsFailed }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -383,6 +391,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    testsFailed    : testsFailed,
                 ])
             }
         }

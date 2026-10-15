@@ -32,31 +32,45 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
-export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy = {} }) {
+function testResultFindings({ reportRoot, projectRoot, roots, crapLimit, manifest }) {
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
+  return [
+    ...ingestCoverageJson(coverage, { roots }).findings,
+    ...readPythonCrapFindings({
+      lizard: readReport(reportRoot, LIZARD_REPORT),
+      coverage,
+      projectRoot,
+      roots,
+      crapLimit,
+    }),
+    ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+    ...ingestCoverageBranches(coverage, {
+      roots,
+      sourceText: (file) => readSource(projectRoot, file),
+    }).findings,
+  ];
+}
+
+export function readPythonFindings({
+  projectRoot,
+  reportRoot,
+  crapLimit,
+  policy = {},
+  testsFailed = false,
+}) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
-  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   return {
     findings: applyRuleHints([
       ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), { roots, projectRoot }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT)),
-      ...ingestCoverageJson(coverage, { roots }).findings,
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...readPythonCrapFindings({
-        lizard: readReport(reportRoot, LIZARD_REPORT),
-        coverage,
-        projectRoot,
-        roots,
-        crapLimit,
-      }),
-      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
-        roots,
-        sourceText: (file) => readSource(projectRoot, file),
-      }).findings,
+      ...(testsFailed
+        ? []
+        : testResultFindings({ reportRoot, projectRoot, roots, crapLimit, manifest })),
       ...readDuplicateFindings(reportRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),

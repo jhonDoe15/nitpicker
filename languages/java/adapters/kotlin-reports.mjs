@@ -82,11 +82,9 @@ export function readKotlinFindings(context, crapLimit) {
     ...readSuppressionFindings(projectRoot, manifest.kotlinSourceRoots),
     ...formatterFindings(reportRoot, manifest.kotlinFormatter),
     ...readKotlinStructureFindings(metrics, projectRoot),
-    ...readKotlinCrapFindings(metrics, {
-      projectRoot,
-      jacoco,
-      crapLimit,
-    }),
+    ...(jacoco === undefined
+      ? []
+      : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
     ...readKotlinDuplicateFindings(reportRoot),
   ];
 }

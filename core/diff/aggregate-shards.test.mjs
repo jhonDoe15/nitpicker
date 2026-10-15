@@ -42,6 +42,7 @@ function writeShard(
     headSha = 'head',
     findings = [],
     held,
+    notes,
     toolErrors = [],
     toolVersions = {},
     configurationHashes = {},
@@ -82,6 +83,9 @@ function writeShard(
   writeJson(path.join(shardRoot, 'changed-metrics.json'), []);
   if (held !== undefined) {
     writeJson(path.join(shardRoot, 'held-findings.json'), held);
+  }
+  if (notes !== undefined) {
+    writeJson(path.join(shardRoot, 'notes.json'), notes);
   }
   writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
 }
@@ -157,6 +161,29 @@ describe('quality shard aggregation', () => {
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
       'Touched, still over limit (not failing):',
     );
+  });
+
+  it('merges the red-base notes of every shard, in tool order, and writes them out', () => {
+    const fixture = createFixture();
+    const note = (tool) => ({
+      tool,
+      snapshot: 'base',
+      rule: 'tests-failed',
+      path: '.',
+      message: `${tool} tests fail on the base`,
+    });
+    writeShard(fixture.inputRoot, 0, { tools: ['python'], notes: [note('python')] });
+    writeShard(fixture.inputRoot, 1, { tools: ['java'], notes: [note('java')] });
+    writeShard(fixture.inputRoot, 2, { tools: ['other'] });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('python'), analyzer('java'), analyzer('other')],
+      shardCount: 3,
+    });
+
+    expect(report.notes).toEqual([note('java'), note('python')]);
+    expect(readJson(fixture.outputRoot, 'notes.json')).toEqual([note('java'), note('python')]);
   });
 
   it('uses the shard head policy when the live inventory has uncommitted changes', () => {

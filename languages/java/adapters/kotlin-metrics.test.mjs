@@ -379,7 +379,7 @@ describe('readKotlinCrapFindings', () => {
     );
 
     expect(moved.identity).toBe(base.identity);
-    expect(moved.location).toEqual({ line: 5 });
+    expect(moved.location).toEqual({ line: 5, endLine: 10 });
     expect({ key: base.ratchet.key, value: base.ratchet.value }).toEqual({
       key: 'function:tier:crap',
       value: 6,

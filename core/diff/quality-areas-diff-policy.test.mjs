@@ -1051,7 +1051,7 @@ describe('complete quality-area analyzer catalog', () => {
         path: 'src/main/value.ts',
         symbol: 'value',
         identity: 'function:value:occurrence:1:source:changed',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         classification: 'enforceable',
         message:
           'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests.',

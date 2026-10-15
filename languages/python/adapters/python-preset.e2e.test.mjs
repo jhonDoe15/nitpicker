@@ -1,17 +1,15 @@
-import { spawnSync } from 'node:child_process';
-import {
-  cpSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../../core/cli.mjs';
+import {
+  command,
+  commitBranch,
+  createVirtualEnvironment,
+  gate,
+  git,
+  write,
+} from './fixtures/e2e-harness.mjs';
 
 // End-to-end test of the Python preset on a small project with real tools. It needs python3, uv,
 // ruff, pyright and network access to PyPI (it installs pytest, coverage and mypy into throwaway
@@ -19,65 +17,6 @@ import { runCli } from '../../../core/cli.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixture = path.resolve(import.meta.dirname, 'fixtures/python-project');
-
-const gitEnvironment = {
-  ...process.env,
-  GIT_AUTHOR_NAME: 'test',
-  GIT_AUTHOR_EMAIL: 'test@example.com',
-  GIT_COMMITTER_NAME: 'test',
-  GIT_COMMITTER_EMAIL: 'test@example.com',
-  GIT_CONFIG_GLOBAL: '/dev/null',
-  GIT_CONFIG_NOSYSTEM: '1',
-};
-
-function command(cwd, program, args) {
-  const result = spawnSync(program, args, { cwd, encoding: 'utf8', env: gitEnvironment });
-  if (result.status !== 0) {
-    throw new Error(`${program} ${args.join(' ')} failed: ${result.stderr}${result.stdout}`);
-  }
-}
-
-function git(root, ...args) {
-  command(root, 'git', args);
-}
-
-function write(root, files) {
-  for (const [file, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), content);
-  }
-}
-
-function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
-  write(root, files);
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', name);
-}
-
-function gate(root, branch, extra = []) {
-  git(root, 'checkout', '-q', branch);
-  const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
-  const output = { text: '' };
-  const exitCode = runCli({
-    arguments_: ['--base', 'main', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
-    currentProjectRoot: root,
-    stdout: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    stderr: {
-      write: (value) => {
-        output.text += value;
-      },
-    },
-    progress: { write: () => undefined },
-  });
-  const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, json, text: output.text, reports };
-}
 
 const enforceable = (result) =>
   summarize(
@@ -222,20 +161,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
     git(project, 'init', '-q', '-b', 'main');
     git(project, 'add', '-A');
     git(project, 'commit', '-q', '-m', 'base with one legacy violation');
-    command(project, 'uv', ['venv', '-q', '.venv']);
-    command(project, 'uv', [
-      'pip',
-      'install',
-      '-q',
-      '--python',
-      '.venv',
-      '-e',
-      '.',
-      'coverage',
-      'mutmut',
-      'pytest',
-      'mypy',
-    ]);
+    createVirtualEnvironment(project);
     commitBranch(project, 'clean', {
       'src/demo/greeter.py': GREETER_HI,
       'tests/test_greeter.py': GREETER_HI_TEST,

@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto';
 /** Tool-error rules for a project whose own tests fail; the skipped one is a notice, not a cause. */
 export const TESTS_FAILED_RULE = 'tests-failed';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
+export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
 
 /** A stable 24-character digest used inside finding identities. */
