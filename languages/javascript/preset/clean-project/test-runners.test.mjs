@@ -130,20 +130,16 @@ describe.each(RUNNERS)('a $runner project', (runner) => {
     FIXTURE_TIMEOUT_MS,
   );
 
-  it(
-    'reports a failing test as a tool error instead of crashing the coverage runner',
-    () => {
-      const root = createProject({
-        'test/failing.test.js': testFile(runner, 'greet', "greet('Ada')", "{ kind: 'empty-name' }"),
-      });
+  it('reports a failing test as a tool error instead of crashing the coverage runner', () => {
+    const root = createProject({
+      'test/failing.test.js': testFile(runner, 'greet', "greet('Ada')", "{ kind: 'empty-name' }"),
+    });
 
-      const { exitCode, toolErrors } = runSnapshot(root, ['--analyzer', 'coverage']);
+    const { exitCode, toolErrors } = runSnapshot(root, ['--analyzer', 'coverage']);
 
-      expect(toolErrors).toEqual(FAILING_COVERAGE_TOOL_ERRORS(runner.failure));
-      expect(exitCode).toBe(2);
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
+    expect(toolErrors).toEqual(FAILING_COVERAGE_TOOL_ERRORS(runner.failure));
+    expect(exitCode).toBe(2);
+  });
 
   it(
     'fails a mutant that no test kills',
@@ -194,18 +190,14 @@ describe('a project that mixes test runners', () => {
     return root;
   }
 
-  it(
-    'stops with the evidence for each runner and the key that chooses one',
-    () => {
-      const root = createProject({ 'package.json': MIXED_PACKAGE_JSON });
+  it('stops with the evidence for each runner and the key that chooses one', () => {
+    const root = createProject({ 'package.json': MIXED_PACKAGE_JSON });
 
-      const { exitCode, stderrText } = runNitpicker(root, ['--all']);
+    const { exitCode, stderrText } = runNitpicker(root, ['--all']);
 
-      expect(stderrText).toBe(MIXED_RUNNERS_MESSAGE);
-      expect(exitCode).toBe(2);
-    },
-    FIXTURE_TIMEOUT_MS,
-  );
+    expect(stderrText).toBe(MIXED_RUNNERS_MESSAGE);
+    expect(exitCode).toBe(2);
+  });
 
   it(
     'runs the runner that nitpicker.config.json names',

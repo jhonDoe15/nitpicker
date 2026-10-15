@@ -87,6 +87,7 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/javascript/preset/clean-project/js-clean.test.mjs",
+        "languages/javascript/preset/clean-project/test-runners.test.mjs",
         "languages/typescript/preset/clean-projects/react-project.test.mjs",
         "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
       ],
