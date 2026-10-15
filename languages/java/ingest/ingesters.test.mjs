@@ -14,9 +14,9 @@ import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schem
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
-import { ingestGoCoverprofile } from './coverage/gocover.mjs';
-import { ingestJacoco } from './coverage/jacoco.mjs';
-import { ingestLcov } from './coverage/lcov.mjs';
+import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
+import { ingestJacoco } from './coverage-reports/jacoco.mjs';
+import { ingestLcov } from './coverage-reports/lcov.mjs';
 import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');

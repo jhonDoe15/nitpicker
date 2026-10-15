@@ -52,9 +52,9 @@ export const CONFIGURATION_FILES = [
   'languages/java/ingest/archunit.mjs',
   'languages/java/ingest/crap.mjs',
   'languages/java/ingest/formatting/format-check.mjs',
-  'languages/java/ingest/coverage/jacoco.mjs',
-  'languages/java/ingest/coverage/jacoco-branches.mjs',
-  'languages/java/ingest/coverage/kotlin-branches.mjs',
+  'languages/java/ingest/coverage-reports/jacoco.mjs',
+  'languages/java/ingest/coverage-reports/jacoco-branches.mjs',
+  'languages/java/ingest/coverage-reports/kotlin-branches.mjs',
   'languages/java/ingest/pit.mjs',
   'languages/java/ingest/sarif.mjs',
 ];

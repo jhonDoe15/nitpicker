@@ -539,7 +539,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (`languages/java/ingest/fixtures/detekt.sarif`, recorded from detekt 1.23.8) and the format list
   through `readJavaFindings`; JaCoCo roots; branch gating of Kotlin files; Kotlin mutants being
   descriptive and Java ones enforceable; the Java preset ignoring Kotlin reports.
-- `languages/java/ingest/coverage/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
+- `languages/java/ingest/coverage-reports/kotlin-branches.test.mjs`: the generated-line filter (what it drops and the
   lines it must keep), a JaCoCo report recorded from 0.8.12 on the measurement project
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of

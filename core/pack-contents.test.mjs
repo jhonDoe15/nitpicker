@@ -43,7 +43,7 @@ describe('npm package contents', () => {
     expect(files.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
     expect(files.has('languages/python/ruff/nitpicker-ruff.toml')).toBe(true);
     expect(files.has('languages/python/adapters/python-runner.mjs')).toBe(true);
-    expect(files.has('languages/python/ingest/coverage/coverage-json.mjs')).toBe(true);
+    expect(files.has('languages/python/ingest/coverage-reports/coverage-json.mjs')).toBe(true);
     expect(files.has('languages/java/gradle/checkstyle-suppressions.xml')).toBe(true);
     expect(files.has('languages/python/rules/nitpicker_rules.py')).toBe(true);
     expect(files.has('languages/python/rules/rule-hints.mjs')).toBe(true);

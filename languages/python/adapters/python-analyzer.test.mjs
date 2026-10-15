@@ -69,7 +69,7 @@ describe('Python analyzer', () => {
     const required = [
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mjs',
-      'languages/python/ingest/coverage/coverage-json.mjs',
+      'languages/python/ingest/coverage-reports/coverage-json.mjs',
       'languages/java/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
