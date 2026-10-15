@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
-import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
+import { runCheckstyle, runFormat, runPmd, runSpotbugs, springOnClasspath } from './maven-lint.mjs';
 import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
 import {
   archunitMatcher,
@@ -25,7 +25,6 @@ import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
-const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -132,18 +131,15 @@ function relativeRoots(module, roots) {
   return roots.map((root) => relativeTo(module.basedir, root));
 }
 
-function writeManifest({ module, reportDir, pinned, spring }) {
-  writeFileSync(
-    path.join(reportDir, 'manifest.json'),
-    JSON.stringify({
-      versions: pinned,
-      build: 'maven',
-      sourceRoots: relativeRoots(module, module.sourceRoots),
-      testSourceRoots: relativeRoots(module, module.testSourceRoots),
-      resourceRoots: relativeRoots(module, module.resourceRoots),
-      spring,
-    }),
-  );
+export function moduleManifest({ module, classpaths, pinned }) {
+  return {
+    versions: pinned,
+    build: 'maven',
+    sourceRoots: relativeRoots(module, module.sourceRoots),
+    testSourceRoots: relativeRoots(module, module.testSourceRoots),
+    resourceRoots: relativeRoots(module, module.resourceRoots),
+    spring: springOnClasspath(classpaths),
+  };
 }
 
 function readClasspaths(work, module) {
@@ -156,9 +152,8 @@ function readClasspaths(work, module) {
 function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const spring = classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
   const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
+  runPmd({ module, reportDir, tools, classpaths, configs });
   runSpotbugs({ module, reportDir, tools });
   runFormat({ module, reportDir, tools });
   runCheckstyle({ module, reportDir, tools, configs, pinned });
@@ -167,7 +162,10 @@ function analyzeModule({ module, classpaths, tools, pinned, configs, since }) {
   const execFile = module.jacocoDestFile ?? path.join(module.buildDirectory, OWN_JACOCO_EXEC);
   runJacocoReport({ module, reportDir, tools, execFile, since, testsRan });
   runPit({ module, reportDir, tools, classpaths, isArchunit });
-  writeManifest({ module, reportDir, pinned, spring });
+  writeFileSync(
+    path.join(reportDir, 'manifest.json'),
+    JSON.stringify(moduleManifest({ module, classpaths, pinned })),
+  );
 }
 
 function staleOutputs(module) {
