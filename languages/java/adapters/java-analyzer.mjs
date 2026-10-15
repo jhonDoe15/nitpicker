@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from './java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { pinnedVersionMap } from '../maven/context/pinned-versions.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
+const CONFIGURATION_DIRECTORIES = ['languages/java/maven'];
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -67,19 +69,26 @@ export const CONFIGURATION_FILES = [
 ];
 
 export function readPinnedVersions(initScript = INIT_SCRIPT) {
-  const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
-  const versions = [...(block?.[1] ?? '').matchAll(/(\w+)\s*:\s*'([^']+)'/g)].map(
-    ([, name, version]) => `${name}@${version}`,
+  const versions = Object.entries(pinnedVersionMap(initScript)).map(
+    ([name, version]) => `${name}@${version}`,
   );
-  if (versions.length === 0) {
-    throw new Error(`No pinned tool versions found in ${initScript}`);
-  }
   return [...versions, `jscpd@${jscpdVersion()}`].join(';');
+}
+
+function directoryFiles(relativeDirectory) {
+  return readdirSync(path.join(packageRoot, relativeDirectory), { recursive: true })
+    .map((name) => name.split(path.sep).join('/'))
+    .filter((name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs'))
+    .sort()
+    .map((name) => `${relativeDirectory}/${name}`);
 }
 
 function hashConfiguration() {
   const hash = createHash('sha256');
-  for (const relativePath of CONFIGURATION_FILES) {
+  for (const relativePath of [
+    ...CONFIGURATION_FILES,
+    ...CONFIGURATION_DIRECTORIES.flatMap(directoryFiles),
+  ]) {
     hash.update(`${relativePath}\0`);
     hash.update(readFileSync(path.join(packageRoot, relativePath)));
     hash.update('\0');

@@ -653,11 +653,56 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
+## Maven projects
+
+The Java and Spring presets gate a Maven project with the same tools, rulesets, pinned versions and
+findings as a Gradle one. Adopting nitpicker is never blocked by the build tool.
+
+- **Detection.** A `pom.xml` in the project root without `build.gradle`, `build.gradle.kts`,
+  `settings.gradle` or `settings.gradle.kts` is a Maven project. With any of those files the project
+  is a Gradle project, as before. The `kotlin` preset needs Gradle and fails with a tool error on Maven.
+- **Maven binary.** `NITPICKER_MAVEN=<command>` when set; otherwise the project's `./mvnw` (`mvnw.cmd` on
+  Windows), else `mvn` from the PATH. Maven 3.6.3 or newer.
+- **What Maven does.** Only what needs the build: compile, resolve the classpaths and run the tests, with
+  the project's own `pom.xml`, `settings.xml` and `.mvn/` files (so mirrors, proxies and profiles apply).
+  Nitpicker calls its plugins by full coordinates (`maven-help-plugin:3.5.1`,
+  `maven-dependency-plugin:3.8.1`), so the pom is not edited and needs no nitpicker plugin. Three Maven runs
+  per snapshot: `test-compile` with the effective POM and compile classpath; `test` with the test classpath
+  (the tests run once); `test -Dtest=*ArchTest,*ArchitectureTest` only when such classes exist.
+  A compile error or a failing test is a tool error (exit 2), as on Gradle.
+- **What nitpicker does.** PMD (with `spring-ruleset.xml` when `spring-context` or `spring-boot` is on the
+  compile classpath), SpotBugs, google-java-format, Checkstyle, JaCoCo, PIT, `StructureMetrics` and jdeps
+  are run by nitpicker itself from the same pinned versions as the Gradle init script (one map; the
+  versions are not repeated for Maven), with the same rulesets, Checkstyle configuration and suppression
+  markers, and write the same report files, so the Node side that turns reports into findings is shared.
+  The tool jars are resolved by Maven from a generated tool pom (cached in the temp directory, keyed by the
+  versions, so base and head share one resolution).
+- **The pom's tool configuration is ignored.** `maven-pmd-plugin`, `maven-checkstyle-plugin`,
+  `spotbugs-maven-plugin`, `jacoco-maven-plugin` (switched off with `-Djacoco.skip=true` for the run) and
+  `pitest-maven` settings never change nitpicker's results. The project's PMD ruleset or Checkstyle
+  config is used only when `tools.pmd.precedence` or `tools.checkstyle.precedence` lists `project`, with
+  the same files as on Gradle (`config/pmd/ruleset.xml`, `config/checkstyle/checkstyle.xml`).
+- **Coverage.** The JaCoCo agent comes in through `JAVA_TOOL_OPTIONS` (appended to the existing value), limited
+  to the packages of the project's own classes, so a `<argLine>` in the pom cannot drop it. Each test JVM
+  writes `target/nitpicker/jacoco.exec` in its module directory. Tests that change the working directory,
+  or run in the Maven JVM (`forkCount=0`) of a nested module, are not measured for that module.
+- **Multi-module builds.** Every module with `jar` or `war` packaging and Java sources is analyzed; a
+  parent `pom` or a module without Java sources is skipped. A module with Java sources and another packaging
+  (`ear`, `maven-plugin`, ...), or a build with nothing to analyze, is a tool error that names it, never a
+  pass. Report paths carry the module folder (`app/src/main/java/...`), like Gradle subprojects.
+- **ArchUnit.** Classes named `*ArchTest` or `*ArchitectureTest` are left out of the main test run
+  (`-Dsurefire.excludesFile`) and run in the second pass, whose Surefire XML is the report. There is no
+  `nitpicker.archunit.includes` override on Maven.
+- **Failure.** Any Maven or tool failure is the `java/gradle-failure` tool error (the rule id is shared), and its
+  message names the failing step and Maven's own diagnostics.
+- **Tests.** Fast tests live next to the code in `languages/java/maven/`; the gated end-to-end suite is
+  `languages/java/maven/maven-preset.e2e.test.mjs` (`npm run test:java`).
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
   branch-coverage gate are described in their own sections.
-- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
+- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources. Maven is covered in [Maven projects](#maven-projects).
 
 ## Tests
 

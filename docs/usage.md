@@ -219,7 +219,7 @@ arguments are part of the policy hash.
 
 ## Java preset
 
-Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle project the same way: PMD,
+Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
 SpotBugs, google-java-format and JaCoCo run on the merge base and on head (through
 `languages/java/gradle/nitpicker.init.gradle`, shipped in this package; the consumer build is not edited), and only
 new enforceable findings fail. Exit codes, console summary, `new-findings.json`, `report.sarif`
@@ -228,6 +228,7 @@ failure is reported as a `java/gradle-failure` tool error (exit 2 when there are
 
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
+A `pom.xml` without any Gradle build file makes it a Maven project: Maven compiles and runs the tests (`./mvnw` when the project has one, else `mvn`; `NITPICKER_MAVEN=<command>` overrides both) and nitpicker runs the tools with its own pinned versions and rulesets, so the pom's PMD, Checkstyle or JaCoCo settings change nothing. See [Maven projects](java-preset.md#maven-projects).
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
 presets, `thresholds` (`crapLimit`, `fileLines`, `testFileLines` and `folderFiles`), `exclude`
 (findings under the globs are dropped), `exceptions` and `legacyInventory`. A Java exception names

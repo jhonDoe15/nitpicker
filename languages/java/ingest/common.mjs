@@ -82,14 +82,20 @@ function safeCodePoint(codePoint, fallback) {
 export function parseXml(text) {
   const tokens =
     /<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>|<\?[\s\S]*?\?>|<!DOCTYPE[^>[]*(?:\[[\s\S]*?\])?\s*>|<(\/?)([^\s/>]+)((?:[^>"']|"[^"]*"|'[^']*')*?)(\/?)>/gi;
-  const root = { name: '#document', attrs: {}, children: [] };
+  const root = { name: '#document', attrs: {}, children: [], text: '' };
   const stack = [root];
+  let textStart = 0;
   for (const match of text.matchAll(tokens)) {
     const [, closing, name, rest, selfClosing] = match;
+    const current = stack.at(-1);
+    if (match.index > textStart) {
+      current.text += decodeEntities(text.slice(textStart, match.index));
+    }
+    current.text += cdataOf(match[0]);
+    textStart = match.index + match[0].length;
     if (name === undefined) {
       continue;
     }
-    const current = stack.at(-1);
     if (closing === '/') {
       if (stack.length === 1 || current.name !== name) {
         throw new TypeError(`XML closing tag </${name}> does not match an open element`);
@@ -97,7 +103,7 @@ export function parseXml(text) {
       stack.pop();
       continue;
     }
-    const element = { name, attrs: parseAttributes(rest), children: [] };
+    const element = { name, attrs: parseAttributes(rest), children: [], text: '' };
     current.children.push(element);
     if (selfClosing !== '/') {
       stack.push(element);
@@ -111,6 +117,10 @@ export function parseXml(text) {
     throw new TypeError('XML document has no root element');
   }
   return documentElement;
+}
+
+function cdataOf(token) {
+  return token.startsWith('<![CDATA[') ? token.slice('<![CDATA['.length, -']]>'.length) : '';
 }
 
 function parseAttributes(source) {

@@ -10,10 +10,16 @@ const MAX_MESSAGE_LENGTH = 4000;
 
 export function analyzeJavaSnapshot(
   projectRoot,
-  { gradle = process.env.NITPICKER_GRADLE, policy } = {},
+  { gradle = process.env.NITPICKER_GRADLE, maven = process.env.NITPICKER_MAVEN, policy } = {},
 ) {
   try {
-    return { findings: collectJavaFindings(projectRoot, { gradle: gradle || undefined, policy }) };
+    return {
+      findings: collectJavaFindings(projectRoot, {
+        gradle: gradle || undefined,
+        maven: maven || undefined,
+        policy,
+      }),
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {

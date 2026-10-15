@@ -297,6 +297,12 @@ describe('parseXml', () => {
     expect(root.children[0].attrs.y).toBe('&');
   });
 
+  it('keeps the text of each element, decoded, with CDATA included', () => {
+    const root = parseXml('<a>x &amp; <b>one</b> y<![CDATA[<z/>]]><c> two </c></a>');
+    expect(root.text).toBe('x &  y<z/>');
+    expect(root.children.map((child) => child.text)).toEqual(['one', ' two ']);
+  });
+
   it('rejects malformed documents', () => {
     expect(() => parseXml('<a><b></a>')).toThrow('does not match');
     expect(() => parseXml('<a>')).toThrow('not closed');
