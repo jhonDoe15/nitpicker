@@ -44,6 +44,8 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/strict-escape-hatches.mjs',
   'languages/typescript/preset/eslint-config/strict-tests.mjs',
   'languages/typescript/preset/eslint-config/react-plugins.mjs',
+  'languages/typescript/preset/eslint-config/react/hints.mjs',
+  'languages/typescript/preset/eslint-config/react/third-party-rules.mjs',
   'languages/typescript/preset/eslint-config/react-rules.mjs',
   'languages/typescript/preset/eslint-config/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',

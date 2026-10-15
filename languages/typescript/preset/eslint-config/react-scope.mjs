@@ -10,8 +10,11 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
+import { thirdPartyReactRuleIds, typedReactXRules } from './react/third-party-rules.mjs';
 
 const REACT_PACKAGE = 'react';
+const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
+const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
 
 function readManifest(projectRoot) {
   try {
@@ -74,6 +77,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'react-hooks/exhaustive-deps': 'error',
         'react-x/no-class-component': 'error',
         'react-x/no-array-index-key': 'error',
+        ...Object.fromEntries(untypedThirdPartyRuleIds.map((id) => [id, 'error'])),
         ...accessibilityRuleOptions,
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
@@ -95,12 +99,14 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
   ];
 }
 
-function reactTypedConfigFor(layout) {
+async function reactTypedConfigFor(layout) {
+  const { reactPlugins } = await import('./react-plugins.mjs');
   return [
     {
       ...productionScope(layout),
-      plugins: { '@typescript-eslint': tseslint.plugin },
+      plugins: { '@typescript-eslint': tseslint.plugin, 'react-x': reactPlugins['react-x'] },
       rules: {
+        ...Object.fromEntries(typedRuleIds.map((id) => [id, 'error'])),
         '@typescript-eslint/no-misused-promises': [
           'error',
           { checksVoidReturn: { attributes: false } },
@@ -115,6 +121,6 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
   return [
     ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
-    ...reactTypedConfigFor(layout),
+    ...(await reactTypedConfigFor(layout)),
   ];
 }
