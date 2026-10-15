@@ -1,14 +1,20 @@
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../eslint-plugin/index.mjs';
+import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import path from 'node:path';
-import loggingConfig from '../eslint-config/policies/logging.config.mjs';
-import { strictConfig, strictSyntaxConfig } from '../eslint-config/strict.mjs';
+import loggingConfig from '../../eslint-config/policies/logging.config.mjs';
+import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
-import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
+import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
-import { strictCompositionRootConfig } from '../eslint-config/strict/strict-composition-root.mjs';
+import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
+
+const strictCompositionRootConfig = productionPolicyConfig({
+  'nitpicker/no-branch-in-composition-root': 'error',
+  'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
+  'nitpicker/no-module-level-let': 'error',
+});
 
 const cognitiveComplexityConfig = [
   {

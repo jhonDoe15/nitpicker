@@ -4,7 +4,7 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintFixture } from '../failure-messages/harness.mjs';
+import { lintFixture } from '../failure-messages/test-support/harness.mjs';
 import { strictAdaptersConfig, strictAdaptersTypedConfig } from './strict-adapters.mjs';
 
 const adapterFile = 'src/main/features/billing/adapters/store.ts';

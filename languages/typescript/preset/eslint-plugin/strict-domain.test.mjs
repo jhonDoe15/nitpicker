@@ -1,7 +1,7 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { lintFixture } from '../failure-messages/harness.mjs';
+import { lintFixture } from '../failure-messages/test-support/harness.mjs';
 import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noThrow } from './rules/errors/no-throw.mjs';

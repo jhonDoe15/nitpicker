@@ -4,62 +4,28 @@ import path from 'node:path';
 import { jscpdVersion } from './metrics/java-duplicates.mjs';
 import { INIT_SCRIPT } from './java-diff.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { importClosure } from '../../../shared/import-closure.mjs';
 
 const GRADLE_TIMEOUT_MS = 15 * 60 * 1000;
 const ANALYZER_TIMEOUT_MS = GRADLE_TIMEOUT_MS + 60 * 1000;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
-export const CONFIGURATION_FILES = [
+const ENTRY_FILES = [
+  'languages/java/adapters/java-analyzer.mjs',
+  'languages/java/adapters/java-runner.mjs',
+];
+const RESOURCE_FILES = [
   'languages/java/gradle/nitpicker.init.gradle',
+  'languages/java/gradle/checkstyle-suppressions.xml',
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
-  'languages/java/adapters/java-analyzer.mjs',
-  'languages/java/adapters/metrics/java-coupling.mjs',
-  'languages/java/adapters/java-diff.mjs',
-  'languages/java/adapters/metrics/java-duplicates.mjs',
-  'languages/java/adapters/java-policy.mjs',
-  'languages/java/adapters/reporting/java-reports.mjs',
-  'languages/java/adapters/java-runner.mjs',
-  'languages/java/adapters/spring/java-spring.mjs',
-  'languages/java/adapters/metrics/java-structure.mjs',
-  'languages/java/adapters/gradle-presets.mjs',
-  'languages/java/adapters/gradle-wrapper/gradle-command.mjs',
-  'languages/java/adapters/kotlin/kotlin-duplicates.mjs',
-  'languages/java/adapters/kotlin/kotlin-metrics.mjs',
-  'languages/java/adapters/kotlin/kotlin-options.mjs',
-  'languages/java/adapters/reporting/kotlin-reports.mjs',
-  'languages/java/adapters/kotlin/rules/kotlin-rules.mjs',
-  'languages/java/adapters/kotlin/rules/kotlin-suppressions.mjs',
-  'languages/java/detekt/nitpicker-detekt.yml',
-  'languages/java/adapters/kotlin/kotlin-tools.mjs',
-  'languages/java/detekt/detekt-validation.yml',
-  'languages/java/gradle/KotlinMetrics.java',
-  'languages/java/adapters/suppressions/java-suppressions.mjs',
-  'languages/java/adapters/spring/spring-config-files.mjs',
-  'languages/java/adapters/spring/spring-config-parser.mjs',
-  'languages/java/adapters/spring/spring-secrets.mjs',
   'languages/java/gradle/StructureMetrics.java',
-  'shared/rules/structure.mjs',
-  'shared/rules/file-limits.mjs',
-  'shared/rules/crap.mjs',
-  'languages/java/adapters/touched-rules.mjs',
-  'shared/glob.mjs',
-  'shared/legacy-inventory.mjs',
-  'shared/policy.mjs',
-  'shared/rules/baseline-expansion.mjs',
-  'shared/rules/coupling.mjs',
-  'shared/rules/finding-helpers.mjs',
-  'languages/java/ingest/formatting/checkstyle.mjs',
-  'languages/java/ingest/common.mjs',
-  'languages/java/ingest/archunit.mjs',
-  'languages/java/ingest/crap.mjs',
-  'languages/java/ingest/formatting/format-check.mjs',
-  'languages/java/ingest/coverage-reports/jacoco.mjs',
-  'languages/java/ingest/coverage-reports/jacoco-branches.mjs',
-  'languages/java/ingest/coverage-reports/kotlin-branches.mjs',
-  'languages/java/ingest/pit.mjs',
-  'languages/java/ingest/sarif.mjs',
+  'languages/java/gradle/KotlinMetrics.java',
+  'languages/java/detekt/nitpicker-detekt.yml',
+  'languages/java/detekt/detekt-validation.yml',
 ];
+const CONFIGURATION_CONTENTS = importClosure([...ENTRY_FILES, ...RESOURCE_FILES], packageRoot);
+export const CONFIGURATION_FILES = [...CONFIGURATION_CONTENTS.keys()].sort();
 
 function readPinnedVersions(initScript = INIT_SCRIPT) {
   const block = /def pinned = \[([^\]]*)\]/.exec(readFileSync(initScript, 'utf8'));
@@ -76,7 +42,7 @@ function hashConfiguration() {
   const hash = createHash('sha256');
   for (const relativePath of CONFIGURATION_FILES) {
     hash.update(`${relativePath}\0`);
-    hash.update(readFileSync(path.join(packageRoot, relativePath)));
+    hash.update(CONFIGURATION_CONTENTS.get(relativePath));
     hash.update('\0');
   }
   return hash.digest('hex');

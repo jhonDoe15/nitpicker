@@ -1,11 +1,11 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readJavaFindings } from './java-reports.mjs';
+import { readJavaFindings } from '../java-reports.mjs';
 
 const temporaryRoots = [];
 
-const DETEKT_SARIF = path.resolve(import.meta.dirname, '../../ingest/fixtures/detekt.sarif');
+const DETEKT_SARIF = path.resolve(import.meta.dirname, '../../../ingest/fixtures/detekt.sarif');
 
 export function removeTemporaryProjects() {
   for (const root of temporaryRoots.splice(0)) {
