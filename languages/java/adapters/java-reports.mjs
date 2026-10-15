@@ -5,6 +5,14 @@ import { ingestCheckstyle } from '../ingest/checkstyle.mjs';
 import { ingestArchunit } from '../ingest/archunit.mjs';
 import { ingestCrap } from '../ingest/crap.mjs';
 import { readDuplicateFindings } from './java-duplicates.mjs';
+import { readKotlinDuplicateFindings } from './kotlin-duplicates.mjs';
+import {
+  dropEntityAssociations,
+  dropInheritedVersions,
+  withExposureAdvice,
+} from './jpa/jpa-source-filters.mjs';
+import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { prepareSarif, projectRelative } from './gradle-reports/sarif-relocation.mjs';
 import { readInlineSuppressionFindings } from './suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from './spring/java-spring.mjs';
 import {
@@ -17,7 +25,7 @@ import { ingestFormatCheck } from '../ingest/format-check.mjs';
 import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
-import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { ingestSarif } from '../ingest/sarif.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -27,88 +35,126 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 
-export const REPORT_DIRECTORY = 'build/nitpicker';
 const LINE_NUMBER = /\bline \d+\b/g;
+const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
+const MODULE_IDENTITY_SEPARATOR = '@';
 
 export function readJavaFindings(
   projectRoot,
-  { crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
+  { reportBase, report, crapLimit, preset = 'java', fileLimits, exclude, exceptions } = {},
 ) {
-  const kotlin = preset === 'kotlin';
-  const reportRoot = path.join(projectRoot, REPORT_DIRECTORY);
-  requireGradleReports(projectRoot, preset);
-  const manifest = JSON.parse(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  if (kotlin) {
+  const kotlinPreset = preset === 'kotlin';
+  const { modules, manifest } = report ?? readReportModules(reportBase, preset);
+  if (kotlinPreset) {
     requireKotlinManifest(manifest);
   }
-  const context = {
-    projectRoot,
-    reportRoot,
-    manifest,
-    sourceRoots: manifest.sourceRoots ?? [],
-    lintedRoots: lintedRoots(manifest),
-    roots: projectRoots(projectRoot),
-    kotlin,
-    jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
-  };
+  const roots = projectRoots(projectRoot);
+  const moduleFindings = modules.flatMap((module) =>
+    withModuleIdentity(
+      readModuleFindings(
+        {
+          projectRoot,
+          roots,
+          reportRoot: module.reportRoot,
+          manifest: module.manifest,
+          sourceRoots: module.manifest.sourceRoots ?? [],
+          allSourceRoots: manifest.sourceRoots,
+          kotlin: kotlinPreset && module.manifest.kotlin === true,
+          jacoco: readFileSync(path.join(module.reportRoot, 'jacoco.xml'), 'utf8'),
+        },
+        crapLimit,
+      ),
+      module,
+      modules.length > 1,
+    ),
+  );
   return {
     findings: [
-      ...sarifFindings(context),
-      ...formatFindings(context),
-      ...checkstyleFindings(context),
-      ...readDuplicateFindings(reportRoot),
-      ...jacocoFindings(context, context.jacoco),
-      ...archunitFindings(context),
-      ...crapFindings(context, context.jacoco, crapLimit),
-      ...pitFindings(context),
-      ...readJavaStructureFindings(reportRoot, projectRoot),
+      ...moduleFindings,
+      ...readDuplicateFindings(reportBase),
+      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase) : []),
       ...readJavaFileLimitFindings(projectRoot, {
         manifest,
-        kotlin,
+        kotlin: kotlinPreset,
         policy: { thresholds: fileLimits, exclude, exceptions },
       }),
-      ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, {
-        projectRoot,
-        sourceRoots: context.sourceRoots,
-        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-      }),
-      ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
-      ...springFindings(context),
+      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+      ...springFindings(projectRoot, manifest),
     ],
   };
+}
+
+function readModuleFindings(context, crapLimit) {
+  const { reportRoot, projectRoot, sourceRoots, kotlin, jacoco } = context;
+  return [
+    ...sarifFindings(context),
+    ...formatFindings(context),
+    ...checkstyleFindings(context),
+    ...jacocoFindings(context, jacoco),
+    ...archunitFindings(context),
+    ...crapFindings(context, jacoco, crapLimit),
+    ...pitFindings(context),
+    ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...branchFindings(context, jacoco),
+    ...readCouplingFindings(reportRoot, {
+      projectRoot,
+      sourceRoots,
+      kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+    }),
+    ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+  ];
+}
+
+function withModuleIdentity(findings, module, several) {
+  return several
+    ? findings.map((finding) =>
+        finding.path === '.'
+          ? {
+              ...finding,
+              identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
+            }
+          : finding,
+      )
+    : findings;
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
   return [...new Set([...sourceRoots, ...testSourceRoots])];
 }
 
-export function requireGradleReports(projectRoot, preset) {
-  if (!existsSync(path.join(projectRoot, REPORT_DIRECTORY, 'manifest.json'))) {
-    const plugin = preset === 'kotlin' ? 'org.jetbrains.kotlin.jvm' : 'java';
-    throw new Error(
-      `The ${preset} preset found no Gradle reports in ${REPORT_DIRECTORY}: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
-    );
-  }
-}
-
-function springFindings({ projectRoot, manifest, sourceRoots }) {
+function springFindings(projectRoot, manifest) {
   return manifest.spring === true
-    ? readSpringConfigFindings(projectRoot, { sourceRoots, resourceRoots: manifest.resourceRoots })
+    ? readSpringConfigFindings(projectRoot, {
+        sourceRoots: manifest.sourceRoots,
+        resourceRoots: manifest.resourceRoots,
+      })
     : [];
 }
 
-function sarifFindings({ reportRoot, roots, sourceRoots, projectRoot }) {
-  const findings = [];
-  function sarif(file, tool, identityKey) {
-    const log = JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8'));
-    const normalized = prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
-    findings.push(...ingestSarif(normalized, { tool }).findings);
-  }
-  sarif('pmd.sarif', 'pmd', (result) => result.message?.text?.replace(LINE_NUMBER, 'line'));
-  sarif('spotbugs.sarif', 'spotbugs', (result) => spotbugsSubject(result));
-  return findings;
+function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
+  return prepareSarif(JSON.parse(readFileSync(path.join(reportRoot, file), 'utf8')), {
+    roots,
+    sourceRoots,
+    projectRoot,
+    identityKey,
+  });
+}
+
+function sarifFindings(context) {
+  const { allSourceRoots, projectRoot } = context;
+  const pmd = preparedReport('pmd.sarif', context, (result) =>
+    result.message?.text?.replace(LINE_NUMBER, 'line'),
+  );
+  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  return [
+    ...dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+      projectRoot,
+      sourceRoots: allSourceRoots,
+    }),
+    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
+      tool: 'spotbugs',
+    }).findings.map(withExposureAdvice),
+  ];
 }
 
 function formatFindings({ reportRoot, roots }) {
@@ -122,11 +168,11 @@ function formatFindings({ reportRoot, roots }) {
 }
 
 function checkstyleFindings({ reportRoot, roots, projectRoot }) {
-  const testReport = path.join(reportRoot, 'checkstyle-test.xml');
-  return [
-    path.join(reportRoot, 'checkstyle.xml'),
-    ...(existsSync(testReport) ? [testReport] : []),
-  ].flatMap((report) => {
+  const sourceSetReports = readdirSync(reportRoot)
+    .filter((name) => CHECKSTYLE_SOURCE_SET_REPORT.test(name))
+    .sort()
+    .map((name) => path.join(reportRoot, name));
+  return [path.join(reportRoot, 'checkstyle.xml'), ...sourceSetReports].flatMap((report) => {
     const checkstyle = readFileSync(report, 'utf8');
     return roots.flatMap((root) =>
       ingestCheckstyle(checkstyle, { root }).findings.filter((finding) =>
@@ -213,67 +259,4 @@ function projectRoots(projectRoot) {
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
   return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
-}
-
-export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
-  return {
-    ...log,
-    runs: (log.runs ?? []).map((run) => ({
-      ...run,
-      results: (run.results ?? []).map((result) =>
-        prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }),
-      ),
-    })),
-  };
-}
-
-function prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }) {
-  const subject = identityKey(result);
-  const prepared = {
-    ...result,
-    level: result.level === 'error' ? 'error' : 'warning',
-    locations: (result.locations ?? []).map((location) =>
-      relocate(location, { roots, sourceRoots, projectRoot }),
-    ),
-  };
-  if (typeof subject === 'string' && subject !== '' && result.partialFingerprints === undefined) {
-    prepared.partialFingerprints = { 'nitpicker/subject': subject };
-  }
-  return prepared;
-}
-
-function relocate(location, { roots, sourceRoots, projectRoot }) {
-  const uri = location.physicalLocation?.artifactLocation?.uri;
-  if (typeof uri !== 'string') {
-    return location;
-  }
-  const resolved = resolveUri(uri, { roots, sourceRoots, projectRoot });
-  return {
-    ...location,
-    physicalLocation: {
-      ...location.physicalLocation,
-      artifactLocation: { uri: resolved },
-    },
-  };
-}
-
-function projectRelative(uri, roots) {
-  for (const root of roots) {
-    const relative = normalizeUri(uri, root);
-    if (relative !== undefined) {
-      return relative;
-    }
-  }
-  return undefined;
-}
-
-function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
-  const relative = projectRelative(uri, roots);
-  if (relative === undefined) {
-    return uri;
-  }
-  const owner = sourceRoots.find((sourceRoot) =>
-    existsSync(path.join(projectRoot, sourceRoot, relative)),
-  );
-  return owner === undefined ? relative : `${owner}/${relative}`;
 }

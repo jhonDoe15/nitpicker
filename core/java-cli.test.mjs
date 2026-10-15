@@ -502,7 +502,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'demo.KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
         classification: 'descriptive',
         symbol: 'demo.KKt#fee(I)I',
         location: { line: 3 },
@@ -525,7 +525,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears, or add an exception for pit/mutant-survived in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'demo.A#fee(I)I',
         location: { line: 3 },
@@ -857,7 +857,7 @@ describe('Kotlin analyzer', () => {
   });
 });
 
-describe('a root project without Nitpicker reports', () => {
+describe('a build without a project that applies the plugin', () => {
   it.each([
     ['kotlin', 'org.jetbrains.kotlin.jvm'],
     ['java', 'java'],
@@ -873,7 +873,7 @@ describe('a root project without Nitpicker reports', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: `The ${preset} preset found no Gradle reports in build/nitpicker: the root project must apply the ${plugin} plugin. Reports of submodules are not read`,
+        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
         classification: 'tool-error',
       },
     ]);
