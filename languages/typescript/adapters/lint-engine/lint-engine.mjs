@@ -46,7 +46,7 @@ function runEslintCli(invocation, patterns, extraEnvironment = {}) {
     [
       invocation.eslintCliPath,
       '--config',
-      path.join(import.meta.dirname, '..', 'eslint-config-wrapper.mjs'),
+      path.join(import.meta.dirname, '..', 'eslint-wrapper.config.mjs'),
       '--format',
       'json',
       '--no-color',
