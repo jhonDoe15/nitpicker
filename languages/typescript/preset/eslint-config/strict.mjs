@@ -77,6 +77,12 @@ const configFileAllowances = {
   'nitpicker/no-promise-chain': 'off',
 };
 
+const domainNitpickerRules = {
+  'nitpicker/no-throw': 'error',
+  'nitpicker/no-ui-framework-in-domain': 'error',
+  'nitpicker/no-unknown-in-domain': 'error',
+};
+
 export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = {}) {
   const restrictedSyntax = restrictedSyntaxFor(options);
   return [
@@ -109,9 +115,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
       rules: {
         ...domainFunctionalRules,
         'no-restricted-syntax': ['error', ...restrictedSyntax.domain],
-        'nitpicker/no-throw': 'error',
-        'nitpicker/no-ui-framework-in-domain': 'error',
-        'nitpicker/no-unknown-in-domain': 'error',
+        ...domainNitpickerRules,
       },
     },
     {

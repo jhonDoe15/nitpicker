@@ -84,7 +84,9 @@ describe('architecture rules on installed packages', () => {
   });
 
   it('report an installed react in domain/', async () => {
-    expect(await domainSyntaxRules(`${domain}/view.ts`)).toEqual(['nitpicker/no-ui-framework-in-domain']);
+    expect(await domainSyntaxRules(`${domain}/view.ts`)).toEqual([
+      'nitpicker/no-ui-framework-in-domain',
+    ]);
     expect(await domainSyntaxRules(`${domain}/total.ts`)).toEqual([]);
   });
 });

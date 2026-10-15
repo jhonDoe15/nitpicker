@@ -80,10 +80,13 @@ describe('rules from the React plugins', () => {
 
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
 
-    expect(result.messages.map(({ ruleId }) => ruleId)).toEqual(['react-x/refs']);
-    expect(result.messages[0].message).toContain(
-      'render may only run the lazy init `if (ref.current === null) ref.current = new X()`',
-    );
+    expect(result.messages.map(({ ruleId, message }) => ({ ruleId, message }))).toEqual([
+      {
+        ruleId: 'react-x/refs',
+        message:
+          'Cannot access refs during render Read and write `ref.current` in event handlers and effects (render may only run the lazy init `if (ref.current === null) ref.current = new X()`); keep what renders in state. If this is intentional, add an exception for this rule in nitpicker.config.json.',
+      },
+    ]);
   });
 
   it('lets keyed lists, memoised context values and hoisted defaults through', async () => {
