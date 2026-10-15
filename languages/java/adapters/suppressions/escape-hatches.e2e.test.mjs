@@ -51,12 +51,38 @@ const GRADLE_PROPERTIES_OPT_IN = [
   '',
 ].join('\n');
 
+const SWALLOWING_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class SwallowingTest {
+  @Test
+  void parses() {
+    try {
+      assertEquals(1, Integer.parseInt("1"));
+      assertEquals(2,  Integer.parseInt("2"));
+    } catch (Exception e) {
+    }
+  }
+
+  @Test
+  void runs() {
+    Integer.parseInt("3");
+  }
+}
+`;
+
 const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
 
 let repository;
 
 const ofTool = (result, tool) =>
   summarize(result.newEnforceable.filter((finding) => finding.tool === tool));
+
+const ofFile = (result, file) =>
+  summarize(result.newEnforceable.filter((finding) => path.basename(finding.path) === file));
 
 describe.skipIf(!enabled)('Java preset escape hatches', () => {
   beforeAll(() => {
@@ -71,6 +97,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
       'config/pmd/ruleset.xml': PROJECT_PMD_RULESET,
       'config/checkstyle/checkstyle.xml': EMPTY_CHECKSTYLE_CONFIG,
       'gradle.properties': GRADLE_PROPERTIES_OPT_IN,
+      'src/test/java/demo/SwallowingTest.java': SWALLOWING_TEST,
     });
   });
 
@@ -81,21 +108,41 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
 
   const diffOf = (policy) =>
     runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
+  let defaultResult;
+  const defaultDiff = () => (defaultResult ??= diffOf());
 
   it(
-    "ignores inline Checkstyle suppressions and the project's configs without an opt-in in nitpicker.config.json",
+    "ignores inline Checkstyle suppressions and the project's configs without an opt-in",
     () => {
-      const result = diffOf();
+      const result = defaultDiff();
 
-      expect(ofTool(result, 'checkstyle')).toEqual(
-        [
+      expect(result.failed).toBe(true);
+      expect(ofFile(result, 'Bad.java')).toEqual([
+        ...[
           'blocks.EmptyCatchBlockCheck',
           'indentation.IndentationCheck',
           'regexp.RegexpSinglelineJavaCheck',
           'whitespace.EmptyLineSeparatorCheck',
         ].map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
-      );
-      expect(ofTool(result, 'pmd')).toEqual(['pmd EmptyCatchBlock Bad.java']);
+        'google-java-format format Bad.java',
+        'pit mutant-nocoverage Bad.java',
+        'pmd EmptyCatchBlock Bad.java',
+        'spotbugs DM_DEFAULT_ENCODING Bad.java',
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'lints test sources with PMD, Checkstyle and the formatter, without the assertion-style rules',
+    () => {
+      expect(ofFile(defaultDiff(), 'SwallowingTest.java')).toEqual([
+        `checkstyle ${CHECKSTYLE_PREFIX}blocks.EmptyCatchBlockCheck SwallowingTest.java`,
+        'google-java-format format SwallowingTest.java',
+        'pmd AvoidCatchingGenericException SwallowingTest.java',
+        'pmd EmptyCatchBlock SwallowingTest.java',
+        'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
+      ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
   );

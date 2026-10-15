@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -229,9 +229,10 @@ Notes on the glue in `java-reports.mjs`:
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` (main sources
-  only). `ignoreFailures` is on and the XML report is written to `build/nitpicker/checkstyle.xml`;
-  the HTML report is off.
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` and
+  `checkstyleTest`. `ignoreFailures` is on and the XML reports are written to
+  `build/nitpicker/checkstyle.xml` (main sources) and `build/nitpicker/checkstyle-test.xml` (test
+  sources, absent without any); the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
@@ -413,11 +414,12 @@ resolved plus a new finding, as in the TypeScript check.
 
 A Gradle project whose compile classpath has `spring-context` or `spring-boot` gets nitpicker's
 Spring ruleset, [`languages/java/gradle/spring-ruleset.xml`](../languages/java/gradle/spring-ruleset.xml),
-added to its PMD run, next to the PMD categories (and the project's own `config/pmd/ruleset.xml` when
+added to its PMD run, next to nitpicker's rule set `pmd-ruleset.xml` (and the project's own `config/pmd/ruleset.xml` when
 `tools.pmd.precedence` lists `"project"` too). Every
-project's PMD run now gets the compile classpath and the main classes as its auxiliary classpath
-(`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and supertype names exactly;
-`nitpickerPmd` therefore compiles the main classes first. The manifest records `spring` and the
+project's PMD run now gets the main and test compile classpaths and the main and test classes as
+its auxiliary classpath (`build/nitpicker/pmd-aux-classpath.txt`), so the rules match annotation and
+supertype names exactly; `nitpickerPmd` therefore compiles the main and test classes first, and a
+test compile error stops it. The manifest records `spring` and the
 main `resourceRoots`.
 
 Each rule allows one form and its message names it. A finding prints as `pmd/<rule>`, which is also
@@ -464,6 +466,27 @@ so a `gradle.properties` entry cannot opt in on the project's behalf (`nitpicker
 is the exception: it only picks which test classes run). It sets the Checkstyle config on the
 Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ... }` block in the
 project's build does not replace it either.
+
+**Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
+`build/nitpicker/checkstyle-test.xml`), google-java-format and the inline suppression scan cover
+`src/test/java` as well as the main sources, the way the TypeScript preset lints its tests; the
+file and folder limits already counted test files. PMD runs nitpicker's own rule set,
+[`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
+errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
+`UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
+plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
+`NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
+forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
+also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
+(`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
+ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
+`build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
+field injection and package-private test methods are the norm in tests. A PMD rule that flags
+legitimate test code, such as `SystemPrintln` in a test of console output, takes an exception like
+any other: `{ "rule": "pmd/<rule>", "paths": [...],
+"reason": "..." }`. PMD messages that name a line ("first occurrence is on line 12") lose the number
+in the finding's identity, so moving code does not re-report them. SpotBugs, the structure limits
+and CRAP stay on main code, as in the TypeScript preset.
 
 **Exceptions.** Every Spring message except `SpringDataNativeQuery` ends with the exception to add
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
