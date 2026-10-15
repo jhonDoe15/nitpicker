@@ -694,7 +694,7 @@ describe('nitpicker config file', () => {
     const outputRoot = makeOutputRoot();
     const exitCode = runCli({
       arguments_: ['--output', outputRoot, ...extraArguments],
-      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
+      environment: {},
       currentProjectRoot: repository.root,
       analyzers: analyzers ?? [fakeAnalyzer()],
       stdout: output.stdout,
@@ -756,8 +756,8 @@ describe('nitpicker config file', () => {
     // `exclude` gets its own run: with it set, the layout-only branch of applyLayout is skipped.
     const entries = [
       ['preset', 'typescript'],
-      ['thresholds', { crapLimit: 12 }],
-      ['layout', { sourceRoots: ['lib'] }],
+      ['thresholds', { crapLimit: 8 }],
+      ['layout', { sourceRoots: ['src', 'lib'] }],
       ['analyzers', [customAnalyzerEntry('clean')]],
       ['legacyInventory', 'config/legacy.json'],
     ];

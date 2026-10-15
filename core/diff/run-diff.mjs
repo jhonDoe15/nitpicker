@@ -117,9 +117,10 @@ function compareSnapshots(context) {
     configOverrides: settings.configOverrides,
     policyChanges: [],
     policyLoosenings: [],
+    notices: [],
     ...settings.resolveBaseSetup?.({
-      baseProjectRoot: roots.baseProjectRoot,
-      baseProjectRelativePath: layout.baseProjectRelativePath,
+      ...roots,
+      moves: layout.moves,
       analyzers: settings.analyzers,
     }),
   };
@@ -181,7 +182,10 @@ function runAndCombine(context) {
     policyLoosenings: context.baseSetup.policyLoosenings,
     acceptPolicyChange: settings.acceptPolicyChange === true,
     reportsPolicy: settings.reportsPolicy !== false,
-    notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
+    notices: [
+      ...(settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? []),
+      ...context.baseSetup.notices,
+    ],
   });
 }
 

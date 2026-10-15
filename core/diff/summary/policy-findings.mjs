@@ -2,8 +2,8 @@ const POLICY_TOOL = 'nitpicker-config';
 const POLICY_RULE = 'policy-loosened';
 
 const ACCEPT_ROUTE =
-  'A change that loosens nitpicker.config.json fails until a person accepts it: rerun with ' +
-  '--accept-policy-change, or set NITPICKER_ACCEPT_POLICY_CHANGE=1.';
+  'Stop and ask a person to review this change; they accept it with --accept-policy-change ' +
+  '(or NITPICKER_ACCEPT_POLICY_CHANGE=1 in CI).';
 
 export function policyFindings(loosenings, accepted) {
   return accepted

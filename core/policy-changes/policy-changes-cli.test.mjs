@@ -20,9 +20,9 @@ afterEach(() => {
   }
 });
 
-function fakeAnalyzer() {
+function fakeAnalyzer(name = 'fake-quality-analyzer') {
   return {
-    name: 'fake-quality-analyzer',
+    name,
     version: '1.0.0',
     configurationHash: 'fixture-policy',
     exclusions: [],
@@ -45,10 +45,13 @@ function fakeAnalyzer() {
   };
 }
 
-function runWithHeadConfig({ baseConfig, headConfig, extraArguments = [], environment = {} }) {
+function prepareRepository({ baseConfig, headConfig, headMoves = [], commitHead = false }) {
   const files = {
     'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n',
     'src/a.ts': 'export {};\n',
+    'src/legacy/old.ts': 'export {};\n',
+    'src/vendor/lib.ts': 'export {};\n',
+    'src/view.jsx': 'export {};\n',
   };
   const repository = createGitRepository(
     baseConfig === undefined
@@ -57,39 +60,61 @@ function runWithHeadConfig({ baseConfig, headConfig, extraArguments = [], enviro
     { prefix: 'nitpicker-policy-changes-' },
   );
   writeFileSync(path.join(repository.root, 'nitpicker.config.json'), JSON.stringify(headConfig));
+  for (const [from, to] of headMoves) {
+    fixtureGit(repository.root, ['mv', from, to]);
+  }
+  if (commitHead) {
+    fixtureGit(repository.root, ['commit', '--quiet', '--all', '--message', 'head']);
+  }
   fixtureGit(repository.root, ['branch', 'comparison-base', repository.baseSha]);
-  const outputRoot = path.join(
-    mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-output-')),
-    'reports',
-  );
-  outputRoots.push(path.dirname(outputRoot));
+  return repository.root;
+}
+
+function temporaryOutput() {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-output-'));
+  outputRoots.push(root);
+  return path.join(root, 'reports');
+}
+
+function readReports(outputRoot) {
+  const read = (name) => readFileSync(path.join(outputRoot, name), 'utf8');
+  return {
+    summary: JSON.parse(read('summary.json')),
+    report: read('report.txt'),
+    newFindings: JSON.parse(read('new-findings.json')),
+  };
+}
+
+function runIn(root, { arguments_, environment = {}, analyzers = [fakeAnalyzer()] }) {
   let stdoutText = '';
   const exitCode = runCli({
-    arguments_: ['--base', 'comparison-base', '--output', outputRoot, ...extraArguments],
+    arguments_,
     environment: { NO_COLOR: '1', ...environment },
-    currentProjectRoot: repository.root,
-    analyzers: [fakeAnalyzer()],
+    currentProjectRoot: root,
+    analyzers,
     stdout: { write: (value) => (stdoutText += value) },
     stderr: { write() {} },
     progress: { write() {} },
     runTasks: runTasksInProcess,
   });
-  const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
-  return {
-    exitCode,
-    stdoutText,
-    summary,
-    report: readFileSync(path.join(outputRoot, 'report.txt'), 'utf8'),
-    newFindings: JSON.parse(readFileSync(path.join(outputRoot, 'new-findings.json'), 'utf8')),
-  };
+  return { exitCode, stdoutText };
+}
+
+function runWithHeadConfig({ extraArguments = [], environment = {}, ...repository }) {
+  const outputRoot = temporaryOutput();
+  const run = runIn(prepareRepository(repository), {
+    arguments_: ['--base', 'comparison-base', '--output', outputRoot, ...extraArguments],
+    environment,
+  });
+  return { ...run, ...readReports(outputRoot) };
 }
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):';
 const ACCEPT_ROUTE =
-  'A change that loosens nitpicker.config.json fails until a person accepts it: rerun with ' +
-  '--accept-policy-change, or set NITPICKER_ACCEPT_POLICY_CHANGE=1.';
+  'Stop and ask a person to review this change; they accept it with --accept-policy-change ' +
+  '(or NITPICKER_ACCEPT_POLICY_CHANGE=1 in CI).';
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');
@@ -189,5 +214,95 @@ describe('a change that loosens nitpicker.config.json', () => {
     expect(exitCode).toBe(0);
     expect(summary.policyChanges).toEqual([]);
     expect(stdoutText.split('\n').filter((line) => line.startsWith('Policy changed'))).toEqual([]);
+  });
+
+  it('reports the loosening once when the run is sharded', () => {
+    const root = prepareRepository({
+      baseConfig: { exclude: ['src/legacy/**'] },
+      headConfig: loosened,
+      commitHead: true,
+    });
+    const analyzers = [fakeAnalyzer('fake-first'), fakeAnalyzer('fake-second')];
+    const outputRoot = temporaryOutput();
+    const shards = [0, 1].map((index) => {
+      const shardOutput = path.join(outputRoot, 'shards', String(index));
+      runIn(root, {
+        arguments_: [
+          '--base',
+          'comparison-base',
+          '--output',
+          shardOutput,
+          '--shard-count',
+          '2',
+          '--shard-index',
+          String(index),
+        ],
+        analyzers,
+      });
+      return readReports(shardOutput);
+    });
+    const combined = path.join(outputRoot, 'combined');
+    const aggregate = runIn(root, {
+      arguments_: [
+        'aggregate',
+        '--input-root',
+        path.join(outputRoot, 'shards'),
+        '--shard-count',
+        '2',
+        '--output',
+        combined,
+      ],
+      analyzers,
+    });
+    const { summary, newFindings } = readReports(combined);
+
+    expect(shards.map((shard) => policyFindings(shard.newFindings).length)).toEqual([3, 0]);
+    expect(aggregate.exitCode).toBe(1);
+    expect(policyFindings(newFindings).map(({ message }) => message.split('. ')[0])).toEqual(
+      [...expected].sort(),
+    );
+    expect([summary.policyLoosenings, summary.policyChangeAccepted]).toEqual([expected, false]);
+  });
+});
+
+describe('a change that adopts or keeps the policy', () => {
+  it('passes when a first config declares the preset that the project needs', () => {
+    for (const headConfig of [{ preset: 'java' }, { preset: 'typescript' }]) {
+      const { exitCode, summary } = runWithHeadConfig({ headConfig });
+
+      expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
+    }
+  });
+
+  it('passes when the config drops a preset that is the default anyway', () => {
+    const { exitCode, summary } = runWithHeadConfig({
+      baseConfig: { preset: 'typescript' },
+      headConfig: {},
+    });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
+  });
+
+  it('still compares a base config that only the new project checks reject', () => {
+    const { exitCode, summary } = runWithHeadConfig({
+      baseConfig: { preset: 'javascript' },
+      headConfig: { preset: 'javascript', exclude: ['src/view.jsx', 'src/legacy/**'] },
+    });
+
+    expect([exitCode, summary.policyLoosenings]).toEqual([1, ['exclude added: src/legacy/**']]);
+  });
+
+  it('notices a file the change moves under an exclude', () => {
+    const config = { exclude: ['src/vendor/**'] };
+    const { exitCode, summary } = runWithHeadConfig({
+      baseConfig: config,
+      headConfig: config,
+      headMoves: [['src/a.ts', 'src/vendor/a.ts']],
+    });
+
+    expect(exitCode).toBe(0);
+    expect(summary.notices).toEqual([
+      '1 file this change adds or moves under "exclude" in nitpicker.config.json, so nothing checks it: src/vendor/a.ts. Keep project code out of excluded folders.',
+    ]);
   });
 });

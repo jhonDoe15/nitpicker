@@ -2,6 +2,7 @@ import { configError } from '../../shared/config.mjs';
 import { GitCommandError, runGit } from './git.mjs';
 
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
+const HEAD_SYNTAX = /HEAD|^@|@\{/u;
 
 export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
   if (isNonEmpty(explicitBase)) {
@@ -53,17 +54,30 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
   throw new Error('No base could be determined. Use --base <ref>.');
 }
 
+function followsHead(repositoryRoot, configuredBase) {
+  if (COMMIT_ID.test(configuredBase) || HEAD_SYNTAX.test(configuredBase)) {
+    return true;
+  }
+  const name = symbolicName(repositoryRoot, configuredBase);
+  return name !== undefined && name !== '' && name === symbolicName(repositoryRoot, 'HEAD');
+}
+
 function notCheckedOutCommit(repositoryRoot, configuredBase) {
-  if (!COMMIT_ID.test(configuredBase)) {
+  const base = commitOf(repositoryRoot, configuredBase);
+  if (
+    base === undefined ||
+    base !== commitOf(repositoryRoot, 'HEAD') ||
+    !followsHead(repositoryRoot, configuredBase)
+  ) {
     return configuredBase;
   }
-  const base = commitOf(repositoryRoot, configuredBase);
-  if (base !== undefined && base === commitOf(repositoryRoot, 'HEAD')) {
-    throw configError(
-      `"base" is ${configuredBase}, the commit you are on, so the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
-    );
-  }
-  return configuredBase;
+  throw configError(
+    `"base" is ${configuredBase}, the commit you are on, so the change would be compared with itself. Name a branch such as "origin/main", or pass --base <ref>.`,
+  );
+}
+
+function symbolicName(repositoryRoot, ref) {
+  return gitOrUndefined(repositoryRoot, ['rev-parse', '--symbolic-full-name', ref])?.trim();
 }
 
 function commitOf(repositoryRoot, ref) {

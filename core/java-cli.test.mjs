@@ -114,7 +114,7 @@ function run(root, extra = [], { subprocess = false } = {}) {
   const reports = path.join(temporaryRoot('nitpicker-java-out-'), 'reports');
   const exitCode = runCli({
     arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1', NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
+    environment: { NO_COLOR: '1' },
     currentProjectRoot: root,
     stdout: { write: (value) => (output.out += value) },
     stderr: { write: (value) => (output.err += value) },
@@ -175,7 +175,7 @@ describe('nitpicker with "preset": "java"', () => {
     });
     commit(root, 'add violation in an excluded path');
 
-    const result = run(root);
+    const result = run(root, ['--accept-policy-change']);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);

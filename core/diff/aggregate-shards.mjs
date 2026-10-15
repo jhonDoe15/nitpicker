@@ -317,7 +317,7 @@ function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
       throw new Error(`Quality shard ${String(index)} has stale policy for ${analyzer.name}`);
     }
   }
-  validateShardEntries(report, new Set(expectedNames), index);
+  validateShardEntries(report, new Set([...expectedNames, 'nitpicker-config']), index);
   return report;
 }
 

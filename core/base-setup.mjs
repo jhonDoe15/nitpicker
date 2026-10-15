@@ -3,36 +3,50 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../shared/config.mjs';
 import { resolveHeadPolicy } from '../shared/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
-import { describeConfigOverrides, loadConfig } from './config.mjs';
+import { describeConfigOverrides, readConfigFile } from './config.mjs';
 import { baseConfigCoveringHead } from './policy-changes/base-coverage.mjs';
 import { policyChangeFields } from './policy-changes/describe-policy-changes.mjs';
+import { excludedFileNotices } from './policy-changes/excluded-files.mjs';
+import { readPolicyScope } from './policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 
+function readBaseConfig(baseProjectRoot, warn) {
+  if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
+    return undefined;
+  }
+  try {
+    return readConfigFile(baseProjectRoot);
+  } catch (error) {
+    warn(
+      `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config, and the head config is compared with the defaults.`,
+    );
+    return undefined;
+  }
+}
+
 export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = () => undefined }) {
-  return ({ baseProjectRoot, analyzers }) => {
-    if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
-      return policyChangeFields({}, headConfig);
-    }
-    try {
-      return baseSetupFromConfig({
-        baseConfig: loadConfig(baseProjectRoot),
-        headConfig,
-        injectedAnalyzers,
-        analyzers,
-      });
-    } catch (error) {
-      warn(
-        `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config.`,
-      );
-      return {};
-    }
+  return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
+    const baseConfig = readBaseConfig(baseProjectRoot, warn);
+    const compared = baseConfig ?? {};
+    const scope = readPolicyScope({
+      baseConfig: compared,
+      headConfig,
+      baseProjectRoot,
+      headProjectRoot: headSnapshotRoot,
+      moves,
+    });
+    const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);
+    return {
+      ...(baseConfig === undefined || unchanged
+        ? {}
+        : measuredBase({ baseConfig, headConfig, injectedAnalyzers, analyzers })),
+      ...(unchanged ? {} : policyChangeFields(compared, headConfig, scope)),
+      notices: excludedFileNotices({ baseConfig: compared, headConfig, scope, baseProjectRoot }),
+    };
   };
 }
 
-function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
-  if (JSON.stringify(baseConfig) === JSON.stringify(headConfig)) {
-    return {};
-  }
+function measuredBase({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
   const measured = baseConfigCoveringHead(baseConfig, headConfig);
   const baseHeadPolicy = resolveHeadPolicy(measured);
   const configured = new Map(
@@ -44,6 +58,5 @@ function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyz
     analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
     headPolicy: baseHeadPolicy,
     configOverrides: describeConfigOverrides(measured),
-    ...policyChangeFields(baseConfig, headConfig),
   };
 }
