@@ -633,6 +633,11 @@ choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":
 to "exceptions" in nitpicker.config.json.
 ```
 
+The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
+the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
+gives the name to write instead.
+
 Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
 identities are computed before, so neither the new text nor the short Checkstyle name moves a
 finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and

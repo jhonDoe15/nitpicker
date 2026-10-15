@@ -53,31 +53,34 @@ export function readJavaFindings(
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
-    findings: applyRuleMessages([
-      ...sarifFindings(context),
-      ...formatFindings(context),
-      ...checkstyleFindings(context),
-      ...readDuplicateFindings(reportRoot),
-      ...jacocoFindings(context, context.jacoco),
-      ...archunitFindings(context),
-      ...crapFindings(context, context.jacoco, crapLimit),
-      ...pitFindings(context),
-      ...readJavaStructureFindings(reportRoot, projectRoot),
-      ...readJavaFileLimitFindings(projectRoot, {
-        manifest,
-        kotlin,
-        policy: { thresholds: fileLimits, exclude, exceptions },
-      }),
-      ...branchFindings(context, context.jacoco),
-      ...readCouplingFindings(reportRoot, {
-        projectRoot,
-        sourceRoots: context.sourceRoots,
-        kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
-      }),
-      ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-      ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
-      ...springFindings(context),
-    ]),
+    findings: applyRuleMessages(
+      [
+        ...sarifFindings(context),
+        ...formatFindings(context),
+        ...checkstyleFindings(context),
+        ...readDuplicateFindings(reportRoot),
+        ...jacocoFindings(context, context.jacoco),
+        ...archunitFindings(context),
+        ...crapFindings(context, context.jacoco, crapLimit),
+        ...pitFindings(context),
+        ...readJavaStructureFindings(reportRoot, projectRoot),
+        ...readJavaFileLimitFindings(projectRoot, {
+          manifest,
+          kotlin,
+          policy: { thresholds: fileLimits, exclude, exceptions },
+        }),
+        ...branchFindings(context, context.jacoco),
+        ...readCouplingFindings(reportRoot, {
+          projectRoot,
+          sourceRoots: context.sourceRoots,
+          kotlin: kotlin ? kotlinModules(readKotlinMetrics(reportRoot)) : undefined,
+        }),
+        ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
+        ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
+        ...springFindings(context),
+      ],
+      { preset },
+    ),
   };
 }
 
