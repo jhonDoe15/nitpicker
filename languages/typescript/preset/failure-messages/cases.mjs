@@ -5,8 +5,7 @@ import loggingConfig from '../eslint-config/policies/logging.config.mjs';
 import strictSyntaxConfig, { strictConfig } from '../eslint-config/strict.config.mjs';
 import { domainFailureMessageCases } from './domain-cases.mjs';
 import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
-import strictAdaptersConfig from '../eslint-config/strict-adapters.config.mjs';
-import { adapterFailureMessageCases } from './adapter-cases.mjs';
+import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
 import { strictCompositionRootConfig } from '../eslint-config/strict/strict-composition-root.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
@@ -176,118 +175,7 @@ export const failureMessageCases = [
     banned: 'function parse(input) { if (!input) { throw new Error("empty"); } return input; }',
     allowed: 'discriminated-union failure result',
   },
-  {
-    name: 'adapter for(;;) names for...of',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'for (let i = 0; i < 3; i++) { run(i); }',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter for...in names for...of',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'for (const key in record) { run(key); }',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter while names for...of',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'while (queue.length > 0) { run(queue.pop()); }',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter do-while names for...of',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'do { run(); } while (more());',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter forEach names for...of',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'items.forEach((item) => run(item));',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter then chain names async/await',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'fetchOne().then((value) => use(value));',
-    allowed: 'async/await',
-  },
-  {
-    name: 'adapter catch chain names async/await',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'fetchOne().catch((error) => use(error));',
-    allowed: 'try/catch',
-  },
-  {
-    name: 'adapter bare Error names Error subclass',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: "function f() { throw new Error('failed'); }",
-    allowed: 'Error subclass',
-  },
-  {
-    name: 'adapter literal throw names Error subclass',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: "function f() { throw 'failed'; }",
-    allowed: 'preserves cause',
-  },
-  {
-    name: 'adapter silent catch names rethrowing with cause',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'try { run(); } catch (error) { cleanup(); }',
-    allowed: '{ cause: error }',
-  },
-  {
-    name: 'adapter silent catch names the failure result',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'try { run(); } catch { return []; }',
-    allowed: 'Return a failure result',
-  },
-  {
-    name: 'adapter self-recursion names a for...of loop for retries',
-    config: strictSyntaxConfig,
-    filename: 'src/main/features/billing/adapters/http.ts',
-    banned: 'async function fetchWithRetry(n) { return n > 0 ? fetchWithRetry(n - 1) : 0; }',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter tree-walk recursion names a worklist',
-    config: strictSyntaxConfig,
-    filename: 'src/main/features/billing/adapters/walk.ts',
-    banned: 'function walk(node) { return node.children.flatMap((child) => walk(child)); }',
-    allowed: 'worklist',
-  },
-  {
-    name: 'composition-root self-recursion names a for...of loop for retries',
-    config: strictSyntaxConfig,
-    filename: 'src/main/composition-root.ts',
-    banned: 'function poll(n) { return n > 0 ? poll(n - 1) : 0; }',
-    allowed: 'for...of',
-  },
-  {
-    name: 'adapter empty catch is rejected',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'try { run(); } catch (error) {}',
-    allowed: 'Return a failure result',
-  },
-  {
-    name: 'adapter lost cause names cause',
-    config: strictAdaptersConfig,
-    filename: 'src/main/features/billing/adapters/store.ts',
-    banned: 'try { run(); } catch (error) { throw new Error(String(error)); }',
-    allowed: 'original cause',
-  },
+  ...adapterSyntaxFailureMessageCases,
   ...adapterFailureMessageCases,
   {
     name: 'composition-root branch names the feature adapters',

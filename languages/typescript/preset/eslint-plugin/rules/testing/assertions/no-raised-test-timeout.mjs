@@ -67,6 +67,17 @@ function timeoutNodes(context, node) {
   });
 }
 
+function reportTimeout(context, timeout) {
+  const value = constantNumber(context, timeout);
+  if (value === undefined) {
+    context.report({ node: timeout, messageId: 'unknownTimeout' });
+    return;
+  }
+  if (value > TEST_TIMEOUT_CEILING_MS) {
+    context.report({ node: timeout, messageId: 'raisedTimeout' });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -79,14 +90,7 @@ export const rule = {
   create(context) {
     return {
       CallExpression(node) {
-        for (const timeout of timeoutNodes(context, node)) {
-          const value = constantNumber(context, timeout);
-          if (value === undefined) {
-            context.report({ node: timeout, messageId: 'unknownTimeout' });
-          } else if (value > TEST_TIMEOUT_CEILING_MS) {
-            context.report({ node: timeout, messageId: 'raisedTimeout' });
-          }
-        }
+        for (const timeout of timeoutNodes(context, node)) reportTimeout(context, timeout);
       },
     };
   },
