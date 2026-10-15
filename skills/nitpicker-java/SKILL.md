@@ -28,8 +28,9 @@ start; the gate is a backstop.
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. If a
-   finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
-   `nitpicker-config/policy-loosened` finding is for a person to accept.
+   finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person
+   to accept.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
