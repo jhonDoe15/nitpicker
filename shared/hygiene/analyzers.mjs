@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure } from '../modules/import-closure.mjs';
+import { importClosure } from '../import-closure.mjs';
 import { REPOSITORY_HYGIENE_TOOL } from './files/repository-files.mjs';
 
 const sharedRoot = path.resolve(import.meta.dirname, '..');
@@ -9,9 +9,7 @@ const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
 const ANALYZER_VERSION = '1';
 
 export function configurationFiles() {
-  return importClosure(runnerPath)
-    .map((file) => path.relative(sharedRoot, file))
-    .sort();
+  return [...importClosure([path.relative(sharedRoot, runnerPath)], sharedRoot).keys()].sort();
 }
 
 function hashConfiguration() {

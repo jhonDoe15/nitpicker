@@ -1,15 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  removeGitRepositories,
-} from '../../../core/diff/fixtures/git-repository.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { trackedFiles } from '../tracked-files.mjs';
 import { LARGE_FILE_BYTES, withoutExcepted } from '../rules.mjs';
 import { collectRepositoryFindings } from './repository-files.mjs';
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
 

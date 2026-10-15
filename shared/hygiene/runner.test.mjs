@@ -3,19 +3,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  removeGitRepositories,
-} from '../../core/diff/fixtures/git-repository.mjs';
+import { useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseHygieneArguments, runHygieneCheck } from './runner.mjs';
 
 const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
 const temporaryDirectories = [];
+const { createGitRepository } = useGitFixtures();
 
 afterEach(() => {
-  removeGitRepositories();
   for (const directory of temporaryDirectories.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
   }

@@ -1,14 +1,10 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  fixtureGit,
-  removeGitRepositories,
-} from '../../core/diff/fixtures/git-repository.mjs';
+import { describe, expect, it } from 'vitest';
+import { fixtureGit, useGitFixtures } from '../../core/diff/git/test-support/git-repository.mjs';
 import { committedSizes, trackedFiles } from './tracked-files.mjs';
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 describe('trackedFiles', () => {
   it('lists tracked files relative to the folder, with odd names intact', () => {

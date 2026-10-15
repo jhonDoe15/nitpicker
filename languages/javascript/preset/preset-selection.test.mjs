@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { presetAnalyzers } from '../../../core/preset-analyzers.mjs';
+import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mjs';
+import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
 import {
   applyLayout,
   applyThresholds,
@@ -15,16 +16,24 @@ import {
 import { resolveLayout, resolveLayoutFor } from '../../typescript/preset/layout.mjs';
 import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs';
 import { isJavascriptPolicy } from './javascript-preset.mjs';
+import { fileURLToPath } from 'node:url';
 
-const packageRoot = new URL('../../..', import.meta.url).pathname;
+const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
+
+const packageAnalyzers = configuredAnalyzers();
+const javascriptPackageAnalyzers = javascriptAnalyzers();
 
 function analyzerNames(analyzers) {
   return analyzers.map(({ name }) => name);
 }
 
-function hygieneAnalyzers() {
-  return presetAnalyzers({}).slice(configuredAnalyzers.length);
+function fingerprint(analyzers) {
+  return analyzers.map(({ name, configurationHash, createInvocation }) => ({
+    name,
+    configurationHash,
+    args: createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot }).args,
+  }));
 }
 
 function prettierPatterns(layout) {
@@ -34,18 +43,19 @@ function prettierPatterns(layout) {
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    expect(presetAnalyzers({ preset: 'typescript' })).toEqual([
-      ...configuredAnalyzers,
-      ...hygieneAnalyzers(),
-    ]);
-    expect(presetAnalyzers({})).toEqual([...configuredAnalyzers, ...hygieneAnalyzers()]);
+    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers()]);
+
+    expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
+    expect(fingerprint(presetAnalyzers({}))).toEqual(expected);
   });
 
   it('runs the JavaScript analyzer set for the javascript preset', () => {
-    expect(presetAnalyzers({ preset: 'javascript' })).toEqual([
-      ...javascriptAnalyzers,
-      ...hygieneAnalyzers(),
-    ]);
+    const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
+
+    expect(selected).toEqual(
+      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers()]),
+    );
+    expect(selected).not.toEqual(fingerprint(packageAnalyzers));
   });
 
   it('adds the repository hygiene checks to every preset', () => {
@@ -60,8 +70,7 @@ describe('preset selection', () => {
   });
 
   it('runs the same checks as the TypeScript preset', () => {
-    expect(analyzerNames(javascriptAnalyzers)).toEqual(analyzerNames(configuredAnalyzers));
-    expect(javascriptAnalyzers).not.toBe(configuredAnalyzers);
+    expect(analyzerNames(javascriptPackageAnalyzers)).toEqual(analyzerNames(packageAnalyzers));
   });
 
   it('recognises the javascript preset in a head policy only', () => {
@@ -208,9 +217,9 @@ describe('javascript analyzers with a customized policy', () => {
   }
 
   it('rebuild with the project roots and keep the JavaScript pipeline', () => {
-    const rebuilt = applyLayout(javascriptAnalyzers, customized);
-    expect(rebuilt).not.toBe(javascriptAnalyzers);
-    expect(analyzerNames(rebuilt)).toEqual(analyzerNames(javascriptAnalyzers));
+    const rebuilt = applyLayout(javascriptPackageAnalyzers, customized);
+    expect(rebuilt).not.toBe(javascriptPackageAnalyzers);
+    expect(analyzerNames(rebuilt)).toEqual(analyzerNames(javascriptPackageAnalyzers));
     const underLib = (name) =>
       invocation(rebuilt, name).args.filter((argument) => argument.startsWith('lib/'));
     expect(underLib('eslint-lint')).toEqual([
@@ -221,20 +230,24 @@ describe('javascript analyzers with a customized policy', () => {
   });
 
   it('keep the shared analyzer set when only the preset is chosen', () => {
-    expect(applyLayout(javascriptAnalyzers, javascriptPolicy)).toBe(javascriptAnalyzers);
+    expect(applyLayout(javascriptPackageAnalyzers, javascriptPolicy)).toBe(
+      javascriptPackageAnalyzers,
+    );
   });
 
   it('rebuild the shared analyzers of either preset and replace nothing else', () => {
     const custom = { name: 'custom', createInvocation() {} };
     expect(applyLayout([custom], customized)).toEqual([custom]);
-    const rebuiltTypescript = applyLayout(configuredAnalyzers, customized);
-    expect(analyzerNames(rebuiltTypescript)).toEqual(analyzerNames(configuredAnalyzers));
+    const rebuiltTypescript = applyLayout(packageAnalyzers, customized);
+    expect(analyzerNames(rebuiltTypescript)).toEqual(analyzerNames(packageAnalyzers));
   });
 
   it('apply the crap limit with the javascript layout', () => {
-    const limited = applyThresholds(javascriptAnalyzers, { crapLimit: 7 }, customized);
+    const limited = applyThresholds(javascriptPackageAnalyzers, { crapLimit: 7 }, customized);
     const crap = limited.find(({ name }) => name === 'crap');
-    expect(crap).not.toBe(javascriptAnalyzers.find(({ name }) => name === 'crap'));
-    expect(applyThresholds(javascriptAnalyzers, {}, customized)).toBe(javascriptAnalyzers);
+    expect(crap).not.toBe(javascriptPackageAnalyzers.find(({ name }) => name === 'crap'));
+    expect(applyThresholds(javascriptPackageAnalyzers, {}, customized)).toBe(
+      javascriptPackageAnalyzers,
+    );
   });
 });
