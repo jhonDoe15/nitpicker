@@ -58,6 +58,9 @@ export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = 
 
   const toolRoot = analyzerName === 'structure' ? PACKAGE_ROOT : liveProjectRoot;
   const version = resolve(toolName, { projectRoot: toolRoot }).version;
+  if (analyzerName === 'typescript-typecheck') {
+    return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
+  }
   if (!TYPESCRIPT_CONSUMERS.has(analyzerName)) {
     return version;
   }

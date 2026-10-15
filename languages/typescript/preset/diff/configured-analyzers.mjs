@@ -53,6 +53,9 @@ const STATIC_CHECK_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/static-checks.mjs',
   'languages/typescript/adapters/static-checks-runner.mjs',
+  'languages/typescript/adapters/typecheck/native-diagnostics.mjs',
+  'languages/typescript/adapters/typecheck/typescript-program.mjs',
+  'shared/glob.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
 const QUALITY_AREA_ADAPTER_FILES = [
