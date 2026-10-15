@@ -98,7 +98,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Tests get the same PMD, Checkstyle and formatter checks as main code, plus the file (500 lines)
   and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection read main
   sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
-  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
+  sources only. If a PMD rule flags test code that is right, ask a human for a reviewed exception for `pmd/<rule>`.
 
 ## Editing existing code
 

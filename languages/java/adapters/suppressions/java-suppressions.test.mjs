@@ -19,7 +19,12 @@ const REPOSITORY = `interface Products extends Repository<Product, Long> {
 `;
 
 const MESSAGE =
-  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+  'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+
+const route = (rule, file) =>
+  `If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`;
+const afterMessage = (message, prefix) =>
+  message.slice(prefix.length, message.indexOf(' If a reviewer agrees'));
 
 const lines = (findings) => findings.map((finding) => finding.location.line);
 
@@ -55,11 +60,11 @@ describe('fileFindings', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${MESSAGE} Found: "PMD.UnusedPrivateField".`,
+      message: `${MESSAGE} Found: "PMD.UnusedPrivateField". ${route('pmd/<PMD rule>', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 2 },
     });
-    expect(findings.map((finding) => finding.message.slice(MESSAGE.length))).toEqual([
+    expect(findings.map((finding) => afterMessage(finding.message, MESSAGE))).toEqual([
       ' Found: "PMD.UnusedPrivateField".',
       ' Found: "PMD".',
       ' Found: "all".',
@@ -97,7 +102,7 @@ describe('fileFindings', () => {
 
     expect(
       fileFindings(source, 'A.java').map(
-        (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
+        (finding) => `${String(finding.location.line)}${afterMessage(finding.message, MESSAGE)}`,
       ),
     ).toEqual([
       '2 Found: "PMD.X".',
@@ -132,13 +137,12 @@ describe('fileFindings', () => {
 });
 
 describe('fileFindings for SpotBugs', () => {
-  const SPOTBUGS_MESSAGE =
-    'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
   const prefixOf = (tool) => (tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE);
   const found = (findings) =>
     findings.map(
       ({ tool, location, message }) =>
-        `${tool} ${String(location.line)}${message.slice(prefixOf(tool).length)}`,
+        `${tool} ${String(location.line)}${afterMessage(message, prefixOf(tool))}`,
     );
 
   it('reports every @SuppressFBWarnings, without the justification, and not inside comments or strings', () => {
@@ -167,7 +171,7 @@ describe('fileFindings for SpotBugs', () => {
       rule: 'InlineSuppression',
       path: 'src/main/java/A.java',
       identity: expect.stringMatching(/^InlineSuppression:\w+$/),
-      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL".`,
+      message: `${SPOTBUGS_MESSAGE} Found: "EI_EXPOSE_REP", "NP_NULL". ${route('spotbugs/<bug pattern>', 'src/main/java/A.java')}`,
       classification: 'enforceable',
       location: { line: 3 },
     });
