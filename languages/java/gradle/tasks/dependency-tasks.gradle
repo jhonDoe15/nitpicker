@@ -1,51 +1,53 @@
 def reportDir = layout.buildDirectory.dir('nitpicker')
-def javaHome = new File(System.getProperty('java.home'))
+def declaredConfigurations = ['implementation', 'api']
+
+def referencedNames = { Collection<File> classDirs ->
+    def names = [] as Set
+    classDirs.each { directory ->
+        directory.eachFileRecurse(groovy.io.FileType.FILES) { file ->
+            if (file.name.endsWith('.class')) {
+                (file.getText('ISO-8859-1') =~ /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/).each { String token ->
+                    names << "${token}.class".toString()
+                    names << "${token.substring(1)}.class".toString()
+                }
+            }
+        }
+    }
+    names
+}
+
+def usesArchive = { File archive, Set<String> names ->
+    if (archive.isDirectory()) {
+        return names.any { new File(archive, it).isFile() }
+    }
+    new java.util.zip.ZipFile(archive).withCloseable { zip -> names.any { zip.getEntry(it) != null } }
+}
 
 tasks.register('nitpickerDependencies') {
     group = 'nitpicker'
     dependsOn tasks.named('classes')
     doLast {
         reportDir.get().asFile.mkdirs()
-        def declared = []
-        configurations.matching { !it.name.startsWith('nitpicker') }.each { configuration ->
-            configuration.dependencies.withType(ExternalModuleDependency).each { dependency ->
-                declared << [configuration: configuration.name, group: dependency.group ?: '', name: dependency.name,
-                             version: dependency.version ?: '', changing: dependency.changing]
-            }
-        }
         def archivesOf = [:]
         def lenient = configurations.compileClasspath.resolvedConfiguration.lenientConfiguration
         lenient.firstLevelModuleDependencies.each { resolved ->
             archivesOf["${resolved.moduleGroup}:${resolved.moduleName}".toString()] =
-                resolved.allModuleArtifacts.collect { it.file.absolutePath }.unique().sort()
-        }
-        def checked = declared.collect { entry ->
-            entry + (entry.configuration in ['implementation', 'api']
-                ? [archives: archivesOf["${entry.group}:${entry.name}".toString()] ?: []] : [:])
+                resolved.moduleArtifacts.collect { it.file }.findAll { it.exists() }.unique()
         }
         def classDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() && it.list()?.length }
-        def referenced = []
-        if (!classDirs.isEmpty() && checked.any { it.archives }) {
-            def classpath = configurations.compileClasspath.files.findAll { it.exists() }.collect { it.absolutePath }
-            def process = new ProcessBuilder([new File(javaHome, 'bin/jdeps').absolutePath, '-summary', '-filter:none', '--multi-release', 'base',
-                    '--class-path', classpath.join(File.pathSeparator)] + classDirs.collect { it.absolutePath })
-                .directory(projectDir).redirectErrorStream(true).start()
-            def text = process.inputStream.getText('UTF-8')
-            if (process.waitFor() != 0) {
-                throw new GradleException("jdeps failed with exit code ${process.exitValue()}: ${text.trim()}")
-            }
-            referenced = text.readLines().findResults { line ->
-                def match = (line =~ /^\S+\s+->\s+(.+?)\s*$/)
-                match.matches() ? match.group(1) : null
+        Set<String> names = referencedNames.call(classDirs)
+        def declared = declaredConfigurations.findAll { configurations.findByName(it) != null }.collectMany { name ->
+            configurations.getByName(name).dependencies.withType(ExternalModuleDependency).collect { dependency ->
+                def archives = archivesOf["${dependency.group}:${dependency.name}".toString()] ?: []
+                [configuration: name, group: dependency.group ?: '', name: dependency.name,
+                 archives: archives.collect { it.name }, used: archives.any { usesArchive(it, names) }]
             }
         }
-        def lockfile = file('gradle.lockfile').exists() || file('gradle/dependency-locks').isDirectory()
         def buildFile = project.buildFile.exists() ? projectDir.toPath().relativize(project.buildFile.toPath()).toString().replace('\\', '/') : null
         reportDir.get().file('dependencies.json').asFile.text = groovy.json.JsonOutput.toJson([
-            buildFile : buildFile,
-            locked    : lockfile,
-            declared  : checked,
-            referenced: referenced,
+            buildFile: buildFile,
+            analyzed : !classDirs.isEmpty(),
+            declared : declared,
         ])
     }
 }
