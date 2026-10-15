@@ -173,6 +173,11 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     "function code(error: unknown) { if (error instanceof Error) { return 'code' in error; } return false; }",
     "function code(error: unknown) { if (!(error instanceof Error)) { return false; } return 'code' in error; }",
     "function code(error: unknown) { return error instanceof Error ? 'code' in error : false; }",
+    "function code(error: unknown) { return !(error instanceof Error) || 'code' in error; }",
+    "function code(error: unknown) { return !(error instanceof Error) ? false : 'code' in error; }",
+    "function code(error: unknown, quiet: boolean) { if (!(error instanceof Error) || quiet) { throw error; } return 'code' in error; }",
+    "function code(error: unknown) { const isError = error instanceof Error; return isError && 'code' in error; }",
+    "function code(error: unknown) { switch (true) { case error instanceof Error: return 'code' in error; default: return false; } }",
   ],
   invalid: [
     {
@@ -201,6 +206,22 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     },
     {
       code: "function code(error: unknown) { return error instanceof Error || 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function code(error: unknown) { if (!(error instanceof Error)) { log(error); } return 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function code(error: unknown) { let isError = error instanceof Error; isError = true; return isError && 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function code(error: unknown) { switch (kind) { case error instanceof Error: return 'code' in error; default: return false; } }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function code(error: unknown) { return !(error instanceof Error) && 'code' in error; }",
       errors: [{ messageId: 'inlineNarrowing' }],
     },
     {
