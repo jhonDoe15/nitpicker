@@ -9,12 +9,16 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { gradleRepository, run, runCli, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
+const UNUSED_FIELD_ROUTE =
+  'If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.';
+const ADDED = `Avoid unused field: added. ${UNUSED_FIELD_ROUTE}`;
+
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
-    Avoid unused field: added. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.
+    ${ADDED}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
@@ -51,7 +55,7 @@ describe('nitpicker with "preset": "java"', () => {
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: added',
-        message: 'Avoid unused field: added. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.',
+        message: ADDED,
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -85,7 +89,7 @@ describe('nitpicker with "preset": "java"', () => {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
           "message": {
-            "text": "Avoid unused field: added. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json."
+            "text": "${ADDED}"
           },
           "locations": [
             {
@@ -113,7 +117,7 @@ describe('nitpicker with "preset": "java"', () => {
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
-  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json." type="pmd/UnusedPrivateField">Avoid unused field: added. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.</failure></testcase>
+  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="${ADDED}" type="pmd/UnusedPrivateField">${ADDED}</failure></testcase>
 </testsuite>
 `),
     );
@@ -239,7 +243,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         'java: total=1 enforceable=1 descriptive=0',
         '',
         'Enforceable findings:',
-        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy. If it is right here, add an exception for pmd/UnusedPrivateField in nitpicker.config.json.`,
+        `pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy. ${UNUSED_FIELD_ROUTE}`,
         '',
       ].join('\n'),
     );

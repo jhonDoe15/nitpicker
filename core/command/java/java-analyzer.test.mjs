@@ -93,8 +93,33 @@ describe('a root project without Nitpicker reports', () => {
     ]);
   });
 });
+const PINNED_TOOLS = [
+  'pmd',
+  'forbiddenapis',
+  'spotbugs',
+  'googleJavaFormat',
+  'jacoco',
+  'checkstyle',
+  'lizard',
+  'pitest',
+  'pitestJunit5',
+  'detekt',
+  'detektKotlin',
+  'ktlint',
+  'ktfmt',
+  'kotlinCompiler',
+  'jscpd',
+];
 
 describe('Java analyzer', () => {
+  it('records the pinned tool versions and a stable configuration hash', () => {
+    const analyzer = createJavaAnalyzer();
+
+    expect(analyzer.version).toMatch(
+      new RegExp(`^${PINNED_TOOLS.map((tool) => `${tool}@[\\d.]+`).join(';')}$`),
+    );
+    expect(createJavaAnalyzer().configurationHash).toBe(analyzer.configurationHash);
+  });
   it('maps a failing Gradle run to one tool-error finding', () => {
     const root = temporaryRoot('nitpicker-java-unit-');
     writeFiles(root, { GRADLE_FAIL: 'tool crashed\n' });
