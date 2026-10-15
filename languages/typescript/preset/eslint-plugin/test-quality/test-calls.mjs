@@ -1,4 +1,4 @@
-import { ancestorsOf, chainOf } from '../rules/ancestry.mjs';
+import { ancestorsOf, chainOf } from '../rules/analysis/ancestry.mjs';
 
 const SUITE_NAMES = new Set(['describe', 'suite']);
 const CASE_NAMES = new Set(['it', 'test']);

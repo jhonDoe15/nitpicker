@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { checkFailureMessageCase } from './harness.mjs';
-import { failureMessageCases as baseCases } from './cases.mjs';
-import { testHonestyFailureMessageCases } from './honesty/test-honesty-cases.mjs';
+import { checkFailureMessageCase } from './test-support/harness.mjs';
+import { failureMessageCases as baseCases } from './test-support/cases.mjs';
+import { testHonestyFailureMessageCases } from './test-support/honesty/test-honesty-cases.mjs';
 
 const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
 

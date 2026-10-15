@@ -1,7 +1,7 @@
 import vitest from '@vitest/eslint-plugin';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { codeExtensions } from '../../layout.mjs';
-import { escapeHatchLinterOptions } from '../strict-escape-hatches.mjs';
+import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mjs';
 import { restrictedMatchers } from './restricted-matchers.mjs';
 
 function testAreaGlobsFor(layout) {

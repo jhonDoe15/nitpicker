@@ -1,4 +1,4 @@
-import { ancestorsOf } from '../rules/ancestry.mjs';
+import { ancestorsOf } from '../rules/analysis/ancestry.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';

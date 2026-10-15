@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../../failure-messages/harness.mjs';
+import { failureMessagesFor } from '../../failure-messages/test-support/harness.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import { applyRuleExceptions } from '../exceptions.mjs';
 import { strictTestConfigFor } from '../strict-tests.mjs';
