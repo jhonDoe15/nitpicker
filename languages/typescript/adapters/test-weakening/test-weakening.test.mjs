@@ -29,8 +29,9 @@ const CLASSIFY_TEST = [
 
 afterEach(removeGitRepositories);
 
-function snapshots({ headChanges = {}, removed = [] }) {
+function snapshots({ headChanges = {}, removed = [], baseFiles = {} }) {
   const { root } = createGitRepository({
+    ...baseFiles,
     'src/classify.ts': "export const classify = (n: number) => (n < 5 ? 'low' : 'high');\n",
     'src/format/index.ts': 'export const format = String;\n',
     'src/unrelated.ts': 'export const unrelated = 1;\n',
@@ -64,6 +65,47 @@ describe('production modules of the changed tests', () => {
       'src/classify.ts',
       'src/format/index.ts',
     ]);
+  });
+
+  it.each([
+    [
+      'a paths alias from an extended config',
+      {
+        'tsconfig.base.json': '{ "compilerOptions": { "paths": { "@/*": ["./src/*"] } } }\n',
+        'tsconfig.json': '{ "extends": "./tsconfig.base.json" }\n',
+      },
+      "import { classify } from '@/classify';\n",
+    ],
+    [
+      'a baseUrl import',
+      { 'tsconfig.json': '{ "compilerOptions": { "baseUrl": "." } }\n' },
+      "import { classify } from 'src/classify.js';\n",
+    ],
+    [
+      'an alias in a referenced config of a Vite project',
+      {
+        'tsconfig.json': '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }\n',
+        'tsconfig.app.json':
+          '{ "compilerOptions": { "composite": true, "paths": { "@/*": ["./src/*"] } } }\n',
+      },
+      "import { classify } from '@/classify';\n",
+    ],
+  ])('follow %s', (_name, baseFiles, test) => {
+    const options = snapshots({ baseFiles, headChanges: { 'test/unrelated.test.ts': test } });
+
+    expect(testedSourceModules(options, layout)).toEqual(['src/classify.ts', 'src/unrelated.ts']);
+  });
+
+  it('leave out packages, even one an alias points into', () => {
+    const options = snapshots({
+      baseFiles: {
+        'tsconfig.json': '{ "compilerOptions": { "paths": { "lib": ["./node_modules/lib"] } } }\n',
+        'node_modules/lib/index.ts': 'export const lib = 1;\n',
+      },
+      headChanges: { 'test/unrelated.test.ts': "import { lib } from 'lib';\n" },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(['src/unrelated.ts']);
   });
 
   it('include the modules a deleted test imported', () => {

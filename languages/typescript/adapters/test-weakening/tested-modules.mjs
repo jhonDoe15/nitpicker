@@ -2,14 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { runGit } from '../../../../core/diff/git.mjs';
-
-const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
-const COMPILED_TO_SOURCE = new Map([
-  ['.js', ['.ts', '.tsx']],
-  ['.jsx', ['.tsx']],
-  ['.mjs', ['.mts']],
-  ['.cjs', ['.cts']],
-]);
+import { projectCompilerOptions, resolveProjectModule } from './module-resolution.mjs';
 
 function isFile(filePath) {
   return existsSync(filePath) && statSync(filePath).isFile();
@@ -50,28 +43,12 @@ function changedTestPaths({ baselineRoot, projectRoot }, layout) {
   };
 }
 
-function resolveModule(root, request) {
-  const normalized = path.posix.normalize(request);
-  if (normalized.startsWith('../') || path.posix.isAbsolute(normalized)) return undefined;
-  const extension = path.posix.extname(normalized);
-  const stem = normalized.slice(0, normalized.length - extension.length);
-  const candidates = [
-    normalized,
-    ...(COMPILED_TO_SOURCE.get(extension) ?? []).map((sourceExtension) => stem + sourceExtension),
-    ...MODULE_EXTENSIONS.map((moduleExtension) => normalized + moduleExtension),
-    ...MODULE_EXTENSIONS.map((moduleExtension) => `${normalized}/index${moduleExtension}`),
-  ];
-  return candidates.find((candidate) => isFile(path.join(root, candidate)));
-}
-
-function importedSourceModules(root, testPath, layout) {
+function importedSourceModules({ root, compilerOptions }, testPath, layout) {
   const text = readFileSync(path.join(root, testPath), 'utf8');
-  const directory = path.posix.dirname(testPath);
+  const context = { root, compilerOptions, fromFile: testPath };
   return ts
     .preProcessFile(text, true, true)
-    .importedFiles.map(({ fileName }) => fileName)
-    .filter((specifier) => specifier.startsWith('.'))
-    .map((specifier) => resolveModule(root, path.posix.join(directory, specifier)))
+    .importedFiles.map(({ fileName }) => resolveProjectModule(context, fileName))
     .filter((modulePath) => modulePath !== undefined && layout.isSourceFile(modulePath));
 }
 
@@ -79,9 +56,11 @@ export function testedSourceModules(options, layout) {
   const { snapshot, baselineRoot, projectRoot } = options;
   if (snapshot === 'base' || baselineRoot === undefined) return [];
   const changed = changedTestPaths(options, layout);
+  const head = { root: projectRoot, compilerOptions: projectCompilerOptions(projectRoot) };
+  const base = { root: baselineRoot, compilerOptions: projectCompilerOptions(baselineRoot) };
   const modules = new Set([
-    ...changed.head.flatMap((testPath) => importedSourceModules(projectRoot, testPath, layout)),
-    ...changed.base.flatMap((testPath) => importedSourceModules(baselineRoot, testPath, layout)),
+    ...changed.head.flatMap((testPath) => importedSourceModules(head, testPath, layout)),
+    ...changed.base.flatMap((testPath) => importedSourceModules(base, testPath, layout)),
   ]);
   return [...modules]
     .filter((modulePath) => isFile(path.join(baselineRoot, modulePath)))
