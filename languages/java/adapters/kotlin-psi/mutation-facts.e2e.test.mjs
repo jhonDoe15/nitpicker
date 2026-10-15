@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -36,5 +36,24 @@ describe.skipIf(!enabled)('KotlinMutationFacts on source files', () => {
     const { result } = runPsiProgram({ java, classpath, source: factsSource, project });
 
     expect(result).toEqual({ files: [FACTS_EXPECTED] });
+  });
+
+  it('reports the facts the measurement test of the filter pins for the kotlin-measurement fixture', () => {
+    const fixtures = path.resolve(import.meta.dirname, '../../ingest/fixtures');
+    const sourceRoot = path.join(fixtures, 'kotlin-measurement/src/main/kotlin');
+    const sources = Object.fromEntries(
+      readdirSync(sourceRoot, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile())
+        .map((entry) => {
+          const file = path.join(entry.parentPath, entry.name);
+          return [`src/main/kotlin/${path.relative(sourceRoot, file)}`, readFileSync(file, 'utf8')];
+        }),
+    );
+    const project = writeSources(workspace, 'measurement', sources);
+    const { result } = runPsiProgram({ java, classpath, source: factsSource, project });
+
+    expect(result).toEqual(
+      JSON.parse(readFileSync(path.join(fixtures, 'kotlin-measurement-facts.json'), 'utf8')),
+    );
   });
 });

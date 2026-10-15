@@ -1,6 +1,7 @@
 const CONDITIONALS = new Set(['NegateConditionalsMutator', 'ConditionalsBoundaryMutator']);
 const SUSPEND_METHOD_END = 'Lkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 const INTRINSICS_CALL = /^removed call to kotlin\/jvm\/internal\/Intrinsics::(\w+)$/;
+const INLINE_MARKER_CALL = /^removed call to kotlin\/jvm\/internal\/InlineMarker::/;
 const COMPOSE_CALL =
   /^removed call to androidx\/compose\/runtime\/(?:Composer|ComposerKt|ScopeUpdateScope|RecomposeScope)::/;
 const VALUE_CLASS_GENERATED = new Set([
@@ -105,7 +106,7 @@ function valueClassMember({ mutant, cls }) {
 }
 
 function inlineBody({ mutant, file }) {
-  const base = unmangled(mutant.method.replace(/\$default$/, ''));
+  const base = unmangled(mutant.method.replace(/(?:\$default|\$\$forInline)$/, ''));
   return (
     file !== undefined &&
     file.functions.some(
@@ -117,6 +118,10 @@ function inlineBody({ mutant, file }) {
         mutant.line <= entry.end,
     )
   );
+}
+
+function inlinedBeyondFile({ mutant, file }) {
+  return file !== undefined && mutant.line > file.lines;
 }
 
 function defaultStub({ mutant, file }) {
@@ -176,6 +181,7 @@ export const SOURCE_FREE_RULES = [
     ({ mutant }) => mutant.description === 'removed call to kotlin/ResultKt::throwOnFailure',
   ],
   ['null-check-intrinsic', nullCheckIntrinsic],
+  ['inline-marker', ({ mutant }) => INLINE_MARKER_CALL.test(mutant.description)],
   [
     'when-mappings',
     ({ mutant, declared }) =>
@@ -197,5 +203,6 @@ export const SOURCE_RULES = [
   ['generated-member', generatedMember],
   ['value-class-member', valueClassMember],
   ['inline-function-body', inlineBody],
+  ['inlined-beyond-file', inlinedBeyondFile],
   ['default-argument-stub', defaultStub],
 ];
