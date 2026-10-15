@@ -97,7 +97,7 @@ export function enclosingSymbol(node) {
   return names.length === 0 ? undefined : names.reverse().join('.');
 }
 
-export function declarationName(node) {
+function declarationName(node) {
   if (
     ts.isFunctionDeclaration(node) ||
     ts.isClassDeclaration(node) ||
@@ -115,7 +115,7 @@ export function declarationName(node) {
   return undefined;
 }
 
-export function fingerprintText(node) {
+function fingerprintText(node) {
   if (ts.isFunctionLike(node) && node.body !== undefined) {
     return node.getSourceFile().text.slice(node.getStart(), node.body.getStart());
   }
@@ -143,7 +143,7 @@ export function syntaxFingerprint(node, nodeType) {
   return createHash('sha256').update(semanticTokens.join('\0')).digest('hex').slice(0, 24);
 }
 
-export function isClosingToken(kind) {
+function isClosingToken(kind) {
   return (
     kind === ts.SyntaxKind.CloseBraceToken ||
     kind === ts.SyntaxKind.CloseBracketToken ||

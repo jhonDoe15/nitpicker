@@ -37,25 +37,11 @@ export function createEslintAnalyzer({
         toolRoot,
         '--config',
         configRelativePath,
+        ...optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }),
+        ...environmentArguments(environment),
+        ...patterns.flatMap((pattern) => ['--pattern', pattern]),
+        ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
       ];
-      if (liveProjectRoot !== undefined) {
-        args.push('--live-project-root', liveProjectRoot);
-      }
-      if (eslintTimeoutMs !== undefined) {
-        args.push('--timeout-ms', String(eslintTimeoutMs));
-      }
-      if (eslintCliPath !== undefined) {
-        args.push('--eslint-cli', eslintCliPath);
-      }
-      for (const [environmentName, value] of Object.entries(environment)) {
-        args.push('--environment', `${environmentName}=${value}`);
-      }
-      for (const pattern of patterns) {
-        args.push('--pattern', pattern);
-      }
-      for (const policyFile of policyFiles) {
-        args.push('--policy-file', policyFile);
-      }
       return {
         command: process.execPath,
         args,
@@ -63,4 +49,25 @@ export function createEslintAnalyzer({
       };
     },
   };
+}
+
+function optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }) {
+  const args = [];
+  if (liveProjectRoot !== undefined) {
+    args.push('--live-project-root', liveProjectRoot);
+  }
+  if (eslintTimeoutMs !== undefined) {
+    args.push('--timeout-ms', String(eslintTimeoutMs));
+  }
+  if (eslintCliPath !== undefined) {
+    args.push('--eslint-cli', eslintCliPath);
+  }
+  return args;
+}
+
+function environmentArguments(environment) {
+  return Object.entries(environment).flatMap(([environmentName, value]) => [
+    '--environment',
+    `${environmentName}=${value}`,
+  ]);
 }

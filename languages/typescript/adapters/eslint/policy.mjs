@@ -15,22 +15,26 @@ export function linkDependencies({ dependencyRoot, roots }) {
     for (const root of new Set(roots)) {
       const linkPath = path.join(root, 'node_modules');
       const existingEntry = lstatIfExists(linkPath);
-      if (existingEntry !== undefined) {
-        const isPreparedDirectory = existingEntry.isDirectory() && !existingEntry.isSymbolicLink();
-        const isExpectedLink =
-          existingEntry.isSymbolicLink() && realpathSync(linkPath) === dependencyRoot;
-        if (!isPreparedDirectory && !isExpectedLink) {
-          throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
-        }
-        continue;
+      if (existingEntry === undefined) {
+        symlinkSync(dependencyRoot, linkPath, 'dir');
+        linkedDependencies.push({ linkPath, dependencyRoot });
+      } else {
+        assertReplaceableDependencies(existingEntry, linkPath, dependencyRoot);
       }
-      symlinkSync(dependencyRoot, linkPath, 'dir');
-      linkedDependencies.push({ linkPath, dependencyRoot });
     }
     return linkedDependencies;
   } catch (error) {
     removeDependencyLinks(linkedDependencies);
     throw error;
+  }
+}
+
+function assertReplaceableDependencies(existingEntry, linkPath, dependencyRoot) {
+  const isPreparedDirectory = existingEntry.isDirectory() && !existingEntry.isSymbolicLink();
+  const isExpectedLink =
+    existingEntry.isSymbolicLink() && realpathSync(linkPath) === dependencyRoot;
+  if (!isPreparedDirectory && !isExpectedLink) {
+    throw new Error(`Refusing to replace existing dependencies at ${linkPath}`);
   }
 }
 

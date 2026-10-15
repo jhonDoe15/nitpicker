@@ -21,46 +21,43 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
   if (!Array.isArray(value)) {
     throw new TypeError('ESLint JSON output must be an array');
   }
-
-  const normalized = [];
-  for (const [resultIndex, result] of value.entries()) {
-    if (!isRecord(result) || typeof result.filePath !== 'string') {
-      throw new TypeError(`ESLint result ${String(resultIndex)} must contain filePath`);
-    }
-    if (!Array.isArray(result.messages)) {
-      throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
-    }
-
-    const projectFile = validatedProjectFile(projectRoot, result.filePath);
-    const relativePath = projectFile.relativePath;
-    if (result.messages.length === 0) {
-      continue;
-    }
-    const source = readFileSync(projectFile.canonicalPath, 'utf8');
-    const sourceFile = ts.createSourceFile(
-      relativePath,
-      source,
-      ts.ScriptTarget.Latest,
-      true,
-      scriptKind(relativePath),
-    );
-
-    for (const [messageIndex, message] of result.messages.entries()) {
-      const context = `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`;
-      normalized.push(
-        normalizeMessage({
-          message,
-          context,
-          analyzerName,
-          relativePath,
-          sourceFile,
-        }),
-      );
-    }
-  }
+  const normalized = value.flatMap((result, resultIndex) =>
+    normalizeResult({ result, resultIndex, projectRoot, analyzerName }),
+  );
   return withRatchets(
     assignSemanticOccurrences(normalized.map(({ finding }) => finding)),
     normalized.map(({ plan }) => plan),
+  );
+}
+
+function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
+  if (!isRecord(result) || typeof result.filePath !== 'string') {
+    throw new TypeError(`ESLint result ${String(resultIndex)} must contain filePath`);
+  }
+  if (!Array.isArray(result.messages)) {
+    throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
+  }
+  const projectFile = validatedProjectFile(projectRoot, result.filePath);
+  if (result.messages.length === 0) {
+    return [];
+  }
+  const relativePath = projectFile.relativePath;
+  const source = readFileSync(projectFile.canonicalPath, 'utf8');
+  const sourceFile = ts.createSourceFile(
+    relativePath,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    scriptKind(relativePath),
+  );
+  return result.messages.map((message, messageIndex) =>
+    normalizeMessage({
+      message,
+      context: `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`,
+      analyzerName,
+      relativePath,
+      sourceFile,
+    }),
   );
 }
 
@@ -129,25 +126,56 @@ function withRatchets(findings, plans) {
 }
 
 function normalizeMessage({ message, context, analyzerName, relativePath, sourceFile }) {
-  if (!isRecord(message)) {
-    throw new TypeError(`${context} must be an object`);
-  }
-  if (message.fatal === true) {
-    throw new Error(
-      `${context} is fatal: ${requiredString(message.message, `${context}.message`)}`,
-    );
-  }
-
-  const messageText = requiredString(message.message, `${context}.message`);
+  const messageText = validatedMessageText(message, context);
   const ruleId =
     typeof message.ruleId === 'string' && message.ruleId.length > 0
       ? message.ruleId
       : nonRuleDiagnosticId(messageText, context);
-  const { line, column, sourcePosition, endPosition } = reportedPositions(
-    message,
-    context,
-    sourceFile,
-  );
+  const positions = reportedPositions(message, context, sourceFile);
+  const report = locateReport(sourceFile, positions);
+  const messageIdentity = messageIdentityOf(message, messageText);
+  const metric = metricOf(ruleId, messageText);
+  const symbol = enclosingSymbol(report.reportedNode);
+  const finding = {
+    tool: analyzerName,
+    rule: ruleId,
+    path: relativePath,
+    identity: [
+      `message:${messageIdentity}`,
+      `node:${report.nodeType}`,
+      `syntax:${report.syntax}`,
+      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+    ].join('|'),
+    message: hintedMessage({
+      ruleId,
+      messageText,
+      relativePath,
+      comment: report.comment,
+      locatedNode: report.locatedNode,
+      sourceFile,
+    }),
+    location: { line: positions.line, column: positions.column },
+    classification: 'enforceable',
+  };
+  if (symbol !== undefined) {
+    finding.symbol = symbol;
+  }
+  const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
+  return { finding, plan };
+}
+
+function validatedMessageText(message, context) {
+  if (!isRecord(message)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  const messageText = requiredString(message.message, `${context}.message`);
+  if (message.fatal === true) {
+    throw new Error(`${context} is fatal: ${messageText}`);
+  }
+  return messageText;
+}
+
+function locateReport(sourceFile, { sourcePosition, endPosition }) {
   const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
   const locatedNode =
     comment === undefined
@@ -155,27 +183,9 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       : findStartedNode(sourceFile, sourcePosition);
   const reportedNode = stableSyntaxAnchor(locatedNode);
   const nodeType = comment === undefined ? eslintNodeType(reportedNode) : 'Comment';
-  const symbol = enclosingSymbol(reportedNode);
-  const messageIdentity = messageIdentityOf(message, messageText);
-  const metric = metricOf(ruleId, messageText);
-  const finding = {
-    tool: analyzerName,
-    rule: ruleId,
-    path: relativePath,
-    identity: [
-      `message:${messageIdentity}`,
-      `node:${nodeType}`,
-      `syntax:${comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment)}`,
-      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
-    ].join('|'),
-    message: hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }),
-    location: { line, column },
-    classification: 'enforceable',
-  };
-  if (symbol !== undefined) {
-    finding.symbol = symbol;
-  }
-  return { finding, plan: ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) };
+  const syntax =
+    comment === undefined ? syntaxFingerprint(reportedNode, nodeType) : commentFingerprint(comment);
+  return { comment, locatedNode, reportedNode, nodeType, syntax };
 }
 
 function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
