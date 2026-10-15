@@ -36,6 +36,7 @@ import { readHeadPolicy, readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs';
+import { uncollectedWorkspaceTestFindings } from '../preset/structure/workspace-tests.mjs';
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
@@ -225,6 +226,10 @@ async function runStructure(options) {
   return [
     ...functionFindings,
     ...typescriptFileLimitFindings(options.projectRoot, options.analyzerName),
+    ...uncollectedWorkspaceTestFindings(options.projectRoot, {
+      analyzerName: options.analyzerName,
+      exceptions: readHeadPolicy().exceptions,
+    }),
   ];
 }
 
