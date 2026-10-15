@@ -8,6 +8,7 @@ const TEST_COMPILE_SCOPES = new Set([...MAIN_COMPILE_SCOPES, 'test']);
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
+const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 
 function child(element, ...names) {
   return names.reduce((current, name) => current && childrenNamed(current, name)[0], element);
@@ -66,12 +67,16 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
+function reportsDirectory(plugin) {
+  return plugin && textAt(plugin, 'configuration', 'reportsDirectory');
+}
+
 function describeModule(project, basedir) {
   const build = child(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
-  const surefire = plugins.get(SUREFIRE);
-  const reports = surefire && textAt(surefire, 'configuration', 'reportsDirectory');
+  const reports = reportsDirectory(plugins.get(SUREFIRE));
+  const failsafeReports = reportsDirectory(plugins.get(FAILSAFE));
   const destFile = jacocoDestFile(plugins.get(JACOCO));
   return {
     basedir,
@@ -98,6 +103,10 @@ function describeModule(project, basedir) {
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
+    failsafeReports: path.resolve(
+      basedir,
+      failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
+    ),
     jacocoDestFile: destFile === undefined ? undefined : path.resolve(basedir, destFile),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
   };

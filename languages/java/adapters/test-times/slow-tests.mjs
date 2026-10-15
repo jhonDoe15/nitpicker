@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
+import { inModule } from '../../builds/module-path.mjs';
 import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {
   MESSAGES,
@@ -12,7 +13,7 @@ import { testMethod } from './test-methods.mjs';
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const TEST_RESULTS_DIRECTORY = 'test-results';
-const UNIT_TEST_TASK = 'test';
+const UNIT_TEST_TASKS = new Set(['test', 'surefire']);
 const INTEGRATION_CLASS = /(?:IT|ITCase|IntegrationTests?)$/u;
 const SPRING_BOOT_TEST = /@SpringBootTest\b/u;
 const MOVE_ADVICE = ', or move it to an integration test source set if it is one';
@@ -69,24 +70,24 @@ function readOptional(root, relative) {
 function isIntegration(testCase, text) {
   const simple = testCase.className.split('.').pop().split('$')[0];
   return (
-    testCase.task !== UNIT_TEST_TASK ||
+    !UNIT_TEST_TASKS.has(testCase.task) ||
     INTEGRATION_CLASS.test(simple) ||
     SPRING_BOOT_TEST.test(text ?? '')
   );
 }
 
-function isChanged({ testCase, source, text, method }, baselineRoot) {
-  const baseText = readOptional(baselineRoot, source);
+function isChanged({ testCase, source, text, method, modulePath }, baselineRoot) {
+  const baseText = readOptional(baselineRoot, source && inModule(modulePath, source));
   if (baseText === undefined || method === undefined) {
     return baseText !== text;
   }
   return testMethod(baseText, testCase.name)?.text !== method.text;
 }
 
-function slowTestFinding({ testCase, source, method, limit, integration }) {
+function slowTestFinding({ testCase, source, method, limit, integration, modulePath }) {
   const exception = JSON.stringify({
     rule: `${SLOW_TEST_TOOL}/${RULE_IDS.slowTest}`,
-    paths: [source ?? '.'],
+    paths: [inModule(modulePath, source ?? '.')],
     reason: '...',
   });
   return {
@@ -107,7 +108,8 @@ function slowTestFinding({ testCase, source, method, limit, integration }) {
   };
 }
 
-export function readSlowTestFindings({ reportRoot, projectRoot, testRoots, limits, baseline }) {
+export function readSlowTestFindings(options) {
+  const { reportRoot, projectRoot, testRoots, limits, baseline, modulePath } = options;
   if (baseline?.snapshot === 'base') {
     return [];
   }
@@ -119,7 +121,7 @@ export function readSlowTestFindings({ reportRoot, projectRoot, testRoots, limit
     const integration = isIntegration(testCase, text);
     const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
     const method = text === undefined ? undefined : testMethod(text, testCase.name);
-    const slow = { testCase, source, text, method, limit, integration };
+    const slow = { testCase, source, text, method, limit, integration, modulePath };
     const counted = baseline?.baselineRoot === undefined || isChanged(slow, baseline.baselineRoot);
     return testCase.seconds > limit && counted ? [slowTestFinding(slow)] : [];
   });

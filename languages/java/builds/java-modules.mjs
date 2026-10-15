@@ -3,16 +3,10 @@ import path from 'node:path';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
+import { inModule } from './module-path.mjs';
 
 function prefixOf(projectRoot, moduleDir) {
   return path.relative(projectRoot, moduleDir).replaceAll('\\', '/');
-}
-
-function prefixed(prefix, relativePath) {
-  if (prefix === '') {
-    return relativePath;
-  }
-  return relativePath === '.' ? prefix : `${prefix}/${relativePath}`;
 }
 
 function readManifest(moduleDir, reportDirectory) {
@@ -40,9 +34,9 @@ function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   for (const moduleDir of moduleDirs) {
     const prefix = prefixOf(projectRoot, moduleDir);
     const manifest = readManifest(moduleDir, reportDirectory);
-    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => prefixed(prefix, root)));
+    roots.sourceRoots.push(...(manifest.sourceRoots ?? []).map((root) => inModule(prefix, root)));
     roots.testSourceRoots.push(
-      ...(manifest.testSourceRoots ?? []).map((root) => prefixed(prefix, root)),
+      ...(manifest.testSourceRoots ?? []).map((root) => inModule(prefix, root)),
     );
   }
   return roots;
@@ -68,14 +62,16 @@ function projectCoupling(projectRoot, moduleDirs, { reportDirectory, sourceRoots
 
 export function readModuleFindings(projectRoot, moduleDirs, options) {
   if (moduleDirs.length === 1 && path.resolve(moduleDirs[0]) === path.resolve(projectRoot)) {
-    return readModule(projectRoot, options);
+    return readModule(projectRoot, { ...options, modulePath: '' });
   }
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
-    return readModule(moduleDir, { ...options, projectWide: false }).map((finding) => ({
-      ...finding,
-      path: prefixed(prefix, finding.path),
-    }));
+    return readModule(moduleDir, { ...options, projectWide: false, modulePath: prefix }).map(
+      (finding) => ({
+        ...finding,
+        path: inModule(prefix, finding.path),
+      }),
+    );
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
   return [

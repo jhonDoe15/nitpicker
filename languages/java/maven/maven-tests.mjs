@@ -38,7 +38,7 @@ function classFiles(directory) {
     : [];
 }
 
-function freshReports(directory, since) {
+export function freshReports(directory, since) {
   return existsSync(directory)
     ? readdirSync(directory)
         .filter((name) => /^TEST-.*\.xml$/u.test(name))
@@ -47,7 +47,7 @@ function freshReports(directory, since) {
     : [];
 }
 
-function suiteNameOf(report) {
+export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 

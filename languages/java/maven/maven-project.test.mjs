@@ -61,6 +61,10 @@ function effective(root) {
           <artifactId>maven-surefire-plugin</artifactId>
           <configuration><reportsDirectory>${root}/core/out/tests</reportsDirectory></configuration>
         </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration><reportsDirectory>${root}/core/out/it-tests</reportsDirectory></configuration>
+        </plugin>
       </plugins>
     </build>
   </project>
@@ -86,6 +90,7 @@ function defaultModule(basedir, coordinates, packaging) {
     testSourceRoots: [path.join(basedir, 'src/test/java')],
     resourceRoots: [],
     surefireReports: path.join(target, 'surefire-reports'),
+    failsafeReports: path.join(target, 'failsafe-reports'),
     jacocoDestFile: undefined,
     archunitIncludes: undefined,
   };
@@ -118,6 +123,7 @@ describe('readReactor', () => {
       testSourceRoots: [`${root}/core/src/test/java`],
       resourceRoots: [`${root}/core/src/main/resources`],
       surefireReports: `${root}/core/out/tests`,
+      failsafeReports: `${root}/core/out/it-tests`,
       jacocoDestFile: `${root}/core/out/mine.exec`,
       archunitIncludes: '**/*Rules.class',
     });

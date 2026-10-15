@@ -92,7 +92,11 @@ function moduleContextFindings(projectRoot, module, { manifest, options }) {
       jacoco: readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       projectWide: options.projectWide ?? true,
-      testTimes: { limits: options.testSeconds, baseline: options.baseline },
+      testTimes: {
+        limits: options.testSeconds,
+        baseline: options.baseline,
+        modulePath: options.modulePath,
+      },
     },
     options.crapLimit,
   );
