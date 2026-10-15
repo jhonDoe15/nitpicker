@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, afterEach } from 'vitest';
+import { afterEach } from 'vitest';
 import { writeFiles } from './fixture-files.mjs';
 
 const HERMETIC_GIT_ENVIRONMENT = {
@@ -45,8 +45,7 @@ export function copyGitTemplate(template, root) {
   cpSync(path.join(template, '.git'), path.join(root, '.git'), { recursive: true });
 }
 
-function buildTemplate(files, baseRef) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-git-template-')));
+function commitBase(root, files, baseRef) {
   fixtureGit(root, ['init', '-q', '--initial-branch=main']);
   writeFiles(root, files);
   fixtureGit(root, ['add', '-A']);
@@ -65,28 +64,16 @@ function buildTemplate(files, baseRef) {
   if (baseRef !== undefined) {
     fixtureGit(root, ['branch', baseRef, sha]);
   }
-  return { root, sha };
-}
-
-function templateKey(files, baseRef) {
-  const entries = Object.entries(files).sort(([left], [right]) => (left < right ? -1 : 1));
-  return JSON.stringify([baseRef, entries]);
+  return sha;
 }
 
 export function useGitFixtures() {
   const roots = [];
-  const templates = new Map();
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }
-  });
-  afterAll(() => {
-    for (const { root } of templates.values()) {
-      rmSync(root, { recursive: true, force: true });
-    }
-    templates.clear();
   });
 
   function temporaryRoot(prefix) {
@@ -95,19 +82,10 @@ export function useGitFixtures() {
     return root;
   }
 
-  function templateFor(files, baseRef) {
-    const key = templateKey(files, baseRef);
-    if (!templates.has(key)) {
-      templates.set(key, buildTemplate(files, baseRef));
-    }
-    return templates.get(key);
-  }
-
   function createGitRepository(files = {}, { prefix = 'nitpicker-git-fixture-', baseRef } = {}) {
-    const template = templateFor(files, baseRef);
     const root = temporaryRoot(prefix);
-    cpSync(template.root, root, { recursive: true });
-    return { root, baseSha: template.sha, baseRef };
+    const baseSha = commitBase(root, files, baseRef);
+    return { root, baseSha, baseRef };
   }
 
   return { temporaryRoot, createGitRepository };
