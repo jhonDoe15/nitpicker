@@ -11,7 +11,6 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
-import { runCli as runCliWithSubprocesses } from '../../cli.mjs';
 import { runTasksInProcess } from './in-process-analyzers.mjs';
 
 export const fakeGradle = path.resolve(
@@ -54,7 +53,8 @@ function useTemporaryRoots() {
   });
 }
 
-export function useGradleFixtures() {
+export function useGradleFixtures(runNitpickerCli) {
+  cliUnderTest.runCli = runNitpickerCli;
   useTemporaryRoots();
   beforeEach(() => {
     vi.stubEnv('NITPICKER_GRADLE', fakeGradle);
@@ -93,8 +93,10 @@ export function gradleRepository(files = {}) {
   return root;
 }
 
+const cliUnderTest = { runCli: undefined };
+
 export function runCli(options) {
-  return runCliWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+  return cliUnderTest.runCli({ runTasks: runTasksInProcess, ...options });
 }
 
 export function run(root, extra = [], { subprocess = false } = {}) {

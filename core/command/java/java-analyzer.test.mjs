@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
 import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
@@ -13,7 +14,7 @@ import {
   write,
 } from '../../diff/fixtures/java-cli-harness.mjs';
 
-useGradleFixtures();
+useGradleFixtures(nitpickerCli);
 
 describe('Gradle failures of the kotlin analyzer', () => {
   const kotlinToolError = (snapshot) => [

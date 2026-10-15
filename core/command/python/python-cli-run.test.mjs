@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import { runCli } from '../../cli.mjs';
 import {
   callsLog,
@@ -11,7 +12,7 @@ import {
   write,
 } from '../../diff/fixtures/python-cli-harness.mjs';
 
-usePythonFixtures();
+usePythonFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "python" running the project', () => {
   it('fails a change that leaves the project without any test', () => {

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/fixtures/output-expectations.mjs';
-import { commit, gradleRepository, run, useGradleFixtures, write } from '../../diff/fixtures/java-cli-harness.mjs';
+import {
+  commit,
+  gradleRepository,
+  run,
+  useGradleFixtures,
+  write,
+} from '../../diff/fixtures/java-cli-harness.mjs';
 
-useGradleFixtures();
+useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "java" and a legacy inventory', () => {
   const site = (name, count) => ({

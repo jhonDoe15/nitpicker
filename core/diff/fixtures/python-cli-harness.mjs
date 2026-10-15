@@ -12,7 +12,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { installFakeToolchain } from '../../../languages/python/adapters/fixtures/fake-toolchain.mjs';
-import { runCli } from '../../cli.mjs';
 
 export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
 
@@ -43,7 +42,10 @@ export function commit(root, message) {
   git(root, ['commit', '-q', '-m', message]);
 }
 
-export function usePythonFixtures() {
+const cliUnderTest = { runCli: undefined };
+
+export function usePythonFixtures(runNitpickerCli) {
+  cliUnderTest.runCli = runNitpickerCli;
   afterEach(() => {
     vi.unstubAllEnvs();
     for (const root of temporaryRoots.splice(0)) {
@@ -88,7 +90,7 @@ export function pythonRepository(files = {}) {
 export function run(root, extra = []) {
   const output = { out: '', err: '' };
   const reports = path.join(temporaryRoot('nitpicker-python-out-'), 'reports');
-  const exitCode = runCli({
+  const exitCode = cliUnderTest.runCli({
     arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
     environment: { NO_COLOR: '1' },
     currentProjectRoot: root,

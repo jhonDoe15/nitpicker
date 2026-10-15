@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import {
   commit,
   newFindings,
@@ -8,7 +9,7 @@ import {
   write,
 } from '../../diff/fixtures/python-cli-harness.mjs';
 
-usePythonFixtures();
+usePythonFixtures(nitpickerCli);
 
 const CLONE_SOURCE = [
   'def order_total(lines, discount):',

@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../cli.mjs';
 import {
   captureOutput,
   createRepository,
@@ -12,7 +13,7 @@ import {
 } from '../diff/fixtures/cli-harness.mjs';
 import { resolveRunLockPath } from './run-lock.mjs';
 
-useCliFixtures();
+useCliFixtures(nitpickerCli);
 
 describe('nitpicker progress and run lock', () => {
   function setup() {

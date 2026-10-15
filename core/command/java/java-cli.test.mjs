@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/fixtures/output-expectations.mjs';
 import {
   commit,
@@ -13,7 +14,7 @@ import {
   write,
 } from '../../diff/fixtures/java-cli-harness.mjs';
 
-useGradleFixtures();
+useGradleFixtures(nitpickerCli);
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 

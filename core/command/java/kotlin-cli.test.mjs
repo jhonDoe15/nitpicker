@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import {
   commit,
   kotlinConfig,
@@ -8,7 +9,7 @@ import {
   write,
 } from '../../diff/fixtures/java-cli-harness.mjs';
 
-useGradleFixtures();
+useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin"', () => {
   const branchReport = (...lines) =>

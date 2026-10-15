@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../cli.mjs';
 import { startTestHttpServer } from '../diff/cache/test-http-server.mjs';
 import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
 import { exactText } from '../diff/fixtures/output-expectations.mjs';
@@ -16,7 +17,7 @@ import {
   writeFiles,
 } from '../diff/fixtures/cli-harness.mjs';
 
-useCliFixtures();
+useCliFixtures(nitpickerCli);
 
 describe('findings cache', () => {
   function setup() {

@@ -1,6 +1,7 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../cli.mjs';
 import { exactText } from '../diff/fixtures/output-expectations.mjs';
 import {
   captureOutput,
@@ -14,7 +15,7 @@ import {
   writeFiles,
 } from '../diff/fixtures/cli-harness.mjs';
 
-useCliFixtures();
+useCliFixtures(nitpickerCli);
 
 describe('nitpicker CLI', () => {
   it('fixes changed ESLint and Prettier violations before comparing without touching unchanged files or the index', () => {

@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { commit, pythonRepository, run, usePythonFixtures, write } from '../../diff/fixtures/python-cli-harness.mjs';
+import { runCli as nitpickerCli } from '../../cli.mjs';
+import {
+  commit,
+  pythonRepository,
+  run,
+  usePythonFixtures,
+  write,
+} from '../../diff/fixtures/python-cli-harness.mjs';
 
-usePythonFixtures();
+usePythonFixtures(nitpickerCli);
 
 describe('changed-branch-coverage with "preset": "python"', () => {
   const BRANCHY = [
