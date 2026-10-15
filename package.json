@@ -34,6 +34,7 @@
   },
   "scripts": {
     "test": "vitest run --config vitest.config.mts",
+    "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node core/diff/fixtures/record-eslint-reports.mjs",
@@ -96,6 +97,7 @@
     "prettier": "3.9.6",
     "smol-toml": "1.9.0",
     "typescript-eslint": "8.68.0",
+    "typescript-native": "npm:typescript@7.0.2",
     "yaml": "2.9.1"
   },
   "devDependencies": {
