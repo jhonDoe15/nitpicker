@@ -422,12 +422,14 @@ the allowed form and the `exceptions` entry that lifts it.
 ## Style
 
 google-java-format owns layout. The default is its Google style: 2 spaces, 4 for a continuation
-line, lines of at most 100 characters. A project that indents with 4 spaces has the
-`java.indentation` convention at `"4"` (`"2"`, or no value, is Google): the format check then runs
-google-java-format with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100). The
-convention applies to the Java sources of a kotlin-preset project too. There is no `java` config
-key; the convention comes from the head policy, and the single function `javaStyle()` in
-`languages/java/adapters/style/java-style.mjs` turns it into the style (`google` or `aosp`).
+line, lines of at most 100 characters. A project that indents with 4 spaces gets google-java-format
+with `--aosp` (4 spaces, 8 for a continuation line, still wrapping at 100): nitpicker follows the
+`java.indentation` convention (`"2"` or `"4"`), which it takes from the Java files of the base
+snapshot, or from `"conventions": { "java.indentation": "4" }` in `nitpicker.config.json`; a tie or
+no Java files keeps Google. The run prints the choice. The convention applies to the Java sources
+of a kotlin-preset project too. It comes from the head policy file at run time, and the function
+`javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns it into the style
+(`google` or `aosp`).
 
 A badly formatted file is one `google-java-format` finding, not hundreds: the Checkstyle checks that
 only restate the formatter's layout are suppressed in both styles (`Indentation`,
