@@ -194,60 +194,52 @@ describe('the js-clean fixture project', () => {
   );
 
   describe('the analyzers that could not read JavaScript', () => {
-    it(
-      'each report a problem planted in .js and .cjs files',
-      () => {
-        const root = createProject(plantedProblems);
+    it('each report a problem planted in .js and .cjs files', () => {
+      const root = createProject(plantedProblems);
 
-        const { exitCode, stdoutText, summary } = runSnapshot(root, [
-          '--analyzer',
-          'typescript-typecheck',
-          '--analyzer',
-          'prettier-format',
-          '--analyzer',
-          'duplicates',
-          '--analyzer',
-          'entry-points',
-          '--analyzer',
-          'dead-code',
-          '--analyzer',
-          'eslint-lint',
-        ]);
+      const { exitCode, stdoutText, summary } = runSnapshot(root, [
+        '--analyzer',
+        'typescript-typecheck',
+        '--analyzer',
+        'prettier-format',
+        '--analyzer',
+        'duplicates',
+        '--analyzer',
+        'entry-points',
+        '--analyzer',
+        'dead-code',
+        '--analyzer',
+        'eslint-lint',
+      ]);
 
-        expect(summary.tools.map(({ name }) => name).sort()).toEqual([
-          'dead-code',
-          'duplicates',
-          'entry-points',
-          'eslint-lint',
-          'prettier-format',
-          'typescript-typecheck',
-        ]);
-        expect(stdoutText).toBe(PLANTED_OUTPUT);
-        expect(exitCode).toBe(1);
-      },
-      FIXTURE_TIMEOUT_MS,
-    );
+      expect(summary.tools.map(({ name }) => name).sort()).toEqual([
+        'dead-code',
+        'duplicates',
+        'entry-points',
+        'eslint-lint',
+        'prettier-format',
+        'typescript-typecheck',
+      ]);
+      expect(stdoutText).toBe(PLANTED_OUTPUT);
+      expect(exitCode).toBe(1);
+    });
 
-    it(
-      'reports a failing test as a tool error instead of crashing the coverage runner',
-      () => {
-        const root = createProject({
-          'test/failing.test.js': `import { expect, it } from 'vitest';
+    it('reports a failing test as a tool error instead of crashing the coverage runner', () => {
+      const root = createProject({
+        'test/failing.test.js': `import { expect, it } from 'vitest';
 import { greet } from '../src/main/features/greeting/domain/greet.js';
 
 it('fails on purpose', () => {
   expect(greet('Ada').kind).toBe('empty-name');
 });
 `,
-        });
+      });
 
-        const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
+      const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
 
-        expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
-        expect(exitCode).toBe(2);
-      },
-      FIXTURE_TIMEOUT_MS,
-    );
+      expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
+      expect(exitCode).toBe(2);
+    });
 
     it(
       'fixes the changed .js files with ESLint and Prettier',
@@ -339,28 +331,24 @@ it('fails on purpose', () => {
       FIXTURE_TIMEOUT_MS,
     );
 
-    it(
-      'fails when the edit touches the line of a legacy violation',
-      () => {
-        const { exitCode, stdoutText } = runDifference('touched', (text) =>
-          text.replace('empty = null', 'empty  =  null'),
-        );
+    it('fails when the edit touches the line of a legacy violation', () => {
+      const { exitCode, stdoutText } = runDifference('touched', (text) =>
+        text.replace('empty = null', 'empty  =  null'),
+      );
 
-        expect(stdoutText).toBe(
-          [
-            'Base: main (argument)',
-            '',
-            'Quality gate summary',
-            '✖ 1 new enforceable violation',
-            '  eslint-lint/no-restricted-syntax src/main/legacy.js:2',
-            '    Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.',
-            `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
-            '',
-          ].join('\n'),
-        );
-        expect(exitCode).toBe(1);
-      },
-      FIXTURE_TIMEOUT_MS,
-    );
+      expect(stdoutText).toBe(
+        [
+          'Base: main (argument)',
+          '',
+          'Quality gate summary',
+          '✖ 1 new enforceable violation',
+          '  eslint-lint/no-restricted-syntax src/main/legacy.js:2',
+          '    Use `undefined` for an absent value. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument.',
+          `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
+          '',
+        ].join('\n'),
+      );
+      expect(exitCode).toBe(1);
+    });
   });
 });
