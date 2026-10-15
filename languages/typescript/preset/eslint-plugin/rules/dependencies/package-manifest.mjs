@@ -1,5 +1,18 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+
+const DEPENDENCY_SECTIONS = [
+  'dependencies',
+  'devDependencies',
+  'peerDependencies',
+  'optionalDependencies',
+];
+const PUBLISHED_ENTRY_FIELDS = ['main', 'module', 'exports', 'bin'];
+const BUNDLER_CONFIG =
+  /^(?:vite|webpack|next|rsbuild|rspack|astro|nuxt|svelte|remix|vue)\.config\./u;
+const BUNDLER_PROJECT_FILES = new Set(['.parcelrc', 'angular.json']);
+const BUNDLER_COMMAND =
+  /(?:^|[\s;&|])(?:vite|webpack|next|rsbuild|rspack|parcel|astro|nuxt|ng|react-scripts|vue-cli-service)(?:\s|$)/u;
 
 const manifests = new Map();
 
@@ -12,9 +25,30 @@ export function nearestManifest(directory) {
 
 function findManifest(directory) {
   const file = path.join(directory, 'package.json');
-  if (existsSync(file)) {
-    return readManifest(file);
+  if (!existsSync(file)) {
+    return parentManifest(directory);
   }
+  const { value } = parseObject(readFileSync(file, 'utf8'));
+  if (value === undefined) {
+    return { kind: 'unreadable', file };
+  }
+  if (!DEPENDENCY_SECTIONS.some((section) => Object.hasOwn(value, section))) {
+    return parentManifest(directory);
+  }
+  return {
+    kind: 'manifest',
+    file,
+    bundledApp: isBundledApp(directory, value),
+    development: new Set(Object.keys(value.devDependencies ?? {})),
+    runtime: new Set(
+      DEPENDENCY_SECTIONS.filter((section) => section !== 'devDependencies').flatMap((section) =>
+        Object.keys(value[section] ?? {}),
+      ),
+    ),
+  };
+}
+
+function parentManifest(directory) {
   const parent = path.dirname(directory);
   return parent === directory ? undefined : nearestManifest(parent);
 }
@@ -22,24 +56,24 @@ function findManifest(directory) {
 function parseObject(text) {
   try {
     const parsed = JSON.parse(text);
-    return typeof parsed === 'object' && parsed !== null ? { value: parsed } : {};
+    const isObject = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+    return isObject ? { value: parsed } : {};
   } catch (error) {
     return { error };
   }
 }
 
-function readManifest(file) {
-  const { value } = parseObject(readFileSync(file, 'utf8'));
-  return value === undefined
-    ? undefined
-    : {
-        development: new Set(Object.keys(value.devDependencies ?? {})),
-        runtime: new Set(
-          ['dependencies', 'peerDependencies', 'optionalDependencies'].flatMap((section) =>
-            Object.keys(value[section] ?? {}),
-          ),
-        ),
-      };
+function isBundledApp(directory, manifest) {
+  if (PUBLISHED_ENTRY_FIELDS.some((field) => Object.hasOwn(manifest, field))) {
+    return false;
+  }
+  const build = manifest.scripts?.build;
+  return (
+    (typeof build === 'string' && BUNDLER_COMMAND.test(build)) ||
+    readdirSync(directory).some(
+      (entry) => BUNDLER_CONFIG.test(entry) || BUNDLER_PROJECT_FILES.has(entry),
+    )
+  );
 }
 
 export function packageNameOf(specifier) {
