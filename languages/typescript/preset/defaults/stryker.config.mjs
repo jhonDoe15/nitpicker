@@ -28,7 +28,7 @@ export default {
     fileName: 'reports/quality/mutation/mutation.json',
   },
   thresholds: {
-    break: null,
+    break: 0,
   },
   ignorePatterns: [
     ...sourceRoots.map((root) => `${root}/dist`),

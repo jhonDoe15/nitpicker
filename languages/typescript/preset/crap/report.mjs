@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
@@ -11,7 +12,7 @@ const projectRoot = path.resolve(
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);
 const analysis = await analyzeWithFunctionMapFallback({
-  projectRoot: projectRoot,
+  projectRoot,
   explicitPaths: explicitPaths(),
   coverageMode: 'existing-only',
   coverageReportPath,
@@ -60,10 +61,14 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2));
+process.stdout.write(
+  formatOutput(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2)) + '\n',
+);
 for (const entry of functions.slice(0, 20)) {
-  console.log(
-    `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
+  const crap = entry.crap === null ? 'N/A' : entry.crap.toFixed(2);
+  const location = `${entry.source}:${entry.lines.start}`;
+  process.stdout.write(
+    formatOutput(`${crap}\tCC ${entry.complexity}\t${location}\t${entry.function}`) + '\n',
   );
 }
 

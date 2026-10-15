@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cruise } from '../dependency-graph/cruise.mjs';
@@ -21,19 +22,25 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(
-  JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+process.stdout.write(
+  formatOutput(
+    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+  ) + '\n',
 );
 for (const finding of report.publicAlternativeBypasses) {
-  console.log(
-    `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${finding.publicEntryPoint})`,
+  process.stdout.write(
+    formatOutput(
+      `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${finding.publicEntryPoint})`,
+    ) + '\n',
   );
 }
 for (const finding of report.unexportedTargetImports) {
-  console.log(`NOT EXPORTED\t${finding.source} -> ${finding.target}`);
+  process.stdout.write(formatOutput(`NOT EXPORTED\t${finding.source} -> ${finding.target}`) + '\n');
 }
 for (const finding of report.missingEntryPointImports) {
-  console.log(`NO ENTRY POINT\t${finding.source} -> ${finding.target}`);
+  process.stdout.write(
+    formatOutput(`NO ENTRY POINT\t${finding.source} -> ${finding.target}`) + '\n',
+  );
 }
 
 if (report.publicAlternativeBypasses.length > 0) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { cycleFindings, cyclicComponents } from './cycles.mjs';
 
 const packageOf = (name) => name.slice(0, name.lastIndexOf('.'));

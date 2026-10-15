@@ -1,6 +1,6 @@
-import { analyzerMetadata, analyzerName } from '../diff/report-model.mjs';
+import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../diff/run-analyzers.mjs';
+import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
 
 export function runQualitySnapshot({
   analyzers,
@@ -25,49 +25,12 @@ export function runQualitySnapshot({
     }),
   );
 
-  const findings = [];
-  const tools = [];
-  for (const [index, analyzer] of analyzers.entries()) {
-    const name = analyzerName(analyzer, index);
-    const analyzerFindings = [];
-    for (const finding of reports.get(analyzer.name)?.findings ?? []) {
-      if (finding.classification === 'tool-error') {
-        toolErrors.push({
-          tool: finding.tool,
-          snapshot: 'head',
-          rule: finding.rule,
-          path: finding.path,
-          message: finding.message,
-        });
-        continue;
-      }
-      analyzerFindings.push(finding);
-    }
-    findings.push(...analyzerFindings);
-    tools.push({
-      name,
-      version: analyzerMetadata(analyzer, 'version'),
-      configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
-      total: analyzerFindings.length,
-      enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
-        .length,
-      descriptive: analyzerFindings.filter((finding) => finding.classification === 'descriptive')
-        .length,
-    });
-  }
+  const { findings, tools } = collectSnapshotFindings(analyzers, reports, toolErrors);
 
   const enforceableFindings = findings.filter(
     (finding) => finding.classification === 'enforceable',
   ).length;
-  const exclusions = [
-    ...new Set(
-      analyzers.flatMap((analyzer) =>
-        typeof analyzer === 'object' && analyzer !== null && Array.isArray(analyzer.exclusions)
-          ? analyzer.exclusions.filter((exclusion) => typeof exclusion === 'string')
-          : [],
-      ),
-    ),
-  ].sort();
+  const exclusions = declaredExclusions(analyzers);
   const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
 
   return {
@@ -98,4 +61,58 @@ function sortFindings(entries) {
       (left.rule ?? '').localeCompare(right.rule ?? '') ||
       (left.identity ?? '').localeCompare(right.identity ?? ''),
   );
+}
+
+function toSnapshotToolError(finding) {
+  return {
+    tool: finding.tool,
+    snapshot: 'head',
+    rule: finding.rule,
+    path: finding.path,
+    message: finding.message,
+  };
+}
+
+function summarizeAnalyzer(analyzer, name, analyzerFindings) {
+  return {
+    name,
+    version: analyzerMetadata(analyzer, 'version'),
+    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
+    total: analyzerFindings.length,
+    enforceable: analyzerFindings.filter((finding) => finding.classification === 'enforceable')
+      .length,
+    descriptive: analyzerFindings.filter((finding) => finding.classification === 'descriptive')
+      .length,
+  };
+}
+
+function collectSnapshotFindings(analyzers, reports, toolErrors) {
+  const findings = [];
+  const tools = [];
+  for (const [index, analyzer] of analyzers.entries()) {
+    const name = analyzerName(analyzer, index);
+    const reported = reports.get(analyzer.name)?.findings ?? [];
+    toolErrors.push(
+      ...reported
+        .filter((finding) => finding.classification === 'tool-error')
+        .map(toSnapshotToolError),
+    );
+    const analyzerFindings = reported.filter((finding) => finding.classification !== 'tool-error');
+    findings.push(...analyzerFindings);
+    tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
+  }
+
+  return { findings, tools };
+}
+
+function declaredExclusions(analyzers) {
+  return [
+    ...new Set(
+      analyzers.flatMap((analyzer) =>
+        typeof analyzer === 'object' && analyzer !== null && Array.isArray(analyzer.exclusions)
+          ? analyzer.exclusions.filter((exclusion) => typeof exclusion === 'string')
+          : [],
+      ),
+    ),
+  ].sort();
 }

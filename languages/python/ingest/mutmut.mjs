@@ -22,8 +22,18 @@ const CLASS_SEPARATOR = 'ǁ';
 const KEY = /^(x.+)__mutmut_(\d+)$/u;
 const DEFINITION = /^(\s*)(?:async\s+)?def\s+([^\s(]+)/u;
 const CLOSING_BRACKET = /^\s*[)\]}]/u;
-const TOKEN =
-  /"""[\s\S]*?"""|'''[\s\S]*?'''|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|\w+|\*\*=|\/\/=|>>=|<<=|\*\*|\/\/|==|!=|<=|>=|->|:=|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|<<|>>|\s+|[\s\S]/gu;
+const TOKEN_PARTS = [
+  String.raw`"""[\s\S]*?"""`,
+  String.raw`'''[\s\S]*?'''`,
+  String.raw`"(?:\\.|[^"\\\n])*"`,
+  String.raw`'(?:\\.|[^'\\\n])*'`,
+  String.raw`\w+`,
+  String.raw`\*\*=|\/\/=|>>=|<<=|\*\*|\/\/|==|!=`,
+  String.raw`<=|>=|->|:=|\+=|-=|\*=|\/=|%=|&=|\|=|\^=|<<|>>`,
+  String.raw`\s+`,
+  String.raw`[\s\S]`,
+];
+const TOKEN = new RegExp(TOKEN_PARTS.join('|'), 'gu');
 const NUMBER = /^\d[\w.]*$/u;
 const STRING = /^[a-z]{0,2}["']/iu;
 const OPERATOR = /^[^\w\s"']+$/u;

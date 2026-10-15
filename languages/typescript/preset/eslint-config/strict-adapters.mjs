@@ -1,18 +1,18 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
+import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
 import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
-} from './strict-control-flow.mjs';
+} from './strict/strict-control-flow.mjs';
 import { codeExtensions, excludedGlobs } from '../layout.mjs';
 
 export function adapterGlobsFor(sourceRoots) {
   return sourceRoots.map((root) => `${root}/main/features/*/adapters/**/*.${codeExtensions}`);
 }
 
-export const adapterGlobs = adapterGlobsFor(['src']);
+const adapterGlobs = adapterGlobsFor(['src']);
 
 const throwMessage =
   'Throw an Error subclass that preserves cause (new DomainError(message, { cause })), not a bare Error or a non-error value.';
@@ -29,7 +29,7 @@ export const restrictedAdapterSyntax = [
   },
 ];
 
-export default [
+export const strictAdaptersConfig = [
   { ignores: excludedGlobs },
   {
     files: adapterGlobs,
