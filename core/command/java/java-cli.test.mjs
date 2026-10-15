@@ -114,8 +114,9 @@ describe('nitpicker with "preset": "java"', () => {
     );
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toEqual(
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
+<testsuite name="quality.diff" tests="3" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
+  <testcase classname="quality.diff" name="repository-hygiene" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
   <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added" type="pmd/UnusedPrivateField">Avoid unused field: added</failure></testcase>
 </testsuite>
 `),
@@ -240,6 +241,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         '',
         'Per-tool counts:',
         'java: total=1 enforceable=1 descriptive=0',
+        'repository-hygiene: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
         'pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy',
