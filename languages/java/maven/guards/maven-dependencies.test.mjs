@@ -22,6 +22,8 @@ const POM = `<project>
     ${dependency('org.slf4j', 'slf4j-simple', 'runtime')}
     ${dependency('org.junit.jupiter', 'junit-jupiter', 'test')}
     ${dependency('${project.groupId}', 'core')}
+    ${dependency('org.mapstruct', 'mapstruct-processor')}
+    <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><optional>true</optional></dependency>
   </dependencies>
 </project>`;
 
@@ -49,28 +51,43 @@ afterEach(() => {
 });
 
 describe('declaredDependencies', () => {
-  it('keeps the dependencies the POM itself declares with compile scope', () => {
+  it('keeps the dependencies the POM itself declares with compile scope and not optional', () => {
     expect(declaredDependencies(POM).map(({ group, name }) => `${group}:${name}`)).toEqual([
       'org.apache.commons:commons-lang3',
       'org.apache.commons:commons-text',
       '${project.groupId}:core',
+      'org.mapstruct:mapstruct-processor',
     ]);
   });
 });
 
 describe('dependencyReport', () => {
-  it('marks each declared library used when a main class references a class in its own jar', () => {
+  it('marks each declared library used when a main class references its classes or it is an annotation processor', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
     roots.push(root);
-    const lang = jar(root, 'commons-lang3-3.17.0.jar', ['org/apache/commons/lang3/StringUtils.class']);
+    const lang = jar(root, 'commons-lang3-3.17.0.jar', [
+      'org/apache/commons/lang3/StringUtils.class',
+    ]);
     const text = jar(root, 'commons-text-1.13.0.jar', ['org/apache/commons/text/WordUtils.class']);
+    const processor = jar(root, 'mapstruct-processor-1.6.3.jar', [
+      'org/mapstruct/ap/MappingProcessor.class',
+      'META-INF/services/javax.annotation.processing.Processor',
+    ]);
     const resolved = [
+      {
+        groupId: 'org.mapstruct',
+        artifactId: 'mapstruct-processor',
+        scope: 'compile',
+        file: processor,
+      },
       { groupId: 'org.apache.commons', artifactId: 'commons-lang3', scope: 'compile', file: lang },
       { groupId: 'org.apache.commons', artifactId: 'commons-text', scope: 'compile', file: text },
       { groupId: 'demo', artifactId: 'core', scope: 'compile', file: path.join(root, 'core') },
     ];
 
-    expect(dependencyReport({ module: module(root), resolved, reactor: ['demo:core', 'demo:app'] })).toEqual({
+    expect(
+      dependencyReport({ module: module(root), resolved, reactor: ['demo:core', 'demo:app'] }),
+    ).toEqual({
       build: 'maven',
       buildFile: 'pom.xml',
       analyzed: true,
@@ -89,6 +106,13 @@ describe('dependencyReport', () => {
           archives: ['commons-text-1.13.0.jar'],
           used: false,
         },
+        {
+          configuration: 'compile',
+          group: 'org.mapstruct',
+          name: 'mapstruct-processor',
+          archives: ['mapstruct-processor-1.6.3.jar'],
+          used: true,
+        },
       ],
     });
   });
@@ -99,7 +123,11 @@ describe('dependencyReport', () => {
     writeFileSync(path.join(root, 'pom.xml'), POM);
 
     const report = dependencyReport({
-      module: { basedir: root, pomFile: path.join(root, 'pom.xml'), outputDirectory: path.join(root, 'none') },
+      module: {
+        basedir: root,
+        pomFile: path.join(root, 'pom.xml'),
+        outputDirectory: path.join(root, 'none'),
+      },
       resolved: [],
       reactor: [],
     });

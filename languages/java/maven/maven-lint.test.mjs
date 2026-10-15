@@ -44,7 +44,8 @@ describe('nitpickerCheckstyleConfig', () => {
 });
 
 describe('withGuardChecks', () => {
-  const config = '<module name="Checker"><module name="TreeWalker"><module name="A"/></module></module>';
+  const config =
+    '<module name="Checker"><module name="TreeWalker"><module name="A"/></module></module>';
 
   it('adds the modules of the guard rule files at the start of the TreeWalker', () => {
     const merged = withGuardChecks(config, ['checkstyle-all.xml', 'checkstyle-main.xml']);

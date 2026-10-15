@@ -18,7 +18,7 @@ const ALTERNATIVES = {
     'or compileOnly if only its source annotations are needed.',
   maven: () =>
     'has compile scope but no main class uses it. ' +
-    'Remove it, give it runtime scope if it is only needed at run time, ' +
+    'Remove it, give it test scope if only the tests use it, runtime scope if it is only needed at run time, ' +
     'or provided scope if only its source annotations are needed.',
 };
 

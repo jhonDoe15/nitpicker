@@ -73,9 +73,9 @@ afterEach(() => {
 
 describe('permittedSubclasses', () => {
   it('reads the PermittedSubclasses attribute past fields, long constants and other attributes', () => {
-    expect(permittedSubclasses(classFile('demo/Shape', ['demo/a/Circle', 'demo/b/Square']))).toEqual(
-      ['demo.Shape -> demo.a.Circle', 'demo.Shape -> demo.b.Square'],
-    );
+    expect(
+      permittedSubclasses(classFile('demo/Shape', ['demo/a/Circle', 'demo/b/Square'])),
+    ).toEqual(['demo.Shape -> demo.a.Circle', 'demo.Shape -> demo.b.Square']);
   });
 
   it('finds nothing on a class that permits nothing', () => {
@@ -89,8 +89,14 @@ describe('runPermits', () => {
     roots.push(root);
     const outputDirectory = path.join(root, 'classes');
     mkdirSync(path.join(outputDirectory, 'demo'), { recursive: true });
-    writeFileSync(path.join(outputDirectory, 'demo/Shape.class'), classFile('demo/Shape', ['demo/Circle']));
-    writeFileSync(path.join(outputDirectory, 'demo/Animal.class'), classFile('demo/Animal', ['demo/Cat']));
+    writeFileSync(
+      path.join(outputDirectory, 'demo/Shape.class'),
+      classFile('demo/Shape', ['demo/Circle']),
+    );
+    writeFileSync(
+      path.join(outputDirectory, 'demo/Animal.class'),
+      classFile('demo/Animal', ['demo/Cat']),
+    );
     writeFileSync(path.join(outputDirectory, 'demo/notes.txt'), 'not a class');
 
     runPermits({ module: { outputDirectory }, reportDir: root });
