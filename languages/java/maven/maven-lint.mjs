@@ -15,6 +15,7 @@ import { javaCommand, runJava } from './maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
+const SPRING_JAR = /^spring-(?:context|boot)-.*\.jar$/u;
 const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressWarningsFilter',
   'SuppressWarningsHolder',
@@ -74,7 +75,11 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
+export function springOnClasspath(classpaths) {
+  return classpaths.mainCompile.some((entry) => SPRING_JAR.test(path.basename(entry)));
+}
+
+export function runPmd({ module, reportDir, tools, classpaths, configs }) {
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -89,7 +94,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
   const rulesets = [
     ...(configs.pmd.nitpicker ? [path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml')] : []),
     ...(configs.pmd.project === undefined ? [] : [configs.pmd.project]),
-    ...(configs.pmd.nitpicker && spring ? [springRuleset] : []),
+    ...(configs.pmd.nitpicker && springOnClasspath(classpaths) ? [springRuleset] : []),
   ];
   runJava({
     tool: 'PMD',
