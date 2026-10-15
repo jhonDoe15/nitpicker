@@ -27,7 +27,20 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
   };
 }
 
-function baseSetupFromConfig({ baseConfig, headConfig, injectedAnalyzers, analyzers }) {
+function withHeadDuplicates(baseConfig, headConfig) {
+  const { duplicates: _baseDuplicates, ...rest } = baseConfig;
+  return headConfig.duplicates === undefined
+    ? rest
+    : { ...rest, duplicates: headConfig.duplicates };
+}
+
+function baseSetupFromConfig({
+  baseConfig: committedBaseConfig,
+  headConfig,
+  injectedAnalyzers,
+  analyzers,
+}) {
+  const baseConfig = withHeadDuplicates(committedBaseConfig, headConfig);
   if (JSON.stringify(baseConfig) === JSON.stringify(headConfig)) {
     return {};
   }

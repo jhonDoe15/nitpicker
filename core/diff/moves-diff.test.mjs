@@ -42,9 +42,10 @@ function probeAnalyzer() {
 function runProbe(tasks, policyFile) {
   const policy = policyFile === undefined ? {} : JSON.parse(readFileSync(policyFile, 'utf8'));
   const sourceRoots = policy.layout?.sourceRoots ?? ['src'];
+  const skipped = policy.duplicates?.skippedFolders ?? ['dist'];
   const reports = tasks.map((task) => {
     const [projectRoot] = task.invocation.args;
-    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root));
+    const findings = sourceRoots.flatMap((root) => scan(projectRoot, root, skipped));
     const stdoutText = JSON.stringify({ findings });
     return [
       task.name,
@@ -57,7 +58,7 @@ function runProbe(tasks, policyFile) {
   return { reports, errors: [], timings: [] };
 }
 
-function scan(projectRoot, relativeDirectory) {
+function scan(projectRoot, relativeDirectory, skipped) {
   const directory = path.join(projectRoot, relativeDirectory);
   let entries;
   try {
@@ -68,7 +69,7 @@ function scan(projectRoot, relativeDirectory) {
   return entries.flatMap((entry) => {
     const relativePath = `${relativeDirectory}/${entry.name}`;
     if (entry.isDirectory()) {
-      return scan(projectRoot, relativePath);
+      return skipped.includes(entry.name) ? [] : scan(projectRoot, relativePath, skipped);
     }
     return readFileSync(path.join(projectRoot, relativePath), 'utf8')
       .split('\n')
@@ -347,5 +348,89 @@ describe('a config that changed between base and head', () => {
 
     expect(setup.analyzers).toEqual([headOnly]);
     expect(setup.headPolicy.exclude).toEqual([]);
+  });
+});
+
+describe('a duplicate-scan folder list that changed between base and head', () => {
+  const layout = { sourceRoots: ['src'] };
+  const files = {
+    'nitpicker.config.json': JSON.stringify({ layout }),
+    'src/dist/a.mjs': `${filler('a')}${finding('a-site')}`,
+    'src/dist/b.mjs': `${filler('b')}${finding('b-site')}`,
+  };
+
+  function widenTheScan(root) {
+    git(root, 'rm', '-q', 'nitpicker.config.json');
+    write(root, {
+      'nitpicker.config.json': JSON.stringify({
+        layout,
+        duplicates: { skippedFolders: ['build'] },
+      }),
+    });
+    commitHead(root);
+  }
+
+  function compareWithHeadFolders(root) {
+    const headConfig = { layout, duplicates: { skippedFolders: ['build'] } };
+    return compare(root, {
+      headPolicy: headConfig,
+      resolveBaseSetup: createBaseSetupResolver({
+        headConfig,
+        injectedAnalyzers: [probeAnalyzer()],
+      }),
+    });
+  }
+
+  it('scans the base with the head list, so widening it turns no legacy finding into a new one', () => {
+    const root = createRepository(files);
+    widenTheScan(root);
+
+    const report = compareWithHeadFolders(root);
+
+    expect(identities(report.newFindings)).toEqual([]);
+    expect(report.unchangedFindings).toHaveLength(2);
+  });
+
+  it('still reports what the head adds in the widened folders', () => {
+    const root = createRepository(files);
+    widenTheScan(root);
+    write(root, { 'src/dist/c.mjs': `${filler('c')}${finding('c-site')}` });
+    git(root, 'add', '-A');
+    git(root, 'commit', '-q', '-m', 'more');
+
+    const report = compareWithHeadFolders(root);
+
+    expect(identities(report.newFindings)).toEqual(['c-site']);
+    expect(report.unchangedFindings).toHaveLength(2);
+  });
+
+  it('keeps the other keys of the base config', () => {
+    const root = createRepository({
+      ...files,
+      'nitpicker.config.json': JSON.stringify({
+        layout,
+        exclude: ['gen/**'],
+        duplicates: { skippedFolders: [] },
+      }),
+    });
+    const resolve = createBaseSetupResolver({
+      headConfig: { layout, duplicates: { skippedFolders: ['build'] } },
+      injectedAnalyzers: [probeAnalyzer()],
+    });
+
+    const setup = resolve({ baseProjectRoot: root, analyzers: [probeAnalyzer()] });
+
+    expect(setup.headPolicy).toEqual({
+      exclude: ['gen/**'],
+      layout,
+      exceptions: [],
+      thresholds: {},
+      duplicates: { skippedFolders: ['build'] },
+    });
+    expect(setup.configOverrides).toEqual([
+      'exclude: ["gen/**"]',
+      'layout: {"sourceRoots":["src"]}',
+      'duplicates: {"skippedFolders":["build"]}',
+    ]);
   });
 });
