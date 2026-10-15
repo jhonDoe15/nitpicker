@@ -1,30 +1,57 @@
-const JVM_NOTICE =
-  /^(?:[\w ]+ : )?Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS):|^[\d:]+\s*[AP]M PIT >> INFO /u;
+const TOOL_NOISE = [
+  /Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS):/u,
+  /PIT >> INFO\b/u,
+  /^\[ant:checkstyle\] /u,
+];
+const GRADLE_HINT = /^\* Try:$|^> (?:Run with|Get more help)/u;
+const FAILURE_START = /^(?:FAILURE: |\* What went wrong:)/u;
 const CAUSE = /^\s*Caused by:/u;
-const HEAD_SHARE = 0.2;
 const MAX_CAUSE_LENGTH = 300;
+const SEPARATOR = '\n...\n';
 
-export function withoutJvmNotices(text) {
+export function withoutToolNoise(text) {
   return text
     .split(/\r?\n/)
-    .filter((line) => !JVM_NOTICE.test(line))
+    .filter((line) => !TOOL_NOISE.some((noise) => noise.test(line)))
     .join('\n')
     .trim();
 }
 
+function failureBlock(lines, limit) {
+  const start = lines.findIndex((line) => FAILURE_START.test(line));
+  if (start < 0) {
+    const tail = lines.join('\n').slice(-Math.floor(limit / 2));
+    return { before: lines, failure: tail };
+  }
+  const failure = lines
+    .slice(start)
+    .filter((line) => !GRADLE_HINT.test(line))
+    .join('\n')
+    .trim();
+  return { before: lines.slice(0, start), failure: failure.slice(0, limit) };
+}
+
 export function condenseFailure(text, limit) {
-  const lines = withoutJvmNotices(text).split('\n');
-  const whole = lines.join('\n');
+  const whole = withoutToolNoise(text);
   if (whole.length <= limit) {
     return whole;
   }
-  const headBudget = Math.floor(limit * HEAD_SHARE);
-  const head = whole.slice(0, headBudget);
-  const causes = lines
-    .filter((line) => CAUSE.test(line) && !head.includes(line))
-    .map((line) => line.trim().slice(0, MAX_CAUSE_LENGTH));
-  const causeText = [...new Set(causes)].join('\n');
-  const tailBudget = Math.max(0, limit - head.length - causeText.length - 12);
-  const tail = tailBudget === 0 ? '' : whole.slice(-tailBudget);
-  return [head, causeText, tail].filter(Boolean).join('\n...\n');
+  const { before, failure } = failureBlock(whole.split('\n'), limit);
+  const causes = [
+    ...new Set(
+      before
+        .filter((line) => CAUSE.test(line))
+        .map((line) => line.trim().slice(0, MAX_CAUSE_LENGTH)),
+    ),
+  ];
+  const causeText = causes
+    .join('\n')
+    .slice(0, Math.max(0, limit - failure.length - 2 * SEPARATOR.length));
+  const headBudget = limit - failure.length - causeText.length - 2 * SEPARATOR.length;
+  const head = headBudget > 0 ? before.join('\n').slice(0, headBudget) : '';
+  const newCauses = causes
+    .filter((cause) => !head.includes(cause))
+    .join('\n')
+    .slice(0, causeText.length);
+  return [head, newCauses, failure].filter(Boolean).join(SEPARATOR);
 }

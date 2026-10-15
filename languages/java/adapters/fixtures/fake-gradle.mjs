@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-// Stand-in for `gradle -I nitpicker.init.gradle nitpickerJava` in tests that run without Java.
-// In the project directory (cwd): a file `GRADLE_FAIL` makes the run fail with its text, a file
-// `NO_REPORTS` makes it succeed without a project that applies the java plugin, and each
-// line of `violations.txt` becomes one PMD violation in src/main/java/demo/A.java. With
-// `-Pnitpicker.kotlin=true` each line of `detekt.txt` becomes one detekt result in
-// src/main/kotlin/demo/K.kt (rule `detekt.style.MagicNumber`, or the part before ` :: ` in the line),
-// each line of `ktlint.txt` (`rule|message`) one ktlint result there and each line of
-// `kotlin-format.txt` a file ktfmt would change, a file `kotlin-metrics.json` is the Kotlin metrics
-// report as it is, a file `jacoco.xml` becomes the JaCoCo report and a file `mutations.xml` the PIT
-// report. A file `modules.txt` lists more projects, one directory per line: each gets the same reports,
-// its sources under that directory, in the report directory module-<directory>. The reports go to the
-// directory of -Pnitpicker.reportDir; the arguments are kept in build/gradle-args.json.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -91,6 +79,9 @@ function writeModule({ key, dir }) {
       }),
     }),
   );
+  if (lines('EMPTY_MODULES').includes(dir)) {
+    return;
+  }
   if (kotlin) {
     writeKotlinReports(report, inside('src/main/kotlin/demo/K.kt'));
   }
@@ -109,10 +100,15 @@ function writeModule({ key, dir }) {
   writeFileSync(report('spotbugs.sarif'), sarif('SpotBugs', []));
   writeFileSync(report('format.txt'), '');
   writeFileSync(report('checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');
-  writeFileSync(
-    report('jacoco.xml'),
-    existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
-  );
+  if (!lines('NO_JACOCO_IN').includes(dir === '' ? '.' : dir)) {
+    writeFileSync(
+      report('jacoco.xml'),
+      existsSync('jacoco.xml') ? readFileSync('jacoco.xml') : '<report name="demo"></report>',
+    );
+  }
+  if (existsSync('MAIN_CLASSES')) {
+    writeFileSync(report('jdeps-classes.txt'), 'demo.A\n');
+  }
   if (existsSync('mutations.xml')) {
     writeFileSync(report('pit/mutations.xml'), readFileSync('mutations.xml'));
   }

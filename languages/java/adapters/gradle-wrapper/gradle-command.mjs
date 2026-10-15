@@ -12,7 +12,7 @@ export function gradleTarget({ projectRoot, configured, args, platform = process
     const wrapper = path.join(projectRoot, 'gradlew.bat');
     return existsSync(wrapper)
       ? spawnTarget(wrapper, args)
-      : { command: 'gradle', args, shell: true };
+      : { command: 'gradle', args: args.map((arg) => quoted(arg)), shell: true };
   }
   const wrapper = path.join(projectRoot, 'gradlew');
   const stat = statSync(wrapper, { throwIfNoEntry: false });
@@ -28,5 +28,9 @@ function spawnTarget(command, args) {
   if (!WINDOWS_SCRIPT.test(command)) {
     return { command, args, shell: false };
   }
-  return { command: `"${command}"`, args: args.map((arg) => `"${arg}"`), shell: true };
+  return { command: quoted(command), args: args.map((arg) => quoted(arg)), shell: true };
+}
+
+function quoted(word) {
+  return `"${word}"`;
 }

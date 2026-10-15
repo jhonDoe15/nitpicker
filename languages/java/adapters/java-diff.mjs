@@ -91,9 +91,16 @@ function runJavaPreset(
   }
 }
 
+function withoutReportBase(error, reportBase) {
+  return error instanceof Error && error.message.includes(reportBase)
+    ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
+    : error;
+}
+
 export function collectJavaFindings(projectRoot, options = {}) {
   const preset = options.policy?.preset ?? 'java';
-  const reportBase = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
+  const reportBase =
+    options.reportDirectory ?? mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
   try {
     runJavaPreset(projectRoot, { ...options, reportBase });
     const modules = readReportModules(reportBase, preset);
@@ -113,8 +120,12 @@ export function collectJavaFindings(projectRoot, options = {}) {
       preset,
     );
     return applyJavaPolicy(findings, options.policy);
+  } catch (error) {
+    throw withoutReportBase(error, reportBase);
   } finally {
-    rmSync(reportBase, { recursive: true, force: true });
+    if (options.reportDirectory === undefined) {
+      rmSync(reportBase, { recursive: true, force: true });
+    }
   }
 }
 

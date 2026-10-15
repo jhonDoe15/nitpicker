@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { readDuplicateFindings } from './python-duplicates.mjs';
-import { prepareSarif } from '../../java/adapters/java-reports.mjs';
+import { prepareSarif } from '../../java/ingest/sarif-paths/sarif-relocation.mjs';
 import { normalizeReportPath } from '../../java/ingest/common.mjs';
 import { ingestFormatCheck } from '../../java/ingest/format-check.mjs';
 import { ingestSarif } from '../../java/ingest/sarif.mjs';
