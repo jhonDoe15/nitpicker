@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../java/adapters/java-duplicates.mjs';
-import { createFakeProjects } from './fixtures/fake-project.mjs';
+import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
+import { createFakeProjects } from './test-support/fake-project.mjs';
 import { toolVersions } from './python-tools.mjs';
 import { pyrightConfig, resolveTypeChecker, typeCheck } from './python-types.mjs';
 
