@@ -3,7 +3,8 @@
 Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4), 5 (ticket J5), 6 (ticket J6), 7 (ticket J7) and 8 (ticket J8) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
-The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
+The Java preset runs the same differential gate as the TypeScript preset on a Gradle or Maven
+project (see [Maven builds](#maven-builds)): run
 the tools on the merge base and on head, turn each report into findings
 ([`spec/findings.schema.json`](../spec/findings.schema.json)), and fail only on new enforceable
 findings. The comparison is the language-neutral core (`compareFindings`, rename map from git),
@@ -42,6 +43,58 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+
+## Maven builds
+
+A project is built with Maven when its root has a `pom.xml` and no Gradle build file
+(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
+anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
+so nitpicker follows the one the project uses (`detectJavaBuild` in
+`languages/java/maven/maven-build.mjs`).
+
+The Maven side produces the same reports as the init script, one set per module in
+`<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
+end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
+field by field, and crank (a real single-module Maven project) gave the same 3,329 findings both
+ways. Per snapshot:
+
+1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
+   output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
+   surefire reports directory, a JaCoCo `destFile` the project configures, and the
+   `nitpicker.archunit.includes` property. Module directories come from following `<modules>` from
+   the root `pom.xml`, matched to the effective POM by `groupId:artifactId`.
+2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
+   dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
+   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
+   module's resolved classpath (reactor modules as their `target/classes`).
+3. The tools resolved once from Maven Central through Maven itself (a generated tools project in the
+   temp directory, reused while the jars exist), so the project's `settings.xml` mirrors apply.
+4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
+   without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
+   JaCoCo CLI report and PIT, with the same arguments as the init script tasks. The versions are read
+   from the init script's `pinned` map, so both builds always run the same tools.
+
+- **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
+  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
+  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
+  the build are ignored.
+- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
+  replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
+  instead. A module with test classes but no fresh coverage file is a tool error that points at a
+  surefire `<argLine>` without `@{argLine}`.
+- **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
+  are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
+  modules, so a dependency from one module to another counts, and file limits are evaluated once
+  over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
+  (`languages/java/multi-module/java-modules.mjs`, build-neutral).
+- **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
+  run with `sh` when not executable; otherwise `mvn` from the PATH. The JDK tools (`java`, `jar`,
+  `jdeps`) come from `JAVA_HOME` when set, else the PATH.
+- **Not covered.** The Kotlin preset needs Gradle and says so. A surefire configuration that sets
+  `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
+  violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
+  dependency on another module in the `test` phase; such reactors fail as they would with
+  `mvn test`.
 
 ## Slices
 
