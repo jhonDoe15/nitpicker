@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure } from '../../../shared/modules/import-closure.mjs';
+import { importClosure } from '../../../shared/import-closure.mjs';
 import { RULES_TOOL } from '../rules/rule-hints.mjs';
-import { PINNED_VERSIONS_SOURCE } from './python-crap.mjs';
+import { PINNED_VERSIONS_SOURCE } from './mutation/python-crap.mjs';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
@@ -15,10 +15,19 @@ const MUTATION_SHARD_WEIGHT = 90;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = path.join(import.meta.dirname, 'python-runner.mjs');
+const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
+
+function importedRunnerFiles() {
+  const entry = path.relative(packageRoot, runnerPath);
+  return [...importClosure([entry], packageRoot).keys()].map((file) =>
+    path.join(packageRoot, file),
+  );
+}
 
 function pythonResourceFiles() {
   return readdirSync(pythonRoot, { recursive: true })
-    .filter((file) => !file.endsWith('.test.mjs') && !file.split(path.sep).includes('fixtures'))
+    .filter((file) => !file.endsWith('.test.mjs'))
+    .filter((file) => !file.split(path.sep).some((folder) => TEST_ONLY_FOLDERS.has(folder)))
     .filter((file) => path.extname(file) !== '')
     .map((file) => path.join(pythonRoot, file));
 }
@@ -26,7 +35,7 @@ function pythonResourceFiles() {
 export function configurationFiles() {
   const files = new Set([
     ...pythonResourceFiles(),
-    ...importClosure(runnerPath),
+    ...importedRunnerFiles(),
     PINNED_VERSIONS_SOURCE,
   ]);
   return [...files].map((file) => path.relative(packageRoot, file)).sort();
