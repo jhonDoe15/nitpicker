@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, spring-arch.json, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -520,13 +520,72 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. Layering, entities in controller signatures and test
-placement need a cross-class view and come with nitpicker's ArchUnit rules.
+placement need a cross-class view, which PMD does not have; they are nitpicker's own ArchUnit rules,
+described next.
 
 **Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
 accept.
+
+## Spring architecture rules
+
+Spring projects (same detection as the Spring ruleset: `spring-context` or `spring-boot` on the
+compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules. They are
+separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
+the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
+`pinned` map) into its own configuration, compiles the rule classes in
+[`languages/java/gradle/archunit/`](../languages/java/gradle/archunit/) with the JDK that runs Gradle
+and runs them once, in one separate JVM, over the compiled main and test classes. That is one extra
+JVM per side (base and head), a few seconds. The report is `build/nitpicker/spring-arch.json`
+(format in [internals.md](internals.md)); a Spring project without it is a tool error.
+
+Findings print as `archunit/<rule>`, one per rule, offending class and dependency, on the class's
+source file (a nested class counts as its outermost class). The identity is the class plus the
+dependency or method involved, never a line, so a second bad dependency in an already violating
+class is new, and moving code is not. Every message names the allowed form and ends with the
+exception route: `{ "rule": "archunit/<rule>", "paths": [...], "reason": "..." }` in
+`nitpicker.config.json`.
+
+**Layout: package by feature, as in the TypeScript preset.** The root package is the package of the
+`@SpringBootApplication` class (the common prefix when there are several; without one the layout
+rules are skipped and the rest still runs). Its direct sub-packages are features, plus `shared` for
+pure utilities. The layout mirrors the TypeScript one: `features/<f>/` with an `index.ts` becomes
+`<root>.<feature>` whose top-level classes are the feature's public face, and `shared` is the
+TypeScript `shared/` folder.
+
+| Rule                      | Fails when                                                                                                                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-layout`           | a class sits directly in the root package (only `@SpringBootApplication`, `@Configuration` and `@ConfigurationProperties` classes may), or in a root sub-package named by layer: `controller(s)`, `service(s)`, `repository`/`repositories`, `entity`/`entities`, `model(s)`, `dto(s)`, `dao`, `util(s)`, `common` |
+| `spring-feature-boundary` | a feature class uses a class from a sub-package of another feature (`orders.internal.X` from `billing`); the top-level classes of the other feature are fine                                                                                                                                                       |
+| `spring-shared-pure`      | a `shared` class is a Spring bean (`@Component` and its stereotypes, `@Configuration`) or an `@Entity`, or depends on any feature class                                                                                                                                                                            |
+
+**Layering.**
+
+| Rule                           | Fails when                                                                                                                                                                                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`), in a field, parameter, return type or call                                                                                                 |
+| `spring-controller-entity`     | a request-mapping method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`                                                                                                                                              |
+| `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity`, or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet` or `org.springframework.web.multipart` packages |
+
+**Tests that start a Spring context.** A test class counts when it, or an enclosing class, is
+annotated with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
+`@BootstrapWith`), `@ContextConfiguration`, `@SpringJUnitConfig`, `@Testcontainers`, or
+`@ExtendWith(SpringExtension.class)`.
+
+| Rule                        | Fails when                                                                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `spring-test-placement`     | such a test is in a package without an `integration` or `it` segment (`shop.orders.integration`, `shop.it`); plain unit tests live anywhere |
+| `spring-no-dirties-context` | a test class or method has `@DirtiesContext`, anywhere                                                                                      |
+
+Sources in a separate Gradle source set (`src/integrationTest/java`) are not part of the `test`
+source set and are not read at all. A test that sleeps is covered by the test-honesty rules for
+Java, not here.
+
+**Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
+finding can be placed). Only classes of the `main` and `test` source sets are checked, and only in
+the root project. Kotlin modules run the same rules on their compiled classes.
 
 ## Spring configuration files
 
@@ -616,7 +675,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring-arch/spring-arch.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
