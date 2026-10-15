@@ -104,7 +104,9 @@ describe('mutation environment', () => {
     });
 
     expect(mutationEnvironmentFor('jest', projectRoot)).toEqual({
-      NODE_OPTIONS: expect.stringContaining('--experimental-vm-modules'),
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, '--experimental-vm-modules']
+        .filter(Boolean)
+        .join(' '),
     });
   });
 

@@ -64,24 +64,7 @@ function resolveTestRunnerVersion(runner, liveProjectRoot, resolve) {
     : versions[0];
 }
 
-function withTestRunner(analyzerName, version, runnerVersion) {
-  return analyzerName === 'coverage' ? runnerVersion : `${version};tests:${runnerVersion}`;
-}
-
-export function resolveAnalyzerVersion(
-  analyzerName,
-  liveProjectRoot,
-  resolve = resolveTool,
-  testRunner = 'vitest',
-) {
-  if (TEST_RUNNER_ANALYZERS.has(analyzerName) && TEST_RUNNER_TOOLS.has(testRunner)) {
-    const runnerVersion = resolveTestRunnerVersion(testRunner, liveProjectRoot, resolve);
-    const base =
-      analyzerName === 'coverage'
-        ? ''
-        : resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve);
-    return withTestRunner(analyzerName, base, runnerVersion);
-  }
+export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);
@@ -107,4 +90,19 @@ function resolveOxlintVersions(resolve) {
   return OXLINT_PACKAGES.map(
     (name) => `${name}@${resolve(name, { projectRoot: PACKAGE_ROOT }).version}`,
   ).join(',');
+}
+
+export function resolveTestRunnerAnalyzerVersion({
+  analyzerName,
+  projectRoot,
+  testRunner,
+  resolve = resolveTool,
+}) {
+  if (!TEST_RUNNER_ANALYZERS.has(analyzerName) || !TEST_RUNNER_TOOLS.has(testRunner)) {
+    return resolveAnalyzerVersion(analyzerName, projectRoot, resolve);
+  }
+  const runnerVersion = resolveTestRunnerVersion(testRunner, projectRoot, resolve);
+  return analyzerName === 'coverage'
+    ? runnerVersion
+    : `${resolveAnalyzerVersion(analyzerName, projectRoot, resolve)};tests:${runnerVersion}`;
 }

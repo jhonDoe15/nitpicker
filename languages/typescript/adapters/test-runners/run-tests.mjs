@@ -13,14 +13,19 @@ const EXECUTORS = new Map([
   ['node-test', runNodeTestWithCoverage],
 ]);
 
+function unreadableReport({ runner, result, error }) {
+  const reason = error instanceof Error ? error.message : String(error);
+  return new Error(
+    `${testRunnerLabel(runner)} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
+    { cause: error },
+  );
+}
+
 function readTestReport(runner, reportPath, result) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
-    throw new Error(
-      `${testRunnerLabel(runner)} exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
-      { cause: error },
-    );
+    throw unreadableReport({ runner, result, error });
   }
 }
 
@@ -30,11 +35,11 @@ export function runTestsWithCoverage(options, runner) {
     throw new Error(`Temporary coverage report already exists: ${reportPath}`);
   }
   const temporary = [];
-  const register = (filePath) => {
+  function register(filePath) {
     trackTemporaryPath(filePath);
     temporary.push(filePath);
     return filePath;
-  };
+  }
   register(reportPath);
   try {
     const result = EXECUTORS.get(runner)({ options, reportPath, register });

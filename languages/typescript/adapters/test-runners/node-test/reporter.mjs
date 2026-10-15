@@ -80,14 +80,22 @@ export function buildReport(files) {
   };
 }
 
-export default async function* nitpickerTestReport(source) {
+function recordEvent(files, event) {
+  if ((event.type === 'test:pass' || event.type === 'test:fail') && isCounted(event)) {
+    recordTest(files, event);
+    return;
+  }
+  if (event.type === 'test:stderr') {
+    recordStderr(files, event.data);
+  }
+}
+
+async function* nitpickerTestReport(source) {
   const files = new Map();
   for await (const event of source) {
-    if ((event.type === 'test:pass' || event.type === 'test:fail') && isCounted(event)) {
-      recordTest(files, event);
-    } else if (event.type === 'test:stderr') {
-      recordStderr(files, event.data);
-    }
+    recordEvent(files, event);
   }
   yield `${JSON.stringify(buildReport(files))}\n`;
 }
+
+export { nitpickerTestReport as default };

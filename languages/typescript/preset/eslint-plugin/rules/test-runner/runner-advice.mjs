@@ -24,7 +24,7 @@ const ADVICE = new Map([
   ],
 ]);
 
-export function testRunnerOf(context) {
+function testRunnerOf(context) {
   return context.settings?.nitpicker?.testRunner ?? 'vitest';
 }
 

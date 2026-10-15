@@ -23,9 +23,10 @@ const ADAPTER_DIRECTORIES = [
 
 export const TEST_RUNNER_ADAPTER_FILES = ADAPTER_DIRECTORIES.flatMap(sourceFilesIn);
 
-export const TEST_RUNNER_POLICY_FILES = SOURCE_DIRECTORIES.flatMap(sourceFilesIn);
+const TEST_RUNNER_POLICY_FILES = SOURCE_DIRECTORIES.flatMap(sourceFilesIn);
 
 export const HEAD_POLICY_FILES = [
+  'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   ...TEST_RUNNER_POLICY_FILES,
 ];

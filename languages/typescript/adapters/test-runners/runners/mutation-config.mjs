@@ -5,8 +5,11 @@ import { nodeTestArgumentsOf } from './node-arguments.mjs';
 
 const VITEST_RUNNER_PLUGIN = /[\\/]@stryker-mutator[\\/]vitest-runner[\\/]/u;
 
-function withoutVitest({ vitest: _vitest, plugins, ...config }) {
-  return { ...config, plugins: plugins.filter((plugin) => !VITEST_RUNNER_PLUGIN.test(plugin)) };
+function withoutVitest(config) {
+  return {
+    ...Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'vitest')),
+    plugins: config.plugins.filter((plugin) => !VITEST_RUNNER_PLUGIN.test(plugin)),
+  };
 }
 
 function runnerPlugin(name) {

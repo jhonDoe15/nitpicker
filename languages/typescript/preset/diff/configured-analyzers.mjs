@@ -2,8 +2,7 @@ import {
   DEFAULT_LEGACY_INVENTORY,
   withLegacyInventory,
 } from '../../../../shared/legacy-inventory.mjs';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
+import { resolveAnalyzerVersion, resolveTestRunnerAnalyzerVersion } from '../analyzer-versions.mjs';
 import { configuredTestRunner } from '../test-runner/runners.mjs';
 import { TEST_RUNNER_ADAPTER_FILES } from '../test-runner/policy-files.mjs';
 import { resolveTestRunner } from '../test-runner/resolve.mjs';
@@ -174,12 +173,11 @@ export function applyTestRunner(analyzers, headPolicy = {}) {
       ? {
           ...analyzer,
           resolveVersion: (projectRoot) =>
-            resolveAnalyzerVersion(
-              analyzer.name,
+            resolveTestRunnerAnalyzerVersion({
+              analyzerName: analyzer.name,
               projectRoot,
-              resolveTool,
-              resolveTestRunner({ projectRoot, layout, configured }).runner,
-            ),
+              testRunner: resolveTestRunner({ projectRoot, layout, configured }).runner,
+            }),
         }
       : analyzer,
   );

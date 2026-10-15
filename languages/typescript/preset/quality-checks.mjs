@@ -31,7 +31,6 @@ export const strykerVersion = 'unresolved';
 const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 const POLICY_FILES = [
-  'languages/typescript/preset/layout.mjs',
   ...HEAD_POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
   'languages/javascript/preset/jsdoc.mjs',
@@ -172,7 +171,6 @@ function entryPointsCheckFor(layout, exclusions) {
     version: dependencyCruiserVersion,
     shardWeight: 7,
     logicalFiles: [
-      'languages/typescript/preset/layout.mjs',
       ...HEAD_POLICY_FILES,
       'languages/typescript/preset/entry-points/analyze.mjs',
       'languages/typescript/preset/dependency-graph/cruise.mjs',
@@ -203,7 +201,6 @@ function prettierCheckFor(layout, exclusions) {
     shardWeight: 8,
     configurationFiles: [
       'languages/typescript/adapters/prettier-layers.mjs',
-      'languages/typescript/preset/layout.mjs',
       ...HEAD_POLICY_FILES,
       JAVASCRIPT_PRESET_FILE,
       'languages/typescript/preset/defaults/.prettierrc.json',
@@ -223,7 +220,6 @@ function typeAndArchitectureChecksFor(layout) {
       configRelativePath: 'languages/typescript/preset/defaults/tsconfig.quality.json',
       shardWeight: 9,
       configurationFiles: [
-        'languages/typescript/preset/layout.mjs',
         ...HEAD_POLICY_FILES,
         'languages/typescript/preset/tool-configs.mjs',
         JAVASCRIPT_PRESET_FILE,
@@ -240,7 +236,6 @@ function typeAndArchitectureChecksFor(layout) {
       exclude: ARCHITECTURE_EXCLUSION,
       shardWeight: 7,
       configurationFiles: [
-        'languages/typescript/preset/layout.mjs',
         ...HEAD_POLICY_FILES,
         ARCHITECTURE_CONFIG,
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
@@ -360,7 +355,6 @@ const CRAP_CONFIGURATION_FILES = [
   'languages/typescript/preset/crap/report.mjs',
   'languages/typescript/preset/crap/analyze.mjs',
   'languages/javascript/preset/crap-extensions-hook.mjs',
-  'languages/typescript/preset/layout.mjs',
   ...HEAD_POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
   'shared/rules/crap.mjs',
@@ -380,7 +374,6 @@ function testExecutionChecksFor(exclusions) {
       timeoutMs: 5 * MINUTE_MS,
       configurationFiles: [
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
-        'languages/typescript/preset/layout.mjs',
         ...HEAD_POLICY_FILES,
         JAVASCRIPT_PRESET_FILE,
       ],

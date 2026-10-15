@@ -109,6 +109,12 @@ function isNodePartialAssertion(node) {
   );
 }
 
+function partialMessageId(node) {
+  if (isPartialAssertion(node)) return 'partialOutput';
+  if (isPartialMatcherAssertion(node)) return 'partialMatcher';
+  return isNodePartialAssertion(node) ? 'partialDeepEqual' : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -128,12 +134,9 @@ export const rule = {
   create(context) {
     return {
       CallExpression(node) {
-        if (isPartialAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialOutput' });
-        } else if (isPartialMatcherAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialMatcher' });
-        } else if (isNodePartialAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialDeepEqual' });
+        const messageId = partialMessageId(node);
+        if (messageId !== undefined) {
+          context.report({ node: node.callee.property, messageId });
         }
       },
     };

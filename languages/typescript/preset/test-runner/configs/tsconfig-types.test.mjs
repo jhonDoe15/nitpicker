@@ -4,9 +4,15 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { withTestRunnerTypes } from './tsconfig-types.mjs';
 
-const BASE = JSON.stringify({
-  compilerOptions: { strict: true, types: ['node', 'vitest/globals'] },
-});
+function tsconfig(types) {
+  return { compilerOptions: { strict: true, lib: ['ES2022'], types } };
+}
+
+const BASE = JSON.stringify(tsconfig(['node', 'vitest/globals']));
+
+function formatted(types) {
+  return `${JSON.stringify(tsconfig(types), null, 2)}\n`;
+}
 
 function project(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-types-'));
@@ -25,9 +31,7 @@ describe('withTestRunnerTypes', () => {
 
   it('drops the Vitest globals for a Jest project without Jest types', () => {
     const root = project({ 'package.json': '{"devDependencies":{"jest":"30.5.2"}}' });
-    expect(withTestRunnerTypes(BASE, root)).toBe(
-      `${JSON.stringify({ compilerOptions: { strict: true, types: ['node'] } }, null, 2)}\n`,
-    );
+    expect(withTestRunnerTypes(BASE, root)).toBe(formatted(['node']));
   });
 
   it('swaps in the Jest types when the project installs them', () => {
@@ -35,9 +39,7 @@ describe('withTestRunnerTypes', () => {
       'package.json': '{"devDependencies":{"jest":"30.5.2"}}',
       'node_modules/@types/jest/index.d.ts': '',
     });
-    expect(withTestRunnerTypes(BASE, root)).toBe(
-      `${JSON.stringify({ compilerOptions: { strict: true, types: ['node', 'jest'] } }, null, 2)}\n`,
-    );
+    expect(withTestRunnerTypes(BASE, root)).toBe(formatted(['node', 'jest']));
   });
 
   it('drops the Vitest globals for a node:test project', () => {
@@ -45,8 +47,6 @@ describe('withTestRunnerTypes', () => {
       'package.json': '{"scripts":{"test":"node --test"}}',
       'src/a.test.ts': "import test from 'node:test';",
     });
-    expect(withTestRunnerTypes(BASE, root)).toBe(
-      `${JSON.stringify({ compilerOptions: { strict: true, types: ['node'] } }, null, 2)}\n`,
-    );
+    expect(withTestRunnerTypes(BASE, root)).toBe(formatted(['node']));
   });
 });

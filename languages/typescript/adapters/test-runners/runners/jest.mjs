@@ -18,8 +18,11 @@ function repeated(flag, values) {
   return values.map((value) => `${flag}=${value}`);
 }
 
-export function jestNodeArguments(projectRoot) {
-  const mentionsEsm = (text) => typeof text === 'string' && text.includes(ESM_FLAG);
+function mentionsEsm(text) {
+  return typeof text === 'string' && text.includes(ESM_FLAG);
+}
+
+function jestNodeArguments(projectRoot) {
   const enabled =
     mentionsEsm(process.env.NODE_OPTIONS) ||
     testScripts(readManifest(projectRoot)).some(([, command]) => mentionsEsm(command));
@@ -44,11 +47,10 @@ function projectIgnoredPaths(options, nodeArguments) {
     nodeArguments,
     arguments_: ['--showConfig', '--watchman=false'],
   });
-  try {
-    return JSON.parse(result.stdout).configs[0].testPathIgnorePatterns;
-  } catch {
+  if (result.status !== 0) {
     return [DEFAULT_IGNORED_PATH];
   }
+  return JSON.parse(result.stdout).configs[0].testPathIgnorePatterns;
 }
 
 function ignoredTestPaths(options, layout, nodeArguments) {

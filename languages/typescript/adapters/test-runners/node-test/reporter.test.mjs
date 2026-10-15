@@ -11,13 +11,9 @@ function failure(message) {
   });
 }
 
-async function* events(list) {
-  yield* list;
-}
-
 async function reportFrom(list) {
   const chunks = [];
-  for await (const chunk of nitpickerTestReport(events(list))) {
+  for await (const chunk of nitpickerTestReport(list)) {
     chunks.push(chunk);
   }
   return chunks.map((chunk) => JSON.parse(chunk));

@@ -47,13 +47,7 @@ export function validateTools(tools, preset) {
   }
 }
 
-function validateToolSettings(name, settings, toolSettingKeys) {
-  const allowedKeys = toolSettingKeys.get(name);
-  if (allowedKeys === undefined) {
-    throw configError(
-      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
-    );
-  }
+function validateSettingsShape(name, settings, allowedKeys) {
   if (!isPlainObject(settings)) {
     throw configError(`"tools.${name}" must be an object`);
   }
@@ -63,6 +57,16 @@ function validateToolSettings(name, settings, toolSettingKeys) {
       `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
     );
   }
+}
+
+function validateToolSettings(name, settings, toolSettingKeys) {
+  const allowedKeys = toolSettingKeys.get(name);
+  if (allowedKeys === undefined) {
+    throw configError(
+      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
+    );
+  }
+  validateSettingsShape(name, settings, allowedKeys);
   if (ENGINES.has(name)) {
     validateEngine(name, settings.engine);
     return;

@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const CONFIG_FILES = new Map([
@@ -20,13 +20,21 @@ const NODE_TEST_IMPORT =
 const OTHER_RUNNER_IMPORT = /(?:from\s*|require\()\s*['"](?:vitest|@jest\/globals)['"]/u;
 const MAX_SCANNED_BYTES = 200_000;
 
-export function readManifest(projectRoot) {
+function parseManifest(manifestPath) {
   try {
-    const manifest = JSON.parse(readFileSync(path.join(projectRoot, 'package.json'), 'utf8'));
-    return typeof manifest === 'object' && manifest !== null ? manifest : {};
-  } catch {
+    return JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch (error) {
+    throw new Error(`${manifestPath} is not valid JSON`, { cause: error });
+  }
+}
+
+export function readManifest(projectRoot) {
+  const manifestPath = path.join(projectRoot, 'package.json');
+  if (!existsSync(manifestPath)) {
     return {};
   }
+  const manifest = parseManifest(manifestPath);
+  return typeof manifest === 'object' && manifest !== null ? manifest : {};
 }
 
 function dependencyNames(manifest) {
@@ -34,14 +42,6 @@ function dependencyNames(manifest) {
     ...Object.keys(manifest.dependencies ?? {}),
     ...Object.keys(manifest.devDependencies ?? {}),
   ]);
-}
-
-function rootFileNames(projectRoot) {
-  try {
-    return readdirSync(projectRoot);
-  } catch {
-    return [];
-  }
 }
 
 export function testScripts(manifest) {
@@ -73,14 +73,10 @@ export function scriptEvidence(runner, manifest) {
 }
 
 function readTestSource(projectRoot, file) {
-  try {
-    return readFileSync(path.join(projectRoot, file), 'utf8').slice(0, MAX_SCANNED_BYTES);
-  } catch {
-    return '';
-  }
+  return readFileSync(path.join(projectRoot, file), 'utf8').slice(0, MAX_SCANNED_BYTES);
 }
 
-export function importsNodeTest(source) {
+function importsNodeTest(source) {
   return NODE_TEST_IMPORT.test(source) && !OTHER_RUNNER_IMPORT.test(source);
 }
 
@@ -94,7 +90,7 @@ function nodeTestImportEvidence(projectRoot, layout) {
 
 export function collectRunnerEvidence(projectRoot, layout) {
   const manifest = readManifest(projectRoot);
-  const fileNames = rootFileNames(projectRoot);
+  const fileNames = readdirSync(projectRoot);
   const evidence = new Map();
   for (const runner of ['vitest', 'jest']) {
     evidence.set(runner, [

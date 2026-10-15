@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { policyHash } from '../../../core/diff/report-model.mjs';
-import { ESLINT_PLUGIN_PACKAGES, resolveAnalyzerVersion } from './analyzer-versions.mjs';
+import {
+  ESLINT_PLUGIN_PACKAGES,
+  resolveAnalyzerVersion,
+  resolveTestRunnerAnalyzerVersion,
+} from './analyzer-versions.mjs';
 
 function fakeResolver(overrides = {}) {
   return (name) => ({ version: overrides[name] ?? '1.0.0' });
@@ -47,35 +51,51 @@ describe('ESLint analyzer versions', () => {
 });
 
 describe('test runner analyzer versions', () => {
-  const resolver = fakeResolver({ jest: '30.5.2', c8: '12.0.0', vitest: '4.1.11' });
+  const resolve = fakeResolver({ jest: '30.5.2', c8: '12.0.0', vitest: '4.1.11' });
   const node = `node@${process.versions.node}`;
+  const versionFor = (analyzerName, testRunner) =>
+    resolveTestRunnerAnalyzerVersion({
+      analyzerName,
+      projectRoot: '/project',
+      testRunner,
+      resolve,
+    });
 
   it('keys the coverage version on the Jest version', () => {
-    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'jest')).toBe('jest@30.5.2');
+    expect(versionFor('coverage', 'jest')).toBe('jest@30.5.2');
   });
 
   it('keys the coverage version on c8 and the Node version for node:test', () => {
-    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'node-test')).toBe(
-      `c8@12.0.0;${node}`,
-    );
+    expect(versionFor('coverage', 'node-test')).toBe(`c8@12.0.0;${node}`);
   });
 
   it('keeps the Vitest coverage version for Vitest', () => {
-    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'vitest')).toBe('4.1.11');
+    expect(versionFor('coverage', 'vitest')).toBe('4.1.11');
+  });
+
+  it('does not need Vitest installed to version a Jest project', () => {
+    const jestOnly = (name) => {
+      if (name === 'vitest') throw new Error('vitest is not installed');
+      return { version: '30.5.2' };
+    };
+    expect(
+      resolveTestRunnerAnalyzerVersion({
+        analyzerName: 'coverage',
+        projectRoot: '/project',
+        testRunner: 'jest',
+        resolve: jestOnly,
+      }),
+    ).toBe('jest@30.5.2');
   });
 
   it.each(['crap', 'mutation'])('adds the runner to the %s version', (analyzer) => {
-    const base = resolveAnalyzerVersion(analyzer, '/project', resolver);
-    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'jest')).toBe(
-      `${base};tests:jest@30.5.2`,
-    );
-    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'node-test')).toBe(
-      `${base};tests:c8@12.0.0;${node}`,
-    );
-    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'vitest')).toBe(base);
+    const base = resolveAnalyzerVersion(analyzer, '/project', resolve);
+    expect(versionFor(analyzer, 'jest')).toBe(`${base};tests:jest@30.5.2`);
+    expect(versionFor(analyzer, 'node-test')).toBe(`${base};tests:c8@12.0.0;${node}`);
+    expect(versionFor(analyzer, 'vitest')).toBe(base);
   });
 
   it('leaves other analyzers untouched by the runner', () => {
-    expect(resolveAnalyzerVersion('prettier-format', '/project', resolver, 'jest')).toBe('1.0.0');
+    expect(versionFor('prettier-format', 'jest')).toBe('1.0.0');
   });
 });

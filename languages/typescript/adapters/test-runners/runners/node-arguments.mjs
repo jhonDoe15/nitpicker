@@ -14,13 +14,15 @@ const NODE_TEST_SEGMENT = /(?<![\w-])(node|tsx)\b(.*\s--test(?=\s|$).*)/u;
 
 function flagsOf(tokens) {
   const flags = [];
-  for (let index = 0; index < tokens.length && tokens[index].startsWith('-'); index += 1) {
-    const token = tokens[index];
-    if (RUNNER_OWN_FLAG.test(token)) continue;
-    flags.push(token);
-    if (FLAGS_WITH_VALUE.has(token)) {
-      flags.push(tokens[index + 1]);
-      index += 1;
+  let valueFor;
+  for (const token of tokens) {
+    if (valueFor === undefined && !token.startsWith('-')) break;
+    if (valueFor !== undefined) {
+      flags.push(token);
+      valueFor = undefined;
+    } else if (!RUNNER_OWN_FLAG.test(token)) {
+      flags.push(token);
+      valueFor = FLAGS_WITH_VALUE.has(token) ? token : undefined;
     }
   }
   return flags;
