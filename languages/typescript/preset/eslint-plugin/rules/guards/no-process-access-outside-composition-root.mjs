@@ -9,11 +9,27 @@ function propertyText(node) {
   return node.property.type === 'Literal' ? node.property.value : undefined;
 }
 
-function isEnvAccess(node, allowImportMetaEnv) {
+const BUNDLER_REPLACED_VARIABLE = /^(?:NODE_ENV|NEXT_PUBLIC_\w+)$/;
+
+function isBundlerReplaced(node) {
+  const { parent } = node;
+  if (parent.type !== 'MemberExpression' || parent.object !== node) {
+    return false;
+  }
+  const variable = propertyText(parent);
+  return typeof variable === 'string' && BUNDLER_REPLACED_VARIABLE.test(variable);
+}
+
+function isEnvAccess(node, options) {
   const owner = node.object;
   const base = owner.type === 'MetaProperty' ? 'import.meta' : owner.name;
-  const readers = allowImportMetaEnv ? ['process', 'Deno'] : ['process', 'import.meta', 'Deno'];
-  return readers.includes(base) && propertyText(node) === 'env';
+  const readers = options.allowImportMetaEnv
+    ? ['process', 'Deno']
+    : ['process', 'import.meta', 'Deno'];
+  if (!readers.includes(base) || propertyText(node) !== 'env') {
+    return false;
+  }
+  return !(options.allowBundlerEnv && base === 'process' && isBundlerReplaced(node));
 }
 
 function isProcessExit(node) {
@@ -42,6 +58,7 @@ export const rule = {
         properties: {
           compositionRootPattern: { type: 'string' },
           allowImportMetaEnv: { type: 'boolean' },
+          allowBundlerEnv: { type: 'boolean' },
         },
         additionalProperties: false,
       },
@@ -57,10 +74,13 @@ export const rule = {
     if (isCompositionRootFile(context)) {
       return {};
     }
-    const allowImportMetaEnv = context.options[0]?.allowImportMetaEnv === true;
+    const options = {
+      allowImportMetaEnv: context.options[0]?.allowImportMetaEnv === true,
+      allowBundlerEnv: context.options[0]?.allowBundlerEnv === true,
+    };
     return {
       MemberExpression(node) {
-        if (isEnvAccess(node, allowImportMetaEnv)) {
+        if (isEnvAccess(node, options)) {
           context.report({ node, messageId: 'envOutsideRoot' });
         } else if (isProcessExit(node) && !insideMainGuard(node)) {
           context.report({ node, messageId: 'exitOutsideRoot' });

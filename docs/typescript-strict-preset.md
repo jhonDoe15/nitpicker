@@ -73,7 +73,8 @@ config file is an exception like any other.
   schema, and the typed config is passed down. `process.exit` is called only in the composition
   root or a main guard. Entry scripts listed in `layout.entryPoints` and config files
   (`*.config.*`, `.*rc.*`) are exempt. In a React project `import.meta.env` is allowed anywhere:
-  Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`).
+  Vite replaces it with public build-time values (`import.meta.env.DEV`, `VITE_*`). So are
+  `process.env.NODE_ENV` and `process.env.NEXT_PUBLIC_*`, which bundlers replace the same way.
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -205,8 +206,9 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
-  allowed. A schema constant may be PascalCase when its initializer is a `z`, `v` (valibot) or
-  `yup` call (`const Order = z.object(...)`, then `type Order = z.infer<typeof Order>`), and so may
+  allowed. A schema constant may be PascalCase when its initializer starts from a binding imported
+  from `zod`, `valibot` or `yup`, under any name (`const Order = z.object(...)`, then
+  `type Order = z.infer<typeof Order>`, or a bare `object({...})` imported from valibot), and so may
   a parameter typed as a component (`ComponentType`, `FC`, `ElementType`) or named `*Component`.
   PascalCase functions and variables are allowed in a React project. Names a destructuring takes
   from external data are not checked.

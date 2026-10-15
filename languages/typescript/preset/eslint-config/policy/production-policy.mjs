@@ -71,7 +71,7 @@ function productionGuardRules({ react }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
       'error',
-      { allowImportMetaEnv: react },
+      { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/no-unsafe-path-join': 'error',

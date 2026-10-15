@@ -125,8 +125,26 @@ describe('identifier casing', () => {
   });
 
   it.each([
-    ['a zod schema constant', 'export const Order = z.object({ id: z.string() });'],
-    ['a refined schema constant', 'export const Email = z.string().email().brand("Email");'],
+    [
+      'a zod schema constant',
+      "import { z } from 'zod'; export const Order = z.object({ id: z.string() });",
+    ],
+    [
+      'a refined schema constant',
+      'import { z } from "zod/v4"; export const Email = z.string().email().brand("Email");',
+    ],
+    [
+      'zod imported under another name',
+      "import { z as schema } from 'zod'; export const Order = schema.object({});",
+    ],
+    [
+      'a bare valibot builder',
+      "import { object, string } from 'valibot'; export const User = object({ name: string() });",
+    ],
+    [
+      'a yup namespace',
+      "import * as yup from 'yup'; export const User = yup.object({ name: yup.string() });",
+    ],
     [
       'a component parameter',
       'export function withLog(Component: ComponentType) { return Component; }',
@@ -139,9 +157,26 @@ describe('identifier casing', () => {
     expect(ruleIds(adapter, code)).toEqual([]);
   });
 
-  it('still rejects a PascalCase constant that is not a schema', () => {
-    expect(ruleIds(adapter, 'export const Order = loadOrder();')).toEqual([
-      'nitpicker/naming-convention',
+  it.each([
+    ['a call that is not a schema', 'export const Order = loadOrder();'],
+    ['a local helper named z', 'const z = { object: build }; export const Order = z.object({});'],
+    [
+      'a bare object() from another library',
+      "import { object } from './builders.js'; export const Order = object({});",
+    ],
+  ])('still rejects a PascalCase constant built by %s', (_name, code) => {
+    expect(ruleIds(adapter, code)).toEqual(['nitpicker/naming-convention']);
+  });
+
+  it('lets a React project read the env variables its bundler replaces', () => {
+    const code =
+      'export const dev = process.env.NODE_ENV === "development"; export const api = process.env.NEXT_PUBLIC_API;';
+    const rule = 'nitpicker/no-process-access-outside-composition-root';
+
+    expect(ruleIds(adapter, code, { react: true })).toEqual([]);
+    expect(ruleIds(adapter, code)).toEqual([rule, rule]);
+    expect(ruleIds(adapter, 'export const key = process.env.SECRET;', { react: true })).toEqual([
+      rule,
     ]);
   });
 
