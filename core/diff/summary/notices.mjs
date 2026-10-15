@@ -14,6 +14,6 @@ function appendNoticeSummary(lines, notices, emphasize) {
 }
 
 export function appendReviewSummary(lines, summary, emphasize) {
-  appendPolicyChangeSummary(lines, summary?.policyChanges, emphasize);
+  appendPolicyChangeSummary(lines, summary, emphasize);
   appendNoticeSummary(lines, summary?.notices, emphasize);
 }

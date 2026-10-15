@@ -29,7 +29,9 @@ If your change edits a function that existed before it, read
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy entries,
-   or weakened tests. If a finding seems wrong, stop and ask.
+   or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
+   `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
+   accept.
 
 ## Layout
 

@@ -23,6 +23,7 @@ import {
 import { createFindingsCache, runBaseWithCache } from './findings-cache.mjs';
 import { cachedLine } from './progress.mjs';
 import { runAnalyzers } from './run-analyzers.mjs';
+import { policyFindings } from './summary/policy-findings.mjs';
 import { declaredExclusions, toolSummary } from './summary/tool-summary.mjs';
 import { withNamedTemporaryWorktree, withTemporaryWorktree } from './worktree.mjs';
 
@@ -115,6 +116,7 @@ function compareSnapshots(context) {
     headPolicy: settings.headPolicy,
     configOverrides: settings.configOverrides,
     policyChanges: [],
+    policyLoosenings: [],
     ...settings.resolveBaseSetup?.({
       baseProjectRoot: roots.baseProjectRoot,
       baseProjectRelativePath: layout.baseProjectRelativePath,
@@ -176,6 +178,9 @@ function runAndCombine(context) {
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
     policyChanges: context.baseSetup.policyChanges,
+    policyLoosenings: context.baseSetup.policyLoosenings,
+    acceptPolicyChange: settings.acceptPolicyChange === true,
+    reportsPolicy: settings.reportsPolicy !== false,
     notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
   });
 }
@@ -311,8 +316,11 @@ function collect(outcomes, key) {
 
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges, notices } = context;
-  const newFindings = collect(outcomes, 'newFindings');
+  const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const newFindings = [
+    ...collect(outcomes, 'newFindings'),
+    ...(context.reportsPolicy ? policyFindings(policyLoosenings, acceptPolicyChange) : []),
+  ];
   return {
     summary: {
       requestedBaseRef: comparison.requestedBaseRef,
@@ -322,6 +330,8 @@ function buildReport(context) {
       policyHash: policyHash(analyzers, configOverrides),
       configOverrides,
       policyChanges,
+      policyLoosenings,
+      policyChangeAccepted: acceptPolicyChange && policyLoosenings.length > 0,
       notices,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),

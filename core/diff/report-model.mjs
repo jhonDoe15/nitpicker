@@ -27,6 +27,8 @@ export function summaryFields(configOverrides, shardSummary) {
   return {
     configOverrides,
     policyChanges: shardSummary.policyChanges ?? [],
+    policyLoosenings: shardSummary.policyLoosenings ?? [],
+    policyChangeAccepted: shardSummary.policyChangeAccepted === true,
     notices: shardSummary.notices ?? [],
   };
 }

@@ -154,7 +154,7 @@ function run(root, extra = []) {
   const reports = path.join(temporaryRoot('nitpicker-python-out-'), 'reports');
   const exitCode = runCli({
     arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
     currentProjectRoot: root,
     stdout: {
       write: (value) => {
@@ -908,7 +908,7 @@ describe('nitpicker with "preset": "python"', () => {
 
     const exitCode = runCli({
       arguments_: ['--all', '--output', reports],
-      environment: { NO_COLOR: '1' },
+      environment: { NO_COLOR: '1', NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
       currentProjectRoot: root,
       stdout: {
         write: (value) => {

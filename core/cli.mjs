@@ -20,6 +20,7 @@ import { runQualitySnapshot } from './snapshot/run-snapshot.mjs';
 import { parseDrillDownOptions } from './diff/cli.mjs';
 import { parseArguments } from './commands/arguments.mjs';
 import { noticeDescriber } from './commands/notices.mjs';
+import { policyAcceptance } from './commands/policy-acceptance.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveBase } from './diff/base-ref.mjs';
 import { captureWorkingTree, runGit } from './diff/git.mjs';
@@ -79,7 +80,7 @@ function withCliDefaults(options) {
 const USAGE_TEXT =
   'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
   ' [--analyzer <name>]... [--rule <substring>]...' +
-  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]\n' +
+  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change] [--help]\n' +
   '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
   ' [--output <directory>] [--policy-root <directory>]\n' +
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n';
@@ -233,6 +234,7 @@ function runComparisonCli(cli) {
     headPolicy,
     resolveBaseSetup: cli.resolveBaseSetup,
     describeNotices: noticeDescriber(config, headPolicy),
+    ...policyAcceptance(options, cli.environment),
     progress: cli.progress,
     runTasks: cli.runTasks,
   });

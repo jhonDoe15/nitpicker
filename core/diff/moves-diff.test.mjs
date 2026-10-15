@@ -337,6 +337,7 @@ describe('a config that changed between base and head', () => {
     expect(warnings).toEqual([expect.stringContaining('cannot be applied')]);
     expect(resolve({ baseProjectRoot: path.join(root, 'missing'), analyzers: [] })).toEqual({
       policyChanges: [],
+      policyLoosenings: [],
     });
     expect(warnings).toHaveLength(1);
   });

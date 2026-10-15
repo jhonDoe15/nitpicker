@@ -125,7 +125,8 @@ automatically.
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
-          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--help]
+          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
+          [--accept-policy-change] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
@@ -143,6 +144,9 @@ nitpicker cache publish [--analyzer <name>]...
 - `--output <dir>`: where reports go.
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
+- `--accept-policy-change`: accept a change that loosens `nitpicker.config.json` (see
+  [Configuration](#configuration)); `NITPICKER_ACCEPT_POLICY_CHANGE=1` does the same. It is for the
+  person who approves the change, never for a coding agent.
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
@@ -168,10 +172,16 @@ Optional. Put `nitpicker.config.json` at the project root. The head is measured 
 config. The base is measured with the base's own `nitpicker.config.json` when it has one that
 differs, so a finding is new only if the change added it under the rules each side declared; with no
 config on the base, or an identical one, the head's config applies to both sides. Because the head
-controls its own config, a change that loosens it (an added `exclude`, `disable` or `exceptions`
-entry, a raised threshold, a removed custom analyzer, a changed setting) is printed in the console
-summary and in `report.txt` as "Policy changed in this change", and listed in `summary.json` under
-`policyChanges`. The block is information for the reviewer and never fails the run. Unknown keys and
+controls its own config, every change to it is printed in the console summary and in `report.txt` as
+"Policy changed in this change" and listed in `summary.json` under `policyChanges`. A change that
+loosens the policy fails the run with one `nitpicker-config/policy-loosened` finding per loosening,
+until a person accepts it with `--accept-policy-change` (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=1`).
+Loosening is an added `exclude`, `layout.excludedGlobs` or `layout.entryPoints` entry, an added or
+widened `exceptions` (or `python.exceptions`) entry, a newly disabled analyzer, a raised threshold, a
+removed custom analyzer, and any change of `preset`, `react.enabled` or a tool's `precedence`. A
+project's first `nitpicker.config.json` is compared with the defaults. Tightening and other changes
+(`base`, `layout.sourceRoots`, `legacyInventory`, ...) are listed but never fail. With sharding, the
+first shard reports the findings. Unknown keys and
 invalid values are an error (exit 2). Every override is listed in the report and changes the policy
 hash, so a weakened check is visible in review.
 

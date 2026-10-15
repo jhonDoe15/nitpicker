@@ -694,7 +694,7 @@ describe('nitpicker config file', () => {
     const outputRoot = makeOutputRoot();
     const exitCode = runCli({
       arguments_: ['--output', outputRoot, ...extraArguments],
-      environment: {},
+      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
       currentProjectRoot: repository.root,
       analyzers: analyzers ?? [fakeAnalyzer()],
       stdout: output.stdout,
