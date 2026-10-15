@@ -35,7 +35,6 @@ export const domainRestrictedSyntax = [
   {
     selector: [
       `CallExpression[callee.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
-      `CallExpression[callee.computed=true][callee.property.value=/^(${MUTATING_ARRAY_METHODS})$/]`,
       `CallExpression[callee.property.name=/^(call|apply|bind)$/][callee.object.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
     ].join(', '),
     message:
@@ -64,9 +63,15 @@ export const domainRestrictedSyntax = [
   },
   {
     selector:
-      "CallExpression[callee.object.name='Object'][callee.property.name=/^(assign|defineProperty|defineProperties|setPrototypeOf)$/]:not([arguments.0.type='ObjectExpression']), CallExpression[callee.object.name='Reflect'][callee.property.name=/^(set|defineProperty|deleteProperty|setPrototypeOf)$/]",
+      "CallExpression[callee.object.name='Object'][callee.property.name=/^(assign|defineProperty|defineProperties|setPrototypeOf)$/]:not([arguments.0.type='ObjectExpression'])",
     message:
       'domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field } (Object.assign is fine only onto a fresh object literal).',
+  },
+  {
+    selector:
+      "CallExpression[callee.object.name='Reflect'][callee.property.name=/^(set|defineProperty|deleteProperty|setPrototypeOf|apply)$/], CallExpression[callee.object.name='Atomics'][callee.property.name=/^(store|add|sub|and|or|xor|exchange|compareExchange)$/]",
+    message:
+      'domain/ code does not change values through Reflect or Atomics: return a new value with spread, e.g. { ...value, field }.',
   },
   {
     selector: "UnaryExpression[operator='delete']",
