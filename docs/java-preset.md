@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, lizard.csv, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -54,16 +54,15 @@ mapping, tests, and this document.
 | 2   | Integration              | none new                                                         | Wire into the CLI and reporters (text, JSON, SARIF from X4); `tool-error` on Gradle failure; npm `files` | done    |
 | 3   | Checkstyle               | Checkstyle XML via the Gradle `checkstyle` plugin                | `ingestCheckstyle` (X6) as is                                                                            | done    |
 | 4   | ArchUnit                 | ArchUnit rules as JUnit tests; JUnit XML failures                | new small ingester: one enforceable finding per violated rule and offending class                        | done    |
-| 5   | CRAP via lizard          | lizard CSV for complexity, JaCoCo for per-method coverage        | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | done    |
+| 5   | CRAP                     | structure metrics for complexity, JaCoCo for per-method coverage | new `crap` ingester joining both; same rules as the TypeScript `crap` check (limit 9)                    | done    |
 | 6   | Duplicates               | jscpd with the `java` format, JSON report                        | new ingester: `duplicate-clone` and `duplicate-clone-size`, as in the TypeScript `duplicates` check      | done    |
 | 7   | Mutation                 | PIT, XML report                                                  | new ingester: `mutant-survived`, `mutant-nocoverage` enforceable, summary descriptive (see X10)          | done    |
 | 8   | Gate on changed coverage | JaCoCo with changed line ranges from git                         | `changed-branch-coverage` equivalent (needs a head-vs-base line mapping, not a per-report ingester)      | this PR |
 
 PMD and SpotBugs appear before the other tools because both emit SARIF 2.1.0 and need no new
-ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Python for lizard, Node
+ingester. Slices 4 to 7 need Java-specific tooling (Gradle test task wiring, Node
 for jscpd, a long-running PIT) and each is expensive enough to deserve its own review. Slices 5 and
-8 depend on slice 1's JaCoCo output; 5 additionally needs lizard installed, which is the first tool
-that is not a JVM artifact, so it needs a decision on how tools are provisioned.
+8 depend on slice 1's JaCoCo output.
 
 ## Slice 4: ArchUnit
 
@@ -158,9 +157,13 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   message is Gradle's diagnostic output. The comparison turns it into a tool error for that
   snapshot (`base` or `head`), skips the comparison for the analyzer and exits with 2; nothing
   throws and no partial result is compared.
-- **Gradle binary.** `gradle` from the PATH, or the command in `NITPICKER_GRADLE` (as the e2e test
-  already allowed). The Gradle wrapper is not used; a consumer who needs it sets
-  `NITPICKER_GRADLE=./gradlew`.
+- **Gradle binary.** The command in `NITPICKER_GRADLE` when it is set; otherwise the analyzed
+  project's own wrapper (`gradlew`, or `gradlew.bat` on Windows) when the project root has
+  one (a `gradlew` without the executable bit runs as `sh gradlew`); otherwise `gradle` from the PATH
+  (through the shell on Windows, where it is `gradle.bat`). The wrapper is looked up in each snapshot's
+  project root (base and head are separate worktrees), so each side runs the Gradle version it pins.
+  The wrapper downloads the Gradle distribution named in the head snapshot's
+  `gradle-wrapper.properties`, and base and head each use their own wrapper.
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
   `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
@@ -250,38 +253,43 @@ Notes on the glue in `java-reports.mjs`:
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
 identity when the value changes: editing such a line counts as a resolved plus a new finding.
 
-## Slice 5: CRAP via lizard
+## Slice 5: CRAP
 
-- **Tool and report.** `lizard --csv -l java <source roots>` (pinned `lizard 1.24.1` in the init
-  script's version map) writes `build/nitpicker/lizard.csv`: one row per function with its
-  cyclomatic complexity (CCN). The Gradle task `nitpickerLizard` is part of `nitpickerJava`.
-- **Provisioning (decision to review).** lizard is a Python tool, so Gradle cannot download it.
-  The most conservative choice: the environment provides it. The init script runs the executable
-  named by `NITPICKER_LIZARD`, else `lizard` from the PATH; the version it reports must equal the
-  pinned one, otherwise the build fails with a message saying what to install
-  (`pip install lizard==1.24.1`). On the CLI path that becomes the usual `java/gradle-failure`
-  `tool-error`; nothing is skipped and no CRAP is guessed. Not done on purpose: auto-installing
-  with pip, a bundled copy, a virtualenv managed by nitpicker.
-- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins lizard's functions with the JaCoCo
-  report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a lizard function when the
-  file, the method name (`<init>` is the class name) and the line match: the method's first line
-  lies in the function's line range. This also joins methods of anonymous classes. Lambdas and
-  `<clinit>` have no lizard function of their own and stay out of the join (a lambda body counts
+- **Complexity source.** `StructureMetrics.java` (the `nitpickerStructure` task, see
+  [Structure limits (SH5)](#structure-limits-sh5)) writes the
+  cyclomatic complexity of each method and constructor into `build/nitpicker/structure.json`
+  (`complexity`), so the CRAP check needs no tool beyond the JDK that runs Gradle. It is
+  McCabe's count: 1 plus each `if`, `for`, enhanced `for`, `while`,
+  `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not a default one (an arrow case and a case with
+  several constants count once; `default` and `case null, default` count 0). Lambda bodies count towards the
+  enclosing method; members of nested and anonymous classes are methods of their own.
+- **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
+  report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
+  the file, the method name (`<init>` is the class name) and the line match: the method's first line
+  lies in the method's line range. This also joins methods of anonymous classes. Lambdas and
+  `<clinit>` have no entry of their own and stay out of the join (a lambda body counts
   toward its enclosing method's complexity but not toward its coverage).
+- **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
+  utility-class idiom, is flagged `privateEmptyConstructor` in `structure.json` and left out of the
+  join. JaCoCo leaves such a constructor out of its report only in some cases (inner classes, enums,
+  classes with field initializers, and a superclass other than `Object`), so it would often be
+  `crap-coverage-unknown`. Dropping it when JaCoCo does report it is harmless: its complexity is 1,
+  which can never exceed the CRAP limit.
 - **Rules, as in the TypeScript `crap` check.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, where
   coverage is the lower of the method's JaCoCo line coverage and branch coverage (whichever have
   counters). `crap-score-limit` (enforceable) when `crap >= 9`: a method at exactly the limit
   fails, as it does for TypeScript. `crap-coverage-unknown` (enforceable) when no JaCoCo method
   matches or the method has neither line nor branch counters. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
-- **Identity.** `function:<lizard long name>`, for example `function:Calc::classify( int a , int b , String s)`:
-  class, method and parameter text, never a line. Repeats get `#2`, `#3` in report order. The path
+- **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
+  enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
+  Repeats (anonymous classes) get `#2`, `#3` in report order. The path
   is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
   its findings as resolved plus new. Changing a method's parameters is a different function, as in
   the TypeScript check, where an edit that moves a function changes its identity too.
 - **Tests.** `languages/java/ingest/crap.test.mjs` against the committed samples
-  `fixtures/lizard.csv` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
-  the gated e2e test has a case adding a ten-branch untested method (needs lizard 1.24.1).
+  `fixtures/structure.json` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
+  the gated e2e test has a case adding a ten-branch untested method.
 
 ## Slice 6: duplicates
 
@@ -347,11 +355,13 @@ resolved plus a new finding, as in the TypeScript check.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
   source mode, run by the JVM that runs Gradle (task `nitpickerStructure`, report
-  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. All four
-  metrics come from this one source so they are consistent; lizard is not used, because it has no
-  statement count or control nesting and mixing two counters for one rule would make lines disagree
-  between tools. PMD's metrics were rejected too (not in the SARIF output, and its rules do not
-  expose per-method statements). A small JavaParser step was the alternative; it would add a
+  `build/nitpicker/structure.json`). It needs no dependency and no pin beyond the JDK. A syntax error (for
+  example syntax newer than the JVM that runs Gradle) is not skipped: the program prints `file:line` and
+  the compiler message of up to five errors and exits with status 1, so the task fails and the run is a
+  tool error instead of a report with missing or shortened methods. All four
+  metrics come from this one source so they are consistent (the cyclomatic complexity of the CRAP check
+  too); a second tool would make two counters disagree. PMD's metrics were rejected (not in the SARIF output, and
+  its rules do not expose per-method statements). A small JavaParser step was the alternative; it would add a
   pinned artifact for nothing the JDK does not already provide.
 - **Definitions** (the TypeScript analyzer's, so both languages gate the same way). Unit: each
   method and constructor with a body. `lines`: last line - first line + 1, annotations and
@@ -595,7 +605,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 ## Slice 1: what is deliberately not included
 
-- Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP via lizard, jscpd, PIT and the changed-line
+- Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
   branch-coverage gate are described in their own sections.
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
@@ -606,7 +616,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, lizard (slice 5) and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

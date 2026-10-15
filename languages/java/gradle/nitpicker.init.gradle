@@ -13,8 +13,8 @@
 //   build/nitpicker/checkstyle.xml   Checkstyle XML report (main sources)
 //   build/nitpicker/checkstyle-test.xml  Checkstyle XML report (test sources; absent without any)
 //   build/nitpicker/archunit/*.xml   JUnit XML of the project's ArchUnit rule tests (absent without any)
-//   build/nitpicker/lizard.csv       lizard --csv: cyclomatic complexity per function (CRAP input)
-//   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters (languages/java/gradle/StructureMetrics.java)
+//   build/nitpicker/structure.json  per-method lines, statements, control nesting, parameters and cyclomatic
+//                                    complexity (the CRAP input) (languages/java/gradle/StructureMetrics.java)
 //   build/nitpicker/pit/mutations.xml PIT mutation report, XML (absent when there are no main classes)
 //   build/nitpicker/jdeps.txt        jdeps -verbose:class -filter:none over the main classes (coupling input)
 //   build/nitpicker/jdeps-classes.txt the binary names of those main classes, one per line
@@ -54,12 +54,6 @@ def pinned = [
     ktfmt           : '0.64',
     kotlinCompiler  : '2.4.21',
 ]
-
-// lizard is a Python tool, not a JVM artifact, so Gradle cannot download it. It is provisioned by
-// the environment: `lizard` on the PATH, or the executable named by NITPICKER_LIZARD. Its version
-// must equal the pinned one; a missing or different lizard fails the build (the CLI reports that
-// as a tool-error finding). Install it with `pip install lizard==<pinned version>`.
-def lizardExecutable = System.getenv('NITPICKER_LIZARD') ?: 'lizard'
 
 // BEGIN SH5 structure metrics
 // The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
@@ -265,44 +259,6 @@ allprojects {
             }
         }
 
-        tasks.register('nitpickerLizard') {
-            group = 'nitpicker'
-            doLast {
-                def run = { List<String> command ->
-                    def process = new ProcessBuilder(command).directory(projectDir)
-                        .redirectErrorStream(true).start()
-                    def output = process.inputStream.getText('UTF-8')
-                    [process.waitFor(), output]
-                }
-                def version
-                try {
-                    version = run([lizardExecutable, '--version'])
-                } catch (IOException e) {
-                    throw new GradleException("lizard ${pinned.lizard} is required for the CRAP check but " +
-                        "'${lizardExecutable}' could not be started (${e.message}). " +
-                        "Install it with 'pip install lizard==${pinned.lizard}' or set NITPICKER_LIZARD.")
-                }
-                if (version[0] != 0 || version[1].trim() != pinned.lizard) {
-                    throw new GradleException("lizard ${pinned.lizard} is required but " +
-                        "'${lizardExecutable} --version' reported: ${version[1].trim()}")
-                }
-                reportDir.get().asFile.mkdirs()
-                def roots = mainSources.files.findAll { it.exists() }.collect {
-                    projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
-                }
-                def csv = reportDir.get().file('lizard.csv').asFile
-                if (roots.isEmpty()) {
-                    csv.text = ''
-                    return
-                }
-                def result = run([lizardExecutable, '--csv', '-l', 'java'] + roots)
-                if (result[0] != 0) {
-                    throw new GradleException("lizard failed: ${result[1].trim()}")
-                }
-                csv.text = result[1]
-            }
-        }
-
         // PIT mutates the project's main classes and runs its tests (JUnit 5 through the plugin, or
         // JUnit 4) against each mutant. It needs a green test run to start, so a failing test suite
         // fails the task like it fails `test`. Everything under the main classes is a target.
@@ -382,10 +338,10 @@ allprojects {
         }
 
         // BEGIN SH5 structure metrics
-        // Per-method lines, statements, control nesting and parameters for the shared structure
-        // rule. languages/java/gradle/StructureMetrics.java parses the main sources with the JDK's own compiler tree
-        // API in single-file source mode, run by the JVM that runs Gradle: no extra dependency and
-        // no version to pin beyond the JDK. (Lizard cannot supply statements or nesting.)
+        // Per-method lines, statements, control nesting, parameters and cyclomatic complexity for the
+        // shared structure rule and the CRAP check. languages/java/gradle/StructureMetrics.java parses
+        // the main sources with the JDK's own compiler tree API in single-file source mode, run by the
+        // JVM that runs Gradle: no extra dependency and no version to pin beyond the JDK.
         tasks.register('nitpickerStructure') {
             group = 'nitpicker'
             def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
@@ -409,8 +365,8 @@ allprojects {
 
         tasks.register('nitpickerJava') {
             group = 'nitpicker'
-            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, lizard, structure metrics and PIT; reports go to build/nitpicker.'
-            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerLizard', 'nitpickerStructure', 'nitpickerPit'
+            description = 'Runs PMD, SpotBugs, the formatter check, JaCoCo, Checkstyle, ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
+            dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerFormat', 'nitpickerJacoco', 'checkstyleMain', 'checkstyleTest', 'nitpickerArchunit', 'nitpickerStructure', 'nitpickerPit'
             doLast {
                 def roots = mainSources.files.collect {
                     project.projectDir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
@@ -630,8 +586,7 @@ allprojects {
                 // Per-function lines, statements, control nesting, parameters and complexity (the CRAP input), and
                 // the class names of each file (the coupling input). languages/java/gradle/KotlinMetrics.java
                 // parses the Kotlin sources with the PSI parser of the pinned Kotlin compiler in single-file
-                // source mode, run by the JVM that runs Gradle. lizard is not used for Kotlin: its Kotlin reader
-                // drops extension functions and lets a lambda arrow swallow the functions that follow it.
+                // source mode, run by the JVM that runs Gradle.
                 tasks.register('nitpickerKotlinMetrics') {
                     group = 'nitpicker'
                     dependsOn tasks.named('classes')

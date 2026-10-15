@@ -55,7 +55,7 @@ properties.
 | JaCoCo                                   | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.         |
 | PMD, Checkstyle, google-java-format      | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                 |
 | SpotBugs                                 | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                  |
-| lizard (CRAP of Java)                    | yes          | no             | Java sources and classes only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                                  |
+| Java structure metrics (CRAP of Java)    | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                     |
 | PIT                                      | yes          | report-only    | Mutants of Kotlin classes are descriptive and never fail; see [Mutation](#mutation-report-only-for-kotlin).             |
 | Structure limits, CRAP, jscpd duplicates | yes          | yes            | Kotlin through `KotlinMetrics.java` and jscpd's `kotlin` format. See below.                                             |
 | jdeps (stability direction)              | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).    |
@@ -403,11 +403,10 @@ there are no inline disables.
 runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class path. The version is
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
-pin means running `npm run test:kotlin` again. lizard cannot be the source: it has no statement count
-or control nesting, and its Kotlin reader (1.24.1) misreads ordinary Kotlin. It drops extension
-functions (`fun String.shout() = ...`), ends an expression-bodied function at the next `fun`, and
-turns the `->` of a lambda into an anonymous function that swallows the declarations after it. A
-complexity per function from lizard would be attributed to the wrong lines.
+pin means running `npm run test:kotlin` again. A line-based tool cannot be the source: it has no
+statement count or control nesting, and token-based readers misread ordinary Kotlin (extension
+functions such as `fun String.shout() = ...`, expression-bodied functions, the `->` of a lambda), which
+would attribute a complexity per function to the wrong lines.
 
 **What is measured, all from the one parse, with the definitions of the other languages.**
 
@@ -447,8 +446,8 @@ Kotlin functions get the shared CRAP rule: `crap-score-limit` at a score of 9 or
 `ccn^2 * (1 - coverage)^3 + ccn`, with the lower of line and branch coverage, as for Java, and the
 CRAP ingester (`ingestCrapFunctions`) is the Java one.
 
-**Complexity and coverage (decisions).** The complexity is the one from `KotlinMetrics.java`, not
-lizard's, for the reason above; it counts what lizard counts for Java. Coverage is JaCoCo's per-method
+**Complexity and coverage (decisions).** The complexity is the one from `KotlinMetrics.java`, for
+the reason above; it counts what `StructureMetrics.java` counts for Java. Coverage is JaCoCo's per-method
 data. The match is by file and line, not by function name, because Kotlin's JVM names do not follow
 the source: JaCoCo keys classes by `package/sourcefilename`, so `FileNameKt` facades, companions,
 nested classes and `DefaultImpls` of one file are all that file's methods. The key is built from the
@@ -472,7 +471,7 @@ by any test and would fail a complex inline function for good. They are left out
 complex inline function should be split up. The metrics step marks them (`inline: true` in
 `kotlin-metrics.json`).
 
-lizard stays in the pipeline for the Java sources of a mixed module (`-l java`); it never reads a
+The Java sources of a mixed module get their complexity from `StructureMetrics.java`; it never reads a
 `.kt` file.
 
 ## Duplicates
@@ -560,7 +559,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/java-cli.test.mjs` runs an exception through the CLI.
 - `languages/java/adapters/kotlin-preset.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
-  (`npm run test:kotlin`). Needs Java 21, Gradle, lizard (the Java preset's) and network access
+  (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
   (`languages/java/adapters/fixtures/kotlin-project`): a tested change passes with its legacy detekt
   finding baselined; new detekt and ktlint findings fail; a Java change in the Kotlin module is
@@ -594,7 +593,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | --- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | KT1 | Gradle integration, detekt, format           | This document: done.                                                                                                                                        |
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
-| KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (lizard's Kotlin reader is unreliable), jscpd with the Kotlin format and jdeps over Kotlin classes. |
+| KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, report-only.                                              |
 
 ## Known limits
