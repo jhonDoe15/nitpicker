@@ -14,7 +14,7 @@ side contributes only two things: producing reports, and converting them into fi
 
 ```
 gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
-  -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
+  -> <report dir>/modules.json and, per Gradle project that applies java, <report dir>/<key>/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-<source set>.xml, archunit/*.xml, structure.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
   -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
@@ -28,8 +28,15 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
   exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
   JaCoCo 0.8.12, Checkstyle 10.21.1). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
-  touch the consumer's compile classpath. The task writes only below `build/nitpicker/`; that
-  directory is the contract between the two sides.
+  touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
+  temporary directory outside the project, and the task writes only below it, one subdirectory per
+  Gradle project (layout in [internals.md](internals.md#java-report-directory)). A build script
+  therefore cannot rewrite the reports nitpicker reads. Run by hand without the property, the task
+  writes to `build/nitpicker/` of each project.
+- **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
+  included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
+  subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
+  the plugin, or a project whose reports are missing, is a tool error, never a pass.
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -113,7 +120,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the task, which is a Gradle failure
   (`tool-error` on the CLI path). Projects without main classes produce no report and no findings.
-  JUnit 5 (Jupiter) projects are the tested case; JUnit 4 projects are not covered by the e2e test.
+  The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
+  `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support.
+- **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
+  `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
+  exception for `pit/mutant-survived`.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
@@ -219,6 +230,13 @@ Notes on the glue in `java-reports.mjs`:
   ingester's `fp:` identity path is used and the line is never involved. The alternative, the
   ingester's default hash of rule, path and symbol, would treat two different unused fields in one
   file as indistinguishable repeats; matching by what the finding is about is more precise.
+- **Several projects.** Each Gradle project's reports are read on their own and their findings
+  joined. A finding about a whole project (path `.`, such as the mutation summary) gets
+  `@<project path>` appended to its identity when the build has more than one project.
+- **SpotBugs entity associations.** `EI_EXPOSE_REP` and `EI_EXPOSE_REP2` are dropped for a field
+  annotated `@ManyToOne` or `@OneToOne`: an entity hands out its associated entity on purpose.
+  Collections and other mutable values still fail, and the message names the copy (`List.copyOf`,
+  `Map.copyOf`) or a record, and the exception.
 - **SpotBugs level.** SpotBugs marks lower-confidence findings with SARIF level `note`, which the
   SARIF ingester would classify as report-only. The preset instead fixes the threshold in the init
   script (`-medium`) and treats everything the tool reports as enforceable.
@@ -229,17 +247,30 @@ Notes on the glue in `java-reports.mjs`:
   remap them: a renamed file with such findings shows them as resolved plus new. `format` and
   `fp:` identities carry no path, so they follow renames.
 
+**PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
+default, and their messages name it:
+
+| Rule                               | What passes                                                                                                 |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `AvoidLiteralsInIfCondition`       | `-1`, `0`, `1` and `2`; any other number in a condition is a named constant.                                |
+| `AvoidFieldNameMatchingMethodName` | `static final` constants, and a no-argument accessor named exactly like its field (`name()` for `name`).    |
+| `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                        |
+| `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders; a guard only when an argument is computed.   |
+| `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`. |
+| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.            |
+
 ## Slice 3: Checkstyle
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on `checkstyleMain` and
-  `checkstyleTest`. `ignoreFailures` is on and the XML reports are written to
-  `build/nitpicker/checkstyle.xml` (main sources) and `build/nitpicker/checkstyle-test.xml` (test
-  sources, absent without any); the HTML report is off.
+  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of every
+  source set. `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
+  sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
+  ...) in the report directory; the HTML report is off.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, which matches google-java-format, with `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
-  allowed on public API but not required, the same rule as the TypeScript preset. Javadoc that is
+  allowed on public API but not required, the same rule as the TypeScript preset. Member and method
+  names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
   there still has to be well formed. Decision to review: google_checks is noisy on
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
@@ -261,12 +292,18 @@ identity when the value changes: editing such a line counts as a resolved plus a
   (`complexity`), so the CRAP check needs no tool beyond the JDK that runs Gradle. It is
   McCabe's count: 1 plus each `if`, `for`, enhanced `for`, `while`,
   `do`, `catch`, `?:`, `&&`, `||` and each `case` that is not a default one (an arrow case and a case with
-  several constants count once; `default` and `case null, default` count 0). Lambda bodies count towards the
+  several constants count once; `default` and `case null, default` count 0). A flat switch, a switch
+  expression or a pattern switch whose cases are all one-expression arrows, counts as one decision
+  plus one per `when` guard, at most its case count, so an exhaustive switch over an enum or sealed
+  type does not push a method over the limit. Lambda bodies count towards the
   enclosing method; members of nested and anonymous classes are methods of their own.
 - **Ingester.** `ingestCrap` (`languages/java/ingest/crap.mjs`) joins those methods with the JaCoCo
   report (same `jacoco.xml` as slice 1). A JaCoCo method belongs to a method of `structure.json` when
   the file, the method name (`<init>` is the class name) and the line match: the method's first line
-  lies in the method's line range. This also joins methods of anonymous classes. Lambdas and
+  lies in the method's line range. This also joins methods of anonymous classes. A constructor is
+  also joined by its parameter types (`parameterTypes` in `structure.json` against JaCoCo's
+  descriptor), because a class with field initializers starts its `<init>` at the first initializer,
+  before the constructor. Lambdas and
   `<clinit>` have no entry of their own and stay out of the join (a lambda body counts
   toward its enclosing method's complexity but not toward its coverage).
 - **Private empty constructors.** `private Util() {}` (also with an explicit `super();`), the
@@ -278,8 +315,14 @@ identity when the value changes: editing such a line counts as a resolved plus a
 - **Rules, as in the TypeScript `crap` check.** `crap = ccn^2 * (1 - coverage)^3 + ccn`, where
   coverage is the lower of the method's JaCoCo line coverage and branch coverage (whichever have
   counters). `crap-score-limit` (enforceable) when `crap >= 9`: a method at exactly the limit
-  fails, as it does for TypeScript. `crap-coverage-unknown` (enforceable) when no JaCoCo method
-  matches or the method has neither line nor branch counters. Only violations are findings; the
+  fails, as it does for TypeScript; for a fully covered method the message says to split off a
+  branchy part. `crap-coverage-unknown` (enforceable) when no JaCoCo method
+  matches or the method has neither line nor branch counters; its Java message names the two causes,
+  no test runs it or it is annotated `@Generated`.
+- **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
+  excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
+  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`; on
+  hand-written code that annotation is the `pmd/GeneratedOnHandWrittenCode` finding. Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
   enclosing classes, method and parameter types (`signature` in `structure.json`), never a line.
@@ -298,8 +341,9 @@ identity when the value changes: editing such a line counts as a resolved plus a
   `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
   per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
-  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
-  `build/nitpicker/duplicates.json`. Clones across two source roots are not detected. A jscpd
+  (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. It runs
+  once for the whole build, over the source roots of every Gradle project. Reports go to `jscpd/<n>/`
+  in the report directory and are merged into its `duplicates.json`. Clones across two source roots are not detected. A jscpd
   failure is a tool error like a Gradle failure.
 - **Findings.** The same normalizer as the TypeScript check (`normalizeDuplicates`), tool name
   `duplicates`: `duplicate-clone` (enforceable, one per clone) and `duplicate-clone-size`
@@ -368,7 +412,8 @@ resolved plus a new finding, as in the TypeScript check.
   modifiers included, Javadoc not. `statements`: every statement in the body except blocks (`for`
   initializers and updates, `catch` parameters and `try` resources are not statements).
   `maxControlNesting`: deepest nesting of `if`, `for`, enhanced `for`, `while`, `do`, `switch`
-  (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
+  (statement or expression) and `catch`; an `else if` stays on the level of the `if` it continues,
+  as in the Python and Kotlin presets. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
 - **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
@@ -478,8 +523,9 @@ Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ..
 project's build does not replace it either.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
-`build/nitpicker/checkstyle-test.xml`), google-java-format and the inline suppression scan cover
-`src/test/java` as well as the main sources, the way the TypeScript preset lints its tests; the
+`checkstyle-test.xml`), google-java-format and the inline suppression scan cover
+`src/test/java` and every other source set (`integrationTest`, `testFixtures`, `jmh`, ...) as well
+as the main sources, with the test rules, the way the TypeScript preset lints its tests; the
 file and folder limits already counted test files. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
 errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
@@ -487,13 +533,15 @@ errorprone and bestpractices categories without `UnitTestAssertionsShouldInclude
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
 forbid broad catches. A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
-also counts MockMvc's `andExpect`), and a class named like a test but without test methods fails
+also counts MockMvc's `andExpect` and `andExpectAll`, BDDMockito's `then(...).should()`,
+`WebTestClient`'s `expectStatus`/`expectBody`/`expectHeader` and `StepVerifier`'s `expectNext`,
+`verifyComplete` and friends), and a class named like a test but without test methods fails
 (`TestClassWithoutTestCases`), except `*ArchTest` and `*ArchitectureTest` classes, which hold
 ArchUnit rules. The Spring rule set reads main sources only: the init script wraps it in
 `build/nitpicker/pmd-spring-main.xml` with an exclude pattern per test source directory, since
 field injection and package-private test methods are the norm in tests. A PMD rule that flags
-legitimate test code, such as `SystemPrintln` in a test of console output, takes an exception like
-any other: `{ "rule": "pmd/<rule>", "paths": [...],
+legitimate test code, such as `SystemPrintln` in a test of console output, or `CloseResource` on a
+`PrintStream` handed to `System.setOut`, takes an exception like any other: `{ "rule": "pmd/<rule>", "paths": [...],
 "reason": "..." }`. PMD messages that name a line ("first occurrence is on line 12") lose the number
 in the finding's identity, so moving code does not re-report them. SpotBugs, the structure limits
 and CRAP stay on main code, as in the TypeScript preset.
@@ -502,10 +550,11 @@ and CRAP stay on main code, as in the TypeScript preset.
 when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "paths": [...],
 "reason": "..." }`.
 
-**Limits.** Rules are per file. `JpaVersion` checks the root of each entity hierarchy: an `@Entity`
-without a superclass, or a `@MappedSuperclass` that declares the `@Id`, so the `@Version` field
-belongs next to the `@Id`. An entity with a superclass is skipped, because its `@Version` may be
-inherited. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
+**Limits.** `JpaVersion` checks each `@Entity` or `@MappedSuperclass` that declares the `@Id`,
+and each entity without a superclass, so the `@Version` field belongs next to the `@Id`. A finding
+is dropped when a superclass found in the project's sources declares `@Version`; a superclass from
+a library counts as having none. `AbstractClassWithoutAbstractMethod` skips `@MappedSuperclass`
+classes, which are abstract to stop instantiation. The JPA rules match `jakarta.persistence` only; `javax.persistence` code gets none of
 them. `SpringDataDerivedQuery` leaves redeclared CRUD methods alone (`findById`, `findAll`, `save`,
 `deleteById` and the rest of `ListCrudRepository`, `ListPagingAndSortingRepository`,
 `JpaRepository` and `QueryByExampleExecutor`), since Spring implements those without parsing the
@@ -514,8 +563,9 @@ Elasticsearch modules; the other Spring Data rules know only the JPA annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
 `SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction). `SpringDataNoSaveInLoop` covers
-`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks, lambdas and method
-references (`forEach(repository::save)`) alike. It and `SpringDataNoFlush` skip a loop that also
+`for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
+or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
 calls `EntityManager.clear()`, the JPA batch idiom.
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
@@ -607,9 +657,6 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
   branch-coverage gate are described in their own sections.
-- Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
-  the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
-  side reads one project root.
 - Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
 
 ## Tests

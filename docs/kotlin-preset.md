@@ -30,7 +30,7 @@ fails with a tool error saying so.
 
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
-  -> everything the Java preset writes, plus build/nitpicker/{detekt.sarif, ktlint.sarif | ktfmt.txt}
+  -> everything the Java preset writes, plus {detekt.sarif, ktlint.sarif | ktfmt.txt} in each project's report directory
   -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/java-reports.mjs)
        -> readKotlinFindings                         (languages/java/adapters/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
@@ -598,11 +598,9 @@ fails only when it grows, and a package folder moved to a new path is matched to
 
 ## Known limits
 
-- Multi-module builds: every module with the Kotlin plugin gets the tasks, but Nitpicker reads the
-  root project's `build/nitpicker`, as for Java. A root project that does not apply the Kotlin plugin
-  (an aggregator with the code in submodules) writes no reports, which is a tool error saying so; and
-  when the root and a submodule both have Kotlin, the submodule's reports are not read. Aggregating
-  per-module reports is not done for either preset yet.
+- Multi-module builds: every project with the Kotlin plugin is analyzed and its findings carry
+  the project's folder, as for Java. A build where no project applies the Kotlin plugin is a tool
+  error saying so.
 - Kotlin is linted in main sources only; Java files are linted in main and test sources, as in the
   Java preset. Generated sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`
