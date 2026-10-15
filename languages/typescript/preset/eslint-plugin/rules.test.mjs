@@ -446,55 +446,48 @@ ruleTester.run('no-mocking-subject-under-test', noMockingSubjectUnderTest, {
   ],
 });
 
+const silentCatchFile = '/repo/src/main/feature.ts';
+const silentCatchValid = [
+  "try { execute(); } catch (error) { logger.warn('using fallback'); return toFailure(error); }",
+  'try { execute(); } catch (error) { throw error; }',
+  'try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, error }; }',
+  "try { execute(); } catch (error) { throw new FeatureError('failed', { cause: error }); }",
+  "function parse(text) { try { return JSON.parse(text); } catch { return { kind: 'malformed-json' }; } }",
+  'function parse(text) { try { return load(text); } catch (error) { if (isMissing(error)) return undefined; throw error; } }',
+  "function parse(text) { try { return load(text); } catch { return fail('unreadable'); } }",
+  'try { execute(); } catch (error) { reject(error); }',
+  'try { execute(); } catch (error) { setError(error); }',
+  'try { execute(); } catch (error) { lastError = error; }',
+  'try { execute(); } catch (error) { state.error = error; }',
+  'try { execute(); } catch (error) { const wrapped = { error }; errors.push(wrapped); }',
+  'try { execute(); } catch (error) { process.stderr.write(String(error)); process.exitCode = 1; }',
+  "try { execute(); } catch (error) { logger.error({ err: error }, 'failed'); process.exit(1); }",
+  'function read() { try { return load(); } catch (error) { return `failed: ${error.message}`; } }',
+];
+const silentCatchInvalid = [
+  'try { execute(); } catch { useFallback(); }',
+  'function read() { try { return load(); } catch { return undefined; } }',
+  'try { execute(); } catch (error) { useFallback(); }',
+  "try { execute(); } catch (error) { logger.warn('using fallback'); }",
+  "try { execute(); } catch (error) { logger.error({ err: error }, 'failed'); }",
+  "function read() { try { return load(); } catch (error) { logger.error({ err: error }, 'failed'); return ''; } }",
+  "function read() { try { return load(); } catch (error) { logger.error({ err: error }, 'failed'); return []; } }",
+  'function read() { try { return load(); } catch (error) { void error; return ""; } }',
+  'function read() { try { return load(); } catch (error) { const unused = error; return unused ? "" : ""; } }',
+  'function read() { try { return load(); } catch { return {}; } }',
+  'function read() { try { return load(); } catch (error) { console.error(String(error)); return { items: [] }; } }',
+  'try { execute(); } catch (error) { process.stderr.write(String(error)); }',
+  'try { execute(); } catch (error) { console.log(`failed ${error}`); }',
+  'function read() { try { return load(); } catch (error) { if (error instanceof Missing) return null; useFallback(); } }',
+];
+
 ruleTester.run('no-silent-catch', noSilentCatch, {
-  valid: [
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { execute(); } catch (error) { logger.warn('using fallback'); return toFailure(error); }",
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { execute(); } catch (error) { logger.error({ err: error }, 'failed'); }",
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch (error) { throw error; }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, error }; }',
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { execute(); } catch (error) { throw new FeatureError('failed', { cause: error }); }",
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "function parse(text) { try { return JSON.parse(text); } catch { return { kind: 'malformed-json' }; } }",
-    },
-  ],
-  invalid: [
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch { useFallback(); }',
-      errors: [{ messageId: 'silent' }],
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'function read() { try { return load(); } catch { return undefined; } }',
-      errors: [{ messageId: 'silent' }],
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: 'try { execute(); } catch (error) { useFallback(); }',
-      errors: [{ messageId: 'silent' }],
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { execute(); } catch (error) { logger.warn('using fallback'); }",
-      errors: [{ messageId: 'silent' }],
-    },
-  ],
+  valid: silentCatchValid.map((code) => ({ filename: silentCatchFile, code })),
+  invalid: silentCatchInvalid.map((code) => ({
+    filename: silentCatchFile,
+    code,
+    errors: [{ messageId: 'silent' }],
+  })),
 });
 
 ruleTester.run('no-unvalidated-schema-field', noUnvalidatedSchemaField, {

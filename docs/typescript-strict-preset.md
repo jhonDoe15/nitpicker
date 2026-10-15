@@ -77,12 +77,15 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 
 - Throw only for unexpected failures, using `Error` subclasses that preserve `cause`. Convert
   library exceptions into domain results at the boundary.
-- `nitpicker/no-silent-catch`: a `catch` must hand the failure on. It passes when it uses the
-  caught value (rethrow an `Error` subclass with `{ cause: error }`, log it, or return it in a
-  result) or when it returns a failure result object (`catch { return { kind: 'malformed-json' } }`).
-  Carry the caught value only where something reads it; a field added just so the binding is read
-  is slop. A `catch` that falls through, or returns a non-object such as `undefined` or `[]`, is
-  reported. A deliberately dropped error needs an exception in the config file.
+- `nitpicker/no-silent-catch` (all production code): a `catch` must hand the failure on. It
+  passes when it throws (an `Error` subclass with `{ cause: error }`, or `throw error`), when the
+  caught value reaches a `return` or a call that is not a logger (`return toFailure(error)`,
+  `reject(error)`, `setError(error)`, `lastError = error`), when it returns a failure result
+  (`catch { return { kind: 'malformed-json' } }`, `{ ok: false, error }`), or when it ends the
+  process (`process.exitCode = 1`, `process.exit(1)`). A `catch` that only logs the error, reads it
+  and drops it (`void error`, an alias nobody uses), or returns a default (`undefined`, `''`, `[]`,
+  `{}`, `{ items: [] }`) and carries on is reported. A deliberately dropped error needs an
+  exception in the config file.
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
   (also with `.optional()`, `.nullable()`, `.default()` and similar wrappers) as a field of
   `z.object`, `z.strictObject` or `z.looseObject`. A schema that only checks the shape hands the
@@ -101,6 +104,38 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops, so a walk there uses `map`/`flatMap` or
   moves to `adapters/`.
+- `nitpicker/no-duplicate-string-literals` (all production code): a string literal of three
+  characters or more that a file uses three times or more is reported from its third use. Name it
+  once (`const PENDING = 'pending'`). Import sources, type-position literals, object and class
+  keys, JSX attribute values, enum members and directives are not counted.
+- `nitpicker/no-hardcoded-secret` (all production code): a string literal assigned to a
+  secret-named variable, property, parameter default or fallback (`password`, `token`, `secret`,
+  `credentials`, `apiKey`, `privateKey` and similar, also after `||` or `??`) is reported, and so
+  is a string shaped like an AWS key, a GitHub or Slack token or a private key header anywhere.
+  Read secrets from the environment in the composition root. A secret-named value passed to a
+  `logger.*`, `console.*` or `process.stdout.write` call is reported too: log that it is set.
+  Placeholders (`changeme`, `<token>`, `[redacted]`), environment variable names (`MY_API_KEY`),
+  URLs and key names (`access_token`) are not secrets.
+- `nitpicker/no-generic-names` (all production code): a file or folder named `utils`, `helpers`,
+  `common`, `misc` or `manager` (also `string-utils.ts`, `OrderManager.ts`), and a class, type,
+  interface, enum or `const` named `*Utils`, `*Helper` or `*Manager`, is reported. Name the file
+  for its job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under
+  such a name.
+- `nitpicker/no-boolean-flag-parameter` (all production code): an exported function with a
+  `boolean` parameter (`flag: boolean`, `flag?: boolean`, `flag = false`) is reported. Split it
+  into two functions named for each behavior, or take an options object (`{ force }`) or a string
+  union. Destructured options and non-exported functions are not reported.
+- `nitpicker/no-io-in-loop` (all production code): a database, HTTP, file or repository call once
+  per item of a `for...of` loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`,
+  `reduce`, `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:fs`,
+  `node:http`, `axios`, `pg`, `@prisma/client` and similar, and `find*`/`save*`/`query*`-style
+  methods on `repo`, `repository`, `dao`, `db`, `prisma`, `client`, `pool`, `collection`, `model`
+  and similar receivers. Fetch or write all items at once. A call inside a `try` that returns or
+  breaks on success (a retry) is not reported.
+- `nitpicker/no-accumulator-spread-in-reduce` (all production code): `reduce` callbacks do not
+  spread their accumulator (`{ ...acc, [id]: x }`, `[...acc, x]`): each step copies it, so the work
+  grows with the square of the list. Use `Object.fromEntries(xs.map(...))`, `Object.groupBy`,
+  `Map.groupBy` or `flatMap`.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
@@ -124,7 +159,9 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
   exported types. They are allowed there, never required; the Java preset follows the same rule for
-  Javadoc. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
+  Javadoc. A `TODO`, `FIXME`, `XXX` or `HACK` without an issue reference (`TODO(#123)`,
+  `TODO PROJ-123`, a link) and commented-out code (statements, not prose) are reported even in a
+  doc comment; code in an `@example` block or a fenced block is documentation. Tool directives are allowed, except suppressions: ESLint's `noInlineConfig` blocks
   inline disables, and `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`, `@ts-expect-error`,
   and `@ts-nocheck`. `noInlineConfig` alone does not cover TypeScript suppressions. Coverage and
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are

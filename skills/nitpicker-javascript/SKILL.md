@@ -97,6 +97,15 @@ line) is a finding.
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - String-literal unions, never an enum; no classes except `Error` subclasses.
+- Name a string used three times in a file once, as a constant. Never write a secret in code: read
+  it from the environment in the composition root, and never pass it to a logger.
+- Name files, folders and types for their job: no `utils`, `helpers`, `common`, `misc`, `*Manager`
+  or `*Helper`. Pure logic shared between features goes in `src/main/shared/` under a name that says
+  what it does.
+- An exported function takes no boolean parameter: split it, or take an options object or a string
+  union.
+- No database, HTTP, file or repository call per loop item (`for...of`, `map`, `forEach`): fetch or
+  write all items in one call. No `{ ...acc }` or `[...acc, x]` inside `reduce`.
 - No `any` and no `null` in your own values: read a library's `null` with `regex.exec(s)?.[0]` in
   one expression or a strict `!== null` check. Narrow with checks, and don't add `??`, `?.` or
   checks the types already rule out. Indexing (`list[0]`, `record[key]`) may be `undefined`: check
@@ -159,9 +168,9 @@ line) is a finding.
 - `domain/` returns expected failures as discriminated unions (`{ kind: 'empty-name' }`), never
   throws them. Success is a `kind` member too: never `T | Failure` narrowed with `typeof`, never
   `Failure | undefined`.
-- A `catch` returns a failure result (carrying the caught error only if something reads it) or
-  rethrows an `Error` subclass with `{ cause: error }`, which a test asserts. Keep the `try` around
-  the call that throws:
+- A `catch` rethrows an `Error` subclass with `{ cause: error }` (which a test asserts) or returns
+  a failure result that carries the error or a `kind`. Logging the error, or returning `undefined`,
+  `''`, `[]` or `{}` and carrying on, fails. Keep the `try` around the call that throws:
   `try { return schema.safeParse(JSON.parse(text)); } catch { return { kind: 'malformed-json' }; }`.
 - With no caught error, throw `new XError(message)` without `cause`.
 - Handle malformed input only as the ticket says; don't silently drop entries.

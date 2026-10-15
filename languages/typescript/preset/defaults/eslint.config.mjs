@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
+import { codeSmellProductionRules } from '../eslint-config/code-smells/code-smell-rules.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
@@ -63,6 +64,7 @@ const presetConfig = tseslint.config(
     rules: {
       'nitpicker/no-managed-resource-construction-outside-composition-roots': 'error',
       'nitpicker/preserve-error-cause': ['error', errorWrappingPolicy],
+      ...codeSmellProductionRules,
     },
   },
   ...strictPresetConfig(layout, parserOptions, { react }),

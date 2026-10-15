@@ -1,3 +1,8 @@
+import {
+  bodyLines,
+  firstCommentedOutCodeLine,
+  unreferencedWorkTagLines,
+} from '../../../../../shared/comments/comment-checks.mjs';
 import { castTags, isJsdocBlock, parseJsdoc } from '../../../../javascript/preset/jsdoc.mjs';
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
@@ -60,10 +65,20 @@ function documentsPublicApi(sourceCode, comment) {
   return exportDeclarations.has(node.type) || isExportedTypeMember(node);
 }
 
+function publicApiDocReports(comment) {
+  const lines = bodyLines(comment.value);
+  return [
+    ...(unreferencedWorkTagLines(lines).length > 0 ? [{ messageId: 'todoWithoutIssue' }] : []),
+    ...(firstCommentedOutCodeLine(lines) >= 0 ? [{ messageId: 'commentedOutCode' }] : []),
+  ];
+}
+
 function plainCommentReports(comment, sourceCode) {
   if (toolDirective.test(comment.value)) return [];
   if (!isJsdocBlock(comment)) return [{ messageId: 'comment' }];
-  return documentsPublicApi(sourceCode, comment) ? [] : [{ messageId: 'internalDocComment' }];
+  return documentsPublicApi(sourceCode, comment)
+    ? publicApiDocReports(comment)
+    : [{ messageId: 'internalDocComment' }];
 }
 
 function commentReports(comment, { jsdocTypes, sourceCode }) {
@@ -107,6 +122,8 @@ export const rule = {
       jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with zod, or write the specific type. ${JSDOC_EXCEPTION}`,
       jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`. ${JSDOC_EXCEPTION}`,
       jsdocCast: `Do not assert with a JSDoc cast (\`/** @type {T} */ (value)\`). Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. \`/** @type {const} */\` is allowed. ${JSDOC_EXCEPTION}`,
+      todoWithoutIssue: `A TODO or FIXME needs an issue reference: write \`TODO(#123): ...\` or \`TODO PROJ-123: ...\`, or do the work now. ${JSDOC_EXCEPTION}`,
+      commentedOutCode: `Delete the commented-out code; version control keeps it. ${JSDOC_EXCEPTION}`,
       internalDocComment:
         'Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.',
     },

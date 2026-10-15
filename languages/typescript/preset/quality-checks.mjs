@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { pluginRuleFiles } from './eslint-plugin/rule-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -47,50 +48,9 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/react-rules.mjs',
   'languages/typescript/preset/eslint-config/react-scope.mjs',
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
-  'languages/typescript/preset/eslint-plugin/index.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/ancestry.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/composition-root-files.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-branch-in-composition-root.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-comments.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-handwritten-boundary-guard.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-self-recursion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-throw.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-unknown-in-domain.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-unvalidated-schema-field.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-wait-for-with-fake-timers.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/container-pause-requires-finally-unpause.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/bounded-container-teardown.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-fixed-sleep-synchronization.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-interval-polling-in-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-internal-module-mocks.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/preserve-error-cause.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-effects.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-no-effect-data-fetching.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-no-effect-derived-state.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-single-styling-approach.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-partial-output-assertion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-test-files.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/react-test-no-implementation-details.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-external-executables-in-unit-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/integration-test-uses-approved-harness.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-managed-resource-construction-outside-composition-roots.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-mocking-subject-under-test.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-module-level-let.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-production-console.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-silent-catch.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/report-module-load-effects.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/structured-catch-logging.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/test-must-use-production-runtime.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/test-code-analysis.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-git-repository-per-test.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/hermetic-git-in-tests.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-node-process-per-test.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-server-or-worker-per-test.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-raised-test-timeout.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-first-test-charged-setup.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-uninjectable-delay.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/no-process-globals-outside-main-guard.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/test-tsconfig-pins-lib-and-types.mjs',
+  'languages/typescript/preset/eslint-config/code-smells/code-smell-rules.mjs',
+  ...pluginRuleFiles,
+  'shared/comments/comment-checks.mjs',
 ];
 
 const ARCHITECTURE_EXCLUSION =

@@ -27,8 +27,30 @@ ruleTester.run('no-comments', noComments, {
     { code: '/** A user. */\nexport type User = {\n  /** Display name. */\n  name: string;\n};' },
     { code: '/** @jsxImportSource preact */\nexport const a = 1;' },
     { code: '/* eslint no-console: off */\nexport const a = 1;' },
+    { code: '/** TODO(#12): handle the empty case. */\nexport function parse() { return 1; }' },
+    { code: '/** FIXME PROJ-7 handle null. */\nexport function parse() { return 1; }' },
+    {
+      code: '/**\n * Parses a date.\n * @example\n * const date = parse(text);\n */\nexport function parse() { return 1; }',
+    },
+    { code: '/** Returns the total; see the pricing notes. */\nexport const total = 1;' },
   ],
   invalid: [
+    {
+      code: '/** TODO: handle the empty case later */\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'todoWithoutIssue' }],
+    },
+    {
+      code: '/** FIXME handle null */\nexport type User = { name: string };',
+      errors: [{ messageId: 'todoWithoutIssue' }],
+    },
+    {
+      code: '/**\n * export function oldImplementation(x) {\n *   return x;\n * }\n */\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'commentedOutCode' }],
+    },
+    {
+      code: '/** TODO later\n * const old = load();\n */\nexport function parse() { return 1; }',
+      errors: [{ messageId: 'todoWithoutIssue' }, { messageId: 'commentedOutCode' }],
+    },
     {
       code: '/** Parses a date. */\nfunction parse(text: string) { return text; }',
       errors: [{ messageId: 'internalDocComment' }],

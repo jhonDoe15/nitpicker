@@ -3,6 +3,7 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
+import { secretProductionRules } from './code-smells/code-smell-rules.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
@@ -156,6 +157,7 @@ export const strictProductionRules = {
   'nitpicker/no-module-level-let': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
+  ...secretProductionRules,
 };
 
 export function strictPresetConfig(layout, parserOptions, options = {}) {
