@@ -41,9 +41,11 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `0` and `-1` are fine. A string literal used 4 times in a file becomes a constant.
+  `if`; `-1`, `0`, `1` and `2` are fine anywhere else, and any other number in main code becomes a
+  `private static final` constant. A string literal used 4 times in a file becomes a constant.
+  Constants are `UPPER_SNAKE_CASE` (a logger may be `log` or `logger`).
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+  for-each where the index is unused. Remove unused imports, fields, locals, private methods, assignments.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
   Don't name a field like its method (`data` and `data()`); a `record` avoids that.
 - Mutable state: don't return or store a caller's array or collection directly. Return
@@ -54,15 +56,42 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
-  less stable one (`stability-direction`).
+  less stable one (`stability-direction`), and packages or classes must not depend on each other in
+  a loop (`package-cycle`, `class-cycle`): move the shared type down, or invert one side behind an
+  interface.
+- Optional: return it from methods and take the plain value as a field or parameter. Unwrap with
+  `orElseThrow()`, `orElse`, `map` or `ifPresent`, never `get()`. Return an empty collection, not
+  `Optional<List<...>>`.
+- Types and casts: no raw types (`List<String>`, not `List`) and no unchecked casts; javac lints
+  them, and `@SuppressWarnings` does not hide them. Replace `instanceof` plus a cast with a pattern
+  (`if (shape instanceof Circle c)`) or a `switch` over a sealed type.
+- Shared state: fields are `private` and `final` (a `record` for data); no `public` non-final
+  field, no non-final `static` field, no `static` collection that is changed after class loading
+  (build it with `List.of`, `Map.of`, `Map.copyOf`). No `@SneakyThrows`: declare the exception or
+  wrap it.
+- Time, threads and processes: take a `java.time.Clock` and call `now(clock)`; use `java.time`, not
+  `Date`, `Calendar` or `SimpleDateFormat`. No `Thread.sleep` and no `new Thread` in main code;
+  submit work to an injected executor. Restore the flag when you catch `InterruptedException`
+  (`Thread.currentThread().interrupt()`) or rethrow. Run commands with `ProcessBuilder` and an
+  argument list, never `Runtime.exec(String)`. No `ObjectInputStream`: read JSON.
+- Streams: `map` and `collect` or `Stream.toList()`, not `Collectors.toList()`, and no `forEach` or
+  `peek` that fills a collection or an array. Open `Files.lines`, `list`, `walk` and `find` in
+  try-with-resources.
+- Signatures and throwing: declare the checked exceptions a method throws (never `throws Exception`)
+  and throw `IllegalArgumentException`, `IllegalStateException` or a project exception, never
+  `RuntimeException`, `Exception` or `Error`.
+- Security: SQL values go in `?` parameters of a `PreparedStatement`, never `+` or
+  `String.format`. Hash with SHA-256 or better, not MD5 or SHA-1. No nested quantifiers in a regex
+  such as `(a+)+`. Join a path from a parameter to a fixed base, then `normalize()` and check
+  `startsWith(base)`.
 - Names and declarations: abbreviations are words (`parseUrl`, `HttpClient`, `userId`, never
   `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
   overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
-  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
+- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
+  security and the rules above), forbiddenapis, javac lint and Google checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
   when `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
@@ -85,7 +114,11 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Cyclomatic complexity 9 or more fails `crap-score-limit` even when fully covered; less
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a method.
+  a method. A copy with renamed variables or other literals, 100 tokens or more, fails too, in main
+  and in test sources; in tests use a helper or a `@ParameterizedTest`.
+- Dependencies: pin one exact version (`2.10.1`, not `2.+`, `latest.release` or `-SNAPSHOT`;
+  `dependency-version-not-pinned`). A dependency no main class uses is removed, or declared
+  `runtimeOnly` when it is only needed at run time (`unused-declared-dependency`).
 
 ## Tests
 
