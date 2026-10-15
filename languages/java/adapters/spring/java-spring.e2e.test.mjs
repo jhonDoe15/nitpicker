@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../java-diff.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
 import { expectedViolations, reportedViolations } from '../test-support/violation-markers.mjs';
 
