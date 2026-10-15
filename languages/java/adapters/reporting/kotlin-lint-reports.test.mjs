@@ -5,7 +5,6 @@ import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-sc
 import {
   readJavaFindings,
   rootReports,
-  reportBaseOf,
   KOTLIN_SOURCE,
   kotlinFindings,
   projectWithKotlinReports,

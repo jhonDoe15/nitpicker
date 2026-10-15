@@ -1,11 +1,10 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { configurationFiles } from '../java-analyzer.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const RULESETS = readdirSync(path.join(packageRoot, 'languages/java/gradle'))
-  .filter((file) => file.endsWith('-ruleset.xml'))
-  .map((file) => `languages/java/gradle/${file}`);
+const RULESETS = configurationFiles().filter((file) => file.endsWith('-ruleset.xml'));
 
 function attribute(attributes, name) {
   return new RegExp(String.raw`\b${name}="([^"]*)"`, 'u').exec(attributes)?.[1];
