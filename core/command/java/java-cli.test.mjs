@@ -14,7 +14,7 @@ const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:4
-    Avoid unused field: added
+    Avoid unused field: added. If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
@@ -51,7 +51,8 @@ describe('nitpicker with "preset": "java"', () => {
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: added',
-        message: 'Avoid unused field: added',
+        message:
+          'Avoid unused field: added. If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -85,7 +86,7 @@ describe('nitpicker with "preset": "java"', () => {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
           "message": {
-            "text": "Avoid unused field: added"
+            "text": "Avoid unused field: added. If a reviewer agrees this is intended, add {\\"rule\\":\\"pmd/UnusedPrivateField\\",\\"paths\\":[\\"src/main/java/demo/A.java\\"],\\"reason\\":\\"<why this is intended>\\"} to \\"exceptions\\" in nitpicker.config.json."
           },
           "locations": [
             {
@@ -113,7 +114,7 @@ describe('nitpicker with "preset": "java"', () => {
       expect.stringMatching(exactText`<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="quality.diff" tests="2" failures="1" errors="0" time="${/[0-9]+(?:\.[0-9]+)?/}">
   <testcase classname="quality.diff" name="java" time="${/[0-9]+(?:\.[0-9]+)?/}"></testcase>
-  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added" type="pmd/UnusedPrivateField">Avoid unused field: added</failure></testcase>
+  <testcase classname="quality.diff.new-findings" name="pmd/UnusedPrivateField src/main/java/demo/A.java:4" time="${/[0-9]+(?:\.[0-9]+)?/}"><failure message="Avoid unused field: added. If a reviewer agrees this is intended, add {&quot;rule&quot;:&quot;pmd/UnusedPrivateField&quot;,&quot;paths&quot;:[&quot;src/main/java/demo/A.java&quot;],&quot;reason&quot;:&quot;&lt;why this is intended&gt;&quot;} to &quot;exceptions&quot; in nitpicker.config.json." type="pmd/UnusedPrivateField">Avoid unused field: added. If a reviewer agrees this is intended, add {&quot;rule&quot;:&quot;pmd/UnusedPrivateField&quot;,&quot;paths&quot;:[&quot;src/main/java/demo/A.java&quot;],&quot;reason&quot;:&quot;&lt;why this is intended&gt;&quot;} to &quot;exceptions&quot; in nitpicker.config.json.</failure></testcase>
 </testsuite>
 `),
     );
@@ -152,7 +153,7 @@ describe('nitpicker with "preset": "java"', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.
+    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/java/demo/First.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -167,7 +168,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
         message:
-          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
+          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/java/demo/First.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -239,7 +240,8 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         'java: total=1 enforceable=1 descriptive=0',
         '',
         'Enforceable findings:',
-        'pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy',
+        'pmd/UnusedPrivateField src/main/java/demo/A.java:3 Avoid unused field: legacy.' +
+          ' If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         '',
       ].join('\n'),
     );

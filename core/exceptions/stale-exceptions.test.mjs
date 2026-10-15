@@ -1,11 +1,8 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createGitRepository,
-  removeGitRepositories,
-} from '../diff/git/test-support/git-repository.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { staleExceptionLines } from './stale-exceptions.mjs';
 
-afterEach(removeGitRepositories);
+const { createGitRepository } = useGitFixtures();
 
 function repository(files) {
   return createGitRepository(Object.fromEntries(files.map((file) => [file, '']))).root;

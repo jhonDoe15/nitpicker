@@ -36,7 +36,7 @@ describe('nitpicker with "preset": "java" and a legacy inventory', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:5
-    Avoid unused field: other
+    Avoid unused field: other. If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -46,7 +46,8 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         rule: 'UnusedPrivateField',
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: other',
-        message: 'Avoid unused field: other',
+        message:
+          'Avoid unused field: other. If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 5 },
       },

@@ -131,7 +131,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         'mutation: total=0 enforceable=0 descriptive=0',
         '',
         'Enforceable findings:',
-        'ruff/F401 src/demo/a.py:1 `os` imported but unused. To allow it for some paths, add a "python.exceptions" entry for F401 in nitpicker.config.json.',
+        'ruff/F401 src/demo/a.py:1 `os` imported but unused. If a reviewer agrees this is intended, add {"rule":"F401","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         '',
         'Descriptive findings:',
         'coupling/coupling . dependencies summary',

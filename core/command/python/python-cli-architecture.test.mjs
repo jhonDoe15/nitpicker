@@ -60,7 +60,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/base/__init__.py',
         identity: 'package-edge:base->other',
         message:
-          'base depends on less stable package other. Depend on an abstraction in a more stable package instead, or, if the inversion is intended, add src/base/__init__.py to "exclude" in nitpicker.config.json.',
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If a reviewer agrees this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -83,7 +83,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         path: 'src/demo/a.py',
         identity: 'contract:Layers:demo.a -> demo.b',
         message:
-          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import, or lift this file with exclude in nitpicker.config.json.',
+          'Import contract "Layers" is broken: demo.a -> demo.b. Remove the import. If a reviewer agrees this is intended, add {"rule":"contract-broken","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 4 },
       },
