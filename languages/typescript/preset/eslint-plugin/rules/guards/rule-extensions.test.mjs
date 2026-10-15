@@ -17,7 +17,9 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
     'try { run(); } catch (error) { throw new AppError("failed", { cause: error }); }',
     'try { run(); } catch (error) { throw new AppError("failed", 500, { cause: error }); }',
     'try { run(); } catch (error) { throw new WrapError("failed", error); }',
-    'try { run(); } catch { throw new AppError("failed"); }',
+    'try { run(); } catch { return new AppError("failed"); }',
+    'try { run(); } catch (error) { const failure = new AppError("failed", { cause: error }); throw failure; }',
+    'try { run(); } catch (error) { return Promise.reject(new AppError("failed", { cause: error })); }',
     'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
     'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
   ],
@@ -40,6 +42,18 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
     },
     {
       code: 'try { run(); } catch (error) { log(error); throw new AppError("range"); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
+    {
+      code: 'try { run(); } catch { throw new AppError("failed"); }',
+      errors: [{ messageId: 'bindingLess' }],
+    },
+    {
+      code: 'try { run(); } catch (error) { log(error); const failure = new AppError("failed"); throw failure; }',
+      errors: [{ messageId: 'lostCause' }],
+    },
+    {
+      code: 'try { run(); } catch (error) { log(error); return Promise.reject(new AppError("failed")); }',
       errors: [{ messageId: 'lostCause' }],
     },
   ],

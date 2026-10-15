@@ -54,6 +54,43 @@ function preservesCause(wrapper, node, caughtVariables) {
   );
 }
 
+function isPromiseReject(call) {
+  return (
+    call.type === 'CallExpression' &&
+    call.callee.type === 'MemberExpression' &&
+    !call.callee.computed &&
+    call.callee.object.type === 'Identifier' &&
+    call.callee.object.name === 'Promise' &&
+    call.callee.property.name === 'reject'
+  );
+}
+
+function isThrownLocal(sourceCode, declarator) {
+  return sourceCode
+    .getDeclaredVariables(declarator)
+    .some((variable) =>
+      variable.references.some(({ identifier }) => identifier.parent.type === 'ThrowStatement'),
+    );
+}
+
+function isThrown(sourceCode, node) {
+  const { parent } = node;
+  if (parent.type === 'ThrowStatement') {
+    return true;
+  }
+  if (isPromiseReject(parent)) {
+    return parent.arguments[0] === node;
+  }
+  return (
+    parent.type === 'VariableDeclarator' &&
+    parent.init === node &&
+    isThrownLocal(sourceCode, parent)
+  );
+}
+
+const EXCEPTION_ROUTE =
+  ' If the original failure is deliberately dropped, add an exception for this rule in nitpicker.config.json.';
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -80,8 +117,8 @@ export const rule = {
       },
     ],
     messages: {
-      lostCause:
-        'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
+      lostCause: `Preserve the original cause when wrapping a caught failure: \`new AppError(message, { cause: error })\`.${EXCEPTION_ROUTE}`,
+      bindingLess: `This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: \`catch (error) { throw new AppError(message, { cause: error }); }\`.${EXCEPTION_ROUTE}`,
     },
   },
   create(context) {
@@ -93,7 +130,11 @@ export const rule = {
         const handler = ancestorsOf(node).find((ancestor) => ancestor.type === 'CatchClause');
         if (!handler) return;
         const caughtVariables = context.sourceCode.getDeclaredVariables(handler);
-        const thrown = node.parent.type === 'ThrowStatement' && caughtVariables.length > 0;
+        const thrown = isThrown(context.sourceCode, node);
+        if (thrown && handler.param === null) {
+          context.report({ node, messageId: 'bindingLess' });
+          return;
+        }
         if (
           wrapper.classificationIndex === undefined &&
           !thrown &&
