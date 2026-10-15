@@ -270,6 +270,26 @@ describe('readJavaFindings with the kotlin preset', () => {
     ]);
   });
 
+  it('reports an inline suppression in a Kotlin test file, and none in a test file the manifest does not list', () => {
+    const testFile = 'src/test/kotlin/demo/BadTest.kt';
+    const suppressed = '@Suppress("TooGenericExceptionCaught")\nfun f() = Unit\n';
+    const rootWith = (manifest) => {
+      const root = projectWithKotlinReports({ manifest });
+      mkdirSync(path.join(root, 'src/test/kotlin/demo'), { recursive: true });
+      writeFileSync(path.join(root, testFile), suppressed);
+      return root;
+    };
+    const suppressionsIn = (root) =>
+      kotlinFindings(root, 'detekt')
+        .filter(({ rule }) => rule === 'inline-suppression')
+        .map(({ path: file, identity }) => [file, identity]);
+
+    expect(suppressionsIn(rootWith({ kotlinTestSourceRoots: ['src/test/kotlin'] }))).toEqual([
+      [testFile, 'suppress:TooGenericExceptionCaught'],
+    ]);
+    expect(suppressionsIn(rootWith({}))).toEqual([]);
+  });
+
   describe('identity of a finding with a measured value', () => {
     const at = { physicalLocation: { artifactLocation: { uri: bad }, region: { startLine: 3 } } };
     const identitiesOf = (messages) => {
