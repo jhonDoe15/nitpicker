@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { javaFiles, nitpickerCheckstyleConfig } from './maven-lint.mjs';
+import { javaFiles, nitpickerCheckstyleConfig, scopedRuleset } from './maven-lint.mjs';
+import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
@@ -40,6 +41,43 @@ describe('nitpickerCheckstyleConfig', () => {
         '</module>',
       ].join('\n'),
     );
+  });
+});
+
+describe('scopedRuleset', () => {
+  const testRoot = path.join('/repo', 'src', 'test', 'java');
+  const pattern = `${testRoot}${path.sep}`.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const reference = (ruleset) => `  <rule ref="${path.join(GRADLE_DIRECTORY, ruleset)}"/>`;
+
+  it('keeps the main-source rules out of the test roots', () => {
+    const xml = scopedRuleset({
+      name: 'code-smells-main',
+      ruleset: 'code-smells-ruleset.xml',
+      roots: [testRoot],
+      onlyThere: false,
+    });
+
+    expect(xml.split('\n').filter((line) => line.startsWith('  <'))).toEqual([
+      '  <description>code-smells-main</description>',
+      `  <exclude-pattern>${pattern}.*</exclude-pattern>`,
+      reference('code-smells-ruleset.xml'),
+    ]);
+  });
+
+  it('runs the test-source rules only inside the test roots', () => {
+    const xml = scopedRuleset({
+      name: 'code-smells-test',
+      ruleset: 'code-smells-test-ruleset.xml',
+      roots: [testRoot],
+      onlyThere: true,
+    });
+
+    expect(xml.split('\n').filter((line) => line.startsWith('  <'))).toEqual([
+      '  <description>code-smells-test</description>',
+      '  <exclude-pattern>.*</exclude-pattern>',
+      `  <include-pattern>${pattern}.*</include-pattern>`,
+      reference('code-smells-test-ruleset.xml'),
+    ]);
   });
 });
 
