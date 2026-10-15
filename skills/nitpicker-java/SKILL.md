@@ -34,7 +34,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 ## Write it this way
 
-- Style is google-java-format: 2-space indent, 100 columns (Checkstyle's line length).
+- Style is google-java-format, 100 columns (Checkstyle's line length). Indent like the files around you:
+  nitpicker follows the project's majority, 2 spaces (Google style) or 4 (`--aosp`).
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with

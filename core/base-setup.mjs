@@ -6,6 +6,15 @@ import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from './config.mjs';
 import { presetAnalyzers } from './preset-analyzers.mjs';
 
+export function baseSetupResolver(cli, headConfig, headPolicy) {
+  return createBaseSetupResolver({
+    headConfig,
+    conventions: headPolicy.conventions,
+    injectedAnalyzers: cli.analyzers,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
+  });
+}
+
 export function createBaseSetupResolver({
   headConfig,
   conventions,

@@ -70,6 +70,7 @@ export function validateConfig(config) {
   validateDisable(config.disable);
   validateReact(config.react);
   validateOptional(config);
+  validateProjectConventions(config);
   return config;
 }
 
@@ -98,6 +99,12 @@ function validateScalars(config) {
       ? TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions')
       : TYPESCRIPT_ONLY_KEYS,
   );
+}
+
+function validateProjectConventions({ conventions, preset }) {
+  if (conventions !== undefined) {
+    validateConventions(conventions, conventionDefinitions(preset));
+  }
 }
 
 function validateDisable(disable) {
@@ -131,9 +138,6 @@ function validateOptional(config) {
   }
   if (config.tools !== undefined) {
     validateTools(config.tools, config.preset);
-  }
-  if (config.conventions !== undefined) {
-    validateConventions(config.conventions, conventionDefinitions(config.preset));
   }
 }
 

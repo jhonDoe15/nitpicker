@@ -15,10 +15,11 @@ describe('indentationStep', () => {
       '  }',
       '}',
     ].join('\n');
-    const aosp = 'class A {\r\n    void a() {\r\n        call();\r\n    }\r\n}\r\n';
+    const aosp = 'class A { // demo\r\n    void a() {\r\n        call();\r\n    }\r\n}\r\n';
 
     expect(indentationStep(google)).toBe('2');
     expect(indentationStep(aosp)).toBe('4');
+    expect(indentationStep('class A { // demo\n    int a;\n}\n')).toBe('4');
   });
 
   it('has no answer for tabs, flat files or a tie', () => {

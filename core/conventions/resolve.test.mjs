@@ -1,4 +1,5 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
@@ -35,7 +36,7 @@ function output() {
   return { write: (chunk) => chunks.push(chunk), text: () => chunks.join('') };
 }
 
-const comparison = (stdout, options = {}) => ({
+const comparison = (stdout = output(), options = {}) => ({
   options: { all: false, baseRef: 'main', ...options },
   environment: {},
   stdout,
@@ -124,6 +125,37 @@ describe('runHeadPolicy', () => {
     expect(publishHeadPolicy({ preset: 'java' }, root).conventions).toEqual({
       'java.indentation': '4',
     });
+  });
+});
+
+describe('reading the measured files', () => {
+  it('skips files too large to measure and keeps names with newlines apart', () => {
+    const { root } = createGitRepository({
+      'src/Generated.java': `class G {\n  ${'int a;\n  '.repeat(80_000)}}\n`,
+      'src/new\nline.java': fourSpaces,
+      'src/B.java': fourSpaces,
+      'src/C.java': twoSpaces,
+    });
+    const stdout = output();
+
+    runHeadPolicy({ cli: comparison(stdout), config: { preset: 'java' }, projectRoot: root });
+
+    expect(stdout.text()).toContain('4 spaces (google-java-format --aosp) (used by 2 of 3');
+  });
+
+  it('needs no git when every convention is pinned', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-'));
+    try {
+      expect(
+        runHeadPolicy({
+          cli: comparison(),
+          config: { preset: 'java', conventions: { 'java.indentation': '4' } },
+          projectRoot: root,
+        }).conventions,
+      ).toEqual({ 'java.indentation': '4' });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 
