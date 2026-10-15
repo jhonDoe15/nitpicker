@@ -12,7 +12,7 @@ import { rule as cognitiveComplexity } from './rules/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/no-comments.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
-import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
+import { rule as noSilentCatch } from './rules/catch-handling/no-silent-catch.mjs';
 import { rule as noThrow } from './rules/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/no-unknown-in-domain.mjs';
 import { rule as noUnvalidatedSchemaField } from './rules/no-unvalidated-schema-field.mjs';

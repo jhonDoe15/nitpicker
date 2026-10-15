@@ -1,3 +1,5 @@
+import { hasBoundedKeys } from '../support/checked-types.mjs';
+
 const REDUCERS = new Set(['reduce', 'reduceRight']);
 
 function contains(outer, inner) {
@@ -37,9 +39,10 @@ export const rule = {
       SpreadElement(node) {
         const reducer = reducers.findLast((candidate) => contains(candidate, node));
         const accumulator = reducer?.params[0].name;
-        if (node.argument.type === 'Identifier' && node.argument.name === accumulator) {
-          context.report({ node, messageId: 'spread' });
-        }
+        if (node.argument.type !== 'Identifier' || node.argument.name !== accumulator) return;
+        const isFixedRecord =
+          node.parent.type === 'ObjectExpression' && hasBoundedKeys(context, node.argument);
+        if (!isFixedRecord) context.report({ node, messageId: 'spread' });
       },
     };
   },

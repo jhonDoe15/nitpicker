@@ -1,5 +1,6 @@
 import { isLogCall } from '../support/error-flow.mjs';
 import { joinedWords } from '../support/identifier-words.mjs';
+import { hasCredentialShape, isSecretAssignment, staticString } from './secret-values.mjs';
 
 const IDENTIFIER = 'Identifier';
 const MEMBER = 'MemberExpression';
@@ -26,50 +27,22 @@ const SECRET_NAME = new RegExp(
     'encryptionkey',
   ].join('|')})$`,
 );
-const SECRET_SHAPES = [
-  /\bAKIA[0-9A-Z]{16}\b/,
-  /\bgh[pousr]_[A-Za-z0-9]{30,}/,
-  /\bxox[abprs]-[A-Za-z0-9-]{10,}/,
-  /-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----/,
-  /\bsk[-_](?:live|test|proj)?[-_]?[A-Za-z0-9_-]{16,}/,
-];
-const PLACEHOLDER = new RegExp(
-  `^(?:${[
-    '\\*+',
-    'x+',
-    '<.*>',
-    '\\[.*\\]',
-    '\\$\\{.*\\}',
-    '\\{\\{.*\\}\\}',
-    'changeme',
-    'change-me',
-    'todo',
-    'example',
-    'dummy',
-    'placeholder',
-    'redacted',
-    'none',
-    'null',
-    'undefined',
-    'your[-_ ].*',
-  ].join('|')})$`,
-  'i',
-);
-const ENVIRONMENT_NAME = /^[A-Z][A-Z0-9_]+$/;
-const WORDS_WITH_SEPARATORS = /^[a-z]+(?:[_.:/-][a-z]+)+$/;
-const MINIMUM_LENGTH = 6;
 const FALLBACK_OPERATORS = new Set(['||', '??']);
 
-function isSecretName(name) {
-  return SECRET_NAME.test(joinedWords(name));
+function isConcatenation(node) {
+  return node.type === 'BinaryExpression' && node.operator === '+';
 }
 
-function stringOf(node) {
-  if (node?.type === LITERAL && typeof node.value === STRING) return node.value;
-  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
-    return node.quasis[0].value.cooked ?? '';
+function inStaticConcatenation(node) {
+  const chain = [node];
+  for (const current of chain) {
+    if (isConcatenation(current.parent)) chain.push(current.parent);
   }
-  return undefined;
+  return chain.length > 1 && staticString(chain.at(-1)) !== undefined;
+}
+
+function isSecretName(name) {
+  return SECRET_NAME.test(joinedWords(name).replaceAll(/\d/g, ''));
 }
 
 function fallbackBranches(node) {
@@ -85,21 +58,10 @@ function candidateStrings(start) {
   for (const node of pending) {
     const branches = fallbackBranches(node);
     pending.push(...branches);
-    const text = branches.length === 0 ? stringOf(node) : undefined;
+    const text = branches.length === 0 ? staticString(node) : undefined;
     if (text !== undefined) found.push({ node, text });
   }
   return found;
-}
-
-function looksSecret(text, name) {
-  if (SECRET_SHAPES.some((shape) => shape.test(text))) return false;
-  if (text.length < MINIMUM_LENGTH || /\s/.test(text) || /^[a-z][a-z0-9+.-]*:\/\//i.test(text)) {
-    return false;
-  }
-  if (PLACEHOLDER.test(text) || ENVIRONMENT_NAME.test(text) || WORDS_WITH_SEPARATORS.test(text)) {
-    return false;
-  }
-  return joinedWords(text) !== joinedWords(name);
 }
 
 function keyText(key) {
@@ -116,7 +78,8 @@ function targetName(node) {
     case 'PropertyDefinition':
       return node.computed ? undefined : keyText(node.key);
     case 'AssignmentExpression':
-      return node.left.type === MEMBER ? keyText(node.left.property) : node.left.name;
+      if (node.left.type !== MEMBER) return node.left.name;
+      return node.left.computed ? undefined : keyText(node.left.property);
     default:
       return undefined;
   }
@@ -128,36 +91,45 @@ function valueOf(node) {
   return node.type === 'AssignmentExpression' ? node.right : node.value;
 }
 
-const LOGGED_CHILDREN = [
-  'arguments',
-  'properties',
-  'expressions',
-  'elements',
-  'argument',
-  'left',
-  'right',
-  'object',
-  'value',
-];
+const CONSTANT_NAME = /^[A-Z][A-Z0-9_]*$/;
+const STATUS_KEY = /^(?:has|is)[A-Z_]/;
+const PASS_THROUGH = new Set([
+  'SpreadElement',
+  'TSAsExpression',
+  'TSNonNullExpression',
+  'ChainExpression',
+]);
 
 function ownNames(node) {
   if (node.type === IDENTIFIER) return [node.name];
   if (node.type === MEMBER && !node.computed) return [keyText(node.property) ?? ''];
-  if (node.type === 'Property' && !node.computed && node.value.type !== LITERAL) {
-    return [keyText(node.key) ?? ''];
-  }
-  return [];
-}
-
-function isNode(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
+  const direct = node.type === 'Property' && [IDENTIFIER, MEMBER].includes(node.value.type);
+  const key = direct && !node.computed ? keyText(node.key) : undefined;
+  return key === undefined || STATUS_KEY.test(key) ? [] : [key];
 }
 
 function loggedChildren(node) {
   if (Array.isArray(node)) return node;
-  return isNode(node) && node.type !== 'CallExpression'
-    ? LOGGED_CHILDREN.map((key) => node[key])
-    : [];
+  switch (node?.type) {
+    case 'ObjectExpression':
+      return node.properties;
+    case 'Property':
+      return [node.value];
+    case 'TemplateLiteral':
+      return node.expressions;
+    case 'ArrayExpression':
+      return node.elements;
+    case 'LogicalExpression':
+      return [node.left, node.right];
+    case 'BinaryExpression':
+      return node.operator === '+' ? [node.left, node.right] : [];
+    default:
+      return PASS_THROUGH.has(node?.type) ? [node.argument ?? node.expression] : [];
+  }
+}
+
+function isNode(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function namesIn(start) {
@@ -171,7 +143,7 @@ function namesIn(start) {
 }
 
 function loggedSecretNames(call) {
-  return namesIn(call.arguments).filter(isSecretName);
+  return namesIn(call.arguments).filter((name) => isSecretName(name) && !CONSTANT_NAME.test(name));
 }
 
 export const rule = {
@@ -203,15 +175,16 @@ export const rule = {
       const name = targetName(node);
       if (name === undefined || !isSecretName(name)) return;
       for (const { node: literal, text } of candidateStrings(valueOf(node))) {
-        if (looksSecret(text, name)) {
+        if (isSecretAssignment(text, name)) {
           context.report({ node: literal, messageId: 'hardcoded', data: { name } });
         }
       }
     }
     function checkShape(node) {
-      const text = node.value;
-      const matches = typeof text === STRING && SECRET_SHAPES.some((shape) => shape.test(text));
-      if (matches) context.report({ node, messageId: 'credentialShape' });
+      const text = staticString(node);
+      if (text !== undefined && !inStaticConcatenation(node) && hasCredentialShape(text)) {
+        context.report({ node, messageId: 'credentialShape' });
+      }
     }
     return {
       VariableDeclarator: checkAssignment,
@@ -220,6 +193,8 @@ export const rule = {
       PropertyDefinition: checkAssignment,
       AssignmentExpression: checkAssignment,
       Literal: checkShape,
+      TemplateLiteral: checkShape,
+      'BinaryExpression[operator="+"]': checkShape,
       CallExpression(node) {
         if (!isLogCall(node)) return;
         for (const name of new Set(loggedSecretNames(node))) {

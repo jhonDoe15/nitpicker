@@ -5,9 +5,6 @@ export const codeSmellProductionRules = {
   'nitpicker/no-boolean-flag-parameter': ERROR,
   'nitpicker/no-duplicate-string-literals': ERROR,
   'nitpicker/no-generic-names': ERROR,
-  'nitpicker/no-io-in-loop': ERROR,
-};
-
-export const secretProductionRules = {
   'nitpicker/no-hardcoded-secret': ERROR,
+  'nitpicker/no-io-in-loop': ERROR,
 };

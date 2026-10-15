@@ -1,6 +1,7 @@
 const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log']);
 const LOG_OWNER = /^(?:console|pino|winston|bunyan)$|log(?:ger)?$/i;
 const STREAM_OWNERS = new Set(['stderr', 'stdout']);
+const DISCARDING_FUNCTIONS = new Set(['ignore', 'noop', 'swallow', 'suppress', 'discard']);
 const WRAPPER_FUNCTIONS = new Set(['String', 'Number', 'Boolean']);
 const WRAPPER_METHODS = new Set(['stringify', 'inspect', 'format']);
 const OUTFLOW_PARENTS = new Set(['ReturnStatement', 'ThrowStatement', 'YieldExpression']);
@@ -52,7 +53,7 @@ function isWrapperCall({ callee }) {
 
 function stepThroughCall(call, node) {
   if (call.callee === node) return STEP.climb;
-  if (isLogCall(call)) return STEP.stop;
+  if (isLogCall(call) || DISCARDING_FUNCTIONS.has(nameOf(call.callee))) return STEP.stop;
   return isWrapperCall(call) ? STEP.climb : STEP.outflow;
 }
 
@@ -84,11 +85,15 @@ function resolveVariable(sourceCode, identifier) {
   return undefined;
 }
 
+function isBareReturn(node) {
+  return node.parent.type === 'ReturnStatement' && node.type === IDENTIFIER;
+}
+
 function isInside(outer, inner) {
   return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
 }
 
-export function flowsOut(start, { catchNode, sourceCode }) {
+export function flowsOut(start, { catchNode, sourceCode, acceptsReturn = () => true }) {
   const seen = new Set();
 
   function followVariable(target) {
@@ -112,7 +117,7 @@ export function flowsOut(start, { catchNode, sourceCode }) {
     const pending = [from];
     for (const node of pending) {
       const step = stepFrom(node);
-      if (step === STEP.outflow) return true;
+      if (step === STEP.outflow) return !isBareReturn(node) || acceptsReturn(node.parent);
       if (step === STEP.assign) return followAssignment(node.parent);
       if (step === STEP.alias) return followVariable(node.parent.id);
       if (step === STEP.climb) pending.push(node.parent);

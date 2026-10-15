@@ -1,42 +1,42 @@
-const WORK_TAG = /\b(?:TODO|FIXME|XXX|HACK)\b/;
-const ISSUE_REFERENCE = /#\d+|\b[A-Z][A-Z0-9]+-\d+\b|https?:\/\/\S+/;
-const STATEMENT_KEYWORDS = [
-  'if',
-  'for',
-  'while',
-  'switch',
-  'try',
-  'catch',
-  'else',
-  'do',
-  'return',
-  'throw',
-  'break',
-  'continue',
-  'import',
-  'export',
-  'const',
-  'let',
-  'var',
-  'function',
-  'class',
-  'interface',
-  'enum',
-  'public',
-  'private',
-  'protected',
-  'static',
-  'final',
-  'new',
-  'await',
-  'async',
-  'package',
+const UPPER_TAG = /\b(?:TODO|FIXME|XXX|HACK)\b/g;
+const LEADING_TAG = /^(?:todo|fixme)\b/i;
+const REFERENCE = '#\\d+|[A-Z][A-Z0-9]+-\\d+|https?:\\/\\/\\S+';
+const DIRECT_REFERENCE = new RegExp(`^(?:\\(\\s*(${REFERENCE})\\s*\\)|:?\\s+(${REFERENCE}))`);
+const NOT_ISSUE_KEYS = new Set([
+  'SHA',
+  'UTF',
+  'ISO',
+  'RFC',
+  'MD',
+  'AES',
+  'RSA',
+  'TLS',
+  'SSL',
+  'HTTP',
+  'ES',
+  'ECMA',
+  'IEEE',
+  'CVE',
+]);
+const JAVA_TYPE =
+  '(?:[A-Z]\\w*(?:<[^>]*>)?(?:\\[\\])?|int|long|double|float|boolean|char|byte|short)';
+const MODIFIERS = 'public|private|protected|static|final|abstract|synchronized';
+const CODE_SHAPES = [
+  new RegExp(
+    `^(?:(?:const|let|var|final|${JAVA_TYPE})\\s+)*[\\w$.[\\]]+\\s*[-+*/%]?=\\s*[^=\\s].*;$`,
+  ),
+  /^(?:await\s+|new\s+)?[\w$]+(?:\.[\w$]+)*(?:<[^>]*>)?\(.*\)(?:\.[\w$]+\(.*\))*\s*;$/,
+  /^(?:return|throw)\b.*;$|^(?:break|continue);$/,
+  /^[\w$.]+(?:\+\+|--);$/,
+  /^(?:import|package)\s+[\w.*{}, ]+(?:\s+from\s+['"][^'"]+['"])?;$/,
+  /^(?:\}\s*)?(?:if|for|while|switch|catch|else\s+if)\s*\(.*\)\s*\{$/,
+  /^(?:\}\s*)?(?:else|try|do|finally)\s*\{$/,
+  /^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\b.*\)\s*\{$/,
+  new RegExp(
+    `^(?:(?:${MODIFIERS})\\s+)+[\\w<>[\\], ]+\\s+\\w+\\s*\\(.*\\)\\s*(?:throws [\\w., ]+)?\\{$`,
+  ),
+  /^(?:export\s+)?(?:abstract\s+)?(?:class|interface|enum|record)\s+\w+.*\{$/,
 ];
-const KEYWORD_START = new RegExp(`^(?:${STATEMENT_KEYWORDS.join('|')}|@\\w+)\\b`);
-const STATEMENT_END = /[\w)\]"'`]\s*;$/;
-const CALL_OR_ASSIGNMENT = /[(=]/;
-const BLOCK_OPEN = /\)\s*\{$|^(?:else|try|do|finally)\s*\{$|^\}\s*(?:else|catch|finally)\b.*\{$/;
-const BLOCK_CLOSE = /^\}[)\];,]*$/;
 const SENTENCE = /^[A-Z][a-z]+ [a-z]+ [a-z]+/;
 const EXAMPLE_TAG = /^@example\b/;
 const ANY_TAG = /^@\w+/;
@@ -49,20 +49,29 @@ export function bodyLines(commentText) {
   return commentText.split('\n').map((line) => line.replace(/^\s*\*+\s?/, '').trim());
 }
 
+function tagPositions(line) {
+  const upper = [...line.matchAll(UPPER_TAG)].map((match) => match.index + match[0].length);
+  const leading = LEADING_TAG.exec(line);
+  return leading === null || upper.includes(leading[0].length)
+    ? upper
+    : [...upper, leading[0].length];
+}
+
+function isReferenced(rest) {
+  const match = DIRECT_REFERENCE.exec(rest);
+  const reference = match?.[1] ?? match?.[2];
+  return reference !== undefined && !NOT_ISSUE_KEYS.has(reference.split('-')[0]);
+}
+
 export function unreferencedWorkTagLines(lines) {
   return lines.flatMap((line, index) =>
-    WORK_TAG.test(line) && !ISSUE_REFERENCE.test(line) ? [index] : [],
+    tagPositions(line).some((end) => !isReferenced(line.slice(end))) ? [index] : [],
   );
 }
 
-function isStatementLine(text) {
-  if (!STATEMENT_END.test(text) || SENTENCE.test(text)) return false;
-  return CALL_OR_ASSIGNMENT.test(text) || KEYWORD_START.test(text);
-}
-
 function isCodeLine(text) {
-  if (text === '' || INLINE_DOC_TAG.test(text)) return false;
-  return isStatementLine(text) || BLOCK_OPEN.test(text) || BLOCK_CLOSE.test(text);
+  if (text === '' || INLINE_DOC_TAG.test(text) || SENTENCE.test(text)) return false;
+  return CODE_SHAPES.some((shape) => shape.test(text));
 }
 
 function exampleMask(lines) {

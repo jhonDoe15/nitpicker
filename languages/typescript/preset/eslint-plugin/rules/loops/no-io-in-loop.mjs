@@ -1,23 +1,6 @@
-const LOOPS = new Set([
-  'ForOfStatement',
-  'ForInStatement',
-  'ForStatement',
-  'WhileStatement',
-  'DoWhileStatement',
-]);
-const FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']);
-const ITERATION_METHODS = new Set([
-  'map',
-  'forEach',
-  'flatMap',
-  'filter',
-  'reduce',
-  'some',
-  'every',
-  'find',
-  'findIndex',
-]);
-const EXIT_STATEMENT = /\b(?:return|break)\b/;
+import { wordsOf } from '../support/identifier-words.mjs';
+import { enclosingLoop, isPagingLoop, isRetryAttempt } from './loop-shapes.mjs';
+
 const BUILT_IN_MODULES = /^(?:node:)?(?:fs|fs\/promises|http|https|http2|net|dns|child_process)$/;
 const PACKAGE_MODULES = new RegExp(
   `^(?:${[
@@ -43,7 +26,7 @@ const PACKAGE_MODULES = new RegExp(
     '@aws-sdk\\/.+',
   ].join('|')})$`,
 );
-const OWNER_WORDS = [
+const OWNER_WORDS = new Set([
   'repo',
   'repository',
   'dao',
@@ -53,21 +36,15 @@ const OWNER_WORDS = [
   'client',
   'pool',
   'connection',
-  'conn',
-  'collection',
-  'model',
-  'orm',
   'knex',
   'redis',
   'http',
   'axios',
   'api',
   'gateway',
-];
-const INPUT_OUTPUT_OWNER = new RegExp(`(?:${OWNER_WORDS.join('|')})$`, 'i');
-const METHOD_PREFIXES = [
+]);
+const METHOD_PREFIXES = new Set([
   'find',
-  'get',
   'fetch',
   'load',
   'read',
@@ -84,11 +61,29 @@ const METHOD_PREFIXES = [
   'execute',
   'write',
   'list',
-];
-const METHOD_NAMES = ['exists', 'exec', 'send', 'post', 'put', 'patch', 'request', 'raw', 'run'];
-const INPUT_OUTPUT_METHOD = new RegExp(
-  `^(?:${METHOD_PREFIXES.map((word) => `${word}\\w*`).join('|')}|${METHOD_NAMES.join('|')})$`,
-);
+]);
+const GETTER_LOOKUPS = new Set(['by', 'all', 'many', 'one', 'page']);
+const METHOD_NAMES = new Set([
+  'exists',
+  'exec',
+  'send',
+  'post',
+  'put',
+  'patch',
+  'request',
+  'raw',
+  'run',
+]);
+
+function isInputOutputMethod(name) {
+  const [first, second] = wordsOf(name);
+  if (first === 'get') return second === undefined || GETTER_LOOKUPS.has(second);
+  return METHOD_NAMES.has(name) || METHOD_PREFIXES.has(first);
+}
+
+function isInputOutputOwner(name) {
+  return OWNER_WORDS.has(wordsOf(name).at(-1));
+}
 
 function inputOutputModule(name) {
   return BUILT_IN_MODULES.test(name) || PACKAGE_MODULES.test(name);
@@ -114,62 +109,12 @@ function chainNames(start) {
   return names;
 }
 
-function ancestorsOf(node) {
-  const ancestors = [];
-  const pending = [node.parent];
-  for (const ancestor of pending) {
-    if (ancestor) {
-      ancestors.push(ancestor);
-      pending.push(ancestor.parent);
-    }
-  }
-  return ancestors;
-}
-
 function isInputOutputCall(call, importedNames) {
   const names = chainNames(call.callee);
   if (names.length === 0) return false;
   if (names[0] === 'fetch' || importedNames.has(names[0])) return true;
   const owners = names.slice(0, -1);
-  return (
-    owners.length > 0 &&
-    INPUT_OUTPUT_METHOD.test(names.at(-1)) &&
-    owners.some((name) => INPUT_OUTPUT_OWNER.test(name))
-  );
-}
-
-function isIterationCallback(fn) {
-  const call = fn.parent;
-  return (
-    call.type === 'CallExpression' &&
-    call.arguments.includes(fn) &&
-    call.callee.type === 'MemberExpression' &&
-    ITERATION_METHODS.has(call.callee.property.name)
-  );
-}
-
-function isLoopBody(loop, child) {
-  return child === loop.body || child === loop.test || child === loop.update;
-}
-
-function isInsideLoop(node) {
-  let child = node;
-  for (const parent of ancestorsOf(node)) {
-    if (LOOPS.has(parent.type) && isLoopBody(parent, child)) return true;
-    if (FUNCTIONS.has(parent.type)) return isIterationCallback(parent);
-    child = parent;
-  }
-  return false;
-}
-
-function isRetryAttempt(call, sourceCode) {
-  for (const parent of ancestorsOf(call)) {
-    if (FUNCTIONS.has(parent.type)) return false;
-    if (parent.type === 'TryStatement' && EXIT_STATEMENT.test(sourceCode.getText(parent.block))) {
-      return true;
-    }
-  }
-  return false;
+  return owners.length > 0 && isInputOutputMethod(names.at(-1)) && owners.some(isInputOutputOwner);
 }
 
 function importedInputOutputNames(program) {
@@ -195,7 +140,9 @@ export const rule = {
     messages: {
       call: [
         'This calls {{callee}} once per item of a loop (one query or request per item).',
-        'Fetch or write all items at once (`findByIds`, `WHERE id IN (...)`, one batched request).',
+        'Batch it: fetch or write all items at once (`findByIds`, `WHERE id IN (...)`, one batched request),',
+        'or run the calls together with `Promise.all(items.map(...))` when there is no batch API.',
+        'Paging, cursor and retry loops are fine.',
         'If a call per item is intended (for example one file read per source file),',
         'add an exception for nitpicker/no-io-in-loop in nitpicker.config.json.',
       ].join(' '),
@@ -208,8 +155,12 @@ export const rule = {
         importedNames = importedInputOutputNames(program);
       },
       CallExpression(node) {
-        const loops = isInputOutputCall(node, importedNames) && isInsideLoop(node);
-        if (!loops || isRetryAttempt(node, context.sourceCode)) return;
+        const found = isInputOutputCall(node, importedNames) ? enclosingLoop(node) : undefined;
+        if (found === undefined) return;
+        const { visitorKeys } = context.sourceCode;
+        const exempt =
+          isRetryAttempt(node, found.loop, visitorKeys) || isPagingLoop(found.loop, visitorKeys);
+        if (exempt) return;
         const callee = chainNames(node.callee).join('.');
         context.report({ node, messageId: 'call', data: { callee: `${callee}()` } });
       },
