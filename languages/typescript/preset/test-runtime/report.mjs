@@ -1,3 +1,4 @@
+import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cruise } from '../dependency-graph/cruise.mjs';
@@ -24,13 +25,15 @@ const report = {
 await mkdir(path.dirname(outputPath), { recursive: true });
 await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
 
-console.log(
-  JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+process.stdout.write(
+  formatOutput(
+    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+  ) + '\n',
 );
 if (report.findings.length > 0) {
-  console.log('\nTests without a verified production runtime:');
+  process.stdout.write(formatOutput('\nTests without a verified production runtime:') + '\n');
   for (const finding of report.findings) {
-    console.log(`${finding.category}\t${finding.test}`);
+    process.stdout.write(formatOutput(`${finding.category}\t${finding.test}`) + '\n');
   }
   process.exitCode = 1;
 }

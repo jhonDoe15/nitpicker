@@ -5,7 +5,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveLayout } from '../../layout.mjs';
-import { reactSyntaxConfigFor } from '../react-scope.mjs';
+import { reactSyntaxConfigFor } from './react-scope.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-test-scope-'));
 const files = {

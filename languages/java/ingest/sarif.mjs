@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
 const ENFORCEABLE_LEVELS = new Set(['error', 'warning']);
 const SKIPPED_KINDS = new Set(['pass', 'notApplicable']);
@@ -11,7 +13,13 @@ export function ingestSarif(log, options = {}) {
   const findings = [];
   const skipped = [];
   for (const [runIndex, run] of log.runs.entries()) {
-    ingestRun(run, `runs[${String(runIndex)}]`, options, findings, skipped);
+    ingestRun({
+      run,
+      context: `runs[${String(runIndex)}]`,
+      options,
+      findings,
+      skipped,
+    });
   }
   return { findings, skipped };
 }
@@ -20,7 +28,7 @@ export function ingestSarifText(text, options = {}) {
   return ingestSarif(JSON.parse(text), options);
 }
 
-function ingestRun(run, context, options, findings, skipped) {
+function ingestRun({ run, context, options, findings, skipped }) {
   if (!isRecord(run)) {
     throw new TypeError(`${context} must be an object`);
   }
@@ -30,41 +38,14 @@ function ingestRun(run, context, options, findings, skipped) {
   const seen = new Map();
 
   for (const [resultIndex, result] of (Array.isArray(run.results) ? run.results : []).entries()) {
-    const resultContext = `${context}.results[${String(resultIndex)}]`;
-    if (!isRecord(result) || isIgnored(result)) {
-      continue;
-    }
-    const rule = ruleOf(result, rules);
-    const filePath = resultPath(result, options.root);
-    if (rule === undefined || filePath === undefined) {
-      skipped.push({
-        context: resultContext,
-        reason: rule === undefined ? 'no rule' : 'no usable path',
-      });
-      continue;
-    }
-    const symbol = symbolOf(result);
-    const baseIdentity = identityOf(result, rule, filePath, symbol);
-    const seenKey = `${filePath}\0${baseIdentity}`;
-    const count = (seen.get(seenKey) ?? 0) + 1;
-    seen.set(seenKey, count);
-
-    const finding = {
+    ingestResult(result, `${context}.results[${String(resultIndex)}]`, {
       tool,
-      rule,
-      path: filePath,
-      identity: count === 1 ? baseIdentity : `${baseIdentity}#${String(count)}`,
-      message: messageOf(result, rule),
-      classification: classify(result, rule, rules),
-    };
-    if (symbol !== undefined) {
-      finding.symbol = symbol;
-    }
-    const location = locationOf(result);
-    if (location !== undefined) {
-      finding.location = location;
-    }
-    findings.push(finding);
+      rules,
+      options,
+      seen,
+      findings,
+      skipped,
+    });
   }
 }
 
@@ -157,7 +138,7 @@ function compareKeys(left, right) {
   return left > right ? 1 : 0;
 }
 
-function identityOf(result, rule, filePath, symbol) {
+function identityOf({ result, rule, filePath, symbol }) {
   const fingerprints = isRecord(result.partialFingerprints) ? result.partialFingerprints : {};
   const entries = Object.entries(fingerprints)
     .filter(([, value]) => typeof value === 'string' && value !== '')
@@ -178,4 +159,112 @@ function nonEmpty(value) {
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey }) {
+  return {
+    ...log,
+    runs: (log.runs ?? []).map((run) => ({
+      ...run,
+      results: (run.results ?? []).map((result) =>
+        prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }),
+      ),
+    })),
+  };
+}
+
+function prepareResult(result, { roots, sourceRoots, projectRoot, identityKey }) {
+  const subject = identityKey(result);
+  const prepared = {
+    ...result,
+    level: result.level === 'error' ? 'error' : 'warning',
+    locations: (result.locations ?? []).map((location) =>
+      relocate(location, { roots, sourceRoots, projectRoot }),
+    ),
+  };
+  if (typeof subject === 'string' && subject !== '' && result.partialFingerprints === undefined) {
+    prepared.partialFingerprints = { 'nitpicker/subject': subject };
+  }
+  return prepared;
+}
+
+function relocate(location, { roots, sourceRoots, projectRoot }) {
+  const uri = location.physicalLocation?.artifactLocation?.uri;
+  if (typeof uri !== 'string') {
+    return location;
+  }
+  const resolved = resolveUri(uri, { roots, sourceRoots, projectRoot });
+  return {
+    ...location,
+    physicalLocation: {
+      ...location.physicalLocation,
+      artifactLocation: { uri: resolved },
+    },
+  };
+}
+
+export function projectRelative(uri, roots) {
+  for (const root of roots) {
+    const relative = normalizeUri(uri, root);
+    if (relative !== undefined) {
+      return relative;
+    }
+  }
+  return undefined;
+}
+
+function resolveUri(uri, { roots, sourceRoots, projectRoot }) {
+  const relative = projectRelative(uri, roots);
+  if (relative === undefined) {
+    return uri;
+  }
+  const owner = sourceRoots.find((sourceRoot) =>
+    existsSync(path.join(projectRoot, sourceRoot, relative)),
+  );
+  return owner === undefined ? relative : `${owner}/${relative}`;
+}
+
+function ingestResult(result, resultContext, { tool, rules, options, seen, findings, skipped }) {
+  if (!isRecord(result) || isIgnored(result)) {
+    return;
+  }
+  const rule = ruleOf(result, rules);
+  const filePath = resultPath(result, options.root);
+  if (rule === undefined || filePath === undefined) {
+    skipped.push({
+      context: resultContext,
+      reason: rule === undefined ? 'no rule' : 'no usable path',
+    });
+    return;
+  }
+  const symbol = symbolOf(result);
+  const identity = uniqueResultIdentity(result, { rule, filePath, symbol }, seen);
+
+  const finding = {
+    tool,
+    rule,
+    path: filePath,
+    identity,
+    message: messageOf(result, rule),
+    classification: classify(result, rule, rules),
+  };
+  Object.assign(finding, resultAttributes(result, symbol));
+  findings.push(finding);
+}
+
+function uniqueResultIdentity(result, { rule, filePath, symbol }, seen) {
+  const baseIdentity = identityOf({ result, rule, filePath, symbol });
+  const seenKey = `${filePath}\0${baseIdentity}`;
+  const count = (seen.get(seenKey) ?? 0) + 1;
+  seen.set(seenKey, count);
+
+  return count === 1 ? baseIdentity : `${baseIdentity}#${String(count)}`;
+}
+
+function resultAttributes(result, symbol) {
+  const location = locationOf(result);
+  return {
+    ...(symbol === undefined ? {} : { symbol }),
+    ...(location === undefined ? {} : { location }),
+  };
 }
