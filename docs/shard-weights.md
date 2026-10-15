@@ -2,7 +2,7 @@
 
 `shardWeight` on each check in `languages/typescript/preset/quality-checks.mjs` is the cost estimate that
 `nitpicker --shard-count/--shard-index` uses to spread analyzers over CI shards (greedy
-longest-first over dependency components, see `core/diff/sharding.mjs`). Only the relative sizes
+longest-first over dependency components, see `core/diff/sharding/sharding.mjs`). Only the relative sizes
 matter. The original numbers were tuned on the codebase nitpicker was ported from; this note records
 the retune from measurements on TypeScript projects, and how to repeat it.
 
