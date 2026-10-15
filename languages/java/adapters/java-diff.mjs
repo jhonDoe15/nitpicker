@@ -108,7 +108,8 @@ function buildModules(projectRoot, options) {
   return { moduleDirs: [projectRoot], reportDirectory: REPORT_DIRECTORY };
 }
 
-export function collectJavaFindings(projectRoot, options = {}) {
+export function collectJavaFindings(root, options = {}) {
+  const projectRoot = path.resolve(root);
   const preset = options.policy?.preset ?? 'java';
   const { moduleDirs, reportDirectory } = buildModules(projectRoot, options);
   for (const moduleDir of moduleDirs) {
