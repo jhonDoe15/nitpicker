@@ -2,7 +2,10 @@ import { readLayout } from '../../head-policy.mjs';
 import { isTestFunctionChain } from '../test-quality/test-calls.mjs';
 
 const layout = readLayout();
-const RUNNABLE_NAME = new RegExp(`\\.(?:test|spec)\\.(?:${layout.extensions.join('|')})$`, 'u');
+const RUNNABLE_NAME = new RegExp(
+  `\\.(?:test|spec)(?:-d)?\\.(?:${layout.extensions.join('|')})$`,
+  'u',
+);
 
 export const rule = {
   meta: {

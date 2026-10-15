@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mutantRuleId } from '../../../../shared/policy.mjs';
+import { baseLineOf } from './line-shifts.mjs';
 
 const CAUGHT_STATUSES = new Set(['Killed', 'Timeout']);
 const ESCAPED_STATUSES = new Set(['Survived', 'NoCoverage']);
@@ -45,8 +46,8 @@ export function mutationTargetsWithTestedModules(targets, testedModules) {
   ];
 }
 
-function scopeOf({ targets, testedModules }) {
-  return { tested: new Set(testedModules), ranges: rangesByFile(targets) };
+function scopeOf({ targets, testedModules, lineShifts = new Map() }) {
+  return { tested: new Set(testedModules), ranges: rangesByFile(targets), lineShifts };
 }
 
 function isOnChangedCode(scope, filePath, mutant) {
@@ -60,17 +61,13 @@ export function changedCodeMutants(report, mutationScope) {
   );
 }
 
-function isPositional(scope, filePath) {
-  return !scope.ranges.has(filePath);
-}
-
 function escapedMutants(report, scope) {
   return Object.entries(report.files ?? {})
     .filter(([filePath]) => scope.tested.has(filePath))
     .map(([filePath, file]) => ({
       filePath,
-      escaped: keyedMutants(file.mutants ?? [], isPositional(scope, filePath)).filter(
-        ({ mutant }) =>
+      escaped: (file.mutants ?? []).filter(
+        (mutant) =>
           !isOnChangedCode(scope, filePath, mutant) && ESCAPED_STATUSES.has(mutant.status),
       ),
     }));
@@ -80,43 +77,41 @@ export function hasWeakeningCandidates(report, mutationScope) {
   return escapedMutants(report, scopeOf(mutationScope)).some(({ escaped }) => escaped.length > 0);
 }
 
-function mutantKey(mutant, positional) {
-  const start = mutant.location?.start;
-  const anchor = positional ? `${String(start?.line)}:${String(start?.column)}` : mutant.sourceHash;
-  return [mutant.mutatorName, mutant.replacement ?? '', anchor ?? ''].join('\0');
+function baseLineMapper(scope, filePath) {
+  const hunks = scope.lineShifts.get(filePath) ?? [];
+  return (line) => (typeof line === 'number' ? baseLineOf(hunks, line) : undefined);
 }
 
-function keyedMutants(mutants, positional) {
-  const seen = new Map();
-  return mutants.map((mutant) => {
-    const key = mutantKey(mutant, positional);
-    const occurrence = (seen.get(key) ?? 0) + 1;
-    seen.set(key, occurrence);
-    return { mutant, key: `${key}\0${String(occurrence)}` };
+function keyedMutants(mutants, baseLine) {
+  return mutants.flatMap((mutant) => {
+    const line = baseLine(startLine(mutant));
+    if (line === undefined) return [];
+    const column = String(mutant.location?.start?.column);
+    const key = [mutant.mutatorName, mutant.replacement ?? '', `${String(line)}:${column}`];
+    return [{ mutant, key: key.join('\0') }];
   });
+}
+
+function baseRange(baseLine, mutant) {
+  const first = baseLine(startLine(mutant));
+  const last = baseLine(mutant.location?.end?.line ?? startLine(mutant));
+  return first === undefined || last === undefined ? [] : [`${String(first)}-${String(last)}`];
 }
 
 export function baseMutationTargets(headReport, mutationScope) {
   const scope = scopeOf(mutationScope);
-  return escapedMutants(headReport, scope)
-    .filter(({ escaped }) => escaped.length > 0)
-    .flatMap(({ filePath, escaped }) =>
-      isPositional(scope, filePath)
-        ? escaped.map(
-            ({ mutant }) =>
-              `${filePath}:${String(startLine(mutant))}-${String(mutant.location?.end?.line ?? startLine(mutant))}`,
-          )
-        : [filePath],
-    )
-    .filter((target, index, targets) => targets.indexOf(target) === index);
+  const targets = escapedMutants(headReport, scope).flatMap(({ filePath, escaped }) => {
+    const baseLine = baseLineMapper(scope, filePath);
+    return escaped.flatMap((mutant) =>
+      baseRange(baseLine, mutant).map((range) => `${filePath}:${range}`),
+    );
+  });
+  return [...new Set(targets)];
 }
 
-function caughtKeys(baseFile, positional) {
-  return new Set(
-    keyedMutants(baseFile?.mutants ?? [], positional)
-      .filter(({ mutant }) => CAUGHT_STATUSES.has(mutant.status))
-      .map(({ key }) => key),
-  );
+function caughtKeys(baseFile) {
+  const caught = (baseFile?.mutants ?? []).filter((mutant) => CAUGHT_STATUSES.has(mutant.status));
+  return new Set(keyedMutants(caught, (line) => line).map(({ key }) => key));
 }
 
 function inlineCode(value) {
@@ -130,7 +125,7 @@ function weakenedMessage(filePath, mutant) {
       ? `${mutant.mutatorName} mutant`
       : `${mutant.mutatorName} mutant (${inlineCode(mutant.original)} replaced with ${inlineCode(mutant.replacement)})`;
   const outcome = mutant.status === 'NoCoverage' ? 'no test runs it now' : 'it survives now';
-  return `This change weakened the tests of ${filePath}: the base tests caught this ${change}, but ${outcome}. Restore the assertion that caught it, or add one.`;
+  return `This change weakened the tests of ${filePath}: the base tests caught this ${change}, but ${outcome}. Restore the assertion that caught it, or add one. If the tests are weaker on purpose, add an exception for ${mutantRuleId(mutant.status)} with this path in nitpicker.config.json.`;
 }
 
 function weakenedFinding(analyzerName, filePath, { mutant, key }) {
@@ -152,8 +147,8 @@ function weakenedFinding(analyzerName, filePath, { mutant, key }) {
 export function weakenedTestFindings({ headReport, baseReport, mutationScope, analyzerName }) {
   const scope = scopeOf(mutationScope);
   return escapedMutants(headReport, scope).flatMap(({ filePath, escaped }) => {
-    const caught = caughtKeys(baseReport.files?.[filePath], isPositional(scope, filePath));
-    return escaped
+    const caught = caughtKeys(baseReport.files?.[filePath]);
+    return keyedMutants(escaped, baseLineMapper(scope, filePath))
       .filter(({ key }) => caught.has(key))
       .map((entry) => weakenedFinding(analyzerName, filePath, entry));
   });

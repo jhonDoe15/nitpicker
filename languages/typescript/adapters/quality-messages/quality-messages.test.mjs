@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { MESSAGES } from '../../../../shared/policy.mjs';
 import {
   coverageFailureFindings,
-  formatVitestFailures,
   mutationSkipFor,
   normalizeCrap,
   normalizeMutation,
 } from '../quality-areas-runner.mjs';
 import { crapUnknownMessage } from './crap-unknown-message.mjs';
+import { formatVitestFailures } from './vitest-failures.mjs';
 import {
   timeoutText,
   unhandledErrors,
@@ -216,7 +216,7 @@ describe('mutants hidden by a Stryker comment', () => {
 
     expect(ignored.classification).toBe('enforceable');
     expect(ignored.message).toBe(
-      'Ignored ConditionalExpression at column 7: an ignore comment hides this code from mutation testing. Remove the comment and test the code; mutation ignore comments are not an exception route.',
+      'Ignored ConditionalExpression at column 7: an ignore comment hides this code from mutation testing. Remove the comment and test the code. Ignore comments are not an exception route: if this code must stay out of mutation testing, add an exception for mutant-ignored with its path in nitpicker.config.json.',
     );
   });
 });

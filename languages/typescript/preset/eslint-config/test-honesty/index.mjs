@@ -15,6 +15,17 @@ function unitTestGlobsFor(layout) {
   ];
 }
 
+function stubRestoreConfigFor(layout, setupFiles) {
+  return {
+    files: [...layout.testRoots, ...layout.sourceRoots].map(
+      (root) => `${root}/**/*.{test,spec}.${codeExtensions}`,
+    ),
+    ignores: [...layout.excludedGlobs, ...setupFiles],
+    plugins: { nitpicker: nitpickerRules },
+    rules: { 'nitpicker/fake-timers-require-restore': ['error', { stubs: true }] },
+  };
+}
+
 export function testHonestyConfigFor(layout, { setupFiles = [] } = {}) {
   const files = testAreaGlobsFor(layout);
   return [
@@ -47,9 +58,10 @@ export function testHonestyConfigFor(layout, { setupFiles = [] } = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-test-helpers-in-source': 'error' },
     },
+    stubRestoreConfigFor(layout, setupFiles),
     {
       files,
-      ignores: [...layout.excludedGlobs, `**/*.{test,spec}.${codeExtensions}`],
+      ignores: [...layout.excludedGlobs, `**/*.{test,spec,test-d,spec-d}.${codeExtensions}`],
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-uncollected-tests': 'error' },
     },

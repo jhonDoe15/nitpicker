@@ -1,7 +1,9 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import qualityConfig from '../defaults/vitest.quality.config.ts';
 
 const temporaryRoots = [];
@@ -28,6 +30,7 @@ async function resolvedConfig(projectFiles) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-vitest-pins-'));
   temporaryRoots.push(root);
   for (const [name, text] of Object.entries(projectFiles)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
   const previous = process.cwd();
@@ -37,6 +40,28 @@ async function resolvedConfig(projectFiles) {
   } finally {
     process.chdir(previous);
   }
+}
+
+const packageRoot = fileURLToPath(new URL('../../../..', import.meta.url));
+
+function runQualityTests(projectFiles) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-vitest-run-'));
+  temporaryRoots.push(root);
+  symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
+  for (const [name, text] of Object.entries(projectFiles)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), text);
+  }
+  const config = path.join(
+    packageRoot,
+    'languages/typescript/preset/defaults/vitest.quality.config.ts',
+  );
+  const vitest = path.join(packageRoot, 'node_modules/vitest/vitest.mjs');
+  return spawnSync(process.execPath, [vitest, 'run', '--config', config, '--root', root], {
+    cwd: root,
+    encoding: 'utf8',
+    env: { ...process.env, NITPICKER_POLICY: '' },
+  });
 }
 
 function pick(source, keys) {
@@ -53,12 +78,11 @@ const pinnedGlobal = {
 const pinnedPerProject = {
   retry: 0,
   allowOnly: false,
+  restoreMocks: true,
   testTimeout: 10_000,
   hookTimeout: 10_000,
-  restoreMocks: true,
-  unstubEnvs: true,
-  unstubGlobals: true,
 };
+const longerTimeouts = { testTimeout: 120_000, hookTimeout: 120_000 };
 
 describe('the vitest config nitpicker runs tests with', () => {
   it('pins every option that changes pass or fail over a project config', async () => {
@@ -71,6 +95,7 @@ describe('the vitest config nitpicker runs tests with', () => {
     ).toEqual({
       ...pinnedGlobal,
       ...pinnedPerProject,
+      ...longerTimeouts,
     });
     expect(config.test.environment).toBe('jsdom');
   });
@@ -79,17 +104,88 @@ describe('the vitest config nitpicker runs tests with', () => {
     const config = await resolvedConfig({
       'vitest.config.mjs': `export default { test: { projects: [
         { test: { name: 'ui', ...${looseProjectTest} } },
-        './packages/api',
       ] } };`,
     });
 
-    const [ui, api] = config.test.projects;
+    const [ui] = config.test.projects;
     expect(pick(ui.test, ['name', 'environment', ...Object.keys(pinnedPerProject)])).toEqual({
       name: 'ui',
       environment: 'jsdom',
       ...pinnedPerProject,
+      ...longerTimeouts,
     });
-    expect(api).toBe('./packages/api');
+    expect(ui.plugins.map(({ name }) => name)).toEqual(['nitpicker-strip-coverage-ignore-hints']);
+  });
+
+  it('turns project paths and globs into pinned projects that extend their own config', async () => {
+    const config = await resolvedConfig({
+      'vitest.config.mjs': `export default { test: { projects: [
+        './packages/api',
+        'packages/*',
+        '!packages/skipped',
+        'tools/vitest.e2e.config.mjs',
+      ] } };`,
+      'packages/api/vitest.config.ts': 'export default { test: { retry: 3, testTimeout: 60000 } };',
+      'packages/web/package.json': '{}',
+      'packages/skipped/vitest.config.ts': 'export default {};',
+      'tools/vitest.e2e.config.mjs': 'export default {};',
+    });
+    const root = temporaryRoots.at(-1);
+
+    const projects = await Promise.all(config.test.projects);
+
+    expect(
+      projects.map((project) => ({
+        extends: project.extends,
+        root: project.root,
+        test: project.test,
+        plugins: project.plugins.map(({ name }) => name),
+      })),
+    ).toEqual(
+      [
+        {
+          extends: path.join(root, 'packages/api/vitest.config.ts'),
+          root: path.join(root, 'packages/api'),
+          test: { ...pinnedPerProject, testTimeout: 60_000 },
+        },
+        { extends: undefined, root: path.join(root, 'packages/web'), test: pinnedPerProject },
+        {
+          extends: path.join(root, 'tools/vitest.e2e.config.mjs'),
+          root: path.join(root, 'tools'),
+          test: pinnedPerProject,
+        },
+      ].map((project) => ({ ...project, plugins: ['nitpicker-strip-coverage-ignore-hints'] })),
+    );
+  });
+
+  it('raises shorter timeouts and keeps the stub and env settings of the project', async () => {
+    const config = await resolvedConfig({
+      'vitest.config.mjs': `export default { test: { testTimeout: 2000, hookTimeout: 30000, unstubGlobals: false } };`,
+    });
+
+    expect(
+      pick(config.test, ['testTimeout', 'hookTimeout', 'unstubGlobals', 'unstubEnvs']),
+    ).toEqual({
+      testTimeout: 10_000,
+      hookTimeout: 30_000,
+      unstubGlobals: false,
+      unstubEnvs: undefined,
+    });
+  });
+
+  it('pins projects a config returns from a function or a promise', async () => {
+    const config = await resolvedConfig({
+      'vitest.config.mjs': `export default { test: { projects: [
+        () => ({ test: { name: 'lazy', retry: 2 } }),
+        Promise.resolve({ test: { name: 'later', retry: 2 } }),
+      ] } };`,
+    });
+    const [lazy, later] = config.test.projects;
+
+    expect([(await lazy({})).test, (await later).test]).toEqual([
+      { name: 'lazy', ...pinnedPerProject },
+      { name: 'later', ...pinnedPerProject },
+    ]);
   });
 
   it('pins the same options when the project has no vitest config', async () => {
@@ -143,5 +239,29 @@ describe('the vitest config nitpicker runs tests with', () => {
       'mine',
       'nitpicker-strip-coverage-ignore-hints',
     ]);
+  });
+});
+
+describe('a test run with the vitest config nitpicker runs tests with', () => {
+  let run;
+
+  beforeAll(() => {
+    run = runQualityTests({
+      'vitest.config.mjs': "export default { test: { setupFiles: ['./test/setup.mjs'] } };",
+      'test/setup.mjs':
+        "import { vi } from 'vitest';\nvi.stubGlobal('ResizeObserver', class {});\n",
+      'test/observe.test.mjs': [
+        "import { expect, it } from 'vitest';",
+        "it('sees the stub', () => { expect(typeof ResizeObserver).toBe('function'); });",
+        "it('still sees the stub', () => { expect(typeof ResizeObserver).toBe('function'); });",
+      ].join('\n'),
+    });
+  });
+
+  it('keeps globals a setup file stubs for every test', () => {
+    expect({ status: run.status, passed: /Tests\s+2 passed/u.test(run.stdout) }).toEqual({
+      status: 0,
+      passed: true,
+    });
   });
 });

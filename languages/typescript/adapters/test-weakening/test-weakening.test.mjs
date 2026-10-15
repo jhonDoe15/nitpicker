@@ -6,17 +6,11 @@ import {
   fixtureGit,
   removeGitRepositories,
 } from '../../../../core/diff/fixtures/git-repository.mjs';
-import { isSourceFile, isTestFile } from '../../preset/layout.mjs';
+import { defaultResolvedLayout as layout } from '../../preset/layout.mjs';
+import { normalizeMutation, strykerRunConfig } from '../quality-areas-runner.mjs';
+import { runScopedMutation } from './scoped-mutation.mjs';
 import { testedSourceModules } from './tested-modules.mjs';
-import {
-  baseMutationTargets,
-  changedCodeMutants,
-  hasWeakeningCandidates,
-  mutationTargetsWithTestedModules,
-  weakenedTestFindings,
-} from './weakened-mutants.mjs';
 
-const layout = { isSourceFile, isTestFile };
 const CLASSIFY_TEST = [
   "import { expect, it } from 'vitest';",
   "import { classify } from '../src/classify.js';",
@@ -28,6 +22,19 @@ const CLASSIFY_TEST = [
 ].join('\n');
 
 afterEach(removeGitRepositories);
+
+function tested(modules, skipped = []) {
+  return { modules, skipped };
+}
+
+function escaped(status, line) {
+  return {
+    status,
+    mutatorName: 'ConditionalExpression',
+    replacement: 'true',
+    location: { start: { line, column: 7 } },
+  };
+}
 
 function snapshots({ headChanges = {}, removed = [], baseFiles = {} }) {
   const { root } = createGitRepository({
@@ -61,10 +68,9 @@ describe('production modules of the changed tests', () => {
       headChanges: { 'test/classify.test.ts': CLASSIFY_TEST.replace("toBe('low')", 'toBeTypeOf') },
     });
 
-    expect(testedSourceModules(options, layout)).toEqual([
-      'src/classify.ts',
-      'src/format/index.ts',
-    ]);
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested(['src/classify.ts', 'src/format/index.ts']),
+    );
   });
 
   it.each([
@@ -93,7 +99,55 @@ describe('production modules of the changed tests', () => {
   ])('follow %s', (_name, baseFiles, test) => {
     const options = snapshots({ baseFiles, headChanges: { 'test/unrelated.test.ts': test } });
 
-    expect(testedSourceModules(options, layout)).toEqual(['src/classify.ts', 'src/unrelated.ts']);
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested(['src/classify.ts', 'src/unrelated.ts']),
+    );
+  });
+
+  it('follow the re-exports of a barrel the test imports, and stop at a re-export cycle', () => {
+    const options = snapshots({
+      baseFiles: {
+        'src/feature/index.ts':
+          "export * from './domain/index.js';\nexport { format } from '../format';\n",
+        'src/feature/domain/index.ts':
+          "export { classify } from '../../classify';\nexport * from '../index.js';\n",
+      },
+      headChanges: {
+        'test/unrelated.test.ts': "import { classify } from '../src/feature/index.js';\n",
+      },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested([
+        'src/classify.ts',
+        'src/feature/domain/index.ts',
+        'src/feature/index.ts',
+        'src/format/index.ts',
+        'src/unrelated.ts',
+      ]),
+    );
+  });
+
+  it('follow re-export chains only three modules deep, not every import', () => {
+    const options = snapshots({
+      baseFiles: {
+        'src/chain/a.ts': "export * from './b';\n",
+        'src/chain/b.ts': "export * from './c';\nimport { format } from '../format';\n",
+        'src/chain/c.ts': "export * from './d';\n",
+        'src/chain/d.ts': "export * from '../classify';\n",
+      },
+      headChanges: { 'test/unrelated.test.ts': "import { a } from '../src/chain/a';\n" },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested([
+        'src/chain/a.ts',
+        'src/chain/b.ts',
+        'src/chain/c.ts',
+        'src/chain/d.ts',
+        'src/unrelated.ts',
+      ]),
+    );
   });
 
   it('leave out packages, even one an alias points into', () => {
@@ -105,13 +159,13 @@ describe('production modules of the changed tests', () => {
       headChanges: { 'test/unrelated.test.ts': "import { lib } from 'lib';\n" },
     });
 
-    expect(testedSourceModules(options, layout)).toEqual(['src/unrelated.ts']);
+    expect(testedSourceModules(options, layout)).toEqual(tested(['src/unrelated.ts']));
   });
 
   it('include the modules a deleted test imported', () => {
     const options = snapshots({ removed: ['test/unrelated.test.ts'] });
 
-    expect(testedSourceModules(options, layout)).toEqual(['src/unrelated.ts']);
+    expect(testedSourceModules(options, layout)).toEqual(tested(['src/unrelated.ts']));
   });
 
   it('skip modules the head deleted, since they have no mutants to compare', () => {
@@ -120,7 +174,52 @@ describe('production modules of the changed tests', () => {
       headChanges: { 'test/unrelated.test.ts': 'export {};\n' },
     });
 
-    expect(testedSourceModules(options, layout)).toEqual([]);
+    expect(testedSourceModules(options, layout)).toEqual(tested([]));
+  });
+
+  it('include the modules of the tests that use a changed test helper', () => {
+    const options = snapshots({
+      baseFiles: { 'test/support/assert.ts': "export * from './helper.js';\n" },
+      headChanges: { 'test/support/helper.ts': 'export const helper = 2;\n' },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested(['src/classify.ts', 'src/format/index.ts']),
+    );
+  });
+
+  it('are none when a test was only renamed', () => {
+    const options = snapshots({
+      removed: ['test/unrelated.test.ts'],
+      headChanges: {
+        'test/renamed.test.ts': "import { unrelated } from '../src/unrelated.js';\n",
+      },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(tested([]));
+  });
+
+  it('stop at ten modules, the ones the tests import directly first', () => {
+    const modules = Array.from({ length: 11 }, (_, index) => `src/many/m${String(index)}.ts`);
+    const options = snapshots({
+      baseFiles: {
+        ...Object.fromEntries(modules.map((modulePath) => [modulePath, 'export const m = 1;\n'])),
+        'src/many/index.ts': modules
+          .map((_, index) => `export * from './m${String(index)}';`)
+          .join('\n'),
+      },
+      headChanges: {
+        'test/unrelated.test.ts':
+          "import { m } from '../src/many/index';\nimport '../src/classify';\n",
+      },
+    });
+
+    expect(testedSourceModules(options, layout)).toEqual(
+      tested(
+        ['src/classify.ts', 'src/many/index.ts', 'src/unrelated.ts', ...modules.slice(0, 7)].sort(),
+        modules.slice(7),
+      ),
+    );
   });
 
   it('are none when no test changed', () => {
@@ -128,194 +227,133 @@ describe('production modules of the changed tests', () => {
       headChanges: { 'src/classify.ts': 'export const classify = 1;\n' },
     });
 
-    expect(testedSourceModules(options, layout)).toEqual([]);
+    expect(testedSourceModules(options, layout)).toEqual(tested([]));
   });
 
   it('are none on the base side and in a whole-project run', () => {
     const options = snapshots({ removed: ['test/unrelated.test.ts'] });
 
-    expect(testedSourceModules({ ...options, snapshot: 'base' }, layout)).toEqual([]);
+    expect(testedSourceModules({ ...options, snapshot: 'base' }, layout)).toEqual(tested([]));
     expect(
       testedSourceModules({ snapshot: 'head', projectRoot: options.projectRoot }, layout),
-    ).toEqual([]);
+    ).toEqual(tested([]));
   });
 });
 
-function mutant(status, line, overrides = {}) {
-  return {
-    status,
-    mutatorName: 'ConditionalExpression',
-    replacement: 'true',
-    sourceHash: `hash-${String(line)}`,
-    original: 'n < 5',
-    location: { start: { line, column: 7 } },
-    ...overrides,
-  };
-}
-
-const mutationScope = {
-  targets: ['src/classify.ts:2-2', 'src/other.ts:1-1'],
-  testedModules: ['src/classify.ts'],
-};
-
-describe('mutation scope with the tested modules', () => {
-  it('mutates a tested module whole instead of its changed lines', () => {
-    expect(mutationTargetsWithTestedModules(mutationScope.targets, ['src/classify.ts'])).toEqual([
-      'src/other.ts:1-1',
-      'src/classify.ts',
-    ]);
-  });
-
-  it('keeps the usual findings to the changed lines and to the other changed files', () => {
-    const report = {
-      files: {
-        'src/classify.ts': { mutants: [mutant('Survived', 1), mutant('Survived', 2)] },
-        'src/other.ts': { mutants: [mutant('Survived', 1)] },
+describe('the mutation run of a change', () => {
+  function fakeStryker(reports) {
+    const calls = [];
+    return {
+      calls,
+      mutationReport: (options, targets) => {
+        calls.push({ snapshot: options.snapshot, projectRoot: options.projectRoot, targets });
+        return Promise.resolve({ report: reports[options.snapshot] });
       },
     };
+  }
 
-    expect(changedCodeMutants(report, mutationScope)).toEqual({
-      files: {
-        'src/classify.ts': { mutants: [mutant('Survived', 2)] },
-        'src/other.ts': { mutants: [mutant('Survived', 1)] },
-      },
+  function run(options, stryker, exceptions = []) {
+    return runScopedMutation(options, {
+      layout,
+      exceptions,
+      mutationReport: stryker.mutationReport,
+      normalize: normalizeMutation,
     });
-  });
-});
+  }
 
-describe('mutants the changed tests let escape', () => {
-  const headReport = {
-    files: {
-      'src/classify.ts': {
-        mutants: [
-          mutant('Survived', 1),
-          mutant('NoCoverage', 3, {
-            mutatorName: 'StringLiteral',
-            replacement: '""',
-            original: "'low'",
-          }),
-          mutant('Survived', 4),
-          mutant('Killed', 5),
-          mutant('Survived', 2),
-        ],
-      },
-    },
-  };
-  const baseReport = {
-    files: {
-      'src/classify.ts': {
-        mutants: [
-          mutant('Killed', 1),
-          mutant('Timeout', 3, {
-            mutatorName: 'StringLiteral',
-            replacement: '""',
-            original: "'low'",
-          }),
-          mutant('Survived', 4),
-          mutant('Killed', 5),
-        ],
-      },
-    },
-  };
-
-  it('need a base run only when a tested module has an escaped mutant off the changed lines', () => {
-    expect(hasWeakeningCandidates(headReport, mutationScope)).toBe(true);
-    expect(
-      hasWeakeningCandidates(
-        { files: { 'src/classify.ts': { mutants: [mutant('Killed', 1), mutant('Survived', 2)] } } },
-        mutationScope,
-      ),
-    ).toBe(false);
-  });
-
-  it('fail when the base tests caught them, and name the weakened tests', () => {
-    const findings = weakenedTestFindings({
-      headReport,
-      baseReport,
-      mutationScope,
+  it('reruns the escaped mutants of the tested modules on the base checkout', async () => {
+    const options = {
+      ...snapshots({
+        headChanges: {
+          'test/unrelated.test.ts': "import { classify } from '../src/classify.js';\n",
+          'src/unrelated.ts': 'export const unrelated = 2;\n',
+        },
+      }),
       analyzerName: 'mutation',
+    };
+    const stryker = fakeStryker({
+      head: {
+        files: {
+          'src/classify.ts': { mutants: [escaped('Survived', 1)] },
+          'src/unrelated.ts': { mutants: [escaped('Ignored', 1)] },
+        },
+      },
+      base: { files: { 'src/classify.ts': { mutants: [escaped('Killed', 1)] } } },
     });
 
-    expect(findings).toEqual([
-      {
-        tool: 'mutation',
-        rule: 'mutant-survived',
-        path: 'src/classify.ts',
-        message:
-          'This change weakened the tests of src/classify.ts: the base tests caught this ConditionalExpression mutant (`n < 5` replaced with `true`), but it survives now. Restore the assertion that caught it, or add one.',
-        identity: expect.any(String),
-        classification: 'enforceable',
-        location: { line: 1, column: 7 },
-      },
-      {
-        tool: 'mutation',
-        rule: 'mutant-nocoverage',
-        path: 'src/classify.ts',
-        message:
-          'This change weakened the tests of src/classify.ts: the base tests caught this StringLiteral mutant (`\'low\'` replaced with `""`), but no test runs it now. Restore the assertion that caught it, or add one.',
-        identity: expect.any(String),
-        classification: 'enforceable',
-        location: { line: 3, column: 7 },
-      },
+    const findings = await run(options, stryker, [
+      { rule: 'mutant-ignored', paths: ['src/unrelated.ts'], reason: 'Generated' },
     ]);
-    expect(new Set(findings.map(({ identity }) => identity)).size).toBe(2);
+
+    expect(stryker.calls).toEqual([
+      {
+        snapshot: 'head',
+        projectRoot: options.projectRoot,
+        targets: ['src/classify.ts', 'src/unrelated.ts'],
+      },
+      { snapshot: 'base', projectRoot: options.baselineRoot, targets: ['src/classify.ts:1-1'] },
+    ]);
+    expect(findings.map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['mutation-summary', '.'],
+      ['mutant-survived', 'src/classify.ts'],
+    ]);
   });
 
-  it('match mutants by their code, not their line, when the module moved lines', () => {
-    const moved = {
-      files: { 'src/classify.ts': { mutants: [mutant('Survived', 9, { sourceHash: 'hash-1' })] } },
+  it('lifts weakened mutants with an exception and names the modules over the cap', async () => {
+    const many = Array.from({ length: 11 }, (_, index) => `src/m${String(index)}.ts`);
+    const options = {
+      ...snapshots({
+        baseFiles: Object.fromEntries(many.map((modulePath) => [modulePath, 'export {};\n'])),
+        headChanges: {
+          'test/unrelated.test.ts': many
+            .map((modulePath) => `import '../${modulePath}';`)
+            .join('\n'),
+        },
+      }),
+      analyzerName: 'mutation',
     };
+    const stryker = fakeStryker({
+      head: { files: { 'src/m0.ts': { mutants: [escaped('Survived', 1)] } } },
+      base: { files: { 'src/m0.ts': { mutants: [escaped('Killed', 1)] } } },
+    });
+
+    const findings = await run(options, stryker, [
+      { rule: 'mutant-survived', paths: ['src/m0.ts'], reason: 'Behaviour removed' },
+    ]);
 
     expect(
-      weakenedTestFindings({
-        headReport: moved,
-        baseReport,
-        mutationScope,
-        analyzerName: 'mutation',
-      }).map(({ location }) => location),
-    ).toEqual([{ line: 9, column: 7 }]);
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([['tested-modules-capped', 'src/m10.ts', 'descriptive']]);
+    expect(findings[0].message).toBe(
+      'The changed tests reach more than 10 production modules, so weaker tests were not checked in src/m10.ts, src/unrelated.ts. Run `nitpicker --all` to mutate every module.',
+    );
   });
 
-  it('rerun only the escaped mutants on the base when the module is unchanged', () => {
-    const unchangedModule = { targets: ['src/other.ts:1-1'], testedModules: ['src/classify.ts'] };
-    const multiLine = {
-      files: {
-        'src/classify.ts': {
-          mutants: [
-            mutant('Survived', 4, {
-              location: { start: { line: 4, column: 1 }, end: { line: 6 } },
-            }),
-            mutant('Survived', 8),
-            mutant('Killed', 9),
-          ],
-        },
-      },
-    };
+  it('runs no mutants when neither a source file nor a test changed', async () => {
+    const stryker = fakeStryker({});
 
-    expect(baseMutationTargets(multiLine, unchangedModule)).toEqual([
-      'src/classify.ts:4-6',
-      'src/classify.ts:8-8',
-    ]);
-    expect(baseMutationTargets(headReport, mutationScope)).toEqual(['src/classify.ts']);
+    expect(await run(snapshots({ headChanges: { 'package.json': '{"a":1}\n' } }), stryker)).toEqual(
+      [],
+    );
+    expect(stryker.calls).toEqual([]);
   });
 
-  it('match mutants of an unchanged module by position against the partial base run', () => {
-    const unchangedModule = { targets: [], testedModules: ['src/classify.ts'] };
-    const partialBase = {
-      files: {
-        'src/classify.ts': {
-          mutants: [mutant('Killed', 2, { sourceHash: 'other' }), mutant('Survived', 4)],
-        },
-      },
-    };
+  it('runs the base without the type checker, whose head run already accepted the mutants', () => {
+    const sourceConfig = { checkers: ['typescript'], vitest: { configFile: 'v.ts' } };
+    const files = { tsconfigFile: undefined, vitestConfigFile: '.v.ts' };
 
     expect(
-      weakenedTestFindings({
-        headReport,
-        baseReport: partialBase,
-        mutationScope: unchangedModule,
-        analyzerName: 'mutation',
-      }).map(({ location }) => location),
-    ).toEqual([{ line: 2, column: 7 }]);
+      strykerRunConfig(sourceConfig, { snapshot: 'base', targets: ['src/a.ts:1-1'], ...files }),
+    ).toEqual({
+      checkers: [],
+      tsconfigFile: undefined,
+      vitest: { configFile: '.v.ts' },
+      mutate: ['src/a.ts:1-1'],
+      reporters: ['json'],
+      jsonReporter: { fileName: 'reports/quality/mutation/mutation.json' },
+    });
+    expect(
+      strykerRunConfig(sourceConfig, { snapshot: 'head', targets: undefined, ...files }).checkers,
+    ).toEqual(['typescript']);
   });
 });

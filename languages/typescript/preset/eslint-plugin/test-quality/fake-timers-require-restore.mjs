@@ -1,7 +1,16 @@
 import { ancestorsOf } from '../rules/ancestry.mjs';
 
-const RESTORING_HOOKS = new Set(['afterEach', 'afterAll']);
+const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
+const RESTORES = new Map([
+  ['useFakeTimers', 'useRealTimers'],
+  ['stubGlobal', 'unstubAllGlobals'],
+  ['stubEnv', 'unstubAllEnvs'],
+]);
+const STUB_MESSAGES = new Map([
+  ['stubGlobal', 'unrestoredGlobal'],
+  ['stubEnv', 'unrestoredEnv'],
+]);
 
 function isRestoringHook(node) {
   return (
@@ -19,28 +28,50 @@ function isRestoredByHookOrFinally(call) {
   );
 }
 
-function viMethodName(node, aliases) {
-  const callee = node.callee;
-  if (callee.type !== 'MemberExpression' || callee.computed) return undefined;
-  return aliases.has(callee.object.name) ? callee.property.name : undefined;
+function viMember(node, aliases) {
+  if (node?.type !== 'MemberExpression' || node.computed) return undefined;
+  return aliases.has(node.object.name) ? node.property.name : undefined;
 }
+
+function restoresIn(node, aliases) {
+  if (isRestoringHook(node)) return node.arguments.map((argument) => viMember(argument, aliases));
+  return isRestoredByHookOrFinally(node) ? [viMember(node.callee, aliases)] : [];
+}
+
+function messageIdFor(method, state) {
+  if (method !== 'useFakeTimers') return STUB_MESSAGES.get(method);
+  return state.usesUserEvent ? 'unrestoredWithUserEvent' : 'unrestored';
+}
+
+const RESTORE_TIMERS = 'Restore them: `afterEach(() => { vi.useRealTimers(); });`.';
+const EXCEPTION = 'A justified exception goes in nitpicker.config.json.';
 
 export const rule = {
   meta: {
     type: 'problem',
-    docs: { description: 'Require fake timers to be restored in afterEach' },
-    schema: [],
+    docs: { description: 'Require fake timers, and stubs made in test files, to be restored' },
+    schema: [
+      {
+        type: 'object',
+        properties: { stubs: { type: 'boolean' } },
+        additionalProperties: false,
+      },
+    ],
     messages: {
-      unrestored:
-        'Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. A justified exception goes in nitpicker.config.json.',
-      unrestoredWithUserEvent:
-        'Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. With user-event, create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` or its clicks wait forever. A justified exception goes in nitpicker.config.json.',
+      unrestored: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} ${EXCEPTION}`,
+      unrestoredWithUserEvent: `Fake timers stay on for the tests that follow. ${RESTORE_TIMERS} With user-event, create the user with \`userEvent.setup({ advanceTimers: vi.advanceTimersByTime })\` or its clicks wait forever. ${EXCEPTION}`,
+      unrestoredGlobal: `This stubbed global stays stubbed for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllGlobals(); });\`, or stub it once in a setup file. ${EXCEPTION}`,
+      unrestoredEnv: `This stubbed environment variable stays set for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllEnvs(); });\`. ${EXCEPTION}`,
     },
   },
   create(context) {
+    const checked = context.options[0]?.stubs
+      ? new Set(RESTORES.keys())
+      : new Set(['useFakeTimers']);
     const aliases = new Set(['vi', 'vitest']);
-    const fakeCalls = [];
-    const state = { restores: false, usesUserEvent: false };
+    const calls = [];
+    const restored = new Set();
+    const state = { usesUserEvent: false };
     return {
       ImportDeclaration(node) {
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
@@ -52,15 +83,15 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const method = viMethodName(node, aliases);
-        if (method === 'useFakeTimers') fakeCalls.push(node);
-        if (method === 'useRealTimers' && isRestoredByHookOrFinally(node)) state.restores = true;
+        const method = viMember(node.callee, aliases);
+        if (checked.has(method)) calls.push({ node, method });
+        for (const restore of restoresIn(node, aliases)) restored.add(restore);
       },
       'Program:exit'() {
-        if (state.restores) return;
-        const messageId = state.usesUserEvent ? 'unrestoredWithUserEvent' : 'unrestored';
-        for (const call of fakeCalls) {
-          context.report({ node: call, messageId });
+        for (const { node, method } of calls) {
+          if (!restored.has(RESTORES.get(method))) {
+            context.report({ node, messageId: messageIdFor(method, state) });
+          }
         }
       },
     };
