@@ -20,8 +20,8 @@
     "mayBeIntended": false
   },
   "AT_NONATOMIC_64BIT_PRIMITIVE": {
-    "fix": "Make the long or double field volatile, or use AtomicLong, or guard every read and write with the same lock.",
-    "mayBeIntended": false
+    "fix": "Make the long or double field volatile, use AtomicLong, or guard every read and write with the same lock.",
+    "mayBeIntended": true
   },
   "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE": {
     "fix": "Use AtomicInteger or AtomicReference (incrementAndGet, updateAndGet), or hold one lock across the whole read-modify-write.",
@@ -96,7 +96,7 @@
     "mayBeIntended": false
   },
   "BIT_AND_ZZ": {
-    "fix": "Compare the masked value with != 0 or == 0 instead of > 0 or <= 0, since a high-bit mask can be negative.",
+    "fix": "The mask is 0, so (e & 0) == 0 is always true: use the intended non-zero mask, or delete the test.",
     "mayBeIntended": false
   },
   "BIT_IOR": {
@@ -157,7 +157,7 @@
   },
   "CD_CIRCULAR_DEPENDENCY": {
     "fix": "Break the cycle: move the shared logic into a third class or behind an interface that both classes depend on.",
-    "mayBeIntended": false
+    "mayBeIntended": true
   },
   "CI_CONFUSED_INHERITANCE": {
     "fix": "Make the protected member of the final class private, since nothing can inherit it.",
@@ -168,7 +168,7 @@
     "mayBeIntended": false
   },
   "CN_IDIOM": {
-    "fix": "Make the class implement Cloneable if it defines clone, or drop clone and provide a copy constructor or static factory.",
+    "fix": "Remove implements Cloneable and offer a copy constructor or static copy factory; if clone is needed, override it calling super.clone().",
     "mayBeIntended": false
   },
   "CN_IDIOM_NO_SUPER_CALL": {
@@ -180,7 +180,7 @@
     "mayBeIntended": false
   },
   "CO_ABSTRACT_SELF": {
-    "fix": "Declare compareTo(T) with the class's own type, or implement it in the abstract class instead of leaving it abstract with Object.",
+    "fix": "Declare the abstract class implements Comparable<ItsType>, so compareTo(ItsType) overrides it, and mark it @Override.",
     "mayBeIntended": false
   },
   "CO_COMPARETO_INCORRECT_FLOATING": {
@@ -192,7 +192,7 @@
     "mayBeIntended": false
   },
   "CO_SELF_NO_OBJECT": {
-    "fix": "Implement the typed compareTo(T) of Comparable<T>, so the compareTo(Object) form is not needed.",
+    "fix": "Declare implements Comparable<Foo>, so compareTo(Foo) overrides the interface method, and mark it @Override.",
     "mayBeIntended": false
   },
   "CT_CONSTRUCTOR_THROW": {
@@ -384,7 +384,7 @@
     "mayBeIntended": false
   },
   "DM_BOOLEAN_CTOR": {
-    "fix": "Use Boolean.valueOf(x) or the constants Boolean.TRUE and Boolean.FALSE instead of new Boolean(x).",
+    "fix": null,
     "mayBeIntended": false
   },
   "DM_BOXED_PRIMITIVE_FOR_COMPARE": {
@@ -460,11 +460,11 @@
     "mayBeIntended": false
   },
   "DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED": {
-    "fix": "Create the ClassLoader inside AccessController.doPrivileged, or drop the custom loader and use the existing one.",
+    "fix": "Use the existing context or application class loader instead of creating one; do not wrap it in AccessController, which is deprecated for removal.",
     "mayBeIntended": true
   },
   "DP_DO_INSIDE_DO_PRIVILEGED": {
-    "fix": "Call the restricted API inside AccessController.doPrivileged with the narrowest action, or avoid reflective access.",
+    "fix": "Avoid setAccessible and other reflective access; use the public API or MethodHandles.privateLookupIn. Do not add AccessController, which is deprecated.",
     "mayBeIntended": true
   },
   "EC_ARRAY_AND_NONARRAY": {
@@ -508,12 +508,12 @@
     "mayBeIntended": false
   },
   "EI_EXPOSE_REP": {
-    "fix": "Return an immutable copy such as List.copyOf(items) or Map.copyOf(m), or hold the data as a record of immutable values.",
-    "mayBeIntended": false
+    "fix": "Return a copy at the return statement: List.copyOf(items), Map.copyOf(m), array.clone(); returning a shared collaborator is the exception case.",
+    "mayBeIntended": true
   },
   "EI_EXPOSE_REP2": {
-    "fix": "Store an immutable copy such as List.copyOf(items) in the constructor, or take a record of immutable values.",
-    "mayBeIntended": false
+    "fix": "Store a copy of caller data (List.copyOf(items), array.clone(), Instant instead of Date); a shared injected collaborator is the exception case.",
+    "mayBeIntended": true
   },
   "EI_EXPOSE_STATIC_BUF2": {
     "fix": "Store a read-only or copied buffer in the static field, not the caller's buffer.",
@@ -553,10 +553,10 @@
   },
   "EQ_COMPARING_CLASS_NAMES": {
     "fix": "Compare classes with getClass() != o.getClass(), not by class name strings.",
-    "mayBeIntended": true
+    "mayBeIntended": false
   },
   "EQ_DOESNT_OVERRIDE_EQUALS": {
-    "fix": "Override equals and hashCode in the subclass so they compare the added fields, or make the type a record.",
+    "fix": "Override equals and hashCode in the subclass to include its added fields, or hold the superclass as a field instead of extending it.",
     "mayBeIntended": true
   },
   "EQ_DONT_DEFINE_EQUALS_FOR_ENUM": {
@@ -648,7 +648,7 @@
     "mayBeIntended": false
   },
   "FI_USELESS": {
-    "fix": "Delete the finalize method that only calls super.finalize().",
+    "fix": null,
     "mayBeIntended": false
   },
   "FL_FLOATS_AS_LOOP_COUNTERS": {
@@ -660,7 +660,7 @@
     "mayBeIntended": true
   },
   "FS_BAD_DATE_FORMAT_FLAG_COMBO": {
-    "fix": "Use a valid java.time.format.DateTimeFormatter pattern (DateTimeFormatter.ofPattern) with the right letters, such as yyyy-MM-dd and HH.",
+    "fix": "Fix the pattern letters: pair h or K with a, use H without a, and yyyy (not YYYY) with MM and dd; build it with DateTimeFormatter.ofPattern.",
     "mayBeIntended": false
   },
   "GC_UNCHECKED_TYPE_IN_GENERIC_CALL": {
@@ -716,7 +716,7 @@
     "mayBeIntended": false
   },
   "IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD": {
-    "fix": "Qualify the call: this.run() for the inherited method or Outer.this.run() for the outer class's method.",
+    "fix": "Call super.run() for the inherited method or Outer.this.run() for the outer one; this.run() compiles to the same call and keeps the finding.",
     "mayBeIntended": false
   },
   "ICAST_BAD_SHIFT_AMOUNT": {
@@ -744,7 +744,7 @@
     "mayBeIntended": false
   },
   "ICAST_QUESTIONABLE_UNSIGNED_RIGHT_SHIFT": {
-    "fix": "Mask before shifting, as in (b & 0xFF) >>> n, or use >> if keeping the sign is intended.",
+    "fix": "Use >> when the cast keeps only bits the sign cannot reach, or keep an int with (x >>> n) & 0xFF instead of casting to byte or short.",
     "mayBeIntended": false
   },
   "IC_INIT_CIRCULARITY": {
@@ -788,7 +788,7 @@
     "mayBeIntended": false
   },
   "IJU_NO_TESTS": {
-    "fix": "Add @Test methods to the class or remove it; a JUnit 3 TestCase with no test methods runs nothing.",
+    "fix": "Stop extending TestCase: write JUnit 5 @Test methods in a plain class, or delete the class.",
     "mayBeIntended": false
   },
   "IJU_SETUP_NO_SUPER": {
@@ -816,8 +816,8 @@
     "mayBeIntended": false
   },
   "IMA_INEFFICIENT_MEMBER_ACCESS": {
-    "fix": "Make the accessed member package-private instead of private, or pass the value into the nested class.",
-    "mayBeIntended": false
+    "fix": "Keep the member private; since Java 11 nested classes reach private members directly, without the accessor this rule measures.",
+    "mayBeIntended": true
   },
   "IMSE_DONT_CATCH_IMSE": {
     "fix": "Fix the code so no IllegalMonitorStateException occurs: call wait, notify and unlock only while holding the monitor or lock.",
@@ -836,7 +836,7 @@
     "mayBeIntended": false
   },
   "INT_BAD_COMPARISON_WITH_INT_VALUE": {
-    "fix": "Compare the long with a value in int range, or keep the int out of the comparison; the constant can never be equal.",
+    "fix": "Fix the constant to a value in int range, or declare the variable long if it must hold values that large.",
     "mayBeIntended": false
   },
   "INT_BAD_COMPARISON_WITH_NONNEGATIVE_VALUE": {
@@ -884,7 +884,7 @@
     "mayBeIntended": false
   },
   "ITA_INEFFICIENT_TO_ARRAY": {
-    "fix": "Pass a typed array constructor: list.toArray(String[]::new) or list.toArray(new String[0]).",
+    "fix": "Pass the array constructor, list.toArray(String[]::new); toArray(new String[0]) is the form this rule flags.",
     "mayBeIntended": false
   },
   "IT_NO_SUCH_ELEMENT": {
@@ -968,7 +968,7 @@
     "mayBeIntended": false
   },
   "MS_CANNOT_BE_FINAL": {
-    "fix": "Hide the static field behind a private field and a method, or initialise it in a static block of a holder class.",
+    "fix": "Make the static field private and change it only through methods of its own class, or move the state into an instance field.",
     "mayBeIntended": false
   },
   "MS_EXPOSE_BUF": {
@@ -976,8 +976,8 @@
     "mayBeIntended": false
   },
   "MS_EXPOSE_REP": {
-    "fix": "Return a copy from the static accessor, such as array.clone() or List.copyOf(items), instead of the stored object.",
-    "mayBeIntended": false
+    "fix": "Return a copy from the static accessor, such as array.clone() or List.copyOf(items); a deliberately shared singleton instance is the exception case.",
+    "mayBeIntended": true
   },
   "MS_FINAL_PKGPROTECT": {
     "fix": "Make the field private and final, or hold an immutable value (List.of, a record) so protection is unnecessary.",
@@ -1000,7 +1000,7 @@
     "mayBeIntended": false
   },
   "MS_OOI_PKGPROTECT": {
-    "fix": "Make the field private, or move it into the interface as an immutable value such as List.of(...).",
+    "fix": "Replace the interface's array or mutable collection constant with List.of(...) or Map.of(...), or move it into a class as a private field.",
     "mayBeIntended": false
   },
   "MS_PKGPROTECT": {
@@ -1085,7 +1085,7 @@
   },
   "NM_VERY_CONFUSING": {
     "fix": "Rename one of the two methods so their names differ by more than capitalization.",
-    "mayBeIntended": true
+    "mayBeIntended": false
   },
   "NM_VERY_CONFUSING_INTENTIONAL": {
     "fix": "Rename one of the two methods so they differ by more than letter case.",
@@ -1104,20 +1104,20 @@
     "mayBeIntended": false
   },
   "NOISE_FIELD_REFERENCE": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is SpotBugs' random noise detector, which only appears when that detector is enabled.",
+    "mayBeIntended": true
   },
   "NOISE_METHOD_CALL": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is SpotBugs' random noise detector, which only appears when that detector is enabled.",
+    "mayBeIntended": true
   },
   "NOISE_NULL_DEREFERENCE": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is SpotBugs' random noise detector, which only appears when that detector is enabled.",
+    "mayBeIntended": true
   },
   "NOISE_OPERATION": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is SpotBugs' random noise detector, which only appears when that detector is enabled.",
+    "mayBeIntended": true
   },
   "NO_NOTIFY_NOT_NOTIFYALL": {
     "fix": "Call notifyAll() instead of notify(), or use a Condition per predicate.",
@@ -1132,7 +1132,7 @@
     "mayBeIntended": false
   },
   "NP_ARGUMENT_MIGHT_BE_NULL": {
-    "fix": "Check the value for null before passing it, or use Objects.requireNonNull at the entry that produces it.",
+    "fix": "Check the parameter for null inside this method before dereferencing it, since its contract allows null.",
     "mayBeIntended": false
   },
   "NP_BOOLEAN_RETURN_NULL": {
@@ -1264,12 +1264,12 @@
     "mayBeIntended": false
   },
   "OBL_UNSATISFIED_OBLIGATION": {
-    "fix": "Open the stream, connection or other resource in try-with-resources so it closes on every path.",
-    "mayBeIntended": false
+    "fix": "Open the stream, connection or other resource in try-with-resources so it closes on every path; a resource handed to its owner is the exception case.",
+    "mayBeIntended": true
   },
   "OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE": {
     "fix": "Open the stream, connection or other resource in try-with-resources so it closes when an exception is thrown.",
-    "mayBeIntended": false
+    "mayBeIntended": true
   },
   "ODR_OPEN_DATABASE_RESOURCE": {
     "fix": "Open the Connection, Statement and ResultSet in try-with-resources so each closes on every path.",
@@ -1309,7 +1309,7 @@
   },
   "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_CLASS_NAMES": {
     "fix": "Rename the class so it does not match a JDK type such as List, Optional or Entry; use a domain name like OrderList.",
-    "mayBeIntended": false
+    "mayBeIntended": true
   },
   "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_FIELD_NAMES": {
     "fix": "Rename the field so it does not match a JDK class name; use a domain name such as orderList.",
@@ -1548,20 +1548,20 @@
     "mayBeIntended": false
   },
   "SE_BAD_FIELD": {
-    "fix": "Make the field type Serializable, mark it transient, or use a record of serializable values.",
-    "mayBeIntended": false
+    "fix": "Give the field a Serializable type (an id, a String or a serializable record), or mark it transient and rebuild it in readObject.",
+    "mayBeIntended": true
   },
   "SE_BAD_FIELD_INNER_CLASS": {
     "fix": "Make the inner class a static nested class, so it does not hold a non-serializable outer instance.",
     "mayBeIntended": false
   },
   "SE_BAD_FIELD_STORE": {
-    "fix": "Store only Serializable values in the serializable class's field, or mark the field transient.",
-    "mayBeIntended": false
+    "fix": "Store a Serializable value (an id, a String or a serializable record) in the field, or mark it transient and rebuild it in readObject.",
+    "mayBeIntended": true
   },
   "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE": {
-    "fix": "Declare the comparator as implements Comparator<T>, Serializable, since it is held by a serializable container.",
-    "mayBeIntended": false
+    "fix": "Build the comparator with Comparator.comparing(Foo::key) instead of a Comparator class, or add implements Serializable if a serialized collection holds it.",
+    "mayBeIntended": true
   },
   "SE_INNER_CLASS": {
     "fix": "Make the serializable inner class static, so it does not capture the outer instance.",
@@ -1668,7 +1668,7 @@
     "mayBeIntended": false
   },
   "SING_SINGLETON_IMPLEMENTS_SERIALIZABLE": {
-    "fix": "Use a single-element enum, or add a readResolve returning the instance, so deserialization cannot make a copy.",
+    "fix": "Make the singleton a single-element enum, or stop implementing Serializable; a readResolve method does not clear this finding.",
     "mayBeIntended": false
   },
   "SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE": {
@@ -1704,8 +1704,8 @@
     "mayBeIntended": false
   },
   "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING": {
-    "fix": "Use a constant SQL string with ? placeholders and bind the values with setString and setInt.",
-    "mayBeIntended": false
+    "fix": "Use a constant SQL string with ? placeholders and bind the values; build only placeholders or allowlisted identifiers, never user text, into the SQL.",
+    "mayBeIntended": true
   },
   "SR_NOT_CHECKED": {
     "fix": "Check the number of bytes returned by skip, or use skipNBytes, so a short skip is handled.",
@@ -1756,20 +1756,20 @@
     "mayBeIntended": false
   },
   "TESTING": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is a SpotBugs self-test pattern, which only appears when a testing detector is enabled.",
+    "mayBeIntended": true
   },
   "TESTING1": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is a SpotBugs self-test pattern, which only appears when a testing detector is enabled.",
+    "mayBeIntended": true
   },
   "TESTING2": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is a SpotBugs self-test pattern, which only appears when a testing detector is enabled.",
+    "mayBeIntended": true
   },
   "TESTING3": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "Nothing is wrong in the code: this is a SpotBugs self-test pattern, which only appears when a testing detector is enabled.",
+    "mayBeIntended": true
   },
   "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION": {
     "fix": "Declare the specific checked exception the method throws, such as IOException, not Exception.",
@@ -1780,7 +1780,7 @@
     "mayBeIntended": true
   },
   "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION": {
-    "fix": "Remove RuntimeException from the throws clause and describe it in Javadoc, or return a failure value.",
+    "fix": "Throw a specific type instead of new RuntimeException(...): IllegalStateException, IllegalArgumentException, UncheckedIOException or a domain exception.",
     "mayBeIntended": false
   },
   "TLW_TWO_LOCK_WAIT": {
@@ -1872,8 +1872,8 @@
     "mayBeIntended": false
   },
   "UNKNOWN": {
-    "fix": null,
-    "mayBeIntended": false
+    "fix": "SpotBugs reported a pattern it has no description for; read the bug type in the report and fix or except it like any other finding.",
+    "mayBeIntended": true
   },
   "UPM_UNCALLED_PRIVATE_METHOD": {
     "fix": "Delete the private method that nothing calls.",
@@ -1941,7 +1941,7 @@
   },
   "UWF_NULL_FIELD": {
     "fix": "Assign a non-null value to the field somewhere, or delete the field; it is only ever null.",
-    "mayBeIntended": true
+    "mayBeIntended": false
   },
   "UWF_UNWRITTEN_FIELD": {
     "fix": "Assign the field somewhere, or delete it; reading a never-written field always yields null or zero.",
@@ -1956,7 +1956,7 @@
     "mayBeIntended": false
   },
   "VA_FORMAT_STRING_USES_NEWLINE": {
-    "fix": "Use %n in the format string instead of \\n.",
+    "fix": null,
     "mayBeIntended": false
   },
   "VA_PRIMITIVE_ARRAY_PASSED_TO_OBJECT_VARARG": {
