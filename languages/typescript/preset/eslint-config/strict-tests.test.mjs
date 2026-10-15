@@ -7,6 +7,7 @@ import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
+import { syntaxChildren } from '../syntax/children.mjs';
 import { strictPresetConfig } from './strict.mjs';
 import {
   strictTestConfigFor,
@@ -30,14 +31,6 @@ const moduleLevelArgv = 'export const [root] = process.argv.slice(2);';
 
 function messages(code, filename, config = strictTestsConfig) {
   return failureMessagesFor({ config, filename, code });
-}
-
-function syntaxChildren(node) {
-  const children = [];
-  ts.forEachChild(node, (child) => {
-    children.push(child);
-  });
-  return children;
 }
 
 function timeoutSettings(file) {

@@ -288,7 +288,7 @@ suite('packed nitpicker in a separate consumer', () => {
       }, 600_000);
       afterAll(() => {
         if (root) rmSync(root, { recursive: true, force: true });
-      });
+      }, 120_000);
 
       it('installs a packed tarball with the requested dependency layout', () => {
         expect(realpathSync(packageLocation)).not.toBe(realpathSync(packageRoot));

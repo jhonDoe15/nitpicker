@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { cruiseWithConfig } from './fixtures/strict-cruise.mjs';
+import { cruiseWithConfig } from './test-support/strict-cruise.mjs';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 import productionConfig from '../defaults/dependency-cruiser.config.mjs';
 

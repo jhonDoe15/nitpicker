@@ -9,9 +9,7 @@ public final class Legacy {
 }
 `;
 
-export // SH5: a legacy method over the parameter limit (baselined), and the same method with new methods
-// over the parameter and control nesting limits (the new ones fail).
-const WIDE = `package demo;
+export const WIDE = `package demo;
 
 public final class Wide {
   public int sum(int a, int b, int c, int d) {
@@ -65,8 +63,7 @@ public final class Greeter {
 }
 `;
 
-export // The clean change's test: PIT would report a new uncovered mutant for `farewell` without it.
-const GREETER_TEST = `package demo;
+export const GREETER_TEST = `package demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -85,8 +82,7 @@ class GreeterTest {
 }
 `;
 
-export // Tested, but not at the boundary: the `>` to `>=` mutant of clamp survives.
-const CALC = `package demo;
+export const CALC = `package demo;
 
 public final class Calc {
   public int clamp(int value) {
@@ -110,8 +106,7 @@ class CalcTest {
 }
 `;
 
-export // Empty catch block (PMD), default charset (SpotBugs) and sloppy indentation (formatter).
-const BAD = `package demo;
+export const BAD = `package demo;
 
 public final class Bad {
   public String decode(byte[] bytes) {
@@ -125,9 +120,7 @@ public final class Bad {
 }
 `;
 
-export // Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
-// with otherwise clean code.
-const STAMP = `package demo;
+export const STAMP = `package demo;
 
 import java.util.Date;
 
@@ -144,8 +137,7 @@ public final class Stamp {
 }
 `;
 
-export // Never exercised by a test: the `if` line has two uncovered branch outcomes on the base.
-const BRANCHY = `package demo;
+export const BRANCHY = `package demo;
 
 public final class Branchy {
   public int larger(int left, int right) {
@@ -157,8 +149,7 @@ public final class Branchy {
 }
 `;
 
-export // Nine branches and no test: CRAP = 10^2 * 1 + 10 = 110, over the limit of 9 (formatted, no PMD hit).
-const COMPLEX = `package demo;
+export const COMPLEX = `package demo;
 
 public final class Complex {
   private static final int T0 = 0;
@@ -205,8 +196,8 @@ public final class Complex {
 }
 `;
 
-export // The same sizeable method in two classes: a new clone for jscpd.
-const clonedClass = (name) => `package demo;
+export function clonedClass(name) {
+  return `package demo;
 
 public final class ${name} {
   public int total(int a, int b) {
@@ -216,15 +207,16 @@ ${Array.from({ length: 12 }, (_, i) => `    total += (a * ${i + 2}) + (b - ${i})
   }
 }
 `;
+}
 
-export // --- coupling (SH6) fixtures: client -> stable -> churn -> leaf. `stable` (instability 1/3, used by
-// both clients) depends on `churn` (instability 1/2), a less stable package.
-const stabilityClass = (packageName, name, body) => `package ${packageName};
+export function stabilityClass(packageName, name, body) {
+  return `package ${packageName};
 
 public final class ${name} {
 ${body}
 }
 `;
+}
 
 export const STABILITY_FILES = {
   'src/main/java/client/ClientOne.java': stabilityClass(
@@ -254,9 +246,7 @@ export const STABILITY_FILES = {
   ),
 };
 
-export // --- end coupling fixtures ---
-
-const BRANCHY_MOVED = BRANCHY.replace(
+export const BRANCHY_MOVED = BRANCHY.replace(
   '  public int larger',
   '  // Picks the larger value.\n  public int larger',
 );
@@ -277,4 +267,6 @@ export const BRANCHY_ADDED = BRANCHY.replace(
 `,
 );
 
-export const repeated = (count, entry) => Array(count).fill(entry);
+export function repeated(count, entry) {
+  return Array(count).fill(entry);
+}

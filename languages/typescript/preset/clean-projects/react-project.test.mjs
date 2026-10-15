@@ -1,66 +1,12 @@
-import { execFileSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { runCli } from '../../../../core/cli.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/fixtures/analyzer-parallelism.mjs';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { createGitTemplate } from '../../../../core/diff/fixtures/git-repository.mjs';
+import { createCleanProject, readReport, runNitpicker } from './test-support/clean-project.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const fixtureRoot = path.join(import.meta.dirname, 'react-project');
+const fixtureRoot = path.join(import.meta.dirname, '../fixtures/react-project');
 const FIXTURE_TIMEOUT_MS = 300_000;
 const testRulePattern = /^(?:testing-library\/|nitpicker\/react-test-)/;
-const temporaryRoots = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function commitProject({ manifest, config }) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-project-'));
-  temporaryRoots.push(root);
-  cpSync(fixtureRoot, root, { recursive: true });
-  writeFileSync(path.join(root, '.gitignore'), 'node_modules/\nreports/\n');
-  symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
-  if (manifest !== undefined) {
-    writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
-  }
-  if (config !== undefined) {
-    writeFileSync(path.join(root, 'nitpicker.config.json'), JSON.stringify(config));
-  }
-  for (const args of [
-    ['init', '-q', '-b', 'main'],
-    ['add', '-A'],
-    ['commit', '-q', '-m', 'fixture'],
-  ]) {
-    execFileSync(
-      'git',
-      ['-c', 'user.name=Fixture', '-c', 'user.email=f@example.invalid', ...args],
-      {
-        cwd: root,
-      },
-    );
-  }
-  return root;
-}
-
-function lintFindings(root) {
-  const output = path.join(root, 'reports/snapshot');
-  const exitCode = withDefaultAnalyzerParallelism(() =>
-    runCli({
-      arguments_: ['--all', '--analyzer', 'eslint-lint', '--output', output],
-      environment: { NO_COLOR: '1' },
-      currentProjectRoot: root,
-      stdout: { write: () => undefined },
-      stderr: { write: () => undefined },
-      progress: { write: () => undefined },
-    }),
-  );
-  const findings = JSON.parse(readFileSync(path.join(output, 'findings.json'), 'utf8'));
-  return { exitCode, findings };
-}
 
 function rulesByFile(findings, directory = 'src/') {
   const rules = {};
@@ -85,6 +31,40 @@ function messageOf(findings, rule) {
 }
 
 describe('the react-project fixture', () => {
+  const temporaryRoots = [];
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
+  afterEach(() => {
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  function commitProject({ manifest, config }) {
+    const files = {
+      ...(manifest === undefined ? {} : { 'package.json': JSON.stringify(manifest) }),
+      ...(config === undefined ? {} : { 'nitpicker.config.json': JSON.stringify(config) }),
+    };
+    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'react-project', files });
+    temporaryRoots.push(root);
+    return root;
+  }
+
+  function lintFindings(root) {
+    const exitCode = runNitpicker(root, [
+      '--all',
+      '--analyzer',
+      'eslint-lint',
+      '--output',
+      path.join(root, 'reports/snapshot'),
+    ]).exitCode;
+    return { exitCode, findings: readReport(root, 'reports/snapshot/findings.json') };
+  }
+
   it(
     'flags each banned form with its rule, passes the allowed file and leaves tests without React alone',
     () => {
@@ -146,8 +126,13 @@ describe('the react-project fixture', () => {
         commitProject({ config: { react: { styling: 'css-in-js' } } }),
       );
 
-      expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toContain(
-        'Style with styled components',
+      expect(messageOf(findings, 'nitpicker/react-single-styling-approach')).toBe(
+        [
+          'Style with styled components (styled-components or Emotion), not an inline `style` object.',
+          "Pass a runtime value as a CSS custom property, `style={{ '--progress': percent }}`,",
+          "typed once with `declare module 'csstype' { interface Properties { '--progress'?: number } }`.",
+          'For a one-off, add an exception for this rule in nitpicker.config.json.',
+        ].join(' '),
       );
     },
     FIXTURE_TIMEOUT_MS,

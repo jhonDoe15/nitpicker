@@ -5,24 +5,26 @@ import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
 import {
   BROKEN,
+  GENERATED,
+  GENERATED_TEST,
+  LABEL,
+  LABEL_ONE_SIDED_TEST,
+  OFFSET,
+  SPREAD,
+  SPREAD_TEST,
+} from './test-support/kotlin-branch-coverage-data.mjs';
+import {
   COMBINE,
   COMBINE_TEST,
   DEEP,
   DEEP_TEST,
   FLATTEN,
   FLATTEN_TEST,
-  GENERATED,
-  GENERATED_TEST,
   GROWN,
   GROWN_TEST,
   GROWN_WIDER,
   GROWN_WIDER_TEST,
-  LABEL,
-  LABEL_ONE_SIDED_TEST,
-  OFFSET,
   PIPELINE,
-  SPREAD,
-  SPREAD_TEST,
   TIERS,
   TIERS_TEST,
   WIDE,
@@ -32,11 +34,10 @@ import {
   clonedClass,
   stabilityClass,
   stabilityFiles,
-} from '../fixtures/kotlin-preset-data.mjs';
+} from './test-support/kotlin-structure-data.mjs';
 import {
   commitBranch,
   commitFromStructureBase,
-  createKotlinProject,
   diffOf,
   fromTool,
   git,
@@ -48,13 +49,13 @@ import {
   onlyTools,
   removeProject,
   rulesOf,
-} from './kotlin-e2e-project.mjs';
-
-const project = createKotlinProject();
+} from './test-support/kotlin-e2e-project.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to end', () => {
+  let project;
+
   beforeAll(() => {
-    initializeProject(project);
+    project = initializeProject();
     commitBranch(project, 'one-sided-branch', {
       [`${kotlinSources}/Label.kt`]: LABEL,
       'src/test/kotlin/demo/LabelTest.kt': LABEL_ONE_SIDED_TEST,

@@ -1,6 +1,6 @@
 import { cpSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { GREETER_HI, GREETER_HI_TEST, VIOLATION } from './python-preset-data.mjs';
+import { GREETER_HI, GREETER_HI_TEST, VIOLATION } from './test-support/python-preset-data.mjs';
 import {
   command,
   commitBranch,
@@ -14,7 +14,7 @@ import {
   repository,
   summarize,
   write,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset on a unittest project formatted with black, using tools from the PATH',

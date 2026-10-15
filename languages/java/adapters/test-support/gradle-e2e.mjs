@@ -34,5 +34,8 @@ export function commitBranch(repository, name, files) {
   runGitIn(repository, 'commit', '-q', '-m', name);
 }
 
-export const summarize = (findings) =>
-  findings.map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`).sort();
+export function summarize(findings) {
+  return findings
+    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
+    .sort();
+}

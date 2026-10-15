@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
 import { analyzeCoupling } from './analyze.mjs';
 
 const fixtureRoot = 'languages/typescript/preset/coupling/fixtures';

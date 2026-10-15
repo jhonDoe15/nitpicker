@@ -34,6 +34,12 @@ function touched(changed) {
 }
 
 describe('changed line ranges', () => {
+  let gitTemplateRoot;
+
+  beforeAll(() => {
+    gitTemplateRoot = createGitTemplate();
+  });
+
   const diff = [
     'diff --git a/src/main/a.ts b/src/main/a.ts',
     'index 1..2 100644',
@@ -197,7 +203,7 @@ describe('changed line ranges', () => {
         encoding: 'utf8',
         env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
       }).trim();
-    copyGitTemplate(gitTemplate.root, root);
+    copyGitTemplate(gitTemplateRoot, root);
     mkdirSync(path.join(root, 'src'));
     const lines = Array.from(
       { length: 12 },
@@ -345,9 +351,4 @@ describe('strict rules in touched code', () => {
 
     expect(result.unchangedFindings).toHaveLength(1);
   });
-});
-
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
 });

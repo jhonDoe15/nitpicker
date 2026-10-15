@@ -5,7 +5,7 @@ import {
   PRICING_FULL_TEST,
   PRICING_TEST,
   PRICING_WITH_UNUSED,
-} from './python-preset-data.mjs';
+} from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   fixtureRepository,
@@ -16,7 +16,7 @@ import {
   removeRepositories,
   repository,
   write,
-} from './python-e2e-support.mjs';
+} from './test-support/python-e2e-support.mjs';
 
 describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', () => {
   let project;

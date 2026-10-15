@@ -256,9 +256,8 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
     const [, line, version] = new RegExp(
       [
-        '^src\\/Broken\\.kt:(\\d+): .*The sources compile, so the p',
-        'inned Kotlin compiler (\\S+) is too old to read them: bu',
-        'mp kotlinCompiler in nitpicker\\.init\\.gradle\\.$',
+        '^src\\/Broken\\.kt:(\\d+): .*The sources compile, so the pinned Kotlin compiler (\\S+)',
+        ' is too old to read them: bump kotlinCompiler in nitpicker\\.init\\.gradle\\.$',
       ].join(''),
       'm',
     ).exec(log);

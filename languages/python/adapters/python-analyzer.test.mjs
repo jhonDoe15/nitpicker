@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
-import { installFakeToolchain } from './fixtures/fake-toolchain.mjs';
+import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import {
   configurationFiles,
   createMutationAnalyzer,

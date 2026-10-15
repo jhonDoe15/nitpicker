@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -36,16 +37,13 @@ export function selectFilesAndIgnores(module) {
   return module.default.map(({ files, ignores }) => ({ files, ignores }));
 }
 
-const policyImports = { count: 0 };
-
 export async function loadConfig(relativePath, policy, read = (module) => module.default) {
   const restore = setPolicyEnvironment(policy);
   try {
-    policyImports.count += 1;
     const url = pathToFileURL(
       path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath),
     );
-    url.search = `policy=${String(policyImports.count)}`;
+    url.search = `policy=${randomUUID()}`;
     return read(await import(url.href));
   } finally {
     restore();
