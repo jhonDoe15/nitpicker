@@ -94,12 +94,16 @@ describe('outsideRootsRule', () => {
           'generated/c.ts': 'export const c = 1;\n',
         }),
         paths: ['src'],
-        outputType: 'err-long',
+        outputType: 'json',
       },
     );
+    const violations = JSON.parse(result.output).summary.violations.map(({ from, to, rule }) => [
+      from,
+      to,
+      rule.name,
+    ]);
 
-    expect(result.output).toContain('src/a.ts → dist/b.ts');
-    expect(result.output).not.toContain('generated/c.ts');
+    expect(violations).toEqual([['src/a.ts', 'dist/b.ts', NO_IMPORT_OUTSIDE_ROOTS]]);
   });
 
   it('does not apply to files outside production source', async () => {

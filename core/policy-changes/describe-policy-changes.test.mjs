@@ -15,7 +15,7 @@ const FILES = [
 ];
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function scopeOf(baseConfig, headConfig, files = FILES, moves = undefined) {
+function scopeOf(baseConfig, headConfig, files = FILES, moves) {
   return createPolicyScope({
     files,
     baseRoots: rootSets(baseConfig, '.'),
@@ -25,7 +25,7 @@ function scopeOf(baseConfig, headConfig, files = FILES, moves = undefined) {
   });
 }
 
-function changes(baseConfig, headConfig, files = FILES, moves = undefined) {
+function changes(baseConfig, headConfig, files = FILES, moves) {
   return describePolicyChanges(
     baseConfig,
     headConfig,
