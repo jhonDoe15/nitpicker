@@ -32,42 +32,67 @@ const PAIRED_OPTIONS = new Set([
   '-s',
   '-h',
   '-encoding',
+  '-cp',
+  '-classpath',
+  '--class-path',
+  '-sourcepath',
+  '--source-path',
 ]);
-const DROPPED_PREFIXES = ['-Xlint', '-Xdoclint', '-proc:', '-implicit:', '-Xplugin:'];
+const DROPPED_PREFIXES = ['-Xlint', '-Xdoclint', '-proc:', '-implicit:', '-Xplugin:', '-J'];
+const DROPPED_OPTIONS = [
+  '--processor-path',
+  '--processor-module-path',
+  '--module-path',
+  '--class-path',
+  '--source-path',
+];
+const DEFAULT_LEVEL = '8';
 const SUPPRESS_WARNINGS = /@\s*(?:java\s*\.\s*lang\s*\.\s*)?SuppressWarnings\s*\([^)]*\)/gu;
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
 const VERSIONED_MODULE_INFO = /^META-INF\/versions\/\d+\/module-info\.class$/u;
 
-export function lintCompatible(args) {
-  const kept = [];
-  let skipNext = false;
-  for (const arg of args) {
-    if (skipNext) {
-      skipNext = false;
-    } else if (PAIRED_OPTIONS.has(arg)) {
-      skipNext = true;
-    } else if (arg !== '-Werror' && !DROPPED_PREFIXES.some((prefix) => arg.startsWith(prefix))) {
-      kept.push(arg);
-    }
+function isDropped(arg) {
+  return (
+    arg === '-Werror' ||
+    DROPPED_PREFIXES.some((prefix) => arg.startsWith(prefix)) ||
+    DROPPED_OPTIONS.some((prefix) => arg === prefix || arg.startsWith(`${prefix}=`))
+  );
+}
+
+function keepStep(state, arg) {
+  if (state.skipNext) {
+    return { kept: state.kept, skipNext: false };
   }
-  return kept;
+  if (PAIRED_OPTIONS.has(arg)) {
+    return { kept: state.kept, skipNext: true };
+  }
+  return { kept: isDropped(arg) ? state.kept : [...state.kept, arg], skipNext: false };
+}
+
+export function lintCompatible(args) {
+  return args.reduce(keepStep, { kept: [], skipNext: false }).kept;
+}
+
+function hasOption(args, names) {
+  return args.some((arg) => names.some((name) => arg === name || arg.startsWith(`${name}=`)));
 }
 
 export function languageLevel(compiler) {
   if (compiler.release !== undefined) {
     return ['--release', compiler.release];
   }
-  if (compiler.args.some((arg) => arg === '--release' || arg.startsWith('--release='))) {
+  if (hasOption(compiler.args, ['--release'])) {
     return [];
   }
-  const given = (names) => compiler.args.some((arg) => names.includes(arg));
+  const source = hasOption(compiler.args, ['-source', '--source'])
+    ? undefined
+    : (compiler.source ?? DEFAULT_LEVEL);
+  const target = hasOption(compiler.args, ['-target', '--target'])
+    ? undefined
+    : (compiler.target ?? DEFAULT_LEVEL);
   return [
-    ...(compiler.source === undefined || given(['-source', '--source'])
-      ? []
-      : ['-source', compiler.source]),
-    ...(compiler.target === undefined || given(['-target', '--target'])
-      ? []
-      : ['-target', compiler.target]),
+    ...(source === undefined ? [] : ['-source', source]),
+    ...(target === undefined ? [] : ['-target', target]),
   ];
 }
 
@@ -101,6 +126,11 @@ function lookupPath({ modular, classesDir, libraries }) {
 
 function relativeTo(root, file) {
   return path.relative(root, file).split(path.sep).join('/');
+}
+
+function insideModule(module, file) {
+  const relative = path.relative(module.basedir, file);
+  return !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 function unchangedSince(baselineDir, { basedir, sources }) {
@@ -141,15 +171,15 @@ function baselineWarnings({ module, baselineDir, sources, output }) {
 }
 
 function stageSources({ module, sources, staged }) {
-  const decoder = new TextDecoder(module.compiler.encoding ?? 'utf-8');
+  mkdirSync(staged, { recursive: true });
   return sources.map((source) => {
-    const relative = relativeTo(module.basedir, source);
-    const target = path.join(staged, relative);
+    const target = path.join(staged, relativeTo(module.basedir, source));
     mkdirSync(path.dirname(target), { recursive: true });
-    const text = decoder.decode(readFileSync(source));
+    const text = readFileSync(source, 'latin1');
     writeFileSync(
       target,
       text.replaceAll(SUPPRESS_WARNINGS, (match) => match.replaceAll(/[^\n]/gu, ' ')),
+      'latin1',
     );
     return target;
   });
@@ -168,10 +198,14 @@ function lintArguments({ module, classpaths, classes, modular }) {
     '-implicit:none',
     '-XDshould-stop.ifNoError=FLOW',
     '-encoding',
-    'UTF-8',
+    module.compiler.encoding ?? 'UTF-8',
     '-d',
     classes,
-    ...lookupPath({ modular, classesDir: module.outputDirectory, libraries: classpaths.mainCompile }),
+    ...lookupPath({
+      modular,
+      classesDir: module.outputDirectory,
+      libraries: classpaths.mainCompile,
+    }),
     ...(lombok.length === 0 ? ['-proc:none'] : ['-processorpath', lombok.join(path.delimiter)]),
     ...languageLevel(module.compiler),
     ...lintCompatible(module.compiler.args),
@@ -220,7 +254,7 @@ export function runJavacLint({ module, reportDir, classpaths, baselineDir }) {
   rmSync(failure, { force: true });
   const java = javaFiles(module.sourceRoots);
   const moduleInfo = java.find((file) => path.basename(file) === MODULE_INFO);
-  const all = java.filter((file) => file !== moduleInfo);
+  const all = java.filter((file) => file !== moduleInfo && insideModule(module, file));
   const { unchanged, kept } =
     moduleInfo === undefined
       ? baselineWarnings({ module, baselineDir, sources: all, output })
@@ -234,5 +268,8 @@ export function runJavacLint({ module, reportDir, classpaths, baselineDir }) {
     return;
   }
   const result = lintSources({ module, classpaths, modular: moduleInfo !== undefined }, sources);
-  writeFileSync(result.code === 0 ? output : failure, result.code === 0 ? kept + result.log : result.log);
+  writeFileSync(
+    result.code === 0 ? output : failure,
+    result.code === 0 ? kept + result.log : result.log,
+  );
 }

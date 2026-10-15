@@ -172,6 +172,33 @@ describe('readReactor', () => {
       [root, 'demo:solo'],
     ]);
   });
+  it('prefers the default-compile execution and treats unresolved properties as unset', () => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const [module] = readReactor(
+      root,
+      `<project><groupId>demo</groupId><artifactId>solo</artifactId>
+        <properties><maven.compiler.target>\${java.version}</maven.compiler.target></properties>
+        <build><plugins><plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <release>11</release><encoding>\${encoding}</encoding><compilerArgs><arg>-a</arg></compilerArgs>
+          </configuration>
+          <executions><execution><id>default-compile</id>
+            <configuration><release>21</release><compilerArgs><arg>-b</arg></compilerArgs></configuration>
+          </execution></executions>
+        </plugin></plugins></build>
+      </project>`,
+    );
+
+    expect(module.compiler).toEqual({
+      release: '21',
+      source: undefined,
+      target: undefined,
+      encoding: undefined,
+      args: ['-b'],
+    });
+  });
+
   it('matches a module whose raw coordinates use a property by its build directory', () => {
     const root = reactor({
       'pom.xml': raw('parent'),

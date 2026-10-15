@@ -1,20 +1,16 @@
-import { existsSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
-import { runPermits } from './class-permits.mjs';
+import { classFiles, runPermits } from './class-permits.mjs';
 import { runDependencies } from './maven-dependencies.mjs';
 import { runJavacLint } from './maven-javac-lint.mjs';
 import { runCpd } from './maven-pmd.mjs';
 
 const FORBIDDEN_FOUND_EXIT = 1;
 
-function hasClasses(directory) {
-  return existsSync(directory) && readdirSync(directory).length > 0;
-}
-
-export function runForbiddenApis({ module, reportDir, tools, classpaths }) {
-  if (!hasClasses(module.outputDirectory)) {
+function runForbiddenApis({ module, reportDir, tools, classpaths }) {
+  if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
   const libraries = classpaths.mainCompile.filter((entry) => existsSync(entry));

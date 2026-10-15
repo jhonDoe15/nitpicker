@@ -47,6 +47,13 @@ describe('lintCompatible', () => {
         '--enable-preview',
         '-Xmaxwarns',
         '5',
+        '-J-Xmx2g',
+        '-cp',
+        '/lib.jar',
+        '--class-path=/lib.jar',
+        '-sourcepath',
+        '/src',
+        '--module-path=/mods',
       ]),
     ).toEqual(['-parameters', '--enable-preview']);
   });
@@ -56,9 +63,26 @@ describe('languageLevel', () => {
   it.each([
     ['the release', { ...NO_SETTINGS, release: '17', source: '11' }, ['--release', '17']],
     ['nothing when the arguments give a release', { ...NO_SETTINGS, args: ['--release=21'] }, []],
-    ['source and target', { ...NO_SETTINGS, source: '1.8', target: '1.8' }, ['-source', '1.8', '-target', '1.8']],
-    ['what the arguments leave out', { ...NO_SETTINGS, source: '11', target: '11', args: ['-source', '11'] }, ['-target', '11']],
-    ['nothing when the POM sets no level', NO_SETTINGS, []],
+    [
+      'source and target',
+      { ...NO_SETTINGS, source: '1.8', target: '1.8' },
+      ['-source', '1.8', '-target', '1.8'],
+    ],
+    [
+      'what the arguments leave out',
+      { ...NO_SETTINGS, source: '11', target: '11', args: ['-source', '11'] },
+      ['-target', '11'],
+    ],
+    [
+      'the compiler plug-in default when the POM sets no level',
+      NO_SETTINGS,
+      ['-source', '8', '-target', '8'],
+    ],
+    [
+      'nothing for a level the arguments set with an equals sign',
+      { ...NO_SETTINGS, args: ['--source=17', '--target=17'] },
+      [],
+    ],
   ])('passes %s', (_, compiler, expected) => {
     expect(languageLevel(compiler)).toEqual(expected);
   });
@@ -69,14 +93,20 @@ describe('isJavaModule', () => {
     const root = temporary();
     const jars = {
       'explicit.jar': { 'module-info.class': '' },
-      'automatic.jar': { 'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\nAutomatic-Module-Name: demo.auto\n' },
+      'automatic.jar': {
+        'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\nAutomatic-Module-Name: demo.auto\n',
+      },
       'versioned.jar': { 'META-INF/versions/11/module-info.class': '' },
       'plain.jar': { 'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\n', 'demo/A.class': '' },
     };
     for (const [name, entries] of Object.entries(jars)) {
       writeFileSync(path.join(root, name), zipOf(entries));
     }
-    writeFiles(root, { 'classes/module-info.class': '', 'plain-classes/demo/A.class': '', 'notes.txt': '' });
+    writeFiles(root, {
+      'classes/module-info.class': '',
+      'plain-classes/demo/A.class': '',
+      'notes.txt': '',
+    });
 
     expect(
       [...Object.keys(jars), 'classes', 'plain-classes', 'notes.txt'].filter((name) =>
@@ -87,12 +117,16 @@ describe('isJavaModule', () => {
 });
 
 describe('runJavacLint', () => {
-  const warning = (file, line) => `${file}:${String(line)}: warning: [rawtypes] found raw type: List`;
+  const warning = (file, line) =>
+    `${file}:${String(line)}: warning: [rawtypes] found raw type: List`;
 
   it('keeps the base warnings of files unchanged since the base without compiling them', () => {
     const base = temporary();
     const head = temporary();
-    const sources = { 'src/main/java/demo/A.java': 'class A {}', 'src/main/java/demo/B.java': 'class B {}' };
+    const sources = {
+      'src/main/java/demo/A.java': 'class A {}',
+      'src/main/java/demo/B.java': 'class B {}',
+    };
     writeFiles(base, sources);
     writeFiles(head, sources);
     writeFiles(base, {
@@ -119,5 +153,39 @@ describe('runJavacLint', () => {
       `${warning('src/main/java/demo/A.java', 3)}\n`,
     );
     expect(existsSync(path.join(reportDir, 'javac-lint-failed.txt'))).toBe(false);
+  });
+
+  it('compiles sources in the project encoding and skips source roots outside the module', () => {
+    const root = temporary();
+    const basedir = path.join(root, 'app');
+    const latin =
+      'package demo;\nclass A {\n  String name = "caf\u00e9";\n  java.util.List names;\n}\n';
+    writeFiles(root, {
+      'shared/demo/B.java': 'package demo;\nclass B { java.util.List names; }\n',
+    });
+    mkdirSync(path.join(basedir, 'src/main/java/demo'), { recursive: true });
+    writeFileSync(path.join(basedir, 'src/main/java/demo/A.java'), Buffer.from(latin, 'latin1'));
+    const reportDir = path.join(basedir, 'target/nitpicker');
+    mkdirSync(reportDir, { recursive: true });
+    const module = {
+      basedir,
+      sourceRoots: [path.join(basedir, 'src/main/java'), path.join(root, 'shared')],
+      outputDirectory: path.join(basedir, 'target/classes'),
+      compiler: { ...NO_SETTINGS, release: '17', encoding: 'ISO-8859-1' },
+    };
+
+    runJavacLint({ module, reportDir, classpaths: { mainCompile: [] }, baselineDir: undefined });
+
+    const report = readFileSync(path.join(reportDir, 'javac-lint.txt'), 'utf8').split('\n');
+    expect(report.filter((line) => !line.startsWith('Picked up '))).toEqual([
+      'src/main/java/demo/A.java:4: warning: [rawtypes] found raw type: List',
+      '  java.util.List names;',
+      '           ^',
+      '  missing type arguments for generic class List<E>',
+      '  where E is a type-variable:',
+      '    E extends Object declared in interface List',
+      '1 warning',
+      '',
+    ]);
   });
 });

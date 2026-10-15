@@ -39,6 +39,21 @@ describe('readZip', () => {
     expect(jar.text('missing')).toBeUndefined();
   });
 
+  it('reads an archive behind a launcher script', () => {
+    const jar = readZip(
+      written(Buffer.concat([Buffer.from('#!/bin/sh\nexec java -jar "$0"\n'), zipOf(FILES)])),
+    );
+
+    expect([...jar.names]).toEqual(Object.keys(FILES));
+    expect(jar.text('demo/lib/Util.class')).toBe('class bytes');
+  });
+
+  it('finds the real end record when the archive comment holds its signature', () => {
+    const jar = readZip(written(zipOf(FILES, { comment: 'built by PK\u0005\u0006 tools' })));
+
+    expect([...jar.names]).toEqual(Object.keys(FILES));
+  });
+
   it('rejects a file that is not a zip archive', () => {
     expect(() => readZip(written(Buffer.from('plain text')))).toThrow(
       new Error('not a zip archive: no end of central directory record'),

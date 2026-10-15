@@ -1,24 +1,18 @@
-import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
 import { readZip } from '../../builds/zip-entries.mjs';
+import { classFiles } from './class-permits.mjs';
 
 const CLASS_NAME = /[A-Za-z_$][\w$]*(?:\/[\w$]+)+/gu;
 const COMPILE_SCOPE = 'compile';
+const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 
 function textOf(element, name) {
   return childrenNamed(element, name)[0]?.text;
 }
 
-function classFiles(directory) {
-  return existsSync(directory)
-    ? readdirSync(directory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-        .map((entry) => path.join(entry.parentPath, entry.name))
-    : [];
-}
-
-export function referencedNames(classDirectory) {
+function referencedNames(classDirectory) {
   const names = new Set();
   for (const file of classFiles(classDirectory)) {
     for (const [token] of readFileSync(file, 'latin1').matchAll(CLASS_NAME)) {
@@ -39,7 +33,7 @@ function archiveEntries(archive) {
 }
 
 function usesArchive(archive, names) {
-  return archiveEntries(archive).some((entry) => names.has(entry));
+  return archiveEntries(archive).some((entry) => names.has(entry) || entry === PROCESSOR_SERVICE);
 }
 
 export function declaredDependencies(pomText) {
@@ -50,8 +44,9 @@ export function declaredDependencies(pomText) {
       group: textOf(dependency, 'groupId') ?? '',
       name: textOf(dependency, 'artifactId') ?? '',
       scope: textOf(dependency, 'scope') ?? COMPILE_SCOPE,
+      optional: textOf(dependency, 'optional') === 'true',
     }))
-    .filter((dependency) => dependency.scope === COMPILE_SCOPE);
+    .filter((dependency) => dependency.scope === COMPILE_SCOPE && !dependency.optional);
 }
 
 function sameArtifact(declared, resolved) {

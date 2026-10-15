@@ -73,7 +73,7 @@ describe('dependencyFindings', () => {
       [
         'pom.xml',
         'Dependency g:a has compile scope but no main class uses it. ' +
-          'Remove it, give it runtime scope if it is only needed at run time, ' +
+          'Remove it, give it test scope if only the tests use it, runtime scope if it is only needed at run time, ' +
           'or provided scope if only its source annotations are needed. ' +
           'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
       ],
