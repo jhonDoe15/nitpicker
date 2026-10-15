@@ -35,17 +35,16 @@ function fileFor(target) {
 }
 
 function readPaths(directory) {
-  const configFile = ts.findConfigFile(directory, ts.sys.fileExists);
+  const configFile = ts.findConfigFile(directory, (file) => ts.sys.fileExists(file));
   if (configFile === undefined) {
     return { paths: {}, base: directory };
   }
-  const { config } = ts.readConfigFile(configFile, ts.sys.readFile);
+  const { config } = ts.readConfigFile(configFile, (file) => ts.sys.readFile(file));
   const configDirectory = path.dirname(configFile);
   const { options } = ts.parseJsonConfigFileContent(config ?? {}, configHost, configDirectory);
-  return {
-    paths: options.paths ?? {},
-    base: options.baseUrl ?? options.pathsBasePath ?? configDirectory,
-  };
+  const baseUrl = config?.compilerOptions?.baseUrl;
+  const base = typeof baseUrl === 'string' ? path.resolve(configDirectory, baseUrl) : undefined;
+  return { paths: options.paths ?? {}, base: base ?? options.pathsBasePath ?? configDirectory };
 }
 
 function aliasTargets(fromFile, source) {
@@ -67,7 +66,7 @@ function aliasTargets(fromFile, source) {
   });
 }
 
-export function resolveModule(fromFile, source) {
+function resolveModule(fromFile, source) {
   if (relativeModule.test(source)) {
     return fileFor(path.resolve(path.dirname(fromFile), source));
   }

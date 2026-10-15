@@ -14,7 +14,9 @@ const files = {
   'test/support/rtl/index.ts': "export * from '@testing-library/react';\n",
   'test/support/fixtures.ts': 'export function renderApp() { return { container: {} }; }\n',
   'test/support/chain.ts': "export * from './rtl';\n",
-  'tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@test/*': ['./test/*'] } } }),
+  'tsconfig.json': JSON.stringify({
+    compilerOptions: { types: [], lib: ['ES2022'], paths: { '@test/*': ['./test/*'] } },
+  }),
 };
 
 afterAll(() => {
@@ -72,7 +74,8 @@ describe('the React test rules', () => {
   });
 
   it('apply to every .tsx and .jsx test, whatever it imports', async () => {
-    const code = "import { Panel } from '../../src/main/ui/panel.js';\nwrapper.instance(<Panel />);";
+    const code =
+      "import { Panel } from '../../src/main/ui/panel.js';\nwrapper.instance(<Panel />);";
 
     expect(await ruleIdsFor('test/ui/panel.test.tsx', code)).toEqual([
       'nitpicker/react-test-no-implementation-details',

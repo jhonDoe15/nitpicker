@@ -104,20 +104,31 @@ function reactMock(node, visitorKeys) {
   return name === REACT_MODULE ? name : undefined;
 }
 
+function importedBindings(statement) {
+  const names = wrapperFactories.get(statement.source.value);
+  const specifiers = statement.specifiers;
+  return {
+    namespaces: specifiers.filter(({ type }) => type !== 'ImportSpecifier'),
+    functions: specifiers.filter(
+      ({ type, imported }) => type === 'ImportSpecifier' && names.has(imported.name),
+    ),
+  };
+}
+
 function factoryBindings(program) {
-  const bindings = { functions: new Set(), namespaces: new Set() };
-  for (const statement of program.body) {
-    const names =
-      statement.type === 'ImportDeclaration' && wrapperFactories.get(statement.source.value);
-    for (const specifier of names ? statement.specifiers : []) {
-      if (specifier.type !== 'ImportSpecifier') {
-        bindings.namespaces.add(specifier.local.name);
-      } else if (names.has(specifier.imported.name)) {
-        bindings.functions.add(specifier.local.name);
-      }
-    }
-  }
-  return bindings;
+  const imports = program.body
+    .filter(
+      ({ type, source }) => type === 'ImportDeclaration' && wrapperFactories.has(source.value),
+    )
+    .map(importedBindings);
+  return {
+    functions: localNames(imports, 'functions'),
+    namespaces: localNames(imports, 'namespaces'),
+  };
+}
+
+function localNames(imports, key) {
+  return new Set(imports.flatMap((found) => found[key].map(({ local }) => local.name)));
 }
 
 function isWrapperFactoryCall(node, bindings) {
