@@ -9,45 +9,86 @@ const FS_FUNCTIONS = new Set(
     .concat(['createWriteStream']),
 );
 const PATH_BUILDERS = new Set(['join', 'resolve']);
-const CONTAINMENT_CHECK = /\.(?:startsWith|relative)\(/;
+const MAX_TAINT_STEPS = 50;
 const FUNCTION_TYPES = new Set([
   'FunctionDeclaration',
   'FunctionExpression',
   'ArrowFunctionExpression',
 ]);
 
-function rootIdentifier(expression) {
-  const chain = [expression];
-  for (const current of chain) {
-    if (current.type === 'MemberExpression') {
-      chain.push(current.object);
-    }
-  }
-  return chain.at(-1);
+function constantInitializer(sourceCode, identifier) {
+  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
+  return definition?.type === 'Variable' && definition.parent.kind === 'const'
+    ? (definition.node.init ?? undefined)
+    : undefined;
 }
 
-function isParameter(sourceCode, expression) {
-  const identifier = rootIdentifier(expression);
+function isParameter(sourceCode, identifier) {
   return (
-    identifier.type === 'Identifier' &&
-    variableNamed(sourceCode, identifier)?.defs.some(({ type }) => type === 'Parameter')
+    variableNamed(sourceCode, identifier)?.defs.some(({ type }) => type === 'Parameter') === true
   );
 }
 
-function pathBuildingCall(sourceCode, argument) {
-  if (argument?.type === 'Identifier') {
-    const definition = variableNamed(sourceCode, argument)?.defs.at(0);
-    return definition?.type === 'Variable' ? definition.node.init : undefined;
+function taintSources(sourceCode, expression) {
+  switch (expression.type) {
+    case 'Identifier': {
+      const initializer = constantInitializer(sourceCode, expression);
+      return initializer === undefined ? [] : [initializer];
+    }
+    case 'MemberExpression':
+      return [expression.object];
+    case 'CallExpression':
+      return [expression.callee];
+    case 'TemplateLiteral':
+      return expression.expressions;
+    case 'BinaryExpression':
+      return [expression.left, expression.right];
+    default:
+      return [];
   }
-  return argument;
 }
 
-function usesParameter(sourceCode, call) {
-  return call.arguments.some(
-    (argument) =>
-      isParameter(sourceCode, argument) ||
-      (argument.type === 'TemplateLiteral' &&
-        argument.expressions.some((expression) => isParameter(sourceCode, expression))),
+function isTainted(sourceCode, expression) {
+  const pending = [expression];
+  for (const current of pending) {
+    if (current.type === 'Identifier' && isParameter(sourceCode, current)) {
+      return true;
+    }
+    if (pending.length < MAX_TAINT_STEPS) {
+      pending.push(...taintSources(sourceCode, current));
+    }
+  }
+  return false;
+}
+
+function joinedPath(sourceCode, argument) {
+  if (argument?.type === 'Identifier') {
+    return { call: constantInitializer(sourceCode, argument), name: argument.name };
+  }
+  return { call: argument, name: undefined };
+}
+
+function escaped(text) {
+  return text.replaceAll(/[$]/g, String.raw`\$`);
+}
+
+function checksContainment(sourceCode, owner, name) {
+  if (name === undefined) {
+    return false;
+  }
+  const variable = escaped(name);
+  const check = new RegExp(
+    String.raw`\b${variable}\.startsWith\(|\brelative\([^)]*\b${variable}\b`,
+    'u',
+  );
+  return check.test(sourceCode.getText(owner));
+}
+
+function isUnsafeBuild(sourceCode, call, pathModule) {
+  return (
+    call?.type === 'CallExpression' &&
+    PATH_BUILDERS.has(importedCalleeName(call.callee, pathModule)) &&
+    call.arguments.slice(1).some((segment) => isTainted(sourceCode, segment))
   );
 }
 
@@ -58,7 +99,7 @@ export const rule = {
     schema: [],
     messages: {
       unsafePath:
-        "A path built from a parameter can leave the base directory with `../`. Resolve it and check containment first: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. If the parameter is a fixed file name, add an exception for this rule in nitpicker.config.json.",
+        "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. If the parameter is a fixed file name, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
@@ -75,16 +116,12 @@ export const rule = {
         if (!FS_FUNCTIONS.has(importedCalleeName(node.callee, fs))) {
           return;
         }
-        const built = pathBuildingCall(sourceCode, node.arguments[0]);
-        if (
-          built?.type !== 'CallExpression' ||
-          !PATH_BUILDERS.has(importedCalleeName(built.callee, pathModule)) ||
-          !usesParameter(sourceCode, built)
-        ) {
+        const { call, name } = joinedPath(sourceCode, node.arguments[0]);
+        if (!isUnsafeBuild(sourceCode, call, pathModule)) {
           return;
         }
         const owner = ancestorsOf(node).find((ancestor) => FUNCTION_TYPES.has(ancestor.type));
-        if (!CONTAINMENT_CHECK.test(sourceCode.getText(owner))) {
+        if (!checksContainment(sourceCode, owner, name)) {
           context.report({ node, messageId: 'unsafePath' });
         }
       },

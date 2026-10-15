@@ -1,9 +1,13 @@
-import { productionPolicyConfigFor } from '../../eslint-config/policy/production-policy.mjs';
+import {
+  productionLayoutConfigFor,
+  productionPolicyConfigFor,
+} from '../../eslint-config/policy/production-policy.mjs';
 import { strictSyntaxConfigFor } from '../../eslint-config/strict.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 
 const config = [
   ...productionPolicyConfigFor(defaultResolvedLayout),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
   ...strictSyntaxConfigFor(defaultResolvedLayout),
 ];
 
@@ -19,6 +23,11 @@ const indexCase = casesIn('src/main/features/billing/index.ts');
 const utilsCase = casesIn('src/main/utils/strings.ts');
 
 export const policyFailureMessageCases = [
+  adapterCase(
+    'magic number names a computed module constant',
+    'export function old(seconds: number) { return seconds > 86400; }',
+    'const SECONDS_PER_DAY = 24 * 60 * 60;',
+  ),
   indexCase(
     'export * names the listed export',
     "export * from './domain/invoice.js';",

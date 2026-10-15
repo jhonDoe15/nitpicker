@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
+import { productionLayoutConfigFor } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
@@ -66,6 +67,7 @@ const presetConfig = tseslint.config(
     },
   },
   ...strictPresetConfig(layout, parserOptions, { react }),
+  ...productionLayoutConfigFor(layout, { react }),
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   {
     // eslint-errors reports this rule for all production code; reporting it here too lists every

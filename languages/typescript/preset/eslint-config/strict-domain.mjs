@@ -71,7 +71,7 @@ export const domainRestrictedSyntax = [
   },
   {
     selector:
-      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/]",
+      "NewExpression[callee.name='Date'][arguments.length=0], CallExpression[callee.property.name=/^(randomUUID|getRandomValues)$/], CallExpression[callee.name=/^(dayjs|moment)$/][arguments.length=0], CallExpression[callee.object.name='DateTime'][callee.property.name=/^(now|local|utc)$/][arguments.length=0]",
     message: CLOCK_AND_RANDOM_MESSAGE,
   },
   {

@@ -80,7 +80,7 @@ export const moduleSurfaceSelectors = [
   {
     selector: 'ExportAllDeclaration',
     message:
-      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public.",
+      "List the public names: `export { name } from './module.js'`. `export *` makes every internal export public. If it is deliberate, add an exception for this rule in nitpicker.config.json.",
   },
 ];
 

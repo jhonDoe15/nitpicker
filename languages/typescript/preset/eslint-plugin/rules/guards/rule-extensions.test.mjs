@@ -18,7 +18,7 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
     'try { run(); } catch (error) { throw new AppError("failed", 500, { cause: error }); }',
     'try { run(); } catch (error) { throw new WrapError("failed", error); }',
     'try { run(); } catch { throw new AppError("failed"); }',
-    'try { run(); } catch (error) { log(error); throw new AppError("failed"); }',
+    'try { run(); } catch (error) { const failure = new AppError("failed"); return failure; }',
     'try { run(); } catch (error) { throw new Wrapper(String(error)); }',
   ],
   invalid: [
@@ -38,6 +38,10 @@ tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
       code: 'try { run(); } catch (error) { throw new Error(String(error)); }',
       errors: [{ messageId: 'lostCause' }],
     },
+    {
+      code: 'try { run(); } catch (error) { log(error); throw new AppError("range"); }',
+      errors: [{ messageId: 'lostCause' }],
+    },
   ],
 });
 
@@ -47,6 +51,12 @@ tester.run('no-self-recursion through references and cycles', noSelfRecursion, {
     'function walk(node) { return node.children; } const all = nodes.flatMap(walk);',
     'function outer() { function inner() { return 1; } return inner(); }',
     'const a = () => b(); const b = () => c(); const c = () => 1;',
+    {
+      code: 'function TreeNode({ node }) { return <ul>{node.children.map((child) => <TreeNode node={child} />)}</ul>; }',
+      languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
+    },
+    'function poll() { setTimeout(poll, 1000); }',
+    'function onMessage(event) { emitter.off("message", onMessage); }',
   ],
   invalid: [
     {
@@ -159,6 +169,10 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
     'function f(value: unknown) { return key in value; }',
     'function overload(text: string): Ok; function overload(text: string): Ok | Failed { return text; }',
     'function overload(text: string): unknown { return text; }',
+    "function code(error: unknown) { return error instanceof Error && 'code' in error && error.code === 'ENOENT'; }",
+    "function code(error: unknown) { if (error instanceof Error) { return 'code' in error; } return false; }",
+    "function code(error: unknown) { if (!(error instanceof Error)) { return false; } return 'code' in error; }",
+    "function code(error: unknown) { return error instanceof Error ? 'code' in error : false; }",
   ],
   invalid: [
     {
@@ -182,6 +196,18 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
       errors: [{ messageId: 'inlineNarrowing' }],
     },
     {
+      code: "function code(error: unknown, other: unknown) { return other instanceof Error && 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: "function code(error: unknown) { return error instanceof Error || 'code' in error; }",
+      errors: [{ messageId: 'inlineNarrowing' }],
+    },
+    {
+      code: 'export function copy(value: Row) { return JSON.parse(JSON.stringify(value)); }',
+      errors: [{ messageId: 'jsonCopy' }],
+    },
+    {
       code: 'export function overload(text: string): Ok; export function overload(text: string): unknown { return text; }',
       errors: [{ messageId: 'overloadCast' }],
     },
@@ -191,6 +217,8 @@ tester.run('no-handwritten-boundary-guard by input type', noHandwrittenBoundaryG
 tester.run('no-managed-resource-construction anchored root and factories', noManagedResource, {
   valid: [
     { filename: '/repo/src/main/server.ts', code: 'const server = http.createServer();' },
+    { filename: '/repo/src/server.ts', code: 'const server = http.createServer();' },
+    { filename: '/repo/src/main.ts', code: 'const pool = createPool();' },
     { filename: '/repo/src/main/composition-root/wire.ts', code: 'const client = createClient();' },
     {
       filename: '/repo/src/main/features/a/adapters/x.ts',
@@ -288,6 +316,8 @@ tester.run('report-module-load-effects in initialisers', reportModuleLoadEffects
     'export function now() { return Date.now(); }',
     'export const read = () => readFileSync("a");',
     'const handler = async () => { await fetch(url); };',
+    'export const table = buildTableSync(rows);',
+    'import { readFileSync } from "./local.js"; export const raw = readFileSync("a");',
   ],
   invalid: [
     {
@@ -295,12 +325,16 @@ tester.run('report-module-load-effects in initialisers', reportModuleLoadEffects
       errors: [{ messageId: 'importTimeEffect', data: { call: 'Date.now()' } }],
     },
     {
-      code: 'export const raw = readFileSync("/etc/hostname", "utf8");',
+      code: 'import { readFileSync } from "node:fs"; export const raw = readFileSync("/etc/hostname", "utf8");',
       errors: [{ messageId: 'importTimeEffect', data: { call: 'readFileSync()' } }],
     },
     {
       code: 'export const response = await fetch(url);',
       errors: [{ messageId: 'topLevelAwait' }, { messageId: 'importTimeEffect' }],
+    },
+    {
+      code: 'import * as fs from "fs"; export const files = fs.readdirSync(".");',
+      errors: [{ messageId: 'importTimeEffect', data: { call: 'fs.readdirSync()' } }],
     },
     {
       code: 'export const timer = setInterval(tick, 1000);',

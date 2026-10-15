@@ -30,17 +30,14 @@ const pureNodeModules = [
   'punycode',
   'querystring',
 ];
-const clockAndIdLibraries = [
+const idAndRandomLibraries = [
   'uuid',
   'nanoid',
   'cuid',
   '@paralleldrive/cuid2',
   'ulid',
-  'dayjs',
-  'moment',
-  'luxon',
-  'date-fns-tz',
   '@faker-js/faker',
+  'faker',
 ];
 const networkAndDatabaseClients = [
   'axios',
@@ -182,12 +179,12 @@ const baseBoundaryRules = [
     },
   },
   {
-    name: 'domain-does-not-import-clock-or-id-libraries',
+    name: 'domain-does-not-import-id-libraries',
     severity: 'error',
     comment:
-      'domain/ may not import ID or clock libraries (uuid, nanoid, dayjs, moment, luxon, and similar). Take the time or ID as a parameter from adapters/.',
+      'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker). Take the ID as a parameter from adapters/.',
     from: domain,
-    to: { path: `(?:^|/)(?:node_modules/)?(?:${clockAndIdLibraries.join('|')})(?:/|$)` },
+    to: { path: `(?:^|/)(?:node_modules/)?(?:${idAndRandomLibraries.join('|')})(?:/|$)` },
   },
   {
     name: 'domain-does-not-reach-io-through-shared',

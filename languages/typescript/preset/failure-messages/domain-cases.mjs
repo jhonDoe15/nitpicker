@@ -35,6 +35,12 @@ export const domainFailureMessageCases = [
     'xs.reduce((sum, x) => sum + x, 0)',
   ),
   domainCase('Date.now names a parameter', 'export const now = Date.now();', 'as a parameter'),
+  domainCase('dayjs() names a parameter', 'export const now = dayjs();', 'as a parameter'),
+  domainCase(
+    'DateTime.now names a parameter',
+    'export const now = DateTime.now();',
+    'as a parameter',
+  ),
   domainCase('new Date() names a parameter', 'export const now = new Date();', 'as a parameter'),
   domainCase(
     'Math.random names a parameter',

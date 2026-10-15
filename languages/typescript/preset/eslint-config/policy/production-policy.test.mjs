@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../failure-messages/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
-import { strictSyntaxConfigFor, strictTypedConfigFor } from '../strict.mjs';
-import { productionPolicyConfigFor } from './production-policy.mjs';
+import { strictSyntaxConfigFor } from '../strict.mjs';
+import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mjs';
 
 const layout = { ...defaultResolvedLayout, entryPoints: ['src/scripts/*.ts'] };
 
@@ -11,6 +11,7 @@ const RETURN_TYPE_RULE = '@typescript-eslint/explicit-module-boundary-types';
 function allRuleIds(filename, code, { react = false } = {}) {
   const config = [
     ...productionPolicyConfigFor(layout, { react }),
+    ...productionLayoutConfigFor(layout, { react }),
     ...strictSyntaxConfigFor(layout, { react }),
   ];
   return lintFixture({ config, filename, code })
@@ -88,7 +89,7 @@ describe('identifier casing', () => {
     ['a snake_case parameter', 'export function f(line_item: number) { return line_item; }'],
     ['a camelCase type parameter', 'export type Box<item> = { readonly value: item };'],
   ])('rejects %s', (_name, code) => {
-    expect(ruleIds(adapter, code)).toEqual(['@typescript-eslint/naming-convention']);
+    expect(ruleIds(adapter, code)).toEqual(['nitpicker/naming-convention']);
   });
 
   it.each([
@@ -111,13 +112,34 @@ describe('identifier casing', () => {
     expect(ruleIds(adapter, code)).toEqual([]);
   });
 
+  it.each([
+    ['a zod schema constant', 'export const Order = z.object({ id: z.string() });'],
+    ['a refined schema constant', 'export const Email = z.string().email().brand("Email");'],
+    [
+      'a component parameter',
+      'export function withLog(Component: ComponentType) { return Component; }',
+    ],
+    [
+      'a component parameter by name',
+      'export function wrap(InnerComponent) { return InnerComponent; }',
+    ],
+  ])('allows PascalCase for %s', (_name, code) => {
+    expect(ruleIds(adapter, code)).toEqual([]);
+  });
+
+  it('still rejects a PascalCase constant that is not a schema', () => {
+    expect(ruleIds(adapter, 'export const Order = loadOrder();')).toEqual([
+      'nitpicker/naming-convention',
+    ]);
+  });
+
   it('allows PascalCase functions and variables only in a React project', () => {
     const code = 'export function Button() { return 1; } export const Panel = Button;';
 
     expect(ruleIds(adapter, code, { react: true })).toEqual([]);
     expect(ruleIds(adapter, code)).toEqual([
-      '@typescript-eslint/naming-convention',
-      '@typescript-eslint/naming-convention',
+      'nitpicker/naming-convention',
+      'nitpicker/naming-convention',
     ]);
   });
 });
@@ -126,8 +148,16 @@ describe('magic numbers and other basics', () => {
   it.each([
     ['a number in a condition', 'export function old(seconds: number) { return seconds > 86400; }'],
     ['a factor', 'export function gross(net: number) { return net * 1.17; }'],
+    [
+      'a number in a function inside a constant',
+      'export const timers = { wait() { return sleep(5000); } };',
+    ],
+    [
+      'a status-sized number elsewhere',
+      'export function f(xs: readonly number[]) { return xs.at(404); }',
+    ],
   ])('rejects %s', (_name, code) => {
-    expect(ruleIds(adapter, code)).toEqual(['@typescript-eslint/no-magic-numbers']);
+    expect(ruleIds(adapter, code)).toEqual(['nitpicker/no-magic-numbers']);
   });
 
   it.each([
@@ -139,6 +169,12 @@ describe('magic numbers and other basics', () => {
     ['a default value', 'export function f(retries = 5) { return retries; }'],
     ['an object property', 'export const options = { timeoutMs: 5000 };'],
     ['an array index', 'export function f(xs: readonly number[]) { return xs[7]; }'],
+    ['a computed module constant', 'export const DAY_MS = 24 * 60 * 60 * 1000;'],
+    ['a constant list', 'export const CODES = [200, 404, 500] as const;'],
+    ['a status code', 'export function f(res: Res) { return res.status(404); }'],
+    ['a status property', "export function reply() { return new Response('', { status: 204 }); }"],
+    ['rounding digits', 'export function f(x: number) { return x.toFixed(3); }'],
+    ['percent scaling', 'export function f(x: number) { return Math.round(x * 100) / 100; }'],
   ])('allows %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual([]);
   });
@@ -170,16 +206,6 @@ describe('magic numbers and other basics', () => {
     expect(ruleIds(file, 'export const panel = 1;', { react: true })).toEqual([]);
   });
 
-  it.each([
-    [false, false],
-    [true, true],
-  ])('sets ignoreVoid for floating promises when react is %s', (react, ignoreVoid) => {
-    const rules = strictTypedConfigFor(layout, {}, { react }).map((entry) => entry.rules);
-    const floating = rules.map((entry) => entry['@typescript-eslint/no-floating-promises']);
-
-    expect(floating.filter(Boolean)).toEqual(Array(2).fill(['error', { ignoreVoid }]));
-  });
-
   it('requires a return type on exported production functions, components included', () => {
     const code = 'export function total(a: number) { return a + 1; }';
     const component = 'src/main/features/a/adapters/user-list.tsx';
@@ -195,5 +221,14 @@ describe('magic numbers and other basics', () => {
     expect(
       returnTypeFindings('src/main/features/a/adapters/x.mjs', 'export function f() { return 1; }'),
     ).toEqual([]);
+  });
+
+  it('lets domain/ use a date library on a given value but not read the clock through it', () => {
+    expect(
+      ruleIds(domain, 'export function day(at: string): number { return dayjs(at).day(); }'),
+    ).toEqual([]);
+    expect(ruleIds(domain, 'export function now(): number { return dayjs().valueOf(); }')).toEqual([
+      'no-restricted-syntax',
+    ]);
   });
 });

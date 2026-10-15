@@ -92,8 +92,9 @@ export const rule = {
             ),
           );
         }
-        if (wrapper.classificationIndex === undefined) {
-          if (!referencesCatch(node)) return;
+        const thrown = node.parent.type === 'ThrowStatement' && caughtVariables.length > 0;
+        if (wrapper.classificationIndex === undefined && !thrown && !referencesCatch(node)) {
+          return;
         }
         if (!preservesCause(wrapper, node, referencesCatch)) {
           context.report({ node, messageId: 'lostCause' });

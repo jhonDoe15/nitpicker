@@ -34,12 +34,11 @@ import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import { diagnosticMessages } from './typecheck/compiler-hints.mjs';
 import {
   enclosingSymbol,
-  formatDiagnostic,
   loadTypeScript,
   preEmitDiagnostics,
-  withoutProjectRoot,
 } from './typecheck/typescript-program.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -263,7 +262,7 @@ export function normalizeTypeScriptDiagnostics({
 }) {
   const occurrences = new Map();
   return diagnostics.map((diagnostic) => {
-    const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
+    const { message, display } = diagnosticMessages(ts, diagnostic, projectRoot);
     const relativePath =
       diagnostic.file === undefined
         ? configRelativePath
@@ -285,7 +284,7 @@ export function normalizeTypeScriptDiagnostics({
         `symbol:${symbol ?? ''}`,
         `occurrence:${String(occurrence)}`,
       ].join('|'),
-      message,
+      message: display,
       classification: 'enforceable',
     };
     if (symbol !== undefined) {

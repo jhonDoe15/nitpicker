@@ -19,6 +19,16 @@ function isJsonParse(node) {
   );
 }
 
+function isJsonCopy(node) {
+  const [argument] = node.arguments;
+  return (
+    argument?.type === 'CallExpression' &&
+    argument.callee.type === 'MemberExpression' &&
+    argument.callee.object.name === 'JSON' &&
+    argument.callee.property.name === 'stringify'
+  );
+}
+
 function isSchemaParseCall(node) {
   return (
     node.type === 'CallExpression' &&
@@ -103,6 +113,54 @@ function narrowedIdentifier(node) {
   return [node.left, node.right].find((side) => side.type === 'UnaryExpression').argument;
 }
 
+function isInstanceofOf(expression, name) {
+  return (
+    expression.type === 'BinaryExpression' &&
+    expression.operator === 'instanceof' &&
+    expression.left.type === 'Identifier' &&
+    expression.left.name === name
+  );
+}
+
+function instanceofIn(expression, name) {
+  const pending = [expression];
+  for (const current of pending) {
+    if (current.type === 'LogicalExpression' && current.operator === '&&') {
+      pending.push(current.left, current.right);
+    }
+  }
+  return pending.some((current) => isInstanceofOf(current, name));
+}
+
+function isEarlierExitGuard(statement, name) {
+  return (
+    statement.type === 'IfStatement' &&
+    statement.test.type === 'UnaryExpression' &&
+    statement.test.operator === '!' &&
+    instanceofIn(statement.test.argument, name)
+  );
+}
+
+function guardsChild(parent, child, name) {
+  if (parent.type === 'LogicalExpression' && parent.operator === '&&' && parent.right === child) {
+    return instanceofIn(parent.left, name);
+  }
+  if (parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') {
+    return parent.consequent === child && instanceofIn(parent.test, name);
+  }
+  const statements = Array.isArray(parent.body) ? parent.body : [];
+  return statements
+    .slice(0, statements.indexOf(child))
+    .some((statement) => isEarlierExitGuard(statement, name));
+}
+
+function isNarrowedByInstanceof(node, name) {
+  return [node, ...ancestorsOf(node)].some(
+    (current) =>
+      typeof current.parent?.type === 'string' && guardsChild(current.parent, current, name),
+  );
+}
+
 function isInsidePredicate(node) {
   const owner = ancestorsOf(node).find((ancestor) => Array.isArray(ancestor.params));
   return owner?.returnType?.typeAnnotation.type === 'TSTypePredicate';
@@ -158,9 +216,11 @@ export const rule = {
       inlineNarrowing:
         'Do not hand-narrow an `unknown` value with `typeof x === "object"` or `"key" in x`: parse it once at the boundary with a zod schema (schema.safeParse). A caught error is read with `error instanceof Error`. If the narrowing is genuinely needed, add an exception for this rule in nitpicker.config.json.',
       overloadCast:
-        'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions.',
+        'This overload implementation returns unknown or any, which makes its overload signatures a cast. Return a typed value, or split it into separate functions. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
       unparsedJson:
-        'Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`.',
+        'Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. If the text is trusted and already typed, add an exception for this rule in nitpicker.config.json.',
+      jsonCopy:
+        'Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. If it is deliberate, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
@@ -177,6 +237,7 @@ export const rule = {
         if (
           identifier?.type === 'Identifier' &&
           !isInsidePredicate(node) &&
+          !isNarrowedByInstanceof(node, identifier.name) &&
           declaredType(variableNamed(sourceCode, identifier))?.type === 'TSUnknownKeyword'
         ) {
           context.report({ node, messageId: 'inlineNarrowing' });
@@ -189,7 +250,7 @@ export const rule = {
       },
       CallExpression(node) {
         if (isJsonParse(node) && !isParsedBySchema(sourceCode, node)) {
-          context.report({ node, messageId: 'unparsedJson' });
+          context.report({ node, messageId: isJsonCopy(node) ? 'jsonCopy' : 'unparsedJson' });
         }
       },
     };

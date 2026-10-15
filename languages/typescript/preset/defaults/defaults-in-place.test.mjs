@@ -251,21 +251,21 @@ function createProject(files = oldLayoutFiles()) {
 
 function oldLayoutFiles() {
   return {
-    'src/main/greeting.ts': [
+    'src/main/shared/greeting.ts': [
       'export function greeting(name: string): string {',
       '  return `Hello, ${name}`;',
       '}',
       '',
     ].join('\n'),
     'src/main/index.ts': [
-      "import { greeting } from './greeting.js';",
+      "import { greeting } from './shared/greeting.js';",
       '',
       "export const message = greeting('world');",
       '',
     ].join('\n'),
     'tests/unit/greeting.test.ts': [
       "import { describe, expect, it } from 'vitest';",
-      "import { greeting } from '../../src/main/greeting.js';",
+      "import { greeting } from '../../src/main/shared/greeting.js';",
       '',
       "describe('greeting', () => {",
       "  it('greets by name', () => {",

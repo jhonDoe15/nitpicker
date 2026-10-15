@@ -246,7 +246,7 @@ describe('hints for the production policy rules', () => {
     );
 
     expect(message).toBe(
-      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several. \`void\`, \`.then()\` and \`.catch()\` do not count. If the work is deliberately not awaited, ${ROUTE}.`,
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`,
     );
   });
 
@@ -254,12 +254,6 @@ describe('hints for the production policy rules', () => {
     expect(
       hint('@typescript-eslint/no-floating-promises', 'An array of Promises may be unintentional.'),
     ).toBe(`An array of Promises may be unintentional. ${ROUTE}.`);
-  });
-
-  it('names a constant and the allowed numbers for a magic number', () => {
-    expect(hint('@typescript-eslint/no-magic-numbers', 'No magic number: 86400.')).toBe(
-      `No magic number: 86400. Name it with a constant, e.g. \`const SECONDS_PER_DAY = 86400;\` (-1, 0, 1 and 2 are allowed). If the number is clear where it is, ${ROUTE}.`,
-    );
   });
 
   it.each([
@@ -276,10 +270,8 @@ describe('hints for the production policy rules', () => {
   });
 
   it('names the allowed casing for a naming-convention finding', () => {
-    expect(
-      hint('@typescript-eslint/naming-convention', 'Function name `a_b` must match camelCase'),
-    ).toBe(
-      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE. If an external API forces the name, ${ROUTE}.`,
+    expect(hint('nitpicker/naming-convention', 'Function name `a_b` must match camelCase')).toBe(
+      `Function name \`a_b\` must match camelCase. Types are PascalCase; functions, variables and parameters are camelCase; constants may be UPPER_CASE; a schema constant may be PascalCase (\`const Order = z.object(...)\`). If an external API forces the name, ${ROUTE}.`,
     );
   });
 
@@ -294,5 +286,20 @@ describe('hints for the production policy rules', () => {
     ],
   ])('rewrites %s', (ruleId, text, expected) => {
     expect(hint(ruleId, text)).toContain(expected);
+  });
+
+  it.each([
+    [
+      'curly',
+      "Expected { after 'if' condition.",
+      `Expected { after 'if' condition. Wrap the body in braces: \`if (done) { return; }\`. To keep a file as it is, ${ROUTE}.`,
+    ],
+    [
+      'no-param-reassign',
+      "Assignment to function parameter 'n'.",
+      `Assignment to function parameter 'n'. Declare a new const with another name instead of reassigning the parameter. If the reassignment is deliberate, ${ROUTE}.`,
+    ],
+  ])('names the exception route for %s', (ruleId, text, expected) => {
+    expect(hint(ruleId, text)).toBe(expected);
   });
 });

@@ -1,6 +1,23 @@
 import { compositionRootOptionsSchema, isCompositionRootFile } from '../composition-root-files.mjs';
 
-const CONTAINER_CONSTRUCTORS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet', 'Array']);
+const COLLECTION_CONSTRUCTORS = new Set([
+  'Map',
+  'Set',
+  'WeakMap',
+  'WeakSet',
+  'Int8Array',
+  'Uint8Array',
+  'Uint8ClampedArray',
+  'Int16Array',
+  'Uint16Array',
+  'Int32Array',
+  'Uint32Array',
+  'Float32Array',
+  'Float64Array',
+  'BigInt64Array',
+  'BigUint64Array',
+]);
+const CONTAINER_CONSTRUCTORS = new Set([...COLLECTION_CONSTRUCTORS, 'Array']);
 const MUTATING_METHODS = new Set([
   'set',
   'add',
@@ -28,16 +45,34 @@ function unwrap(expression) {
   return chain.at(-1);
 }
 
+function isObjectCreate(expression) {
+  return (
+    expression.type === 'CallExpression' &&
+    expression.callee.type === 'MemberExpression' &&
+    expression.callee.object.name === 'Object' &&
+    expression.callee.property.name === 'create'
+  );
+}
+
+function isConstructed(expression, constructors) {
+  return (
+    expression.type === 'NewExpression' &&
+    expression.callee.type === 'Identifier' &&
+    constructors.has(expression.callee.name)
+  );
+}
+
+function isCollection(initializer) {
+  const expression = unwrap(initializer);
+  return isObjectCreate(expression) || isConstructed(expression, COLLECTION_CONSTRUCTORS);
+}
+
 function isContainer(initializer) {
   const expression = unwrap(initializer);
   if (expression.type === 'ArrayExpression' || expression.type === 'ObjectExpression') {
     return true;
   }
-  return (
-    expression.type === 'NewExpression' &&
-    expression.callee.type === 'Identifier' &&
-    CONTAINER_CONSTRUCTORS.has(expression.callee.name)
-  );
+  return isObjectCreate(expression) || isConstructed(expression, CONTAINER_CONSTRUCTORS);
 }
 
 function outermostMember(identifier) {
@@ -62,12 +97,10 @@ function isMutatedBy(identifier) {
       parent.callee.property.name === 'assign'
     );
   }
-  const callee = identifier.parent;
   const mutatingCall =
     parent.type === 'CallExpression' &&
     parent.callee === member &&
-    callee.type === 'MemberExpression' &&
-    MUTATING_METHODS.has(callee.property.name);
+    MUTATING_METHODS.has(member.property.name);
   return (
     mutatingCall ||
     (parent.type === 'AssignmentExpression' && parent.left === member) ||
@@ -89,6 +122,22 @@ function moduleLevelConstants(program) {
     );
 }
 
+function isExportedCollection(declarator) {
+  return (
+    declarator.parent.parent.type === 'ExportNamedDeclaration' && isCollection(declarator.init)
+  );
+}
+
+function stateReport(context, declarator) {
+  if (isExportedCollection(declarator)) {
+    return 'exportedState';
+  }
+  const variable = context.sourceCode.getDeclaredVariables(declarator).at(0);
+  return variable?.references.some(({ identifier }) => isMutatedBy(identifier))
+    ? 'moduleState'
+    : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -96,7 +145,9 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       moduleState:
-        "Module-level '{{name}}' is mutated, which is hidden shared state. Create it in the composition root and pass it in as a parameter, or return a new value instead of mutating. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
+        "Module-level '{{name}}' is mutated, which is hidden shared state. Build a lookup table inside a function and return it, create shared state in the composition root and pass it in, or return a new value instead of mutating. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
+      exportedState:
+        "Module-level '{{name}}' is an exported mutable collection that any importer can change. Build it inside a function and return it, or create it in the composition root and pass it in. If it is a deliberate per-process singleton, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
@@ -106,13 +157,9 @@ export const rule = {
     return {
       'Program:exit'(program) {
         for (const declarator of moduleLevelConstants(program)) {
-          const variable = context.sourceCode.getDeclaredVariables(declarator).at(0);
-          if (variable?.references.some(({ identifier }) => isMutatedBy(identifier))) {
-            context.report({
-              node: declarator.id,
-              messageId: 'moduleState',
-              data: { name: declarator.id.name },
-            });
+          const messageId = stateReport(context, declarator);
+          if (messageId !== undefined) {
+            context.report({ node: declarator.id, messageId, data: { name: declarator.id.name } });
           }
         }
       },

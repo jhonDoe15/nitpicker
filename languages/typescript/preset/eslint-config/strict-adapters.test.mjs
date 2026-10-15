@@ -112,11 +112,9 @@ describe('strict adapters type-aware rules', () => {
     expect(messages[0].message).toContain('awaited');
   });
 
-  it('rejects a promise silenced with void', async () => {
+  it('accepts deliberate fire-and-forget written with void', async () => {
     const messages = await messagesFor('voided.ts');
-    expect(messages.map((message) => message.ruleId)).toEqual([
-      '@typescript-eslint/no-floating-promises',
-    ]);
+    expect(messages).toEqual([]);
   });
 
   it('accepts an awaited promise', async () => {

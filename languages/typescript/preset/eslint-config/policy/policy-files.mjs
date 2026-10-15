@@ -18,4 +18,7 @@ export const eslintConfigPolicyFiles = [
   'languages/typescript/preset/eslint-plugin/rules/guards/no-shell-string-command.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
 ];
