@@ -120,7 +120,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   descriptive `mutant-timeout`, `mutant-runtimeerror`, `mutant-compileerror`, `mutant-ignored`;
   killed mutants produce no finding. `mutation-summary` carries one descriptive count per status
   (`path` `.`, identity `status:<Status>`).
-- **Identity.** `<mutated class>|<method><descriptor>|<mutator>|<description>#<n>`. There is no
+- **Identity.** `<mutated class>|<method><descriptor>|<mutator>|<description>#<n>`, with every
+  package left out: the class is its simple name, `Lcom/shop/Order;` in the descriptor becomes
+  `LOrder;` and `com/shop/Order::total` in the description becomes `Order::total` (the symbol
+  likewise). The path already tells classes apart, and the gate maps a renamed path to its base
+  counterpart, so moving a class to another package keeps its legacy mutants matched. There is no
   line number: `n` is the mutant's position among those with the same key and status, ordered by
   line and then block index, so the numbering follows source order and not PIT's (multi-threaded)
   report order. Edits above a mutant keep it; a second identical mutation in the same method is a
