@@ -283,7 +283,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
   (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
-  initialiser is the place for a one-time read. These rules come from the React Compiler's
+  initialiser is the place for a one-time read; a ref may be lazily initialised in render
+  (`if (ref.current === null) ref.current = new Player()`), but its value is read in handlers and
+  effects. These rules come from the React Compiler's
   analysis and can flag legitimate code, so each message names the exception.
 - **Components are declared at module level** (`react-x/no-nested-component-definitions`,
   `react-x/static-components`, `react-x/no-nested-lazy-component-declarations`): a component
