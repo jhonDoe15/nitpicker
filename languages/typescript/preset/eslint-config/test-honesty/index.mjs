@@ -19,10 +19,8 @@ function runnableTestGlobs(roots) {
   return roots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`);
 }
 
-function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
-  const ignores = [...layout.excludedGlobs, ...setupFiles];
-  const projectGlobs = runnableTestGlobs([...layout.testRoots, ...layout.sourceRoots]);
-  const checked = (restores) => ({
+function stubRestoreBlock(restores, { projectGlobs, ignores }) {
+  return {
     files: restores.scope === '.' ? projectGlobs : runnableTestGlobs([restores.scope]),
     ignores,
     plugins: { nitpicker: nitpickerRules },
@@ -32,8 +30,17 @@ function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
         { globals: !restores.globals, envs: !restores.envs },
       ],
     },
-  });
-  return [{ scope: '.', globals: false, envs: false }, ...stubRestores].map(checked);
+  };
+}
+
+function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
+  const context = {
+    ignores: [...layout.excludedGlobs, ...setupFiles],
+    projectGlobs: runnableTestGlobs([...layout.testRoots, ...layout.sourceRoots]),
+  };
+  return [{ scope: '.', globals: false, envs: false }, ...stubRestores].map((restores) =>
+    stubRestoreBlock(restores, context),
+  );
 }
 
 export function testHonestyConfigFor(layout, { setupFiles = [], stubRestores = [] } = {}) {

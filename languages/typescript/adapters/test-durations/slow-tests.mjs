@@ -26,12 +26,11 @@ function testCallSpans(projectRoot, file) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const nodes = [source];
   for (const node of nodes) nodes.push(...node.getChildren(source));
-  const lineOf = (position) => source.getLineAndCharacterOfPosition(position);
   return new Map(
     nodes.filter(ts.isCallExpression).map((call) => {
-      const start = lineOf(call.getStart(source));
+      const start = source.getLineAndCharacterOfPosition(call.getStart(source));
       const key = `${String(start.line + 1)}:${String(start.character + 1)}`;
-      return [key, lineOf(call.end).line + 1];
+      return [key, source.getLineAndCharacterOfPosition(call.end).line + 1];
     }),
   );
 }

@@ -62,30 +62,35 @@ function projectEntries(nodes) {
     .filter((entry) => !entry.startsWith('!'));
 }
 
-function restoresInConfig(projectRoot, configPath, nested) {
+function configNodes(configPath) {
   const text = readFileSync(configPath, 'utf8');
-  const nodes = nodesOf(ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true));
+  return nodesOf(ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true));
+}
+
+function flagsIn(projectRoot, configPath, nodes) {
   const base = path.relative(projectRoot, path.dirname(configPath)).replaceAll('\\', '/') || '.';
-  const flags = nodes
+  return nodes
     .filter((node) => Object.hasOwn(RESTORE_FLAGS, propertyName(node) ?? ''))
     .filter((node) => node.initializer.kind === ts.SyntaxKind.TrueKeyword)
     .map((node) => ({ scope: flagScope(node, base), restores: RESTORE_FLAGS[propertyName(node)] }));
-  const children = nested
-    ? projectConfigs(path.dirname(configPath), projectEntries(nodes)).flatMap((child) =>
-        restoresInConfig(projectRoot, child, false),
-      )
-    : [];
-  return [...flags, ...children];
+}
+
+function restoresInConfigs(projectRoot, rootConfig) {
+  const rootNodes = configNodes(rootConfig);
+  const children = projectConfigs(path.dirname(rootConfig), projectEntries(rootNodes));
+  return [
+    ...flagsIn(projectRoot, rootConfig, rootNodes),
+    ...children.flatMap((child) => flagsIn(projectRoot, child, configNodes(child))),
+  ];
 }
 
 export function stubRestoresIn(projectRoot) {
   const configName = CONFIG_NAMES.find((name) => existsSync(path.join(projectRoot, name)));
   if (configName === undefined) return [];
   const scopes = new Map();
-  for (const { scope, restores } of restoresInConfig(
+  for (const { scope, restores } of restoresInConfigs(
     projectRoot,
     path.join(projectRoot, configName),
-    true,
   )) {
     scopes.set(scope, {
       scope,
