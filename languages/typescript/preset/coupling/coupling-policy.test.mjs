@@ -1,12 +1,3 @@
-import {
-  expectedOutput18_17,
-  expectedOutput19_19,
-  expectedOutput20_28,
-  expectedOutput21_20,
-  expectedOutput22_29,
-  expectedOutput32_28,
-  expectedOutput33_41,
-} from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-coupling-coupling-policy.mjs';
 import { describe, expect, it } from 'vitest';
 import { cruiseInProcess as cruise } from '../dependency-graph/fixtures/in-process-cruise.mjs';
 import { analyzeCoupling } from './analyze.mjs';
@@ -24,11 +15,43 @@ describe('coupling report', () => {
     const alpha = report.packages.find((entry) => entry.name === 'alpha');
     const shared = report.packages.find((entry) => entry.name === 'shared');
 
-    expect(hub).toEqual(expectedOutput18_17({ sourceRoot }));
-    expect(alpha).toEqual(expectedOutput19_19());
-    expect(alpha.cohesion).toEqual(expectedOutput20_28());
-    expect(shared).toEqual(expectedOutput21_20());
-    expect(shared.cohesion).toEqual(expectedOutput22_29());
+    expect(hub).toEqual({
+      source: `${sourceRoot}/shared/hub.ts`,
+      package: 'shared',
+      fanIn: 3,
+      fanOut: 1,
+      totalCoupling: 4,
+      instability: 0.25,
+      runtimeFanIn: 3,
+      runtimeFanOut: 1,
+      runtimeInstability: 0.25,
+    });
+    expect(alpha).toEqual({
+      name: 'alpha',
+      modules: 2,
+      fanIn: 0,
+      fanOut: 1,
+      instability: 1,
+      cohesion: {
+        internalEdges: 0,
+        edgeDensity: 0,
+        connectedComponents: 2,
+        largestComponentShare: 0.5,
+      },
+    });
+    expect(shared).toEqual({
+      name: 'shared',
+      modules: 2,
+      fanIn: 3,
+      fanOut: 0,
+      instability: 0,
+      cohesion: {
+        internalEdges: 1,
+        edgeDensity: 0.5,
+        connectedComponents: 1,
+        largestComponentShare: 1,
+      },
+    });
   });
 
   it('keeps a cohesive low-signal graph connected without inventing instability', async () => {
@@ -38,8 +61,19 @@ describe('coupling report', () => {
       sourceRoot,
     );
 
-    expect(report.summary).toEqual(expectedOutput32_28());
-    expect(report.packages[0].cohesion).toEqual(expectedOutput33_41());
+    expect(report.summary).toEqual({
+      modules: 2,
+      dependencies: 1,
+      runtimeDependencies: 1,
+      typeOnlyDependencies: 0,
+      packages: 1,
+    });
+    expect(report.packages[0].cohesion).toEqual({
+      internalEdges: 1,
+      edgeDensity: 0.5,
+      connectedComponents: 1,
+      largestComponentShare: 1,
+    });
     expect(report.stabilityDirection).toEqual([]);
   });
 

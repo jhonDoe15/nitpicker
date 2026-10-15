@@ -1,9 +1,11 @@
 import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
-import { rule as hermeticGitInTests } from './rules/testing/processes/hermetic-git-in-tests.mjs';
-import { rule as noGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
-import { rule as noNodeProcessPerTest } from './rules/testing/processes/no-node-process-per-test.mjs';
+import { rule as hermeticGitInTests } from '../rules/testing/processes/hermetic-git-in-tests.mjs';
+import { rule as noNodeProcessPerTest } from '../rules/testing/processes/no-node-process-per-test.mjs';
+import { rule as noGitRepositoryPerTest } from '../rules/testing/processes/no-git-repository-per-test.mjs';
+import { rule as noServerOrWorkerPerTest } from '../rules/testing/processes/no-server-or-worker-per-test.mjs';
+import { rule as noExternalExecutables } from '../rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -24,12 +26,9 @@ const ruleTester = new RuleTester({
 });
 
 const testFile = '/repo/tests/integration/repository.test.ts';
-
 const lines = (...parts) => parts.join('\n');
-
 const childProcess =
   "import { execFileSync, execSync, spawnSync, fork } from 'node:child_process';";
-
 // Shapes taken from nitpicker's own suite before the 2026-10-09 speed-up (core/diff/diff-policy,
 // core/java-cli, core/diff/touched-code, languages/typescript/preset/fixtures/strict-clean, evals/lib/consumer).
 const diffPolicyRepository = lines(
@@ -45,7 +44,6 @@ const diffPolicyRepository = lines(
   "function commit(root, message) { git(root, ['add', '-A']); git(root, ['commit', '-q', '-m', message]); }",
   "function git(root, arguments_) { return execFileSync('git', arguments_, { cwd: root, encoding: 'utf8' }); }",
 );
-
 const touchedCodeInline = lines(
   childProcess,
   "it('reads real git output', () => {",
@@ -54,23 +52,19 @@ const touchedCodeInline = lines(
   "  run('commit', '-q', '-m', 'base');",
   '});',
 );
-
 const strictCleanProject = lines(
   childProcess,
   "function git(root, ...args) { execFileSync('git', ['-c', 'user.name=Fixture', '-c', 'user.email=f@example.invalid', ...args], { cwd: root }); }",
   "function createProject() { const root = mkdtempSync('/tmp/x-'); git(root, 'init', '-q', '-b', 'main'); git(root, 'add', '-A'); return root; }",
   "it('passes', () => { runSnapshot(createProject()); });",
 );
-
 const consumerChecked = lines(
   childProcess,
   "function checked(root, command, args) { return execFileSync(command, args, { cwd: root, encoding: 'utf8' }); }",
   "beforeEach(() => { checked(root, 'git', ['init', '-b', 'main']); });",
 );
-
 const hermeticEnvironment =
   "{ ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' }";
-
 ruleTester.run('no-git-repository-per-test', noGitRepositoryPerTest, {
   valid: [
     {
@@ -295,6 +289,85 @@ ruleTester.run('no-node-process-per-test', noNodeProcessPerTest, {
         "it('runs the bin', async () => { await execa(process.execPath, ['bin/cli.js']); });",
       ),
       errors: [{ messageId: 'nodeProcessPerTest' }],
+    },
+  ],
+});
+ruleTester.run('no-server-or-worker-per-test', noServerOrWorkerPerTest, {
+  valid: [
+    {
+      filename: testFile,
+      code: lines(
+        "import { createServer } from 'node:http';",
+        'const server = createServer(handler);',
+        'beforeAll(() => new Promise((resolve) => server.listen(0, resolve)));',
+        'beforeEach(() => { store.clear(); });',
+        "it('reads', async () => { expect(await fetch(url)).toBeDefined(); });",
+      ),
+    },
+    {
+      filename: testFile,
+      code: lines(
+        "import { createServer } from '../../src/main/server.js';",
+        "it('starts the app', () => { createServer(); });",
+      ),
+    },
+    {
+      filename: testFile,
+      code: lines(
+        "import { Worker } from 'node:worker_threads';",
+        "beforeAll(() => { worker = new Worker('./server.js'); });",
+      ),
+    },
+    {
+      filename: testFile,
+      code: "it('uses a web worker shape', () => { const worker = new Worker('a.js'); });",
+    },
+  ],
+  invalid: [
+    {
+      filename: '/repo/tests/integration/cache-stores.test.ts',
+      code: lines(
+        "import { Worker } from 'node:worker_threads';",
+        "function startTestHttpServer() { return new Worker(new URL('./server.mjs', import.meta.url)); }",
+        'async function server() { const started = await startTestHttpServer(); cleanups.push(() => started.terminate()); return started; }',
+        "it('stores and returns text', async () => { const remote = await server(); expect(remote).toBeDefined(); });",
+      ),
+      errors: [{ messageId: 'serverPerTest', line: 2 }],
+    },
+    {
+      filename: testFile,
+      code: lines(
+        "import http from 'node:http';",
+        "import * as net from 'net';",
+        'beforeEach(() => { server = http.createServer(handler); });',
+        "it('connects', () => { const socketServer = net.createServer(); });",
+        "it('constructs', () => { const raw = new net.Server(); });",
+      ),
+      errors: [
+        { messageId: 'serverPerTest', line: 3 },
+        { messageId: 'serverPerTest', line: 4 },
+        { messageId: 'serverPerTest', line: 5 },
+      ],
+    },
+  ],
+});
+ruleTester.run('unit tests remain independent of external executables', noExternalExecutables, {
+  valid: [
+    "import { readFile } from 'node:fs/promises';",
+    'const dependency = { load: async () => value };',
+  ],
+  invalid: [
+    {
+      code: "import { execFile } from 'node:child_process';",
+      errors: [{ messageId: 'externalExecutable' }],
+    },
+    {
+      code: "const subprocess = await import('execa');",
+      errors: [{ messageId: 'externalExecutable' }],
+    },
+    {
+      code: "const subprocess = require('child_process');",
+      errors: [{ messageId: 'externalExecutable' }],
     },
   ],
 });
