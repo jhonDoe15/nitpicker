@@ -69,6 +69,16 @@ describe('React detection', () => {
     expect(isReactProject({ projectRoot })).toBe(false);
   });
 
+  it('stays off for the JavaScript preset whatever package.json or the config says', () => {
+    const withReact = projectWith(manifestWith({ dependencies: { react: '19.0.0' } }));
+
+    expect(isReactProject({ projectRoot: withReact, javascript: true })).toBe(false);
+    expect(
+      isReactProject({ projectRoot: withReact, react: { enabled: true }, javascript: true }),
+    ).toBe(false);
+    expect(isReactProject({ projectRoot: withReact, javascript: false })).toBe(true);
+  });
+
   it('lets the config switch the scope on or off whatever package.json says', () => {
     const withReact = projectWith(manifestWith({ dependencies: { react: '19.0.0' } }));
     const withoutReact = projectWith(manifestWith({}));

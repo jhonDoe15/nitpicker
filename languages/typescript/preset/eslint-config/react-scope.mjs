@@ -29,7 +29,10 @@ function readDependencyNames(projectRoot) {
   ];
 }
 
-export function isReactProject({ projectRoot, react = {} }) {
+export function isReactProject({ projectRoot, react = {}, javascript = false }) {
+  if (javascript) {
+    return false;
+  }
   return react.enabled ?? readDependencyNames(projectRoot).includes(REACT_PACKAGE);
 }
 
