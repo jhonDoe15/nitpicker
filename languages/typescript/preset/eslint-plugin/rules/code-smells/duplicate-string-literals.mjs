@@ -88,7 +88,10 @@ function shown(value) {
 export const rule = {
   meta: {
     type: 'suggestion',
-    docs: { description: 'Name a string literal that a file repeats three times or more' },
+    docs: {
+      description: 'Name a string literal that a file repeats three times or more',
+      requiresTypeChecking: true,
+    },
     schema: [],
     messages: {
       repeated:
