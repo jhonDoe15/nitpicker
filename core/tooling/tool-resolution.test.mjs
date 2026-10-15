@@ -1,4 +1,4 @@
-import { createGitTemplate, copyGitTemplate } from '../diff/fixtures/git-repository.mjs';
+import { createGitTemplate, copyGitTemplate } from '../diff/git/test-support/git-repository.mjs';
 import {
   mkdtempSync,
   mkdirSync,

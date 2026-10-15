@@ -3,8 +3,8 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../../../../core/cli.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { copyGitTemplate } from '../../../../../core/diff/fixtures/git-repository.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { copyGitTemplate } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 

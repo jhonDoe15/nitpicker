@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../languages/typescript/adapters/static-checks-runner.mjs';
-import { cruiseStrict } from '../../../../languages/typescript/preset/architecture/fixtures/strict-cruise.mjs';
+import { cruiseStrict } from '../../../../languages/typescript/preset/architecture/test-support/strict-cruise.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
 import { fileURLToPath } from 'node:url';
 

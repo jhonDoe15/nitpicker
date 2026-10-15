@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
-import { installFakeToolchain } from '../../../../languages/python/adapters/fixtures/fake-toolchain.mjs';
+import { installFakeToolchain } from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
 
 export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
