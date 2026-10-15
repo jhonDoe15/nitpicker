@@ -103,7 +103,7 @@ describe('conventions in the head policy', () => {
     expect(policy.conventions).toEqual({ 'java.indentation': '4' });
   });
 
-  it('keeps a pinned value, carries only choices that differ from the preset, and leaves presets without conventions untouched', () => {
+  it('keeps a pin and carries only choices that differ from the preset default', () => {
     const { root } = createGitRepository({ 'src/A.java': twoSpaces });
     const stdout = output();
 
