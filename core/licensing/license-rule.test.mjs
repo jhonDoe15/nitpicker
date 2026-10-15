@@ -7,7 +7,7 @@ import {
   PERMISSIVE,
   REJECTED,
   WEAK_COPYLEFT,
-} from './license-rule.mjs';
+} from './test-support/license-rule.mjs';
 
 describe('classifyExpression', () => {
   it.each([

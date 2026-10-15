@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { writeMypyConfig } from './mypy-config.mjs';
-import { execute, run } from './python-process.mjs';
-import { importRoots } from './python-project.mjs';
+import { writeMypyConfig } from './configuration/mypy-config.mjs';
+import { execute, run } from './execution/python-process.mjs';
+import { importRoots } from './execution/python-project.mjs';
 
 export const TYPES_REPORT = 'type-check.json';
 const TYPES_FAILED_RULE = 'types-failed';

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { pinnedJavaTools } from '../../../../core/licensing/dependency-licenses.mjs';
+import { pinnedJavaTools } from '../../../../core/licensing/test-support/dependency-licenses.mjs';
 import { ADVICE_GROUPS } from './advice-groups.mjs';
 import {
   enclosingMethod,

@@ -70,7 +70,7 @@ list accepts as permissive.
 
 `core/licensing/dependency-licenses.test.mjs` enforces what it can read on every test run: each
 tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license entry in
-`core/licensing/` that the allowlist accepts and an exact version, and every package in
+`core/licensing/test-support/` that the allowlist accepts and an exact version, and every package in
 `package-lock.json` must declare an allowed license, with its installed LICENSE text scanned for a
 GPL, AGPL or source-available notice (a package that offers an allowed license in an OR expression
 passes). Adding a pinned Java tool means adding its license entry in the same change, after reading

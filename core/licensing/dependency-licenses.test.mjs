@@ -9,7 +9,7 @@ import {
   lockedPackages,
   npmLicenseViolations,
   pinnedJavaTools,
-} from './dependency-licenses.mjs';
+} from './test-support/dependency-licenses.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const initScript = readFileSync(
