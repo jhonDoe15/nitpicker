@@ -18,7 +18,7 @@ let metricsByName;
 
 beforeAll(async () => {
   const analysis = await analyzeProject({
-    projectRoot: projectRoot,
+    projectRoot,
     explicitPaths: [fixtureSource],
     coverageMode: 'existing-only',
     coverageReportPath: fixtureCoverage,

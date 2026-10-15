@@ -356,7 +356,7 @@ async function main() {
   }
   if (!existsSync(path.join(project, '.git'))) throw new Error(`${project} is not a git root`);
   try {
-    const result = measureProject(configuredAnalyzers, project, options);
+    const result = measureProject(configuredAnalyzers(), project, options);
     const report = { fixture: options.fixture ?? project, runs: options.runs, ...result };
     if (options.json) writeFileSync(options.json, `${JSON.stringify(report, null, 2)}\n`);
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);

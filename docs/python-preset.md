@@ -52,7 +52,7 @@ directory is the contract between the tool runs and the readers; later slices ad
   `python` settings. Upgrading ruff, or editing the preset, therefore invalidates the base cache.
 - **Ingesters.** Nothing generic was moved. The Java ingesters are reused where they already are:
   `languages/java/ingest/sarif.mjs` (ruff), `format-check.mjs` (the format check) and `common.mjs`.
-  The one new ingester is `languages/python/ingest/coverage-json.mjs` for the coverage.py JSON
+  The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mjs` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is Java's `applyJavaPolicy` /
   `configureJavaAnalyzer`, which are language-neutral and take the tool name for a
   `baseline-expansion` finding as an option.
@@ -94,7 +94,7 @@ before the `.pth` files and import hooks editable installs use, so the snapshot'
 Tests run with the snapshot as working directory, so `tests/` and `conftest.py` are the snapshot's
 too, and coverage only measures the snapshot's source roots.
 
-Why not the dependency hook (`languages/typescript/adapters/dependency-hooks.mjs`)? A hook installs
+Why not the dependency hook (`languages/typescript/adapters/dependency-graph/dependency-hooks.mjs`)? A hook installs
 a directory into the snapshot (`npm ci` for `node_modules`) and removes it afterwards. For Python
 that means building a second environment per snapshot: minutes of work, network access, and the
 base would be analyzed with the base's pinned tool versions while head uses head's, so every
@@ -320,7 +320,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   `python/no-tests-ran` finding: it is new, and so fails, only when the change removed the last
   tests, and a project that has none on both sides is unaffected. coverage.py 7.6 or newer is
   needed for the per-function data.
-- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-json.mjs`:
+- **Coverage findings.** The JSON report is ingested by `languages/python/ingest/coverage-reports/coverage-json.mjs`:
   `line-coverage` per file (a metric, as for JaCoCo and lcov) and `uncovered-function` for each
   function none of whose statements ran. Both are descriptive; PY3 turns the same report into CRAP
   and PY4 into changed-branch coverage (slice 4 below). The JSON also carries the per-line branch data
@@ -397,7 +397,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   copies and virtualenvs are not gated. Node lists the files once per snapshot
   (`python-files.txt`) and hands the list to the metrics script. Tests are
   outside the default source roots, so they are not gated.
-- **Findings.** Same as Java: `languages/python/adapters/python-structure.mjs` gives the metrics to
+- **Findings.** Same as Java: `languages/python/adapters/analysis/python-structure.mjs` gives the metrics to
   `evaluateStructure` and keeps the enforceable limit findings (tool `structure`; the descriptive
   per-function metrics are not emitted). Identity: qualified name, occurrence among equal names in
   the file, and a hash of the function text with the common indentation removed, so moving or
@@ -410,7 +410,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   guard is the `default` of a `switch` and does not count), each extra operand of `and` and `or`
   (`a and b and c` is two), and in a comprehension or generator expression each `for`/`async for`
   clause and each `if` clause. The decision points are the McCabe ones of the other presets
-  (ESLint's `complexity` rule for TypeScript, lizard for Java and the Kotlin metrics program all
+  (ESLint's `complexity` rule for TypeScript, the Java and Kotlin metrics programs all
   count `if`, loops, `case` but not `default`, `catch`, `&&`, `||` and `?:`), with two differences
   in scope: a lambda counts towards the function around it, as in Java and Kotlin but unlike
   TypeScript, which scores every arrow function and function expression on its own; and each `for`
@@ -451,7 +451,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
 - **Tests.** `ingest/crap.test.mjs` (the join, on structure entries and a coverage.py report),
   `python-structure.test.mjs`, `python-crap.test.mjs`, `python-sources.test.mjs` (all with the fake
   toolchain) and `metrics/structure-metrics.test.mjs` (the script itself, on the real `python3`:
-  the limit metrics, the nesting of `elif` chains and `match`, and each kind of decision point); `core/python-cli.test.mjs` drives the CLI
+  the limit metrics, the nesting of `elif` chains and `match`, and each kind of decision point); `core/command/python/python-cli-*.test.mjs` drives the CLI
   in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
   function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the
   gated e2e adds real branches for each (nested loops with four parameters, a legacy function
@@ -463,7 +463,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   file, the branch arcs coverage.py recorded, `executed_branches` and `missing_branches` as
   `[from line, to line]` pairs (a negative `to` leaves the enclosing function, class or module).
   The runner always turns branch coverage on, so both snapshots have them.
-- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-branches.mjs`) groups the
+- **Findings.** `ingestCoverageBranches` (`languages/python/ingest/coverage-reports/coverage-branches.mjs`) groups the
   arcs by their `from` line and emits one enforceable `coverage-py` / `changed-branch-coverage`
   finding per line whose taken outcomes are below 95% (the minimum of the other languages). Lines
   without branches are never reported. The tool name is `coverage-py`, not `coverage`: `coverage`
@@ -501,9 +501,9 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
   and `raise NotImplementedError`. Anything else that legitimately cannot be tested is lifted with
   `exclude` in `nitpicker.config.json` (a path glob), which drops every finding for that file, not
   only this rule's. Test files are not measured, so a `.` source root does not gate them.
-- **Tests.** `languages/python/ingest/coverage-branches.test.mjs` (the ingester on a recorded
+- **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
-  `compareFindings`); `core/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
+  `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
   six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
   branch passes).
@@ -729,7 +729,7 @@ and CRAP rules.
 
 ## Tests
 
-- `core/python-cli.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
+- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
   (`languages/python/adapters/fixtures/fake-python-tools.mjs` behind wrapper scripts in a
   `.venv/bin`): clean and failing changes in every report format, a change that removes every test,
   tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys, and that
@@ -744,7 +744,7 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
-- `languages/python/adapters/python-preset.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+- `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
   pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,
   coverage, mypy, mutmut, black and import-linter into throwaway environments); 8 to 25 minutes
@@ -784,7 +784,7 @@ and CRAP rules.
   `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
   (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
-  `core/python-cli.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
+  `core/command/python/python-cli-*.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
   interpreter prints. The e2e file has a layered `shop` project (a copy fails as a duplicate; a
   domain package importing the web package fails as `stability-direction` and as two broken
   import-linter chains; `importLinter: false` skips the contracts; a clean change passes) and needs
