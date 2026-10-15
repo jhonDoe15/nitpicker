@@ -4,7 +4,6 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { ingestFormatCheck } from '../../ingest/formatting/format-check.mjs';
-import { applyJavaPolicy } from '../java-policy.mjs';
 import { readJavaFindings } from './java-reports.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -218,53 +217,6 @@ describe('readJavaFindings', () => {
     expect(rules({})).toEqual(['crap-score-limit']);
     expect(rules({ crapLimit: 156.5 })).toEqual([]);
     expect(rules({ crapLimit: 156 })).toEqual(['crap-score-limit']);
-  });
-
-  it('names the exception entry in the structure, CRAP and branch coverage findings, and each entry lifts its finding', () => {
-    const root = projectWithReports();
-    writeFileSync(
-      path.join(root, 'build/nitpicker/structure.json'),
-      JSON.stringify([
-        {
-          file: bad,
-          name: 'Bad.decode',
-          start: 8,
-          end: 14,
-          lines: 7,
-          parameters: 4,
-          complexity: 12,
-          signature: 'Bad.decode(byte[])',
-        },
-      ]),
-    );
-    const { findings } = readJavaFindings(root);
-    const routed = findings.filter(({ rule }) =>
-      ['function-parameters-limit', 'crap-score-limit', 'changed-branch-coverage'].includes(rule),
-    );
-    const entry = (rule, functionName) => ({ rule, paths: [bad], function: functionName });
-
-    expect(routed.map(({ rule, symbol }) => [rule, symbol])).toEqual([
-      ['crap-score-limit', 'Bad.decode(byte[])'],
-      ['function-parameters-limit', 'Bad.decode'],
-      ['changed-branch-coverage', 'Bad.decode'],
-    ]);
-    expect(routed.map(({ message }) => message.match(/If a reviewer.*$/)[0])).toEqual([
-      'If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      'If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/java/demo/Bad.java"],"function":"Bad.decode","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-    ]);
-    const lifted = applyJavaPolicy(findings, {
-      exceptions: [
-        entry('function-parameters-limit', 'Bad.decode'),
-        entry('crap-score-limit', 'Bad.decode'),
-        entry('changed-branch-coverage', 'Bad.decode'),
-      ],
-    });
-    expect(lifted.filter((finding) => routed.includes(finding))).toEqual([]);
-    expect(lifted).toHaveLength(findings.length - routed.length);
-    expect(
-      applyJavaPolicy(findings, { exceptions: [entry('changed-branch-coverage', 'encode')] }),
-    ).toEqual(applyJavaPolicy(findings));
   });
 
   it('re-keys the CRAP finding when the method text changes but keeps its ratchet key', () => {

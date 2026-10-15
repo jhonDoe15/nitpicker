@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
-import { commit, gradleRepository, run, useGradleCli, write } from './test-support/gradle-cli.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { runCli as nitpickerCli } from '../../cli.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { useGradleFixtures } from '../java/test-support/java-cli-harness.mjs';
 
-useGradleCli();
+const { gradleRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('exceptions with "preset": "java"', () => {
   describe('exceptions for structure, CRAP and coverage findings', () => {
@@ -42,7 +45,7 @@ describe('exceptions with "preset": "java"', () => {
     });
     const change = (config) => {
       const root = gradleRepository();
-      write(root, {
+      writeFiles(root, {
         'nitpicker.config.json': config,
         'src/main/java/demo/Wide.java': WIDE_SOURCE,
         'structure.json': structure,
