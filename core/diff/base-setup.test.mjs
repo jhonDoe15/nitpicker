@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from './base-setup.mjs';
-import { configureAnalyzers } from './configure-analyzers.mjs';
-import { presetAnalyzers } from './preset-analyzers.mjs';
-import { resolveHeadPolicy } from '../shared/head-policy.mjs';
+import { createBaseSetupResolver } from '../base-setup.mjs';
+import { configureAnalyzers } from '../configure-analyzers.mjs';
+import { presetAnalyzers } from '../preset-analyzers.mjs';
+import { resolveHeadPolicy } from '../../shared/head-policy.mjs';
 
 const roots = [];
 afterEach(() => {

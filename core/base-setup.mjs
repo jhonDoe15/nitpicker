@@ -28,10 +28,18 @@ export function createBaseSetupResolver({ headConfig, injectedAnalyzers, warn = 
 }
 
 function withHeadDuplicates(baseConfig, headConfig) {
-  const { duplicates: _baseDuplicates, ...rest } = baseConfig;
-  return headConfig.duplicates === undefined
-    ? rest
-    : { ...rest, duplicates: headConfig.duplicates };
+  const { duplicates } = headConfig;
+  const entries = Object.entries(baseConfig).flatMap(([key, value]) => {
+    if (key !== 'duplicates') {
+      return [[key, value]];
+    }
+    return duplicates === undefined ? [] : [[key, duplicates]];
+  });
+  return Object.fromEntries(
+    'duplicates' in baseConfig || duplicates === undefined
+      ? entries
+      : [...entries, ['duplicates', duplicates]],
+  );
 }
 
 function baseSetupFromConfig({
