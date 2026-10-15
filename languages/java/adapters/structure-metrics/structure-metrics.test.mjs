@@ -207,6 +207,10 @@ public class Constructs {
 
     <K, V> Wide(java.util.Map.Entry<K, V> entry) {}
   }
+
+  static class Box<T extends Comparable<T>> {
+    <U> Box(T value, U other, List<T> list, T[] values) {}
+  }
 }
 `;
 
@@ -296,6 +300,7 @@ describe('StructureMetrics.java', () => {
       'Constructs.WithParameter.WithParameter(int)': { complexity: 1 },
       'Constructs.Wide.Wide(Map<String, List<Integer>>, int[], String[])': { complexity: 1 },
       'Constructs.Wide.Wide(java.util.Map.Entry<K, V>)': { complexity: 1 },
+      'Constructs.Box.Box(T, U, List<T>, T[])': { complexity: 1 },
     });
   });
 
@@ -308,7 +313,7 @@ describe('StructureMetrics.java', () => {
     expect(nesting['Constructs.guarded(Object)']).toBe(1);
   });
 
-  it('lists the erased parameter types, arrays as Name[], for joining constructors to JaCoCo', () => {
+  it('lists the erased parameter types, type variables as their bound, for joining constructors to JaCoCo', () => {
     const types = Object.fromEntries(
       measured.structure.map((entry) => [entry.signature, entry.parameterTypes]),
     );
@@ -320,6 +325,12 @@ describe('StructureMetrics.java', () => {
       'String[]',
     ]);
     expect(types['Constructs.Wide.Wide(java.util.Map.Entry<K, V>)']).toEqual(['Entry']);
+    expect(types['Constructs.Box.Box(T, U, List<T>, T[])']).toEqual([
+      'Comparable',
+      'Object',
+      'List',
+      'Comparable[]',
+    ]);
   });
 
   it('reads as the CRAP input, which leaves out the private empty constructors', () => {
