@@ -2,31 +2,31 @@ import functional from 'eslint-plugin-functional';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
-import { errorWrappingPolicy } from './error-wrapping-policy.mjs';
+import { errorWrappingPolicy } from './policies/error-wrapping-policy.mjs';
 import {
   escapeHatchLinterOptions,
   escapeHatchRules,
   escapeHatchSelectorsFor,
-} from './strict-escape-hatches.mjs';
+} from './strict/strict-escape-hatches.mjs';
 import {
   declarationSelectorsFor,
   defaultExportSelectors,
   typeDefinitionSelectors,
   typedDeclarationRules,
-} from './strict-declarations.mjs';
+} from './strict/strict-declarations.mjs';
 import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
   forEachSelectors,
   loopSelectors,
-} from './strict-control-flow.mjs';
+} from './strict/strict-control-flow.mjs';
 import {
   domainFunctionalRules,
   domainGlobsFor,
   domainRestrictedSyntax,
   domainTypeAwareFunctionalRules,
-} from './strict-domain.mjs';
+} from './strict/strict-domain.mjs';
 import {
   adapterGlobsFor,
   restrictedAdapterSyntax,
@@ -115,11 +115,9 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
   ];
 }
 
-const strictSyntaxConfig = strictSyntaxConfigFor();
+export const strictSyntaxConfig = strictSyntaxConfigFor();
 
-export default strictSyntaxConfig;
-
-export function strictTypedConfigFor(layout, parserOptions) {
+function strictTypedConfigFor(layout, parserOptions) {
   return [
     {
       files: layout.sourceGlobs,
@@ -143,7 +141,7 @@ export function strictTypedConfigFor(layout, parserOptions) {
   ];
 }
 
-export function strictTypedConfig(parserOptions) {
+function strictTypedConfig(parserOptions) {
   return strictTypedConfigFor(defaultResolvedLayout, parserOptions);
 }
 
