@@ -1,19 +1,23 @@
 import { realpathSync } from 'node:fs';
-import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
-import { KOTLIN_FORMATTERS } from '../../languages/java/adapters/kotlin-options.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 
-const USAGE =
-  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
+const BASE_USAGE =
+  ' --project-root <directory> [--snapshot base|head] [--policy-root <directory>]' +
   ' [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>]' +
-  ' [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]' +
   ' [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>]';
 
-function parseException(value) {
+function usageOf(runner, choices) {
+  const listed = Object.entries(choices).map(
+    ([option, values]) => ` [${option} ${values.join('|')}]`,
+  );
+  return `Usage: ${runner}${BASE_USAGE}${listed.join('')}`;
+}
+
+function parseException(value, usage) {
   const separator = value.indexOf(EXCEPTION_SEPARATOR);
   if (separator <= 0 || separator === value.length - 1) {
-    throw new Error(USAGE);
+    throw new Error(usage);
   }
   return { rule: value.slice(0, separator), glob: value.slice(separator + 1) };
 }
@@ -29,13 +33,13 @@ function parseSkippedFolders(value) {
   return folders;
 }
 
-function optionPairs(arguments_) {
+function optionPairs(arguments_, usage) {
   const pairs = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const value = remaining.next().value;
     if (!RUNNER_OPTIONS.includes(name) || value === undefined) {
-      throw new Error(USAGE);
+      throw new Error(usage);
     }
     pairs.push([name, value]);
   }
@@ -46,32 +50,35 @@ function valuesOf(pairs, option) {
   return pairs.filter(([name]) => name === option).map(([, value]) => value);
 }
 
-function readOptionValues(arguments_) {
-  const pairs = optionPairs(arguments_);
+function readOptionValues(arguments_, usage) {
+  const pairs = optionPairs(arguments_, usage);
   const values = new Map(pairs.filter(([name]) => !REPEATED_OPTIONS.includes(name)));
   if (!values.has('--project-root')) {
-    throw new Error(USAGE);
+    throw new Error(usage);
   }
   return {
     values,
     exclude: valuesOf(pairs, '--exclude'),
-    exceptions: valuesOf(pairs, '--exception').map(parseException),
+    exceptions: valuesOf(pairs, '--exception').map((value) => parseException(value, usage)),
   };
 }
 
-export function parseRunnerArguments(arguments_) {
-  const { values, exclude, exceptions } = readOptionValues(arguments_);
+function checkChoices(values, choices) {
+  for (const [option, allowed] of Object.entries(choices)) {
+    const chosen = values.get(option);
+    if (chosen !== undefined && !allowed.includes(chosen)) {
+      throw new Error(`${option} must be one of: ${allowed.join(', ')}`);
+    }
+  }
+}
+
+export function parseRunnerArguments(arguments_, { runner = 'runner', choices = {} } = {}) {
+  const usage = usageOf(runner, choices);
+  const { values, exclude, exceptions } = readOptionValues(arguments_, usage);
+  checkChoices(values, choices);
   const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
     throw new Error('--crap-limit must be a positive number');
-  }
-  const preset = values.get('--preset');
-  const kotlinFormatter = values.get('--kotlin-formatter');
-  if (preset !== undefined && !GRADLE_PRESETS.includes(preset)) {
-    throw new Error(`--preset must be one of: ${GRADLE_PRESETS.join(', ')}`);
-  }
-  if (kotlinFormatter !== undefined && !KOTLIN_FORMATTERS.includes(kotlinFormatter)) {
-    throw new Error(`--kotlin-formatter must be one of: ${KOTLIN_FORMATTERS.join(', ')}`);
   }
   return {
     projectRoot: values.get('--project-root'),
@@ -84,8 +91,8 @@ export function parseRunnerArguments(arguments_) {
       policyRoot: realpathOptional(values.get('--policy-root')),
       baselineRoot: realpathOptional(values.get('--baseline-root')),
       snapshot: values.get('--snapshot') ?? 'head',
-      preset,
-      kotlinFormatter,
+      preset: values.get('--preset'),
+      kotlinFormatter: values.get('--kotlin-formatter'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
     },

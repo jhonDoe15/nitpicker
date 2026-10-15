@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from './finding-policy.mjs';
-import { evaluateDuplicates } from './rules/duplicates.mjs';
+import { evaluateDuplicates } from '../rules/duplicates.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -75,6 +75,7 @@ describe('applyFindingPolicy', () => {
         legacyInventory: 'nitpicker.legacy.json',
         policyRoot: headRoot,
         snapshot: 'base',
+        inventoryTool: 'java',
       }),
     ).toEqual([findings[1], findings[2]]);
   });
@@ -86,22 +87,36 @@ describe('applyFindingPolicy', () => {
       legacyInventory: 'nitpicker.legacy.json',
       policyRoot: headRoot,
       baselineRoot: baseRoot,
+      inventoryTool: 'java',
     };
 
     expect(applyFindingPolicy([], { ...options, snapshot: 'head' })).toEqual([
-      expect.objectContaining({
+      {
         tool: 'java',
         rule: 'baseline-expansion',
         path: 'a.java',
+        identity: expect.stringMatching(/^site:\w+$/),
+        message: 'Legacy allowance increased from 1 to 3 for Rule',
         classification: 'enforceable',
-      }),
+      },
     ]);
     expect(applyFindingPolicy([], { ...options, snapshot: 'base' })).toEqual([]);
     expect(
-      applyFindingPolicy([], { ...options, snapshot: 'head', preset: 'kotlin' }).map(
+      applyFindingPolicy([], { ...options, snapshot: 'head', inventoryTool: 'kotlin' }).map(
         ({ tool, rule }) => [tool, rule],
       ),
     ).toEqual([['kotlin', 'baseline-expansion']]);
+  });
+
+  it('refuses a legacy inventory without the tool that asks', () => {
+    expect(() =>
+      applyFindingPolicy([], {
+        legacyInventory: 'nitpicker.legacy.json',
+        policyRoot: inventoryRoot([allow('a.py', 1)]),
+      }),
+    ).toThrow(
+      new TypeError('applyFindingPolicy needs "inventoryTool" to apply a legacy inventory'),
+    );
   });
 
   it('names the tool of a baseline-expansion after the language that asks', () => {

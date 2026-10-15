@@ -1,7 +1,7 @@
-import { globToRegExp } from './glob.mjs';
-import { applyInventoryToFindings, readOptionalInventory } from './legacy-inventory.mjs';
-import { evaluateBaselineExpansions } from './rules/baseline-expansion.mjs';
-import { clonePartnerPath } from './rules/duplicates.mjs';
+import { globToRegExp } from '../glob.mjs';
+import { applyInventoryToFindings, readOptionalInventory } from '../legacy-inventory.mjs';
+import { evaluateBaselineExpansions } from '../rules/baseline-expansion.mjs';
+import { clonePartnerPath } from '../rules/duplicates.mjs';
 
 export function findingPaths(finding) {
   const partner = clonePartnerPath(finding);
@@ -29,8 +29,7 @@ export function applyFindingPolicy(
     policyRoot,
     baselineRoot,
     snapshot = 'head',
-    preset = 'java',
-    inventoryTool = preset,
+    inventoryTool,
   } = {},
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
@@ -41,6 +40,9 @@ export function applyFindingPolicy(
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;
+  }
+  if (inventoryTool === undefined) {
+    throw new TypeError('applyFindingPolicy needs "inventoryTool" to apply a legacy inventory');
   }
   const headInventory = readOptionalInventory(policyRoot, legacyInventory);
   const baselined = applyInventoryToFindings(kept, headInventory.sites);

@@ -21,7 +21,8 @@ function duplicateMessage(sides, lines) {
   const place =
     positiveInteger(other.line) === undefined ? other.file : `${other.file}:${String(other.line)}`;
   const size = positiveInteger(lines) === undefined ? '' : ` (${String(lines)} lines)`;
-  return `This code repeats ${place}${size}. Keep one copy and call it from both places. If the repetition is intended, add ${first.file} or ${other.file} to "exclude" in nitpicker.config.json.`;
+  const files = first.file === other.file ? first.file : `${first.file} or ${other.file}`;
+  return `This code repeats ${place}${size}. Keep one copy and call it from both places. If the repetition is intended, add ${files} to "exclude" in nitpicker.config.json.`;
 }
 
 function cloneMetrics({ analyzerName, sides, clone, pair, occurrence }) {

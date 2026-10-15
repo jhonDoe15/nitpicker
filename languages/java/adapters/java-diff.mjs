@@ -11,7 +11,7 @@ import {
 import { withTemporaryWorktree } from '../../../core/diff/worktree.mjs';
 import { runJavaDuplicates } from './java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin-duplicates.mjs';
-import { applyFindingPolicy } from '../../../shared/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { readJavaFindings, requireGradleReports } from './java-reports.mjs';
 import { kotlinGradleArguments } from './kotlin-tools.mjs';
 import { isTouchedCodeRule } from '../../../shared/policy.mjs';
@@ -80,7 +80,7 @@ export function collectJavaFindings(projectRoot, options = {}) {
     }),
     preset,
   );
-  return applyFindingPolicy(findings, options.policy);
+  return applyFindingPolicy(findings, { ...options.policy, inventoryTool: preset });
 }
 
 export function runJavaDiff({

@@ -2,8 +2,7 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { configureJavaAnalyzer } from './java-policy.mjs';
-import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { configureJavaAnalyzer, parseJavaRunnerArguments } from './java-policy.mjs';
 
 const context = () => ({
   projectRoot: '/p',
@@ -36,7 +35,7 @@ describe('configureJavaAnalyzer', () => {
     });
 
     const { args } = configured.createInvocation(context);
-    const parsed = parseRunnerArguments(args.slice(1));
+    const parsed = parseJavaRunnerArguments(args.slice(1));
 
     expect(parsed.projectRoot).toBe('/p');
     expect(parsed.policy).toMatchObject({
@@ -64,7 +63,7 @@ describe('configureJavaAnalyzer', () => {
     ];
     const configured = configureJavaAnalyzer(analyzer, { exceptions });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context).args.slice(1));
 
     expect(parsed.policy.exceptions).toEqual([
       { rule: 'detekt.style.ForbiddenMethodCall', glob: 'a/Main.kt' },
@@ -83,7 +82,7 @@ describe('configureJavaAnalyzer', () => {
       kotlin: { formatter: 'ktfmt', detektConfig: 'tools/rules.yml' },
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context).args.slice(1));
 
     expect(parsed.policy).toEqual({
       crapLimit: undefined,
@@ -116,7 +115,7 @@ describe('the duplicate folder list', () => {
     const listed = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: ['target'] } });
     const empty = configureJavaAnalyzer(analyzer, { duplicates: { skippedFolders: [] } });
     const policyOf = (configured) =>
-      parseRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy;
+      parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy;
 
     expect(policyOf(listed).duplicateSkippedFolders).toEqual(['target']);
     expect(policyOf(empty).duplicateSkippedFolders).toEqual([]);
@@ -126,11 +125,11 @@ describe('the duplicate folder list', () => {
 
   it('is left unset without the option and rejected when it is not a list of names', () => {
     expect(
-      parseRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
+      parseJavaRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
     ).toBeUndefined();
     for (const value of ['"build"', '[1]', '{}']) {
       expect(() =>
-        parseRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+        parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
       ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
     }
   });
@@ -143,7 +142,7 @@ describe('Java file limits', () => {
       exceptions: [{ rule: 'folder-files-limit', paths: ['src/main/java/icons/**'], reason: 'x' }],
     });
 
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
 
     expect(parsed.policy.fileLimits).toEqual({ fileLines: 400, folderFiles: 12 });
     expect(parsed.policy.exceptions).toEqual([
@@ -155,29 +154,35 @@ describe('Java file limits', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
       thresholds: { crapLimit: 12 },
     });
-    const parsed = parseRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
     expect(parsed.policy.fileLimits).toBeUndefined();
   });
 
   it('rejects file limits that are not a JSON object', () => {
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--file-limits', '[]'])).toThrow(
       '--file-limits must be a JSON object',
     );
   });
 });
 
-describe('parseRunnerArguments', () => {
+const JAVA_USAGE = new Error(
+  'Usage: java-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <rule>:<glob>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--duplicate-skipped-folders <json array>] [--preset java|kotlin] [--kotlin-formatter ktlint|ktfmt|none]',
+);
+
+describe('parseJavaRunnerArguments', () => {
   it('rejects unknown options, missing values and a bad CRAP limit', () => {
-    expect(() => parseRunnerArguments(['--project-root'])).toThrow(/Usage/);
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(/Usage/);
-    expect(() => parseRunnerArguments(['--snapshot', 'head'])).toThrow(/Usage/);
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--crap-limit', '0'])).toThrow(
+    expect(() => parseJavaRunnerArguments(['--project-root'])).toThrow(JAVA_USAGE);
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
+      JAVA_USAGE,
+    );
+    expect(() => parseJavaRunnerArguments(['--snapshot', 'head'])).toThrow(JAVA_USAGE);
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--crap-limit', '0'])).toThrow(
       /positive number/,
     );
   });
 
   it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
-    expect(parseRunnerArguments(['--project-root', '/p']).policy).toEqual({
+    expect(parseJavaRunnerArguments(['--project-root', '/p']).policy).toEqual({
       crapLimit: undefined,
       exclude: [],
       exceptions: [],
@@ -190,7 +195,7 @@ describe('parseRunnerArguments', () => {
       kotlinDetektConfig: undefined,
     });
     expect(
-      parseRunnerArguments([
+      parseJavaRunnerArguments([
         '--project-root',
         '/p',
         '--preset',
@@ -217,24 +222,25 @@ describe('parseRunnerArguments', () => {
   it.each(['nocolon', ':glob/**', 'rule:'])(
     'rejects the exception %s without a rule or a glob',
     (value) => {
-      expect(() => parseRunnerArguments(['--project-root', '/p', '--exception', value])).toThrow(
-        /Usage/,
-      );
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--exception', value]),
+      ).toThrow(JAVA_USAGE);
     },
   );
 
   it('keeps a colon inside the glob', () => {
     expect(
-      parseRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy.exceptions,
+      parseJavaRunnerArguments(['--project-root', '/p', '--exception', 'r:a:b/**']).policy
+        .exceptions,
     ).toEqual([{ rule: 'r', glob: 'a:b/**' }]);
   });
 
   it('rejects an unknown preset or Kotlin formatter', () => {
-    expect(() => parseRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
+    expect(() => parseJavaRunnerArguments(['--project-root', '/p', '--preset', 'scala'])).toThrow(
       '--preset must be one of: java, kotlin',
     );
     expect(() =>
-      parseRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
+      parseJavaRunnerArguments(['--project-root', '/p', '--kotlin-formatter', 'prettier']),
     ).toThrow('--kotlin-formatter must be one of: ktlint, ktfmt, none');
   });
 });

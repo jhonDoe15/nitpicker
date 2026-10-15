@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { collectJavaFindings } from './java-diff.mjs';
-import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { parseJavaRunnerArguments } from './java-policy.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 const MAX_MESSAGE_LENGTH = 4000;
@@ -32,7 +32,7 @@ export function analyzeJavaSnapshot(
 }
 
 function main(arguments_) {
-  const { projectRoot, policy } = parseRunnerArguments(arguments_);
+  const { projectRoot, policy } = parseJavaRunnerArguments(arguments_);
   process.stdout.write(
     `${JSON.stringify(analyzeJavaSnapshot(realpathSync(projectRoot), { policy }))}\n`,
   );

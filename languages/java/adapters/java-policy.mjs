@@ -1,8 +1,12 @@
 import { createHash } from 'node:crypto';
-import { EXCEPTION_SEPARATOR } from '../../../core/tooling/runner-arguments.mjs';
+import {
+  EXCEPTION_SEPARATOR,
+  parseRunnerArguments,
+} from '../../../core/tooling/runner-arguments.mjs';
 import { withLegacyInventory } from '../../../shared/legacy-inventory.mjs';
 import { configError } from '../../../shared/config.mjs';
-import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { GRADLE_PRESETS, JAVA_TOOLS } from './gradle-presets.mjs';
+import { KOTLIN_FORMATTERS } from './kotlin-options.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 
 const FILE_LIMIT_THRESHOLDS = ['fileLines', 'testFileLines', 'lineLength', 'folderFiles'];
@@ -14,6 +18,13 @@ const NATIVE_LINE_LENGTH = {
 const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),
 );
+
+export function parseJavaRunnerArguments(arguments_) {
+  return parseRunnerArguments(arguments_, {
+    runner: 'java-runner.mjs',
+    choices: { '--preset': GRADLE_PRESETS, '--kotlin-formatter': KOTLIN_FORMATTERS },
+  });
+}
 
 export function validateJavaConfig(config) {
   const typescriptOnly = TYPESCRIPT_ONLY_KEYS.filter((key) => key !== 'exceptions');

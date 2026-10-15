@@ -296,15 +296,23 @@ describe('config file', () => {
     ],
     [
       { duplicates: { skippedFolders: ['src/build'] } },
-      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: src/build',
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": src/build',
     ],
     [
       { duplicates: { skippedFolders: ['**/build/**'] } },
-      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: **/build/**',
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": **/build/**',
     ],
     [
       { duplicates: { skippedFolders: ['..'] } },
-      '"duplicates.skippedFolders" entries must be folder names without slashes or glob characters: ..',
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": ..',
+    ],
+    [
+      { duplicates: { skippedFolders: ['a,b'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": a,b',
+    ],
+    [
+      { duplicates: { skippedFolders: ['!build'] } },
+      '"duplicates.skippedFolders" entries must be folder names without slashes, commas, glob characters or a leading "!": !build',
     ],
     [
       { duplicates: { skippedFolders: ['dist', 'dist'] } },
