@@ -1,4 +1,5 @@
-// Glob matching shared by every language: `**`, `*`, `?` and `{a,b}` over `/` paths.
+// Glob matching shared by every language: `**`, `*`, `?` and `{a,b}` over `/` paths. A backslash
+// makes the next character literal.
 
 /** Translates one glob (`**`, `*`, `?`, `{a,b}`) into a regular expression source for `/` paths. */
 export function globToRegExpSource(glob) {
@@ -6,7 +7,10 @@ export function globToRegExpSource(glob) {
   let braceDepth = 0;
   for (let index = 0; index < glob.length; index += 1) {
     const character = glob[index];
-    if (character === '*' && glob[index + 1] === '*') {
+    if (character === '\\' && index + 1 < glob.length) {
+      index += 1;
+      source += escapeRegExp(glob[index]);
+    } else if (character === '*' && glob[index + 1] === '*') {
       const followedBySlash = glob[index + 2] === '/';
       source += followedBySlash ? '(?:.*/)?' : '.*';
       index += followedBySlash ? 2 : 1;

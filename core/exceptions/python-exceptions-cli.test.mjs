@@ -53,7 +53,7 @@ describe('exceptions with "preset": "python"', () => {
     });
 
     it.each([
-      ['the function name', entry(RULE_IDS.functionParameters, 'wide'), 0],
+      ['the function name', entry(RULE_IDS.functionParameters, 'Service.wide'), 0],
       ['the whole path', entry(RULE_IDS.functionParameters), 0],
       ['another function', entry(RULE_IDS.functionParameters, 'narrow'), 1],
     ])('lifts the finding by %s only as far as the entry reaches', (_, lifted, exitCode) => {

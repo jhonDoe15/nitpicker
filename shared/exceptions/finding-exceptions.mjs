@@ -1,33 +1,44 @@
 import { normalizeFunctionName } from './rule-names.mjs';
-import { globToRegExp } from '../glob.mjs';
+import { functionNameOf } from './function-names.mjs';
+import { pathMatcher } from './matching.mjs';
 
-/** True when `wanted` names the function `symbol`: the whole name or its last dotted parts. */
+/** True when `wanted` is the function `symbol`, whatever its parameter list (overloads agree). */
 export function functionMatches(wanted, symbol) {
-  if (typeof symbol !== 'string' || symbol === '') {
-    return false;
-  }
-  const name = normalizeFunctionName(symbol);
-  const target = normalizeFunctionName(wanted);
-  return name === target || name.endsWith(`.${target}`);
+  return (
+    typeof symbol === 'string' &&
+    symbol !== '' &&
+    normalizeFunctionName(symbol) === normalizeFunctionName(wanted)
+  );
 }
 
-/** Drops the findings an exception `{ rule, paths, function? }` accepts. */
+function lifts(entry, finding) {
+  return (
+    (finding.rule === entry.rule || `${finding.tool}/${finding.rule}` === entry.rule) &&
+    entry.matches(finding.path) &&
+    (entry.functionName === undefined ||
+      functionMatches(entry.functionName, functionNameOf(finding))) &&
+    (entry.name === undefined || finding.symbol === entry.name)
+  );
+}
+
+/** Drops the findings an exception `{ rule, paths, function?, name? }` accepts. */
 export function applyFindingExceptions(findings, exceptions = []) {
-  const lifted = exceptions.map(({ rule, paths, function: functionName }) => ({
-    rule,
-    functionName,
-    matchers: paths.map((glob) => globToRegExp(glob)),
-  }));
-  if (lifted.length === 0) {
+  if (exceptions.length === 0) {
     return findings;
   }
-  return findings.filter(
-    (finding) =>
-      !lifted.some(
-        ({ rule, functionName, matchers }) =>
-          (finding.rule === rule || `${finding.tool}/${finding.rule}` === rule) &&
-          matchers.some((matcher) => matcher.test(finding.path)) &&
-          (functionName === undefined || functionMatches(functionName, finding.symbol)),
-      ),
-  );
+  const entries = exceptions.map(({ rule, paths, function: functionName, name }) => ({
+    rule,
+    functionName,
+    name,
+    matches: pathMatcher(paths),
+  }));
+  return findings.filter((finding) => !entries.some((entry) => lifts(entry, finding)));
+}
+
+/** The exceptions that lift at least one of `findings`' paths: those that match nothing are stale. */
+export function exceptionsMatchingNoPath(exceptions, paths) {
+  return exceptions.filter(({ paths: globs }) => {
+    const matches = pathMatcher(globs);
+    return !paths.some((path) => matches(path));
+  });
 }

@@ -329,7 +329,7 @@ describe('nitpicker with "preset": "python"', () => {
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
           message:
-            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
@@ -369,7 +369,7 @@ describe('nitpicker with "preset": "python"', () => {
           path: 'src/demo/a.py',
           identity: 'value|1→3#1',
           message:
-            'NoCoverage number: no test runs this code. Add a test that reaches it. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'NoCoverage number: no test runs this code. Add a test that reaches it. If a reviewer agrees this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           symbol: 'value',
           location: { line: 5 },
@@ -641,21 +641,21 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'crap-coverage-unknown',
           symbol: 'ghost',
           message:
-            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'ghost has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If a reviewer agrees this is intended, add {"rule":"crap-coverage-unknown","paths":["src/demo/a.py"],"function":"ghost","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'crap',
           rule: 'crap-score-limit',
           symbol: 'value',
           message:
-            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'value has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
         {
           tool: 'structure',
           rule: 'function-parameters-limit',
           symbol: 'fresh',
           message:
-            'fresh has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'fresh has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"fresh","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
       ]);
       expect(grown.exitCode, grown.text).toBe(1);
@@ -665,7 +665,7 @@ describe('nitpicker with "preset": "python"', () => {
           rule: 'function-parameters-limit',
           symbol: 'value',
           message:
-            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'value grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         },
       ]);
     });
@@ -699,7 +699,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/demo/a.py',
         identity: 'pair:src/demo/a.py|src/demo/b.py:fragment:8e33a9ff56a22a94c8efc96f:occurrence:1',
         message:
-          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/demo/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/demo/b.py:1 (10 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/demo/a.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 1 },
       },
@@ -770,7 +770,7 @@ describe('nitpicker with "preset": "python"', () => {
         path: 'src/base/__init__.py',
         identity: 'package-edge:base->other',
         message:
-          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If a reviewer agrees this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
@@ -987,7 +987,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     ).toEqual([
       [
         'value',
-        'If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/a.py"],"function":"value","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(accepted.exitCode, accepted.text).toBe(0);

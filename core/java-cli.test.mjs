@@ -427,7 +427,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     ).toEqual([
       [
         'surcharge',
-        'Branch coverage is 50.00%; minimum is 95%. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/K.kt"],"function":"surcharge","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/kotlin/demo/K.kt"],"function":"surcharge","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
     expect(accepted.exitCode, accepted.output.out + accepted.output.err).toBe(0);
@@ -487,7 +487,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'demo.A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'demo.A#fee(I)I',
         location: { line: 3 },
@@ -669,7 +669,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:sum:occurrence:1:source:88a9edab7be3d0a022e4137e',
         message:
-          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'sum grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'sum',
         location: { line: 3 },
@@ -677,7 +677,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:sum:occurrence:1:parameters',
           value: 5,
           worseMessage:
-            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'sum: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -706,7 +706,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/Wide.kt',
         identity: 'function:product:occurrence:1:source:4028b70dcfd552e455558543',
         message:
-          'product has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'product has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'product',
         location: { line: 5 },
@@ -714,7 +714,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           key: 'function:product:occurrence:1:parameters',
           value: 4,
           worseMessage:
-            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           heldMessage:
             'product: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
         },
@@ -781,7 +781,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity:
           'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:fragment:36d1c9baac959e2d7350e29b:occurrence:1',
         message:
-          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/main/kotlin/demo/Left.kt"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },

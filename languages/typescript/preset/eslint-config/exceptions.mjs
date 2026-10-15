@@ -1,12 +1,7 @@
-import { DEAD_CODE_RULES, SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-
-const POST_FILTER_RULES = [...SHARED_EXCEPTION_RULES, ...DEAD_CODE_RULES];
+import { isAddedRule } from '../../../../shared/exceptions/rule-names.mjs';
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
-  const exceptions = allExceptions.filter(
-    ({ rule }) => !POST_FILTER_RULES.includes(canonicalRule(rule)),
-  );
+  const exceptions = allExceptions.filter(({ rule }) => !isAddedRule(rule));
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(

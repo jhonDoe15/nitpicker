@@ -1,4 +1,4 @@
-import { globToRegExp } from '../../../shared/glob.mjs';
+import { pathMatcher } from '../../../shared/exceptions/matching.mjs';
 import { RUFF_SELECTOR } from './python-rule-ids.mjs';
 
 function covers(rule, finding) {
@@ -9,15 +9,9 @@ function covers(rule, finding) {
 }
 
 export function applyPythonExceptions(findings, exceptions = []) {
-  const lifted = exceptions.map(({ rule, paths }) => ({
-    rule,
-    matchers: paths.map((glob) => globToRegExp(glob)),
-  }));
+  const lifted = exceptions.map(({ rule, paths }) => ({ rule, matches: pathMatcher(paths) }));
   return findings.filter(
     (finding) =>
-      !lifted.some(
-        ({ rule, matchers }) =>
-          covers(rule, finding) && matchers.some((matcher) => matcher.test(finding.path)),
-      ),
+      !lifted.some(({ rule, matches }) => covers(rule, finding) && matches(finding.path)),
   );
 }

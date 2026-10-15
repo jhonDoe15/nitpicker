@@ -2,8 +2,10 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
-// import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+// Language-neutral: imports only the sentence builder of the exception routes. Nothing under
+// `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+
+import { exceptionSentence } from './exceptions/sentence.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -36,21 +38,29 @@ export const FUNCTION_STRUCTURE_LIMITS = {
   parameters: { limit: 3, ruleId: RULE_IDS.functionParameters },
 };
 
-/** Rules a `nitpicker.config.json` exception can lift for a path, or for one function in a path. */
+/** Rules a `nitpicker.config.json` exception can narrow to one function with `function`. */
 export const FUNCTION_EXCEPTION_RULES = [
   ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
   RULE_IDS.crapScoreLimit,
   RULE_IDS.crapCoverageUnknown,
   RULE_IDS.changedBranchCoverage,
+  RULE_IDS.mutantSurvived,
+  RULE_IDS.mutantNoCoverage,
 ];
 
 /** The only exceptions a changed-branch-coverage finding takes: they must name the function. */
 export const FUNCTION_REQUIRED_RULES = [RULE_IDS.changedBranchCoverage];
 
+/** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
+export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
+
+/** Rules an exception can narrow to one declaration with `name`. */
+export const NAME_EXCEPTION_RULES = ['exports', 'types'];
+
 /**
  * Per-file limits, keyed by their `thresholds` name. `fileLines` applies to source files and
  * `testFileLines` to test files; `folderFiles` counts the source files and the test files directly in
- * one folder separately.
+ * one folder, each kind on its own. Every language enforces them with the same defaults.
  */
 export const FILE_LIMIT_DEFAULTS = {
   fileLines: 300,
@@ -59,10 +69,8 @@ export const FILE_LIMIT_DEFAULTS = {
   folderFiles: 6,
 };
 
-/** Rules an exception lifts for a path only: a finding has no function to name. */
+/** Rules an exception lifts for a path only: such a finding has no function or declaration to name. */
 const PATH_EXCEPTION_RULES = [
-  RULE_IDS.mutantSurvived,
-  RULE_IDS.mutantNoCoverage,
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
   RULE_IDS.fileLines,
@@ -73,15 +81,86 @@ const PATH_EXCEPTION_RULES = [
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
-/** The dead-code findings of the TypeScript and JavaScript presets: an unused file, export or type. */
-export const DEAD_CODE_RULES = ['files', 'exports', 'types'];
+/**
+ * The tools that print each rule an `exceptions` entry can name, so that `<tool>/<rule>` is only
+ * valid with the finding's own tool. The TypeScript and JavaScript presets also print the rules
+ * listed after the shared ones.
+ */
+const STRUCTURE_RULES = [
+  ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
+  RULE_IDS.fileLines,
+  RULE_IDS.lineLength,
+  RULE_IDS.folderFiles,
+];
+
+/** The coding-standards findings of the TypeScript and JavaScript presets that an exception can lift. */
+export const CODING_STANDARDS_RULES = ['public-contract-production-use'];
+export const CODING_STANDARDS_RULE_PREFIXES = ['runtime-boundary/', 'callback-protocol/'];
+
+/** The dependency-cruiser rules of the TypeScript and JavaScript presets (tool `dependency-architecture`). */
+export const DEPENDENCY_RULES = [
+  'no-production-to-test',
+  'no-production-cycles',
+  'feature-internals-only-through-index',
+  'features-do-not-import-other-feature-internals',
+  'shared-does-not-import-features',
+  'features-do-not-import-composition-root',
+  'domain-does-not-import-adapters',
+  'domain-does-not-import-node-io',
+  'domain-does-not-import-network-or-database-clients',
+  'domain-does-not-import-the-logger',
+  'domain-does-not-import-module-state',
+];
+
+export const RULE_TOOLS = new Map([
+  ...STRUCTURE_RULES.map((rule) => [rule, ['structure']]),
+  [RULE_IDS.crapScoreLimit, ['crap']],
+  [RULE_IDS.crapCoverageUnknown, ['crap']],
+  [RULE_IDS.changedBranchCoverage, ['coverage', 'jacoco', 'coverage-py']],
+  [RULE_IDS.mutantSurvived, ['mutation', 'pit', 'mutmut']],
+  [RULE_IDS.mutantNoCoverage, ['mutation', 'pit', 'mutmut']],
+  [RULE_IDS.duplicateClone, ['duplicates']],
+  [RULE_IDS.stabilityDirection, ['coupling']],
+  ...DEAD_CODE_RULES.map((rule) => [rule, ['dead-code']]),
+  [RULE_IDS.noProductionRuntime, ['test-runtime']],
+  [RULE_IDS.typeOnlyProductionDependency, ['test-runtime']],
+  [RULE_IDS.publicAlternativeBypass, ['entry-points']],
+  ...CODING_STANDARDS_RULES.map((rule) => [rule, ['coding-standards']]),
+  ...DEPENDENCY_RULES.map((rule) => [rule, ['dependency-architecture']]),
+]);
+
+/** The tool of a `coding-standards` rule with a prefix, such as `runtime-boundary/<rule>`. */
+export const PREFIXED_RULE_TOOLS = CODING_STANDARDS_RULE_PREFIXES.map((prefix) => [
+  prefix,
+  ['coding-standards'],
+]);
+
+/** The tools of each preset that print rules an `exceptions` entry can name. */
+export const PRESET_TOOLS = {
+  typescript: [
+    'structure',
+    'crap',
+    'coverage',
+    'mutation',
+    'duplicates',
+    'coupling',
+    'dead-code',
+    'test-runtime',
+    'entry-points',
+    'coding-standards',
+    'dependency-architecture',
+  ],
+  java: ['structure', 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'],
+  python: ['structure', 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
+};
+PRESET_TOOLS.javascript = PRESET_TOOLS.typescript;
+PRESET_TOOLS.kotlin = PRESET_TOOLS.java;
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
 export const JAVA_NATIVE_RULES = [RULE_IDS.lineLength];
 
 /** `{exception}` is the `exceptions` entry that would lift the finding, as JSON. */
-const EXCEPTION_HINT =
-  'If this is intended, add {exception} to "exceptions" in nitpicker.config.json.';
+const EXCEPTION_HINT = exceptionSentence('{exception}');
 
 /** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;

@@ -20,7 +20,7 @@ describe('withExceptionRoutes', () => {
   ])('appends the entry that accepts %s for its path', (rule) => {
     expect(withExceptionRoutes([finding(rule)])).toEqual([
       finding(rule, {
-        message: `The base message. If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+        message: `The base message. If a reviewer agrees this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
       }),
     ]);
   });
@@ -31,7 +31,7 @@ describe('withExceptionRoutes', () => {
     ).toEqual([
       finding('stability-direction', {
         message:
-          'a depends on b. If this is intended, add {"rule":"stability-direction","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'a depends on b. If a reviewer agrees this is intended, add {"rule":"stability-direction","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       }),
     ]);
   });
@@ -48,7 +48,7 @@ describe('withExceptionRoutes', () => {
     expect(withExceptionRoutes([finding('exports')], ['exports'])).toEqual([
       finding('exports', {
         message:
-          'The base message. If this is intended, add {"rule":"exports","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'The base message. If a reviewer agrees this is intended, add {"rule":"exports","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       }),
     ]);
   });

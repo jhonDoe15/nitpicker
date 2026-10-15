@@ -5,8 +5,13 @@
 // Language-neutral: no imports from `core/`, `languages/` or tool packages.
 
 import path from 'node:path';
-import { canonicalRule } from './exceptions/rule-names.mjs';
-import { FUNCTION_EXCEPTION_RULES, FUNCTION_REQUIRED_RULES } from './policy.mjs';
+import { canonicalRule, toolPrefixError } from './exceptions/rule-names.mjs';
+import { PLACEHOLDER_REASONS } from './exceptions/sentence.mjs';
+import {
+  FUNCTION_EXCEPTION_RULES,
+  FUNCTION_REQUIRED_RULES,
+  NAME_EXCEPTION_RULES,
+} from './policy.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -25,7 +30,7 @@ const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
   'folderFiles',
 ]);
 
-const EXCEPTION_KEYS = ['rule', 'paths', 'function', 'reason'];
+const EXCEPTION_KEYS = ['rule', 'paths', 'function', 'name', 'reason'];
 
 export function configError(message) {
   return new Error(`${CONFIG_FILE_NAME}: ${message}`);
@@ -82,16 +87,16 @@ export function validateProjectRelativePath(value, name) {
   }
 }
 
-export function validateExceptions(exceptions, name = 'exceptions') {
+export function validateExceptions(exceptions, name = 'exceptions', { preset } = {}) {
   if (!Array.isArray(exceptions)) {
     throw configError(`"${name}" must be an array`);
   }
   for (const [index, entry] of exceptions.entries()) {
-    validateException(entry, `${name}[${String(index)}]`);
+    validateException(entry, `${name}[${String(index)}]`, preset);
   }
 }
 
-function validateException(entry, label) {
+function validateException(entry, label, preset) {
   if (!isPlainObject(entry)) {
     throw configError(`"${label}" must be an object`);
   }
@@ -105,31 +110,76 @@ function validateException(entry, label) {
   if (!isNonEmptyString(entry.rule)) {
     throw configError(`"${label}.rule" must be a non-empty rule id`);
   }
-  validateStringArray(entry.paths, `${label}.paths`);
-  if (entry.paths.length === 0) {
-    throw configError(`"${label}.paths" needs at least one path glob`);
+  if (/^(?:[\w-]+\/)?TS\d+$/u.test(entry.rule)) {
+    throw configError(
+      `"${label}.rule" is "${entry.rule}", a TypeScript compiler diagnostic: it has no exception, fix the type error`,
+    );
   }
-  validateFunction(entry, label);
-  if (!isNonEmptyString(entry.reason) || entry.reason.trim().length === 0) {
+  const prefixError = toolPrefixError(entry.rule, preset);
+  if (prefixError !== undefined) {
+    throw configError(`"${label}.rule" has an ${prefixError}`);
+  }
+  validatePaths(entry.paths, `${label}.paths`);
+  validateNarrowing(entry, label);
+  const reason = typeof entry.reason === 'string' ? entry.reason.trim() : '';
+  if (reason === '') {
     throw configError(`"${label}.reason" is required: say why the rule is lifted for these paths`);
+  }
+  if (PLACEHOLDER_REASONS.includes(reason)) {
+    throw configError(
+      `"${label}.reason" is the placeholder a message prints: say why this is intended`,
+    );
   }
 }
 
-function validateFunction(entry, label) {
-  if (entry.function === undefined) {
-    if (FUNCTION_REQUIRED_RULES.includes(canonicalRule(entry.rule))) {
+function validatePaths(paths, label) {
+  validateStringArray(paths, label);
+  if (paths.length === 0) {
+    throw configError(`"${label}" needs at least one path glob`);
+  }
+  for (const glob of paths) {
+    const normalized = glob.replaceAll('\\', '/');
+    if (
+      glob.trim() === '' ||
+      path.isAbsolute(glob) ||
+      /^[A-Za-z]:/u.test(glob) ||
+      normalized.split('/').includes('..')
+    ) {
       throw configError(
-        `"${label}.function" is required for ${entry.rule}: name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
+        `"${label}" has "${glob}": use a glob relative to the project root, without \`..\``,
       );
+    }
+  }
+}
+
+function validateNarrowing(entry, label) {
+  const rule = canonicalRule(entry.rule);
+  validateNarrowingKey(entry, label, {
+    key: 'function',
+    supported: FUNCTION_EXCEPTION_RULES,
+    required: FUNCTION_REQUIRED_RULES,
+    requiredText: `name the function whose uncovered branches are accepted. To accept a whole file, add it to "exclude"`,
+  });
+  validateNarrowingKey(entry, label, { key: 'name', supported: NAME_EXCEPTION_RULES, required: [] });
+  if (entry.function !== undefined && entry.name !== undefined) {
+    throw configError(`"${label}" takes either "function" or "name", not both (rule ${rule})`);
+  }
+}
+
+function validateNarrowingKey(entry, label, { key, supported, required, requiredText }) {
+  const rule = canonicalRule(entry.rule);
+  if (entry[key] === undefined) {
+    if (required.includes(rule)) {
+      throw configError(`"${label}.${key}" is required for ${entry.rule}: ${requiredText}`);
     }
     return;
   }
-  if (!FUNCTION_EXCEPTION_RULES.includes(canonicalRule(entry.rule))) {
+  if (!supported.includes(rule)) {
     throw configError(
-      `"${label}.function" is only supported for these rules: ${FUNCTION_EXCEPTION_RULES.join(', ')}`,
+      `"${label}.${key}" is only supported for these rules: ${supported.join(', ')}`,
     );
   }
-  if (!isNonEmptyString(entry.function)) {
-    throw configError(`"${label}.function" must be a non-empty function name`);
+  if (typeof entry[key] !== 'string' || entry[key].trim() === '') {
+    throw configError(`"${label}.${key}" must be a non-blank name`);
   }
 }

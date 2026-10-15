@@ -125,7 +125,7 @@ function addLimitViolations(findings, analyzerName, entry, numbering, { hints })
     const route = exceptionRoute({
       rule: ruleId,
       path: entry.file,
-      name: entry.name,
+      function: entry.name,
     });
     const occurrence =
       entry.numberedAmongSameSource === true

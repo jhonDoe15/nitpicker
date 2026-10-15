@@ -63,7 +63,7 @@ function acceptSentence(branch) {
     ? exceptionRoute({
         rule: RULE_IDS.changedBranchCoverage,
         path: branch.path,
-        name: branch.symbol,
+        function: branch.symbol,
       })
     : 'To accept the file, add it to "exclude" in nitpicker.config.json.';
 }

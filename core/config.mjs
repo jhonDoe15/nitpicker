@@ -119,7 +119,7 @@ function validateOptional(config) {
     validateLayout(config.layout);
   }
   if (config.exceptions !== undefined) {
-    validateExceptions(config.exceptions);
+    validateExceptions(config.exceptions, 'exceptions', { preset: config.preset ?? 'typescript' });
   }
   if (config.legacyInventory !== undefined) {
     validateProjectRelativePath(config.legacyInventory, 'legacyInventory');

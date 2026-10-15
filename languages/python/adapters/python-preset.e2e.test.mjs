@@ -356,7 +356,7 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
       path: 'src/demo/pricing.py',
       identity: 'discount|-→+#1',
       message:
-        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If a reviewer agrees this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'discount',
       location: { line: 2 },
@@ -518,14 +518,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'wide',
           identity: expect.any(String),
           message:
-            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:wide:occurrence:1:parameters',
             value: 5,
             worseMessage:
-              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
             heldMessage:
               'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
           },
@@ -556,14 +556,14 @@ describe.skipIf(!enabled)('Python preset end to end', () => {
           symbol: 'pick',
           identity: expect.any(String),
           message:
-            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
           classification: 'enforceable',
           location: { line: 1 },
           ratchet: {
             key: 'function:pick:crap',
             value: 20,
             worseMessage:
-              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If a reviewer agrees this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
             heldMessage:
               'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
           },
@@ -951,7 +951,7 @@ describe.skipIf(!enabled)('Python duplicates, coupling and import contracts end 
         rule: 'duplicate-clone',
         file: 'src/shop/domain/bulk.py',
         message:
-          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If this is intended, add {"rule":"duplicate-clone","paths":["src/shop/domain/bulk.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'This code repeats src/shop/domain/pricing.py:5 (10 lines). Keep one copy and call it from both places. If a reviewer agrees this is intended, add {"rule":"duplicate-clone","paths":["src/shop/domain/bulk.py"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       },
     ]);
   });
@@ -1097,7 +1097,7 @@ describe.skipIf(!enabled)('Python changed-branch coverage end to end', () => {
     ).toEqual([
       [
         'sign',
-        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. If a reviewer agrees this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/signs.py"],"function":"sign","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ],
     ]);
   });

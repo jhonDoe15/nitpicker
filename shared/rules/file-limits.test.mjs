@@ -32,7 +32,7 @@ describe('file length', () => {
       { rule: 'file-lines-limit', path: 'test/c.test.ts', identity: 'file-lines:501' },
     ]);
     const hint =
-      'If this is intended, add {"rule":"file-lines-limit","paths":["src/b.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+      'If a reviewer agrees this is intended, add {"rule":"file-lines-limit","paths":["src/b.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
     expect(findings[0].message).toBe(
       `File has 301 lines (limit 300). Split it into files by responsibility. ${hint}`,
     );
@@ -74,7 +74,7 @@ describe('line length', () => {
     ]);
     expect(moved.identity).toBe(first.identity);
     expect(first.message).toBe(
-      `Line is ${String(long.length)} characters (limit 120). Break it up or extract a named value. If this is intended, add {"rule":"line-length-limit","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+      `Line is ${String(long.length)} characters (limit 120). Break it up or extract a named value. If a reviewer agrees this is intended, add {"rule":"line-length-limit","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.`,
     );
   });
 
@@ -177,7 +177,7 @@ describe('files per folder', () => {
       { rule: 'folder-files-limit', path: 'src/feature', identity: 'folder-files:source:7' },
     ]);
     const hint =
-      'If this is intended, add {"rule":"folder-files-limit","paths":["src/feature/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+      'If a reviewer agrees this is intended, add {"rule":"folder-files-limit","paths":["src/feature/*"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
     expect(findings[0].message).toBe(
       `Folder has 7 source files directly in it (limit 6). Group related files into subfolders (packages in Java). ${hint}`,
     );
@@ -284,7 +284,7 @@ describe('comparison against the base', () => {
   it('fails a file over the limit that grows, naming the base size', () => {
     const result = compare([source('src/a.ts', lines(400))], [source('src/a.ts', lines(401))]);
     expect(newMessages(result)).toEqual([
-      'File grew from 400 to 401 lines (limit 300). Put new code in a new file. If this is intended, add {"rule":"file-lines-limit","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'File grew from 400 to 401 lines (limit 300). Put new code in a new file. If a reviewer agrees this is intended, add {"rule":"file-lines-limit","paths":["src/a.ts"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -297,7 +297,7 @@ describe('comparison against the base', () => {
     expect(compare(folder(12), folder(12)).newFindings).toEqual([]);
     expect(compare(folder(12), folder(11)).newFindings).toEqual([]);
     expect(newMessages(compare(folder(12), folder(13)))).toEqual([
-      'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If this is intended, add {"rule":"folder-files-limit","paths":["src/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If a reviewer agrees this is intended, add {"rule":"folder-files-limit","paths":["src/*"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -346,7 +346,7 @@ describe('comparison against the base', () => {
       expect(compareMoved(base, inFolder('src/new', 0, 12), renames).newFindings).toEqual([]);
       expect(compareMoved(base, inFolder('src/new', 0, 11), renames).newFindings).toEqual([]);
       expect(newMessages(compareMoved(base, inFolder('src/new', 0, 13), renames))).toEqual([
-        'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If this is intended, add {"rule":"folder-files-limit","paths":["src/new/*"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'Folder grew from 12 to 13 source files (limit 6). Put the new file in a subfolder. If a reviewer agrees this is intended, add {"rule":"folder-files-limit","paths":["src/new/*"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
       ]);
     });
 
