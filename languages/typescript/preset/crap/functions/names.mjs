@@ -7,7 +7,7 @@ function firstResult(resolvers, ...inputs) {
       return result;
     }
   }
-  return null;
+  return undefined;
 }
 
 export function propertyName(name) {
@@ -36,45 +36,56 @@ function dottedAccessRoot(node) {
   if (node.kind === ts.SyntaxKind.ThisKeyword) {
     return 'this';
   }
-  return node.kind === ts.SyntaxKind.SuperKeyword ? 'super' : null;
+  return node.kind === ts.SyntaxKind.SuperKeyword ? 'super' : undefined;
+}
+
+function accessChain(expression) {
+  const chain = [expression];
+  for (const node of chain) {
+    if (ts.isPropertyAccessExpression(node)) {
+      chain.push(node.expression);
+    }
+  }
+  return chain;
 }
 
 function dottedAccessName(expression) {
-  const parts = [];
-  let current = expression;
-  while (ts.isPropertyAccessExpression(current)) {
-    parts.unshift(current.name.text);
-    current = current.expression;
-  }
-  const root = dottedAccessRoot(current);
-  return root === null ? null : [root, ...parts].join('.');
+  const chain = accessChain(expression);
+  const root = dottedAccessRoot(chain.at(-1));
+  const parts = chain
+    .slice(0, -1)
+    .map((node) => node.name.text)
+    .reverse();
+  return root === undefined ? undefined : [root, ...parts].join('.');
 }
 
 function identifierTarget(node) {
-  return ts.isIdentifier(node) ? { name: node.text, containerName: null } : null;
+  return ts.isIdentifier(node) ? { name: node.text, containerName: undefined } : undefined;
 }
 
 function propertyAccessTarget(node) {
   if (!ts.isPropertyAccessExpression(node)) {
-    return null;
+    return undefined;
   }
   const containerName = dottedAccessName(node.expression);
-  return containerName ? { name: node.name.text, containerName } : null;
+  return containerName ? { name: node.name.text, containerName } : undefined;
 }
 
 function elementAccessTarget(node) {
   if (!ts.isElementAccessExpression(node)) {
-    return null;
+    return undefined;
   }
   const containerName = dottedAccessName(node.expression);
-  return containerName ? { name: `[${node.argumentExpression.getText()}]`, containerName } : null;
+  return containerName
+    ? { name: `[${node.argumentExpression.getText()}]`, containerName }
+    : undefined;
 }
 
 function assignmentTarget(node) {
   return (
     firstResult([identifierTarget, propertyAccessTarget, elementAccessTarget], node) ?? {
       name: '<assigned>',
-      containerName: null,
+      containerName: undefined,
     }
   );
 }
@@ -90,20 +101,20 @@ function relativeSegment(name) {
 function variableSegment(parent) {
   return ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)
     ? relativeSegment(parent.name.text)
-    : null;
+    : undefined;
 }
 
 function propertyAssignmentSegment(parent) {
-  return ts.isPropertyAssignment(parent) ? relativeSegment(propertyName(parent.name)) : null;
+  return ts.isPropertyAssignment(parent) ? relativeSegment(propertyName(parent.name)) : undefined;
 }
 
 function propertyDeclarationSegment(parent) {
-  return ts.isPropertyDeclaration(parent) ? relativeSegment(propertyName(parent.name)) : null;
+  return ts.isPropertyDeclaration(parent) ? relativeSegment(propertyName(parent.name)) : undefined;
 }
 
 function assignmentSegment(parent) {
   if (!isAssignment(parent)) {
-    return null;
+    return undefined;
   }
   const target = assignmentTarget(parent.left);
   return { name: displayName(target.containerName, target.name), anchored: true };
@@ -120,42 +131,41 @@ function containerSegment(node) {
   if ((ts.isClassDeclaration(node) || ts.isClassExpression(node)) && node.name) {
     return relativeSegment(node.name.text);
   }
-  return ts.isObjectLiteralExpression(node) ? firstResult(OBJECT_SEGMENTS, node.parent) : null;
+  return ts.isObjectLiteralExpression(node) ? firstResult(OBJECT_SEGMENTS, node.parent) : undefined;
 }
 
 export function containerNameFrom(start) {
   const segments = [];
-  let current = start;
-  while (current) {
-    const segment = containerSegment(current);
+  ts.findAncestor(start, (node) => {
+    const segment = containerSegment(node);
     if (segment) {
       segments.unshift(segment.name);
     }
-    current = segment?.anchored ? undefined : current.parent;
-  }
-  return segments.length > 0 ? segments.join('.') : null;
+    return segment?.anchored === true;
+  });
+  return segments.length > 0 ? segments.join('.') : undefined;
 }
 
 function variableName(parent) {
   return ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)
     ? { name: parent.name.text, containerName: containerNameFrom(parent.parent) }
-    : null;
+    : undefined;
 }
 
 function propertyAssignmentName(parent) {
   return ts.isPropertyAssignment(parent)
     ? { name: propertyName(parent.name), containerName: containerNameFrom(parent.parent) }
-    : null;
+    : undefined;
 }
 
 function propertyDeclarationName(parent) {
   return ts.isPropertyDeclaration(parent)
     ? { name: propertyName(parent.name), containerName: containerNameFrom(parent.parent) }
-    : null;
+    : undefined;
 }
 
 function assignmentName(parent, node) {
-  return isAssignment(parent) && parent.right === node ? assignmentTarget(parent.left) : null;
+  return isAssignment(parent) && parent.right === node ? assignmentTarget(parent.left) : undefined;
 }
 
 const ASSIGNED_NAMES = [

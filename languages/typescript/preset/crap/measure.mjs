@@ -20,7 +20,10 @@ function loadCoverage(coverageReportPath, projectRoot) {
     };
   }
   try {
-    return { byFile: parseCoverageReport(coverageReportPath, projectRoot), unknownReason: null };
+    return {
+      byFile: parseCoverageReport(coverageReportPath, projectRoot),
+      unknownReason: undefined,
+    };
   } catch (error) {
     if (!(error instanceof CoverageReportParseError)) {
       throw error;

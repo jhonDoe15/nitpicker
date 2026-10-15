@@ -2,13 +2,13 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isPlainObject } from '../../../../../shared/config.mjs';
 import { deduplicateFunctions, parseFunctions } from './function-entries.mjs';
-import { finiteNumberOrNull, parseLineSpan, parseSpan, spanKey } from './spans.mjs';
+import { finiteNumberOf, parseLineSpan, parseSpan, spanKey } from './spans.mjs';
 
 export function normalizePathForMatch(filePath) {
   return path.resolve(filePath).replaceAll('\\', '/').toLowerCase();
 }
 
-export function deduplicateStatements(statements) {
+function deduplicateStatements(statements) {
   const byKey = new Map();
   for (const statement of statements) {
     const key = spanKey(statement.span);
@@ -27,7 +27,7 @@ function mergeHits(existing, next) {
   ];
 }
 
-export function deduplicateBranches(branches) {
+function deduplicateBranches(branches) {
   const byKey = new Map();
   for (const branch of branches) {
     const key = spanKey(branch.span);
@@ -45,17 +45,17 @@ function parseStatements(statementMap, hitsByKey) {
     return [];
   }
   const statements = Object.entries(statementMap).flatMap(([key, location]) => {
-    const hits = finiteNumberOrNull(hitsByKey[key]);
+    const hits = finiteNumberOf(hitsByKey[key]);
     const span = parseSpan(location);
-    return hits === null || span === null ? [] : [{ span, hits }];
+    return hits === undefined || span === undefined ? [] : [{ span, hits }];
   });
   return deduplicateStatements(statements);
 }
 
 function firstLocationSpan(locations) {
   return Array.isArray(locations)
-    ? (locations.map(parseSpan).find((span) => span !== null) ?? null)
-    : null;
+    ? locations.map(parseSpan).find((span) => span !== undefined)
+    : undefined;
 }
 
 function branchSpanOf(branch) {
@@ -64,13 +64,13 @@ function branchSpanOf(branch) {
 
 function branchUnitOf(branch, hitsValue) {
   if (!isPlainObject(branch)) {
-    return null;
+    return undefined;
   }
   const hits = Array.isArray(hitsValue)
-    ? hitsValue.map(finiteNumberOrNull).filter((hit) => hit !== null)
+    ? hitsValue.map(finiteNumberOf).filter((hit) => hit !== undefined)
     : [];
   const span = branchSpanOf(branch);
-  return hits.length === 0 || span === null ? null : { span, hits };
+  return hits.length === 0 || span === undefined ? undefined : { span, hits };
 }
 
 function parseBranches(branchMap, hitsByKey) {
@@ -79,17 +79,17 @@ function parseBranches(branchMap, hitsByKey) {
   }
   const branches = Object.entries(branchMap)
     .map(([key, branch]) => branchUnitOf(branch, hitsByKey[key]))
-    .filter((branch) => branch !== null);
+    .filter((branch) => branch !== undefined);
   return deduplicateBranches(branches);
 }
 
 function entryOf([key, value], sourceRoot) {
   if (!isPlainObject(value)) {
-    return null;
+    return undefined;
   }
   const sourcePath = typeof value.path === 'string' ? value.path : key;
   if (!sourcePath) {
-    return null;
+    return undefined;
   }
   return {
     normalizedPath: normalizePathForMatch(path.resolve(sourceRoot, sourcePath)),
@@ -132,6 +132,6 @@ export function parseCoverageReport(reportPath, sourceRoot) {
   return mergeEntries(
     Object.entries(report)
       .map((entry) => entryOf(entry, sourceRoot))
-      .filter((entry) => entry !== null),
+      .filter((entry) => entry !== undefined),
   );
 }

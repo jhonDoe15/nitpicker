@@ -57,8 +57,12 @@ function measure(root, files = ['src/a.ts']) {
   };
 }
 
-const measuredAt = (percent) => ({ percent, status: 'measured', unknownReason: null });
-const unknownBecause = (unknownReason) => ({ percent: null, status: 'unknown', unknownReason });
+const measuredAt = (percent) => ({ percent, status: 'measured', unknownReason: undefined });
+const unknownBecause = (unknownReason) => ({
+  percent: undefined,
+  status: 'unknown',
+  unknownReason,
+});
 
 describe('measureCrap', () => {
   it('scores a function from the coverage entry of its file', () => {
@@ -119,7 +123,7 @@ describe('measureCrap', () => {
     expect([measure(unique), measure(ambiguous)]).toEqual([
       { functions: [['twice', 1, measuredAt(100), 1]], warnings: [] },
       {
-        functions: [['twice', 1, unknownBecause('file_ambiguous'), null]],
+        functions: [['twice', 1, unknownBecause('file_ambiguous'), undefined]],
         warnings: [
           'Warning: Coverage for src/a.ts matched 2 report entries by suffix. Coverage will be N/A.',
         ],
@@ -134,19 +138,19 @@ describe('measureCrap', () => {
 
     expect([missing, unreadable, unmatched].map((root) => measure(root))).toEqual([
       {
-        functions: [['twice', 1, unknownBecause('missing_report'), null]],
+        functions: [['twice', 1, unknownBecause('missing_report'), undefined]],
         warnings: [
           'Warning: Coverage report not found at <root>/coverage.json. Coverage will be N/A.',
         ],
       },
       {
-        functions: [['twice', 1, unknownBecause('unparseable_report'), null]],
+        functions: [['twice', 1, unknownBecause('unparseable_report'), undefined]],
         warnings: [
           'Warning: Coverage report at <root>/coverage.json could not be parsed. Coverage will be N/A.',
         ],
       },
       {
-        functions: [['twice', 1, unknownBecause('file_unmatched'), null]],
+        functions: [['twice', 1, unknownBecause('file_unmatched'), undefined]],
         warnings: [],
       },
     ]);
@@ -161,7 +165,7 @@ describe('measureCrap', () => {
 
     const { functions, warnings } = measure(root, ['src/a.ts', 'src/broken.ts']);
 
-    expect(functions).toEqual([['twice', 1, unknownBecause('file_unmatched'), null]]);
+    expect(functions).toEqual([['twice', 1, unknownBecause('file_unmatched'), undefined]]);
     expect(warnings).toEqual([
       "Warning: Could not parse src/broken.ts: Unable to parse TypeScript source <root>/src/broken.ts: '}' expected.. Skipping file.",
     ]);

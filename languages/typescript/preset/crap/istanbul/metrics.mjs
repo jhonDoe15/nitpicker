@@ -1,9 +1,17 @@
-const measured = (percent) => ({ percent, status: 'measured', unknownReason: null });
-const structuralNa = () => ({ percent: null, status: 'structural_na', unknownReason: null });
-const unknown = (reason) => ({ percent: null, status: 'unknown', unknownReason: reason });
+function measured(percent) {
+  return { percent, status: 'measured', unknownReason: undefined };
+}
+
+function structuralNa() {
+  return { percent: undefined, status: 'structural_na', unknownReason: undefined };
+}
+
+function unknown(reason) {
+  return { percent: undefined, status: 'unknown', unknownReason: reason };
+}
 
 function coveredShare(total, covered) {
-  return total === 0 ? null : (covered / total) * 100;
+  return total === 0 ? undefined : (covered / total) * 100;
 }
 
 function statementPercent(statements) {
@@ -19,7 +27,7 @@ function branchPercent(branches) {
 }
 
 function metricOf(percent, expected, reason) {
-  if (percent !== null) {
+  if (percent !== undefined) {
     return measured(percent);
   }
   return expected ? unknown(reason) : structuralNa();
@@ -35,7 +43,7 @@ function combine(statementCoverage, branchCoverage) {
   }
   const reason = metrics.find(({ status }) => status === 'unknown')?.unknownReason;
   return reason === undefined
-    ? { percent: 100, status: 'structural_na', unknownReason: null }
+    ? { percent: 100, status: 'structural_na', unknownReason: undefined }
     : unknown(reason);
 }
 
@@ -66,8 +74,8 @@ export function unavailableMethodCoverage(method, reason) {
 }
 
 export function crapScore(complexity, coveragePercent) {
-  if (coveragePercent === null) {
-    return null;
+  if (coveragePercent === undefined) {
+    return undefined;
   }
   const uncovered = 1 - coveragePercent / 100;
   return complexity * complexity * uncovered * uncovered * uncovered + complexity;

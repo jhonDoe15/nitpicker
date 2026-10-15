@@ -29,8 +29,8 @@ const report = {
   summary: {
     files: analysis.selectedFiles.length,
     functions: functions.length,
-    measuredFunctions: functions.filter((entry) => entry.crap !== null).length,
-    unknownCoverageFunctions: functions.filter((entry) => entry.crap === null).length,
+    measuredFunctions: functions.filter((entry) => entry.crap !== undefined).length,
+    unknownCoverageFunctions: functions.filter((entry) => entry.crap === undefined).length,
   },
   warnings: analysis.warnings,
   sourceExclusions: analysis.sourceExclusionAudit,
@@ -38,12 +38,12 @@ const report = {
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+await writeFile(outputPath, `${JSON.stringify(report, undefined, 2)}\n`);
 
 console.log(JSON.stringify({ output: config.outputPath, ...report.summary }, null, 2));
 for (const entry of functions.slice(0, 20)) {
   console.log(
-    `${entry.crap === null ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
+    `${entry.crap === undefined ? 'N/A' : entry.crap.toFixed(2)}\tCC ${entry.complexity}\t${entry.source}:${entry.lines.start}\t${entry.function}`,
   );
 }
 

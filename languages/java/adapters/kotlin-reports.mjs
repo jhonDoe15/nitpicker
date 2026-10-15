@@ -26,7 +26,7 @@ export function requireKotlinManifest(manifest) {
   }
 }
 
-function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
+export function kotlinLintedRoots({ kotlinSourceRoots, kotlinTestSourceRoots = [] }) {
   return [...new Set([...kotlinSourceRoots, ...kotlinTestSourceRoots])];
 }
 

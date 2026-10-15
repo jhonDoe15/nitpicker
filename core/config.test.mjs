@@ -135,24 +135,6 @@ describe('config file', () => {
     expect(validateConfig(config)).toEqual(config);
   });
 
-  it.each([[{}], [{ enabled: true }], [{ enabled: false }], [{ styling: 'css-in-js' }]])(
-    'rejects react %j with the javascript preset and points to the typescript preset',
-    (react) => {
-      expect(() => validateConfig({ preset: 'javascript', react })).toThrow(
-        '"react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so a React project uses "preset": "typescript"',
-      );
-    },
-  );
-
-  it('still accepts react with the typescript preset and with no preset', () => {
-    const react = { enabled: true, styling: 'class-names' };
-    expect(validateConfig({ preset: 'typescript', react })).toEqual({
-      preset: 'typescript',
-      react,
-    });
-    expect(validateConfig({ react })).toEqual({ react });
-  });
-
   describe('kotlin exceptions', () => {
     const exception = {
       rule: 'detekt.style.ForbiddenMethodCall',

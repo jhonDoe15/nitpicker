@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { CRAP_CHECK_FILES } from './crap/check-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -355,22 +356,7 @@ function repositoryChecksFor(exclusions) {
 }
 
 const CRAP_CONFIGURATION_FILES = [
-  'languages/typescript/preset/defaults/crap.config.mjs',
-  'languages/typescript/preset/crap/report.mjs',
-  'languages/typescript/preset/crap/measure.mjs',
-  'languages/typescript/preset/crap/report-functions.mjs',
-  'languages/typescript/preset/crap/source-files.mjs',
-  'languages/typescript/preset/crap/istanbul/attribution.mjs',
-  'languages/typescript/preset/crap/istanbul/function-entries.mjs',
-  'languages/typescript/preset/crap/istanbul/istanbul-report.mjs',
-  'languages/typescript/preset/crap/istanbul/metrics.mjs',
-  'languages/typescript/preset/crap/istanbul/spans.mjs',
-  'languages/typescript/preset/crap/functions/complexity.mjs',
-  'languages/typescript/preset/crap/functions/describe.mjs',
-  'languages/typescript/preset/crap/functions/names.mjs',
-  'languages/typescript/preset/crap/functions/own-nodes.mjs',
-  'shared/glob.mjs',
-  'shared/config.mjs',
+  ...CRAP_CHECK_FILES,
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
   JAVASCRIPT_PRESET_FILE,

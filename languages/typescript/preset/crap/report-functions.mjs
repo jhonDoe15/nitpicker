@@ -15,10 +15,10 @@ function entryOf(metric) {
 }
 
 function byCrapDescending(left, right) {
-  if (left.crap === null) {
-    return right.crap === null ? 0 : 1;
+  if (left.crap === undefined) {
+    return right.crap === undefined ? 0 : 1;
   }
-  return right.crap === null ? -1 : right.crap - left.crap;
+  return right.crap === undefined ? -1 : right.crap - left.crap;
 }
 
 export function reportFunctionsOf(metrics) {

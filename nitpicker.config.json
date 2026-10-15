@@ -54,6 +54,11 @@
       "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
     {
+      "rule": "nitpicker/no-raised-test-timeout",
+      "paths": ["languages/java/adapters/test-sources/kotlin-test-sources.e2e.test.mjs"],
+      "reason": "Opt-in end-to-end suite that runs Gradle builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_KOTLIN_E2E=1."
+    },
+    {
       "rule": "@typescript-eslint/no-unsafe-member-access",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."

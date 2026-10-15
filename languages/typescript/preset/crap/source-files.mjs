@@ -82,36 +82,13 @@ function generatedDirectoryRule(relative) {
       return { source: 'default', kind: 'path', rule: 'directory segment is gen' };
     }
   }
-  return null;
+  return undefined;
 }
 
-function commentAt(text, index) {
-  if (text.startsWith('#!', index) || text.startsWith('//', index)) {
-    const lineEnd = text.indexOf('\n', index);
-    const end = lineEnd === -1 ? text.length : lineEnd;
-    return { text: text.slice(index, end), end };
-  }
-  if (!text.startsWith('/*', index)) {
-    return null;
-  }
-  const close = text.indexOf('*/', index + 2);
-  const end = close === -1 ? text.length : close + 2;
-  return { text: text.slice(index, end), end };
-}
+const LEADING_COMMENTS = /^(?:\s*(?:(?:#!|\/\/)[^\n]*|\/\*[\s\S]*?(?:\*\/|$)))*/u;
 
 function leadingCommentHeader(text) {
-  const comments = [];
-  let index = text.charCodeAt(0) === 0xfeff ? 1 : 0;
-  while (index < text.length) {
-    const start = index + text.slice(index).search(/\S|$/u);
-    const comment = commentAt(text, start);
-    if (!comment) {
-      break;
-    }
-    comments.push(comment.text);
-    index = comment.end;
-  }
-  return comments.join('\n');
+  return LEADING_COMMENTS.exec(text)?.[0] ?? '';
 }
 
 function exclusionReason(file, relative, userRules) {
@@ -123,7 +100,7 @@ function exclusionReason(file, relative, userRules) {
   }
   const header = leadingCommentHeader(readFileSync(file, 'utf8'));
   const marker = GENERATED_MARKERS.find((candidate) => header.includes(candidate));
-  return marker ? { source: 'default', kind: 'generatedMarker', rule: marker } : null;
+  return marker ? { source: 'default', kind: 'generatedMarker', rule: marker } : undefined;
 }
 
 function auditOf(candidates, included, reasons) {
@@ -140,15 +117,20 @@ function auditOf(candidates, included, reasons) {
   };
 }
 
+function relativeOf(projectRoot, file) {
+  return path.relative(projectRoot, file).replaceAll('\\', '/');
+}
+
 export function selectSourceFiles(projectRoot, files, { extensions, excludes }) {
   const userRules = excludes.map(userGlobRule);
   const reasons = new Map();
-  const relativeOf = (file) => path.relative(projectRoot, file).replaceAll('\\', '/');
   const selected = [];
-  const candidates = files.filter((file) => isAnalyzable(relativeOf(file), extensions));
+  const candidates = [...new Set(files.map((file) => path.resolve(projectRoot, file)))]
+    .sort()
+    .filter((file) => isAnalyzable(relativeOf(projectRoot, file), extensions));
   for (const file of candidates) {
-    const reason = exclusionReason(file, relativeOf(file), userRules);
-    if (reason === null) {
+    const reason = exclusionReason(file, relativeOf(projectRoot, file), userRules);
+    if (reason === undefined) {
       selected.push(file);
       continue;
     }
