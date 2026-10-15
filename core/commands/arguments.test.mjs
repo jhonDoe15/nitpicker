@@ -13,6 +13,7 @@ const defaults = {
   deferExit: false,
   cache: true,
   help: false,
+  acceptPolicyChange: false,
 };
 
 describe('parseArguments', () => {
@@ -25,6 +26,7 @@ describe('parseArguments', () => {
       '--fix',
       '--no-cache',
       '--help',
+      '--accept-policy-change',
       '--base',
       'origin/main',
       '--output',
@@ -38,6 +40,7 @@ describe('parseArguments', () => {
       fix: true,
       cache: false,
       help: true,
+      acceptPolicyChange: true,
       baseRef: 'origin/main',
       outputRoot: 'out',
       analyzerNames: ['structure'],

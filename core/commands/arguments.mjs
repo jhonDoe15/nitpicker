@@ -5,6 +5,7 @@ const FLAGS = new Map([
   ['--fix', { key: 'fix', value: true }],
   ['--no-cache', { key: 'cache', value: false }],
   ['--help', { key: 'help', value: true }],
+  ['--accept-policy-change', { key: 'acceptPolicyChange', value: true }],
 ]);
 const VALUE_OPTIONS = new Map([
   ['--base', 'baseRef'],
@@ -41,6 +42,7 @@ export function parseArguments(arguments_) {
     deferExit,
     cache: true,
     help: false,
+    acceptPolicyChange: false,
   };
   readCommandOptions(remainingArguments, options);
   const conflict = ALL_CONFLICTS.find(({ conflicts }) => options.all && conflicts(options));

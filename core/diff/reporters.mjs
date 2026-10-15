@@ -61,7 +61,7 @@ function configSections(summary) {
     ...(configOverrides.length === 0
       ? []
       : ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)]),
-    ...policyChangeSection(summary.policyChanges),
+    ...policyChangeSection(summary),
     ...noticeSection(summary.notices),
   ];
 }

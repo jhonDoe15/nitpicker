@@ -1,33 +1,8 @@
 import { isPlainObject } from '../../shared/config.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT, FILE_LIMIT_DEFAULTS } from '../../shared/policy.mjs';
+import { SWITCH_SETTINGS, describeLoosenings } from './loosenings.mjs';
 
-const THRESHOLD_DEFAULTS = { crapLimit: DEFAULT_CRAP_SCORE_LIMIT, ...FILE_LIMIT_DEFAULTS };
 const LISTED_KEYS = new Set(['exclude', 'disable', 'exceptions', 'thresholds', 'analyzers']);
-
-function addedEntries(baseEntries = [], headEntries = []) {
-  const known = new Set(baseEntries.map((entry) => JSON.stringify(entry)));
-  return headEntries.filter((entry) => !known.has(JSON.stringify(entry)));
-}
-
-function describeException({ rule, paths, reason }) {
-  return `exception added: ${rule} for ${paths.join(', ')} (${reason})`;
-}
-
-function raisedThresholds(baseThresholds = {}, headThresholds = {}) {
-  return Object.entries(headThresholds).flatMap(([key, value]) => {
-    const before = baseThresholds[key] ?? THRESHOLD_DEFAULTS[key];
-    return value > before
-      ? [`threshold ${key} raised from ${String(before)} to ${String(value)}`]
-      : [];
-  });
-}
-
-function removedAnalyzers(baseAnalyzers = [], headAnalyzers = []) {
-  const kept = new Set(headAnalyzers.map(({ name }) => name));
-  return baseAnalyzers
-    .filter(({ name }) => !kept.has(name))
-    .map(({ name }) => `analyzer removed: ${name}`);
-}
+const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
 
 function withoutKeys(object, keys) {
   return Object.fromEntries(Object.entries(object).filter(([key]) => !keys.has(key)));
@@ -46,13 +21,18 @@ function leaves(value, prefix) {
   return found;
 }
 
+function nestedWithout(settings, key, keys) {
+  return isPlainObject(settings[key]) ? { [key]: withoutKeys(settings[key], keys) } : {};
+}
+
 function settingLeaves(config) {
   const settings = withoutKeys(config, LISTED_KEYS);
-  const python = isPlainObject(settings.python)
-    ? { python: withoutKeys(settings.python, new Set(['exceptions'])) }
-    : {};
+  const nested = {
+    ...nestedWithout(settings, 'python', new Set(['exceptions'])),
+    ...nestedWithout(settings, 'layout', LISTED_LAYOUT_KEYS),
+  };
   return new Map(
-    Object.entries({ ...settings, ...python }).flatMap(([key, value]) => leaves(value, key)),
+    Object.entries({ ...settings, ...nested }).flatMap(([key, value]) => leaves(value, key)),
   );
 }
 
@@ -66,22 +46,31 @@ function changedSettings(baseConfig, headConfig) {
   return [...new Set([...before.keys(), ...after.keys()])].flatMap((setting) =>
     JSON.stringify(before.get(setting)) === JSON.stringify(after.get(setting))
       ? []
-      : [`${setting}: ${show(before.get(setting))} -> ${show(after.get(setting))}`],
+      : [
+          {
+            setting,
+            text: `${setting}: ${show(before.get(setting))} -> ${show(after.get(setting))}`,
+          },
+        ],
   );
 }
 
+function isSwitch({ setting }) {
+  return SWITCH_SETTINGS.some((pattern) => pattern.test(setting));
+}
+
 export function describePolicyChanges(baseConfig, headConfig) {
-  return [
-    ...addedEntries(baseConfig.exclude, headConfig.exclude).map((glob) => `exclude added: ${glob}`),
-    ...addedEntries(baseConfig.disable, headConfig.disable).map(
-      (name) => `analyzer disabled: ${name}`,
-    ),
-    ...addedEntries(baseConfig.exceptions, headConfig.exceptions).map(describeException),
-    ...addedEntries(baseConfig.python?.exceptions, headConfig.python?.exceptions).map(
-      describeException,
-    ),
-    ...raisedThresholds(baseConfig.thresholds, headConfig.thresholds),
-    ...removedAnalyzers(baseConfig.analyzers, headConfig.analyzers),
-    ...changedSettings(baseConfig, headConfig),
-  ];
+  const settings = changedSettings(baseConfig, headConfig);
+  return {
+    loosened: [
+      ...describeLoosenings(baseConfig, headConfig),
+      ...settings.filter(isSwitch).map(({ text }) => text),
+    ],
+    changed: settings.filter((entry) => !isSwitch(entry)).map(({ text }) => text),
+  };
+}
+
+export function policyChangeFields(baseConfig, headConfig) {
+  const { loosened, changed } = describePolicyChanges(baseConfig, headConfig);
+  return { policyChanges: [...loosened, ...changed], policyLoosenings: loosened };
 }
