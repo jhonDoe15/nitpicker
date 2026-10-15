@@ -4,4 +4,8 @@
       <property name="format" value="^([A-Z][A-Z0-9]*(_[A-Z0-9]+)*|log|logger)$"/>
       <message key="name.invalidPattern" value="Constant ''{0}'' must be UPPER_SNAKE_CASE (a logger may be log or logger). If it is right here, add an exception for checkstyle/com.puppycrawl.tools.checkstyle.checks.naming.ConstantNameCheck in nitpicker.config.json."/>
     </module>
+    <module name="SuppressionXpathSingleFilter">
+      <property name="checks" value="ConstantNameCheck"/>
+      <property name="query" value="//VARIABLE_DEF[./TYPE[./DOT or ./ARRAY_DECLARATOR or ./TYPE_ARGUMENTS or ./IDENT[not(@text = 'String' or @text = 'Integer' or @text = 'Long' or @text = 'Short' or @text = 'Byte' or @text = 'Double' or @text = 'Float' or @text = 'Character' or @text = 'Boolean' or @text = 'BigDecimal' or @text = 'BigInteger' or @text = 'Duration')]]]/IDENT"/>
+    </module>
 </modules>

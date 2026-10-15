@@ -24,17 +24,38 @@ const BOILERPLATE_LINES = [
   new RegExp(String.raw`^${NOT_CONTROL}${MODIFIERS}[\w<>\[\],.? ]+\s+\w+;$`),
 ];
 
-export function isAccessorOnly(fragment) {
+const STRING_LITERAL = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g;
+const DATA_LINES = [
+  /^[A-Z][A-Z0-9_]*(?:\(.*\))?[,;]?$/,
+  /^(?:Arguments\.)?(?:of|arguments)\(.*\)[,;)]*$/,
+  /^[\w.]*[\s\d.,{}()[\]+-]*$/,
+];
+
+function codeLines(fragment) {
   return fragment
     .split(/\r?\n/)
     .map((line) => line.trim())
-    .filter((line) => line !== '')
-    .every((line) => BOILERPLATE_LINES.some((pattern) => pattern.test(line)));
+    .filter((line) => line !== '');
 }
 
-function fileRange(element) {
+export function isAccessorOnly(fragment) {
+  return codeLines(fragment).every((line) =>
+    BOILERPLATE_LINES.some((pattern) => pattern.test(line)),
+  );
+}
+
+export function isDataTable(fragment) {
+  return codeLines(fragment).every((line) => {
+    const withoutStrings = line.replace(STRING_LITERAL, '0');
+    return [...BOILERPLATE_LINES, ...DATA_LINES].some((pattern) => pattern.test(withoutStrings));
+  });
+}
+
+function fileRange(element, projectRoot) {
+  const reported = element.attrs.path;
+  const relative = path.isAbsolute(reported) ? path.relative(projectRoot, reported) : reported;
   return {
-    file: element.attrs.path.replaceAll('\\', '/'),
+    file: relative.split(path.sep).join('/').replaceAll('\\', '/'),
     line: Number(element.attrs.line),
     endLine: Number(element.attrs.endline),
   };
@@ -64,7 +85,9 @@ function cloneOf(duplication, projectRoot, sides) {
 export function cpdClones(xml, projectRoot) {
   const report = parseXml(xml);
   return childrenNamed(report, 'duplication').flatMap((duplication) => {
-    const [first, ...others] = childrenNamed(duplication, 'file').map(fileRange);
+    const [first, ...others] = childrenNamed(duplication, 'file').map((element) =>
+      fileRange(element, projectRoot),
+    );
     return others.map((other) => cloneOf(duplication, projectRoot, [first, other]));
   });
 }
@@ -78,6 +101,20 @@ function sameClone(clone, other) {
     (overlaps(clone.first, other.first) && overlaps(clone.second, other.second)) ||
     (overlaps(clone.first, other.second) && overlaps(clone.second, other.first))
   );
+}
+
+function isBoilerplate(clone) {
+  return clone.fragment !== '' && (isAccessorOnly(clone.fragment) || isDataTable(clone.fragment));
+}
+
+function distinctClones(clones) {
+  const kept = [];
+  for (const clone of clones) {
+    if (!overlaps(clone.first, clone.second) && !kept.some((other) => sameClone(clone, other))) {
+      kept.push(clone);
+    }
+  }
+  return kept;
 }
 
 function jscpdRanges(reportRoot) {
@@ -116,8 +153,8 @@ export function readCpdFindings(reportRoot, { projectRoot, testRoots }) {
     return [];
   }
   const known = jscpdRanges(reportRoot);
-  const clones = cpdClones(readFileSync(report, 'utf8'), projectRoot).filter(
-    (clone) => !isAccessorOnly(clone.fragment) && !known.some((other) => sameClone(clone, other)),
+  const clones = distinctClones(cpdClones(readFileSync(report, 'utf8'), projectRoot)).filter(
+    (clone) => !isBoilerplate(clone) && !known.some((other) => sameClone(clone, other)),
   );
   function inTests(file) {
     return testRoots.some((root) => file.startsWith(`${root}/`));
