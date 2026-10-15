@@ -4,13 +4,14 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll } from 'vitest';
-import { runCli as runCliWithSubprocesses } from '../../cli.mjs';
 import { runTasksInProcess } from './in-process-analyzers.mjs';
 
 const discardedProgress = { write() {} };
 
+const cliUnderTest = { runCli: undefined };
+
 export function runCli(options) {
-  return runCliWithSubprocesses({
+  return cliUnderTest.runCli({
     runTasks: runTasksInProcess,
     progress: discardedProgress,
     ...options,
@@ -159,7 +160,8 @@ export function captureOutput() {
 
 const gitTemplate = { root: undefined };
 
-export function useCliFixtures() {
+export function useCliFixtures(runNitpickerCli) {
+  cliUnderTest.runCli = runNitpickerCli;
   beforeAll(() => {
     gitTemplate.root = createGitTemplate();
   });

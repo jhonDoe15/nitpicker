@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import {
   callsLog,
   commit,
@@ -9,7 +10,7 @@ import {
   write,
 } from '../../diff/fixtures/python-cli-harness.mjs';
 
-usePythonFixtures();
+usePythonFixtures(nitpickerCli);
 
 const mutantFindings = (result) =>
   result.json('new-findings.json').filter(({ rule }) => rule !== 'mutation-summary');

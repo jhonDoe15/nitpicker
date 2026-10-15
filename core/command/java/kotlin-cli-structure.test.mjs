@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { commit, kotlinRepository, run, useGradleFixtures, write } from '../../diff/fixtures/java-cli-harness.mjs';
+import { runCli as nitpickerCli } from '../../cli.mjs';
+import {
+  commit,
+  kotlinRepository,
+  run,
+  useGradleFixtures,
+  write,
+} from '../../diff/fixtures/java-cli-harness.mjs';
 
-useGradleFixtures();
+useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin" and function structure', () => {
   const wideFunction = (name, parameters, start) => ({

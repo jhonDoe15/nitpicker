@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { runCli as nitpickerCli } from '../cli.mjs';
 import { describeConfigOverrides } from '../configuration/config.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 import { exactText } from '../diff/fixtures/output-expectations.mjs';
@@ -16,7 +17,7 @@ import {
   writeFiles,
 } from '../diff/fixtures/cli-harness.mjs';
 
-useCliFixtures();
+useCliFixtures(nitpickerCli);
 
 const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
 const mode = process.argv[2];

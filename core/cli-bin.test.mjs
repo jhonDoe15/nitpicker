@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { USAGE_TEXT } from './command/arguments.mjs';
 
 const temporaryRoots = [];
 
@@ -19,6 +20,6 @@ describe('nitpicker bin', () => {
 
     const stdout = execFileSync(process.execPath, [binPath, '--help'], { encoding: 'utf8' });
 
-    expect(stdout.startsWith('Usage: nitpicker')).toBe(true);
+    expect(stdout).toBe(USAGE_TEXT);
   });
 });

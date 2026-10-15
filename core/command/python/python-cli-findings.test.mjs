@@ -1,6 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
+import { runCli as nitpickerCli } from '../../cli.mjs';
 import { jscpdVersion } from '../../../languages/java/adapters/metrics/java-duplicates.mjs';
 import {
   callsLog,
@@ -13,7 +14,7 @@ import {
   write,
 } from '../../diff/fixtures/python-cli-harness.mjs';
 
-usePythonFixtures();
+usePythonFixtures(nitpickerCli);
 
 const FAILING_SUMMARY = [
   'Base: comparison-base (argument)',
