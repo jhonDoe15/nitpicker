@@ -9,8 +9,8 @@ const ENGINE_HINT =
   "to type check with the project's own TypeScript instead.";
 
 export async function nativeDiagnostics({ ts, configPath, projectRoot }) {
-  const api = await startedApi(projectRoot);
-  if (api === undefined) return { unsupported: true };
+  const { api, startError } = await startedApi(projectRoot);
+  if (startError !== undefined) return { unsupported: true, cause: startError };
   let collected;
   try {
     collected = collectedDiagnostics(api, configPath);
@@ -28,9 +28,9 @@ async function startedApi(projectRoot) {
   const apiPath = path.join(resolveTool('typescript-native').root, 'dist/api/sync/api.js');
   const { API } = await import(pathToFileURL(apiPath).href);
   try {
-    return new API({ cwd: projectRoot });
-  } catch {
-    return undefined;
+    return { api: new API({ cwd: projectRoot }) };
+  } catch (error) {
+    return { startError: error };
   }
 }
 
