@@ -25,7 +25,7 @@ export const forEachSelectors = [
   },
 ];
 
-export const promiseChainSelectors = [
+const promiseChainSelectors = [
   {
     selector: 'CallExpression[callee.property.name=/^(then|catch|finally)$/]',
     message: promiseChainMessage,

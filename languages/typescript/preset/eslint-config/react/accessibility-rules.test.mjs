@@ -19,17 +19,20 @@ function ruleIdsFor(markup) {
 
 describe('accessibility rules beyond the plugin recommendation', () => {
   it.each([
-    ['an icon-only button', '<button><svg /></button>', 'jsx-a11y/control-has-associated-label'],
-    ['a link with no text', '<a href="/x" />', 'jsx-a11y/control-has-associated-label'],
+    [
+      'an icon-only button',
+      '<button type="button"><svg /></button>',
+      'jsx-a11y/control-has-associated-label',
+    ],
     ['ambiguous link text', '<a href="/x">click here</a>', 'jsx-a11y/anchor-ambiguous-text'],
     [
       'aria-hidden on a button',
-      '<button aria-hidden="true">x</button>',
+      '<button type="button" aria-hidden="true">x</button>',
       'jsx-a11y/no-aria-hidden-on-focusable',
     ],
     ['a role that has a tag', '<div role="navigation" />', 'jsx-a11y/prefer-tag-over-role'],
   ])('reports %s', (_name, markup, ruleId) => {
-    expect(ruleIdsFor(markup)).toContain(ruleId);
+    expect(ruleIdsFor(markup)).toEqual([ruleId]);
   });
 
   it.each([
@@ -46,6 +49,13 @@ describe('accessibility rules beyond the plugin recommendation', () => {
     ['a wrapping label with an input', '<label>Name <input type="text" /></label>'],
   ])('lets %s through', (_name, markup) => {
     expect(ruleIdsFor(markup)).toEqual([]);
+  });
+
+  it('reports a link with no text as an unlabelled control and an empty anchor', () => {
+    expect(ruleIdsFor('<a href="/x" />')).toEqual([
+      'jsx-a11y/control-has-associated-label',
+      'jsx-a11y/anchor-has-content',
+    ]);
   });
 
   it('reports a label that wraps only an icon', () => {

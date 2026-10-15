@@ -125,11 +125,14 @@ describe('applyJavascriptDialect', () => {
       'no-restricted-syntax',
     );
     expect(forTypescript).toEqual(before);
-    expect(forJavascript).toHaveLength(before.length);
-    for (const setting of forJavascript) {
-      expect(selectors(setting).some((text) => /\bTS[A-Z]/.test(text))).toBe(false);
-      expect(selectors(setting).length).toBeGreaterThan(4);
-    }
+    const typescriptOnly = (text) => /\bTS[A-Z]/.test(text);
+    expect(forTypescript.flatMap(selectors).some(typescriptOnly)).toBe(true);
+    expect(forJavascript.flatMap(selectors).some(typescriptOnly)).toBe(false);
+    expect(forJavascript.map((setting) => selectors(setting).length)).toEqual(
+      forTypescript.map(
+        (setting) => selectors(setting).filter((text) => !typescriptOnly(text)).length,
+      ),
+    );
   });
 
   it('removes the TypeScript-only null selector from the null rule in JavaScript files', () => {
