@@ -428,8 +428,8 @@ runs Gradle, with `org.jetbrains.kotlin:kotlin-compiler-embeddable` on the class
 pinned as `kotlinCompiler` in the init script (2.4.21) and resolved from its own Gradle configuration
 (`nitpickerKotlinCompiler`), like the other tools. It uses the compiler's PSI classes, so bumping the
 pin means running `npm run test:kotlin` again; the `kotlin-e2e` GitHub Actions workflow runs it for a
-change under `languages/java`, `core` or `shared`, the package files or the workflow itself, and for no
-other change. A line-based tool cannot be the source: it has no statement count or control nesting, and
+push to `main` that changes `languages/java`, `core` or `shared`, the package files or the workflow
+itself, by hand, and on a pull request when the `run-ci` label is added. A line-based tool cannot be the source: it has no statement count or control nesting, and
 token-based readers misread ordinary Kotlin (extension functions such as `fun String.shout() = ...`,
 expression-bodied functions, the `->` of a lambda), which would attribute a complexity per function to
 the wrong lines.

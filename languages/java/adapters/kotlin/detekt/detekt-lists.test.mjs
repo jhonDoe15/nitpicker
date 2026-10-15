@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 const NITPICKER = forbiddenMethodsOf(
-  readFileSync(path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml'), 'utf8'),
+  readFileSync(path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'), 'utf8'),
 );
 
 function written(config) {

@@ -13,6 +13,7 @@ import {
   SPREAD,
   SPREAD_TEST,
 } from './test-support/kotlin-branch-coverage-data.mjs';
+import { BOOTER, BOOTER_TEST, BOX_TEST, boxes } from './test-support/kotlin-initializer-data.mjs';
 import {
   COMBINE,
   COMBINE_TEST,
@@ -37,6 +38,7 @@ import {
 } from './test-support/kotlin-structure-data.mjs';
 import {
   commitBranch,
+  commitFromBranch,
   commitFromStructureBase,
   diffOf,
   fromTool,
@@ -70,6 +72,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'src/test/kotlin/demo/GeneratedTest.kt': GENERATED_TEST,
     });
     commitBranch(project, 'broken', { [`${kotlinSources}/Broken.kt`]: BROKEN });
+    commitBranch(project, 'init-base', {
+      [`${kotlinSources}/boxes/Box.kt`]: boxes(false),
+      'src/test/kotlin/demo/boxes/BoxTest.kt': BOX_TEST,
+    });
+    commitFromBranch(project, 'init-inserted', 'init-base', {
+      [`${kotlinSources}/boxes/Box.kt`]: boxes(true),
+    });
     commitBranch(project, 'structure-base', {
       [`${kotlinSources}/Wide.kt`]: WIDE,
       'src/test/kotlin/demo/WideTest.kt': WIDE_TEST,
@@ -85,18 +94,20 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       'src/test/kotlin/demo/GrownTest.kt': GROWN_WIDER_TEST,
       [`${kotlinSources}/Complex.kt`]: classifier('classify', 9, { bump: 2 }),
       [`${kotlinSources}/Complex2.kt`]: classifier('classify2', 10, { step: 7 }),
-      [`${kotlinSources}/Deep.kt`]: DEEP,
-      'src/test/kotlin/demo/DeepTest.kt': DEEP_TEST,
-      [`${kotlinSources}/Rank.kt`]: classifier('rank', 9, { step: 13 }),
-      [`${kotlinSources}/Tiers.kt`]: TIERS,
-      'src/test/kotlin/demo/TiersTest.kt': TIERS_TEST,
-      [`${kotlinSources}/Combine.kt`]: COMBINE,
-      'src/test/kotlin/demo/CombineTest.kt': COMBINE_TEST,
+      [`${kotlinSources}/change/Deep.kt`]: DEEP,
+      'src/test/kotlin/demo/change/DeepTest.kt': DEEP_TEST,
+      [`${kotlinSources}/change/Rank.kt`]: classifier('rank', 9, { step: 13 }),
+      [`${kotlinSources}/change/Tiers.kt`]: TIERS,
+      'src/test/kotlin/demo/change/TiersTest.kt': TIERS_TEST,
+      [`${kotlinSources}/change/Combine.kt`]: COMBINE,
+      'src/test/kotlin/demo/change/CombineTest.kt': COMBINE_TEST,
       'src/main/kotlin/Flatten.kt': FLATTEN,
       'src/test/kotlin/FlattenTest.kt': FLATTEN_TEST,
       [`${kotlinSources}/build/Pipeline.kt`]: PIPELINE,
-      [`${kotlinSources}/Left.kt`]: clonedClass('Left'),
-      [`${kotlinSources}/Right.kt`]: clonedClass('Right'),
+      [`${kotlinSources}/extra/Booter.kt`]: BOOTER,
+      'src/test/kotlin/demo/change/BooterTest.kt': BOOTER_TEST,
+      [`${kotlinSources}/extra/Left.kt`]: clonedClass('Left'),
+      [`${kotlinSources}/extra/Right.kt`]: clonedClass('Right'),
       ...stabilityFiles('2'),
       'src/main/kotlin/stable/Core.kt': `${stabilityClass('stable', 'Core', 'churn.Volatile().value()')}\nval note = 1\n`,
     });
@@ -155,18 +166,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
       ).message;
 
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([
+      'crap crap-score-limit Booter.<init>',
+      'crap crap-score-limit Booter.label',
       'crap crap-score-limit Left.total',
       'crap crap-score-limit Right.total',
       'crap crap-score-limit classify2',
       'crap crap-score-limit flatten',
       'crap crap-score-limit rank',
-      'structure folder-files-limit demo',
+      'structure function-control-nesting-limit Booter.<init>',
       'structure function-control-nesting-limit depth',
       'structure function-lines-limit Left.total',
       'structure function-lines-limit Right.total',
       'structure function-parameters-limit combine',
       'structure function-parameters-limit pipeline',
       'structure function-parameters-limit product',
+      'structure function-statements-limit Booter.label',
       'structure function-statements-limit Left.total',
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',
@@ -211,6 +225,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         .filter(({ rule }) => rule === 'stability-direction')
         .map(({ identity }) => identity),
     ).toEqual(['package-edge:stable->churn']);
+  });
+  it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {
+    const result = diffOf(project, 'init-inserted', { base: 'init-base' });
+
+    const legacy = [
+      'crap crap-score-limit Box.<anonymous>.<init>',
+      'crap crap-score-limit Box.<init>',
+      'crap crap-score-limit Box.Companion.<init>',
+      'structure function-control-nesting-limit Box.<anonymous>.<init>',
+      'structure function-control-nesting-limit Box.<init>',
+      'structure function-control-nesting-limit Box.Companion.<init>',
+    ];
+
+    expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
+    expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
   it('reports a Gradle failure as a tool error instead of throwing', () => {
     git(project, 'checkout', '-q', 'broken');
