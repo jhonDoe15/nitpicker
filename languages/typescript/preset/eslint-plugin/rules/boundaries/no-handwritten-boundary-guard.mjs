@@ -1,4 +1,5 @@
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { isNarrowedByInstanceof } from '../analysis/instanceof-guards.mjs';
 import {
   jsdocOptionSchema,
   typePredicateTags,
@@ -113,54 +114,6 @@ function narrowedIdentifier(node) {
   return [node.left, node.right].find((side) => side.type === 'UnaryExpression').argument;
 }
 
-function isInstanceofOf(expression, name) {
-  return (
-    expression.type === 'BinaryExpression' &&
-    expression.operator === 'instanceof' &&
-    expression.left.type === 'Identifier' &&
-    expression.left.name === name
-  );
-}
-
-function instanceofIn(expression, name) {
-  const pending = [expression];
-  for (const current of pending) {
-    if (current.type === 'LogicalExpression' && current.operator === '&&') {
-      pending.push(current.left, current.right);
-    }
-  }
-  return pending.some((current) => isInstanceofOf(current, name));
-}
-
-function isEarlierExitGuard(statement, name) {
-  return (
-    statement.type === 'IfStatement' &&
-    statement.test.type === 'UnaryExpression' &&
-    statement.test.operator === '!' &&
-    instanceofIn(statement.test.argument, name)
-  );
-}
-
-function guardsChild(parent, child, name) {
-  if (parent.type === 'LogicalExpression' && parent.operator === '&&' && parent.right === child) {
-    return instanceofIn(parent.left, name);
-  }
-  if (parent.type === 'IfStatement' || parent.type === 'ConditionalExpression') {
-    return parent.consequent === child && instanceofIn(parent.test, name);
-  }
-  const statements = Array.isArray(parent.body) ? parent.body : [];
-  return statements
-    .slice(0, statements.indexOf(child))
-    .some((statement) => isEarlierExitGuard(statement, name));
-}
-
-function isNarrowedByInstanceof(node, name) {
-  return [node, ...ancestorsOf(node)].some(
-    (current) =>
-      typeof current.parent?.type === 'string' && guardsChild(current.parent, current, name),
-  );
-}
-
 function isInsidePredicate(node) {
   const owner = ancestorsOf(node).find((ancestor) => Array.isArray(ancestor.params));
   return owner?.returnType?.typeAnnotation.type === 'TSTypePredicate';
@@ -237,7 +190,7 @@ export const rule = {
         if (
           identifier?.type === 'Identifier' &&
           !isInsidePredicate(node) &&
-          !isNarrowedByInstanceof(node, identifier.name) &&
+          !isNarrowedByInstanceof(sourceCode, node, identifier.name) &&
           declaredType(variableNamed(sourceCode, identifier))?.type === 'TSUnknownKeyword'
         ) {
           context.report({ node, messageId: 'inlineNarrowing' });

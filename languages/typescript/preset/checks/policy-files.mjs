@@ -25,6 +25,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-config/rule-hints.mjs',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/ancestry.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/instanceof-guards.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/subprocess-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-comments.mjs',
