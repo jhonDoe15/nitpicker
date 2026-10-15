@@ -90,7 +90,7 @@ describe('conventions in a run', () => {
   it('gives the base the head conventions when the base has its own config', () => {
     const { root } = createGitRepository({ 'nitpicker.config.json': '{ "preset": "java" }\n' });
     const resolve = baseSetupResolver(
-      { analyzers: [], stderr: { write: () => undefined } },
+      { injectedAnalyzers: [], stderr: { write: () => undefined } },
       { preset: 'java', exclude: ['build/**'] },
       { conventions: { 'java.indentation': '4' } },
     );
@@ -98,6 +98,27 @@ describe('conventions in a run', () => {
     const setup = resolve({ baseProjectRoot: root, analyzers: [] });
 
     expect(setup.headPolicy.conventions).toEqual({ 'java.indentation': '4' });
+  });
+
+  it('applies a base config that disables an analyzer of the injected set', () => {
+    const { root } = createGitRepository({
+      'nitpicker.config.json': '{ "preset": "java", "disable": ["second"] }\n',
+    });
+    const warnings = [];
+    const analyzer = (name) => ({ name, version: '1', configurationHash: name });
+    const resolve = baseSetupResolver(
+      {
+        injectedAnalyzers: [analyzer('first'), analyzer('second')],
+        stderr: { write: (text) => warnings.push(text) },
+      },
+      { preset: 'java' },
+      {},
+    );
+
+    const setup = resolve({ baseProjectRoot: root, analyzers: [analyzer('first')] });
+
+    expect(warnings).toEqual([]);
+    expect(setup.analyzers.map(({ name }) => name)).toEqual(['first']);
   });
 
   it('keys cached findings by the conventions followed', () => {
