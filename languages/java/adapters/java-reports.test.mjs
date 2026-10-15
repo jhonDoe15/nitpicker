@@ -443,7 +443,7 @@ describe('readJavaFindings: Spring architecture rules', () => {
     },
   ];
 
-  function withReport(manifest, report = { root: 'demo', violations }) {
+  function withReport(manifest, writeReport = true) {
     const root = projectWithReports();
     writeFileSync(
       path.join(root, 'build/nitpicker/manifest.json'),
@@ -455,8 +455,11 @@ describe('readJavaFindings: Spring architecture rules', () => {
     );
     mkdirSync(path.join(root, 'src/test/java/demo'), { recursive: true });
     writeFileSync(path.join(root, 'src/test/java/demo/BadTest.java'), 'class BadTest {}\n');
-    if (report !== null) {
-      writeFileSync(path.join(root, 'build/nitpicker/spring-arch.json'), JSON.stringify(report));
+    if (writeReport) {
+      writeFileSync(
+        path.join(root, 'build/nitpicker/spring-arch.json'),
+        JSON.stringify({ root: 'demo', violations }),
+      );
     }
     return root;
   }
@@ -476,7 +479,7 @@ describe('readJavaFindings: Spring architecture rules', () => {
   });
 
   it('fails when a Spring project has no report, instead of passing unchecked', () => {
-    expect(() => readJavaFindings(withReport({ spring: true }, null))).toThrow(
+    expect(() => readJavaFindings(withReport({ spring: true }, false))).toThrow(
       'The Spring architecture report spring-arch.json is missing',
     );
   });
