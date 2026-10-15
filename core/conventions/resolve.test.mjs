@@ -85,18 +85,29 @@ describe('conventions in the head policy', () => {
     expect(snapshot.conventions).toEqual({ 'java.indentation': '4' });
   });
 
+  it('keeps the default when the base has files that give no evidence', () => {
+    const { root } = createGitRepository({ 'src/A.java': 'interface A {}\n' });
+    commitBranch(root, { 'src/C.java': fourSpaces });
+
+    expect(compare(root, { preset: 'java' })).not.toHaveProperty('conventions');
+  });
+
   it('measures only the analyzed project and leaves excluded paths out', () => {
     const { root } = createGitRepository({
       'service/src/A.java': fourSpaces,
+      'service/legacy/L1.java': twoSpaces,
+      'service/legacy/L2.java': twoSpaces,
       'service/generated/G1.java': twoSpaces,
-      'service/generated/G2.java': twoSpaces,
+      'service/build/B1.java': twoSpaces,
+      'service/build/B2.java': twoSpaces,
+      'service/target/T1.java': twoSpaces,
       'other/X.java': twoSpaces,
       'other/Y.java': twoSpaces,
     });
 
     const policy = compare(
       root,
-      { preset: 'java', exclude: ['generated/**'] },
+      { preset: 'java', exclude: ['legacy/**'] },
       { projectRoot: path.join(root, 'service') },
     );
 

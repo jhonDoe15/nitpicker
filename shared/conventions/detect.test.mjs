@@ -32,6 +32,7 @@ describe('detectConventions', () => {
       choice: '4',
       source: 'majority',
       counts: { 2: 1, 4: 2 },
+      files: 3,
     });
   });
 
@@ -40,8 +41,14 @@ describe('detectConventions', () => {
       choice: '2',
       source: 'default',
       counts: { 2: 1, 4: 1 },
+      files: 2,
     });
-    expect(detect({ 'a.txt': '{\n    x\n}' })['demo.indentation'].source).toBe('default');
+    expect(detect({ 'a.txt': '{\n    x\n}' })['demo.indentation']).toEqual({
+      choice: '2',
+      source: 'default',
+      counts: { 2: 0, 4: 0 },
+      files: 0,
+    });
   });
 
   it('uses a pinned value without reading files', () => {
@@ -77,6 +84,7 @@ describe('detectConventions', () => {
       choice: '2',
       source: 'majority',
       counts: { 2: 1, 4: 0 },
+      files: 2,
     });
   });
 
