@@ -152,7 +152,7 @@ describe('nitpicker with "preset": "java"', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
-    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.
+    This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/java/demo/First.java or src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -167,7 +167,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
         identity:
           'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:fragment:41aa749b80d76291fc31cc1b:occurrence:1',
         message:
-          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places.',
+          'This code repeats src/main/java/demo/Second.java:3 (30 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/java/demo/First.java or src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
       },
