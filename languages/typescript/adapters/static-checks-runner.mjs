@@ -14,7 +14,6 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createRequire } from 'node:module';
 import {
   PACKAGE_ROOT,
   resolveTool,
@@ -25,7 +24,12 @@ import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
 import { existingRoots } from '../preset/layout.mjs';
-import { prettierPrecedence, readLayout, usesProjectConfig } from '../preset/head-policy.mjs';
+import {
+  prettierPrecedence,
+  readLayout,
+  typecheckEngine,
+  usesProjectConfig,
+} from '../preset/head-policy.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from './prettier-layers.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { formattingHunks } from './format-hunks.mjs';
@@ -35,20 +39,17 @@ import {
   normalizedRelativePath,
   requiredString,
 } from './architecture/violations.mjs';
+import {
+  enclosingSymbol,
+  formatDiagnostic,
+  loadTypeScript,
+  preEmitDiagnostics,
+  withoutProjectRoot,
+} from './typecheck/typescript-program.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
-let ts;
-
-function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  if (ts === undefined) {
-    const root = resolveTool('typescript', { projectRoot }).root;
-    ts = createRequire(import.meta.url)(path.join(root, 'lib/typescript.js'));
-  }
-  return ts;
-}
-
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
   '--kind',
@@ -205,46 +206,26 @@ async function formattingFindingsOf(options, unformattedFiles, configPath) {
   return perFile.flat();
 }
 
-function runTypecheck(options) {
-  loadTypeScript(options.liveProjectRoot);
+async function runTypecheck(options) {
+  const ts = loadTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig;
   try {
     installedConfig = installTypeScriptConfig(options);
-    const configPath = installedConfig.targetPath;
-    const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
-    if (configFile.error !== undefined) {
-      throw new Error(formatDiagnostic(configFile.error));
-    }
-    const parsedConfig = ts.parseJsonConfigFileContent(
-      configFile.config,
-      ts.sys,
-      options.projectRoot,
-      undefined,
-      configPath,
-    );
-    if (
-      parsedConfig.fileNames.length === 0 &&
-      parsedConfig.errors.every((error) => error.code === 18003)
-    )
-      return [];
-    if (parsedConfig.errors.length > 0) {
-      throw new Error(parsedConfig.errors.map(formatDiagnostic).join('\n'));
-    }
-    const program = ts.createProgram({
-      rootNames: parsedConfig.fileNames,
-      options: parsedConfig.options,
-      projectReferences: parsedConfig.projectReferences,
+    const diagnostics = await preEmitDiagnostics({
+      ts,
+      engine: typecheckEngine(),
+      configPath: installedConfig.targetPath,
+      projectRoot: options.projectRoot,
     });
     const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
-      diagnostics: ts
-        .getPreEmitDiagnostics(program)
-        .filter(
-          (diagnostic) =>
-            diagnostic.file === undefined ||
-            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
-        ),
+      ts,
+      diagnostics: diagnostics.filter(
+        (diagnostic) =>
+          diagnostic.file === undefined ||
+          !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+      ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath: options.configRelativePath,
@@ -279,15 +260,15 @@ function runArchitecture(options) {
 }
 
 export function normalizeTypeScriptDiagnostics({
+  ts,
   diagnostics,
   projectRoot,
   analyzerName,
   configRelativePath,
 }) {
-  loadTypeScript();
   const occurrences = new Map();
   return diagnostics.map((diagnostic) => {
-    const message = formatDiagnostic(diagnostic);
+    const message = withoutProjectRoot(formatDiagnostic(ts, diagnostic), projectRoot);
     const relativePath =
       diagnostic.file === undefined
         ? configRelativePath
@@ -295,7 +276,7 @@ export function normalizeTypeScriptDiagnostics({
     const symbol =
       diagnostic.file === undefined || diagnostic.start === undefined
         ? undefined
-        : enclosingSymbol(diagnostic.file, diagnostic.start);
+        : enclosingSymbol(ts, diagnostic.file, diagnostic.start);
     const semanticKey = JSON.stringify([diagnostic.code, relativePath, symbol ?? '', message]);
     const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
     occurrences.set(semanticKey, occurrence);
@@ -498,35 +479,6 @@ export function removeSnapshotDependencies(dependencies) {
   unlinkSync(dependencies.dependencyPath);
 }
 
-function nodeChain(node) {
-  return node === undefined ? [] : [node, ...nodeChain(node.parent)];
-}
-
-function enclosingSymbol(sourceFile, position) {
-  let node = sourceFile;
-  function visit(candidate) {
-    if (candidate.pos <= position && position < candidate.end) {
-      node = candidate;
-      ts.forEachChild(candidate, visit);
-    }
-  }
-  visit(sourceFile);
-  const names = [];
-  for (const current of nodeChain(node)) {
-    if (
-      (ts.isFunctionDeclaration(current) ||
-        ts.isClassDeclaration(current) ||
-        ts.isMethodDeclaration(current) ||
-        ts.isPropertyDeclaration(current) ||
-        ts.isVariableDeclaration(current)) &&
-      current.name !== undefined
-    ) {
-      names.push(current.name.getText());
-    }
-  }
-  return names.length === 0 ? undefined : names.reverse().join('.');
-}
-
 function projectFile(projectRoot, filePath) {
   const resolvedPath = realpathSync(path.resolve(projectRoot, filePath));
   const relativePath = path.relative(projectRoot, resolvedPath);
@@ -653,10 +605,6 @@ function normalizedPattern(value) {
     throw new Error('--pattern must stay within the analyzed snapshot');
   }
   return value.replaceAll('\\', '/');
-}
-
-function formatDiagnostic(diagnostic) {
-  return ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n').trim();
 }
 
 function formattingFindings({ tool, relativePath, source }, formatted) {
