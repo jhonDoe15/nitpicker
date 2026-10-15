@@ -11,6 +11,7 @@ import {
   GENERAL_HINT,
   testingLibraryHints,
 } from './react-rules.mjs';
+import { accessibilityOptionOverrides } from './react/accessibility-rules.mjs';
 import { reactDomHints, reactWebApiHints, reactXHints } from './react/third-party-rules.mjs';
 import { withHint, withoutFixes } from './rule-hints.mjs';
 
@@ -18,7 +19,10 @@ const accessibilityRulePrefix = 'jsx-a11y-x';
 
 function hintedRules(plugin, hints) {
   return Object.fromEntries(
-    Object.entries(hints).map(([name, hint]) => [name, withoutFixes(withHint(plugin.rules[name], hint))]),
+    Object.entries(hints).map(([name, hint]) => [
+      name,
+      withoutFixes(withHint(plugin.rules[name], hint)),
+    ]),
   );
 }
 
@@ -58,9 +62,14 @@ export const accessibilityRuleOptions = Object.fromEntries(
   accessibilityRuleNames.map((name) => {
     const configured =
       accessibility.configs.recommended.rules[`${accessibilityRulePrefix}/${name}`];
+    const override = accessibilityOptionOverrides[name];
     return [
       `jsx-a11y/${name}`,
-      ['error', ...(Array.isArray(configured) ? configured.slice(1) : [])],
+      [
+        'error',
+        ...(override === undefined ? [] : [override]),
+        ...(Array.isArray(configured) && override === undefined ? configured.slice(1) : []),
+      ],
     ];
   }),
 );

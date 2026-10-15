@@ -29,6 +29,23 @@ function sendsRequest(node) {
   );
 }
 
+function effectCallbackOf(sourceCode, node) {
+  return ancestorsOf(node).find((ancestor) => isEffectCallback(sourceCode, ancestor));
+}
+
+function isThenable(type) {
+  return type.getProperty('then') !== undefined || (type.types?.some(isThenable) ?? false);
+}
+
+function returnsPromise(context, node) {
+  const services = context.sourceCode.parserServices;
+  if (!services?.program) {
+    return false;
+  }
+  const checker = services.program.getTypeChecker();
+  return isThenable(checker.getTypeAtLocation(services.esTreeNodeToTSNodeMap.get(node)));
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -39,18 +56,52 @@ export const rule = {
     messages: {
       fetchInEffect:
         'Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. If this request is not data for rendering (an analytics beacon), add an exception for this rule in nitpicker.config.json.',
+      asyncInEffect:
+        'Do not run async work in `useEffect` (`await` or a call that returns a promise): responses arrive out of order and nothing caches them. Load data with `useQuery` or a route loader. If this effect only synchronizes with an external system, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
+    const effects = new Map();
+
+    function entryFor(effect) {
+      if (!effects.has(effect)) {
+        effects.set(effect, { requested: false, firstAsync: undefined });
+      }
+      return effects.get(effect);
+    }
+
     function check(node) {
-      if (
-        sendsRequest(node) &&
-        ancestorsOf(node).some((ancestor) => isEffectCallback(context.sourceCode, ancestor))
-      ) {
+      const effect = effectCallbackOf(context.sourceCode, node);
+      if (effect === undefined) {
+        return;
+      }
+      const entry = entryFor(effect);
+      if (sendsRequest(node)) {
+        entry.requested = true;
         context.report({ node, messageId: 'fetchInEffect' });
+      } else if (entry.firstAsync === undefined && returnsPromise(context, node)) {
+        entry.firstAsync = node;
       }
     }
 
-    return { CallExpression: check, NewExpression: check };
+    function checkAwait(node) {
+      const effect = effectCallbackOf(context.sourceCode, node);
+      if (effect !== undefined) {
+        entryFor(effect).firstAsync ??= node;
+      }
+    }
+
+    return {
+      CallExpression: check,
+      NewExpression: check,
+      AwaitExpression: checkAwait,
+      'Program:exit'() {
+        for (const { requested, firstAsync } of effects.values()) {
+          if (!requested && firstAsync !== undefined) {
+            context.report({ node: firstAsync, messageId: 'asyncInEffect' });
+          }
+        }
+      },
+    };
   },
 };

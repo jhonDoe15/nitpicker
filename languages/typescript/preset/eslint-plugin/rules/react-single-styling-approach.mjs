@@ -58,6 +58,28 @@ function initializersOf(sourceCode, identifier) {
     : [];
 }
 
+function staticKey(node, computed) {
+  if (node.type === 'Literal') {
+    return String(node.value);
+  }
+  return node.type === 'Identifier' && !computed ? node.name : undefined;
+}
+
+function memberValues(sourceCode, member) {
+  const key = staticKey(member.property, member.computed);
+  if (key === undefined || member.object.type !== 'Identifier') {
+    return [];
+  }
+  return initializersOf(sourceCode, member.object)
+    .flatMap((initializer) => objectLiteralsIn(sourceCode, initializer))
+    .flatMap((object) => object.properties)
+    .filter(
+      (property) =>
+        property.type === 'Property' && staticKey(property.key, property.computed) === key,
+    )
+    .map((property) => property.value);
+}
+
 function innerExpressions(sourceCode, expression) {
   if (wrappedExpressionTypes.has(expression.type)) {
     return [expression.expression];
@@ -67,6 +89,9 @@ function innerExpressions(sourceCode, expression) {
   }
   if (expression.type === 'LogicalExpression') {
     return [expression.left, expression.right];
+  }
+  if (expression.type === 'MemberExpression') {
+    return memberValues(sourceCode, expression);
   }
   return expression.type === 'Identifier' ? initializersOf(sourceCode, expression) : [];
 }

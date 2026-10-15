@@ -10,6 +10,7 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
+import { nitpickerReactRuleIds } from './react/nitpicker-rules.mjs';
 import { thirdPartyReactRuleIds, typedReactXRules } from './react/third-party-rules.mjs';
 
 const REACT_PACKAGE = 'react';
@@ -77,7 +78,9 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'react-hooks/exhaustive-deps': 'error',
         'react-x/no-class-component': 'error',
         'react-x/no-array-index-key': 'error',
-        ...Object.fromEntries(untypedThirdPartyRuleIds.map((id) => [id, 'error'])),
+        ...Object.fromEntries(
+          [...nitpickerReactRuleIds, ...untypedThirdPartyRuleIds].map((id) => [id, 'error']),
+        ),
         ...accessibilityRuleOptions,
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
@@ -107,6 +110,10 @@ async function reactTypedConfigFor(layout) {
       plugins: { '@typescript-eslint': tseslint.plugin, 'react-x': reactPlugins['react-x'] },
       rules: {
         ...Object.fromEntries(typedRuleIds.map((id) => [id, 'error'])),
+        '@typescript-eslint/no-confusing-void-expression': [
+          'error',
+          { ignoreVoidReturningFunctions: true },
+        ],
         '@typescript-eslint/no-misused-promises': [
           'error',
           { checksVoidReturn: { attributes: false } },

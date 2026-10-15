@@ -1,5 +1,5 @@
 import { ESLint } from 'eslint';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -8,6 +8,27 @@ import { resolveLayout } from '../../layout.mjs';
 import { reactScopeConfigFor } from '../react-scope.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-third-party-'));
+mkdirSync(path.join(root, 'src'));
+writeFileSync(path.join(root, 'placeholder.ts'), 'export {};');
+symlinkSync(
+  path.resolve(import.meta.dirname, '../../../../../node_modules'),
+  path.join(root, 'node_modules'),
+);
+writeFileSync(
+  path.join(root, 'tsconfig.json'),
+  JSON.stringify({
+    compilerOptions: {
+      strict: true,
+      jsx: 'react-jsx',
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      target: 'ES2022',
+      lib: ['ES2022', 'DOM'],
+      types: [],
+    },
+    files: ['placeholder.ts'],
+  }),
+);
 const eslint = new ESLint({
   cwd: root,
   overrideConfigFile: true,
@@ -17,7 +38,7 @@ const eslint = new ESLint({
       languageOptions: {
         parser: tseslint.parser,
         parserOptions: {
-          projectService: { allowDefaultProject: ['src/*.tsx'] },
+          projectService: { allowDefaultProject: ['src/*.tsx'], defaultProject: 'tsconfig.json' },
           tsconfigRootDir: root,
         },
       },
@@ -32,7 +53,7 @@ afterAll(() => {
 
 async function ruleIdsFor(code) {
   const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
-  return result.messages.map(({ ruleId }) => ruleId);
+  return result.messages.map(({ ruleId, message }) => ruleId ?? message);
 }
 
 describe('rules from the React plugins', () => {
@@ -71,6 +92,18 @@ describe('rules from the React plugins', () => {
     ]);
     expect(result.messages[0].message).toContain('count > 0 &&');
     expect(result.messages[0].message).toContain('nitpicker.config.json');
+  });
+
+  it('lets a JSX handler return a void call and still flags other shorthand returns', async () => {
+    const handler =
+      "import { useState } from 'react'; export function Title() { const [title, setTitle] = useState(''); return <input aria-label='Title' value={title} onChange={(event) => setTitle(event.target.value)} />; }";
+    const shorthand =
+      'const log = (value: string): void => { console.info(value); }; export const run = (value: string) => log(value);';
+
+    expect(await ruleIdsFor(handler)).toEqual([]);
+    expect(await ruleIdsFor(shorthand)).toEqual([
+      '@typescript-eslint/no-confusing-void-expression',
+    ]);
   });
 
   it('lets a boolean condition render with &&', async () => {

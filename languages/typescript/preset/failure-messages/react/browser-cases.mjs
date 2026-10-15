@@ -43,6 +43,54 @@ const cases = [
   ],
 ];
 
+cases.push(
+  [
+    'unlabelled field names label, htmlFor and aria-label',
+    'export const P = () => <input />;',
+    'aria-label',
+  ],
+  [
+    'random key names a stable id',
+    'export const P = ({ items }) => <ul>{items.map((i) => <li key={Math.random()}>{i}</li>)}</ul>;',
+    'stable id from the item',
+  ],
+  [
+    'direct DOM change names state and props',
+    "export const P = () => { document.getElementById('banner'); return <i />; };",
+    'render the value from state or props',
+  ],
+  [
+    'value with defaultValue names one of them',
+    'export const P = () => <input value="a" defaultValue="b" />;',
+    'not both',
+  ],
+  [
+    'value without onChange names readOnly',
+    'export const P = ({ v }) => <input aria-label="n" value={v} />;',
+    'readOnly',
+  ],
+  [
+    'prop callback in an effect names the event handler',
+    'export const P = ({ onSave, v }) => { useEffect(() => { onSave(v); }, [v]); return <i />; };',
+    'event handler that causes the change',
+  ],
+  [
+    'await in an effect names a query library',
+    'export const P = ({ id }) => { useEffect(() => { const run = async () => { await load(id); }; void run(); }, [id]); return <i />; };',
+    'useQuery',
+  ],
+  [
+    'icon-only button names the label',
+    'export const P = () => <button><svg /></button>;',
+    'text label',
+  ],
+  [
+    'ambiguous link text names the context',
+    "export const P = () => <a href='/x'>click here</a>;",
+    'context',
+  ],
+);
+
 const exceptionRoutes = [
   ['dangerouslySetInnerHTML', cases[0][1]],
   ['button without type', cases[1][1]],

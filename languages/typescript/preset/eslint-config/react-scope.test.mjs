@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lintFixture } from '../failure-messages/harness.mjs';
 import { resolveLayout } from '../layout.mjs';
+import { extraAccessibilityRuleNames } from './react/accessibility-rules.mjs';
 import {
   accessibilityRuleNames,
   reactRuleIds,
@@ -189,12 +190,14 @@ describe('the React scope config', () => {
     }
   });
 
-  it('lists the accessibility rules the plugin recommends, and only those', () => {
+  it('lists the accessibility rules the plugin recommends, plus the extra ones', () => {
     const recommended = Object.entries(accessibility.configs.recommended.rules)
       .filter(([, setting]) => [setting].flat()[0] !== 'off')
       .map(([id]) => id.replace('jsx-a11y-x/', ''));
 
-    expect(accessibilityRuleNames.toSorted()).toEqual(recommended.toSorted());
+    expect(accessibilityRuleNames.toSorted()).toEqual(
+      [...recommended, ...extraAccessibilityRuleNames].toSorted(),
+    );
   });
 
   it('defaults to class names and passes the configured styling approach to the rule', async () => {
