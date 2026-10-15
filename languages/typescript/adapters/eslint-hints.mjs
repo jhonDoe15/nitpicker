@@ -1,11 +1,25 @@
 import { readLayout } from '../preset/head-policy.mjs';
+import { analyzedTestRunner } from '../preset/test-runner/current.mjs';
+import { testRunnerLabel } from '../preset/test-runner/runners.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
 
-const REJECT_ERRORS_TEST_HINT =
-  ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.';
+const REJECT_ERRORS_TEST_HINTS = new Map([
+  [
+    'vitest',
+    ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.',
+  ],
+  [
+    'jest',
+    ' In tests, reject with `jest.fn().mockRejectedValue(value)` to use a non-Error reason.',
+  ],
+  [
+    'node-test',
+    ' In tests, reject with `mock.fn(async () => { throw value; })` (value typed `unknown`) to use a non-Error reason.',
+  ],
+]);
 
 const FIX_TYPE_ERROR_FIRST = 'fix any TypeScript error on the line first';
 
@@ -38,7 +52,9 @@ const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw
 
 const NO_ASSERTIONS_TEXT = 'Test has no assertions';
 
-const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
+function noAssertionsHint(assertion) {
+  return `${NO_ASSERTIONS_TEXT}. Call \`${assertion}\` in the test body: asserting helpers do not count, so return the value and \`${assertion}\` it in the test.`;
+}
 
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
@@ -51,8 +67,10 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
-const NODE_TEST_HINT =
-  ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
+function nodeTestHint(runner) {
+  const label = testRunnerLabel(runner);
+  return ` nitpicker runs this project's tests with ${label}, so it never runs a node:test file. Move the file to ${label}, or set "tools": { "tests": { "runner": "node-test" } } in nitpicker.config.json if the whole project uses node:test.`;
+}
 
 const GROWTH_ADVICE = new Map([
   [
@@ -67,7 +85,9 @@ function immutableTypesRewrite({ text, node, sourceFile }) {
 }
 
 function rejectErrorsMessage({ text, relativePath }) {
-  return readLayout().isTestFile(relativePath) ? `${text}${REJECT_ERRORS_TEST_HINT}` : text;
+  return readLayout().isTestFile(relativePath)
+    ? `${text}${REJECT_ERRORS_TEST_HINTS.get(analyzedTestRunner())}`
+    : text;
 }
 
 function legacyAnyHint(relativePath) {
@@ -96,7 +116,8 @@ function onlyThrowErrorMessage({ text, relativePath }) {
 }
 
 function expectExpectMessage({ text }) {
-  return text === NO_ASSERTIONS_TEXT ? NO_ASSERTIONS_HINT : text;
+  const assertion = analyzedTestRunner() === 'node-test' ? 'assert' : 'expect';
+  return text === NO_ASSERTIONS_TEXT ? noAssertionsHint(assertion) : text;
 }
 
 function duplicateConstituentsMessage({ text }) {
@@ -114,7 +135,7 @@ function switchExhaustivenessMessage({ text }) {
 }
 
 function nodeTestMessage({ text }) {
-  return `${text}${NODE_TEST_HINT}`;
+  return `${text}${nodeTestHint(analyzedTestRunner())}`;
 }
 
 const MESSAGE_REWRITERS = new Map([

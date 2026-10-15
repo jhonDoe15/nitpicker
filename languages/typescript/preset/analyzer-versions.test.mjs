@@ -35,3 +35,37 @@ describe('ESLint analyzer versions', () => {
     expect(resolveAnalyzerVersion('prettier-format', '/project', fakeResolver())).toBe('1.0.0');
   });
 });
+
+describe('test runner analyzer versions', () => {
+  const resolver = fakeResolver({ jest: '30.5.2', c8: '12.0.0', vitest: '4.1.11' });
+  const node = `node@${process.versions.node}`;
+
+  it('keys the coverage version on the Jest version', () => {
+    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'jest')).toBe('jest@30.5.2');
+  });
+
+  it('keys the coverage version on c8 and the Node version for node:test', () => {
+    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'node-test')).toBe(
+      `c8@12.0.0;${node}`,
+    );
+  });
+
+  it('keeps the Vitest coverage version for Vitest', () => {
+    expect(resolveAnalyzerVersion('coverage', '/project', resolver, 'vitest')).toBe('4.1.11');
+  });
+
+  it.each(['crap', 'mutation'])('adds the runner to the %s version', (analyzer) => {
+    const base = resolveAnalyzerVersion(analyzer, '/project', resolver);
+    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'jest')).toBe(
+      `${base};tests:jest@30.5.2`,
+    );
+    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'node-test')).toBe(
+      `${base};tests:c8@12.0.0;${node}`,
+    );
+    expect(resolveAnalyzerVersion(analyzer, '/project', resolver, 'vitest')).toBe(base);
+  });
+
+  it('leaves other analyzers untouched by the runner', () => {
+    expect(resolveAnalyzerVersion('prettier-format', '/project', resolver, 'jest')).toBe('1.0.0');
+  });
+});

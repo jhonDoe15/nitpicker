@@ -17,7 +17,8 @@ tested setup). nitpicker brings its own pinned ESLint, Prettier, dependency-crui
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error.
+tool error. A Jest project installs `jest` (29 or newer) instead of the two Vitest packages, and a
+`node:test` project needs no test package at all (see [Test runner](#test-runner)).
 
 ## First run
 
@@ -270,16 +271,13 @@ Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs`
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
 It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
-have one. `typescript` and `vitest` are peers as for TypeScript.
+have one. `typescript` and your test runner (`vitest`, `jest` or `node:test`) are as for TypeScript.
 
 What the preset does not support:
 
-- **Test runner.** Vitest is the only runner, for both presets. A Jest or `node:test` project cannot
-  pass yet: coverage, CRAP and mutation run Vitest, and `vitest/no-import-node-test` fails a
-  `node:test` import (its message points to an exception for that rule, which silences the lint
-  finding only). Support for both runners is tracked in issue #162.
-- **CommonJS tests.** Production code may be CommonJS, but a test file must `import` Vitest, because
-  `require('vitest')` fails at run time. Import `.cjs` production code from an ESM test, as the fixture does.
+- **CommonJS tests with Vitest.** Production code may be CommonJS, but with Vitest a test file must
+  `import` Vitest, because `require('vitest')` fails at run time. Import `.cjs` production code from an
+  ESM test, as the fixture does. Jest and `node:test` files may be CommonJS.
 - **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. A `.jsx` or `.tsx` file is outside
   the JavaScript layout: no analyzer reads it.
 
@@ -517,6 +515,72 @@ layers are listed, so the order makes no difference; nitpicker's Spring rules ru
 `"nitpicker"` is listed. Checkstyle runs one config, so its `precedence` is `["nitpicker"]` or
 `["project"]`. Without a `tools` entry these files are not used.
 
+### Test runner
+
+Both presets run your tests with Vitest, Jest or `node:test`. The "one way" is in the code rules, not
+in the choice of runner, so adopting nitpicker never means switching runners. Coverage, CRAP, mutation
+testing, the test-runtime rules and the failing-test stop work the same for all three, and a rule means
+the same thing whichever runner is in use.
+
+nitpicker detects the runner from the head checkout:
+
+| Runner      | Evidence                                                                                                                                   |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Vitest      | `vitest` in `dependencies` or `devDependencies`, a `vitest.config.*` file, or a `test` script that runs `vitest`                           |
+| Jest        | `jest` in `dependencies` or `devDependencies`, a `jest.config.*` file, a `jest` key in `package.json`, or a `test` script that runs `jest` |
+| `node:test` | a test file that imports `node:test` (and neither `vitest` nor `@jest/globals`), or a `test` script that runs `node --test`                |
+
+A project with no evidence runs Vitest. When more than one runner has evidence, the single runner
+that a `test` script (a script named `test` or `test:*`) runs wins; otherwise the run stops with a
+configuration error that lists the evidence for each runner. Choose the runner explicitly in
+`nitpicker.config.json`, which overrides detection:
+
+```json
+{ "tools": { "tests": { "runner": "jest" } } }
+```
+
+The value is `"vitest"`, `"jest"` or `"node-test"`; any other value is a configuration error. The
+choice applies to both sides of the comparison, and the report records the runner's version, so
+changing runners never turns old code into new findings.
+
+How each runner runs:
+
+| Runner      | Tests and coverage                                                                                                        | Mutation testing                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Vitest      | `vitest` with `@vitest/coverage-v8` and nitpicker's own Vitest config                                                     | Stryker's Vitest runner, per-test coverage                                        |
+| Jest        | the project's `jest` with its own config, plus Istanbul coverage (`--coverageProvider=babel`) limited to the source roots | Stryker's Jest runner, per-test coverage                                          |
+| `node:test` | `node --test` under `c8` (bundled with nitpicker), with the Node flags from your `test` script (such as `--import tsx`)   | Stryker's TAP runner: per test file, so a mutant reruns every file that covers it |
+
+Differences that follow from the runner, each with its reason:
+
+- **Jest and `node:test` use your runner config.** Only Vitest has nitpicker's own config. For Jest,
+  nitpicker overrides the coverage options (provider, reporters, thresholds, the files measured), the test
+  timeout (10 s) and the worker count, and leaves transforms, `testEnvironment` and module mapping to
+  your `jest.config.*`. A TypeScript project needs its own Jest transform (`ts-jest`, `@swc/jest` or
+  Babel): nitpicker does not add one. Native ESM needs `--experimental-vm-modules`, which nitpicker
+  passes when `NODE_OPTIONS` or a `test` script already sets it.
+- **No forced mock restoring.** With Vitest, nitpicker's config sets `restoreMocks: true`. Jest and
+  `node:test` have no equivalent that nitpicker can set without replacing your config, so restore spies
+  yourself (`jest.restoreAllMocks()` or `mock.restoreAll()` in `afterEach`).
+- **Test names in mutation reports.** The TAP runner reports per file, so a surviving mutant names no
+  test.
+- **`node:test` coverage is V8 coverage through `c8`**, converted to the same Istanbul shape as the other
+  runners, so changed-branch coverage and CRAP read it unchanged. `--experimental-test-coverage` is not
+  used: it lacks the unloaded-file and column-level data the function and branch gates need.
+- **Rule advice follows the runner.** `no-fixed-sleep-synchronization`,
+  `no-interval-polling-in-tests` and the `reject with a non-Error` hint name `vi.waitFor` or `expect.poll`
+  only for Vitest; Jest and `node:test` get the equivalent (await the event, a testing library's
+  `waitFor`, `mock.timers`). `no-internal-module-mocks` and `no-mocking-subject-under-test` also
+  recognize `jest.mock`, `jest.doMock`, `jest.unstable_mockModule` and `mock.module` from `node:test`.
+  `no-raised-test-timeout` also covers `jest.setTimeout`. `no-partial-output-assertion` also flags
+  `assert.partialDeepStrictEqual`.
+- **Floating promises in `node:test`.** `describe`, `it`, `test`, `suite` and the hooks return a promise
+  in `node:test`. Calling them without `await` is how the runner is used, so
+  `@typescript-eslint/no-floating-promises` does not report those calls; it still reports any other
+  floating promise.
+- **Type checking.** The generated tsconfig lists `vitest/globals` only for Vitest, and `jest` (when
+  `@types/jest` is installed) only for Jest.
+
 ### Lint engine
 
 The lint analyzers apply nitpicker's ESLint policy, but by default they run it on
@@ -579,7 +643,7 @@ docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/qu
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
 codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
-(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
+(your test runner, such as `vitest` with `@vitest/coverage-v8`, or `jest`, and `typescript` are resolved from the project, as with `npx`), and
 its history must contain the merge base. Reports are written under the mount, owned by the
 container user; add `--user "$(id -u):$(id -g)"` to own them yourself.
 

@@ -13,7 +13,10 @@ If your change edits a function that existed before it, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
+1. Run your tests with your project's runner (`npx vitest run`, `npx jest` or `node --test`). nitpicker
+   detects Vitest, Jest and `node:test` and gates all three the same way; when a project mixes
+   runners, `"tools": { "tests": { "runner": "vitest" | "jest" | "node-test" } }` in `nitpicker.config.json`
+   picks one. Failing tests stop coverage, CRAP and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
@@ -116,12 +119,15 @@ If your change edits a function that existed before it, read
   change. Test each outcome of each union.
 - Test features through their `index.ts` with fakes: plain functions returning
   `Promise.resolve(x)` / `Promise.reject(error)`; a non-Error rejection is
-  `vi.fn().mockRejectedValue(42)`, a non-Error throw is `const value: unknown = 7; throw value;`.
+  `vi.fn().mockRejectedValue(42)` (`jest.fn()` with Jest; `mock.fn(async () => { throw value; })` with
+  `node:test`), a non-Error throw is `const value: unknown = 7; throw value;`.
   Read a fake's calls through a helper that throws when the call is missing, not `calls[n]?.`. Spy on `process.stdout` only to test composition-root wiring,
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
-  restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
-- Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
+  restores spies only with Vitest; with Jest or `node:test`, call `jest.restoreAllMocks()` or
+  `mock.restoreAll()` in `afterEach`. Restore fake timers with `vi.useRealTimers()` (`jest.useRealTimers()`, `mock.timers.reset()`) in `afterEach`.
+- Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`
+  (with `node:test`, `assert.deepStrictEqual`, not `assert.partialDeepStrictEqual`).
+  Write `expect` (or `assert`) in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`.
   When an existing test defines the same helper, make it import the shared one.

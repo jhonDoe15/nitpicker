@@ -14,7 +14,6 @@ import { planAnalyzerShards } from './sharding.mjs';
 import {
   coverageFailureFindings,
   describeUncoveredArms,
-  formatVitestFailures,
   normalizeBaselineExpansions,
   normalizeCoupling,
   normalizeCoverage,
@@ -26,6 +25,7 @@ import {
   rebaseMutationConfig,
   sourceSnippet,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
+import { formatTestFailures } from '../../languages/typescript/adapters/test-runners/test-report.mjs';
 import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
 
 const EXPECTED_ANALYZER_NAMES = [
@@ -175,7 +175,7 @@ describe('complete quality-area analyzer catalog', () => {
   });
 
   it('names each failing test with its file and first assertion line', () => {
-    const message = formatVitestFailures(
+    const message = formatTestFailures(
       {
         numFailedTests: 2,
         testResults: [
@@ -248,7 +248,7 @@ describe('complete quality-area analyzer catalog', () => {
       status: 'failed',
       failureMessages: ['boom'],
     });
-    const message = formatVitestFailures(
+    const message = formatTestFailures(
       {
         numFailedTests: 7,
         testResults: [

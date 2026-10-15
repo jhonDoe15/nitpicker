@@ -7,6 +7,7 @@ import {
   JAVASCRIPT_KNIP_ENTRIES,
   JAVASCRIPT_KNIP_PROJECT,
 } from '../../javascript/preset/javascript-preset.mjs';
+import { withTestRunnerTypes } from './test-runner/configs/tsconfig-types.mjs';
 
 const DEFAULT_SOURCE_ROOT = 'src';
 const DEFAULT_TEST_ROOTS = new Set(['test', 'tests']);
@@ -116,7 +117,7 @@ export function layoutTransformFor(policyFileName, layout, { strictMutants = tru
           : projectLayeredTsconfig(extended, JSON.parse(text), layout);
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
-    const rewritten = layoutTransform?.(text) ?? text;
+    const rewritten = withTestRunnerTypes(layoutTransform?.(text) ?? text, projectDirectory);
     return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
   };
 }

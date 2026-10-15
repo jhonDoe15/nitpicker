@@ -65,6 +65,9 @@ npm install --save-dev nitpicker vitest @vitest/coverage-v8 typescript @types/no
 npx nitpicker
 ```
 
+nitpicker runs the project's own test runner: Vitest, Jest (`npm install --save-dev jest` in place of the two Vitest packages) or
+`node:test`, detected from your project and gated the same way ([test runner](docs/usage.md#test-runner)).
+
 The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
 For another language, put the preset in `nitpicker.config.json`, for example
 `{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.

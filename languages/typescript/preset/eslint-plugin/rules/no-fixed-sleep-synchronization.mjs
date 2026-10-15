@@ -1,4 +1,5 @@
 import { readLayout } from '../../head-policy.mjs';
+import { sleepAdvice } from './test-runner/runner-advice.mjs';
 import { importedCalleeName, moduleBindings } from './test-code-analysis.mjs';
 
 const { isTestFixture } = readLayout();
@@ -68,8 +69,7 @@ export const rule = {
     type: 'problem',
     schema: [],
     messages: {
-      fixedSleep:
-        'Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll.',
+      fixedSleep: 'Fixed sleeps are non-deterministic; {{advice}}.',
     },
   },
   create(context) {
@@ -86,18 +86,18 @@ export const rule = {
           argument.callee.type === 'Identifier' &&
           ['sleep', 'delay', 'wait'].includes(argument.callee.name)
         ) {
-          context.report({ node, messageId: 'fixedSleep' });
+          context.report({ node, messageId: 'fixedSleep', data: { advice: sleepAdvice(context) } });
           return;
         }
         if (
           argument.type === 'CallExpression' &&
           importedCalleeName(argument.callee, timerPromises) === 'setTimeout'
         ) {
-          context.report({ node, messageId: 'fixedSleep' });
+          context.report({ node, messageId: 'fixedSleep', data: { advice: sleepAdvice(context) } });
           return;
         }
         if (argument.type === 'CallExpression' && isSchedulerWait(argument.callee, timerPromises)) {
-          context.report({ node, messageId: 'fixedSleep' });
+          context.report({ node, messageId: 'fixedSleep', data: { advice: sleepAdvice(context) } });
           return;
         }
         if (
@@ -111,7 +111,11 @@ export const rule = {
             executor.params[0]?.type === 'Identifier' &&
             callsResolveTimeout(executor.body, executor.params[0].name)
           )
-            context.report({ node, messageId: 'fixedSleep' });
+            context.report({
+              node,
+              messageId: 'fixedSleep',
+              data: { advice: sleepAdvice(context) },
+            });
         }
       },
     };

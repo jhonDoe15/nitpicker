@@ -1,5 +1,10 @@
 import path from 'node:path';
 import { readLayout } from '../../head-policy.mjs';
+import {
+  createMockAliases,
+  isModuleMockCall,
+  recordMockImport,
+} from './test-runner/module-mocks.mjs';
 
 const layout = readLayout();
 
@@ -13,27 +18,13 @@ export const rule = {
     },
   },
   create(context) {
-    const aliases = new Set(['vi', 'vitest']);
+    const aliases = createMockAliases();
     return {
       ImportDeclaration(node) {
-        if (node.source.value !== 'vitest') return;
-        for (const specifier of node.specifiers) {
-          if (
-            specifier.type === 'ImportSpecifier' &&
-            ['vi', 'vitest'].includes(specifier.imported.name)
-          )
-            aliases.add(specifier.local.name);
-        }
+        recordMockImport(node, aliases);
       },
       CallExpression(node) {
-        const callee = node.callee;
-        if (
-          callee.type !== 'MemberExpression' ||
-          callee.computed ||
-          !aliases.has(callee.object.name) ||
-          !['mock', 'doMock'].includes(callee.property.name)
-        )
-          return;
+        if (!isModuleMockCall(node, aliases)) return;
         const target = node.arguments[0];
         const source = target?.type === 'ImportExpression' ? target.source.value : target?.value;
         if (typeof source !== 'string') return;

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
 import { resolveLayout } from './layout.mjs';
+import { HEAD_POLICY_FILES } from './test-runner/policy-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../shared/policy.mjs';
 
@@ -31,7 +32,7 @@ const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mj
 
 const POLICY_FILES = [
   'languages/typescript/preset/layout.mjs',
-  'languages/typescript/preset/head-policy.mjs',
+  ...HEAD_POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
   'languages/javascript/preset/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
@@ -172,7 +173,7 @@ function entryPointsCheckFor(layout, exclusions) {
     shardWeight: 7,
     logicalFiles: [
       'languages/typescript/preset/layout.mjs',
-      'languages/typescript/preset/head-policy.mjs',
+      ...HEAD_POLICY_FILES,
       'languages/typescript/preset/entry-points/analyze.mjs',
       'languages/typescript/preset/dependency-graph/cruise.mjs',
       ARCHITECTURE_CONFIG,
@@ -203,7 +204,7 @@ function prettierCheckFor(layout, exclusions) {
     configurationFiles: [
       'languages/typescript/adapters/prettier-layers.mjs',
       'languages/typescript/preset/layout.mjs',
-      'languages/typescript/preset/head-policy.mjs',
+      ...HEAD_POLICY_FILES,
       JAVASCRIPT_PRESET_FILE,
       'languages/typescript/preset/defaults/.prettierrc.json',
       'languages/typescript/preset/defaults/.prettierignore',
@@ -223,7 +224,7 @@ function typeAndArchitectureChecksFor(layout) {
       shardWeight: 9,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
+        ...HEAD_POLICY_FILES,
         'languages/typescript/preset/tool-configs.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/tsconfig.quality.json',
@@ -240,7 +241,7 @@ function typeAndArchitectureChecksFor(layout) {
       shardWeight: 7,
       configurationFiles: [
         'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
+        ...HEAD_POLICY_FILES,
         ARCHITECTURE_CONFIG,
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
@@ -360,7 +361,7 @@ const CRAP_CONFIGURATION_FILES = [
   'languages/typescript/preset/crap/analyze.mjs',
   'languages/javascript/preset/crap-extensions-hook.mjs',
   'languages/typescript/preset/layout.mjs',
-  'languages/typescript/preset/head-policy.mjs',
+  ...HEAD_POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
   'shared/rules/crap.mjs',
 ];
@@ -380,7 +381,7 @@ function testExecutionChecksFor(exclusions) {
       configurationFiles: [
         'languages/typescript/preset/defaults/vitest.quality.config.ts',
         'languages/typescript/preset/layout.mjs',
-        'languages/typescript/preset/head-policy.mjs',
+        ...HEAD_POLICY_FILES,
         JAVASCRIPT_PRESET_FILE,
       ],
     },

@@ -308,6 +308,36 @@ describe('tool precedence', () => {
     }
   });
 
+  it.each(['vitest', 'jest', 'node-test', undefined])('accepts %s as the test runner', (runner) => {
+    expect(validateConfig({ tools: { tests: { runner } } })).toEqual({
+      tools: { tests: { runner } },
+    });
+  });
+
+  it.each(['mocha', 'node:test', '', 7])('rejects %j as the test runner', (runner) => {
+    expect(() => validateConfig({ tools: { tests: { runner } } })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.tests.runner" must be one of: vitest, jest, node-test. It names the test runner nitpicker runs your tests with; without it the runner is detected from package.json and the test files',
+      ),
+    );
+  });
+
+  it('rejects an unknown key under the test runner tool', () => {
+    expect(() => validateConfig({ tools: { tests: { precedence: ['project'] } } })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.tests" has unknown key "precedence". Allowed keys: runner',
+      ),
+    );
+  });
+
+  it('rejects the test runner tool for a Java project', () => {
+    expect(() => validateConfig({ preset: 'java', tools: { tests: { runner: 'jest' } } })).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: pmd, checkstyle',
+      ),
+    );
+  });
+
   it('rejects an unknown lint engine', () => {
     for (const engine of ['biome', '']) {
       expect(() => validateConfig({ tools: { eslint: { engine } } })).toThrow(
@@ -321,7 +351,7 @@ describe('tool precedence', () => {
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -369,7 +399,7 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(

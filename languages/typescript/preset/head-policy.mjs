@@ -6,7 +6,15 @@ import {
   resolveHeadPolicy as resolveSharedHeadPolicy,
 } from '../../../shared/head-policy.mjs';
 import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mjs';
-import { excludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
+import {
+  excludedGlobs,
+  resolveLayout,
+  resolveLayoutFor,
+  sourceRoots,
+  testRoots,
+} from './layout.mjs';
+import { configuredTestRunner } from './test-runner/runners.mjs';
+import { resolveTestRunner } from './test-runner/resolve.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -36,8 +44,17 @@ const PRETTIER_PROJECT_FILES = [
   'package.json',
 ];
 
+const TEST_RUNNER_PRESETS = new Set([undefined, 'typescript', 'javascript']);
+
 export function resolveHeadPolicy(config = {}, projectRoot) {
   const policy = resolveSharedHeadPolicy(config);
+  if (projectRoot !== undefined && TEST_RUNNER_PRESETS.has(config.preset)) {
+    resolveTestRunner({
+      projectRoot,
+      layout: resolveLayoutFor(policy),
+      configured: configuredTestRunner(policy),
+    });
+  }
   const prettier = policy.tools?.prettier;
   if (projectRoot === undefined || !usesProjectConfig(prettier?.precedence ?? [])) {
     return policy;

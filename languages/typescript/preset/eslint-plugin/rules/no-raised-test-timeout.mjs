@@ -42,7 +42,21 @@ function isSetConfig(callee) {
   );
 }
 
+function isJestSetTimeout(callee) {
+  return (
+    callee.type === 'MemberExpression' &&
+    !callee.computed &&
+    callee.object.type === 'Identifier' &&
+    callee.object.name === 'jest' &&
+    callee.property.type === 'Identifier' &&
+    callee.property.name === 'setTimeout'
+  );
+}
+
 function timeoutNodes(context, node) {
+  if (isJestSetTimeout(node.callee)) {
+    return node.arguments.slice(0, 1);
+  }
   if (isSetConfig(node.callee)) {
     return timeoutProperties(context, node.arguments[0]).map((property) => property.value);
   }

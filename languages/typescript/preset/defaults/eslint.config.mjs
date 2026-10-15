@@ -17,11 +17,20 @@ import {
   reactScopeConfigFor,
 } from '../eslint-config/react-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { configuredTestRunner } from '../test-runner/runners.mjs';
+import { resolveTestRunner } from '../test-runner/resolve.mjs';
+import { testRunnerLintSettings, testRunnerSettings } from '../test-runner/configs/lint-config.mjs';
 
 const policy = readHeadPolicy();
 
 const layout = readLayout();
 const react = isReactProject({ projectRoot: analyzedProjectRoot(), react: policy.react });
+const testRunner = resolveTestRunner({
+  projectRoot: analyzedProjectRoot(),
+  layout,
+  configured: configuredTestRunner(policy),
+}).runner;
+const runnerLint = testRunnerLintSettings(testRunner, vitest.configs.env.languageOptions.globals);
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
 const parserOptions = {
   project: './tsconfig.quality.json',
@@ -89,11 +98,12 @@ const presetConfig = tseslint.config(
       ...vitest.configs.recommended.plugins,
       nitpicker: nitpickerRules,
     },
+    ...testRunnerSettings(testRunner),
     languageOptions: {
       ...vitest.configs.env.languageOptions,
       globals: {
         ...globals.node,
-        ...vitest.configs.env.languageOptions.globals,
+        ...runnerLint.globals,
       },
       parserOptions: {
         project: './tsconfig.quality.json',
@@ -102,6 +112,7 @@ const presetConfig = tseslint.config(
     },
     rules: {
       ...vitest.configs.recommended.rules,
+      ...runnerLint.rules,
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',

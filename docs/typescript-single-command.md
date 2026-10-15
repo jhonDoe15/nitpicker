@@ -178,8 +178,8 @@ Status: implemented. The consumer installs one npm dev dependency and runs `npx 
   measured with one policy.
 - Tools nitpicker owns are exact-pinned dependencies, loaded from its own package, and must match
   the pinned versions. Neither the base nor the head tree can choose them.
-- `vitest`, `@vitest/coverage-v8`, and `typescript` are required peer dependencies from the
-  consumer. The head can change them; the report records the version that ran, which makes such a
+- `typescript` and the consumer's test runner (`vitest` with `@vitest/coverage-v8`, or `jest`) are
+  peer dependencies from the consumer; `node:test` needs none, and nitpicker ships `c8` for it. The head can change them; the report records the version that ran, which makes such a
   change visible but does not prevent it.
 - nitpicker behaves like any other dependency. It does not check the consumer's setup up front:
   if a peer or the consumer's install is missing or incompatible, the affected tool fails the way

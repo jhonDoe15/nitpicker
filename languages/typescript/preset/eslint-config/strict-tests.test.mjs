@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/harness.mjs';
+import { TEST_TIMEOUT_MS } from '../../adapters/test-runners/coverage-globs.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/no-raised-test-timeout.mjs';
 import { resolveLayout } from '../layout.mjs';
 import { isStrictRule } from '../strict-rules.mjs';
@@ -113,10 +114,6 @@ describe('strict test rules', () => {
         `testTimeout: ${TEST_TIMEOUT_CEILING_MS.toLocaleString('en-US').replaceAll(',', '_')}`,
       );
     }
-    const runner = readFileSync(
-      path.join(packageRoot, 'languages/typescript/adapters/quality-areas-runner.mjs'),
-      'utf8',
-    );
-    expect(runner).toContain(`'--testTimeout',\n        '${String(TEST_TIMEOUT_CEILING_MS)}'`);
+    expect(TEST_TIMEOUT_MS).toBe(TEST_TIMEOUT_CEILING_MS);
   });
 });

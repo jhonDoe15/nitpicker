@@ -1,4 +1,5 @@
 import { readLayout } from '../../head-policy.mjs';
+import { pollAdvice } from './test-runner/runner-advice.mjs';
 
 const { isTestFixture } = readLayout();
 
@@ -7,7 +8,7 @@ export const rule = {
     type: 'problem',
     schema: [],
     messages: {
-      intervalPolling: 'Prefer vi.waitFor / expect.poll over setInterval polling in tests.',
+      intervalPolling: 'Prefer {{advice}} over setInterval polling in tests.',
     },
   },
   create(context) {
@@ -23,7 +24,11 @@ export const rule = {
             callee.object.name === 'globalThis' &&
             callee.property.name === 'setInterval')
         )
-          context.report({ node, messageId: 'intervalPolling' });
+          context.report({
+            node,
+            messageId: 'intervalPolling',
+            data: { advice: pollAdvice(context) },
+          });
       },
     };
   },

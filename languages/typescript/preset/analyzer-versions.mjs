@@ -18,6 +18,11 @@ const TOOL_BY_ANALYZER = {
   crap: '@barney-media/crap-typescript-core',
   mutation: '@stryker-mutator/core',
 };
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'crap', 'mutation']);
+const TEST_RUNNER_TOOLS = new Map([
+  ['jest', ['jest']],
+  ['node-test', ['c8']],
+]);
 const TYPESCRIPT_CONSUMERS = new Set([
   'coding-standards',
   'test-runtime',
@@ -50,7 +55,33 @@ function resolveEslintPluginVersions(resolve) {
   return [...plugins, `nitpicker-plugin@${String(nitpickerVersion)}`].join(',');
 }
 
-export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+function resolveTestRunnerVersion(runner, liveProjectRoot, resolve) {
+  const versions = TEST_RUNNER_TOOLS.get(runner).map(
+    (name) => `${name}@${resolve(name, { projectRoot: liveProjectRoot }).version}`,
+  );
+  return runner === 'node-test'
+    ? [...versions, `node@${process.versions.node}`].join(';')
+    : versions[0];
+}
+
+function withTestRunner(analyzerName, version, runnerVersion) {
+  return analyzerName === 'coverage' ? runnerVersion : `${version};tests:${runnerVersion}`;
+}
+
+export function resolveAnalyzerVersion(
+  analyzerName,
+  liveProjectRoot,
+  resolve = resolveTool,
+  testRunner = 'vitest',
+) {
+  if (TEST_RUNNER_ANALYZERS.has(analyzerName) && TEST_RUNNER_TOOLS.has(testRunner)) {
+    const runnerVersion = resolveTestRunnerVersion(testRunner, liveProjectRoot, resolve);
+    const base =
+      analyzerName === 'coverage'
+        ? ''
+        : resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve);
+    return withTestRunner(analyzerName, base, runnerVersion);
+  }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);

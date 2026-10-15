@@ -124,5 +124,11 @@ Notes:
   `test-execution` concurrency group. `mutation` has a 30 minute timeout; `coverage` 5 minutes;
   `policy-tests`, `coding-standards`, `coupling`, `test-runtime`, `dead-code` and `crap` 2 minutes;
   `structure` and `duplicates` 1 minute.
+- Test runners: for the TypeScript and JavaScript presets, `coverage`, `crap` and `mutation` run the
+  project's own test runner (Vitest, Jest or `node:test`, detected or set with
+  `tools.tests.runner`). Every runner produces the same inputs (an Istanbul coverage map and a
+  per-test result list), so a check and its threshold mean the same thing whichever runner ran. The
+  runner and its version are part of the analyzer version, so a base measured with one runner is not
+  reused for another. `node:test` mutation runs per test file, not per test.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.

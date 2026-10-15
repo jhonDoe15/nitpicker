@@ -2,7 +2,11 @@ import {
   DEFAULT_LEGACY_INVENTORY,
   withLegacyInventory,
 } from '../../../../shared/legacy-inventory.mjs';
+import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../analyzer-versions.mjs';
+import { configuredTestRunner } from '../test-runner/runners.mjs';
+import { TEST_RUNNER_ADAPTER_FILES } from '../test-runner/policy-files.mjs';
+import { resolveTestRunner } from '../test-runner/resolve.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas.mjs';
@@ -60,6 +64,7 @@ const QUALITY_AREA_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
+  ...TEST_RUNNER_ADAPTER_FILES,
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];
@@ -154,6 +159,27 @@ export function applyLayout(analyzers, headPolicy) {
 
 function isPackageAnalyzer(analyzer) {
   return configuredAnalyzers.includes(analyzer) || javascriptAnalyzers.includes(analyzer);
+}
+
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'crap', 'mutation']);
+
+export function applyTestRunner(analyzers, headPolicy = {}) {
+  const layout = resolveLayoutFor(headPolicy);
+  const configured = configuredTestRunner(headPolicy);
+  return analyzers.map((analyzer) =>
+    TEST_RUNNER_ANALYZERS.has(analyzer.name) && analyzer.policyFromPackage === true
+      ? {
+          ...analyzer,
+          resolveVersion: (projectRoot) =>
+            resolveAnalyzerVersion(
+              analyzer.name,
+              projectRoot,
+              resolveTool,
+              resolveTestRunner({ projectRoot, layout, configured }).runner,
+            ),
+        }
+      : analyzer,
+  );
 }
 
 export function applyThresholds(analyzers, thresholds = {}, headPolicy = {}) {

@@ -1,5 +1,10 @@
 import path from 'node:path';
 import { readLayout } from '../../head-policy.mjs';
+import {
+  createMockAliases,
+  isModuleMockCall,
+  recordMockImport,
+} from './test-runner/module-mocks.mjs';
 
 const layout = readLayout();
 
@@ -25,15 +30,8 @@ function isProductionModule(filename, source) {
   );
 }
 
-function mockedSource(node) {
-  if (
-    node.callee.type !== 'MemberExpression' ||
-    node.callee.computed ||
-    node.callee.object.type !== 'Identifier' ||
-    node.callee.object.name !== 'vi' ||
-    node.callee.property.type !== 'Identifier' ||
-    !['mock', 'doMock'].includes(node.callee.property.name)
-  ) {
+function mockedSource(node, aliases) {
+  if (!isModuleMockCall(node, aliases)) {
     return undefined;
   }
   const [firstArgument] = node.arguments;
@@ -57,9 +55,11 @@ export const rule = {
     const filename = context.filename.replaceAll('\\', '/');
     const productionImports = new Set();
     const mocks = [];
+    const aliases = createMockAliases();
 
     return {
       ImportDeclaration(node) {
+        recordMockImport(node, aliases);
         const source = node.source.value;
         if (
           typeof source === 'string' &&
@@ -71,7 +71,7 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        const source = mockedSource(node);
+        const source = mockedSource(node, aliases);
         if (source !== undefined) {
           mocks.push({ node, source });
         }

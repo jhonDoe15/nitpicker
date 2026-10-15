@@ -3,10 +3,12 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../languages/java/adapters/gradle-presets.mjs';
 import { configError, isPlainObject } from '../../shared/config.mjs';
+import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['eslint', ['engine']],
+  ['tests', ['runner']],
 ]);
 const GRADLE_TOOL_SETTING_KEYS = new Map(
   [...PROJECT_TOOL_CONFIGS.keys()].map((tool) => [tool, ['precedence']]),
@@ -48,6 +50,10 @@ function validateToolSettings(name, settings, toolSettingKeys) {
     validateLintEngine(settings.engine);
     return;
   }
+  if (name === 'tests') {
+    validateTestRunner(settings.runner);
+    return;
+  }
   validatePrecedence(settings.precedence, name);
   if (SINGLE_CONFIG_TOOLS.includes(name) && settings.precedence.length > 1) {
     throw configError(
@@ -60,6 +66,14 @@ function validateLintEngine(engine) {
   if (engine !== undefined && !LINT_ENGINES.includes(engine)) {
     throw configError(
       `"tools.eslint.engine" must be "oxlint" or "eslint". "oxlint" runs the lint rules on oxlint (the default); "eslint" runs them on ESLint`,
+    );
+  }
+}
+
+function validateTestRunner(runner) {
+  if (runner !== undefined && !TEST_RUNNERS.includes(runner)) {
+    throw configError(
+      `"tools.tests.runner" must be one of: ${TEST_RUNNERS.join(', ')}. It names the test runner nitpicker runs your tests with; without it the runner is detected from package.json and the test files`,
     );
   }
 }

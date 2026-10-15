@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
@@ -45,14 +44,17 @@ import {
   layoutTransformFor,
 } from '../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
+import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
+import { testRunnerFor } from '../preset/test-runner/current.mjs';
+import { testRunnerLabel } from '../preset/test-runner/runners.mjs';
+import { COVERAGE_REPORT_PATH } from './test-runners/coverage-globs.mjs';
 import {
-  PACKAGE_ROOT,
-  resolveTool,
-  SNAPSHOT_DIRECTORY_NAMES,
-  toolNameForPath,
-} from '../../../core/tooling/tool-resolution.mjs';
-
-const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
+  mutationConfigFor,
+  mutationEnvironmentFor,
+} from './test-runners/runners/mutation-config.mjs';
+import { runTestsWithCoverage } from './test-runners/run-tests.mjs';
+import { findingPath, formatTestFailures, testFailures } from './test-runners/test-report.mjs';
+import { formatProcessOutput, runNodeTool, spawnNodeTool } from './test-runners/tool-process.mjs';
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const QUALITY_AREA_RUNNERS = new Map([
   ['policy-tests', runPolicyTests],
@@ -68,7 +70,6 @@ const QUALITY_AREA_RUNNERS = new Map([
 ]);
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
-const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
 const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
 const STRUCTURE_HINTS = {
@@ -321,88 +322,39 @@ function runDeadCode(options) {
 }
 
 function runCoverage(options) {
-  const configPath = path.join(options.projectRoot, '.nitpicker-diff-vitest.config.ts');
-  const testReportPath = path.join(options.projectRoot, '.nitpicker-diff-vitest-report.json');
-  if (existsSync(testReportPath)) {
-    throw new Error(`Temporary coverage report already exists: ${testReportPath}`);
+  const runner = testRunnerFor(options.projectRoot);
+  const { result, report } = runTestsWithCoverage(options, runner);
+  if (result.status !== 0) {
+    return coverageFailureFindings({ ...options, testRunner: runner }, report, result);
   }
-  trackTemporaryPath(configPath);
-  trackTemporaryPath(testReportPath);
-  writeFileSync(
-    configPath,
-    readFileSync(
-      path.join(
-        options.policyRoot,
-        'languages/typescript/preset/defaults/vitest.quality.config.ts',
-      ),
-      'utf8',
-    ),
-  );
-  try {
-    const result = runNodeTool({
-      options,
-      relativeToolPath: 'vitest/vitest.mjs',
-      arguments_: [
-        'run',
-        '--config',
-        configPath,
-        '--coverage',
-        '--testTimeout',
-        '10000',
-        '--reporter',
-        'json',
-        '--outputFile',
-        testReportPath,
-      ],
-      acceptedStatuses: [0, 1],
-    });
-    if (result.status !== 0) {
-      return coverageFailureFindings(options, readVitestReport(testReportPath, result), result);
-    }
-    return readCoverageFindings(options, testReportPath);
-  } finally {
-    rmSync(testReportPath, { force: true });
-    rmSync(configPath, { force: true });
-  }
+  return readCoverageFindings(options, report);
 }
 
 export function coverageFailureFindings(options, report, result) {
-  const [firstFailure] = vitestFailures(report, options.projectRoot);
+  const [firstFailure] = testFailures(report, options.projectRoot);
   if (firstFailure === undefined) {
     throw new Error(
-      `Vitest exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+      `${testRunnerLabel(options.testRunner ?? 'vitest')} exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
     );
   }
   return [
     toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
-      message: formatVitestFailures(report, options.projectRoot),
+      message: formatTestFailures(report, options.projectRoot),
     }),
   ];
 }
 
-function readCoverageFindings(options, testReportPath) {
+function readCoverageFindings(options, testReport) {
   const report = JSON.parse(
     readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
-  const testReport = JSON.parse(readFileSync(testReportPath, 'utf8'));
   return normalizeCoverage(
     withBranchSourceHashes(report, options.projectRoot),
     options.analyzerName,
     { projectRoot: options.projectRoot, testCount: testReport.numTotalTests },
   );
-}
-
-function readVitestReport(reportPath, result) {
-  try {
-    return JSON.parse(readFileSync(reportPath, 'utf8'));
-  } catch (error) {
-    throw new Error(
-      `Vitest exited ${String(result.status)} without a readable test report: ${error instanceof Error ? error.message : String(error)}${formatProcessOutput(result)}`,
-      { cause: error },
-    );
-  }
 }
 
 function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
@@ -414,105 +366,6 @@ function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
     message,
     classification: 'tool-error',
   };
-}
-
-const MAX_LISTED_FAILURES = 5;
-const MAX_ASSERTION_LINE_LENGTH = 200;
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
-
-function vitestFailures(report, projectRoot) {
-  const failures = [];
-  const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
-  for (const testResult of testResults) {
-    const file = projectFile(projectRoot, testResult?.name);
-    const failedAssertions = Array.isArray(testResult?.assertionResults)
-      ? testResult.assertionResults.filter((assertion) => assertion?.status === 'failed')
-      : [];
-    for (const assertion of failedAssertions) {
-      failures.push({
-        file,
-        name: vitestAssertionName(assertion),
-        assertion: firstLine(
-          assertion.failureMessages?.find((message) => typeof message === 'string'),
-        ),
-      });
-    }
-    if (failedAssertions.length === 0 && testResult?.status === 'failed') {
-      failures.push({ file, name: 'could not run', assertion: firstLine(testResult.message) });
-    }
-  }
-  return failures;
-}
-
-function projectFile(projectRoot, name) {
-  if (typeof name !== 'string') {
-    return '<unknown test file>';
-  }
-  const relativePath = path.relative(projectRoot, name).replaceAll('\\', '/');
-  return relativePath.startsWith('..') || path.isAbsolute(relativePath) ? name : relativePath;
-}
-
-function findingPath(file) {
-  return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
-}
-
-function firstLine(message) {
-  const line =
-    typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
-          .split('\n')
-          .map((candidate) => candidate.trim())
-          .find((candidate) => candidate.length > 0)
-      : undefined;
-  if (line === undefined) {
-    return '';
-  }
-  return line.length > MAX_ASSERTION_LINE_LENGTH
-    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
-    : line;
-}
-
-export function formatVitestFailures(report, projectRoot) {
-  const failures = vitestFailures(report, projectRoot);
-  const failedCount = Number.isInteger(report?.numFailedTests)
-    ? Math.max(report.numFailedTests, failures.length)
-    : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
-  if (failures.length === 0) {
-    return `${headline}; the report named no test.`;
-  }
-  const listed = failures
-    .slice(0, MAX_LISTED_FAILURES)
-    .map(
-      ({ file, name, assertion }) =>
-        `  ${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`,
-    );
-  const omitted = failures.length - listed.length;
-  return [
-    `${headline}:`,
-    ...listed,
-    ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
-  ].join('\n');
-}
-
-function vitestAssertionName(assertion) {
-  if (typeof assertion.fullName === 'string') {
-    return assertion.fullName;
-  }
-  if (typeof assertion.title === 'string') {
-    return assertion.title;
-  }
-  return '<unknown test>';
-}
-
-function formatProcessOutput(result) {
-  const output = [result.stderr, result.stdout]
-    .filter((value) => typeof value === 'string' && value.trim().length > 0)
-    .map((value) => value.trim())
-    .join('\n');
-  return output.length > 0 ? `\nProcess output:\n${output}` : '';
 }
 
 function hasRunnableTests(options) {
@@ -580,15 +433,12 @@ async function runMutation(options) {
 
 function writeStrykerConfig({ options, sourceConfig, targets, configPath, createdFiles }) {
   const tsconfigPath = installStrykerTsconfig(options, sourceConfig.tsconfigFile, createdFiles);
-  const vitestConfigPath = installMutationCompanion(
-    options,
-    [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
-    createdFiles,
-  );
   const config = {
-    ...rebaseMutationConfig(sourceConfig, {
+    ...strykerRunnerConfig({
+      options,
+      sourceConfig,
       tsconfigFile: relativeProjectPath(options.projectRoot, tsconfigPath),
-      vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+      createdFiles,
     }),
     ...(targets === undefined ? {} : { mutate: targets }),
     reporters: ['json'],
@@ -599,6 +449,27 @@ function writeStrykerConfig({ options, sourceConfig, targets, configPath, create
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
+}
+
+function strykerRunnerConfig({ options, sourceConfig, tsconfigFile, createdFiles }) {
+  const runner = testRunnerFor(options.projectRoot);
+  if (runner !== 'vitest') {
+    return mutationConfigFor(runner, {
+      sourceConfig,
+      tsconfigFile,
+      projectRoot: options.projectRoot,
+      layout: readLayout(),
+    });
+  }
+  const vitestConfigPath = installMutationCompanion(
+    options,
+    [sourceConfig.vitest?.configFile, '.nitpicker-diff-stryker.vitest.config.ts'],
+    createdFiles,
+  );
+  return rebaseMutationConfig(sourceConfig, {
+    tsconfigFile,
+    vitestConfigFile: relativeProjectPath(options.projectRoot, vitestConfigPath),
+  });
 }
 
 const SKIP_MESSAGES = {
@@ -631,6 +502,7 @@ function runStrykerOrExplainSkip(options, configPath) {
       options,
       relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
       arguments_: ['run', configPath],
+      environment: mutationEnvironmentFor(testRunnerFor(options.projectRoot), options.projectRoot),
       acceptedStatuses: [0],
     });
     return undefined;
@@ -1171,42 +1043,6 @@ function runDependencyCruiser(options, layout) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
   return report;
-}
-
-function runNodeTool({ acceptedStatuses, ...invocation }) {
-  const result = spawnNodeTool(invocation);
-  if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${invocation.options.kind} exited with ${String(result.status)}: ${detail}`);
-  }
-  return result;
-}
-
-function spawnNodeTool({
-  options,
-  relativeToolPath,
-  absoluteToolPath,
-  arguments_,
-  cwd = options.projectRoot,
-  environment = {},
-}) {
-  const name = relativeToolPath === undefined ? undefined : toolNameForPath(relativeToolPath);
-  const toolPath =
-    absoluteToolPath ??
-    resolveTool(name, {
-      projectRoot: options.liveProjectRoot,
-      bin: relativeToolPath.slice(name.length + 1),
-    }).binPath;
-  const result = spawnSync(process.execPath, [toolPath, ...arguments_], {
-    cwd,
-    env: { ...process.env, ...environment },
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-  });
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  return result;
 }
 
 async function importPolicyModule(options, relativePath, suffix = '') {

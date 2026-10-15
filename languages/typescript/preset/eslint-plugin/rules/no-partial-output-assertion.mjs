@@ -97,6 +97,18 @@ function isPartialMatcherAssertion(node) {
   return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
 }
 
+function isNodePartialAssertion(node) {
+  const callee = node.callee;
+  if (callee.type !== 'MemberExpression' || propertyName(callee) !== 'partialDeepStrictEqual') {
+    return false;
+  }
+  const owner = callee.object;
+  return (
+    (owner.type === 'Identifier' && owner.name === 'assert') ||
+    (owner.type === 'MemberExpression' && propertyName(owner) === 'assert')
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -109,6 +121,8 @@ export const rule = {
         'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
       partialMatcher:
         'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+      partialDeepEqual:
+        'Pass the whole expected value to `assert.deepStrictEqual` instead of `assert.partialDeepStrictEqual`: the rest of the value goes unchecked. If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
@@ -118,6 +132,8 @@ export const rule = {
           context.report({ node: node.callee.property, messageId: 'partialOutput' });
         } else if (isPartialMatcherAssertion(node)) {
           context.report({ node: node.callee.property, messageId: 'partialMatcher' });
+        } else if (isNodePartialAssertion(node)) {
+          context.report({ node: node.callee.property, messageId: 'partialDeepEqual' });
         }
       },
     };
