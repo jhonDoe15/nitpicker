@@ -48,6 +48,7 @@ function writeShard(
     overallStatus = 'completed',
     elapsedMs = 10,
     policyChanges,
+    notices,
   },
 ) {
   const shardRoot = path.join(inputRoot, String(index));
@@ -74,6 +75,7 @@ function writeShard(
     })),
     exclusions: ['generated/**'],
     ...(policyChanges === undefined ? {} : { policyChanges }),
+    ...(notices === undefined ? {} : { notices }),
     renamedPaths: 0,
     elapsedMs,
     overallStatus,
@@ -130,6 +132,25 @@ describe('quality shard aggregation', () => {
     expect(readJson(fixture.outputRoot, 'summary.json')).toEqual(report.summary);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
       'New enforceable findings: 1',
+    );
+  });
+
+  it('carries the notices of the shards into the report and the text summary', () => {
+    const fixture = createFixture();
+    const notices = ['1 changed TypeScript file is outside layout.sourceRoots'];
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], notices });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'], notices });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('first'), analyzer('second')],
+      shardCount: 2,
+    });
+
+    expect(report.summary.notices).toEqual(notices);
+    expect(readJson(fixture.outputRoot, 'summary.json').notices).toEqual(notices);
+    expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toContain(
+      `  ${notices[0]}`,
     );
   });
 

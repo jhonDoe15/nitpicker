@@ -24,7 +24,11 @@ export function policyHash(analyzers, configOverrides = []) {
 }
 
 export function summaryFields(configOverrides, shardSummary) {
-  return { configOverrides, policyChanges: shardSummary.policyChanges ?? [] };
+  return {
+    configOverrides,
+    policyChanges: shardSummary.policyChanges ?? [],
+    notices: shardSummary.notices ?? [],
+  };
 }
 
 export function sortByToolAndPath(entries) {

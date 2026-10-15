@@ -176,6 +176,7 @@ function runAndCombine(context) {
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
     policyChanges: context.baseSetup.policyChanges,
+    notices: settings.describeNotices?.([...layout.touchedCode.changedLines.keys()]) ?? [],
   });
 }
 
@@ -310,7 +311,7 @@ function collect(outcomes, key) {
 
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges } = context;
+  const { configOverrides, policyChanges, notices } = context;
   const newFindings = collect(outcomes, 'newFindings');
   return {
     summary: {
@@ -321,6 +322,7 @@ function buildReport(context) {
       policyHash: policyHash(analyzers, configOverrides),
       configOverrides,
       policyChanges,
+      notices,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,
