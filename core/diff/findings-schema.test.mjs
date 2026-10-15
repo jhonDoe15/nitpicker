@@ -5,11 +5,11 @@ import { normalizeArchitectureViolations } from '../../languages/typescript/adap
 import {
   normalizeCoupling,
   normalizeCrap,
-  normalizeDeadCode,
   normalizeMutation,
   normalizeStructure,
   normalizeTestRuntime,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
+import { normalizeDeadCode } from '../../languages/typescript/adapters/dead-code/normalize.mjs';
 import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';

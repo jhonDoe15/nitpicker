@@ -38,6 +38,8 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/oxlint/stage/oxlint-directives.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-inline-config.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-stage.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/dependencies/no-dev-dependency-in-production.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/dependencies/package-manifest.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];
@@ -63,6 +65,8 @@ const QUALITY_AREA_ADAPTER_FILES = [
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/quality-areas.mjs',
   'languages/typescript/adapters/quality-areas-runner.mjs',
+  'languages/typescript/adapters/dead-code/normalize.mjs',
+  'shared/hygiene/rules.mjs',
   'shared/policy.mjs',
   ...PROJECT_DEPENDENCY_GRAPH_FILES,
 ];

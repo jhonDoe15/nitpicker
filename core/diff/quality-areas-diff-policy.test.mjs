@@ -19,13 +19,13 @@ import {
   normalizeCoupling,
   normalizeCoverage,
   normalizeCrap,
-  normalizeDeadCode,
   normalizeMutation,
   normalizeStructure,
   normalizeTestRuntime,
   rebaseMutationConfig,
   sourceSnippet,
 } from '../../languages/typescript/adapters/quality-areas-runner.mjs';
+import { normalizeDeadCode } from '../../languages/typescript/adapters/dead-code/normalize.mjs';
 import { normalizeDuplicates } from '../../languages/typescript/preset/duplicates/normalize.mjs';
 
 const EXPECTED_ANALYZER_NAMES = [
@@ -513,7 +513,7 @@ describe('complete quality-area analyzer catalog', () => {
               { name: 'Local', line: 2, col: 13, usedInFile: true },
             ],
             exports: [{ name: 'helper', line: 5, col: 17 }],
-            dependencies: [{ name: 'left-pad' }],
+            binaries: [{ name: 'left-pad' }],
           },
         ],
       },
@@ -525,7 +525,7 @@ describe('complete quality-area analyzer catalog', () => {
       'Exported type Rejection is never imported. Remove `export`, or the type if nothing uses it.',
       'Exported type Local is only used in its own file. Remove `export`.',
       'Export helper is never imported. Remove `export`, or the declaration if nothing uses it.',
-      'dependencies: left-pad',
+      'binaries: left-pad',
     ]);
   });
 
