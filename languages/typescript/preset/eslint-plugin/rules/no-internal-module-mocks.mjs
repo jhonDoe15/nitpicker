@@ -3,6 +3,26 @@ import { productionModulePath } from '../test-isolation/production-source.mjs';
 const EXCEPTION_ROUTE =
   'If injection is not possible, add an exception for nitpicker/no-internal-module-mocks in nitpicker.config.json.';
 
+function isVitestAlias(specifier) {
+  return specifier.type === 'ImportSpecifier' && ['vi', 'vitest'].includes(specifier.imported.name);
+}
+
+function trackVitestAliases(aliases, node) {
+  for (const specifier of node.specifiers.filter(isVitestAlias)) aliases.add(specifier.local.name);
+}
+
+function trackNamespaces(namespaces, node) {
+  for (const specifier of node.specifiers) {
+    if (specifier.type === 'ImportNamespaceSpecifier') {
+      namespaces.set(specifier.local.name, node.source.value);
+    }
+  }
+}
+
+function isVitestMember(aliases, callee) {
+  return callee.type === 'MemberExpression' && !callee.computed && aliases.has(callee.object.name);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -17,31 +37,14 @@ export const rule = {
     const productionNamespaces = new Map();
     return {
       ImportDeclaration(node) {
-        if (node.source.value === 'vitest') {
-          for (const specifier of node.specifiers) {
-            if (
-              specifier.type === 'ImportSpecifier' &&
-              ['vi', 'vitest'].includes(specifier.imported.name)
-            )
-              aliases.add(specifier.local.name);
-          }
-          return;
-        }
-        if (productionModulePath(node.source.value, context.filename) === undefined) return;
-        for (const specifier of node.specifiers) {
-          if (specifier.type === 'ImportNamespaceSpecifier') {
-            productionNamespaces.set(specifier.local.name, node.source.value);
-          }
+        if (node.source.value === 'vitest') trackVitestAliases(aliases, node);
+        else if (productionModulePath(node.source.value, context.filename) !== undefined) {
+          trackNamespaces(productionNamespaces, node);
         }
       },
       CallExpression(node) {
         const callee = node.callee;
-        if (
-          callee.type !== 'MemberExpression' ||
-          callee.computed ||
-          !aliases.has(callee.object.name)
-        )
-          return;
+        if (!isVitestMember(aliases, callee)) return;
         if (callee.property.name === 'spyOn') {
           const source = productionNamespaces.get(node.arguments[0]?.name);
           if (source !== undefined)

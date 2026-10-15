@@ -1,27 +1,21 @@
 import { callbackOf, chainHasProperty, isCaseCall } from './test-calls.mjs';
 
 const MIN_COPIES = 3;
-const SKIPPED_KEYS = new Set([
-  'parent',
-  'loc',
-  'range',
-  'start',
-  'end',
-  'raw',
-  'tokens',
-  'comments',
+const LITERAL_TOKENS = new Set([
+  'String',
+  'Numeric',
+  'Boolean',
+  'Null',
+  'RegularExpression',
+  'Template',
+  'BigInt',
 ]);
-const LITERAL_TYPES = new Set(['Literal', 'TemplateElement']);
 
-function shapeOf(node) {
-  if (Array.isArray(node)) return node.map(shapeOf);
-  if (node === null || typeof node !== 'object') return node;
-  if (LITERAL_TYPES.has(node.type)) return node.type;
-  return Object.fromEntries(
-    Object.entries(node)
-      .filter(([key]) => !SKIPPED_KEYS.has(key))
-      .map(([key, value]) => [key, shapeOf(value)]),
-  );
+function shapeOf(sourceCode, node) {
+  return sourceCode
+    .getTokens(node)
+    .map((token) => (LITERAL_TOKENS.has(token.type) ? `<${token.type}>` : token.value))
+    .join(' ');
 }
 
 function isPlainCase(statement) {
@@ -33,11 +27,11 @@ function isPlainCase(statement) {
   );
 }
 
-function copiesIn(statements) {
+function copiesIn(sourceCode, statements) {
   const groups = new Map();
   for (const statement of statements.filter(isPlainCase)) {
     const callback = callbackOf(statement.expression);
-    const key = JSON.stringify(shapeOf(callback));
+    const key = shapeOf(sourceCode, callback);
     groups.set(key, [...(groups.get(key) ?? []), statement.expression]);
   }
   return [...groups.values()].filter((calls) => calls.length >= MIN_COPIES);
@@ -55,7 +49,7 @@ export const rule = {
   },
   create(context) {
     function check(node) {
-      for (const calls of copiesIn(node.body)) {
+      for (const calls of copiesIn(context.sourceCode, node.body)) {
         for (const call of calls.slice(MIN_COPIES - 1)) {
           context.report({
             node: call.callee,

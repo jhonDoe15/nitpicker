@@ -1,12 +1,9 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import qualityConfig from '../defaults/vitest.quality.config.ts';
 
-const configUrl = pathToFileURL(
-  path.join(import.meta.dirname, '../defaults/vitest.quality.config.ts'),
-).href;
 const temporaryRoots = [];
 const looseProjectTest = `{
   retry: 2,
@@ -36,11 +33,14 @@ async function resolvedConfig(projectFiles) {
   const previous = process.cwd();
   process.chdir(root);
   try {
-    const { default: config } = await import(`${configUrl}?run=${String(temporaryRoots.length)}`);
-    return await config({ command: 'serve', mode: 'test' });
+    return await qualityConfig({ command: 'serve', mode: 'test' });
   } finally {
     process.chdir(previous);
   }
+}
+
+function pick(source, keys) {
+  return Object.fromEntries(keys.map((key) => [key, source[key]]));
 }
 
 const pinnedGlobal = {
@@ -66,11 +66,13 @@ describe('the vitest config nitpicker runs tests with', () => {
       'vitest.config.mjs': `export default { test: ${looseProjectTest} };`,
     });
 
-    expect(config.test).toMatchObject({
+    expect(
+      pick(config.test, [...Object.keys(pinnedGlobal), ...Object.keys(pinnedPerProject)]),
+    ).toEqual({
       ...pinnedGlobal,
       ...pinnedPerProject,
-      environment: 'jsdom',
     });
+    expect(config.test.environment).toBe('jsdom');
   });
 
   it('pins the options of inline projects in a project config and keeps their other settings', async () => {
@@ -81,20 +83,22 @@ describe('the vitest config nitpicker runs tests with', () => {
       ] } };`,
     });
 
-    expect(config.test.projects).toEqual([
-      { test: expect.objectContaining({ name: 'ui', environment: 'jsdom', ...pinnedPerProject }) },
-      './packages/api',
-    ]);
+    const [ui, api] = config.test.projects;
+    expect(pick(ui.test, ['name', 'environment', ...Object.keys(pinnedPerProject)])).toEqual({
+      name: 'ui',
+      environment: 'jsdom',
+      ...pinnedPerProject,
+    });
+    expect(api).toBe('./packages/api');
   });
 
   it('pins the same options when the project has no vitest config', async () => {
     const config = await resolvedConfig({});
 
-    expect(config.test).toMatchObject(pinnedGlobal);
-    expect(config.test.projects.map(({ test }) => test)).toEqual([
-      expect.objectContaining(pinnedPerProject),
-      expect.objectContaining(pinnedPerProject),
-    ]);
+    expect(pick(config.test, Object.keys(pinnedGlobal))).toEqual(pinnedGlobal);
+    expect(
+      config.test.projects.map(({ test }) => pick(test, Object.keys(pinnedPerProject))),
+    ).toEqual([pinnedPerProject, pinnedPerProject]);
   });
 
   it('strips coverage ignore hints from sources and keeps line positions', async () => {

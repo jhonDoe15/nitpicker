@@ -1,14 +1,8 @@
 import { readLayout } from '../../head-policy.mjs';
+import { isTestFunctionChain } from '../test-quality/test-calls.mjs';
 
 const layout = readLayout();
 const RUNNABLE_NAME = new RegExp(`\\.(?:test|spec)\\.(?:${layout.extensions.join('|')})$`, 'u');
-const TEST_CALLS = new Set(['describe', 'suite', 'it', 'test']);
-
-function rootName(callee) {
-  if (callee.type === 'Identifier') return callee.name;
-  if (callee.type === 'MemberExpression') return rootName(callee.object);
-  return callee.type === 'CallExpression' ? rootName(callee.callee) : undefined;
-}
 
 export const rule = {
   meta: {
@@ -28,7 +22,7 @@ export const rule = {
           (statement) =>
             statement.type === 'ExpressionStatement' &&
             statement.expression.type === 'CallExpression' &&
-            TEST_CALLS.has(rootName(statement.expression.callee)),
+            isTestFunctionChain(statement.expression.callee),
         );
         if (first !== undefined) context.report({ node: first, messageId: 'neverRuns' });
       },

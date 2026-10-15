@@ -8,6 +8,7 @@ import { createEslintAnalyzer } from '../../adapters/eslint.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks.mjs';
 import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
+import { TEST_HONESTY_POLICY_FILES } from '../eslint-config/test-honesty/policy-files.mjs';
 import { createQualityChecks, eslintVersion, hashFiles } from '../quality-checks.mjs';
 
 const ANALYZER_RUNTIME_FILES = [
@@ -38,6 +39,7 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/oxlint/stage/oxlint-directives.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-inline-config.mjs',
   'languages/typescript/adapters/oxlint/stage/oxlint-stage.mjs',
+  ...TEST_HONESTY_POLICY_FILES,
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
 ];

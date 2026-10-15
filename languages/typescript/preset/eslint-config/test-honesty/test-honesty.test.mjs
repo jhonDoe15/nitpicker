@@ -30,73 +30,14 @@ function messages(code, filename = 'test/a.test.ts', used = config) {
 }
 
 describe('test honesty rules', () => {
-  it.each([
-    ['literal subject', "it('x', () => { expect(true).toBe(true); });", 'can never fail'],
-    ['toBeDefined', "it('x', () => { expect(make()).toBeDefined(); });", '`toBeDefined` passes'],
-    ['toBeTruthy', "it('x', () => { expect(make()).toBeTruthy(); });", '`toBeTruthy` passes'],
-    ['not.toBeNull', "it('x', () => { expect(make()).not.toBeNull(); });", '`not.toBeNull`'],
-    [
-      'resolves.toBeDefined',
-      "it('x', async () => { await expect(p).resolves.toBeDefined(); });",
-      '`toBeDefined`',
-    ],
-    [
-      'bare toHaveBeenCalled',
-      "it('x', () => { expect(spy).toHaveBeenCalled(); });",
-      'toHaveBeenCalledWith',
-    ],
-    [
-      'toThrow without message',
-      "it('x', () => { expect(run).toThrow(); });",
-      'Add an error message',
-    ],
-    ['module-level let', "let calls = 0;\nit('x', () => { calls += 1; });", 'beforeEach'],
-    [
-      'stryker global',
-      "it('x', () => { Reflect.get(globalThis, '__stryker__'); });",
-      'mutation harness',
-    ],
-    ['stryker identifier', "it('x', () => { run(STRYKER_ACTIVE_MUTANT); });", 'mutation harness'],
-    ['todo', "it.todo('later');", 'delete the stub'],
-    ['fails', "it.fails('x', () => { expect(run()).toBe(2); });", 'correct behaviour'],
-    ['skipIf(true)', "it.skipIf(true)('x', () => {});", 'switches the test off for good'],
-    ['fake timers', "it('x', () => { vi.useFakeTimers(); });", 'vi.useRealTimers()'],
-    ['real clock', "it('x', () => { run(Date.now()); });", 'vi.setSystemTime'],
-    ['real randomness', "it('x', () => { run(Math.random()); });", 'seeded or fixed'],
-    [
-      'copied tests',
-      [1, 2, 3]
-        .map((n) => `it('t${String(n)}', () => { expect(run(${String(n)})).toBe(${String(n)}); });`)
-        .join('\n'),
-      'it.each',
-    ],
-    [
-      'an inline eslint disable',
-      "/* eslint-disable */\nit('x', () => {});",
-      'nitpicker config file',
-    ],
-    ['@ts-expect-error', '// @ts-expect-error\nrun(1);', 'Fix the type error'],
-    ['a Stryker comment', "// Stryker disable all\nit('x', () => {});", 'Test this code instead'],
-  ])('name the allowed form for %s', (_name, code, allowed) => {
-    expect(messages(code).join('\n')).toContain(allowed);
-  });
-
-  it('name the exception route in nitpicker.config.json where the form can be legitimate', () => {
-    for (const code of [
-      "it('x', () => { expect(make()).toBeDefined(); });",
-      "let calls = 0;\nit('x', () => { calls += 1; });",
-      "it.todo('later');",
-      "it('x', () => { vi.useFakeTimers(); });",
-      "it('x', () => { run(Date.now()); });",
-    ]) {
-      expect(messages(code).join('\n')).toContain('nitpicker.config.json');
-    }
-  });
-
   it('keep an inline eslint disable from silencing the rules', () => {
     const found = messages("/* eslint-disable */\nlet calls = 0;\nit('x', () => { calls += 1; });");
 
-    expect(found.some((text) => text.includes('Shared mutable state'))).toBe(true);
+    expect(found).toEqual([
+      "'/* eslint-disable */' has no effect because you have 'noInlineConfig' setting in your config.",
+      'Fix the violation; inline ESLint disables are not allowed. A reviewed exception belongs in the nitpicker config file.',
+      'Shared mutable state makes tests depend on their order. Keep `calls` inside the test, or declare it without a value and set it in `beforeEach`. A justified exception goes in nitpicker.config.json.',
+    ]);
   });
 
   it('allow ordinary comments, pinned values and restored fake timers in tests', () => {
@@ -120,9 +61,9 @@ describe('test honesty rules', () => {
   it('keep test helpers out of production source and name the test folder', () => {
     const code = 'export const labels = [1, -1, 0];';
 
-    expect(messages(code, 'src/main/features/labels/testing/make-labels.ts').join('\n')).toContain(
-      'Move it to the test folder',
-    );
+    expect(messages(code, 'src/main/features/labels/testing/make-labels.ts')).toEqual([
+      'This looks like a test helper (testing/), but it sits in production source, so it is mutation-tested and shipped. Move it to the test folder (for example test/support/). If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.',
+    ]);
     expect(messages(code, 'src/main/features/labels/domain/labels.ts')).toEqual([]);
     expect(messages(code, 'test/support/make-labels.ts')).toEqual([]);
   });
@@ -130,26 +71,29 @@ describe('test honesty rules', () => {
   it('keep the real network out of unit tests only', () => {
     const code = "it('x', async () => { await fetch('http://127.0.0.1:9'); });";
 
-    expect(messages(code, 'src/main/features/a/__tests__/a.test.ts').join('\n')).toContain(
-      'must not reach the network',
-    );
-    expect(messages(code, 'src/main/features/a/a.test.ts').join('\n')).toContain(
-      'must not reach the network',
-    );
+    const networkMessage =
+      'A unit test must not reach the network. Inject the client and fake it. A justified exception goes in nitpicker.config.json.';
+
+    expect(messages(code, 'src/main/features/a/__tests__/a.test.ts')).toEqual([networkMessage]);
+    expect(messages(code, 'src/main/features/a/a.test.ts')).toEqual([networkMessage]);
     expect(messages(code, 'test/api.test.ts')).toEqual([]);
   });
 
   it('report tests in a file the runner does not collect, but not in test files', () => {
     const code = "it('ships express in 2 days', () => { expect(days('express')).toBe(2); });";
 
-    expect(messages(code, 'test/orders-check.ts').join('\n')).toContain('never run');
+    expect(messages(code, 'test/orders-check.ts')).toEqual([
+      'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). If another test file runs it on purpose, add an exception for nitpicker/no-uncollected-tests in nitpicker.config.json.',
+    ]);
     expect(messages(code, 'test/orders.test.ts')).toEqual([]);
   });
 
   it('keep production code out of the setup files', () => {
     const code = "import { classify } from '../src/main/classify.js';\nclassify(1);";
 
-    expect(messages(code, 'test/setup.ts').join('\n')).toContain('covered without a test');
+    expect(messages(code, 'test/setup.ts')).toEqual([
+      'A setup file runs before every test file, so production code imported here is covered without a test. Import ../src/main/classify.js in the tests that need it. A justified exception goes in nitpicker.config.json.',
+    ]);
     expect(messages(code, 'test/helpers/build.ts')).toEqual([]);
   });
 

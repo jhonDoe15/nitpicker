@@ -22,11 +22,21 @@ export const rule = {
       context.report({ node, messageId: 'productionImport', data: { source } });
     }
     return {
-      ImportDeclaration: (node) => check(node, node.source.value),
-      ExportAllDeclaration: (node) => check(node, node.source.value),
-      ExportNamedDeclaration: (node) => node.source && check(node, node.source.value),
-      ImportExpression: (node) => check(node, node.source.value),
-      CallExpression: (node) => check(node, requireSource(node)),
+      ImportDeclaration(node) {
+        check(node, node.source.value);
+      },
+      ExportAllDeclaration(node) {
+        check(node, node.source.value);
+      },
+      ExportNamedDeclaration(node) {
+        if (node.source) check(node, node.source.value);
+      },
+      ImportExpression(node) {
+        check(node, node.source.value);
+      },
+      CallExpression(node) {
+        check(node, requireSource(node));
+      },
     };
   },
 };
