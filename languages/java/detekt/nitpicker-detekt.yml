@@ -2,7 +2,7 @@
 # project's own detekt config, so a project cannot switch these rules off, lower their severity, exclude
 # paths or skip annotated code in detekt.yml: every rule below sets active, severity, includes, excludes and
 # ignoreAnnotated itself. Lift them per path with "exceptions" in nitpicker.config.json. The rule list is
-# languages/java/adapters/kotlin-rules.mjs.
+# languages/java/adapters/kotlin/rules/kotlin-rules.mjs.
 # Rules here that need type resolution run because the detekt task passes the module's classpath.
 
 potential-bugs:

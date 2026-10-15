@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { JAVA_NATIVE_RULES, SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
-import {
-  commit,
-  gradleRepository,
-  run,
-  useGradleCli,
-  write,
-} from '../diff/fixtures/gradle-cli.mjs';
+import { commit, gradleRepository, run, useGradleCli, write } from './test-support/gradle-cli.mjs';
 
 useGradleCli();
 

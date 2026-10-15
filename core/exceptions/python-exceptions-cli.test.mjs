@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../config.mjs';
+import { validateConfig } from '../configuration/validate.mjs';
 import { RULE_IDS } from '../../shared/policy.mjs';
 import {
   commit,
@@ -8,7 +8,7 @@ import {
   run,
   usePythonCli,
   write,
-} from '../diff/fixtures/python-cli.mjs';
+} from './test-support/python-cli.mjs';
 
 usePythonCli();
 

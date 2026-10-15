@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../config.mjs';
+import { validateConfig } from '../configuration/validate.mjs';
 import {
   commitAll,
   runTypescript,
   typescriptRepository,
   useTypescriptCli,
   writeFiles,
-} from '../diff/fixtures/typescript-cli.mjs';
+} from './test-support/typescript-cli.mjs';
 
 useTypescriptCli();
 
