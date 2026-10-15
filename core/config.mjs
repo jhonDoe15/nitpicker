@@ -19,9 +19,9 @@ import { validateJavaConfig } from '../languages/java/adapters/java-policy.mjs';
 import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options.mjs';
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { validateTools } from './config/tool-settings.mjs';
-import { rejectHeadBase, rejectUnreadableSources } from './config-checks/project-config.mjs';
-import { rejectUndeclaredPreset } from './config-checks/preset-detection.mjs';
-import { validateLayout } from './config-checks/layout.mjs';
+import { rejectHeadBase, rejectUnreadableSources } from './config/project-config.mjs';
+import { rejectUndeclaredPreset } from './config/preset-detection.mjs';
+import { validateLayout } from './config/layout.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
 const TYPESCRIPT_ONLY_KEYS = ['layout', 'exceptions', 'react', 'tools'];
