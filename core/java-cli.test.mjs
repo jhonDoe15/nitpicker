@@ -114,7 +114,7 @@ function run(root, extra = [], { subprocess = false } = {}) {
   const reports = path.join(temporaryRoot('nitpicker-java-out-'), 'reports');
   const exitCode = runCli({
     arguments_: ['--base', 'comparison-base', '--output', reports, ...extra],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', NITPICKER_ACCEPT_POLICY_CHANGE: '1' },
     currentProjectRoot: root,
     stdout: { write: (value) => (output.out += value) },
     stderr: { write: (value) => (output.err += value) },

@@ -20,6 +20,7 @@ import { validateKotlinOptions } from '../languages/java/adapters/kotlin-options
 import { SHARED_EXCEPTION_RULES } from '../shared/policy.mjs';
 import { validateTools } from './config/tool-settings.mjs';
 import { rejectHeadBase, rejectUnreadableSources } from './config-checks/project-config.mjs';
+import { rejectUndeclaredPreset } from './config-checks/preset-detection.mjs';
 import { validateLayout } from './config-checks/layout.mjs';
 
 export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
@@ -43,6 +44,13 @@ const REACT_KEYS = ['enabled', 'styling'];
 const CUSTOM_ANALYZER_KEYS = ['name', 'command', 'args'];
 
 export function loadConfig(projectRoot) {
+  const config = readConfigFile(projectRoot);
+  rejectUnreadableSources(config, projectRoot);
+  rejectUndeclaredPreset(config, projectRoot);
+  return config;
+}
+
+function readConfigFile(projectRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
   if (!existsSync(configPath)) {
     return {};
@@ -55,9 +63,7 @@ export function loadConfig(projectRoot) {
       `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
-  const config = validateConfig(parsed);
-  rejectUnreadableSources(config, projectRoot);
-  return config;
+  return validateConfig(parsed);
 }
 
 export function validateConfig(config) {
