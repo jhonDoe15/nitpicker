@@ -27,18 +27,38 @@ Source files carry no comments; formats and protocols that names cannot express 
 
 ## Running the checks
 
+Pull requests do not run CI on every push. Check your change locally before you push it and again
+before it is merged:
+
 ```sh
 npm ci
-npm test
-node core/cli.mjs --base origin/main
+git fetch origin main
+npm run check
 ```
+
+`npm run check` runs the self-gate (nitpicker checks your change against the remote's default
+branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
+so `npm run check -- --maxWorkers=2` matches CI's worker count. It needs Node.js 22.14 or newer (CI
+uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
+untracked files included, while CI checks the pull request merged into its target branch, so commit
+everything and merge or rebase on the latest `main` before the final run. A change to a language's
+end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
+`test:python`), which needs the language's toolchain. CI runs only the Python one, in the
+`python-e2e` workflow, on pushes and pull requests that touch the paths it lists.
+
+CI (the `typescript` workflow) runs:
+
+- on every push to `main` that touches a path in the workflow's `paths` list;
+- on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
+  label again for another run);
+- by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
+
+GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
+before adding the label.
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
 network; see [docs/python-preset.md](docs/python-preset.md).
-
-The last command is the self-gate CI runs: nitpicker checks its own changes against `main`.
-Run everything locally before pushing.
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).
