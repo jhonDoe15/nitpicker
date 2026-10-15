@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -9,6 +9,7 @@ import { applyRuleExceptions } from '../exceptions.mjs';
 import { strictTestConfigFor } from '../strict-tests.mjs';
 import { testHonestyConfigFor } from './index.mjs';
 import { setupFilesIn } from './setup-files.mjs';
+import { stubRestoresIn } from './stub-restores.mjs';
 
 const layout = resolveLayout();
 const parser = { languageOptions: { parser: tseslint.parser } };
@@ -140,6 +141,7 @@ function projectWith(files) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-setup-files-'));
   temporaryRoots.push(root);
   for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
   return root;
@@ -173,5 +175,63 @@ describe('setup files named by the project vitest config', () => {
     expect(
       setupFilesIn(projectWith({ 'vitest.config.ts': 'export default { test: {} };' })),
     ).toEqual([]);
+  });
+});
+
+describe('stub restores the project vitest config switches on', () => {
+  const restores = (scope, globals, envs) => ({ scope, globals, envs });
+
+  it.each([
+    [
+      'unstubGlobals for the whole project',
+      { 'vitest.config.ts': 'export default defineConfig({ test: { unstubGlobals: true } });' },
+      [restores('.', true, false)],
+    ],
+    [
+      'unstubEnvs for the whole project',
+      {
+        'vite.config.mjs': "export default { test: { 'unstubEnvs': true, unstubGlobals: false } };",
+      },
+      [restores('.', false, true)],
+    ],
+    [
+      'both in an inline test.projects entry with its own root',
+      {
+        'vitest.config.ts': [
+          'export default { test: { projects: [',
+          "  { test: { name: 'web', root: './packages/web', unstubGlobals: true, unstubEnvs: true } },",
+          "  { test: { name: 'api', root: 'packages/api' } },",
+          '] } };',
+        ].join('\n'),
+      },
+      [restores('packages/web', true, true)],
+    ],
+    [
+      'unstubGlobals in the config of a path or glob test.projects entry',
+      {
+        'vitest.config.ts':
+          "export default { test: { projects: ['packages/*', '!packages/old'] } };",
+        'packages/web/vitest.config.ts': 'export default { test: { unstubGlobals: true } };',
+        'packages/api/vitest.config.ts': 'export default { test: { unstubGlobals: false } };',
+      },
+      [restores('packages/web', true, false)],
+    ],
+  ])('reads %s', (_name, files, expected) => {
+    expect(stubRestoresIn(projectWith(files))).toEqual(expected);
+  });
+
+  it('turn the stub check off where the project config restores stubs itself', () => {
+    const scoped = [
+      parser,
+      ...testHonestyConfigFor(layout, {
+        stubRestores: [restores('.', true, false), restores('test/web', true, true)],
+      }),
+    ];
+    const code = "it('x', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });";
+
+    expect(messages(code, 'test/a.test.ts', scoped)).toEqual([
+      'This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`. A justified exception goes in nitpicker.config.json.',
+    ]);
+    expect(messages(code, 'test/web/a.test.ts', scoped)).toEqual([]);
   });
 });

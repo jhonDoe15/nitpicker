@@ -16,7 +16,7 @@ import { testHonestyConfigFor } from ${moduleUrl('eslint-config/test-honesty/ind
 const layout = resolveLayout();
 export default [
   { languageOptions: { parser: tseslint.parser } },
-  { files: ['**/*.test.ts'], plugins: { vitest }, rules: vitest.configs.recommended.rules },
+  { files: ['**/*.test.ts'], plugins: { vitest }, rules: { 'vitest/no-disabled-tests': 'error' } },
   ...strictTestConfigFor(layout),
   ...testHonestyConfigFor(layout, { setupFiles: ['test/setup.ts'] }),
 ];

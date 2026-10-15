@@ -5,6 +5,7 @@ export const TEST_HONESTY_POLICY_FILES = [
   `${ROOT}/eslint-config/test-honesty/restricted-matchers.mjs`,
   `${ROOT}/eslint-config/test-honesty/selectors.mjs`,
   `${ROOT}/eslint-config/test-honesty/setup-files.mjs`,
+  `${ROOT}/eslint-config/test-honesty/stub-restores.mjs`,
   `${ROOT}/eslint-plugin/test-assertions/no-switched-off-tests.mjs`,
   `${ROOT}/eslint-plugin/test-assertions/rules.mjs`,
   `${ROOT}/eslint-plugin/test-isolation/no-production-imports-in-setup-files.mjs`,

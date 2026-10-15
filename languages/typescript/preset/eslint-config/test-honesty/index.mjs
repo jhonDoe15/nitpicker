@@ -15,18 +15,28 @@ function unitTestGlobsFor(layout) {
   ];
 }
 
-function stubRestoreConfigFor(layout, setupFiles) {
-  return {
-    files: [...layout.testRoots, ...layout.sourceRoots].map(
-      (root) => `${root}/**/*.{test,spec}.${codeExtensions}`,
-    ),
-    ignores: [...layout.excludedGlobs, ...setupFiles],
-    plugins: { nitpicker: nitpickerRules },
-    rules: { 'nitpicker/fake-timers-require-restore': ['error', { stubs: true }] },
-  };
+function runnableTestGlobs(roots) {
+  return roots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`);
 }
 
-export function testHonestyConfigFor(layout, { setupFiles = [] } = {}) {
+function stubRestoreConfigFor(layout, { setupFiles, stubRestores }) {
+  const ignores = [...layout.excludedGlobs, ...setupFiles];
+  const projectGlobs = runnableTestGlobs([...layout.testRoots, ...layout.sourceRoots]);
+  const checked = (restores) => ({
+    files: restores.scope === '.' ? projectGlobs : runnableTestGlobs([restores.scope]),
+    ignores,
+    plugins: { nitpicker: nitpickerRules },
+    rules: {
+      'nitpicker/fake-timers-require-restore': [
+        'error',
+        { globals: !restores.globals, envs: !restores.envs },
+      ],
+    },
+  });
+  return [{ scope: '.', globals: false, envs: false }, ...stubRestores].map(checked);
+}
+
+export function testHonestyConfigFor(layout, { setupFiles = [], stubRestores = [] } = {}) {
   const files = testAreaGlobsFor(layout);
   return [
     {
@@ -58,7 +68,7 @@ export function testHonestyConfigFor(layout, { setupFiles = [] } = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: { 'nitpicker/no-test-helpers-in-source': 'error' },
     },
-    stubRestoreConfigFor(layout, setupFiles),
+    ...stubRestoreConfigFor(layout, { setupFiles, stubRestores }),
     {
       files,
       ignores: [...layout.excludedGlobs, `**/*.{test,spec,test-d,spec-d}.${codeExtensions}`],

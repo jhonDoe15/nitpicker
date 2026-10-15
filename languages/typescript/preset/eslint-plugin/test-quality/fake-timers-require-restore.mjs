@@ -53,7 +53,7 @@ export const rule = {
     schema: [
       {
         type: 'object',
-        properties: { stubs: { type: 'boolean' } },
+        properties: { globals: { type: 'boolean' }, envs: { type: 'boolean' } },
         additionalProperties: false,
       },
     ],
@@ -65,9 +65,12 @@ export const rule = {
     },
   },
   create(context) {
-    const checked = context.options[0]?.stubs
-      ? new Set(RESTORES.keys())
-      : new Set(['useFakeTimers']);
+    const options = context.options[0] ?? {};
+    const checked = new Set([
+      'useFakeTimers',
+      ...(options.globals ? ['stubGlobal'] : []),
+      ...(options.envs ? ['stubEnv'] : []),
+    ]);
     const aliases = new Set(['vi', 'vitest']);
     const calls = [];
     const restored = new Set();

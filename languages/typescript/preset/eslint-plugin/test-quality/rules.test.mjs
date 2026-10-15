@@ -124,7 +124,7 @@ tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
     "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
     {
       code: "afterEach(vi.unstubAllGlobals); afterEach(() => { vi.unstubAllEnvs(); }); it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
-      options: [{ stubs: true }],
+      options: [{ globals: true, envs: true }],
     },
   ],
   invalid: [
@@ -153,8 +153,13 @@ tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
     },
     {
       code: "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); vi.useRealTimers(); });",
-      options: [{ stubs: true }],
+      options: [{ globals: true, envs: true }],
       errors: [{ messageId: 'unrestoredGlobal' }, { messageId: 'unrestoredEnv' }],
+    },
+    {
+      code: "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
+      options: [{ globals: false, envs: true }],
+      errors: [{ messageId: 'unrestoredEnv' }],
     },
   ],
 });
