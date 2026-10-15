@@ -111,6 +111,7 @@ function runConfigured(cli) {
       ...cli,
       currentProjectRoot,
       analyzers,
+      injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
     });
