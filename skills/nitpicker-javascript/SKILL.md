@@ -69,7 +69,8 @@ If your change edits a function that existed before it, read
 
 - Every package you import is listed in `package.json`: `dependencies` for production code (zod
   too), `devDependencies` for tests and tooling. Remove a dependency nothing imports. Production
-  code importing a `devDependency` fails.
+  code importing a `devDependency` fails, except in an app a bundler builds (Vite, webpack, Next.js
+  and the like) and in test helpers, mocks and stories.
 - Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries,
   or a file over 1 MB. If one is really needed, stop and ask: the project adds an `exceptions`
   entry (rule, paths, reason) to `nitpicker.config.json`.

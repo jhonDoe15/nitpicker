@@ -55,8 +55,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Repository files
 
-- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries
-  (the Gradle wrapper jar is fine), or a file over 1 MB. If one is really needed, stop and ask:
+- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries,
+  or a file over 1 MB. If one is really needed, stop and ask:
   the project adds an `exceptions` entry (rule, paths, reason) to `nitpicker.config.json`.
 
 ## Size
