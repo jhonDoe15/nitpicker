@@ -47,8 +47,8 @@ config file is an exception like any other.
 
 - `const` only. No mutation: no `push`, property assignment, or `delete`. Parameters, return types,
   module-level values and data types are `readonly`. A variable inside a function needs no
-  `readonly` annotation: the mutation bans below already cover it, and annotating every
-  intermediate `map` or `filter` result only made agents write worse code to satisfy the rule.
+  `readonly` annotation, because the mutation rules below report every way to change it, and
+  annotating every intermediate `map` or `filter` result only made agents write worse code.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
@@ -70,10 +70,13 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   reported once, by this rule, for its `unknown` parameter; `no-handwritten-boundary-guard` stays
   in `adapters/`.
 - Mutation is reported once per site by the `no-restricted-syntax` domain selectors (`push` and the
-  other mutating array methods, property assignment and update, `delete`, and `Object.assign`,
-  `defineProperty`, `defineProperties` or `setPrototypeOf` on anything but a fresh object literal).
-  `functional/immutable-data` is not enabled because it reported the same sites a second time with
-  a less helpful message.
+  other mutating array methods, also through `a['push']` or `.call`, `.apply` and `.bind`, property
+  assignment and update, destructuring assignment, `delete`, and `Object.assign`, `defineProperty`,
+  `defineProperties` or `setPrototypeOf` on anything but a fresh object literal, and `Reflect.set`,
+  `defineProperty`, `deleteProperty` or `setPrototypeOf`). `nitpicker/no-mutating-method-in-domain`
+  uses the types to report the mutating methods of a `Set`, `Map`, `WeakSet`, `WeakMap`, `Date`
+  (its `set` methods) or typed array. `functional/immutable-data` is not enabled because it reported
+  the same sites a second time with a less helpful message.
 
 ## Inside `adapters/`
 

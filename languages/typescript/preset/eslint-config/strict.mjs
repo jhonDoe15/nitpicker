@@ -132,7 +132,7 @@ export function strictTypedConfigFor(layout, parserOptions) {
       files: domainGlobsFor(layout.sourceRoots),
       ...productionScope(layout),
       languageOptions: { parser: tseslint.parser, parserOptions },
-      plugins: { functional },
+      plugins: { functional, nitpicker: nitpickerRules },
       rules: domainTypeAwareFunctionalRules,
     },
     ...strictAdaptersTypedConfig.map((entry) => ({

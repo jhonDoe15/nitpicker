@@ -56,6 +56,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/no-self-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-throw.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-unknown-in-domain.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/no-mutating-method-in-domain.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-unvalidated-schema-field.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-wait-for-with-fake-timers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/container-pause-requires-finally-unpause.mjs',
