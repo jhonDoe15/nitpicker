@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../java-diff.mjs';
-import { codeSmellRules } from '../code-smells/code-smell-rules.mjs';
-import { expectedViolations, reportedViolations } from '../fixtures/violation-markers.mjs';
+import { codeSmellRules } from '../test-support/code-smell-rules.mjs';
+import { expectedViolations, reportedViolations } from '../test-support/violation-markers.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';

@@ -12,10 +12,10 @@ before relying on them.
 ## What nitpicker does
 
 - Every finding is classified `enforceable`, `descriptive`, or `tool-error`
-  (`core/diff/finding-schema.mjs`). Only new enforceable findings (and tool errors) fail
+  (`core/diff/comparison/finding-schema.mjs`). Only new enforceable findings (and tool errors) fail
   the gate; descriptive findings such as metrics are reported as deltas and never fail it.
 - A finding's identity key is tool, rule, path, symbol, analyzer-provided identity, classification
-  and metric name (`core/diff/fingerprint.mjs`). It has no line number, so inserting
+  and metric name (`core/diff/comparison/fingerprint.mjs`). It has no line number, so inserting
   lines above a finding does not make it new. Renames detected by `git diff --find-renames` are
   applied to the base paths before matching, so a moved file does not turn its findings into
   new-plus-resolved.
