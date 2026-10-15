@@ -22,12 +22,12 @@ const eslint = new ESLint({
   ],
 });
 
-async function setupMessages(importLine) {
+async function setupMessages(importLine, local = 'userEvent') {
   const code = [
     importLine,
     "import { screen } from '@testing-library/react';",
-    "it('clicks', async () => { await userEvent.click(screen.getByRole('button')); });",
-    "it('types', async () => { const user = userEvent.setup(); await user.type(screen.getByRole('textbox'), 'a'); });",
+    `it('clicks', async () => { await ${local}.click(screen.getByRole('button')); });`,
+    `it('types', async () => { const user = ${local}.setup(); await user.type(screen.getByRole('textbox'), 'a'); });`,
   ].join('\n');
   const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/a.test.tsx') });
   return result.messages
@@ -44,14 +44,8 @@ describe('testing-library/prefer-user-event-setup', () => {
   });
 
   it('follows a renamed named import', async () => {
-    const code = [
-      "import { userEvent as events } from '@testing-library/user-event';",
-      "it('clicks', async () => { await events.click(document.body); });",
-    ].join('\n');
-    const [result] = await eslint.lintText(code, { filePath: path.join(root, 'test/b.test.tsx') });
+    const importLine = "import { userEvent as events } from '@testing-library/user-event';";
 
-    expect(result.messages.map(({ ruleId }) => ruleId)).toContain(
-      'testing-library/prefer-user-event-setup',
-    );
+    expect(await setupMessages(importLine, 'events')).toEqual([{ line: 3, method: 'click' }]);
   });
 });
