@@ -47,11 +47,14 @@ describe('condenseFailure', () => {
 
     const condensed = condenseFailure(text, 1000);
 
+    const [head, cause, tail] = condensed.split('\n...\n');
     expect(condensed.length).toBeLessThanOrEqual(1000);
-    expect(condensed).toContain('Caused by: org.pitest.help.PitError');
-    expect(condensed).toContain("Execution failed for task ':nitpickerPit'.");
+    expect(head.split('\n')[0]).toBe('INFO: step 0');
+    expect(cause).toBe(
+      'Caused by: org.pitest.help.PitError: Coverage generation minion exited abnormally!',
+    );
+    expect(tail.split('\n').at(-1)).toBe("Execution failed for task ':nitpickerPit'.");
     expect(condensed).not.toContain('Picked up');
-    expect(condensed.startsWith('INFO: step 0')).toBe(true);
   });
 
   it('does not repeat a cause that the head already shows', () => {

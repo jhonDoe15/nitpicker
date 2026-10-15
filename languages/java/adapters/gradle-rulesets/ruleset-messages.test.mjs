@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { CONFIGURATION_FILES } from '../java-analyzer.mjs';
 
-const RULESETS = ['pmd-ruleset.xml', 'spring-ruleset.xml'];
+const packageRoot = path.resolve(import.meta.dirname, '../../../..');
+const RULESETS = CONFIGURATION_FILES.filter((file) => file.endsWith('-ruleset.xml'));
 
 function messages(file) {
-  const text = readFileSync(new URL(`../../gradle/${file}`, import.meta.url), 'utf8');
+  const text = readFileSync(path.join(packageRoot, file), 'utf8');
   return [...text.matchAll(/<rule\b[^>]*?\bname="([^"]+)"[^>]*?\bmessage="([^"]*)"/g)].map(
     ([, name, message]) => ({ name, message: message.replaceAll('&quot;', '"') }),
   );

@@ -5,9 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
 import { readJavaFindings as readFindings } from './java-reports.mjs';
 import { readingFrom, reportBaseOf, rootReports, writeModules } from './fixtures/report-base.mjs';
-
 const readJavaFindings = readingFrom(readFindings);
-
 const temporaryRoots = [];
 
 afterEach(() => {
@@ -111,9 +109,7 @@ function projectWithKotlinReports({
 } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-reports-')));
   temporaryRoots.push(root);
-  const reports = rootReports(root);
-  mkdirSync(reports, { recursive: true });
-  writeModules(root);
+  const reports = writeModules(root);
   mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
   mkdirSync(path.join(root, 'src/main/java/demo'), { recursive: true });
   writeFileSync(path.join(root, 'src/main/kotlin/demo/Bad.kt'), KOTLIN_SOURCE);
