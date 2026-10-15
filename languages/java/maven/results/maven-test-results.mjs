@@ -4,24 +4,25 @@ import { freshReports, suiteNameOf } from '../maven-tests.mjs';
 
 const TEST_RESULTS_DIRECTORY = 'test-results';
 
-function resultDirectories(module) {
-  return [
-    ['surefire', module.surefireReports],
-    ['failsafe', module.failsafeReports],
-  ];
+function copyReports(reports, target) {
+  if (reports.length === 0) {
+    return;
+  }
+  mkdirSync(target, { recursive: true });
+  for (const report of reports) {
+    copyFileSync(report, path.join(target, path.basename(report)));
+  }
 }
 
 export function copyTestResults({ module, reportDir, since, isArchunit }) {
-  for (const [task, directory] of resultDirectories(module)) {
-    const reports = freshReports(directory, since).filter(
-      (report) => !isArchunit(suiteNameOf(report)),
+  const tasks = [
+    ['surefire', module.surefireReports],
+    ['failsafe', module.failsafeReports],
+  ];
+  for (const [task, directory] of tasks) {
+    copyReports(
+      freshReports(directory, since).filter((report) => !isArchunit(suiteNameOf(report))),
+      path.join(reportDir, TEST_RESULTS_DIRECTORY, task),
     );
-    if (reports.length > 0) {
-      const target = path.join(reportDir, TEST_RESULTS_DIRECTORY, task);
-      mkdirSync(target, { recursive: true });
-      for (const report of reports) {
-        copyFileSync(report, path.join(target, path.basename(report)));
-      }
-    }
   }
 }
