@@ -8,8 +8,8 @@ const KOTLIN_DUPLICATES = {
   reportFile: 'kotlin-duplicates.json',
 };
 
-export function runKotlinDuplicates(projectRoot) {
-  runJavaDuplicates(projectRoot, KOTLIN_DUPLICATES);
+export function runKotlinDuplicates(projectRoot, { reportRoot, manifest }) {
+  runJavaDuplicates(projectRoot, { ...KOTLIN_DUPLICATES, reportRoot, manifest });
 }
 
 export function readKotlinDuplicateFindings(reportRoot) {
