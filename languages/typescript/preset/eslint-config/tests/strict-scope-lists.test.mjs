@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import strictSyntaxConfig, { restrictedSyntaxByScope } from '../strict.config.mjs';
+import { restrictedSyntaxByScope, strictSyntaxConfig } from '../strict.mjs';
 
 const commonBans = [
   {

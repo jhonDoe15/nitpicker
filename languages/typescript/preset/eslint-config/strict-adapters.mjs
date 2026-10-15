@@ -29,7 +29,7 @@ export const restrictedAdapterSyntax = [
   },
 ];
 
-export default [
+export const strictAdaptersConfig = [
   { ignores: excludedGlobs },
   {
     files: adapterGlobs,

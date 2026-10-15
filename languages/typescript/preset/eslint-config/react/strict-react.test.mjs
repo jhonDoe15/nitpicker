@@ -7,10 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../../failure-messages/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { reactRuleIds, reactTestRuleIds } from './react-rules.mjs';
-import strictSyntaxConfig, {
-  restrictedSyntaxFor,
-  strictSyntaxConfigFor,
-} from '../strict.config.mjs';
+import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
   path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),
