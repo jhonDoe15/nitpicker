@@ -62,6 +62,24 @@ describe('dependencyFindings', () => {
     ]);
   });
 
+  it('names the Maven scopes on a Maven build', () => {
+    const findings = dependencyFindings({
+      build: 'maven',
+      analyzed: true,
+      declared: [declared('g', 'a', { configuration: 'compile' })],
+    });
+
+    expect(findings.map(({ path: file, message }) => [file, message])).toEqual([
+      [
+        'pom.xml',
+        'Dependency g:a has compile scope but no main class uses it. ' +
+          'Remove it, give it runtime scope if it is only needed at run time, ' +
+          'or provided scope if only its source annotations are needed. ' +
+          'If it is right here, add an exception for dependencies/unused-declared-dependency in nitpicker.config.json.',
+      ],
+    ]);
+  });
+
   it('says nothing when the project has no main classes to compare with', () => {
     expect(dependencyFindings({ analyzed: false, declared: [declared('g', 'a')] })).toEqual([]);
   });
