@@ -139,7 +139,9 @@ describe('a finding that spans the whole file is about the file', () => {
   });
 
   it('anchors on the program', () => {
-    expect(wholeFileFinding('export const a = 1;\n')[0].identity).toContain('node:Program');
+    expect(wholeFileFinding('export const a = 1;\n')[0].identity).toBe(
+      'message:Reported text.|node:Program|syntax:program|occurrence:1',
+    );
   });
 });
 
