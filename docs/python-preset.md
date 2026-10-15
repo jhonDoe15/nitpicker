@@ -435,7 +435,7 @@ directory>` or `-m unittest discover` (with `-s tests` or `-s test` when that di
   analyzer's configuration hash.
 - **Tests.** `ingest/crap.test.mjs` (the join, on a real lizard CSV and coverage.py report),
   `python-structure.test.mjs`, `python-crap.test.mjs` (lizard resolution and failures) and
-  `python-sources.test.mjs`, all with the fake toolchain; `core/command/python/python-cli.test.mjs` drives the CLI
+  `python-sources.test.mjs`, all with the fake toolchain; `core/command/python/python-cli-*.test.mjs` drives the CLI
   in two runs: new structure, CRAP-score and unknown-coverage findings next to a touched legacy
   function that is held, then the legacy function grown under a raised `thresholds.crapLimit`; the
   `lizard-failed` error is covered by `python-crap.test.mjs` (the runner passes any step's rule
@@ -490,7 +490,7 @@ or remove it if it can't happen. To exempt a file, add it to exclude in nitpicke
   only this rule's. Test files are not measured, so a `.` source root does not gate them.
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
-  `compareFindings`); `core/command/python/python-cli.test.mjs` (the CLI with fake tools); the gated e2e test adds
+  `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
   six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
   branch passes).
@@ -716,7 +716,7 @@ and CRAP rules.
 
 ## Tests
 
-- `core/command/python/python-cli.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
+- `core/command/python/python-cli-*.test.mjs`: fast, always on. The CLI end to end with a fake toolchain
   (`languages/python/adapters/fixtures/fake-python-tools.mjs` behind wrapper scripts in a
   `.venv/bin`): clean and failing changes in every report format, a change that removes every test,
   tool errors (failing tests, no environment), `--all`, rejected TypeScript-only keys, and that
@@ -766,7 +766,7 @@ and CRAP rules.
   `python-duplicates.test.mjs` (real jscpd on small projects), `python-import-linter.test.mjs`
   (config detection, the run, failures), `ingest/import-linter.test.mjs` (real import-linter 2.15
   output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
-  `core/command/python/python-cli.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
+  `core/command/python/python-cli-*.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
   interpreter prints. The e2e file has a layered `shop` project (a copy fails as a duplicate; a
   domain package importing the web package fails as `stability-direction` and as two broken
   import-linter chains; `importLinter: false` skips the contracts; a clean change passes) and needs

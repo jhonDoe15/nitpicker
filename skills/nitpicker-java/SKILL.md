@@ -6,7 +6,7 @@ description: Use before writing or changing Java in a project that runs nitpicke
 # nitpicker for Java
 
 nitpicker gates a Gradle project (Java 21) with PMD, SpotBugs, Checkstyle, google-java-format,
-JaCoCo, lizard (CRAP), PIT mutation testing, jscpd and size limits. It fails only on findings your
+JaCoCo, CRAP, PIT mutation testing, jscpd and size limits. It fails only on findings your
 change adds, so leave code the task doesn't need alone. Write the allowed forms below from the
 start; the gate is a backstop.
 
@@ -16,17 +16,19 @@ start; the gate is a backstop.
 2. Format with google-java-format 1.25.2 (the project's own formatter task, or the CLI with
    `--replace`). `npx nitpicker --fix` does not touch Java.
 3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
-   code. It runs Gradle on the merge base and on head, takes minutes, and needs `gradle` on the
-   PATH (or `NITPICKER_GRADLE=./gradlew`) and `lizard==1.24.1` installed.
+   code. It runs Gradle on the merge base and on head and takes minutes. It uses the project's
+   `./gradlew` when there is one, otherwise `gradle` from the PATH (`NITPICKER_GRADLE` overrides
+   both).
 4. Act on the exit code:
    - 0: done.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
-   - 2: no new findings, but a tool failed (Gradle, a missing lizard, a test failure). Fix the
+   - 2: no new findings, but a tool failed (Gradle, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
-5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, config `exclude`/`disable`/`exceptions`,
-   legacy entries, or weakened tests. If a finding seems wrong, stop and ask.
+5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
+   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. If a
+   finding seems wrong, stop and ask.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
@@ -49,8 +51,7 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
-- Utility classes: no empty private no-arg constructor. JaCoCo leaves it out of its report, so it
-  fails `crap-coverage-unknown`. Use a final class of static methods with the implicit constructor.
+- Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
   less stable one (`stability-direction`).
@@ -60,16 +61,18 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- A project's own `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` replaces the
-  default PMD rules (errorprone, bestpractices; main sources only) and Google checks. Read them.
+- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
+  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
+  when `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
 
 - Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
   returns a failure value, logs and recovers, or rethrows with the cause:
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
-- Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Throwable)` and
-  `catch (NullPointerException)` fail. Keep the `try` around the one call that throws.
+- Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
+  `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
+  the `try` around the one call that throws.
 - Expected failures are values: a `sealed interface` result returning
   `new QuantityParse.Invalid(text)` beats throwing.
 
@@ -92,8 +95,10 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   (`discountCents(1000, 10)` and `(1000, 9)`); a new mutant that survives or has no test
   (`mutant-survived`, `mutant-nocoverage`) fails. If no input can kill a mutant, the code is
   redundant: delete or simplify it.
-- PMD, SpotBugs, Checkstyle, the formatter, the method limits, CRAP and duplicate detection read
-  main sources only. Tests get only the file (500 lines) and folder (6 files) limits.
+- Tests get the same PMD, Checkstyle and formatter checks as main code, plus the file (500 lines)
+  and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection read main
+  sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply to main
+  sources only. If a PMD rule flags test code that is right, add an exception for `pmd/<rule>`.
 
 ## Editing existing code
 
@@ -113,6 +118,9 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `"serial"` or `"fallthrough"` is itself a finding (`pmd/InlineSuppression`). The one allowed
   marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
   SQL ([spring.md](spring.md)).
+- `@SuppressFBWarnings` is a finding too (`spotbugs/InlineSuppression`). Checkstyle's
+  `@SuppressWarnings("checkstyle:...")` and `CHECKSTYLE.OFF`/`CHECKSTYLE.SUPPRESS` comments do
+  nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
   that names the finding as printed, for example `pmd/UnusedPrivateField`, with its paths and a
   reason. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a

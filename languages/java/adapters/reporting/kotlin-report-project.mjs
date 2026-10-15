@@ -148,7 +148,7 @@ export function projectWithKotlinReports({
     [`${reports}/checkstyle.xml`]: '<checkstyle version="10.21.1"></checkstyle>',
     [`${reports}/jacoco.xml`]: JACOCO,
     [`${reports}/pit/mutations.xml`]: PIT,
-    [`${reports}/lizard.csv`]: '',
+    [`${reports}/structure.json`]: '[]',
     [`${reports}/duplicates.json`]: JSON.stringify({ runs: [] }),
     [`${reports}/detekt.sarif`]: readFileSync(DETEKT_SARIF, 'utf8'),
     [`${reports}/ktfmt.txt`]: formatList,

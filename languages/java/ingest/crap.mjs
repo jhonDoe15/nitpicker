@@ -7,8 +7,8 @@ export function calculateCrap(complexity, coveragePercent) {
   return complexity * complexity * uncovered ** 3 + complexity;
 }
 
-export function ingestCrap(lizardCsv, jacocoXml, options = {}) {
-  return ingestCrapFunctions(parseLizardCsv(lizardCsv), jacocoXml, options);
+export function ingestCrap(structure, jacocoXml, options = {}) {
+  return ingestCrapFunctions(structureFunctions(structure), jacocoXml, options);
 }
 
 export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
@@ -26,7 +26,7 @@ export function ingestCrapFunctions(parsed, jacocoXml, options = {}) {
 export function ingestCrapRows(parsed, options, resolve) {
   const tool = options.tool ?? 'crap';
   const limit = options.limit ?? DEFAULT_CRAP_SCORE_LIMIT;
-  const unique = createIdentityCounter();
+  const counters = new Map();
   const functions = [];
 
   for (const fn of parsed) {
@@ -35,6 +35,8 @@ export function ingestCrapRows(parsed, options, resolve) {
       continue;
     }
     const { coverage, name = fn.longName } = resolve(fn, filePath);
+    const unique = counters.get(filePath) ?? createIdentityCounter();
+    counters.set(filePath, unique);
     const key = unique(`function:${name}`);
     const sourceHash =
       coverage === undefined
@@ -52,6 +54,27 @@ export function ingestCrapRows(parsed, options, resolve) {
   return {
     findings: crapFindings(functions, { tool, limit, unknownMessage: options.unknownMessage }),
   };
+}
+
+function structureFunctions(entries) {
+  return entries
+    .filter((entry) => entry.privateEmptyConstructor !== true)
+    .map((entry) => {
+      if (!Number.isInteger(entry.complexity)) {
+        throw new TypeError(`Structure entry without complexity: ${entry.name}`);
+      }
+      if (typeof entry.signature !== 'string') {
+        throw new TypeError(`Structure entry without signature: ${entry.name}`);
+      }
+      return {
+        ccn: entry.complexity,
+        file: entry.file,
+        name: entry.name.split('.').at(-1),
+        longName: entry.signature,
+        start: entry.start,
+        end: entry.end,
+      };
+    });
 }
 
 export function parseLizardCsv(text) {
@@ -135,9 +158,8 @@ function counter(element, type) {
 }
 
 function selectNamedMethods(fn, candidates) {
-  const methodName = fn.name.split('::').at(-1);
   return candidates.filter(
-    (method) => method.name === methodName && method.line >= fn.start && method.line <= fn.end,
+    (method) => method.name === fn.name && method.line >= fn.start && method.line <= fn.end,
   );
 }
 
@@ -177,7 +199,12 @@ function lowestCoverage(matches) {
 
 function addClassMethods({ pkg, cls }, byFile) {
   const file = [pkg.attrs.name, cls.attrs.sourcefilename].filter(Boolean).join('/');
-  const simpleName = (cls.attrs.name ?? '').split('/').at(-1).split('$').at(-1);
+  const simpleName = (cls.attrs.name ?? '')
+    .split('/')
+    .at(-1)
+    .split('$')
+    .at(-1)
+    .replace(/^\d+/u, '');
   const methods = childrenNamed(cls, 'method')
     .map((method) => ({ method, line: Number.parseInt(method.attrs.line, 10) }))
     .filter(({ line }) => Number.isInteger(line));

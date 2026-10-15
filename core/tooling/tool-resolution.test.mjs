@@ -68,7 +68,9 @@ it('records the TypeScript version imported by structure instead of the consumer
     liveProjectRoot,
   });
 
-  expect(typecheck.resolveVersion(liveProjectRoot)).toBe(consumerTypeScriptVersion);
+  expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
+    `${consumerTypeScriptVersion};typescript-native@7.0.2`,
+  );
   expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
 });
 
@@ -92,6 +94,25 @@ it('rejects an owned tool whose installed version differs from its exact declara
 
   expect(() => resolveTool('owned-tool', { packageRoot })).toThrow(
     'version 1.2.4 does not match declared 1.2.3',
+  );
+});
+
+it('resolves an npm alias against the aliased package name and version', () => {
+  const alias = { declaredVersion: 'npm:real-tool@2.0.0', installedName: 'real-tool' };
+  const packageRoot = createOwnedToolPackage({ ...alias, installedVersion: '2.0.0' });
+  expect(resolveTool('owned-tool', { packageRoot }).version).toBe('2.0.0');
+
+  const drifted = createOwnedToolPackage({ ...alias, installedVersion: '2.0.1' });
+  expect(() => resolveTool('owned-tool', { packageRoot: drifted })).toThrow(
+    'version 2.0.1 does not match declared 2.0.0',
+  );
+  const renamed = createOwnedToolPackage({
+    ...alias,
+    installedName: 'owned-tool',
+    installedVersion: '2.0.0',
+  });
+  expect(() => resolveTool('owned-tool', { packageRoot: renamed })).toThrow(
+    'Invalid installed tool package for owned-tool',
   );
 });
 
@@ -176,7 +197,11 @@ function createSnapshotRoot() {
   return root;
 }
 
-function createOwnedToolPackage({ declaredVersion, installedVersion }) {
+function createOwnedToolPackage({
+  declaredVersion,
+  installedVersion,
+  installedName = 'owned-tool',
+}) {
   const packageRoot = createTemporaryRoot('nitpicker-tool-package-');
   writeFileSync(
     path.join(packageRoot, 'package.json'),
@@ -187,7 +212,7 @@ function createOwnedToolPackage({ declaredVersion, installedVersion }) {
   );
   const toolRoot = path.join(packageRoot, 'node_modules/owned-tool');
   writeManifest(path.join(toolRoot), {
-    name: 'owned-tool',
+    name: installedName,
     version: installedVersion,
   });
   mkdirSync(path.join(toolRoot, 'bin'), { recursive: true });
