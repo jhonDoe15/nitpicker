@@ -28,7 +28,7 @@ describe('nitpicker/naming-convention without type information', () => {
   it('checks names when the parser gives no TypeScript services', () => {
     expect(
       lintWithoutParserServices(
-        'export const total_count = 1;\nexport const Order = z.object({});\n',
+        "import { z } from 'zod';\nexport const total_count = 1;\nexport const Order = z.object({});\n",
       ),
     ).toEqual([
       'nitpicker/naming-convention: Variable name `total_count` must match one of the following formats: camelCase, UPPER_CASE',

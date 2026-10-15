@@ -1,9 +1,10 @@
 import tseslint from 'typescript-eslint';
+import { variableNamed } from '../analysis/ancestry.mjs';
 import { withReportFilter } from './report-filter.mjs';
 
 const baseRule = tseslint.plugin.rules['naming-convention'];
 
-const SCHEMA_ROOTS = new Set(['z', 'v', 'yup']);
+const SCHEMA_LIBRARY = /^(?:zod|valibot|yup)(?:\/|$)/;
 const COMPONENT_TYPES = new Set([
   'ComponentType',
   'FC',
@@ -31,13 +32,22 @@ function chainRoot(expression) {
   return chain.at(-1);
 }
 
-function isSchemaConstant(identifier) {
+function isSchemaLibraryBinding(sourceCode, identifier) {
+  return (
+    variableNamed(sourceCode, identifier)?.defs.some(
+      (definition) =>
+        definition.type === 'ImportBinding' && SCHEMA_LIBRARY.test(definition.parent.source.value),
+    ) === true
+  );
+}
+
+function isSchemaConstant(identifier, sourceCode) {
   const declarator = identifier.parent;
   if (declarator?.type !== 'VariableDeclarator' || declarator.id !== identifier) {
     return false;
   }
   const root = declarator.init === null ? undefined : chainRoot(declarator.init);
-  return root?.type === 'Identifier' && SCHEMA_ROOTS.has(root.name);
+  return root?.type === 'Identifier' && isSchemaLibraryBinding(sourceCode, root);
 }
 
 function typeName(annotation) {
@@ -59,14 +69,17 @@ function isComponentParameter(identifier) {
   );
 }
 
-function isAllowedPascalCase(node) {
+function isAllowedPascalCase(node, sourceCode) {
   if (node?.type !== 'Identifier' || !PASCAL_CASE.test(node.name)) {
     return false;
   }
-  return isSchemaConstant(node) || isComponentParameter(node);
+  return isSchemaConstant(node, sourceCode) || isComponentParameter(node);
 }
 
-const filtered = withReportFilter(baseRule, (descriptor) => !isAllowedPascalCase(descriptor.node));
+const filtered = withReportFilter(
+  baseRule,
+  (descriptor, context) => !isAllowedPascalCase(descriptor.node, context.sourceCode),
+);
 
 function hasSyntaxServices(services) {
   return (

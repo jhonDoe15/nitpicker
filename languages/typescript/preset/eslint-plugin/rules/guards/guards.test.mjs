@@ -138,6 +138,16 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
       code: 'export const dev = import.meta.env.DEV;',
       options: [{ allowImportMetaEnv: true }],
     },
+    {
+      filename: adapter,
+      code: 'export const dev = process.env.NODE_ENV !== "production";',
+      options: [{ allowBundlerEnv: true }],
+    },
+    {
+      filename: adapter,
+      code: 'export const api = process.env["NEXT_PUBLIC_API_URL"];',
+      options: [{ allowBundlerEnv: true }],
+    },
   ],
   invalid: [
     {
@@ -159,6 +169,23 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
       filename: adapter,
       code: 'export const url = process.env.API_URL;',
       options: [{ allowImportMetaEnv: true }],
+      errors: [{ messageId: 'envOutsideRoot' }],
+    },
+    {
+      filename: adapter,
+      code: 'export const url = process.env.API_URL;',
+      options: [{ allowBundlerEnv: true }],
+      errors: [{ messageId: 'envOutsideRoot' }],
+    },
+    {
+      filename: adapter,
+      code: 'export const env = process.env;',
+      options: [{ allowBundlerEnv: true }],
+      errors: [{ messageId: 'envOutsideRoot' }],
+    },
+    {
+      filename: adapter,
+      code: 'export const mode = process.env.NODE_ENV;',
       errors: [{ messageId: 'envOutsideRoot' }],
     },
     {
