@@ -6,7 +6,7 @@ import {
   DEPENDENCY_GRAPH_FILES,
 } from './checks/policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
-import { MINUTE_MS, eslintVersion } from './checks/constants.mjs';
+import { MINUTE_MS, eslintVersion, vitestVersion } from './checks/constants.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 
 const dependencyCruiserVersion = 'unresolved';
@@ -15,15 +15,9 @@ const prettierVersion = 'unresolved';
 
 const typeScriptVersion = 'unresolved';
 
-export const vitestVersion = 'unresolved';
-
 const jscpdVersion = 'unresolved';
 
 const knipVersion = 'unresolved';
-
-export const crapVersion = 'unresolved';
-
-export const strykerVersion = 'unresolved';
 
 const ARCHITECTURE_EXCLUSION =
   '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';

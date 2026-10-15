@@ -3,6 +3,16 @@ import { ancestorsOf } from '../../analysis/ancestry.mjs';
 
 const { isTestFixture } = readLayout();
 
+function isInsideGuardedTry(node) {
+  const ancestors = ancestorsOf(node);
+  return ancestors.some(
+    (current, index) =>
+      current.type === 'TryStatement' &&
+      current.finalizer &&
+      ancestors.slice(0, index).includes(current.block),
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -24,15 +34,7 @@ export const rule = {
           callee.property.name !== 'pause'
         )
           return;
-        const ancestors = ancestorsOf(node);
-        for (const current of ancestors) {
-          if (current.type === 'TryStatement' && current.finalizer) {
-            const insideBlock = ancestors
-              .slice(0, ancestors.indexOf(current))
-              .includes(current.block);
-            if (insideBlock) return;
-          }
-        }
+        if (isInsideGuardedTry(node)) return;
         context.report({ node, messageId: 'unguardedPause' });
       },
     };

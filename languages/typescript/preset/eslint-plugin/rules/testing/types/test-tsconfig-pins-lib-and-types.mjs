@@ -18,6 +18,15 @@ function isJsonStringify(callee) {
   );
 }
 
+function recordKey(property, keys, pending) {
+  if (property.type === 'SpreadElement') {
+    pending.push(property.argument);
+    return;
+  }
+  const name = propertyName(property);
+  if (name !== undefined) keys.add(name);
+}
+
 function knownKeys(context, node, seen = new Set()) {
   const pending = [node];
   const keys = new Set();
@@ -25,13 +34,7 @@ function knownKeys(context, node, seen = new Set()) {
     const resolved = resolveConstant(context, current);
     if (resolved?.type !== 'ObjectExpression' || seen.has(resolved)) return undefined;
     seen.add(resolved);
-    for (const property of resolved.properties) {
-      if (property.type === 'SpreadElement') pending.push(property.argument);
-      else {
-        const name = propertyName(property);
-        if (name !== undefined) keys.add(name);
-      }
-    }
+    for (const property of resolved.properties) recordKey(property, keys, pending);
   }
   return keys;
 }

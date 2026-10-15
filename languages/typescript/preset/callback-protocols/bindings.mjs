@@ -55,37 +55,46 @@ function containingClass(node) {
   );
 }
 
+function parameterDeclaration(scope, name) {
+  if (!functionLike(scope)) return undefined;
+  return scope.parameters.find((item) => memberName(item.name) === name);
+}
+
+function importBinding(statement, name) {
+  const clause = statement.importClause;
+  if (clause?.name?.text === name) return clause;
+  if (!clause?.namedBindings || !ts.isNamedImports(clause.namedBindings)) return undefined;
+  return clause.namedBindings.elements.find((element) => element.name.text === name);
+}
+
+function statementDeclaration(statement, name) {
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations.find((item) => memberName(item.name) === name);
+  }
+  if (
+    (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
+    statement.name?.text === name
+  ) {
+    return statement;
+  }
+  return ts.isImportDeclaration(statement) ? importBinding(statement, name) : undefined;
+}
+
+function scopeDeclaration(scope, name) {
+  const parameter = parameterDeclaration(scope, name);
+  if (parameter) return parameter;
+  if (!ts.isBlock(scope) && !ts.isSourceFile(scope)) return undefined;
+  for (const statement of scope.statements) {
+    const declaration = statementDeclaration(statement, name);
+    if (declaration) return declaration;
+  }
+  return undefined;
+}
+
 function declarationFor(identifier) {
   for (const scope of ancestorsOf(identifier)) {
-    if (functionLike(scope)) {
-      const parameter = scope.parameters.find((item) => memberName(item.name) === identifier.text);
-      if (parameter) return parameter;
-    }
-    if (ts.isBlock(scope) || ts.isSourceFile(scope)) {
-      for (const statement of scope.statements) {
-        if (ts.isVariableStatement(statement)) {
-          const declaration = statement.declarationList.declarations.find(
-            (item) => memberName(item.name) === identifier.text,
-          );
-          if (declaration) return declaration;
-        }
-        if (
-          (ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement)) &&
-          statement.name?.text === identifier.text
-        )
-          return statement;
-        if (ts.isImportDeclaration(statement)) {
-          const clause = statement.importClause;
-          if (clause?.name?.text === identifier.text) return clause;
-          if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
-            const item = clause.namedBindings.elements.find(
-              (element) => element.name.text === identifier.text,
-            );
-            if (item) return item;
-          }
-        }
-      }
-    }
+    const declaration = scopeDeclaration(scope, identifier.text);
+    if (declaration) return declaration;
   }
   return undefined;
 }
@@ -155,6 +164,29 @@ function receiverPart(node) {
     : undefined;
 }
 
+function joinedPath(head, parts) {
+  return [head, ...parts.toReversed()].join('.');
+}
+
+function identifierStep(node, bindings, parts) {
+  const value = identifierValue(node, bindings);
+  if (!value || ts.isNewExpression(unwrap(value))) {
+    return { done: true, path: joinedPath(node.text, parts) };
+  }
+  return { done: false, next: value };
+}
+
+function accessStep(node, bindings, parts) {
+  if (node.kind === ts.SyntaxKind.ThisKeyword) {
+    return { done: true, path: joinedPath('this', parts) };
+  }
+  if (ts.isIdentifier(node)) return identifierStep(node, bindings, parts);
+  const part = receiverPart(node);
+  if (part === undefined) return { done: true, path: undefined };
+  parts.push(part);
+  return { done: false, next: node.expression };
+}
+
 export function accessPath(expression, bindings, seen = new Set()) {
   const pending = [expression];
   const parts = [];
@@ -162,18 +194,9 @@ export function accessPath(expression, bindings, seen = new Set()) {
     const node = unwrap(current);
     if (!node || seen.has(node)) return undefined;
     seen.add(node);
-    if (node.kind === ts.SyntaxKind.ThisKeyword) return ['this', ...parts.toReversed()].join('.');
-    if (ts.isIdentifier(node)) {
-      const value = identifierValue(node, bindings);
-      if (!value || ts.isNewExpression(unwrap(value)))
-        return [node.text, ...parts.toReversed()].join('.');
-      pending.push(value);
-      continue;
-    }
-    const part = receiverPart(node);
-    if (part === undefined) return undefined;
-    parts.push(part);
-    pending.push(node.expression);
+    const step = accessStep(node, bindings, parts);
+    if (step.done) return step.path;
+    pending.push(step.next);
   }
   return undefined;
 }
