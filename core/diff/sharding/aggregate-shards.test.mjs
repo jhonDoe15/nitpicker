@@ -1,43 +1,21 @@
-import { exactText } from '../fixtures/output-expectations.mjs';
-import { createGitTemplate, copyGitTemplate } from '../fixtures/git-repository.mjs';
-import { spawnSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-import { aggregateShardReports } from './aggregate-shards.mjs';
+import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import {
-  analyzer,
-  createFixture,
-  readJson,
-  removeFixtures,
-  writeShard,
-} from './shard-fixtures.mjs';
+import { readJson } from '../git/test-support/fixture-files.mjs';
+import { useGitFixtures } from '../git/test-support/git-repository.mjs';
+import { exactText } from '../reporting/test-support/output-expectations.mjs';
+import { aggregateShardReports } from './aggregate-shards.mjs';
+import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
-afterEach(removeFixtures);
+const { createFixture } = useShardFixtures();
+const { createGitRepository } = useGitFixtures();
 
 const HELD_STRUCTURE_NOTE = [
   'structure/function-lines-limit src/main/invoice.ts',
   'computeInvoice has 68 lines; limit is 50',
   '(allowed because base was 68; any increase fails)',
 ].join(' ');
-
-function runGitCommand(repositoryRoot, arguments_) {
-  const result = spawnSync('git', arguments_, {
-    cwd: repositoryRoot,
-    encoding: 'utf8',
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
-  });
-  if (result.status !== 0) {
-    throw new Error(result.stderr || result.error?.message || 'git command failed');
-  }
-  return result.stdout.trim();
-}
-
-const gitTemplate = { root: undefined };
-beforeAll(() => {
-  gitTemplate.root = createGitTemplate();
-});
 
 describe('quality shard aggregation', () => {
   it('merges complete shards into one ordered report and final gate', () => {
@@ -151,18 +129,12 @@ ${HELD_STRUCTURE_NOTE}
   });
   it('uses the shard head policy when the live inventory has uncommitted changes', () => {
     const fixture = createFixture();
-    const repositoryRoot = path.join(path.dirname(fixture.inputRoot), 'repository');
+    const { root: repositoryRoot, baseSha: headSha } = createGitRepository(
+      { 'project/nitpicker.legacy.json': '{"sites":["head"]}' },
+      { prefix: 'nitpicker-shard-repository-' },
+    );
     const liveProjectRoot = path.join(repositoryRoot, 'project');
-    const inventoryPath = path.join(liveProjectRoot, 'nitpicker.legacy.json');
-    mkdirSync(liveProjectRoot, { recursive: true });
-    writeFileSync(inventoryPath, '{"sites":["head"]}');
-    copyGitTemplate(gitTemplate.root, repositoryRoot);
-    runGitCommand(repositoryRoot, ['config', 'user.name', 'Nitpicker Test']);
-    runGitCommand(repositoryRoot, ['config', 'user.email', 'nitpicker-test@example.com']);
-    runGitCommand(repositoryRoot, ['add', '--all']);
-    runGitCommand(repositoryRoot, ['commit', '--quiet', '-m', 'head policy']);
-    const headSha = runGitCommand(repositoryRoot, ['rev-parse', 'HEAD']);
-    writeFileSync(inventoryPath, '{"sites":["live"]}');
+    writeFileSync(path.join(liveProjectRoot, 'nitpicker.legacy.json'), '{"sites":["live"]}');
 
     const codingStandards = analyzer('coding-standards');
     codingStandards.resolveVersion = () => '1.0.0';

@@ -1,22 +1,23 @@
-import { exactText } from '../../../fixtures/output-expectations.mjs';
+import { exactText } from '../../../reporting/test-support/output-expectations.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  captureOutput,
   commitFiles,
-  createRepository,
+  useQualityDiffRepositories,
   fakeAnalyzer,
+  IN_PROCESS_TASKS,
+} from '../test-support/quality-diff-harness.mjs';
+import { runCli } from '../../../../cli.mjs';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+import {
   finding,
   findingLine,
-  IN_PROCESS_TASKS,
   policy,
-  readJson,
-  registerRepositoryLifecycle,
-} from '../quality-diff-harness.mjs';
-import { runCli } from '../../../../cli.mjs';
+} from '../../../execution/test-support/analyzer-findings.mjs';
+import { readJson } from '../../../git/test-support/fixture-files.mjs';
 
-registerRepositoryLifecycle();
+const { createRepository } = useQualityDiffRepositories();
 
 describe('quality diff command-line gate', () => {
   it('exits zero when the branch introduces no new enforceable findings', () => {

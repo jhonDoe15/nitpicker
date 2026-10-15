@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  callsLog,
-  commit,
-  LEGACY_VIOLATION,
-  pythonRepository,
-  run,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { callsLog, pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 const mutantFindings = (result) =>
   result.json('new-findings.json').filter(({ rule }) => rule !== 'mutation-summary');
@@ -29,7 +23,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     });
   it('fails a new surviving mutant and reports it with the function and the change', () => {
     const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
-    write(root, { 'mutants-data.json': mutants([1, 0]) });
+    writeFiles(root, { 'mutants-data.json': mutants([1, 0]) });
     commit(root, 'a mutant survives');
 
     const result = run(root);
@@ -51,7 +45,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   });
   it('fails a new mutant that no test reaches', () => {
     const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
-    write(root, { 'mutants-data.json': mutants([1, 33]) });
+    writeFiles(root, { 'mutants-data.json': mutants([1, 33]) });
     commit(root, 'a mutant is not covered');
 
     const result = run(root);
@@ -72,7 +66,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   });
   it('does not fail the survivor the base already had, even when its line moves', () => {
     const root = pythonRepository({ 'mutants-data.json': mutants([0]) });
-    write(root, { 'src/demo/a.py': 'import os\n\n\n\ndef value():\n    return 1\n' });
+    writeFiles(root, { 'src/demo/a.py': 'import os\n\n\n\ndef value():\n    return 1\n' });
     commit(root, 'move the function');
 
     const result = run(root);
@@ -82,7 +76,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   });
   it('lists the mutants that are neither killed, survived nor uncovered without failing', () => {
     const root = pythonRepository({ 'mutants-data.json': mutants([1]) });
-    write(root, { 'mutants-data.json': mutants([36]) });
+    writeFiles(root, { 'mutants-data.json': mutants([36]) });
     commit(root, 'a mutant times out');
 
     const result = run(root);
@@ -119,7 +113,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
       'mutants-data.json': mutants([0]),
       'tests/test_a.py': 'x = 1\n',
     });
-    write(root, changes);
+    writeFiles(root, changes);
     commit(root, 'change');
 
     const result = run(root);
@@ -132,7 +126,9 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   });
   it('keeps the lint and format findings when mutmut is missing, and says how to disable mutation', () => {
     const root = pythonRepository({ 'no-mutmut.txt': '' });
-    write(root, { 'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|Mutable default\n` });
+    writeFiles(root, {
+      'violations.txt': `${LEGACY_VIOLATION}B006|src/demo/a.py|Mutable default\n`,
+    });
     commit(root, 'a new violation');
 
     const result = run(root);
@@ -155,7 +151,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
       'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
       'no-mutmut.txt': '',
     });
-    write(root, { 'src/demo/b.py': 'x = 1\n' });
+    writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
     commit(root, 'change');
 
     const result = run(root);
@@ -167,7 +163,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {
     const calls = callsLog();
     const root = pythonRepository();
-    write(root, { 'test-exit.txt': '1\n' });
+    writeFiles(root, { 'test-exit.txt': '1\n' });
     commit(root, 'break the tests');
 
     const result = run(root);
@@ -178,7 +174,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
   });
   it('reports a failing mutmut run as a tool error on head', () => {
     const root = pythonRepository();
-    write(root, { 'mutmut-exit.txt': '2\n' });
+    writeFiles(root, { 'mutmut-exit.txt': '2\n' });
     commit(root, 'break mutmut');
 
     const result = run(root);

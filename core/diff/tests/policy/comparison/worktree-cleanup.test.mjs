@@ -3,24 +3,24 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mjs';
 import {
-  captureOutput,
   commitFiles,
   comparisonOptions,
-  createRepository,
+  useQualityDiffRepositories,
   fakeAnalyzer,
-  finding,
-  findingLine,
   IN_PROCESS_TASKS,
-  policy,
-  readJson,
-  registerRepositoryLifecycle,
   worktreePaths,
-  writeFiles,
-} from '../quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mjs';
 import { runCli } from '../../../../cli.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+import {
+  finding,
+  findingLine,
+  policy,
+} from '../../../execution/test-support/analyzer-findings.mjs';
+import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
-registerRepositoryLifecycle();
+const { createRepository } = useQualityDiffRepositories();
 
 describe('quality diff temporary worktrees and reports', () => {
   it.each(['crash', 'malformed'])(

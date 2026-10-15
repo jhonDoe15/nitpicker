@@ -3,19 +3,19 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   commitFiles,
-  createRepository,
+  useQualityDiffRepositories,
+  workingTreeOptions,
+} from '../test-support/quality-diff-harness.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import {
   finding,
   findingLine,
-  git,
   policy,
-  registerRepositoryLifecycle,
-  renameFile,
-  workingTreeOptions,
-  writeFiles,
-} from '../quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+} from '../../../execution/test-support/analyzer-findings.mjs';
+import { fixtureGit } from '../../../git/test-support/git-repository.mjs';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
 
-registerRepositoryLifecycle();
+const { createRepository } = useQualityDiffRepositories();
 
 describe('quality diff against the working tree', () => {
   it('reports a finding in an untracked file as new', () => {
@@ -67,7 +67,7 @@ describe('quality diff against the working tree', () => {
 
     const report = runQualityDiff(workingTreeOptions(repository));
 
-    expect(report.summary.headSha).toBe(git(repository.root, ['rev-parse', 'HEAD']).trim());
+    expect(report.summary.headSha).toBe(fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim());
   });
   it('leaves the index, branches, and files untouched', () => {
     const repository = createRepository({
@@ -79,19 +79,19 @@ describe('quality diff against the working tree', () => {
       'src/main/staged.ts': 'export const after = 1;\n',
       'src/main/untracked.ts': 'export {};\n',
     });
-    git(repository.root, ['add', 'src/main/staged.ts']);
+    fixtureGit(repository.root, ['add', 'src/main/staged.ts']);
     writeFiles(repository.root, {
       'src/main/staged.ts': 'export const unstaged = 1;\n',
     });
-    const statusBefore = git(repository.root, ['status', '--porcelain']);
-    const stagedBefore = git(repository.root, ['diff', '--cached']);
-    const refsBefore = git(repository.root, ['for-each-ref']);
+    const statusBefore = fixtureGit(repository.root, ['status', '--porcelain']);
+    const stagedBefore = fixtureGit(repository.root, ['diff', '--cached']);
+    const refsBefore = fixtureGit(repository.root, ['for-each-ref']);
 
     runQualityDiff(workingTreeOptions(repository));
 
-    expect(git(repository.root, ['status', '--porcelain'])).toBe(statusBefore);
-    expect(git(repository.root, ['diff', '--cached'])).toBe(stagedBefore);
-    expect(git(repository.root, ['for-each-ref'])).toBe(refsBefore);
+    expect(fixtureGit(repository.root, ['status', '--porcelain'])).toBe(statusBefore);
+    expect(fixtureGit(repository.root, ['diff', '--cached'])).toBe(stagedBefore);
+    expect(fixtureGit(repository.root, ['for-each-ref'])).toBe(refsBefore);
     expect(readFileSync(path.join(repository.root, 'src/main/staged.ts'), 'utf8')).toBe(
       'export const unstaged = 1;\n',
     );

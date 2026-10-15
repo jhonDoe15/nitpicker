@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mjs';
 
 // Most tests here are about snapshot report logic, so the analyzer task graph and the fixture

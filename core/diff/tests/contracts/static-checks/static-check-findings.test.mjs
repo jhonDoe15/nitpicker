@@ -1,21 +1,20 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../../languages/typescript/adapters/static-checks-runner.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../fixtures/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../execution/test-support/analyzer-parallelism.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
   toolRoot,
-  registerStaticRepositoryLifecycle,
+  useStaticCheckFixtures,
   fixtureAnalyzers,
   policyFiles,
   architectureReport,
-  createRepository,
-  writeFiles,
-  commit,
-} from './static-check-fixtures.mjs';
+} from './test-support/static-check-fixtures.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { commit } from '../../../git/test-support/git-repository.mjs';
 
-registerStaticRepositoryLifecycle();
+const { createRepository } = useStaticCheckFixtures();
 
 describe('static differential adapters', () => {
   let difference;

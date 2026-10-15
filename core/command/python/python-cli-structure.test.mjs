@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  commit,
-  newFindings,
-  pythonRepository,
-  run,
-  usePythonFixtures,
-  write,
-} from '../../diff/fixtures/python-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-usePythonFixtures(nitpickerCli);
+const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 const CLONE_SOURCE = [
   'def order_total(lines, discount):',
@@ -70,7 +65,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
       const root = pythonRepository({
         'structure-data.json': JSON.stringify([metric('value', 4)]),
       });
-      write(root, {
+      writeFiles(root, {
         'src/demo/a.py': 'import os\n\n\ndef value():\n    return 2\n',
         'structure-data.json': JSON.stringify([metric('value', 4), metric('fresh', 4)]),
         'lizard-data.csv': lizardRow('value', 5) + lizardRow('ghost', 1),
@@ -79,7 +74,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
       commit(root, 'add new functions, touch the legacy one');
       const added = run(root);
 
-      write(root, {
+      writeFiles(root, {
         'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
         'structure-data.json': JSON.stringify([metric('value', 5)]),
         'lizard-data.csv': lizardRow('value', 5),
@@ -124,7 +119,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
   });
   it('fails on a new duplicate and keeps a moved legacy duplicate baselined', () => {
     const root = pythonRepository({ 'src/demo/a.py': CLONE_SOURCE });
-    write(root, { 'src/demo/b.py': CLONE_SOURCE });
+    writeFiles(root, { 'src/demo/b.py': CLONE_SOURCE });
     commit(root, 'copy a module');
 
     const failed = run(root);
@@ -147,7 +142,7 @@ describe('nitpicker with "preset": "python" and function structure', () => {
       'src/demo/a.py': CLONE_SOURCE,
       'src/demo/b.py': CLONE_SOURCE,
     });
-    write(legacy, { 'src/demo/a.py': `import os\n\n\n${CLONE_SOURCE}` });
+    writeFiles(legacy, { 'src/demo/a.py': `import os\n\n\n${CLONE_SOURCE}` });
     commit(legacy, 'move the legacy duplicate');
 
     expect(run(legacy).exitCode).toBe(0);

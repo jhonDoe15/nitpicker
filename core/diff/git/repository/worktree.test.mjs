@@ -1,11 +1,9 @@
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { removeGitRepositories, createGitRepository } from '../../fixtures/git-repository.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../test-support/git-repository.mjs';
 import { withNamedTemporaryWorktree, withTemporaryWorktree } from './worktree.mjs';
 
-afterEach(() => {
-  removeGitRepositories();
-});
+const { createGitRepository } = useGitFixtures();
 
 describe('withTemporaryWorktree', () => {
   it('names the checked-out side in the directory the analyzers will print', () => {

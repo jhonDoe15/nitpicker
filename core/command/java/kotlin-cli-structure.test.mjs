@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
-import {
-  commit,
-  kotlinRepository,
-  run,
-  useGradleFixtures,
-  write,
-} from '../../diff/fixtures/java-cli-harness.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
-useGradleFixtures(nitpickerCli);
+const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin" and function structure', () => {
   const wideFunction = (name, parameters, start) => ({
@@ -37,7 +33,7 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
     });
   it('keeps a Kotlin function over the parameter limit baselined when it only moves', () => {
     const root = legacyWide();
-    write(root, {
+    writeFiles(root, {
       'src/main/kotlin/demo/Wide.kt': `package demo\n\nval answer = 1\n\nfun ${FOUR_PARAMETERS} = 0\n`,
       'kotlin-metrics.json': metricsOf(wideFunction('sum', 4, 5)),
     });
@@ -49,7 +45,7 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
   });
   it('fails a Kotlin function that grows past the parameter limit it already exceeded', () => {
     const root = legacyWide();
-    write(root, {
+    writeFiles(root, {
       'src/main/kotlin/demo/Wide.kt': wideSource('sum(a: Int, b: Int, c: Int, d: Int, e: Int)'),
       'kotlin-metrics.json': metricsOf(wideFunction('sum', 5, 3)),
     });
@@ -82,7 +78,7 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
   });
   it('fails a new Kotlin function over the parameter limit', () => {
     const root = legacyWide();
-    write(root, {
+    writeFiles(root, {
       'src/main/kotlin/demo/Wide.kt': wideSource(
         FOUR_PARAMETERS,
         'product(a: Int, b: Int, c: Int, d: Int)',
@@ -123,7 +119,7 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         (_, index) =>
           `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }\n`,
       ).join('')}        return total\n    }\n}\n`;
-    write(root, {
+    writeFiles(root, {
       'src/main/kotlin/demo/Left.kt': clone('Left'),
       'src/main/kotlin/demo/Right.kt': clone('Right'),
     });
