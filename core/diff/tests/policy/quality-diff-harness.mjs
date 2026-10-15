@@ -14,11 +14,12 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { runGit } from '../../git/repository/command.mjs';
 import { runTasksInProcess } from '../../fixtures/in-process-analyzers.mjs';
+import { fileURLToPath } from 'node:url';
 
 export const IN_PROCESS_TASKS = { runTasks: runTasksInProcess };
 
 const fakeAnalyzerPath = path.join(
-  new URL('../../', import.meta.url).pathname,
+  fileURLToPath(new URL('../../', import.meta.url)),
   'fixtures/fake-analyzer.mjs',
 );
 

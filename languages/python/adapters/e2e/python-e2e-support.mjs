@@ -11,11 +11,12 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../../core/cli.mjs';
+import { fileURLToPath } from 'node:url';
 
 export const pythonE2eEnabled = process.env.NITPICKER_PYTHON_E2E === '1';
 
 export const fixture = path.resolve(
-  new URL('../', import.meta.url).pathname,
+  fileURLToPath(new URL('../', import.meta.url)),
   'fixtures/python-project',
 );
 

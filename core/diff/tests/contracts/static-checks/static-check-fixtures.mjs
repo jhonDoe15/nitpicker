@@ -5,8 +5,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll } from 'vitest';
 import { createStaticCheckAnalyzer } from '../../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
+import { fileURLToPath } from 'node:url';
 
-export const toolRoot = path.resolve(new URL('../../../', import.meta.url).pathname, '../..');
+export const toolRoot = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)), '../..');
 
 const temporaryRoots = [];
 

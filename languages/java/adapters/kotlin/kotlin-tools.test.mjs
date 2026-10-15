@@ -4,8 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings, INIT_SCRIPT } from '../java-diff.mjs';
 import { kotlinGradleArguments, resolveKotlinTools } from './kotlin-tools.mjs';
+import { fileURLToPath } from 'node:url';
 
-const fakeGradle = path.join(new URL('../', import.meta.url).pathname, 'fixtures/fake-gradle.mjs');
+const fakeGradle = path.join(
+  fileURLToPath(new URL('../', import.meta.url)),
+  'fixtures/fake-gradle.mjs',
+);
 const temporaryRoots = [];
 
 afterEach(() => {

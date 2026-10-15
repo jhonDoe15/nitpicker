@@ -5,9 +5,10 @@ import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.m
 import { readStructureFindings } from '../../../java/adapters/metrics/java-structure.mjs';
 import { run } from '../execution/python-process.mjs';
 import { functionText, writeSourceListing } from './python-sources.mjs';
+import { fileURLToPath } from 'node:url';
 
 const METRICS_SCRIPT = path.resolve(
-  new URL('../', import.meta.url).pathname,
+  fileURLToPath(new URL('../', import.meta.url)),
   '../metrics/structure_metrics.py',
 );
 export const STRUCTURE_REPORT = 'structure.json';

@@ -1,6 +1,7 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 export const RUFF_CONFIG = path.resolve(
-  new URL('../', import.meta.url).pathname,
+  fileURLToPath(new URL('../', import.meta.url)),
   '../ruff/nitpicker-ruff.toml',
 );

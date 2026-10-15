@@ -10,8 +10,9 @@ import {
 } from '../../../../languages/typescript/adapters/entry-points.mjs';
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { runAnalyzers } from '../../execution/run-analyzers.mjs';
+import { fileURLToPath } from 'node:url';
 
-const packageRoot = path.resolve(new URL('../../', import.meta.url).pathname, '../..');
+const packageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), '../..');
 
 describe('entry-point differential adapter', () => {
   it('reports a new public-entry-point bypass separately from an unchanged baseline bypass', () => {

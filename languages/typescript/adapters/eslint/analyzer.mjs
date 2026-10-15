@@ -1,6 +1,7 @@
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const runnerPath = path.join(new URL('../', import.meta.url).pathname, 'eslint-runner.mjs');
+const runnerPath = path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs');
 
 export function createEslintAnalyzer({
   name,

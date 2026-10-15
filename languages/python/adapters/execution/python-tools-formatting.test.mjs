@@ -8,6 +8,7 @@ import {
   readReport,
   restoreTemporaryState,
 } from './python-tools-project.mjs';
+import { fileURLToPath } from 'node:url';
 
 afterEach(restoreTemporaryState);
 
@@ -71,7 +72,7 @@ describe('lint and format arguments', () => {
     expect(calls('ruff', 'check')[0].args).toEqual([
       'check',
       '--config',
-      path.resolve(new URL('../', import.meta.url).pathname, '../ruff/nitpicker-ruff.toml'),
+      path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../ruff/nitpicker-ruff.toml'),
       '--target-version',
       'py310',
       '--ignore-noqa',

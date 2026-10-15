@@ -146,7 +146,7 @@ function productionFiles(root, displayRoot, layout) {
 
 function percentile(values, fraction) {
   if (values.length === 0) {
-    return undefined;
+    return null;
   }
   const sorted = [...values].sort((left, right) => left - right);
   return sorted[Math.ceil(fraction * sorted.length) - 1];
@@ -158,7 +158,7 @@ function distribution(entries, property) {
     p50: percentile(values, 0.5),
     p90: percentile(values, 0.9),
     p95: percentile(values, 0.95),
-    max: values.length === 0 ? undefined : Math.max(...values),
+    max: values.length === 0 ? null : Math.max(...values),
   };
 }
 

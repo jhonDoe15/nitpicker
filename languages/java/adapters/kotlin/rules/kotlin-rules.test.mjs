@@ -9,6 +9,7 @@ import {
   SUPPRESSION_RULE,
 } from './kotlin-rules.mjs';
 import { expectedMessage, kotlinRuleCases } from '../../fixtures/kotlin-rules/cases.mjs';
+import { fileURLToPath } from 'node:url';
 
 const detektFinding = (rule, message) => ({
   tool: 'detekt',
@@ -120,7 +121,10 @@ describe('nitpicker-detekt.yml', () => {
 
   const rulesets = parseRulesets(
     readFileSync(
-      path.join(new URL('../../', import.meta.url).pathname, '../detekt/nitpicker-detekt.yml'),
+      path.join(
+        fileURLToPath(new URL('../../', import.meta.url)),
+        '../detekt/nitpicker-detekt.yml',
+      ),
       'utf8',
     ),
   );

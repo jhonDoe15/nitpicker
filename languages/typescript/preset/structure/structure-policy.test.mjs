@@ -1,3 +1,5 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -77,5 +79,22 @@ describe('structural metrics report', () => {
     expect(() => analyzeSource('export function broken( {', 'broken.ts')).toThrow(
       /Unable to parse/,
     );
+  });
+
+  it('reports null percentiles for a measure with no entries, so the report keeps its shape', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-empty-'));
+    try {
+      writeFileSync(path.join(root, 'plain.ts'), 'export const one = 1;\n');
+      const report = analyzeProductionFiles(root, 'src');
+
+      expect(JSON.parse(JSON.stringify(report.distributions.classLines))).toEqual({
+        p50: null,
+        p90: null,
+        p95: null,
+        max: null,
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

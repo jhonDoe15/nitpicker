@@ -4,12 +4,13 @@ import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from '../../ingest/crap.mjs';
 import { execute, run } from '../execution/python-process.mjs';
 import { functionText, writeSourceListing } from '../analysis/python-sources.mjs';
+import { fileURLToPath } from 'node:url';
 
 export const LIZARD_REPORT = 'lizard.csv';
 const LIZARD_RULE = 'lizard-failed';
 const LIZARD_OVERRIDE = 'NITPICKER_LIZARD';
 export const PINNED_VERSIONS_SOURCE = path.resolve(
-  new URL('../', import.meta.url).pathname,
+  fileURLToPath(new URL('../', import.meta.url)),
   '../../java/gradle/nitpicker.init.gradle',
 );
 

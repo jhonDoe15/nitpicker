@@ -3,12 +3,13 @@ import path from 'node:path';
 import { normalizeReportPath } from '../../../java/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
 import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
+import { fileURLToPath } from 'node:url';
 
 export const RULES_REPORT = 'rules.json';
 const RULES_FAILED_RULE = 'rules-failed';
 const FILE_LIST = 'python-files.txt';
 const RULES_SCRIPT = path.resolve(
-  new URL('../', import.meta.url).pathname,
+  fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
 );
 

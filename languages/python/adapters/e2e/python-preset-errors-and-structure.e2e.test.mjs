@@ -17,6 +17,7 @@ import {
   repository,
   write,
 } from './python-e2e-support.mjs';
+import { fileURLToPath } from 'node:url';
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset tool errors, structure and CRAP end to end',
@@ -168,7 +169,7 @@ describe.skipIf(!pythonE2eEnabled)(
 );
 describe.skipIf(!pythonE2eEnabled)('Python structure metrics script', () => {
   const script = path.resolve(
-    new URL('../', import.meta.url).pathname,
+    fileURLToPath(new URL('../', import.meta.url)),
     '../metrics/structure_metrics.py',
   );
   function metricsOf(files) {

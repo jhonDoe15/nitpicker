@@ -5,21 +5,22 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll } from 'vitest';
 import { createEslintAnalyzer } from '../../../../../languages/typescript/adapters/eslint/analyzer.mjs';
+import { fileURLToPath } from 'node:url';
 
-export const toolRoot = path.resolve(new URL('../../../', import.meta.url).pathname, '../..');
+export const toolRoot = path.resolve(fileURLToPath(new URL('../../../', import.meta.url)), '../..');
 
 export const fakeEslintCliPath = path.join(
-  new URL('../../../', import.meta.url).pathname,
+  fileURLToPath(new URL('../../../', import.meta.url)),
   'fixtures/fake-eslint-cli.mjs',
 );
 
 const replayEslintCliPath = path.join(
-  new URL('../../../', import.meta.url).pathname,
+  fileURLToPath(new URL('../../../', import.meta.url)),
   'fixtures/replay-eslint-cli.mjs',
 );
 
 const recordedEslintReportsPath = path.join(
-  new URL('../../../', import.meta.url).pathname,
+  fileURLToPath(new URL('../../../', import.meta.url)),
   'fixtures/eslint-recorded-reports.json',
 );
 

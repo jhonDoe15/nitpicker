@@ -13,8 +13,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../languages/typescript/adapters/static-checks-runner.mjs';
 import { cruiseStrict } from '../../../../languages/typescript/preset/architecture/fixtures/strict-cruise.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
+import { fileURLToPath } from 'node:url';
 
-const packageRoot = path.resolve(new URL('../../', import.meta.url).pathname, '../..');
+const packageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), '../..');
 const fixturesRoot = path.join(
   packageRoot,
   'languages/typescript/preset/architecture/fixtures/strict',
