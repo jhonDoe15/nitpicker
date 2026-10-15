@@ -21,6 +21,36 @@ function owner(node) {
   return undefined;
 }
 
+function recordVitestAliases(aliases, node) {
+  if (node.source.value !== 'vitest') return;
+  for (const specifier of node.specifiers) {
+    if (
+      specifier.type === 'ImportSpecifier' &&
+      ['vi', 'vitest'].includes(specifier.imported.name)
+    ) {
+      aliases.add(specifier.local.name);
+    }
+  }
+}
+
+function isInTeardown(node) {
+  return ancestorsOf(node).some((current) => ['afterEach', 'afterAll'].includes(callName(current)));
+}
+
+function governingChange(changes, wait) {
+  for (const scope of chainOf(owner(wait), owner)) {
+    const candidates = changes.filter(
+      (change) =>
+        change.owner === scope &&
+        (callName(scope) === 'describe' ||
+          scope.type === 'Program' ||
+          change.node.range[0] < wait.range[0]),
+    );
+    if (candidates.length > 0) return candidates.at(-1);
+  }
+  return undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -36,15 +66,7 @@ export const rule = {
     const waits = [];
     return {
       ImportDeclaration(node) {
-        if (node.source.value !== 'vitest') return;
-        for (const specifier of node.specifiers) {
-          if (
-            specifier.type === 'ImportSpecifier' &&
-            ['vi', 'vitest'].includes(specifier.imported.name)
-          ) {
-            aliases.add(specifier.local.name);
-          }
-        }
+        recordVitestAliases(aliases, node);
       },
       CallExpression(node) {
         const callee = node.callee;
@@ -57,25 +79,13 @@ export const rule = {
         const method = callee.property.name;
         if (method === 'waitFor') waits.push(node);
         if (!['useFakeTimers', 'useRealTimers'].includes(method)) return;
-        for (const current of ancestorsOf(node)) {
-          if (['afterEach', 'afterAll'].includes(callName(current))) return;
-        }
+        if (isInTeardown(node)) return;
         changes.push({ node, owner: owner(node), fake: method === 'useFakeTimers' });
       },
       'Program:exit'() {
         for (const wait of waits) {
-          for (const scope of chainOf(owner(wait), owner)) {
-            const candidates = changes.filter(
-              (change) =>
-                change.owner === scope &&
-                (callName(scope) === 'describe' ||
-                  scope.type === 'Program' ||
-                  change.node.range[0] < wait.range[0]),
-            );
-            if (candidates.length > 0) {
-              if (candidates.at(-1).fake) context.report({ node: wait, messageId: 'fakeWait' });
-              break;
-            }
+          if (governingChange(changes, wait)?.fake) {
+            context.report({ node: wait, messageId: 'fakeWait' });
           }
         }
       },

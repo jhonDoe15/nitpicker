@@ -86,6 +86,12 @@ function dependencyMap(graph, sourceTexts) {
   );
 }
 
+function unvisitedRuntimeTargets(edges, visited) {
+  return edges
+    .filter((edge) => edge.kind === 'runtime' && !visited.has(edge.target))
+    .map((edge) => edge.target);
+}
+
 function runtimeReachability(source, dependencies) {
   const direct = dependencies.get(source)?.filter((edge) => edge.kind === 'runtime') ?? [];
   const visited = new Set();
@@ -95,11 +101,7 @@ function runtimeReachability(source, dependencies) {
       continue;
     }
     visited.add(current);
-    for (const edge of dependencies.get(current) ?? []) {
-      if (edge.kind === 'runtime' && !visited.has(edge.target)) {
-        pending.push(edge.target);
-      }
-    }
+    pending.push(...unvisitedRuntimeTargets(dependencies.get(current) ?? [], visited));
   }
   return { direct, visited };
 }
