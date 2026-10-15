@@ -31,8 +31,8 @@ import {
   adapterGlobsFor,
   restrictedAdapterSyntax,
   strictAdaptersTypedConfig,
-} from './strict-adapters.config.mjs';
-import { strictTestConfigFor } from './strict-tests.config.mjs';
+} from './strict-adapters.mjs';
+import { strictTestConfigFor } from './strict-tests.mjs';
 
 export function restrictedSyntaxFor(options = {}) {
   const everywhereSelectors = [
@@ -115,9 +115,7 @@ export function strictSyntaxConfigFor(layout = defaultResolvedLayout, options = 
   ];
 }
 
-const strictSyntaxConfig = strictSyntaxConfigFor();
-
-export default strictSyntaxConfig;
+export const strictSyntaxConfig = strictSyntaxConfigFor();
 
 function strictTypedConfigFor(layout, parserOptions) {
   return [

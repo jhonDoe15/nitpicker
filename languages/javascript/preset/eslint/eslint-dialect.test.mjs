@@ -1,6 +1,6 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { strictPresetConfig } from '../../../typescript/preset/eslint-config/strict.config.mjs';
+import { strictPresetConfig } from '../../../typescript/preset/eslint-config/strict.mjs';
 import { defaultResolvedLayout } from '../../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,

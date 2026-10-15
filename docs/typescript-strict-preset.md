@@ -307,14 +307,14 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
 ## How it is enforced
 
 - `languages/typescript/preset/defaults/eslint.config.mjs` (the `eslint-lint` analyzer) adds `strictPresetConfig()` from
-  `languages/typescript/preset/eslint-config/strict.config.mjs` to typescript-eslint's strict type-checked config. Rules that
+  `languages/typescript/preset/eslint-config/strict.mjs` to typescript-eslint's strict type-checked config. Rules that
   strict replaces are removed: `consistent-type-assertions`, `explicit-member-accessibility` and
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
-  `restrictedSyntaxByScope` in `strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
+  `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
   the `domain` and `adapters` lists contain the `source` list plus their own selectors. The
   control-flow selectors live in `strict-control-flow.mjs` and are part of `source`; `domain` drops
   the loop and `forEach` ones because its own selectors report those nodes with a stricter message. Add a
@@ -322,7 +322,7 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
   the global and the domain bans.
 - The React scope lives in `languages/typescript/preset/eslint-config/react/react-scope.mjs`; see "React"
   above and `docs/internals.md`. Its rules are strict rules too (`react-rules.mjs` lists them).
-- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.config.mjs` (`strictTestConfigFor(layout)`),
+- The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the

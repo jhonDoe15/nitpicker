@@ -1,7 +1,7 @@
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { strictProductionRules } from '../eslint-config/strict.config.mjs';
-import strictTestsConfig from '../eslint-config/strict-tests.config.mjs';
+import { strictProductionRules } from '../eslint-config/strict.mjs';
+import { strictTestsConfig } from '../eslint-config/strict-tests.mjs';
 
 const productionRulesConfig = [
   {

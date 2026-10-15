@@ -1,5 +1,5 @@
-import strictAdaptersConfig from '../eslint-config/strict-adapters.config.mjs';
-import strictSyntaxConfig from '../eslint-config/strict.config.mjs';
+import { strictAdaptersConfig } from '../eslint-config/strict-adapters.mjs';
+import { strictSyntaxConfig } from '../eslint-config/strict.mjs';
 
 const filename = 'src/main/features/billing/adapters/http.ts';
 
