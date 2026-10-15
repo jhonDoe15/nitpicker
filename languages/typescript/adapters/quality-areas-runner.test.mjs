@@ -1,4 +1,3 @@
-import { expectedOutput73_22 } from '../../../core/diff/fixtures/expected-output/languages-typescript-adapters-quality-areas-runner.mjs';
 import {
   mkdirSync,
   mkdtempSync,
@@ -68,7 +67,16 @@ describe('crap runner without a coverage report', () => {
 
     const findings = await runKind('crap', projectRoot);
 
-    expect(findings).toEqual(expectedOutput73_22());
+    expect(findings).toEqual([
+      {
+        tool: 'crap',
+        rule: 'tests-failed-skipped',
+        path: '.',
+        identity: 'tests-failed-skipped',
+        message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        classification: 'tool-error',
+      },
+    ]);
   });
 });
 
