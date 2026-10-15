@@ -1,7 +1,10 @@
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { PACKAGE_EXCEPTION_RULES } from '../../../../shared/hygiene/rules.mjs';
+
+const NON_ESLINT_RULES = [...SHARED_EXCEPTION_RULES, ...PACKAGE_EXCEPTION_RULES];
 
 export function applyRuleExceptions(configEntries, allExceptions = []) {
-  const exceptions = allExceptions.filter(({ rule }) => !SHARED_EXCEPTION_RULES.includes(rule));
+  const exceptions = allExceptions.filter(({ rule }) => !NON_ESLINT_RULES.includes(rule));
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
   if (unknown.length > 0) {
     throw new Error(
