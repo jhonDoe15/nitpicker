@@ -5,3 +5,4 @@ coverage/
 .nitpicker-*
 .pi/
 evals/results/
+release-assets/
