@@ -88,6 +88,17 @@ function isThrown(sourceCode, node) {
   );
 }
 
+function causeReport(sourceCode, { wrapper, node, handler }) {
+  const caughtVariables = sourceCode.getDeclaredVariables(handler);
+  const thrown = isThrown(sourceCode, node);
+  if (thrown && handler.param === null) {
+    return 'bindingLess';
+  }
+  const wrapsCaught =
+    wrapper.classificationIndex !== undefined || thrown || referencesCatch(caughtVariables, node);
+  return wrapsCaught && !preservesCause(wrapper, node, caughtVariables) ? 'lostCause' : undefined;
+}
+
 const EXCEPTION_ROUTE =
   ' If the original failure is deliberately dropped, add an exception for this rule in nitpicker.config.json.';
 
@@ -129,21 +140,10 @@ export const rule = {
         if (!wrapper) return;
         const handler = ancestorsOf(node).find((ancestor) => ancestor.type === 'CatchClause');
         if (!handler) return;
-        const caughtVariables = context.sourceCode.getDeclaredVariables(handler);
-        const thrown = isThrown(context.sourceCode, node);
-        if (thrown && handler.param === null) {
-          context.report({ node, messageId: 'bindingLess' });
-          return;
+        const messageId = causeReport(context.sourceCode, { wrapper, node, handler });
+        if (messageId !== undefined) {
+          context.report({ node, messageId });
         }
-        if (
-          wrapper.classificationIndex === undefined &&
-          !thrown &&
-          !referencesCatch(caughtVariables, node)
-        ) {
-          return;
-        }
-        if (preservesCause(wrapper, node, caughtVariables)) return;
-        context.report({ node, messageId: 'lostCause' });
       },
     };
   },
