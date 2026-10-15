@@ -170,8 +170,11 @@ See [typescript-single-command.md](typescript-single-command.md) for the full mo
 
 Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
 config. The base is measured with the base's own `nitpicker.config.json` when it has one that
-differs, so a finding is new only if the change added it under the rules each side declared; with no
-config on the base, or an identical one, the head's config applies to both sides. Because the head
+differs, widened to what the head reads: the head's added source and test roots are added, and an
+`exclude`, `layout.excludedGlobs` or `layout.entryPoints` entry the head drops is dropped, so code that
+was already there stays baselined when a change brings it under the gate. A finding is new only if
+the change added it. With no config on the base, or an identical one, the head's config applies to
+both sides. Because the head
 controls its own config, every change to it is printed in the console summary and in `report.txt` as
 "Policy changed in this change" and listed in `summary.json` under `policyChanges`. A change that
 loosens the policy fails the run with one `nitpicker-config/policy-loosened` finding per loosening,

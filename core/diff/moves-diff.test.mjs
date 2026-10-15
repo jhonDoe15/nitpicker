@@ -386,3 +386,32 @@ describe('notices about the change', () => {
     expect(compare(root).summary.notices).toEqual([]);
   });
 });
+
+describe('a change that adds a source root', () => {
+  const baseConfig = { layout: { sourceRoots: ['src'] } };
+  const headConfig = { layout: { sourceRoots: ['src', 'shared'] } };
+
+  it('keeps the legacy findings of the new root baselined and checks new code in it', () => {
+    const root = createRepository({
+      'nitpicker.config.json': `${JSON.stringify(baseConfig)}\n`,
+      'src/a.mjs': `${filler('a')}${finding('a-site')}`,
+      'shared/legacy.mjs': `${filler('legacy')}${finding('legacy-site')}`,
+    });
+    write(root, {
+      'nitpicker.config.json': `${JSON.stringify(headConfig)}\n`,
+      'shared/added.mjs': `${filler('added')}${finding('added-site')}`,
+    });
+    commitHead(root);
+
+    const report = compare(root, {
+      headPolicy: headConfig,
+      resolveBaseSetup: createBaseSetupResolver({
+        headConfig,
+        injectedAnalyzers: [probeAnalyzer()],
+      }),
+    });
+
+    expect(identities(report.newFindings)).toEqual(['added-site']);
+    expect(identities(report.unchangedFindings).sort()).toEqual(['a-site', 'legacy-site']);
+  });
+});
