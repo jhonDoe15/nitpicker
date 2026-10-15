@@ -266,7 +266,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   names, an effect that contains an `await`, or calls a function whose type returns a promise
   (found through the type checker, so a loader declared outside the effect counts), is flagged
   once, at its first async step. Wrappers like `api.get(...)` are caught when they are typed to
-  return a promise; with no type information only `await` is seen.
+  return a promise; with no type information only `await` is seen. The message names the form for
+  each kind of work: data through `useQuery` or a route loader, an action (a save, a clipboard
+  write) in the event handler that causes it, a redirect by rendering `<Navigate />`.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
   effect with dependencies that calls a prop callback (`onSave(value)`, `props.onChange()`) reacts
   to a change instead of to an event: call the callback in the handler that causes the change.

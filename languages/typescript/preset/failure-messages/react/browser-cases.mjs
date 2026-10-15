@@ -72,6 +72,11 @@ const cases = [
     'event handler that causes the change',
   ],
   [
+    'async action in an effect names the event handler',
+    'export const P = ({ t }) => { useEffect(() => { const run = async () => { await copy(t); }; void run(); }, [t]); return <i />; };',
+    'event handler that causes it',
+  ],
+  [
     'await in an effect names a query library',
     'export const P = ({ id }) => { useEffect(() => { const run = async () => { await load(id); }; void run(); }, [id]); return <i />; };',
     'useQuery',
