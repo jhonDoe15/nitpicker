@@ -6,7 +6,7 @@ import {
   fixtureGit,
   removeGitRepositories,
 } from '../../core/diff/fixtures/git-repository.mjs';
-import { fileSize, trackedFiles } from './tracked-files.mjs';
+import { committedSizes, trackedFiles } from './tracked-files.mjs';
 
 afterEach(removeGitRepositories);
 
@@ -30,16 +30,29 @@ describe('trackedFiles', () => {
   });
 });
 
-describe('fileSize', () => {
-  it('measures a regular file and ignores links, folders and missing files', () => {
-    const { root } = createGitRepository({ 'a.txt': '12345' });
-    mkdirSync(path.join(root, 'folder'));
+describe('committedSizes', () => {
+  it('sizes the committed blob of each regular file, not the working tree copy', () => {
+    const { root } = createGitRepository({ 'a.txt': '12345', 'pointer.psd': 'oid sha256:1\n' });
+    writeFileSync(path.join(root, 'tool.sh'), 'echo\n', { mode: 0o755 });
     symlinkSync('a.txt', path.join(root, 'link.txt'));
+    mkdirSync(path.join(root, 'folder'));
+    writeFileSync(path.join(root, 'folder/b.txt'), '1');
     fixtureGit(root, ['add', '-A']);
+    writeFileSync(path.join(root, 'pointer.psd'), 'x'.repeat(4096));
 
-    expect(fileSize(root, 'a.txt')).toBe(5);
-    expect(fileSize(root, 'link.txt')).toBeUndefined();
-    expect(fileSize(root, 'folder')).toBeUndefined();
-    expect(fileSize(root, 'missing.txt')).toBeUndefined();
+    expect(committedSizes(root)).toEqual(
+      new Map([
+        ['a.txt', 5],
+        ['folder/b.txt', 1],
+        ['pointer.psd', 13],
+        ['tool.sh', 5],
+      ]),
+    );
+  });
+
+  it('returns nothing for an empty repository', () => {
+    const { root } = createGitRepository({});
+
+    expect(committedSizes(root)).toEqual(new Map());
   });
 });

@@ -1,3 +1,5 @@
+import { writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createGitRepository,
@@ -11,95 +13,150 @@ afterEach(removeGitRepositories);
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
 
-function check(files) {
+function check(files, change = () => undefined) {
   const { root } = createGitRepository(files);
+  change(root);
   return collectRepositoryFindings({ projectRoot: root, files: trackedFiles(root) });
 }
 
-const summary = (findings) => findings.map(({ rule, path }) => `${rule} ${path}`);
+const summary = (findings) => findings.map(({ rule, path: file }) => `${rule} ${file}`);
 
 describe('committed env files', () => {
-  it('flags .env and its variants but not templates', () => {
+  it('flags env files and their variants, but not templates or source files', () => {
     const findings = check({
       '.env': 'API_KEY=sk_live_1\n',
       '.env.production': 'A=1\n',
+      '.env.sample.prod': 'A=1\n',
+      '.env.example.local': 'A=1\n',
+      '.env-staging': 'A=1\n',
+      '.envrc': 'export TOKEN=1\n',
+      'env.prod': 'A=1\n',
       'config/prod.env': 'A=1\n',
       '.env.example': 'API_KEY=\n',
       '.env.local.sample': 'A=\n',
       'example.env': 'A=\n',
+      'src/.env.d.ts': 'export {};\n',
+      'src/env.ts': 'export {};\n',
       'src/environment.ts': 'export {};\n',
     });
 
     expect(summary(findings)).toEqual([
       'committed-env-file .env',
+      'committed-env-file .env-staging',
+      'committed-env-file .env.example.local',
       'committed-env-file .env.production',
+      'committed-env-file .env.sample.prod',
+      'committed-env-file .envrc',
       'committed-env-file config/prod.env',
+      'committed-env-file env.prod',
     ]);
-    expect(findings[0]).toMatchObject({
+    expect(findings[0]).toEqual({
       tool: 'repository-hygiene',
+      rule: 'committed-env-file',
+      path: '.env',
       identity: 'file:.env',
+      message:
+        'Environment file .env is committed and usually holds secrets. Remove it, rotate what it held, ' +
+        'and commit a .env.example with placeholder values. If this is intended, add ' +
+        '{"rule":"committed-env-file","paths":[".env"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
     });
-    expect(findings[0].message).toContain('.env.example');
-    expect(findings[0].message).toContain('"exceptions" in nitpicker.config.json');
+  });
+
+  it('leaves env files that hold only public build-time values', () => {
+    const findings = check({
+      '.env.development': '# shown in the browser\nVITE_API_URL=https://example.test\n\n',
+      '.env.test': 'export NEXT_PUBLIC_SITE=demo\r\nPUBLIC_FLAG=1\n',
+      '.env.empty': '# nothing yet\n',
+      '.env.local': 'VITE_API_URL=https://example.test\nDATABASE_URL=postgres://secret\n',
+      '.env.multiline': 'VITE_A=1\n  continued\n',
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-env-file .env.local',
+      'committed-env-file .env.multiline',
+    ]);
   });
 });
 
 describe('committed private keys', () => {
-  it('flags key files by name and any text file that holds a key block', () => {
+  it('flags key blocks in any text file and key stores by name, but not trust stores', () => {
     const findings = check({
       'deploy/id_rsa': 'x\n',
       'ssl/server.p12': 'x\n',
       'ssl/server.pem': `${PRIVATE_KEY_HEADER}\nabc\n`,
       'ssl/ca.pem': '-----BEGIN CERTIFICATE-----\nabc\n',
       'src/fixture.json': `{"key": "${PRIVATE_KEY_HEADER}"}\n`,
+      'src/test/resources/truststore.jks': 'x\n',
+      'jre/lib/security/cacerts': 'x\n',
       'ssh/id_rsa.pub': 'ssh-rsa AAAA\n',
-      'src/index.ts': 'export {};\n',
     });
 
-    expect(summary(findings)).toEqual([
-      'committed-private-key deploy/id_rsa',
-      'committed-private-key src/fixture.json',
-      'committed-private-key ssl/server.p12',
-      'committed-private-key ssl/server.pem',
+    expect(findings.map(({ message }) => message.split('. ')[0])).toEqual([
+      'deploy/id_rsa may hold a private key',
+      'src/fixture.json holds a private key',
+      'ssl/server.p12 may hold a private key',
+      'ssl/server.pem holds a private key',
     ]);
-    expect(findings[0].message).toContain('rotate the key');
   });
 });
 
 describe('binaries and large files', () => {
-  it('flags archives and compiled binaries but allows the Gradle wrapper', () => {
+  it('flags archives and compiled binaries, but not the tooling projects commit on purpose', () => {
     const findings = check({
       'libs/tool.jar': 'x',
-      'gradle/wrapper/gradle-wrapper.jar': 'x',
       'dist/app.zip': 'x',
       'native/addon.node': 'x',
-      'src/main.ts': 'x',
+      'gradle/wrapper/gradle-wrapper.jar': 'x',
+      '.mvn/wrapper/maven-wrapper.jar': 'x',
+      '.yarn/releases/yarn-4.5.0.cjs': 'x',
+      '.yarn/cache/lodash-npm-4.17.21.zip': 'x',
+      '.yarn/plugins/plugin.cjs': 'x',
+      'vendor/nitpicker-1.0.0.tgz': 'x',
+      'vendor/other-1.0.0.tgz': 'x',
+      'web/vendor/lib-2.0.0.tgz': 'x',
+      'package.json': JSON.stringify({
+        devDependencies: { nitpicker: 'file:vendor/nitpicker-1.0.0.tgz', zod: '^4.0.0' },
+      }),
+      'web/package.json': JSON.stringify({ dependencies: { lib: 'file:./vendor/lib-2.0.0.tgz' } }),
+      'broken/package.json': '{',
     });
 
     expect(summary(findings)).toEqual([
       'committed-binary dist/app.zip',
       'committed-binary libs/tool.jar',
       'committed-binary native/addon.node',
+      'committed-binary vendor/other-1.0.0.tgz',
     ]);
   });
 
-  it('flags a file over the size limit, once, and spares lockfiles', () => {
+  it('flags a committed file over the size limit, but not lock files or tooling', () => {
     const oversize = 'a'.repeat(LARGE_FILE_BYTES + 1);
     const findings = check({
       'assets/hero.png': oversize,
       'assets/exact.png': 'a'.repeat(LARGE_FILE_BYTES),
       'package-lock.json': oversize,
-      'uv.lock': oversize,
-      'big.bin': oversize,
+      'npm-shrinkwrap.json': oversize,
+      'gradle.lockfile': oversize,
+      'data/report-lock.json': oversize,
+      '.pnp.cjs': oversize,
     });
 
-    expect(summary(findings)).toEqual(['large-file assets/hero.png', 'committed-binary big.bin']);
-    expect(findings[0].message).toContain('1.0 MB');
-    expect(findings[0].message).toContain('limit 1 MB');
+    expect(summary(findings)).toEqual([
+      'large-file assets/hero.png',
+      'large-file data/report-lock.json',
+    ]);
+    expect(findings[0].message.split('. ')[0]).toBe('assets/hero.png is 1.0 MB (limit 1 MB)');
   });
 
-  it('reports nothing for an ordinary tree', () => {
-    expect(check({ 'src/a.ts': 'export {};\n', 'README.md': '# a\n' })).toEqual([]);
+  it('sizes what git stores, so a large-file storage pointer passes', () => {
+    const findings = check(
+      { 'design.psd': 'version https://git-lfs.github.com/spec/v1\n' },
+      (root) => {
+        writeFileSync(path.join(root, 'design.psd'), 'a'.repeat(LARGE_FILE_BYTES + 1));
+      },
+    );
+
+    expect(findings).toEqual([]);
   });
 });
