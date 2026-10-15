@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { exceptionEntryText, exceptionSentence } from '../../../../shared/exceptions/sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 
 export const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
@@ -30,9 +31,9 @@ const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
 const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
-  'Do not silence PMD inline: fix the finding, or add an exception for its rule in nitpicker.config.json. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
-const SPOTBUGS_MESSAGE =
-  'Do not silence SpotBugs inline: fix the bug, or add an exception for spotbugs/<bug pattern> in nitpicker.config.json.';
+  'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
+const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
+const ROUTED_RULES = { pmd: 'pmd/<PMD rule>', spotbugs: 'spotbugs/<bug pattern>' };
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -76,7 +77,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}.`,
+      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}. ${exceptionSentence(exceptionEntryText({ rule: ROUTED_RULES[tool], path: filePath }))}`,
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
