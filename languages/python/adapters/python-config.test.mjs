@@ -110,7 +110,7 @@ describe('python config validation', () => {
     ],
     [
       { exceptions: [{ rule: 'folder-files-limit', paths: ['a'], reason: 'r' }] },
-      'a file limit shared by every preset: lift it in the top-level "exceptions" instead',
+      'a rule shared by every preset: lift it in the top-level "exceptions" instead',
     ],
     [
       { exceptions: [{ rule: 'E501', paths: ['a'], reason: 'r' }] },

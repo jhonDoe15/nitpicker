@@ -2,8 +2,11 @@
 // default limits, failure-message templates and the languages that enforce each rule. Every
 // language adapter reads it, and `spec/checks.md` is generated from it (`npm run gen:checks`).
 //
-// Language-neutral: no imports, so any entry point can load it. Nothing under `shared/` may
+// Language-neutral: imports only other `shared/` modules. Nothing under `shared/` may
 // import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
+
+import { HYGIENE_EXCEPTION_RULES } from './hygiene/rules.mjs';
+import { HYGIENE_RULES } from './hygiene/catalog.mjs';
 
 export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
 
@@ -53,6 +56,7 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  ...HYGIENE_EXCEPTION_RULES,
 ];
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
@@ -268,4 +272,5 @@ export const RULES = [
     limit: `more than ${String(FILE_LIMIT_DEFAULTS.folderFiles)} source files, or test files, directly in one folder; override with \`thresholds.folderFiles\``,
     enforcedBy: withKotlin(ALL, true),
   },
+  ...HYGIENE_RULES,
 ];

@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import {
   cpSync,
   mkdirSync,
@@ -16,6 +15,7 @@ import { createJavaAnalyzer } from '../languages/java/adapters/java-analyzer.mjs
 import { JAVA_TOOLS } from '../languages/java/adapters/gradle-presets.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../languages/java/adapters/kotlin-options.mjs';
 import { runCli as runCliWithSubprocesses } from './cli.mjs';
+import { fixtureGit as git } from './diff/fixtures/git-repository.mjs';
 import { runTasksInProcess } from './diff/fixtures/in-process-analyzers.mjs';
 
 // The Java and Kotlin presets through the CLI with a fake `gradle`, so they run without Java. The
@@ -49,13 +49,6 @@ function temporaryRoot(prefix) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   temporaryRoots.push(root);
   return root;
-}
-
-// Hermetic git: ignores the global config (commit signing adds a round trip to every commit).
-const gitEnvironment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
-
-function git(root, args) {
-  return execFileSync('git', args, { cwd: root, encoding: 'utf8', env: gitEnvironment });
 }
 
 function write(root, files) {
@@ -122,7 +115,8 @@ function run(root, extra = [], { subprocess = false } = {}) {
     ...(subprocess ? { runTasks: undefined } : {}),
   });
   const json = (name) => JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
-  return { exitCode, reports, json, output };
+  const tools = () => json('summary.json').tools.map(({ name }) => name);
+  return { exitCode, reports, json, output, tools };
 }
 
 describe('nitpicker with "preset": "java"', () => {
@@ -134,7 +128,7 @@ describe('nitpicker with "preset": "java"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['java']);
+    expect(result.tools()).toEqual(['java', 'repository-hygiene']);
   });
 
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
@@ -364,7 +358,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.output.out + result.output.err).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual(['kotlin']);
+    expect(result.tools()).toEqual(['kotlin', 'repository-hygiene']);
   });
 
   it('fails on a new detekt finding and reports it in text and SARIF', () => {

@@ -23,6 +23,10 @@ function analyzerNames(analyzers) {
   return analyzers.map(({ name }) => name);
 }
 
+function hygieneAnalyzers() {
+  return presetAnalyzers({}).slice(configuredAnalyzers.length);
+}
+
 function prettierPatterns(layout) {
   return createQualityChecks(layout).staticChecks.find(({ name }) => name === 'prettier-format')
     .patterns;
@@ -30,12 +34,24 @@ function prettierPatterns(layout) {
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    expect(presetAnalyzers({ preset: 'typescript' })).toBe(configuredAnalyzers);
-    expect(presetAnalyzers({})).toBe(configuredAnalyzers);
+    expect(presetAnalyzers({ preset: 'typescript' })).toEqual([
+      ...configuredAnalyzers,
+      ...hygieneAnalyzers(),
+    ]);
+    expect(presetAnalyzers({})).toEqual([...configuredAnalyzers, ...hygieneAnalyzers()]);
   });
 
   it('runs the JavaScript analyzer set for the javascript preset', () => {
-    expect(presetAnalyzers({ preset: 'javascript' })).toBe(javascriptAnalyzers);
+    expect(presetAnalyzers({ preset: 'javascript' })).toEqual([
+      ...javascriptAnalyzers,
+      ...hygieneAnalyzers(),
+    ]);
+  });
+
+  it('adds the repository hygiene checks to every preset', () => {
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      expect(analyzerNames(presetAnalyzers({ preset })).at(-1)).toBe('repository-hygiene');
+    }
   });
 
   it('prefers injected analyzers over any preset', () => {
