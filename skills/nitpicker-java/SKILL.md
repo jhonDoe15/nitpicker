@@ -114,8 +114,8 @@ safe form from the start:
 - XML parsers: secure processing plus `disallow-doctype-decl`.
 - Crypto: SHA-256 or stronger, `AES/GCM/NoPadding` with a random IV, `SecureRandom` for tokens,
   `MessageDigest.isEqual` for secrets, no hard-coded keys or passwords, default TLS checks.
-- Spring: `@GetMapping`/`@PostMapping` instead of a bare `@RequestMapping`, CSRF protection on,
-  explicit CORS origins, DTO records instead of entities in controllers.
+- Spring: `@GetMapping`/`@PostMapping` instead of a bare `@RequestMapping`, explicit CORS origins,
+  DTO records instead of entities in controllers (CSRF and outgoing URLs: [spring.md](spring.md)).
 
 Messages end with the exception route (`spotbugs/<PATTERN>` in `nitpicker.config.json`); add one
 only when the code is right, with a reason, and ask first.

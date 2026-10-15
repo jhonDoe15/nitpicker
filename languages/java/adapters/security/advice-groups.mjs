@@ -169,10 +169,6 @@ export const ADVICE_GROUPS = [
   },
   { patterns: ['ENTITY_LEAK', 'ENTITY_MASS_ASSIGNMENT'], text: DTO },
   {
-    patterns: ['SPRING_CSRF_PROTECTION_DISABLED'],
-    text: 'Keep CSRF protection on. Only a stateless API that authenticates by token header, with no cookie session, may turn it off.',
-  },
-  {
     patterns: ['PERMISSIVE_CORS'],
     text: 'List the allowed origins explicitly instead of *.',
   },

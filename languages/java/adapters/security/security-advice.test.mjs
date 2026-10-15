@@ -179,11 +179,11 @@ describe('find-sec-bugs advice', () => {
     expect(new Set(listed).size).toBe(listed.length);
   });
 
-  it('excludes only markers that are not defects and the duplicate of a PMD rule', () => {
+  it('excludes only markers that are not defects and the duplicates of PMD rules', () => {
     expect(
       excluded.filter(
         (pattern) =>
-          !/ENDPOINT|^SERVLET_|^COOKIE_USAGE$|^SPRING_CSRF_UNRESTRICTED_REQUEST_MAPPING$/.test(
+          !/ENDPOINT|^SERVLET_|^COOKIE_USAGE$|^SPRING_CSRF_(?:UNRESTRICTED_REQUEST_MAPPING|PROTECTION_DISABLED)$/.test(
             pattern,
           ),
       ),

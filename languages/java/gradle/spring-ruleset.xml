@@ -772,6 +772,32 @@ return (
 ]]></value></property></properties>
   </rule>
 
+  <rule name="SpringOutboundUrl" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not build the URL of an outgoing request from a method parameter. Keep the host fixed (a configured base URL) and pass the changing parts as URI template variables, not as part of the URL string. If it is right here, add an exception for pmd/SpringOutboundUrl in nitpicker.config.json.">
+    <priority>1</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[
+  (@MethodName = ('getForObject', 'getForEntity', 'postForObject', 'postForEntity', 'postForLocation', 'put',
+        'delete', 'headForHeaders', 'optionsForAllow', 'exchange', 'execute')
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestOperations')])
+  or (@MethodName = 'uri'
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestClient.UriSpec')
+      or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient.UriSpec')])
+  or (@MethodName = 'baseUrl'
+    and *[1][pmd-java:typeIs('org.springframework.web.client.RestClient.Builder')
+      or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient.Builder')])
+  or pmd-java:matchesSig('org.springframework.web.client.RestClient#create(_)')
+  or pmd-java:matchesSig('org.springframework.web.reactive.function.client.WebClient#create(_)')
+]
+[let $inputs := ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter
+      [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('java.net.URL')]
+      /VariableId/@Name,
+     $derived := ancestor::MethodDeclaration[1]//LocalVariableDeclaration/VariableDeclarator
+      [.//VariableAccess[@Name = $inputs]]/VariableId/@Name
+ return exists(ArgumentList/*[1][not(self::LambdaExpression)]/descendant-or-self::VariableAccess[@Name = ($inputs, $derived)])]
+]]></value></property></properties>
+  </rule>
+
   <!-- JPA entities -->
 
   <rule name="JpaLazyFetching" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
