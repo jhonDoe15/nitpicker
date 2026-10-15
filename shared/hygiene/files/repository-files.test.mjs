@@ -6,7 +6,7 @@ import {
   removeGitRepositories,
 } from '../../../core/diff/fixtures/git-repository.mjs';
 import { trackedFiles } from '../tracked-files.mjs';
-import { LARGE_FILE_BYTES } from '../rules.mjs';
+import { LARGE_FILE_BYTES, withoutExcepted } from '../rules.mjs';
 import { collectRepositoryFindings } from './repository-files.mjs';
 
 afterEach(removeGitRepositories);
@@ -105,7 +105,7 @@ describe('binaries and large files', () => {
   it('flags archives and compiled binaries, but not the tooling projects commit on purpose', () => {
     const findings = check({
       'libs/tool.jar': 'x',
-      'dist/app.zip': 'x',
+      'release/app.zip': 'x',
       'native/addon.node': 'x',
       'gradle/wrapper/gradle-wrapper.jar': 'x',
       '.mvn/wrapper/maven-wrapper.jar': 'x',
@@ -123,9 +123,9 @@ describe('binaries and large files', () => {
     });
 
     expect(summary(findings)).toEqual([
-      'committed-binary dist/app.zip',
       'committed-binary libs/tool.jar',
       'committed-binary native/addon.node',
+      'committed-binary release/app.zip',
       'committed-binary vendor/other-1.0.0.tgz',
     ]);
   });
@@ -158,5 +158,78 @@ describe('binaries and large files', () => {
     );
 
     expect(findings).toEqual([]);
+  });
+});
+
+describe('committed build output', () => {
+  const manifest = (value) => JSON.stringify(value);
+
+  it('flags output folders next to a project manifest and framework caches anywhere, once each', () => {
+    const findings = check({
+      'package.json': manifest({ name: 'app', private: true }),
+      'dist/index.js': 'x',
+      'dist/assets/index-1a2b.js': 'x',
+      'coverage/lcov.info': 'x',
+      'packages/web/package.json': manifest({ name: 'web' }),
+      'packages/web/build/main.js': 'x',
+      'apps/site/.next/cache/data': 'x',
+      'docs/storybook-static/index.html': 'x',
+      'services/api/pom.xml': '<project/>',
+      'services/api/target/api.jar': 'x',
+      'services/api/src/main/java/com/acme/build/Builder.java': 'x',
+      'services/api/src/main/java/com/acme/out/Out.java': 'x',
+      'tools/out/notes.md': 'x',
+      'src/dist/index.ts': 'x',
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-build-output apps/site/.next/',
+      'committed-build-output coverage/',
+      'committed-build-output dist/',
+      'committed-build-output docs/storybook-static/',
+      'committed-build-output packages/web/build/',
+      'committed-build-output services/api/target/',
+    ]);
+    expect(findings[2]).toEqual({
+      tool: 'repository-hygiene',
+      rule: 'committed-build-output',
+      path: 'dist/',
+      identity: 'folder:dist/',
+      message:
+        'dist/ is build output tracked in git. Untrack it with `git rm -r --cached dist`, add `dist/` to ' +
+        '.gitignore, and let CI produce it. If this is intended, add ' +
+        '{"rule":"committed-build-output","paths":["dist/**"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      classification: 'enforceable',
+    });
+    expect(
+      withoutExcepted(findings, [{ rule: 'committed-build-output', paths: ['**/dist/**'] }]),
+    ).toEqual(findings.filter(({ path: folder }) => folder !== 'dist/'));
+  });
+
+  it('leaves output that a GitHub Action or a package installed from git runs', () => {
+    const findings = check({
+      'action.yml':
+        "name: act\nruns:\n  using: node20\n  main: 'dist/index.js'\n  post: dist/cleanup.js\n",
+      'package.json': manifest({ name: 'act', private: true }),
+      'dist/index.js': 'x',
+      'lib/package.json': manifest({
+        name: 'lib',
+        exports: { '.': { import: './dist/index.mjs' } },
+      }),
+      'lib/dist/index.mjs': 'x',
+      'built/package.json': manifest({
+        name: 'built',
+        main: 'dist/index.js',
+        scripts: { prepare: 'tsc' },
+      }),
+      'built/dist/index.js': 'x',
+      'web/package.json': manifest({ name: 'web', private: true, main: 'dist/main.js' }),
+      'web/dist/main.js': 'x',
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-build-output built/dist/',
+      'committed-build-output web/dist/',
+    ]);
   });
 });

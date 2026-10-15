@@ -29,6 +29,13 @@ export const HYGIENE_RULES = [
     enforcedBy: EVERY_LANGUAGE,
   },
   {
+    id: HYGIENE_RULE_IDS.committedBuildOutput,
+    check: 'repository-hygiene',
+    limit:
+      'a committed build output folder (`dist`, `build`, `out`, `coverage`, `target` next to a project manifest; `.next`, `.nuxt`, `storybook-static`, `.turbo`, `.parcel-cache` anywhere)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
     limit: 'a dependency in package.json that nothing imports or runs',

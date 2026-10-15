@@ -3,6 +3,7 @@ import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { HYGIENE_RULE_IDS, LARGE_FILE_BYTES, exceptionHint } from '../rules.mjs';
 import { committedSizes } from '../tracked-files.mjs';
+import { buildOutputFolders } from './build-output.mjs';
 import { holdsOnlyPublicValues, isEnvFileName } from './env-files.mjs';
 import { committedTooling, isKeyFileName, isLockFile } from './known-files.mjs';
 
@@ -17,7 +18,8 @@ export function collectRepositoryFindings({ projectRoot, files }) {
   const keyFiles = new Set(filesWithPrivateKeys(projectRoot));
   const sizes = committedSizes(projectRoot);
   const isTooling = committedTooling(projectRoot, files);
-  return files.flatMap((file) => {
+  const outputFolders = buildOutputFolders(projectRoot, files);
+  const fileFindings = files.flatMap((file) => {
     const base = path.posix.basename(file);
     if (isEnvFileName(base) && !isPublicEnvFile(projectRoot, file)) {
       return [problem('committedEnvFile', file, envMessage(file))];
@@ -28,7 +30,7 @@ export function collectRepositoryFindings({ projectRoot, files }) {
     if (isKeyFileName(base)) {
       return [problem('committedPrivateKey', file, keyMessage(file, 'may hold'))];
     }
-    if (isTooling(file)) {
+    if (isTooling(file) || outputFolders.has(file)) {
       return [];
     }
     if (BINARY_EXTENSION.test(base)) {
@@ -39,6 +41,19 @@ export function collectRepositoryFindings({ projectRoot, files }) {
       ? [problem('largeFile', file, largeMessage(file, size))]
       : [];
   });
+  return [...fileFindings, ...[...new Set(outputFolders.values())].map(outputProblem)];
+}
+
+function outputProblem(folder) {
+  const rule = HYGIENE_RULE_IDS.committedBuildOutput;
+  return {
+    tool: REPOSITORY_HYGIENE_TOOL,
+    rule,
+    path: `${folder}/`,
+    identity: `folder:${folder}/`,
+    message: `${outputMessage(folder)} ${exceptionHint(rule, `${folder}/**`)}`,
+    classification: 'enforceable',
+  };
 }
 
 function problem(ruleName, file, text) {
@@ -69,6 +84,10 @@ function keyMessage(file, verb) {
 
 function binaryMessage(file) {
   return `${file} is a compiled or archived binary. Build it in CI or fetch it from a registry instead of committing it.`;
+}
+
+function outputMessage(folder) {
+  return `${folder}/ is build output tracked in git. Untrack it with \`git rm -r --cached ${folder}\`, add \`${folder}/\` to .gitignore, and let CI produce it.`;
 }
 
 function largeMessage(file, size) {
