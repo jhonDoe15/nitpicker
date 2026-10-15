@@ -1,24 +1,26 @@
+import { cruise } from 'dependency-cruiser';
+import { ESLint } from 'eslint';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import ts from 'typescript';
+import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/fixtures/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/run-analyzers.mjs';
-import { configuredAnalyzers } from '../../preset/diff/configured-analyzers.mjs';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../preset/head-policy.mjs';
+import architectureConfig from '../../preset/defaults/dependency-cruiser.config.mjs';
+import { strictSyntaxConfigFor } from '../../preset/eslint-config/strict.mjs';
+import { resolveLayout } from '../../preset/layout.mjs';
+import { staticChecks } from '../../preset/quality-checks.mjs';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const TOOL_TIMEOUT_MS = 240_000;
-const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
-const root = path.join(temporaryRoot, 'base');
+const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-architecture-packages-'));
 const domain = 'src/main/features/billing/domain';
+const compilerOptions = { module: 'NodeNext', strict: true, types: [], lib: ['ES2022'] };
 
 afterAll(() => {
-  rmSync(temporaryRoot, { recursive: true, force: true });
+  rmSync(root, { recursive: true, force: true });
 });
 
 const files = {
-  'tsconfig.json': JSON.stringify({ compilerOptions: { module: 'NodeNext', strict: true } }),
+  'tsconfig.json': JSON.stringify({ compilerOptions }),
   'package.json': JSON.stringify({
     name: 'app',
     type: 'module',
@@ -42,41 +44,47 @@ for (const [file, contents] of Object.entries(files)) {
   writeFileSync(path.join(root, file), contents);
 }
 
-function findingsOf(names) {
-  const policy = resolveHeadPolicy({});
-  const run = withDefaultAnalyzerParallelism(() =>
-    withHeadPolicyFile(policy, (headPolicyFile) =>
-      runAnalyzers({
-        analyzers: configuredAnalyzers.filter(({ name }) => names.includes(name)),
-        projectRoot: root,
-        policyRoot: root,
-        toolRoot: packageRoot,
-        liveProjectRoot: packageRoot,
-        snapshot: 'head',
-        headPolicyFile,
-      }),
-    ),
+const architectureCheck = staticChecks.find(({ name }) => name === 'dependency-architecture');
+
+async function architectureViolations() {
+  const ruleSet = structuredClone(architectureConfig);
+  ruleSet.options.baseDir = root;
+  ruleSet.options.tsConfig = { fileName: path.join(root, 'tsconfig.json') };
+  const tsConfig = ts.parseJsonConfigFileContent({ compilerOptions }, ts.sys, root);
+  const result = await cruise(
+    [domain],
+    { ruleSet, validate: true, exclude: { path: architectureCheck.exclude } },
+    {},
+    { tsConfig, babelConfig: {} },
   );
-  expect(run.toolErrors).toEqual([]);
-  return names.flatMap((name) =>
-    run.reports
-      .get(name)
-      .findings.filter(({ rule }) => rule.startsWith('domain-') || rule === 'no-restricted-syntax')
-      .map(({ path: file, rule }) => `${file} ${rule}`)
-      .toSorted(),
-  );
+  return result.output.summary.violations
+    .map(({ from, rule }) => `${from} ${rule.name}`)
+    .toSorted();
+}
+
+async function domainSyntaxRules(file) {
+  const eslint = new ESLint({
+    cwd: root,
+    overrideConfigFile: true,
+    overrideConfig: [
+      { files: ['**/*.ts'], languageOptions: { parser: tseslint.parser } },
+      ...strictSyntaxConfigFor(resolveLayout()),
+    ],
+  });
+  const [result] = await eslint.lintFiles([path.join(root, file)]);
+  return result.messages.map(({ ruleId }) => ruleId);
 }
 
 describe('architecture rules on installed packages', () => {
-  it(
-    'report domain imports of installed packages, also one whose entry is under dist/',
-    () => {
-      expect(findingsOf(['dependency-architecture', 'eslint-lint'])).toEqual([
-        `${domain}/fetch.ts domain-does-not-import-network-or-database-clients`,
-        `${domain}/log.ts domain-does-not-import-the-logger`,
-        `${domain}/view.ts no-restricted-syntax`,
-      ]);
-    },
-    TOOL_TIMEOUT_MS,
-  );
+  it('report domain imports of installed packages, also one whose entry is under dist/', async () => {
+    expect(await architectureViolations()).toEqual([
+      `${domain}/fetch.ts domain-does-not-import-network-or-database-clients`,
+      `${domain}/log.ts domain-does-not-import-the-logger`,
+    ]);
+  });
+
+  it('report an installed react in domain/', async () => {
+    expect(await domainSyntaxRules(`${domain}/view.ts`)).toEqual(['no-restricted-syntax']);
+    expect(await domainSyntaxRules(`${domain}/total.ts`)).toEqual([]);
+  });
 });

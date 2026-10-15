@@ -4,18 +4,19 @@ export function createdByCallOnly(rule) {
   return {
     ...rule,
     create(context) {
-      const pending = { use: undefined };
+      const pending = new Map();
       const filtered = Object.create(context, {
         report: {
           value(descriptor) {
             if (descriptor.messageId !== 'createdHere') {
-              pending.use = descriptor;
+              pending.set('use', descriptor);
               return;
             }
-            if (pending.use !== undefined && callCreations.has(descriptor.node.type)) {
-              context.report(pending.use);
+            const use = pending.get('use');
+            pending.delete('use');
+            if (use !== undefined && callCreations.has(descriptor.node.type)) {
+              context.report(use);
             }
-            pending.use = undefined;
           },
         },
       });
