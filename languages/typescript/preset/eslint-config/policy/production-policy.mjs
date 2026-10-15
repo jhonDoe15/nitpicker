@@ -8,21 +8,34 @@ const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2];
 const RANDOM_MESSAGE =
   'Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. For a simulation or UI jitter, add an exception for this rule in nitpicker.config.json.';
 
-export const productionRestrictedProperties = [
+const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
 ];
 
+const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
+
+function withReactFormat(formats, react) {
+  return react ? [...formats, 'PascalCase'] : formats;
+}
+
 function namingConvention({ react }) {
   const underscores = 'allowSingleOrDouble';
-  const withReact = (formats) => (react ? [...formats, 'PascalCase'] : formats);
   return [
     'error',
     { selector: 'typeLike', format: ['PascalCase'] },
-    { selector: 'function', format: withReact(['camelCase']), leadingUnderscore: underscores },
-    { selector: ['variable', 'parameter'], modifiers: ['destructured'], format: null },
+    {
+      selector: 'function',
+      format: withReactFormat(['camelCase'], react),
+      leadingUnderscore: underscores,
+    },
+    {
+      selector: ['variable', 'parameter'],
+      modifiers: ['destructured'],
+      format: DESTRUCTURED_FORMATS,
+    },
     {
       selector: 'variable',
-      format: withReact(['camelCase', 'UPPER_CASE']),
+      format: withReactFormat(['camelCase', 'UPPER_CASE'], react),
       leadingUnderscore: underscores,
     },
     { selector: 'parameter', format: ['camelCase'], leadingUnderscore: underscores },
@@ -53,7 +66,7 @@ function productionRules({ react }) {
   };
 }
 
-export const productionGuardRules = {
+const productionGuardRules = {
   'nitpicker/no-process-access-outside-composition-root': 'error',
   'nitpicker/no-shell-string-command': 'error',
   'nitpicker/no-unsafe-path-join': 'error',

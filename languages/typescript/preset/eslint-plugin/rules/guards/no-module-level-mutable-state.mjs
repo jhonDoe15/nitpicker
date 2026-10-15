@@ -19,7 +19,13 @@ const MUTATING_METHODS = new Set([
 const WRAPPERS = new Set(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression']);
 
 function unwrap(expression) {
-  return WRAPPERS.has(expression.type) ? unwrap(expression.expression) : expression;
+  const chain = [expression];
+  for (const current of chain) {
+    if (WRAPPERS.has(current.type)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
 }
 
 function isContainer(initializer) {

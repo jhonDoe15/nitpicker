@@ -54,15 +54,16 @@ function aliasedType(sourceCode, reference) {
     : undefined;
 }
 
-function resolvesToUnknown(sourceCode, node, seen = new Set()) {
-  if (node.type === 'TSUnknownKeyword') {
-    return true;
+function resolvesToUnknown(sourceCode, node) {
+  const chain = [node];
+  for (const current of chain) {
+    const target =
+      current.type === 'TSTypeReference' ? aliasedType(sourceCode, current) : undefined;
+    if (target !== undefined && !chain.includes(target)) {
+      chain.push(target);
+    }
   }
-  const target = node.type === 'TSTypeReference' ? aliasedType(sourceCode, node) : undefined;
-  if (target === undefined || seen.has(target)) {
-    return false;
-  }
-  return resolvesToUnknown(sourceCode, target, new Set([...seen, target]));
+  return chain.at(-1).type === 'TSUnknownKeyword';
 }
 
 export const rule = {

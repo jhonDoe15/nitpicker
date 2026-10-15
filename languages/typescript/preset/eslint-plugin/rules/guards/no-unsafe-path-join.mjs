@@ -26,6 +26,31 @@ function rootIdentifier(expression) {
   return chain.at(-1);
 }
 
+function isParameter(sourceCode, expression) {
+  const identifier = rootIdentifier(expression);
+  return (
+    identifier.type === 'Identifier' &&
+    variableNamed(sourceCode, identifier)?.defs.some(({ type }) => type === 'Parameter')
+  );
+}
+
+function pathBuildingCall(sourceCode, argument) {
+  if (argument?.type === 'Identifier') {
+    const definition = variableNamed(sourceCode, argument)?.defs.at(0);
+    return definition?.type === 'Variable' ? definition.node.init : undefined;
+  }
+  return argument;
+}
+
+function usesParameter(sourceCode, call) {
+  return call.arguments.some(
+    (argument) =>
+      isParameter(sourceCode, argument) ||
+      (argument.type === 'TemplateLiteral' &&
+        argument.expressions.some((expression) => isParameter(sourceCode, expression))),
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -41,30 +66,6 @@ export const rule = {
     let fs = { named: new Map(), namespaces: new Set() };
     let pathModule = { named: new Map(), namespaces: new Set() };
 
-    function isParameter(expression) {
-      const identifier = rootIdentifier(expression);
-      return (
-        identifier.type === 'Identifier' &&
-        variableNamed(sourceCode, identifier)?.defs.some(({ type }) => type === 'Parameter')
-      );
-    }
-
-    function pathBuildingCall(argument) {
-      if (argument?.type === 'Identifier') {
-        const definition = variableNamed(sourceCode, argument)?.defs.at(0);
-        return definition?.type === 'Variable' ? definition.node.init : undefined;
-      }
-      return argument;
-    }
-
-    function usesParameter(call) {
-      return call.arguments.some(
-        (argument) =>
-          isParameter(argument) ||
-          (argument.type === 'TemplateLiteral' && argument.expressions.some(isParameter)),
-      );
-    }
-
     return {
       Program(node) {
         fs = moduleBindings(node, FS_MODULES);
@@ -74,11 +75,11 @@ export const rule = {
         if (!FS_FUNCTIONS.has(importedCalleeName(node.callee, fs))) {
           return;
         }
-        const built = pathBuildingCall(node.arguments[0]);
+        const built = pathBuildingCall(sourceCode, node.arguments[0]);
         if (
           built?.type !== 'CallExpression' ||
           !PATH_BUILDERS.has(importedCalleeName(built.callee, pathModule)) ||
-          !usesParameter(built)
+          !usesParameter(sourceCode, built)
         ) {
           return;
         }
