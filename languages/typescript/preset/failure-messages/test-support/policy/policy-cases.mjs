@@ -73,7 +73,7 @@ export const policyFailureMessageCases = [
     'export const token = Math.random().toString(36);',
     'crypto.randomUUID()',
   ),
-  utilsCase('unknown main folder names features', 'export const a = 1;', 'features/<name>/'),
+  utilsCase('unknown main folder names features', 'export const a = 1;\n', 'features/<name>/'),
   adapterCase(
     'mutable module state names the composition root',
     'const cache = new Map(); export function put(k, v) { cache.set(k, v); }',
