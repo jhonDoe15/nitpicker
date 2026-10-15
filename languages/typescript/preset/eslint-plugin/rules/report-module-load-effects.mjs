@@ -1,4 +1,9 @@
 import { ancestorsOf } from './ancestry.mjs';
+
+const ENTRY_HINT =
+  ' If this file is the app entry, list it under `layout.entryPoints` in nitpicker.config.json.';
+const stylesheetImport = /\.(?:css|scss|sass|less|styl|pcss)(?:\?.*)?$/u;
+
 const TOP_LEVEL_CONTROL = new Set([
   'BlockStatement',
   'DoWhileStatement',
@@ -73,18 +78,18 @@ export const rule = {
       },
     ],
     messages: {
-      sideEffectImport: 'Side-effect-only import executes code during module loading.',
+      sideEffectImport: `Side-effect-only import executes code during module loading.${ENTRY_HINT}`,
       staticBlock: 'Static initialization block executes during module loading.',
-      topLevelAwait: 'Top-level await delays and executes work during module loading.',
-      topLevelControl: 'Top-level {{kind}} executes control flow during module loading.',
-      topLevelExpression: 'Top-level expression executes work during module loading.',
+      topLevelAwait: `Top-level await delays and executes work during module loading.${ENTRY_HINT}`,
+      topLevelControl: `Top-level {{kind}} executes control flow during module loading.${ENTRY_HINT}`,
+      topLevelExpression: `Top-level expression executes work during module loading.${ENTRY_HINT}`,
     },
   },
   create(context) {
     const commonJsExports = context.options[0]?.commonJsExports === true;
     return {
       ImportDeclaration(node) {
-        if (node.specifiers.length === 0) {
+        if (node.specifiers.length === 0 && !stylesheetImport.test(node.source.value)) {
           context.report({ node, messageId: 'sideEffectImport' });
         }
       },

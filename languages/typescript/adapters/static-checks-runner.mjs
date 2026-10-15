@@ -41,6 +41,7 @@ import {
   preEmitDiagnostics,
   withoutProjectRoot,
 } from './typecheck/typescript-program.mjs';
+import { withAssetImportHint } from './typecheck/asset-import-hint.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
@@ -285,7 +286,7 @@ export function normalizeTypeScriptDiagnostics({
         `symbol:${symbol ?? ''}`,
         `occurrence:${String(occurrence)}`,
       ].join('|'),
-      message,
+      message: withAssetImportHint(diagnostic.code, message),
       classification: 'enforceable',
     };
     if (symbol !== undefined) {
