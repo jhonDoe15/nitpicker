@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runAnalyzers } from '../run-analyzers.mjs';
+import { runAnalyzers } from '../execution/run-analyzers.mjs';
 import { withoutSnapshotRoot } from './snapshot-root.mjs';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');

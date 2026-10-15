@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../ingest/common.mjs';
-import { sourceLocator } from '../kotlin-reports.mjs';
+import { sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {
   MESSAGES,
   RULE_IDS,

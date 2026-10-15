@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { ingestArchunit } from './archunit.mjs';
-import { ingestCheckstyle } from './checkstyle.mjs';
+import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from './common.mjs';
-import { ingestGoCoverprofile } from './gocover.mjs';
-import { ingestJacoco } from './jacoco.mjs';
-import { ingestLcov } from './lcov.mjs';
+import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
+import { ingestJacoco } from './coverage-reports/jacoco.mjs';
+import { ingestLcov } from './coverage-reports/lcov.mjs';
 import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -116,7 +116,7 @@ describe('checkstyle', () => {
       true,
     );
     expect(findings[0].message).toBe("'42' is a magic number.");
-    expect(findings[2].message).toContain('<found 120>');
+    expect(findings[2].message).toEqual('Line is longer than 100 characters <found 120>.');
   });
 
   it('maps severities and numbers repeated messages without using lines', () => {
@@ -168,7 +168,9 @@ describe('archunit', () => {
         'enforceable',
       ],
     ]);
-    expect(findings[0].message).toContain('3 violations');
+    expect(findings[0].message).toEqual(
+      'ArchUnit rule services_do_not_use_dao violated by demo.service.OrderService (3 violations): Constructor <demo.service.OrderService.<init>(demo.dao.OrderDao)> has parameter of type <demo.dao.OrderDao>',
+    );
     expect(findings[0].message).not.toMatch(/\.java:\d/);
   });
 
@@ -214,7 +216,9 @@ describe('pit', () => {
       'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
       'demo.Calc|clamp(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
     ]);
-    expect(findings[2].identity).toContain('replaced return value with "" for demo/Greeter::shout');
+    expect(findings[2].identity).toEqual(
+      'demo.Greeter|shout(Ljava/lang/String;)Ljava/lang/String;|EmptyObjectReturnValsMutator|replaced return value with "" for demo/Greeter::shout#1',
+    );
     expect(findings.every((finding) => !/line/i.test(finding.identity))).toBe(true);
   });
 
@@ -253,24 +257,45 @@ describe('pit', () => {
 describe('coverage ingesters', () => {
   it('lcov reports line coverage and uncovered functions by name', () => {
     const { findings } = ingestLcov(fixture('lcov.info'), { root: '/work/app' });
-    expect(findings[0]).toMatchObject({
-      path: 'src/util.js',
+    expect(findings[0]).toEqual({
+      tool: 'lcov',
       rule: 'line-coverage',
+      path: 'src/util.js',
+      identity: 'line-coverage',
+      message: 'line-coverage 50% (2/4)',
       classification: 'descriptive',
       metric: { name: 'line-coverage', value: 50 },
     });
-    expect(findings[1]).toMatchObject({ rule: 'uncovered-function', symbol: 'format' });
+    expect(findings[1]).toEqual({
+      tool: 'lcov',
+      rule: 'uncovered-function',
+      path: 'src/util.js',
+      identity: 'cov:be6189c130cf22b5',
+      message: 'Function format is not covered',
+      classification: 'descriptive',
+      symbol: 'format',
+    });
     expect(findings[2].path).toBe('src/other.js');
   });
 
   it('jacoco reports source file coverage and uncovered methods', () => {
     const { findings } = ingestJacoco(fixture('jacoco.xml'), { sourceRoot: 'src/main/java' });
-    expect(findings[0]).toMatchObject({
+    expect(findings[0]).toEqual({
+      tool: 'jacoco',
+      rule: 'line-coverage',
       path: 'src/main/java/com/acme/Foo.java',
+      identity: 'line-coverage',
+      message: 'line-coverage 60% (3/5)',
+      classification: 'descriptive',
       metric: { name: 'line-coverage', value: 60 },
     });
-    expect(findings[1]).toMatchObject({
+    expect(findings[1]).toEqual({
+      tool: 'jacoco',
       rule: 'uncovered-method',
+      path: 'src/main/java/com/acme/Foo.java',
+      identity: 'cov:2296ffd6e33a5f79',
+      message: 'Method com.acme.Foo#unused(I)I is not covered',
+      classification: 'descriptive',
       symbol: 'com.acme.Foo#unused(I)I',
     });
     expect(() => ingestJacoco('<x/>')).toThrow('<report>');
