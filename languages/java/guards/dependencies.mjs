@@ -2,38 +2,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const DEPENDENCIES_TOOL = 'dependencies';
-const NOT_PINNED_RULE = 'dependency-version-not-pinned';
 const UNUSED_RULE = 'unused-declared-dependency';
 const DEPENDENCIES_REPORT = 'dependencies.json';
-const FLOATING_VERSION = /\+|^latest\.|SNAPSHOT$|^[[(]/i;
 const WIRING_ONLY = /(?:^|-)starter(?:-|$)|(?:^|-)bom$|-platform$|-dependencies$/;
 
-function exceptionHint(rule) {
-  return `If it is right here, add an exception for ${DEPENDENCIES_TOOL}/${rule} in nitpicker.config.json.`;
-}
-
-export function isFloating({ version, changing }) {
-  return changing === true || FLOATING_VERSION.test(version ?? '');
-}
-
-function floatingFinding(entry, buildFile) {
-  const id = `${entry.group}:${entry.name}`;
-  return {
-    tool: DEPENDENCIES_TOOL,
-    rule: NOT_PINNED_RULE,
-    path: buildFile,
-    identity: `floating:${id}:${entry.version}`,
-    message: `Dependency ${id} has the floating version ${entry.version === '' ? '(changing)' : entry.version}, so the build can change without a commit. Pin one exact version. ${exceptionHint(NOT_PINNED_RULE)}`,
-    classification: 'enforceable',
-  };
-}
-
-function isUnused(entry, referenced) {
-  return (
-    (entry.archives ?? []).length > 0 &&
-    !WIRING_ONLY.test(entry.name) &&
-    !entry.archives.some((archive) => referenced.has(archive))
-  );
+function isUnused(entry) {
+  return (entry.archives ?? []).length > 0 && entry.used !== true && !WIRING_ONLY.test(entry.name);
 }
 
 function unusedFinding(entry, buildFile) {
@@ -43,26 +17,23 @@ function unusedFinding(entry, buildFile) {
     rule: UNUSED_RULE,
     path: buildFile,
     identity: `unused:${id}`,
-    message: `Dependency ${id} is declared in ${entry.configuration} but no main class uses it. Remove it, or declare it runtimeOnly if it is only needed at run time. ${exceptionHint(UNUSED_RULE)}`,
+    message:
+      `Dependency ${id} is declared in ${entry.configuration} but no main class uses it. ` +
+      'Remove it, declare it runtimeOnly if it is only needed at run time, ' +
+      'or compileOnly if only its source annotations are needed. ' +
+      `If it is right here, add an exception for ${DEPENDENCIES_TOOL}/${UNUSED_RULE} in nitpicker.config.json.`,
     classification: 'enforceable',
   };
 }
 
 export function dependencyFindings(report) {
+  if (report.analyzed !== true) {
+    return [];
+  }
   const buildFile = report.buildFile ?? 'build.gradle';
-  const referenced = new Set(report.referenced ?? []);
-  const seen = new Set();
-  return (report.declared ?? []).flatMap((entry) => {
-    const key = `${entry.group}:${entry.name}:${entry.version}`;
-    const duplicate = seen.has(key);
-    seen.add(key);
-    return [
-      ...(!report.locked && !duplicate && isFloating(entry)
-        ? [floatingFinding(entry, buildFile)]
-        : []),
-      ...(!duplicate && isUnused(entry, referenced) ? [unusedFinding(entry, buildFile)] : []),
-    ];
-  });
+  const unused = (report.declared ?? []).filter((entry) => isUnused(entry));
+  const byId = new Map(unused.map((entry) => [`${entry.group}:${entry.name}`, entry]));
+  return [...byId.values()].map((entry) => unusedFinding(entry, buildFile));
 }
 
 export function readDependencyFindings(reportRoot) {
