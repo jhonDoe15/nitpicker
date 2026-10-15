@@ -1,15 +1,9 @@
 import { availableParallelism } from 'node:os';
-
 import { executeAnalyzerTask, installShutdownHandlers } from './process.mjs';
-
 import { indexTasks, dependencyOrder, byDescendingExecutionPriority } from './tasks.mjs';
-
 import { createWeightedSemaphore } from './capacity.mjs';
-
 import { createProgressReporter, writeToDescriptor } from './progress.mjs';
-
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
 
 const DEFAULT_MAX_PARALLEL = 4;

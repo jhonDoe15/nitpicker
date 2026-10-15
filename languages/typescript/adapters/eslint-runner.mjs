@@ -1,29 +1,20 @@
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import { parseArguments } from './eslint/arguments.mjs';
-
 import { realpathSync, statSync } from 'node:fs';
-
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from './static-checks/dependencies.mjs';
-
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-
 import { runLintEngine } from './lint-engine/lint-engine.mjs';
-
 import {
   linkDependencies,
   installPolicyFiles,
   restorePolicyFiles,
   removeDependencyLinks,
 } from './eslint/policy.mjs';
-
 import { validatedContainedFile } from './eslint/paths.mjs';
-
 import { normalizeEslintResults } from './eslint/normalize.mjs';
 
 const invokedPath = process.argv[1];

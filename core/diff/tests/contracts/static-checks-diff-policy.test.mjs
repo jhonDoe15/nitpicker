@@ -1,5 +1,4 @@
 import { createGitTemplate, copyGitTemplate } from '../../fixtures/git-repository.mjs';
-
 import {
   expectedOutput87_34,
   expectedOutput119_53,
@@ -10,23 +9,14 @@ import {
   expectedOutput261_34,
   expectedOutput275_68,
 } from '../../fixtures/expected-output/core-diff-static-checks-diff-policy.mjs';
-
 import { execFileSync, spawnSync } from 'node:child_process';
-
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-
 import { createStaticCheckAnalyzer } from '../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
-
 import { normalizeArchitectureViolations } from '../../../../languages/typescript/adapters/static-checks-runner.mjs';
-
 import { withDefaultAnalyzerParallelism } from '../../fixtures/analyzer-parallelism.mjs';
-
 import { runQualityDiff } from '../../comparison/run-diff.mjs';
 
 const toolRoot = path.resolve(new URL('../../', import.meta.url).pathname, '../..');

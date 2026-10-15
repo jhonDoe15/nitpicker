@@ -1,19 +1,11 @@
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { createRequire } from 'node:module';
-
 import path from 'node:path';
-
 import { prepareSnapshotDependencies, removeSnapshotDependencies } from './dependencies.mjs';
-
 import { readLayout } from '../../preset/head-policy.mjs';
-
 import { projectFile, hash, policyFile } from './shared.mjs';
-
 import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
-
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
-
 import { depthFirst, chainOf } from '../../../../shared/traversal.mjs';
 
 function loadTypeScript(projectRoot = PACKAGE_ROOT) {

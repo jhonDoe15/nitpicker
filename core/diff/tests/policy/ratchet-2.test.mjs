@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-
 import { compareFindings } from '../../comparison/compare.mjs';
 
 describe('strict rules on an edited line of a legacy function', () => {

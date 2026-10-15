@@ -1,11 +1,7 @@
 import { QUALITY_AREA_RUNNERS } from './quality-areas/registry.mjs';
-
 import { readLayout } from '../preset/head-policy.mjs';
-
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import { parseArguments } from './quality-areas/arguments.mjs';
 
 export async function runQualityArea(options) {

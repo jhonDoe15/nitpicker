@@ -1,9 +1,6 @@
 import { rmSync } from 'node:fs';
-
 import { afterEach, describe, expect, it } from 'vitest';
-
 import { renderConsoleSummary } from './summary.mjs';
-
 import { renderTextReport } from './text.mjs';
 
 const temporaryRoots = [];

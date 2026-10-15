@@ -1,26 +1,17 @@
 import { runNodeTool, parseReportJson } from '../tooling.mjs';
-
 import path from 'node:path';
-
 import { existsSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
-
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
-
 import {
   coverageFailureFindings,
   readVitestReport,
   readCoverageFindings,
   toolErrorFinding,
 } from '../reporting/vitest.mjs';
-
 import { readLayout } from '../../../preset/head-policy.mjs';
-
 import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import { normalizeCrap } from '../reporting/tests.mjs';
-
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
-
 import { COVERAGE_REPORT_PATH } from '../reporting/vitest.mjs';
 
 export function runPolicyTests(options) {

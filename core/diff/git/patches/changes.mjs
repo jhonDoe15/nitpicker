@@ -1,5 +1,4 @@
 import { runGit } from '../repository/command.mjs';
-
 import { normalizeGitPath } from '../normalize.mjs';
 
 export function readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha }) {

@@ -3,19 +3,12 @@ import {
   toolNameForPath,
   resolveTool,
 } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { loadDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
-
 import { existingRoots } from '../../preset/layout.mjs';
-
 import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs';
-
 import { spawnSync } from 'node:child_process';
-
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import { lstatSync } from 'node:fs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;

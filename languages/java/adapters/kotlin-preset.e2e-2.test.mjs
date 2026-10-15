@@ -1,15 +1,9 @@
 import { execFileSync } from 'node:child_process';
-
 import path from 'node:path';
-
 import { mkdirSync, writeFileSync, rmSync, mkdtempSync, cpSync, readFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { runJavaDiff } from './java-diff.mjs';
-
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
-
 import {
   GREETER_TEST_WITHOUT_JAVA,
   BAD,
@@ -51,11 +45,8 @@ import {
   HOSTILE_DETEKT_CONFIG,
   EXTRA_SOURCES,
 } from './fixtures/kotlin-preset-data.mjs';
-
 import { kotlinRuleCases, fixturePath } from './fixtures/kotlin-rules/cases.mjs';
-
 import { SUPPRESSION_RULE } from './kotlin/rules/kotlin-rules.mjs';
-
 import { analyzeJavaSnapshot } from './java-runner.mjs';
 
 // End-to-end test of the Kotlin preset on a small mixed Kotlin and Java Gradle project. It needs

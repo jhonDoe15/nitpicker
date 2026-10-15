@@ -1,13 +1,8 @@
 import { spawnSync } from 'node:child_process';
-
 import path from 'node:path';
-
 import { mkdirSync, writeFileSync, mkdtempSync, cpSync, rmSync } from 'node:fs';
-
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
-
 import { tmpdir } from 'node:os';
-
 import {
   LEGACY,
   BRANCHY,
@@ -32,9 +27,7 @@ import {
   CHECKSTYLE_PREFIX,
   repeated,
 } from './fixtures/java-preset-data.mjs';
-
 import { runJavaDiff } from './java-diff.mjs';
-
 import {
   expectedOutput395_51,
   expectedOutput411_51,

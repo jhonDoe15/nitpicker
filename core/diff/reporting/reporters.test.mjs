@@ -8,21 +8,13 @@ import {
   expectedOutput285_21,
   expectedOutput291_21,
 } from '../fixtures/expected-output/core-diff-reporters.mjs';
-
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterEach, describe, expect, it } from 'vitest';
-
 import { absoluteTextReportPath, writeDiffReports } from './reporters.mjs';
-
 import { renderConsoleSummary } from './summary.mjs';
-
 import { renderJunitReport } from './junit.mjs';
-
 import { renderSarifReport } from './sarif.mjs';
 
 const temporaryRoots = [];

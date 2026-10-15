@@ -1,5 +1,4 @@
 import { sumToolCount, formatSeconds } from './format/text.mjs';
-
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 
 export function renderTextReport(report) {

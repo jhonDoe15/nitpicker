@@ -1,9 +1,6 @@
 import { KINDS } from '../immutable-types/kinds.mjs';
-
 import ts from 'typescript';
-
 import { mutablePart, kindOfType } from '../immutable-types/types.mjs';
-
 import { kindOfExpression } from '../immutable-types/expressions.mjs';
 
 const GENERIC_HINT = 'Type it deeply readonly, e.g. `readonly T[]` or `{ readonly field: T }`.';

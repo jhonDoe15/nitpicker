@@ -6,21 +6,15 @@ import {
   expectedOutput276_32,
   expectedOutput309_38,
 } from '../../fixtures/expected-output/core-diff-ratchet.mjs';
-
 import { describe, expect, it } from 'vitest';
-
 import {
   FUNCTION_STRUCTURE_LIMITS,
   GREW_MESSAGES,
   HELD_MESSAGES,
 } from '../../../../shared/policy.mjs';
-
 import { crapFindings } from '../../../../shared/rules/crap.mjs';
-
 import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
-
 import { compareFindings } from '../../comparison/compare.mjs';
-
 import { parseFinding } from '../../comparison/finding-schema.mjs';
 
 function limitFindings(functions) {

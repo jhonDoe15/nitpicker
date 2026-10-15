@@ -1,5 +1,4 @@
 import ts from 'typescript';
-
 import { KINDS } from './kinds.mjs';
 
 const READONLY_WRAPPERS = new Set(['Readonly', 'ReadonlyArray', 'ReadonlySet', 'ReadonlyMap']);

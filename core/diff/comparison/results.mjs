@@ -4,7 +4,6 @@ import {
   policyHash,
   sortByToolAndPath,
 } from '../reporting/report-model.mjs';
-
 import { compareFindings } from './compare.mjs';
 
 export function combineAnalyzerReports(context) {

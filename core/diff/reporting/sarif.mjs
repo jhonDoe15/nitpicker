@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-
 import { comparisonKey } from '../comparison/fingerprint.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';

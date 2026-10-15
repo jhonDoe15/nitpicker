@@ -1,7 +1,5 @@
 import { hash, positiveInteger } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import { readFileSync, lstatSync } from 'node:fs';
-
 import path from 'node:path';
 
 export function withFunctionSourceHashes(report, projectRoot) {

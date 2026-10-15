@@ -1,17 +1,10 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterEach, describe, expect, it } from 'vitest';
-
 import { jscpdVersion } from '../../../java/adapters/metrics/java-duplicates.mjs';
-
 import { installFakeToolchain } from '../fixtures/fake-toolchain.mjs';
-
 import { failure } from './python-process.mjs';
-
 import {
   createToolContext,
   mutationVersions,

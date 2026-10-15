@@ -1,49 +1,26 @@
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
-
 import { reportingProgress } from './diff/execution/progress.mjs';
-
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
-
 import { runCacheCommand } from './command/cache.mjs';
-
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
-
 import { realpathSync } from 'node:fs';
-
 import { loadConfig, describeConfigOverrides } from './configuration/config.mjs';
-
 import { resolveHeadPolicy } from '../languages/typescript/preset/head-policy.mjs';
-
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
-
 import { presetAnalyzers } from './configuration/preset-analyzers.mjs';
-
 import { withRunLock } from './command/run-lock.mjs';
-
 import { runSnapshotCli } from './command/snapshot.mjs';
-
 import { createBaseSetupResolver } from './configuration/base-setup.mjs';
-
 import { runGit } from './diff/git/repository/command.mjs';
-
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
-
 import path from 'node:path';
-
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
-
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
-
 import { fixWorkingTree } from './fix/run-fix.mjs';
-
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
-
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
-
 import { renderRuleFilterSection } from './diff/reporting/text.mjs';
 
 export function runCli(options = {}) {

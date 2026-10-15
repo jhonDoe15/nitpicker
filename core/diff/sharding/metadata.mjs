@@ -1,13 +1,8 @@
 import { analyzerName } from '../reporting/report-model.mjs';
-
 import { realpathSync } from 'node:fs';
-
 import { runGit } from '../git/repository/command.mjs';
-
 import path from 'node:path';
-
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
-
 import { readJson } from './read-shards.mjs';
 
 function resolveAnalyzerVersions(analyzers, liveProjectRoot, errors) {

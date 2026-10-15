@@ -1,17 +1,12 @@
 import { resolveLayout } from './layout.mjs';
-
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
-
 import {
   POLICY_FILES,
   JAVASCRIPT_PRESET_FILE,
   DEPENDENCY_GRAPH_FILES,
 } from './checks/policy-files.mjs';
-
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mjs';
-
 import { MINUTE_MS, eslintVersion } from './checks/constants.mjs';
-
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 
 const dependencyCruiserVersion = 'unresolved';

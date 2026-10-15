@@ -1,5 +1,4 @@
 import { chainOf, depthFirst } from '../../../../shared/traversal.mjs';
-
 import ts from 'typescript';
 
 export function unwrap(node) {

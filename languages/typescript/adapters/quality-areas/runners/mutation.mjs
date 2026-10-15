@@ -1,7 +1,5 @@
 import { mutationTargets, MUTATION_REPORT_PATH } from '../mutation-scope.mjs';
-
 import { readLayout } from '../../../preset/head-policy.mjs';
-
 import {
   importPolicyModule,
   relativeProjectPath,
@@ -9,24 +7,16 @@ import {
   spawnNodeTool,
   policyFile,
 } from '../tooling.mjs';
-
 import path from 'node:path';
-
 import { normalizeMutation } from '../reporting/tests.mjs';
-
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
-
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
-
 import {
   TYPECHECK_FAILED_SKIPPED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-
 import { toolErrorFinding } from '../reporting/vitest.mjs';
-
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
-
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';

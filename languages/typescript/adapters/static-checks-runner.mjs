@@ -1,21 +1,14 @@
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import {
   parseArguments,
   requiredString,
   normalizedRelativePath,
 } from './static-checks/arguments.mjs';
-
 import { runPrettier } from './static-checks/prettier.mjs';
-
 import { runTypecheck } from './static-checks/typescript.mjs';
-
 import { readLayout } from '../preset/head-policy.mjs';
-
 import { existingRoots } from '../preset/layout.mjs';
-
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 
 const invokedPath = process.argv[1];

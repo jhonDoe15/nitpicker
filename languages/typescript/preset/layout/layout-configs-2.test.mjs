@@ -15,15 +15,10 @@ import {
   expectedOutput520_52,
   expectedOutput558_35,
 } from '../../../../core/diff/fixtures/expected-output/languages-typescript-preset-layout-configs.mjs';
-
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { pathToFileURL } from 'node:url';
-
 import path from 'node:path';
-
 import { afterAll, describe, expect, it } from 'vitest';
 
 const temporaryRoots = [];

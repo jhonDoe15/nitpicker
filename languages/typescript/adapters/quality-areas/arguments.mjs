@@ -1,22 +1,14 @@
 import { QUALITY_AREA_RUNNERS } from './registry.mjs';
-
 import { realpathSync, lstatSync } from 'node:fs';
-
 import { TRUSTED_TOOL_ROOT } from './tooling.mjs';
-
 import path from 'node:path';
-
 import {
   PACKAGE_ROOT,
   SNAPSHOT_DIRECTORY_NAMES,
 } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
-
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
-
 import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
-
 import { tmpdir } from 'node:os';
 
 export function parseArguments(arguments_) {

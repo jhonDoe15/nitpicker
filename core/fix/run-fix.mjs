@@ -1,5 +1,4 @@
 import { eslintChecks, staticChecks } from '../../languages/typescript/preset/quality-checks.mjs';
-
 import {
   resolveHeadPolicy,
   withHeadPolicyFile,
@@ -7,23 +6,14 @@ import {
   usesProjectConfig,
   prettierPrecedence,
 } from '../../languages/typescript/preset/head-policy.mjs';
-
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
-
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
-
 import { readFileSync } from 'node:fs';
-
 import path from 'node:path';
-
 import { prettierExtensions, prettierExclusions, typescriptExtensions } from './extensions.mjs';
-
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
-
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
-
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-
 import { spawnSync } from 'node:child_process';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');

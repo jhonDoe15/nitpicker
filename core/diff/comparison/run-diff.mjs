@@ -3,31 +3,18 @@ import {
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { writeDiffReports } from '../reporting/reporters.mjs';
-
 import path from 'node:path';
-
 import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
-
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
-
 import { resolveBaseProjectPath, readProjectMoves } from '../git/paths.mjs';
-
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
-
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
-
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
-
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-
 import { combineAnalyzerReports } from './results.mjs';
-
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
-
 import { cachedLine } from '../execution/progress.mjs';
-
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,

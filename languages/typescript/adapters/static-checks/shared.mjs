@@ -1,13 +1,8 @@
 import { toolNameForPath, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-
 import { spawnSync } from 'node:child_process';
-
 import { realpathSync, lstatSync, statSync } from 'node:fs';
-
 import path from 'node:path';
-
 import { normalizedRelativePath } from './arguments.mjs';
-
 import { createHash } from 'node:crypto';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;

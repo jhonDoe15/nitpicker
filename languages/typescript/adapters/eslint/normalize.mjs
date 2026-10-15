@@ -1,9 +1,6 @@
 import { validatedProjectFile } from './paths.mjs';
-
 import { readFileSync } from 'node:fs';
-
 import ts from 'typescript';
-
 import {
   scriptKind,
   commentAt,
@@ -17,9 +14,7 @@ import {
   normalizeMessageText,
   nodeChain,
 } from './syntax.mjs';
-
 import { growthAdviceFor, eslintMessageWithHint } from '../hints/eslint-hints.mjs';
-
 import { requiredString, positiveInteger } from './arguments.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {

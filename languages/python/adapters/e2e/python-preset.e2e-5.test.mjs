@@ -1,7 +1,5 @@
 import path from 'node:path';
-
 import { spawnSync } from 'node:child_process';
-
 import {
   mkdirSync,
   writeFileSync,
@@ -11,13 +9,9 @@ import {
   cpSync,
   rmSync,
 } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import { runCli } from '../../../../core/cli.mjs';
-
 import { describe, beforeAll, afterAll, it, expect } from 'vitest';
-
 import {
   LAYERED_FILES,
   ORDER_TOTAL,

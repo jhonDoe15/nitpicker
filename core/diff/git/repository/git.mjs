@@ -1,9 +1,6 @@
 import { runGit } from './command.mjs';
-
 import { mkdtempSync, existsSync, copyFileSync, rmSync } from 'node:fs';
-
 import path from 'node:path';
-
 import { tmpdir } from 'node:os';
 
 export function resolveComparison(repositoryRoot, requestedBaseRef) {

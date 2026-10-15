@@ -1,5 +1,4 @@
 import { createGitTemplate, copyGitTemplate } from '../diff/fixtures/git-repository.mjs';
-
 import {
   expectedOutput404_31,
   expectedOutput405_31,
@@ -9,7 +8,6 @@ import {
   expectedOutput448_31,
   expectedOutput548_31,
 } from '../diff/fixtures/expected-output/core-cli.mjs';
-
 import {
   mkdirSync,
   mkdtempSync,
@@ -19,17 +17,11 @@ import {
   writeFileSync,
   readFileSync,
 } from 'node:fs';
-
 import { execFileSync } from 'node:child_process';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { describe, beforeAll, afterEach, expect, it } from 'vitest';
-
 import { runCli as runCliWithSubprocesses } from '../cli.mjs';
-
 import { runTasksInProcess } from '../diff/fixtures/in-process-analyzers.mjs';
 
 // Most tests here are about diff, report and CLI logic, so the analyzer task graph and the fixture

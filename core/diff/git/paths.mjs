@@ -1,11 +1,7 @@
 import { readRepositoryChanges } from './patches/changes.mjs';
-
 import path from 'node:path';
-
 import { normalizeGitPath } from './normalize.mjs';
-
 import { runGit, GitCommandError } from './repository/command.mjs';
-
 import { scopeMoves } from './patches/renames.mjs';
 
 const PROJECT_MARKERS = ['nitpicker.config.json', 'package.json'];

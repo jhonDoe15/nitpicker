@@ -1,5 +1,4 @@
 import { execFileSync } from 'node:child_process';
-
 import {
   cpSync,
   mkdirSync,
@@ -9,17 +8,11 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-
 import { tmpdir } from 'node:os';
-
 import path from 'node:path';
-
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
-
 import { runCli as runCliWithSubprocesses } from '../../cli.mjs';
-
 import { runTasksInProcess } from '../../diff/fixtures/in-process-analyzers.mjs';
 
 // The Java and Kotlin presets through the CLI with a fake `gradle`, so they run without Java. The
