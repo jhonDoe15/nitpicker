@@ -270,14 +270,16 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   each kind of work: data through `useQuery` or a route loader, an action (a save, a clipboard
   write) in the event handler that causes it, a redirect by rendering `<Navigate />`.
 - **No prop callbacks called from effects** (`nitpicker/react-no-effect-event-handling`). An
-  effect with dependencies that calls a prop callback (`onSave(value)`, `props.onChange()`) reacts
+  effect with dependencies that calls a prop callback (`onSave(value)`, `props.onChange()`, or one
+  destructured with `const { onChange } = props`) reacts
   to a change instead of to an event: call the callback in the handler that causes the change.
   A call inside a nested function (a subscription, a timer) and an effect with `[]` are left alone;
   an effect that synchronizes with an external system needs an exception.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
-  `performance.now()`, `crypto.randomUUID()`, `uuid()`, `nanoid()` and similar generators is
+  `performance.now()`, `crypto.randomUUID()`, `uuid()`, `nanoid()` and similar generators, directly
+  or through a `const` declared in the component (`const id = crypto.randomUUID(); key={id}`), is
   flagged (`nitpicker/react-no-random-key`): it changes on every render and remounts the row.
 - **Pure render, no mutation.** State, props and hook results are not mutated
   (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
@@ -319,10 +321,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   exception.
 - **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
   `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
-  `<label htmlFor>` points to, `aria-label` or `aria-labelledby` (hidden, submit, reset, button
-  and image inputs, and fields with spread props, are left alone). A field is either controlled
-  (`value` or `checked` with `onChange`, `readOnly` or `disabled`) or uncontrolled
-  (`defaultValue`), never `value` with `defaultValue`.
+  `<label htmlFor>` in the same file points to (a computed `id` is accepted), `aria-label` or
+  `aria-labelledby` (hidden, submit, reset, button and image inputs, and fields with spread props,
+  are left alone). A field is either controlled (`value` or `checked` with `onChange`, `readOnly`
+  or `disabled`) or uncontrolled (`defaultValue`), never `value` with `defaultValue`; a form library
+  that needs otherwise takes an exception.
 - **One styling approach** (`nitpicker/react-single-styling-approach`), chosen with
   `react.styling`: `class-names` (`className` with CSS Modules, plain stylesheets or utility
   classes; inline `style` objects and CSS-in-JS libraries are flagged), `css-in-js` (styled-components,

@@ -1,4 +1,4 @@
-import { ancestorsOf } from '../../ancestry.mjs';
+import { ancestorsOf, variableNamed } from '../../ancestry.mjs';
 
 const generators = new Set([
   'Math.random',
@@ -27,6 +27,17 @@ function isKeyAttribute(node) {
   return node.type === 'JSXAttribute' && node.name.name === 'key';
 }
 
+function generatedConstant(sourceCode, identifier) {
+  const variable = variableNamed(sourceCode, identifier);
+  const [definition] = variable?.defs ?? [];
+  const inRender = variable?.scope.variableScope.type === 'function';
+  const isConst = definition?.type === 'Variable' && definition.parent.kind === 'const';
+  const init = isConst && inRender ? definition.node.init : undefined;
+  return init?.type === 'CallExpression' && generators.has(calleeName(init.callee))
+    ? calleeName(init.callee)
+    : undefined;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -36,11 +47,22 @@ export const rule = {
     schema: [],
     messages: {
       randomKey:
-        'Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created.',
+        'Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created. If remounting on every render is intended, add an exception for this rule in nitpicker.config.json.',
     },
   },
   create(context) {
     return {
+      JSXAttribute(node) {
+        const expression =
+          node.value?.type === 'JSXExpressionContainer' ? node.value.expression : undefined;
+        const call =
+          isKeyAttribute(node) && expression?.type === 'Identifier'
+            ? generatedConstant(context.sourceCode, expression)
+            : undefined;
+        if (call !== undefined) {
+          context.report({ node: expression, messageId: 'randomKey', data: { call } });
+        }
+      },
       CallExpression(node) {
         const call = calleeName(node.callee);
         const owner = ancestorsOf(node).find(({ type }) => type === 'JSXAttribute');

@@ -75,6 +75,17 @@ const files = {
     '  return <p>{seen.current.size}</p>;',
     '}',
   ],
+  [`${adapters}/signup.tsx`]: [
+    "import { useEffect } from 'react';",
+    'export function Signup(props: { onChange: (v: string) => void; value: string }) {',
+    '  const { onChange, value } = props;',
+    '  useEffect(() => {',
+    '    onChange(value);',
+    '  }, [value]);',
+    '  const id = crypto.randomUUID();',
+    '  return <ul><li key={id}><input id="email" defaultValue={value} /></li></ul>;',
+    '}',
+  ],
   [`${ui}/banner.ts`]: [
     'export function showBanner(text: string) {',
     "  const banner = window.document.querySelector('#banner');",
@@ -146,6 +157,7 @@ describe('the React rules under the oxlint engine', () => {
           `${adapters}/badge.tsx`,
           `${adapters}/player.tsx`,
           `${adapters}/profile.tsx`,
+          `${adapters}/signup.tsx`,
           `${domain}/required.ts`,
           `${ui}/banner.ts`,
         ],
@@ -171,4 +183,15 @@ describe('the React rules under the oxlint engine', () => {
   it('let the lazy ref init through and report the ref read during render', () => {
     expect(findingsOf('react-x/refs')).toEqual([`${adapters}/player.tsx:7`]);
   });
+
+  it.each([
+    ['nitpicker/react-no-effect-event-handling', 5],
+    ['nitpicker/react-no-random-key', 8],
+    ['nitpicker/react-field-has-label', 8],
+  ])(
+    'report %s through destructured props, a generated const and an unmatched id',
+    (rule, line) => {
+      expect(findingsOf(rule)).toEqual([`${adapters}/signup.tsx:${String(line)}`]);
+    },
+  );
 });

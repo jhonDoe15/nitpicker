@@ -33,6 +33,9 @@ tester.run('react-no-random-key', reactNoRandomKey, {
     '<li key={Math.floor(1)} />',
     '<li key={items[0]()} />',
     '<li key={makeKey()} />',
+    'const id = nanoid(); export const Row = () => <li key={id} />;',
+    'export function Row() { let id = nanoid(); id = item.id; return <li key={id} />; }',
+    'export function Row({ item }) { const id = item.id; return <li key={id} />; }',
   ].map(valid),
   invalid: [
     invalid('<li key={Math.random()} />', {
@@ -55,6 +58,14 @@ tester.run('react-no-random-key', reactNoRandomKey, {
     invalid('<li key={`${item.id}-${Math.random()}`} />', { messageId: 'randomKey' }),
     invalid('<li key={String(Date.now())} />', { messageId: 'randomKey' }),
     invalid('<li key={Math.random()} id={Math.random()} />', { messageId: 'randomKey' }),
+    invalid('export function Row() { const id = crypto.randomUUID(); return <li key={id} />; }', {
+      messageId: 'randomKey',
+      data: { call: 'crypto.randomUUID' },
+    }),
+    invalid(
+      'export function List({ items }) { const id = uuid(); return items.map((item) => <li key={id}>{item}</li>); }',
+      { messageId: 'randomKey', data: { call: 'uuid' } },
+    ),
   ],
 });
 
@@ -158,6 +169,8 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
     inPanel('useCustom(() => { onSave(); }, [items]);'),
     inPanel('useEffect(() => { onSave(); });'),
     inPanel('useEffect(() => { onSave(); }, deps);'),
+    'export function Panel(props) { const { onSave } = store; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
+    'export function Panel(props) { const onSave = props.onSave ?? noop; useEffect(() => { onSave(); }, [props.value]); return <div />; }',
   ].map(valid),
   invalid: [
     invalid(inPanel('useEffect(() => { onSave(items); }, [items, onSave]);'), {
@@ -181,6 +194,10 @@ tester.run('react-no-effect-event-handling', reactNoEffectEventHandling, {
         messageId: 'effectEvent',
       },
       { messageId: 'effectEvent' },
+    ),
+    invalid(
+      'export function Panel(props) { const { onChange, value } = props; useEffect(() => { onChange(value); }, [value]); return <div />; }',
+      { messageId: 'effectEvent', data: { name: 'onChange' } },
     ),
     invalid(
       'function useThing(onChange, value) { useEffect(() => { onChange(value); }, [value]); }',

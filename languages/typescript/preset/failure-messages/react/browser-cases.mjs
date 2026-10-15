@@ -97,6 +97,12 @@ const exceptionRoutes = [
   ['dangerouslySetInnerHTML', cases[0][1]],
   ['button without type', cases[1][1]],
   ['interval without cleanup', cases[4][1]],
+  ['random key', 'export const P = () => <li key={Math.random()}>x</li>;'],
+  [
+    'value with defaultValue',
+    'export const P = () => <input aria-label="n" value="a" defaultValue="b" />;',
+  ],
+  ['value without onChange', 'export const P = ({ v }) => <input aria-label="n" value={v} />;'],
 ];
 
 export const browserCases = [...cases, ...exceptionRoutes.map(exceptionCase)].map(reactCase);
