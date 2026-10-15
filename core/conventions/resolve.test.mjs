@@ -8,7 +8,9 @@ import {
   removeGitRepositories,
 } from '../diff/fixtures/git-repository.mjs';
 import { describeConfigOverrides, validateConfig } from '../config.mjs';
-import { publishHeadPolicy, runHeadPolicy } from './resolve.mjs';
+import { resolveComparison } from '../diff/git.mjs';
+import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { comparisonPolicy, publishHeadPolicy, snapshotPolicy } from './resolve.mjs';
 
 const twoSpaces = 'class A {\n  void a() {\n    run();\n  }\n}\n';
 const fourSpaces = 'class B {\n    void b() {\n        run();\n    }\n}\n';
@@ -36,13 +38,23 @@ function output() {
   return { write: (chunk) => chunks.push(chunk), text: () => chunks.join('') };
 }
 
-const comparison = (stdout = output(), options = {}) => ({
-  options: { all: false, baseRef: 'main', ...options },
-  environment: {},
-  stdout,
-});
+function runOf(config, currentProjectRoot, stdout = output()) {
+  return {
+    config,
+    currentProjectRoot,
+    headPolicy: resolveHeadPolicy(config, currentProjectRoot),
+    stdout,
+  };
+}
 
-describe('runHeadPolicy', () => {
+function compare(repositoryRoot, config, { projectRoot = repositoryRoot, stdout } = {}) {
+  return comparisonPolicy(
+    { ...runOf(config, projectRoot, stdout), repositoryRoot, base: { baseRef: 'main' } },
+    resolveComparison,
+  );
+}
+
+describe('conventions in the head policy', () => {
   it('measures the merge base, so a branch cannot flip the style', () => {
     const { root } = createGitRepository({ 'src/A.java': fourSpaces, 'src/B.java': fourSpaces });
     commitBranch(root, {
@@ -52,11 +64,7 @@ describe('runHeadPolicy', () => {
     });
     const stdout = output();
 
-    const policy = runHeadPolicy({
-      cli: comparison(stdout),
-      config: { preset: 'java' },
-      projectRoot: root,
-    });
+    const policy = compare(root, { preset: 'java' }, { stdout });
 
     expect(policy.conventions).toEqual({ 'java.indentation': '4' });
     expect(stdout.text()).toBe(
@@ -67,22 +75,14 @@ describe('runHeadPolicy', () => {
 
   it('measures the working tree when the base has nothing to measure, and for --all', () => {
     const { root } = createGitRepository({ 'README.md': 'x\n' });
-    commitBranch(root, { 'src/C.java': fourSpaces });
-    writeFiles(root, { 'src/D.java': twoSpaces, 'src/E.java': twoSpaces });
+    commitBranch(root, { 'src/C.java': twoSpaces });
+    writeFiles(root, { 'src/D.java': fourSpaces, 'src/E.java': fourSpaces });
 
-    const atBase = runHeadPolicy({
-      cli: comparison(),
-      config: { preset: 'java' },
-      projectRoot: root,
-    });
-    const snapshot = runHeadPolicy({
-      cli: comparison(undefined, { all: true }),
-      config: { preset: 'java' },
-      projectRoot: root,
-    });
+    const atBase = compare(root, { preset: 'java' });
+    const snapshot = snapshotPolicy(runOf({ preset: 'java' }, root));
 
-    expect(atBase.conventions).toEqual({ 'java.indentation': '2' });
-    expect(snapshot.conventions).toEqual({ 'java.indentation': '2' });
+    expect(atBase.conventions).toEqual({ 'java.indentation': '4' });
+    expect(snapshot.conventions).toEqual({ 'java.indentation': '4' });
   });
 
   it('measures only the analyzed project and leaves excluded paths out', () => {
@@ -94,28 +94,25 @@ describe('runHeadPolicy', () => {
       'other/Y.java': twoSpaces,
     });
 
-    const policy = runHeadPolicy({
-      cli: comparison(),
-      config: { preset: 'java', exclude: ['generated/**'] },
-      projectRoot: path.join(root, 'service'),
-    });
+    const policy = compare(
+      root,
+      { preset: 'java', exclude: ['generated/**'] },
+      { projectRoot: path.join(root, 'service') },
+    );
 
     expect(policy.conventions).toEqual({ 'java.indentation': '4' });
   });
 
-  it('keeps a pinned value and leaves presets without conventions untouched', () => {
-    const { root } = createGitRepository({ 'src/A.java': fourSpaces });
+  it('keeps a pinned value, carries only choices that differ from the preset, and leaves presets without conventions untouched', () => {
+    const { root } = createGitRepository({ 'src/A.java': twoSpaces });
+    const stdout = output();
 
     expect(
-      runHeadPolicy({
-        cli: comparison(),
-        config: { preset: 'java', conventions: { 'java.indentation': '2' } },
-        projectRoot: root,
-      }).conventions,
-    ).toEqual({ 'java.indentation': '2' });
-    expect(
-      runHeadPolicy({ cli: comparison(), config: { preset: 'python' }, projectRoot: root }),
-    ).not.toHaveProperty('conventions');
+      compare(root, { preset: 'java', conventions: { 'java.indentation': '4' } }).conventions,
+    ).toEqual({ 'java.indentation': '4' });
+    expect(compare(root, { preset: 'java' }, { stdout })).not.toHaveProperty('conventions');
+    expect(stdout.text()).toBe('');
+    expect(compare(root, { preset: 'python' })).not.toHaveProperty('conventions');
   });
 
   it('measures the published commit for cache publish', () => {
@@ -138,7 +135,7 @@ describe('reading the measured files', () => {
     });
     const stdout = output();
 
-    runHeadPolicy({ cli: comparison(stdout), config: { preset: 'java' }, projectRoot: root });
+    compare(root, { preset: 'java' }, { stdout });
 
     expect(stdout.text()).toBe(
       "Following this project's conventions:\n" +
@@ -150,11 +147,8 @@ describe('reading the measured files', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-git-'));
     try {
       expect(
-        runHeadPolicy({
-          cli: comparison(),
-          config: { preset: 'java', conventions: { 'java.indentation': '4' } },
-          projectRoot: root,
-        }).conventions,
+        snapshotPolicy(runOf({ preset: 'java', conventions: { 'java.indentation': '4' } }, root))
+          .conventions,
       ).toEqual({ 'java.indentation': '4' });
     } finally {
       rmSync(root, { recursive: true, force: true });

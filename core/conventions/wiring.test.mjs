@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createGitRepository, removeGitRepositories } from '../diff/fixtures/git-repository.mjs';
@@ -58,6 +58,31 @@ describe('conventions in a run', () => {
     expect(out).toContain(
       "Following this project's conventions:\n" +
         '  Java indentation: 4 spaces (google-java-format --aosp) (used by 1 of 1 measured files)\n',
+    );
+  });
+
+  it('reports a config error before measuring anything', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-conventions-no-git-')));
+    outputs.push(root);
+    writeFileSync(
+      path.join(root, 'nitpicker.config.json'),
+      '{ "preset": "java", "disable": ["nope"] }\n',
+    );
+    let errors = '';
+
+    const exitCode = runCli({
+      arguments_: [],
+      environment: {},
+      currentProjectRoot: root,
+      stdout: { write: () => undefined },
+      stderr: { write: (value) => (errors += value) },
+      progress: { write: () => undefined },
+      runTasks: runTasksInProcess,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(errors).toBe(
+      'nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: java\n',
     );
   });
 

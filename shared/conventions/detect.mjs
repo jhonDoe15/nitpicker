@@ -24,8 +24,12 @@ export function detectConventions({ definitions, source, pinned = {}, exclude = 
   );
 }
 
-export function conventionChoices(detected) {
-  return Object.fromEntries(Object.entries(detected).map(([id, { choice }]) => [id, choice]));
+export function conventionChoices(detected, definitions) {
+  return Object.fromEntries(
+    definitions
+      .filter(({ id, fallback }) => detected[id].choice !== fallback)
+      .map(({ id }) => [id, detected[id].choice]),
+  );
 }
 
 function sampleFor(definition, candidates) {
