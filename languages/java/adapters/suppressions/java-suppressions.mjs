@@ -70,6 +70,9 @@ export function fileFindings(source, filePath) {
     ...spotbugsSuppressions(views, spotbugsOwnsSuppressWarnings),
   ].sort((left, right) => left.offset - right.offset);
   return suppressions.map(({ tool, offset, found }) => {
+    const route = exceptionSentence(
+      exceptionEntryText({ rule: ROUTED_RULES[tool], path: filePath }),
+    );
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
     const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
     return {
@@ -77,7 +80,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}. ${exceptionSentence(exceptionEntryText({ rule: ROUTED_RULES[tool], path: filePath }))}`,
+      message: `${tool === 'pmd' ? MESSAGE : SPOTBUGS_MESSAGE} Found: ${found}. ${route}`,
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
