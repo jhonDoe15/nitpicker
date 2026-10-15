@@ -8,7 +8,9 @@ import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import {
   applyJavascriptDialect,
+  projectChecksJavascript,
   scriptRuleEntries,
+  untypedScriptEntries,
 } from '../../../javascript/preset/eslint-dialect.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react-rules.mjs';
 import {
@@ -122,6 +124,7 @@ const presetConfig = tseslint.config(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...untypedScriptEntries(policy, projectChecksJavascript(analyzedProjectRoot())),
 );
 
 const applicableExceptions = react

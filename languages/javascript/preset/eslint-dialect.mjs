@@ -1,3 +1,5 @@
+import path from 'node:path';
+import ts from 'typescript';
 import {
   isJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS,
@@ -20,6 +22,16 @@ const SELECTOR_REWRITES = new Map([
 ]);
 
 const JAVASCRIPT_FILES = `**/*.{${JAVASCRIPT_EXTENSIONS.join(',')}}`;
+const UNTYPED_SCRIPT_FILES = `**/*.{${[...JAVASCRIPT_EXTENSIONS, 'jsx'].join(',')}}`;
+export const UNTYPED_VALUE_RULES = [
+  'no-unsafe-argument',
+  'no-unsafe-assignment',
+  'no-unsafe-call',
+  'no-unsafe-member-access',
+  'no-unsafe-return',
+  'restrict-plus-operands',
+  'restrict-template-expressions',
+].map((rule) => `@typescript-eslint/${rule}`);
 const TYPESCRIPT_FILES = `**/*.{${TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT.join(',')}}`;
 
 export const JSDOC_RULE_OPTIONS = {
@@ -108,4 +120,22 @@ export function applyJavascriptDialect(entries, policy) {
 
 export function scriptRuleEntries(files) {
   return [{ files, rules: JAVASCRIPT_ONLY_RULES }];
+}
+
+export function projectChecksJavascript(projectRoot) {
+  const file = path.join(projectRoot, 'tsconfig.json');
+  const { config } = ts.readConfigFile(file, ts.sys.readFile);
+  const host = { ...ts.sys, readDirectory: () => [] };
+  return ts.parseJsonConfigFileContent(config ?? {}, host, projectRoot).options.checkJs === true;
+}
+
+export function untypedScriptEntries(policy, checksJavascript) {
+  return isJavascriptPolicy(policy) || checksJavascript
+    ? []
+    : [
+        {
+          files: [UNTYPED_SCRIPT_FILES],
+          rules: Object.fromEntries(UNTYPED_VALUE_RULES.map((rule) => [rule, 'off'])),
+        },
+      ];
 }
