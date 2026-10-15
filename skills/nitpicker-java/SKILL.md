@@ -41,7 +41,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: return `List.of()`, not `null`. Never assign `null` (`out = null`); restructure instead.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
-  `if`; `0` and `-1` are fine. A string literal used 4 times in a file becomes a constant.
+  `if`; `0` and `-1` are fine. A string literal of 5+ characters used 3 times in a file becomes a
+  constant.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
@@ -62,14 +63,15 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
-  security and its own guard rules), forbiddenapis, javac lint and Google checks. Each finding names
-  the allowed form. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
+  security, its guard and code smell rules), forbiddenapis, javac lint, comment checks and Google
+  checks. Each finding names the allowed form. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
   when `nitpicker.config.json` opts in under `tools`; then read it too.
 
 ## Errors
 
 - Never swallow: no empty `catch` (PMD `EmptyCatchBlock` and Checkstyle both fail it). A `catch`
-  returns a failure value, logs and recovers, or rethrows with the cause:
+  rethrows with the cause, returns a failure value made from the exception, or answers with an
+  error response; logging alone is not handling:
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
 - Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
   `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep

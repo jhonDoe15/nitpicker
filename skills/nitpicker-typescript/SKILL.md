@@ -79,18 +79,9 @@ If your change edits a function that existed before it, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
-- Name a string of five or more characters used three times in a file once, as a constant. Never write a secret in code: read
-  it from the environment in the composition root, and never pass it to a logger.
-- Name files, folders and types for their job: no `utils`, `helpers`, `common`, `misc`, `*Manager`
-  or `*Helper`. Pure logic shared between features goes in `shared/` under a name that says what
-  it does.
-- An exported function or method takes no boolean that switches it between two behaviors: split
-  it, or take an options object or a string union.
-- No database, HTTP, file or repository call per loop item (`for...of`, `map`, `forEach`): fetch or
-  write all items in one call, or `await Promise.all(items.map(...))` when there is no batch API.
-  Paging, polling and retry loops are fine. No `{ ...acc }` or `[...acc, x]` inside `reduce`: use
-  `Object.fromEntries(xs.map(...))` or `flatMap`.
-- A `TODO` carries an issue reference (`TODO(#123)`); delete commented-out code.
+- The code smell rules (repeated strings, secrets, generic names, boolean flags, I/O per loop
+  item, spread in `reduce`, TODOs) name the allowed form in their message. Read secrets from the
+  environment in the composition root; shared pure logic goes in `shared/` under a name for its job.
 
 ## domain/ is deeply readonly
 
@@ -115,10 +106,9 @@ If your change edits a function that existed before it, read
 - `domain/` returns expected failures as discriminated unions (`{ kind: 'empty-name' }`), never
   throws them. Success is a `kind` member too: never `T | Failure` narrowed with `typeof`, never
   `Failure | undefined`.
-- A `catch` (and `.catch(...)`) rethrows an `Error` subclass with `{ cause: error }` (which a test
-  asserts), returns a failure result (`{ ok: false, error }`, `{ kind: 'not-found' }`), answers with
-  an HTTP error status, or shows the error to the user (`setError(...)`). Logging the error, or
-  returning `undefined`, `''`, `[]`, `{}` or `{ ok: true }` and carrying on, fails. Keep the `try` around the call that throws:
+- A `catch` returns a failure result (carrying the caught error only if something reads it) or
+  rethrows an `Error` subclass with `{ cause: error }`, which a test asserts. Keep the `try` around
+  the call that throws:
   `try { return schema.safeParse(JSON.parse(text)); } catch { return { kind: 'malformed-json' }; }`.
 - With no caught error, throw `new XError(message)` without `cause`.
 - Handle malformed input only as the ticket says; don't silently drop entries.

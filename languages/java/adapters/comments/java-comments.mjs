@@ -6,25 +6,23 @@ import {
   firstCommentedOutCodeLine,
   unreferencedWorkTagLines,
 } from '../../../../shared/comments/comment-checks.mjs';
+import { exceptionRoute } from '../../guards/advice/exception-route.mjs';
 
 const COMMENTS_TOOL = 'comments';
 const TODO_RULE = 'TodoWithoutIssue';
 const CODE_RULE = 'CommentedOutCode';
 const TOKENS =
   /"""(?:[^\\]|\\[\s\S])*?"""|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
-function exceptionRoute(rule) {
-  return `If this is intended, add an exception for ${COMMENTS_TOOL}/${rule} in nitpicker.config.json.`;
-}
 
 const MESSAGES = {
   [TODO_RULE]: [
     'A TODO or FIXME needs an issue reference: write "TODO(#123): ..." or "TODO PROJ-123: ...",',
     'or do the work now.',
-    exceptionRoute(TODO_RULE),
+    exceptionRoute(COMMENTS_TOOL, TODO_RULE),
   ].join(' '),
   [CODE_RULE]: [
     'Delete the commented-out code; version control keeps it.',
-    exceptionRoute(CODE_RULE),
+    exceptionRoute(COMMENTS_TOOL, CODE_RULE),
   ].join(' '),
 };
 
