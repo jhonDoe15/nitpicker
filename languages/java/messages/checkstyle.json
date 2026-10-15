@@ -1,0 +1,312 @@
+{
+  "AbbreviationAsWordInName": {
+    "fix": "Treat abbreviations as words: no run of capitals, so parseUrl, HttpClient, userId, never parseURL, HTTPClient or userID.",
+    "mayBeIntended": true
+  },
+  "AnnotationLocationMostCases": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "AnnotationLocationVariables": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "ArrayTypeStyle": {
+    "fix": "Put the brackets on the type, as in int[] values and String[] names, never int values[].",
+    "mayBeIntended": false
+  },
+  "AtclauseOrder": {
+    "fix": "Order Javadoc block tags as @param, @return, @throws, @deprecated.",
+    "mayBeIntended": false
+  },
+  "AvoidEscapedUnicodeCharacters": {
+    "fix": "Write the real character in the UTF-8 source, for example é, instead of a \\u escape; keep an escape only for a control character.",
+    "mayBeIntended": true
+  },
+  "AvoidStarImport": {
+    "fix": "Import each class by name (import java.util.List;), never a wildcard like java.util.*.",
+    "mayBeIntended": false
+  },
+  "CatchParameterName": {
+    "fix": "Name the catch parameter lowerCamelCase, one letter or two or more characters with a lowercase or digit second, such as e or ioException.",
+    "mayBeIntended": false
+  },
+  "ClassTypeParameterName": {
+    "fix": "Name class type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (RequestT).",
+    "mayBeIntended": false
+  },
+  "CommentsIndentation": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "ConstructorsDeclarationGrouping": {
+    "fix": "Declare all constructors of a class next to each other, with no methods or fields between them.",
+    "mayBeIntended": false
+  },
+  "CustomImportOrder": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "EmptyCatchBlock": {
+    "fix": "Handle the exception: return a failure value, log and recover, or rethrow with the cause; in tests use assertThrows.",
+    "mayBeIntended": false
+  },
+  "EmptyLineSeparator": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "FallThrough": {
+    "fix": "End each case with break, return or throw, or merge the labels as case A, B ->; use an arrow switch to rule out fall-through.",
+    "mayBeIntended": false
+  },
+  "FileTabCharacter": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "GenericWhitespace": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "IllegalTokenText": {
+    "fix": "Use the escape sequences \\n, \\t, \\r, \\f, \\\", \\' and \\\\ instead of a unicode or octal escape for those characters.",
+    "mayBeIntended": false
+  },
+  "Indentation": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "InterfaceTypeParameterName": {
+    "fix": "Name interface type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ResultT).",
+    "mayBeIntended": false
+  },
+  "InvalidJavadocPosition": {
+    "fix": "Put a Javadoc comment directly before the class, method or field it documents; use // or /* */ for any other comment.",
+    "mayBeIntended": false
+  },
+  "JavadocMethod": {
+    "fix": "Make the Javadoc match the signature: @param only for real parameter names, @throws only for declared exceptions, and @return only on non-void methods.",
+    "mayBeIntended": false
+  },
+  "JavadocParagraph": {
+    "fix": "Separate paragraphs with an empty Javadoc line and start each following one with <p> glued to its first word, as in <p>Text.",
+    "mayBeIntended": false
+  },
+  "JavadocTagContinuationIndentation": {
+    "fix": "Indent every continuation line of a Javadoc block tag at least 4 spaces past the asterisk.",
+    "mayBeIntended": false
+  },
+  "LambdaParameterName": {
+    "fix": "Name the lambda parameter lowerCamelCase, one letter or two or more characters with a lowercase or digit second, such as o or order.",
+    "mayBeIntended": false
+  },
+  "LeftCurlyEol": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "LeftCurlyNl": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "LineLength": {
+    "fix": "Break the line at an operator or argument, or extract a long expression or string into a named local or constant.",
+    "mayBeIntended": true
+  },
+  "LocalVariableName": {
+    "fix": "Name local variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second: totalCents, not tC or total_cents.",
+    "mayBeIntended": false
+  },
+  "MemberName": {
+    "fix": "Name fields lowerCamelCase with at least two characters and a lowercase or digit second: userId, not uId, x or user_id.",
+    "mayBeIntended": false
+  },
+  "MethodName": {
+    "fix": "Name methods lowerCamelCase, like rejectsNegativeQuantity; @Test methods may join lowerCamelCase parts with underscores, like evaluate_rightSide_validCases.",
+    "mayBeIntended": false
+  },
+  "MethodParamPad": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "MethodTypeParameterName": {
+    "fix": "Name method type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ResultT).",
+    "mayBeIntended": false
+  },
+  "MissingJavadocMethod": {
+    "fix": "Add a Javadoc comment whose first sentence says what the method does, or leave a short method undocumented only if it is not public.",
+    "mayBeIntended": true
+  },
+  "MissingJavadocType": {
+    "fix": "Add a Javadoc comment on the type whose first sentence says what it represents.",
+    "mayBeIntended": true
+  },
+  "MissingSwitchDefault": {
+    "fix": "Add a default branch that throws IllegalStateException, or make the switch an exhaustive switch expression over a sealed interface or enum.",
+    "mayBeIntended": false
+  },
+  "ModifierOrder": {
+    "fix": "Order modifiers as public protected private abstract default static sealed non-sealed final transient volatile synchronized native strictfp.",
+    "mayBeIntended": false
+  },
+  "MultipleVariableDeclarations": {
+    "fix": "Declare one variable per statement: int a; then int b;, never int a, b;.",
+    "mayBeIntended": false
+  },
+  "NeedBraces": {
+    "fix": "Put braces around the body of every if, else, for, while and do, even a single statement.",
+    "mayBeIntended": false
+  },
+  "NoFinalizer": {
+    "fix": "Delete finalize(); release resources with try-with-resources on an AutoCloseable, or register a java.lang.ref.Cleaner.",
+    "mayBeIntended": false
+  },
+  "NoLineWrap": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "NoWhitespaceBefore": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "NoWhitespaceBeforeCaseDefaultColon": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "NonEmptyAtclauseDescription": {
+    "fix": "Write a description after every Javadoc block tag, such as @param name the customer id, or remove the tag.",
+    "mayBeIntended": false
+  },
+  "OneStatementPerLine": {
+    "fix": "Put each statement on its own line.",
+    "mayBeIntended": false
+  },
+  "OneTopLevelClass": {
+    "fix": "Keep one top-level type per file; move the extra types to files of their own, or nest them inside the main type.",
+    "mayBeIntended": false
+  },
+  "OperatorWrap": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "OuterTypeFilename": {
+    "fix": "Name the file after its top-level type, so class OrderService lives in OrderService.java.",
+    "mayBeIntended": false
+  },
+  "OverloadMethodsDeclarationOrder": {
+    "fix": "Declare all overloads of a method name next to each other, with no other method between them.",
+    "mayBeIntended": false
+  },
+  "PackageName": {
+    "fix": "Name packages in lowercase letters only, no underscores or uppercase; digits are allowed after the first letter of a later segment: com.example.orders2.",
+    "mayBeIntended": false
+  },
+  "ParameterName": {
+    "fix": "Name parameters lowerCamelCase, one letter or two or more characters with a lowercase or digit second: unitPrice, not uP or unit_price.",
+    "mayBeIntended": false
+  },
+  "ParenPad": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "PatternVariableName": {
+    "fix": "Name pattern variables lowerCamelCase, one letter or two or more characters with a lowercase or digit second, as in if (o instanceof Order order).",
+    "mayBeIntended": false
+  },
+  "RecordComponentName": {
+    "fix": "Name record components lowerCamelCase, one letter or two or more characters with a lowercase or digit second: record Order(String customerId).",
+    "mayBeIntended": false
+  },
+  "RecordTypeParameterName": {
+    "fix": "Name record type parameters with one capital letter and an optional digit (T, K2), or a capitalized name ending in T (ValueT).",
+    "mayBeIntended": false
+  },
+  "RegexpSinglelineJava": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "RequireEmptyLineBeforeBlockTagGroup": {
+    "fix": "Put one empty Javadoc line (a bare asterisk) between the description and the first block tag such as @param.",
+    "mayBeIntended": false
+  },
+  "RightCurlyAlone": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "RightCurlySame": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SeparatorWrapArrayDeclarator": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SeparatorWrapComma": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SeparatorWrapDot": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SeparatorWrapEllipsis": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SeparatorWrapMethodRef": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "SingleLineJavadoc": {
+    "fix": "Keep a one-line Javadoc free of block tags like @param; write it over several lines, or use inline tags such as {@link Order}.",
+    "mayBeIntended": false
+  },
+  "SummaryJavadoc": {
+    "fix": "Start the Javadoc with a one-sentence summary ending in a period, and do not open with @return, This method returns or A {@code X} is a.",
+    "mayBeIntended": false
+  },
+  "TypeName": {
+    "fix": "Name classes, interfaces, enums, records and annotations UpperCamelCase with no underscores: OrderService, HttpClient.",
+    "mayBeIntended": false
+  },
+  "UpperEll": {
+    "fix": "Write long literals with an uppercase L, as in 100L, never 100l.",
+    "mayBeIntended": false
+  },
+  "VariableDeclarationUsageDistance": {
+    "fix": "Declare the local right before its first use, at most three statements earlier, or move the statements in between above it.",
+    "mayBeIntended": false
+  },
+  "WhitespaceAfter": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  },
+  "WhitespaceAround": {
+    "fix": null,
+    "layout": true,
+    "mayBeIntended": false
+  }
+}

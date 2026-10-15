@@ -18,6 +18,7 @@ import { ingestJacoco } from '../ingest/jacoco.mjs';
 import { ingestPit } from '../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../ingest/jacoco-branches.mjs';
 import { ingestSarif, normalizeUri } from '../ingest/sarif.mjs';
+import { applyRuleMessages } from '../messages/rule-messages.mjs';
 import { kotlinModules, readKotlinMetrics } from './kotlin-metrics.mjs';
 import {
   jacocoSourceRoots,
@@ -52,7 +53,7 @@ export function readJavaFindings(
     jacoco: readFileSync(path.join(reportRoot, 'jacoco.xml'), 'utf8'),
   };
   return {
-    findings: [
+    findings: applyRuleMessages([
       ...sarifFindings(context),
       ...formatFindings(context),
       ...checkstyleFindings(context),
@@ -76,7 +77,7 @@ export function readJavaFindings(
       ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
       ...readInlineSuppressionFindings(projectRoot, context.lintedRoots),
       ...springFindings(context),
-    ],
+    ]),
   };
 }
 

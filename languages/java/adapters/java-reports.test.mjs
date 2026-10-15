@@ -129,8 +129,9 @@ function projectWithReports({ shift = 0 } = {}) {
   return root;
 }
 
-const CS_INDENT = 'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck';
-const CS_LENGTH = 'com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck';
+const CS_INDENT = 'Indentation';
+const CS_LENGTH = 'LineLength';
+const CS_LENGTH_SOURCE = 'com.puppycrawl.tools.checkstyle.checks.sizes.LineLengthCheck';
 
 const identities = (findings) =>
   findings.map(({ tool, rule, path: file, identity }) => [tool, rule, file, identity]);
@@ -236,7 +237,7 @@ describe('readJavaFindings', () => {
     );
     writeFileSync(
       path.join(root, 'build/nitpicker/checkstyle-test.xml'),
-      `<checkstyle><file name="${testFile}"><error line="2" severity="warning" message="Too long" source="${CS_LENGTH}"/></file></checkstyle>`,
+      `<checkstyle><file name="${testFile}"><error line="2" severity="warning" message="Too long" source="${CS_LENGTH_SOURCE}"/></file></checkstyle>`,
     );
 
     const onTests = readJavaFindings(root).findings.filter(

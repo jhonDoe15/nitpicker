@@ -143,12 +143,11 @@ public final class Bad {
 `;
 
 // What Checkstyle's bundled google_checks.xml reports on Bad.java (Javadoc is not required).
-const CHECKSTYLE_PREFIX = 'com.puppycrawl.tools.checkstyle.checks.';
 const CHECKSTYLE_ON_BAD = [
-  'blocks.EmptyCatchBlockCheck',
-  'indentation.IndentationCheck',
-  'regexp.RegexpSinglelineJavaCheck',
-  'whitespace.EmptyLineSeparatorCheck',
+  'EmptyCatchBlock',
+  'EmptyLineSeparator',
+  'Indentation',
+  'RegexpSinglelineJava',
 ];
 // Breaks the ArchitectureTest rule (no use of java.util.Date) from a class and a nested class,
 // with otherwise clean code.
@@ -408,7 +407,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
 
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
-        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${CHECKSTYLE_PREFIX}${check} Bad.java`),
+        ...CHECKSTYLE_ON_BAD.map((check) => `checkstyle ${check} Bad.java`),
         'google-java-format format Bad.java',
         'pit mutant-nocoverage Bad.java', // Bad.decode has no test
         'pmd EmptyCatchBlock Bad.java',

@@ -244,7 +244,10 @@ Notes on the glue in `java-reports.mjs`:
   code that was never written for it, but the gate is differential, so existing violations stay
   baselined and only new ones fail.
 - **Ingestion.** `ingestCheckstyle` (X6) unchanged, `tool` `checkstyle`, absolute file paths made
-  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive.
+  project-relative. Severities `error` and `warning` are enforceable, `info` is descriptive. The
+  rule is the check's short name (`checkstyle/Indentation`, not the class
+  `com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck`), or the `id` the config
+  gives the module (`checkstyle/RightCurlySame`); see [Rule messages](#rule-messages).
 
 | Tool                      | Report         | Ingester           | Classification                                         | Identity                                                                                                                                                                                                                   |
 | ------------------------- | -------------- | ------------------ | ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -603,6 +606,39 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   (the other rules) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
 
+## Rule messages
+
+PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
+code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
+`checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
+errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+`google_checks.xml`, and every SpotBugs pattern. Each entry has:
+
+- `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
+  says it);
+- `mayBeIntended`: whether the rule can fire on code a careful team keeps (a CLI printing with
+  `System.out`, a catch-all at a boundary);
+- `layout` (Checkstyle only): a layout check google-java-format fixes; the message then says to run
+  the formatter instead of a fix of its own.
+
+`readJavaFindings` passes every finding through `applyRuleMessages`
+(`languages/java/messages/rule-messages.mjs`). It shortens Checkstyle rule names, then appends the
+fix to the tool's message, and for an enforceable finding of a rule that may be intended (or one
+the catalog does not know, from a project's own config) the exception route with the finding's own
+path:
+
+```
+Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
+choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+to "exceptions" in nitpicker.config.json.
+```
+
+Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
+identities are computed before, so neither the new text nor the short Checkstyle name moves a
+finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and
+SpotBugs jars and fails when the catalogs and the tools' rule lists differ, so a version bump
+cannot add a rule without fix text.
+
 ## Slice 1: what is deliberately not included
 
 - Nothing from the proposed slices 4 to 8 is left out: ArchUnit, CRAP, jscpd, PIT and the changed-line
@@ -616,7 +652,11 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
+  text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
+  name exactly the rules of the pinned tool versions.
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs` and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

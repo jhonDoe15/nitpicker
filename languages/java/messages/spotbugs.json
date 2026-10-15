@@ -1,0 +1,2018 @@
+{
+  "AA_ASSERTION_OF_ARGUMENTS": {
+    "fix": "Validate public arguments with Objects.requireNonNull or an explicit check that throws IllegalArgumentException; assert is skipped when assertions are off.",
+    "mayBeIntended": false
+  },
+  "AM_CREATES_EMPTY_JAR_FILE_ENTRY": {
+    "fix": "Write the entry's bytes between putNextEntry and closeEntry, or drop the entry if it is not needed.",
+    "mayBeIntended": true
+  },
+  "AM_CREATES_EMPTY_ZIP_FILE_ENTRY": {
+    "fix": "Write the entry's bytes between putNextEntry and closeEntry, or drop the entry if it is not needed.",
+    "mayBeIntended": true
+  },
+  "ASE_ASSERTION_WITH_SIDE_EFFECT": {
+    "fix": "Run the state-changing call on its own line, store the result in a local, and assert on the local.",
+    "mayBeIntended": false
+  },
+  "ASE_ASSERTION_WITH_SIDE_EFFECT_METHOD": {
+    "fix": "Call the mutating method outside the assert, keep the result in a local, and assert on that local.",
+    "mayBeIntended": false
+  },
+  "AT_NONATOMIC_64BIT_PRIMITIVE": {
+    "fix": "Make the long or double field volatile, or use AtomicLong, or guard every read and write with the same lock.",
+    "mayBeIntended": false
+  },
+  "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE": {
+    "fix": "Use AtomicInteger or AtomicReference (incrementAndGet, updateAndGet), or hold one lock across the whole read-modify-write.",
+    "mayBeIntended": false
+  },
+  "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION": {
+    "fix": "Replace the check-then-act on the concurrent map with one atomic call: putIfAbsent, computeIfAbsent, compute or merge.",
+    "mayBeIntended": true
+  },
+  "AT_STALE_THREAD_WRITE_OF_PRIMITIVE": {
+    "fix": "Make the field volatile or an atomic type, or guard every read and write of it with the same lock.",
+    "mayBeIntended": false
+  },
+  "AT_UNSAFE_RESOURCE_ACCESS_IN_THREAD": {
+    "fix": "Guard the shared resource with one lock around each use, or open a separate instance per thread in try-with-resources.",
+    "mayBeIntended": false
+  },
+  "BAC_BAD_APPLET_CONSTRUCTOR": {
+    "fix": "Move the work that needs the AppletStub (getParameter, getCodeBase, getDocumentBase) out of the constructor into init().",
+    "mayBeIntended": false
+  },
+  "BC_BAD_CAST_TO_ABSTRACT_COLLECTION": {
+    "fix": "Declare the parameter or return type as List, Set or Map instead of Collection, or copy with List.copyOf(c) rather than casting.",
+    "mayBeIntended": false
+  },
+  "BC_BAD_CAST_TO_CONCRETE_COLLECTION": {
+    "fix": "Declare the type as the interface (List, Set, Map) and drop the cast to ArrayList or HashMap.",
+    "mayBeIntended": false
+  },
+  "BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS": {
+    "fix": "Start equals with a pattern-matching instanceof check and return false for other types instead of casting or throwing.",
+    "mayBeIntended": false
+  },
+  "BC_IMPOSSIBLE_CAST": {
+    "fix": "Remove the cast or fix the variable's declared type so the cast can succeed; otherwise it always throws ClassCastException.",
+    "mayBeIntended": false
+  },
+  "BC_IMPOSSIBLE_CAST_PRIMITIVE_ARRAY": {
+    "fix": "Cast to the array type the value really has, or change the declared type; a primitive array never casts to another array type.",
+    "mayBeIntended": false
+  },
+  "BC_IMPOSSIBLE_DOWNCAST": {
+    "fix": "Drop the downcast or build the value as the subtype; check the runtime type with instanceof pattern matching before casting.",
+    "mayBeIntended": false
+  },
+  "BC_IMPOSSIBLE_DOWNCAST_OF_TOARRAY": {
+    "fix": "Call toArray(new String[0]) with a typed array argument instead of casting the Object[] result.",
+    "mayBeIntended": false
+  },
+  "BC_IMPOSSIBLE_INSTANCEOF": {
+    "fix": "Delete the instanceof test or fix the types; the compared types are unrelated, so the check is always false.",
+    "mayBeIntended": false
+  },
+  "BC_UNCONFIRMED_CAST": {
+    "fix": "Guard the cast with a pattern instanceof (if (o instanceof Foo foo)), or change the declared type so no cast is needed.",
+    "mayBeIntended": true
+  },
+  "BC_UNCONFIRMED_CAST_OF_RETURN_VALUE": {
+    "fix": "Check the returned value with a pattern instanceof before using it as the subtype, or make the method return the subtype.",
+    "mayBeIntended": true
+  },
+  "BC_VACUOUS_INSTANCEOF": {
+    "fix": "Remove the instanceof test, since the static type already guarantees it; use == null if a null check was meant.",
+    "mayBeIntended": false
+  },
+  "BIT_ADD_OF_SIGNED_BYTE": {
+    "fix": "Mask the byte before combining: (b & 0xFF) in the addition or OR.",
+    "mayBeIntended": false
+  },
+  "BIT_AND": {
+    "fix": "Fix the mask or the compared constant so the test can match; then compare (flags & MASK) != 0 for a membership check.",
+    "mayBeIntended": false
+  },
+  "BIT_AND_ZZ": {
+    "fix": "Compare the masked value with != 0 or == 0 instead of > 0 or <= 0, since a high-bit mask can be negative.",
+    "mayBeIntended": false
+  },
+  "BIT_IOR": {
+    "fix": "Use & to test bits, (flags & MASK) != 0, and parenthesize mixed expressions like (e & (A | B)) == C.",
+    "mayBeIntended": false
+  },
+  "BIT_IOR_OF_SIGNED_BYTE": {
+    "fix": "Mask the byte before ORing it into a wider value: (b & 0xFF) << 8 | (c & 0xFF).",
+    "mayBeIntended": false
+  },
+  "BIT_SIGNED_CHECK": {
+    "fix": "Compare the masked value against 0 with != 0, not > 0, because the sign bit makes > 0 wrong: (flags & MASK) != 0.",
+    "mayBeIntended": false
+  },
+  "BIT_SIGNED_CHECK_HIGH_BIT": {
+    "fix": "Test the bit with (x & MASK) != 0 instead of > 0, since the mask's high bit makes the result negative.",
+    "mayBeIntended": false
+  },
+  "BOA_BADLY_OVERRIDDEN_ADAPTER": {
+    "fix": "Fix the method signature so it overrides the listener adapter method, and add @Override so the compiler checks it.",
+    "mayBeIntended": false
+  },
+  "BSHIFT_WRONG_ADD_PRIORITY": {
+    "fix": "Add parentheses to say which you mean: (a << 8) + b or a << (8 + b); + binds tighter than <<.",
+    "mayBeIntended": false
+  },
+  "BX_BOXING_IMMEDIATELY_UNBOXED": {
+    "fix": "Use the primitive directly (Integer.parseInt, an int variable) instead of boxing a value and calling intValue() on it.",
+    "mayBeIntended": false
+  },
+  "BX_BOXING_IMMEDIATELY_UNBOXED_TO_PERFORM_COERCION": {
+    "fix": "Convert with a cast such as (double) count instead of boxing and unboxing the value.",
+    "mayBeIntended": false
+  },
+  "BX_UNBOXED_AND_COERCED_FOR_TERNARY_OPERATOR": {
+    "fix": "Give both ternary branches the same type, all boxed or all primitive, so no hidden unboxing or numeric promotion happens.",
+    "mayBeIntended": false
+  },
+  "BX_UNBOXING_IMMEDIATELY_REBOXED": {
+    "fix": "Keep the value as the boxed type and pass it along; do not call intValue() and box it again.",
+    "mayBeIntended": false
+  },
+  "CAA_COVARIANT_ARRAY_ELEMENT_STORE": {
+    "fix": "Use a List<T> or an array of the exact element type so stores cannot hit ArrayStoreException.",
+    "mayBeIntended": false
+  },
+  "CAA_COVARIANT_ARRAY_FIELD": {
+    "fix": "Declare the field with the element type you actually store (String[], not Object[]), or hold a List instead of an array.",
+    "mayBeIntended": false
+  },
+  "CAA_COVARIANT_ARRAY_LOCAL": {
+    "fix": "Declare the local with the element type you actually store (String[], not Object[]), or use a List.",
+    "mayBeIntended": false
+  },
+  "CAA_COVARIANT_ARRAY_RETURN": {
+    "fix": "Declare the return type with the element type you actually return (String[], not Object[]), or return a List.",
+    "mayBeIntended": false
+  },
+  "CD_CIRCULAR_DEPENDENCY": {
+    "fix": "Break the cycle: move the shared logic into a third class or behind an interface that both classes depend on.",
+    "mayBeIntended": false
+  },
+  "CI_CONFUSED_INHERITANCE": {
+    "fix": "Make the protected member of the final class private, since nothing can inherit it.",
+    "mayBeIntended": false
+  },
+  "CNT_ROUGH_CONSTANT_VALUE": {
+    "fix": "Use the exact constant, such as Math.PI or Math.E, instead of a rounded literal.",
+    "mayBeIntended": false
+  },
+  "CN_IDIOM": {
+    "fix": "Make the class implement Cloneable if it defines clone, or drop clone and provide a copy constructor or static factory.",
+    "mayBeIntended": false
+  },
+  "CN_IDIOM_NO_SUPER_CALL": {
+    "fix": "Obtain the copy through super.clone() in clone, or drop clone and use a copy constructor.",
+    "mayBeIntended": false
+  },
+  "CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE": {
+    "fix": "Replace clone with a copy constructor or static factory, or declare implements Cloneable and call super.clone().",
+    "mayBeIntended": false
+  },
+  "CO_ABSTRACT_SELF": {
+    "fix": "Declare compareTo(T) with the class's own type, or implement it in the abstract class instead of leaving it abstract with Object.",
+    "mayBeIntended": false
+  },
+  "CO_COMPARETO_INCORRECT_FLOATING": {
+    "fix": "Compare floating-point values with Double.compare or Float.compare, not by subtracting or casting the difference to int.",
+    "mayBeIntended": false
+  },
+  "CO_COMPARETO_RESULTS_MIN_VALUE": {
+    "fix": "Return -1, 0 or 1, or use Integer.compare, instead of Integer.MIN_VALUE from compareTo.",
+    "mayBeIntended": false
+  },
+  "CO_SELF_NO_OBJECT": {
+    "fix": "Implement the typed compareTo(T) of Comparable<T>, so the compareTo(Object) form is not needed.",
+    "mayBeIntended": false
+  },
+  "CT_CONSTRUCTOR_THROW": {
+    "fix": "Make the class final (records already are), or validate in a static factory method before calling a private constructor.",
+    "mayBeIntended": true
+  },
+  "DB_DUPLICATE_BRANCHES": {
+    "fix": "Drop the condition and keep one copy of the code, or fix the branch that was meant to differ.",
+    "mayBeIntended": false
+  },
+  "DB_DUPLICATE_SWITCH_CLAUSES": {
+    "fix": "Merge the identical cases into one arrow label (case A, B -> ...), or fix the clause that was meant to differ.",
+    "mayBeIntended": false
+  },
+  "DCN_NULLPOINTER_EXCEPTION": {
+    "fix": "Test the reference with an explicit null check, or Objects.requireNonNull at the entry, instead of catching NullPointerException.",
+    "mayBeIntended": false
+  },
+  "DC_DOUBLECHECK": {
+    "fix": "Use an eager static final field or a holder class for lazy init, or make the field volatile; do not rely on an unsynchronized first check.",
+    "mayBeIntended": false
+  },
+  "DC_PARTIALLY_CONSTRUCTED": {
+    "fix": "Build the object in a local variable and assign it to the field last, and make that field volatile.",
+    "mayBeIntended": false
+  },
+  "DE_MIGHT_DROP": {
+    "fix": "Handle the exception: log it, return a failure value, or rethrow wrapped as new IllegalStateException(msg, e).",
+    "mayBeIntended": false
+  },
+  "DE_MIGHT_IGNORE": {
+    "fix": "Handle the exception: log it, return a failure value, or rethrow wrapped as new IllegalStateException(msg, e).",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_LOCAL_INCREMENT_IN_RETURN": {
+    "fix": "Return the new value with return i + 1; or increment the field, not a local that is discarded.",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_LOCAL_STORE": {
+    "fix": "Delete the assignment whose value is never read, or use the value; keep just the call if its side effect is needed.",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_LOCAL_STORE_IN_RETURN": {
+    "fix": "Return the expression directly instead of assigning it to a local that is then not used.",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_LOCAL_STORE_OF_NULL": {
+    "fix": "Delete the assignment of null to the local; narrow the variable's scope so it goes out of scope by itself.",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD": {
+    "fix": "Assign the field as this.name, or rename the local so it no longer hides the field.",
+    "mayBeIntended": false
+  },
+  "DLS_DEAD_STORE_OF_CLASS_LITERAL": {
+    "fix": "Delete the unused assignment of the class literal; to force class initialization use Class.forName(name, true, loader).",
+    "mayBeIntended": false
+  },
+  "DLS_OVERWRITTEN_INCREMENT": {
+    "fix": "Write i++ alone, not i = i++; the assignment overwrites the increment.",
+    "mayBeIntended": false
+  },
+  "DL_SYNCHRONIZATION_ON_BOOLEAN": {
+    "fix": "Synchronize on a private final Object lock = new Object() field instead of a Boolean.",
+    "mayBeIntended": false
+  },
+  "DL_SYNCHRONIZATION_ON_BOXED_PRIMITIVE": {
+    "fix": "Synchronize on a private final Object lock = new Object() field instead of a boxed number that may be shared.",
+    "mayBeIntended": false
+  },
+  "DL_SYNCHRONIZATION_ON_INTERNED_STRING": {
+    "fix": "Synchronize on a private final Object lock = new Object() field instead of a String literal or interned string.",
+    "mayBeIntended": false
+  },
+  "DL_SYNCHRONIZATION_ON_SHARED_CONSTANT": {
+    "fix": "Synchronize on a private final Object lock = new Object() field instead of a constant other code can also reach.",
+    "mayBeIntended": false
+  },
+  "DL_SYNCHRONIZATION_ON_UNSHARED_BOXED_PRIMITIVE": {
+    "fix": "Synchronize on a private final Object lock = new Object() field instead of a boxed number whose identity changes on reassignment.",
+    "mayBeIntended": false
+  },
+  "DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION": {
+    "fix": "Add @Retention(RetentionPolicy.RUNTIME) to the annotation type being looked up through reflection.",
+    "mayBeIntended": false
+  },
+  "DMI_ARGUMENTS_WRONG_ORDER": {
+    "fix": "Pass the arguments in the order the method declares them; swap the call's arguments.",
+    "mayBeIntended": false
+  },
+  "DMI_BAD_MONTH": {
+    "fix": "Use java.time (LocalDate.of(2024, Month.MARCH, 1)) or Calendar.MARCH; Calendar months run 0 to 11.",
+    "mayBeIntended": false
+  },
+  "DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE": {
+    "fix": "Build it with BigDecimal.valueOf(d) or new BigDecimal(\"0.1\") from a string, not new BigDecimal(double).",
+    "mayBeIntended": false
+  },
+  "DMI_BLOCKING_METHODS_ON_URL": {
+    "fix": "Use java.net.URI for equals, hashCode and map keys; build a URL from the URI only when opening a connection.",
+    "mayBeIntended": false
+  },
+  "DMI_CALLING_NEXT_FROM_HASNEXT": {
+    "fix": "Make hasNext() side-effect free; read ahead into a field and have next() return it.",
+    "mayBeIntended": false
+  },
+  "DMI_COLLECTIONS_SHOULD_NOT_CONTAIN_THEMSELVES": {
+    "fix": "Pass a different collection to contains, remove, or containsAll; a collection is not an element of itself.",
+    "mayBeIntended": false
+  },
+  "DMI_COLLECTION_OF_URLS": {
+    "fix": "Store URI values in the Set or Map keys instead of URL, and convert with uri.toURL() only when connecting.",
+    "mayBeIntended": false
+  },
+  "DMI_CONSTANT_DB_PASSWORD": {
+    "fix": "Read the database password from the environment or a secrets store at startup and pass it in as a parameter.",
+    "mayBeIntended": false
+  },
+  "DMI_DOH": {
+    "fix": "Remove or correct the call; with these arguments it has no effect or always fails.",
+    "mayBeIntended": false
+  },
+  "DMI_EMPTY_DB_PASSWORD": {
+    "fix": "Configure a real database password from the environment or a secrets store and pass it in as a parameter.",
+    "mayBeIntended": false
+  },
+  "DMI_ENTRY_SETS_MAY_REUSE_ENTRY_OBJECTS": {
+    "fix": "Copy each entry with Map.entry(e.getKey(), e.getValue()) before collecting it, or collect keys and values separately.",
+    "mayBeIntended": false
+  },
+  "DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR": {
+    "fix": "Call setCorePoolSize on the ScheduledThreadPoolExecutor; setMaximumPoolSize does nothing there.",
+    "mayBeIntended": false
+  },
+  "DMI_HARDCODED_ABSOLUTE_FILENAME": {
+    "fix": "Take the path as a parameter or a configuration value, or resolve it against Path.of with a relative or temp directory.",
+    "mayBeIntended": true
+  },
+  "DMI_INVOKING_HASHCODE_ON_ARRAY": {
+    "fix": "Use Arrays.hashCode(array), or Arrays.deepHashCode for nested arrays.",
+    "mayBeIntended": false
+  },
+  "DMI_INVOKING_TOSTRING_ON_ANONYMOUS_ARRAY": {
+    "fix": "Use Arrays.toString(new String[] {...}) or just pass the values to List.of.",
+    "mayBeIntended": false
+  },
+  "DMI_INVOKING_TOSTRING_ON_ARRAY": {
+    "fix": "Use Arrays.toString(array), or Arrays.deepToString for nested arrays.",
+    "mayBeIntended": false
+  },
+  "DMI_LONG_BITS_TO_DOUBLE_INVOKED_ON_INT": {
+    "fix": "Pass a long to Double.longBitsToDouble, or use Float.intBitsToFloat for an int.",
+    "mayBeIntended": false
+  },
+  "DMI_NONSERIALIZABLE_OBJECT_WRITTEN": {
+    "fix": "Make the written class implement Serializable, or write a serializable copy (a record of the needed fields).",
+    "mayBeIntended": false
+  },
+  "DMI_RANDOM_USED_ONLY_ONCE": {
+    "fix": "Create one Random and reuse it as a field, or call ThreadLocalRandom.current().nextInt(bound).",
+    "mayBeIntended": false
+  },
+  "DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS": {
+    "fix": "Give ScheduledThreadPoolExecutor a core pool size of at least 1, or use Executors.newSingleThreadScheduledExecutor().",
+    "mayBeIntended": false
+  },
+  "DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED": {
+    "fix": "Pass a Runnable lambda or method reference to the executor or Thread constructor instead of a Thread object.",
+    "mayBeIntended": false
+  },
+  "DMI_UNSUPPORTED_METHOD": {
+    "fix": "Call the supported API instead of the method that always throws UnsupportedOperationException.",
+    "mayBeIntended": false
+  },
+  "DMI_USELESS_SUBSTRING": {
+    "fix": "Use the original String directly instead of substring(0), which returns the same content.",
+    "mayBeIntended": false
+  },
+  "DMI_USING_REMOVEALL_TO_CLEAR_COLLECTION": {
+    "fix": "Call clear() on the collection instead of removeAll(sameCollection).",
+    "mayBeIntended": false
+  },
+  "DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD": {
+    "fix": "Pass the mock object to replay, verify or reset; with no mock argument the call does nothing. Prefer Mockito.",
+    "mayBeIntended": false
+  },
+  "DMI_VACUOUS_SELF_COLLECTION_CALL": {
+    "fix": "Remove the call or pass a different collection; calling containsAll, removeAll or retainAll with itself does nothing useful.",
+    "mayBeIntended": false
+  },
+  "DM_BOOLEAN_CTOR": {
+    "fix": "Use Boolean.valueOf(x) or the constants Boolean.TRUE and Boolean.FALSE instead of new Boolean(x).",
+    "mayBeIntended": false
+  },
+  "DM_BOXED_PRIMITIVE_FOR_COMPARE": {
+    "fix": "Compare primitives with Integer.compare(a, b) or Double.compare(a, b) instead of boxing one side to call compareTo.",
+    "mayBeIntended": false
+  },
+  "DM_BOXED_PRIMITIVE_FOR_PARSING": {
+    "fix": "Call the primitive parser, such as Integer.parseInt(s), instead of Integer.valueOf(s) followed by intValue().",
+    "mayBeIntended": false
+  },
+  "DM_BOXED_PRIMITIVE_TOSTRING": {
+    "fix": "Call the static Integer.toString(x) or String.valueOf(x) instead of boxing the value to call toString().",
+    "mayBeIntended": false
+  },
+  "DM_CONVERT_CASE": {
+    "fix": "Pass a locale: s.toUpperCase(Locale.ROOT) or s.toLowerCase(Locale.ROOT).",
+    "mayBeIntended": false
+  },
+  "DM_DEFAULT_ENCODING": {
+    "fix": "Pass a charset explicitly, such as StandardCharsets.UTF_8 to getBytes, InputStreamReader, FileReader or new String.",
+    "mayBeIntended": false
+  },
+  "DM_EXIT": {
+    "fix": "Return a result or throw an exception and let main alone decide the exit status.",
+    "mayBeIntended": true
+  },
+  "DM_FP_NUMBER_CTOR": {
+    "fix": "Use Double.valueOf(x) or Float.valueOf(x), or keep the primitive, instead of the Double or Float constructor.",
+    "mayBeIntended": false
+  },
+  "DM_GC": {
+    "fix": "Delete the System.gc() or Runtime.gc() call and let the JVM schedule collection.",
+    "mayBeIntended": true
+  },
+  "DM_INVALID_MIN_MAX": {
+    "fix": "Swap the clamp so the lower bound goes in Math.max and the upper in Math.min: Math.max(lo, Math.min(hi, x)).",
+    "mayBeIntended": false
+  },
+  "DM_MONITOR_WAIT_ON_CONDITION": {
+    "fix": "Call await() on the Condition instead of wait(), which waits on the Condition object's own monitor.",
+    "mayBeIntended": false
+  },
+  "DM_NEW_FOR_GETCLASS": {
+    "fix": "Write Foo.class, or call getClass() on an object you already have, instead of creating an object only to call getClass().",
+    "mayBeIntended": false
+  },
+  "DM_NEXTINT_VIA_NEXTDOUBLE": {
+    "fix": "Call random.nextInt(n) instead of (int) (random.nextDouble() * n).",
+    "mayBeIntended": false
+  },
+  "DM_NUMBER_CTOR": {
+    "fix": "Use Integer.valueOf(x) or the primitive instead of new Integer(x), new Long(x) and similar constructors.",
+    "mayBeIntended": false
+  },
+  "DM_RUN_FINALIZERS_ON_EXIT": {
+    "fix": "Remove the call; register a shutdown hook with Runtime.addShutdownHook or use try-with-resources for cleanup.",
+    "mayBeIntended": false
+  },
+  "DM_STRING_CTOR": {
+    "fix": "Use the String or literal directly; drop the new String(s) copy.",
+    "mayBeIntended": false
+  },
+  "DM_STRING_TOSTRING": {
+    "fix": "Use the String itself; drop the toString() call on a String.",
+    "mayBeIntended": false
+  },
+  "DM_STRING_VOID_CTOR": {
+    "fix": "Write the empty literal \"\" instead of new String().",
+    "mayBeIntended": false
+  },
+  "DM_USELESS_THREAD": {
+    "fix": "Give the Thread a Runnable (new Thread(() -> work())), or submit the task to an ExecutorService.",
+    "mayBeIntended": false
+  },
+  "DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED": {
+    "fix": "Create the ClassLoader inside AccessController.doPrivileged, or drop the custom loader and use the existing one.",
+    "mayBeIntended": true
+  },
+  "DP_DO_INSIDE_DO_PRIVILEGED": {
+    "fix": "Call the restricted API inside AccessController.doPrivileged with the narrowest action, or avoid reflective access.",
+    "mayBeIntended": true
+  },
+  "EC_ARRAY_AND_NONARRAY": {
+    "fix": "Compare values of the same kind; use Arrays.equals(a, b) for arrays, never array.equals(object).",
+    "mayBeIntended": false
+  },
+  "EC_BAD_ARRAY_COMPARE": {
+    "fix": "Use Arrays.equals(a, b), or Arrays.deepEquals for nested arrays, not array.equals(other).",
+    "mayBeIntended": false
+  },
+  "EC_INCOMPATIBLE_ARRAY_COMPARE": {
+    "fix": "Compare arrays of the same element type with Arrays.equals; arrays of different types are never equal.",
+    "mayBeIntended": false
+  },
+  "EC_NULL_ARG": {
+    "fix": "Remove the equals(null) call; use x == null for a null test.",
+    "mayBeIntended": false
+  },
+  "EC_UNRELATED_CLASS_AND_INTERFACE": {
+    "fix": "Compare values of related types, or fix the declared types; equals between the class and interface is always false.",
+    "mayBeIntended": false
+  },
+  "EC_UNRELATED_INTERFACES": {
+    "fix": "Compare values of related types, or fix the declared types; no class implements both interfaces, so equals is always false.",
+    "mayBeIntended": false
+  },
+  "EC_UNRELATED_TYPES": {
+    "fix": "Compare values of the same type, or convert one side first; equals on unrelated types is always false.",
+    "mayBeIntended": false
+  },
+  "EC_UNRELATED_TYPES_USING_POINTER_EQUALITY": {
+    "fix": "Compare values of related types, or fix the declared types; == between unrelated types is always false.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_BUF": {
+    "fix": "Return buf.asReadOnlyBuffer() or a copy instead of the stored buffer.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_BUF2": {
+    "fix": "Store buf.asReadOnlyBuffer() or a copy of the buffer instead of the caller's buffer.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_REP": {
+    "fix": "Return an immutable copy such as List.copyOf(items) or Map.copyOf(m), or hold the data as a record of immutable values.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_REP2": {
+    "fix": "Store an immutable copy such as List.copyOf(items) in the constructor, or take a record of immutable values.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_STATIC_BUF2": {
+    "fix": "Store a read-only or copied buffer in the static field, not the caller's buffer.",
+    "mayBeIntended": false
+  },
+  "EI_EXPOSE_STATIC_REP2": {
+    "fix": "Store an immutable copy such as List.copyOf(items) in the static field, not the caller's object.",
+    "mayBeIntended": false
+  },
+  "ENV_USE_PROPERTY_INSTEAD_OF_ENV": {
+    "fix": "Read a system property with System.getProperty, or take the setting through a config parameter instead of System.getenv.",
+    "mayBeIntended": true
+  },
+  "EOS_BAD_END_OF_STREAM_CHECK": {
+    "fix": "Store read() in an int and compare that with -1 before casting to byte or char.",
+    "mayBeIntended": false
+  },
+  "EQ_ABSTRACT_SELF": {
+    "fix": "Declare equals(Object) in the abstract class, or implement it there, instead of an abstract equals taking the class type.",
+    "mayBeIntended": false
+  },
+  "EQ_ALWAYS_FALSE": {
+    "fix": "Compare the fields that define equality in equals; do not return false unconditionally.",
+    "mayBeIntended": false
+  },
+  "EQ_ALWAYS_TRUE": {
+    "fix": "Compare the fields that define equality in equals; do not return true unconditionally.",
+    "mayBeIntended": false
+  },
+  "EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS": {
+    "fix": "Compare only with arguments that are instances of this class: use if (!(o instanceof Foo other)) return false.",
+    "mayBeIntended": false
+  },
+  "EQ_COMPARETO_USE_OBJECT_EQUALS": {
+    "fix": "Override equals so it agrees with compareTo, for example return o instanceof Foo f && compareTo(f) == 0.",
+    "mayBeIntended": false
+  },
+  "EQ_COMPARING_CLASS_NAMES": {
+    "fix": "Compare classes with getClass() != o.getClass(), not by class name strings.",
+    "mayBeIntended": true
+  },
+  "EQ_DOESNT_OVERRIDE_EQUALS": {
+    "fix": "Override equals and hashCode in the subclass so they compare the added fields, or make the type a record.",
+    "mayBeIntended": true
+  },
+  "EQ_DONT_DEFINE_EQUALS_FOR_ENUM": {
+    "fix": "Delete the equals override in the enum; enum constants are compared by ==.",
+    "mayBeIntended": false
+  },
+  "EQ_GETCLASS_AND_CLASS_CONSTANT": {
+    "fix": "Make the class final or compare with getClass() == o.getClass(), so a subclass does not break equals symmetry.",
+    "mayBeIntended": false
+  },
+  "EQ_OTHER_NO_OBJECT": {
+    "fix": "Change the parameter to Object: public boolean equals(Object o), then cast after an instanceof check.",
+    "mayBeIntended": false
+  },
+  "EQ_OTHER_USE_OBJECT": {
+    "fix": "Replace the differently named equals with public boolean equals(Object o).",
+    "mayBeIntended": false
+  },
+  "EQ_OVERRIDING_EQUALS_NOT_SYMMETRIC": {
+    "fix": "Make equals symmetric: compare getClass() on both sides, or make equals final in the base class.",
+    "mayBeIntended": false
+  },
+  "EQ_SELF_NO_OBJECT": {
+    "fix": "Override equals(Object) with the exact signature and mark it @Override instead of equals taking the class type.",
+    "mayBeIntended": false
+  },
+  "EQ_SELF_USE_OBJECT": {
+    "fix": "Change equals(Foo) to public boolean equals(Object o) with an instanceof check and @Override.",
+    "mayBeIntended": false
+  },
+  "EQ_UNUSUAL": {
+    "fix": "Write equals(Object) in the standard form: pattern instanceof check, then compare the fields with Objects.equals, or use a record.",
+    "mayBeIntended": false
+  },
+  "ES_COMPARING_PARAMETER_STRING_WITH_EQ": {
+    "fix": "Compare strings with equals: CONSTANT.equals(param) or Objects.equals(a, b).",
+    "mayBeIntended": false
+  },
+  "ES_COMPARING_STRINGS_WITH_EQ": {
+    "fix": "Compare strings with equals: CONSTANT.equals(s) or Objects.equals(a, b).",
+    "mayBeIntended": false
+  },
+  "ESync_EMPTY_SYNC": {
+    "fix": "Remove the empty synchronized block, or move the code it was meant to protect inside it.",
+    "mayBeIntended": false
+  },
+  "FB_MISSING_EXPECTED_WARNING": {
+    "fix": "Remove the stale @ExpectWarning annotation or restore the code that triggers the expected warning.",
+    "mayBeIntended": false
+  },
+  "FB_UNEXPECTED_WARNING": {
+    "fix": "Fix the code that triggers the warning, or remove the @NoWarning annotation if the warning is accepted.",
+    "mayBeIntended": false
+  },
+  "FE_FLOATING_POINT_EQUALITY": {
+    "fix": "Compare doubles with Math.abs(a - b) < EPSILON, or use BigDecimal.compareTo for exact values.",
+    "mayBeIntended": true
+  },
+  "FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER": {
+    "fix": "Test with Double.isNaN(x) (or Float.isNaN); x == Double.NaN is always false.",
+    "mayBeIntended": false
+  },
+  "FI_EMPTY": {
+    "fix": "Delete the empty finalize method; use try-with-resources or java.lang.ref.Cleaner for cleanup.",
+    "mayBeIntended": false
+  },
+  "FI_EXPLICIT_INVOCATION": {
+    "fix": "Remove the direct finalize() call and expose an explicit close() method that implements AutoCloseable.",
+    "mayBeIntended": false
+  },
+  "FI_FINALIZER_NULLS_FIELDS": {
+    "fix": "Delete the finalizer; nulling fields does nothing for the garbage collector.",
+    "mayBeIntended": false
+  },
+  "FI_FINALIZER_ONLY_NULLS_FIELDS": {
+    "fix": "Delete the finalizer; nulling fields does nothing for the garbage collector.",
+    "mayBeIntended": false
+  },
+  "FI_MISSING_SUPER_CALL": {
+    "fix": "Delete finalize and use AutoCloseable or Cleaner; if it stays, end it with super.finalize() in a finally block.",
+    "mayBeIntended": false
+  },
+  "FI_NULLIFY_SUPER": {
+    "fix": "Delete the finalizer that suppresses the superclass finalizer; cleanup belongs in AutoCloseable or Cleaner.",
+    "mayBeIntended": false
+  },
+  "FI_PUBLIC_SHOULD_BE_PROTECTED": {
+    "fix": "Delete finalize and use AutoCloseable or Cleaner; do not widen it to public.",
+    "mayBeIntended": false
+  },
+  "FI_USELESS": {
+    "fix": "Delete the finalize method that only calls super.finalize().",
+    "mayBeIntended": false
+  },
+  "FL_FLOATS_AS_LOOP_COUNTERS": {
+    "fix": "Loop on an int counter and compute the float value from it: for (int i = 0; i < n; i++) { double x = i * step; }.",
+    "mayBeIntended": false
+  },
+  "FL_MATH_USING_FLOAT_PRECISION": {
+    "fix": "Use double for the arithmetic, or BigDecimal when exact decimals matter.",
+    "mayBeIntended": true
+  },
+  "FS_BAD_DATE_FORMAT_FLAG_COMBO": {
+    "fix": "Use a valid java.time.format.DateTimeFormatter pattern (DateTimeFormatter.ofPattern) with the right letters, such as yyyy-MM-dd and HH.",
+    "mayBeIntended": false
+  },
+  "GC_UNCHECKED_TYPE_IN_GENERIC_CALL": {
+    "fix": "Pass an argument of the collection's element type to contains, remove or get, or fix the declared generic type.",
+    "mayBeIntended": false
+  },
+  "GC_UNRELATED_TYPES": {
+    "fix": "Pass an argument of the collection's element or key type to contains, remove or get; unrelated types never match.",
+    "mayBeIntended": false
+  },
+  "HE_EQUALS_NO_HASHCODE": {
+    "fix": "Add hashCode that uses the same fields as equals: return Objects.hash(a, b), or make the class a record.",
+    "mayBeIntended": false
+  },
+  "HE_EQUALS_USE_HASHCODE": {
+    "fix": "Add hashCode that uses the same fields as equals: return Objects.hash(a, b), or make the class a record.",
+    "mayBeIntended": false
+  },
+  "HE_HASHCODE_NO_EQUALS": {
+    "fix": "Add an equals method over the same fields that hashCode uses, or make the class a record.",
+    "mayBeIntended": false
+  },
+  "HE_HASHCODE_USE_OBJECT_EQUALS": {
+    "fix": "Add an equals method over the same fields that hashCode uses, or make the class a record.",
+    "mayBeIntended": false
+  },
+  "HE_INHERITS_EQUALS_USE_HASHCODE": {
+    "fix": "Override hashCode together with equals using the same fields, or make the class a record.",
+    "mayBeIntended": false
+  },
+  "HE_SIGNATURE_DECLARES_HASHING_OF_UNHASHABLE_CLASS": {
+    "fix": "Define hashCode in the key class, or change the signature to a type that defines it, before using it in a HashMap or HashSet.",
+    "mayBeIntended": false
+  },
+  "HE_USE_OF_UNHASHABLE_CLASS": {
+    "fix": "Define hashCode (and equals) in the class, or use IdentityHashMap if identity keys are wanted.",
+    "mayBeIntended": false
+  },
+  "HRS_REQUEST_PARAMETER_TO_COOKIE": {
+    "fix": "Validate the request value against an allowlist or strict pattern before putting it in a Cookie.",
+    "mayBeIntended": false
+  },
+  "HRS_REQUEST_PARAMETER_TO_HTTP_HEADER": {
+    "fix": "Validate the request value against an allowlist or strict pattern, rejecting CR and LF, before setting a header.",
+    "mayBeIntended": false
+  },
+  "HSC_HUGE_SHARED_STRING_CONSTANT": {
+    "fix": "Load the large text from a resource file at startup instead of embedding it as a string constant in the class.",
+    "mayBeIntended": true
+  },
+  "HSM_HIDING_METHOD": {
+    "fix": "Rename the static method, or make it an instance method, so it no longer hides the superclass method.",
+    "mayBeIntended": false
+  },
+  "IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD": {
+    "fix": "Qualify the call: this.run() for the inherited method or Outer.this.run() for the outer class's method.",
+    "mayBeIntended": false
+  },
+  "ICAST_BAD_SHIFT_AMOUNT": {
+    "fix": "Shift by an amount from 0 to 31 for int, or make the value a long, e.g. 1L << n.",
+    "mayBeIntended": false
+  },
+  "ICAST_IDIV_CAST_TO_DOUBLE": {
+    "fix": "Convert an operand before dividing, as in (double) a / b, so the division is not done in integers.",
+    "mayBeIntended": false
+  },
+  "ICAST_INTEGER_MULTIPLY_CAST_TO_LONG": {
+    "fix": "Widen an operand before multiplying, as in (long) a * b, or use Math.multiplyExact.",
+    "mayBeIntended": false
+  },
+  "ICAST_INT_2_LONG_AS_INSTANT": {
+    "fix": "Convert to long before multiplying, e.g. Instant.ofEpochMilli(seconds * 1000L), or use Instant.ofEpochSecond.",
+    "mayBeIntended": false
+  },
+  "ICAST_INT_CAST_TO_DOUBLE_PASSED_TO_CEIL": {
+    "fix": "Divide as doubles, Math.ceil((double) a / b), or use Math.ceilDiv(a, b).",
+    "mayBeIntended": false
+  },
+  "ICAST_INT_CAST_TO_FLOAT_PASSED_TO_ROUND": {
+    "fix": "Divide as floats or doubles before Math.round, e.g. Math.round((double) a / b); integer division already truncated.",
+    "mayBeIntended": false
+  },
+  "ICAST_QUESTIONABLE_UNSIGNED_RIGHT_SHIFT": {
+    "fix": "Mask before shifting, as in (b & 0xFF) >>> n, or use >> if keeping the sign is intended.",
+    "mayBeIntended": false
+  },
+  "IC_INIT_CIRCULARITY": {
+    "fix": "Move the shared constants or setup into a third class so the two classes no longer initialize each other.",
+    "mayBeIntended": false
+  },
+  "IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION": {
+    "fix": "Move the subclass reference out of the superclass static initializer into a lazy holder class or a method.",
+    "mayBeIntended": false
+  },
+  "IIL_ELEMENTS_GET_LENGTH_IN_LOOP": {
+    "fix": "Read nodes.getLength() once into a local int before the loop and use that local in the loop condition.",
+    "mayBeIntended": false
+  },
+  "IIL_PATTERN_COMPILE_IN_LOOP": {
+    "fix": "Compile the regex once into a private static final Pattern field and reuse it inside the loop.",
+    "mayBeIntended": false
+  },
+  "IIL_PATTERN_COMPILE_IN_LOOP_INDIRECT": {
+    "fix": "Compile the regex once into a private static final Pattern field, and use that field in the method the loop calls.",
+    "mayBeIntended": false
+  },
+  "IIL_PREPARE_STATEMENT_IN_LOOP": {
+    "fix": "Prepare the statement once before the loop in try-with-resources, then set parameters and call addBatch inside the loop.",
+    "mayBeIntended": false
+  },
+  "IIO_INEFFICIENT_INDEX_OF": {
+    "fix": "Pass a char to indexOf (s.indexOf('x')) instead of a one-character String.",
+    "mayBeIntended": false
+  },
+  "IIO_INEFFICIENT_LAST_INDEX_OF": {
+    "fix": "Pass a char to lastIndexOf (s.lastIndexOf('x')) instead of a one-character String.",
+    "mayBeIntended": false
+  },
+  "IJU_ASSERT_METHOD_INVOKED_FROM_RUN_METHOD": {
+    "fix": "Do not assert inside a run method; capture the result or exception and assert it on the test thread after join.",
+    "mayBeIntended": false
+  },
+  "IJU_BAD_SUITE_METHOD": {
+    "fix": "Replace the JUnit 3 suite method with JUnit 5 @Test methods; use @Suite or @Nested for grouping.",
+    "mayBeIntended": false
+  },
+  "IJU_NO_TESTS": {
+    "fix": "Add @Test methods to the class or remove it; a JUnit 3 TestCase with no test methods runs nothing.",
+    "mayBeIntended": false
+  },
+  "IJU_SETUP_NO_SUPER": {
+    "fix": "Move to JUnit 5 and use @BeforeEach with no inheritance; if staying on TestCase, call super.setUp().",
+    "mayBeIntended": false
+  },
+  "IJU_SUITE_NOT_STATIC": {
+    "fix": "Replace the JUnit 3 suite method with JUnit 5 @Test methods; if staying on TestCase, make suite() public static.",
+    "mayBeIntended": false
+  },
+  "IJU_TEARDOWN_NO_SUPER": {
+    "fix": "Move to JUnit 5 and use @AfterEach with no inheritance; if staying on TestCase, call super.tearDown().",
+    "mayBeIntended": false
+  },
+  "IL_CONTAINER_ADDED_TO_ITSELF": {
+    "fix": "Add a different collection or element; a collection added to itself breaks hashCode and toString.",
+    "mayBeIntended": false
+  },
+  "IL_INFINITE_LOOP": {
+    "fix": "Make the loop condition depend on a variable the body changes, or add a break or return that ends it.",
+    "mayBeIntended": false
+  },
+  "IL_INFINITE_RECURSIVE_LOOP": {
+    "fix": "Give the method a base case, or call a different method; it currently calls itself with no way to stop.",
+    "mayBeIntended": false
+  },
+  "IMA_INEFFICIENT_MEMBER_ACCESS": {
+    "fix": "Make the accessed member package-private instead of private, or pass the value into the nested class.",
+    "mayBeIntended": false
+  },
+  "IMSE_DONT_CATCH_IMSE": {
+    "fix": "Fix the code so no IllegalMonitorStateException occurs: call wait, notify and unlock only while holding the monitor or lock.",
+    "mayBeIntended": false
+  },
+  "IM_AVERAGE_COMPUTATION_COULD_OVERFLOW": {
+    "fix": "Compute the midpoint as (low + high) >>> 1, or low + (high - low) / 2.",
+    "mayBeIntended": false
+  },
+  "IM_BAD_CHECK_FOR_ODD": {
+    "fix": "Test oddness with x % 2 != 0, because x % 2 == 1 is false for negative odd numbers.",
+    "mayBeIntended": false
+  },
+  "IM_MULTIPLYING_RESULT_OF_IREM": {
+    "fix": "Add parentheses to show the intent: (i % 60) * 1000 or i % (60 * 1000).",
+    "mayBeIntended": false
+  },
+  "INT_BAD_COMPARISON_WITH_INT_VALUE": {
+    "fix": "Compare the long with a value in int range, or keep the int out of the comparison; the constant can never be equal.",
+    "mayBeIntended": false
+  },
+  "INT_BAD_COMPARISON_WITH_NONNEGATIVE_VALUE": {
+    "fix": "Remove the comparison; a value that cannot be negative never satisfies it, or fix which value is tested.",
+    "mayBeIntended": false
+  },
+  "INT_BAD_COMPARISON_WITH_SIGNED_BYTE": {
+    "fix": "Mask the byte first: (b & 0xFF) == 0x80, since a signed byte is never above 127.",
+    "mayBeIntended": false
+  },
+  "INT_BAD_REM_BY_1": {
+    "fix": "Remove the % 1 operation, which is always 0, or use the divisor that was intended.",
+    "mayBeIntended": false
+  },
+  "INT_VACUOUS_BIT_OPERATION": {
+    "fix": "Remove the bit operation that never changes the value, or correct the mask or operand.",
+    "mayBeIntended": false
+  },
+  "INT_VACUOUS_COMPARISON": {
+    "fix": "Remove the comparison that the value's range makes always true or false, or compare the right operand.",
+    "mayBeIntended": false
+  },
+  "IO_APPENDING_TO_OBJECT_OUTPUT_STREAM": {
+    "fix": "Write a new file for each ObjectOutputStream, or keep one stream open for all writes; appending corrupts the stream header.",
+    "mayBeIntended": false
+  },
+  "IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN": {
+    "fix": "Use the parameter's value before assigning it, or remove the parameter and use a local.",
+    "mayBeIntended": false
+  },
+  "IS2_INCONSISTENT_SYNC": {
+    "fix": "Guard every read and write of the field with the same lock, or make it final, volatile or an atomic type.",
+    "mayBeIntended": false
+  },
+  "ISC_INSTANTIATE_STATIC_CLASS": {
+    "fix": "Call the static methods on the class name, for example Util.parse(x), instead of creating an instance.",
+    "mayBeIntended": false
+  },
+  "IS_FIELD_NOT_GUARDED": {
+    "fix": "Hold the lock named in the @GuardedBy annotation around every access to the field.",
+    "mayBeIntended": false
+  },
+  "IS_INCONSISTENT_SYNC": {
+    "fix": "Guard every read and write of the field with the same lock, or make it final, volatile or an atomic type.",
+    "mayBeIntended": false
+  },
+  "ITA_INEFFICIENT_TO_ARRAY": {
+    "fix": "Pass a typed array constructor: list.toArray(String[]::new) or list.toArray(new String[0]).",
+    "mayBeIntended": false
+  },
+  "IT_NO_SUCH_ELEMENT": {
+    "fix": "Throw NoSuchElementException from next() when hasNext() would be false.",
+    "mayBeIntended": false
+  },
+  "J2EE_STORE_OF_NON_SERIALIZABLE_OBJECT_INTO_SESSION": {
+    "fix": "Store only Serializable values, such as records of strings and numbers, in the HttpSession.",
+    "mayBeIntended": false
+  },
+  "JCIP_FIELD_ISNT_FINAL_IN_IMMUTABLE_CLASS": {
+    "fix": "Declare every field of the @Immutable class final, or make the class a record.",
+    "mayBeIntended": false
+  },
+  "JLM_JSR166_LOCK_MONITORENTER": {
+    "fix": "Call lock.lock() and unlock() in try/finally instead of using synchronized on a Lock object.",
+    "mayBeIntended": false
+  },
+  "JLM_JSR166_UTILCONCURRENT_MONITORENTER": {
+    "fix": "Use the concurrent class's own atomic methods, or a separate private lock Object, instead of synchronized on it.",
+    "mayBeIntended": false
+  },
+  "JML_JSR166_CALLING_WAIT_RATHER_THAN_AWAIT": {
+    "fix": "Call await(), signal() and signalAll() on the Condition instead of wait(), notify() and notifyAll().",
+    "mayBeIntended": false
+  },
+  "JUA_DONT_ASSERT_INSTANCEOF_IN_TESTS": {
+    "fix": "Write assertInstanceOf(Foo.class, value), which fails with the actual type and returns the cast value, instead of assertTrue(value instanceof Foo).",
+    "mayBeIntended": false
+  },
+  "LG_LOST_LOGGER_DUE_TO_WEAK_REFERENCE": {
+    "fix": "Hold the Logger in a private static final field, so it is not garbage collected with its configuration.",
+    "mayBeIntended": false
+  },
+  "LI_LAZY_INIT_STATIC": {
+    "fix": "Initialize the static field eagerly as static final, or use a holder class, instead of unsynchronized lazy init.",
+    "mayBeIntended": false
+  },
+  "LI_LAZY_INIT_UPDATE_STATIC": {
+    "fix": "Build the object completely in a local, then assign the static field once; or initialize it eagerly as static final.",
+    "mayBeIntended": false
+  },
+  "MC_OVERRIDABLE_METHOD_CALL_IN_CLONE": {
+    "fix": "Call only private, static or final methods from clone, or replace clone with a copy constructor.",
+    "mayBeIntended": false
+  },
+  "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR": {
+    "fix": "Call only private, static or final methods from the constructor, or make the class final.",
+    "mayBeIntended": false
+  },
+  "MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT": {
+    "fix": "Call only private, static or final methods from readObject, or make the class final.",
+    "mayBeIntended": false
+  },
+  "ME_ENUM_FIELD_SETTER": {
+    "fix": "Remove the public setter and give the enum final fields set in its constructor.",
+    "mayBeIntended": false
+  },
+  "ME_MUTABLE_ENUM_FIELD": {
+    "fix": "Declare the enum field final and use an immutable type such as List.of(...) instead of a mutable one.",
+    "mayBeIntended": false
+  },
+  "MF_CLASS_MASKS_FIELD": {
+    "fix": "Rename the subclass field, or remove it and use the inherited one; the duplicate name hides the superclass field.",
+    "mayBeIntended": false
+  },
+  "MF_METHOD_MASKS_FIELD": {
+    "fix": "Rename the local variable so it does not shadow the field, or assign this.field when the field is meant.",
+    "mayBeIntended": false
+  },
+  "ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD": {
+    "fix": "Synchronize on a separate private final Object lock, not on the field being reassigned.",
+    "mayBeIntended": false
+  },
+  "ML_SYNC_ON_UPDATED_FIELD": {
+    "fix": "Synchronize on a separate private final Object lock, not on a field whose value is changed.",
+    "mayBeIntended": false
+  },
+  "MSF_MUTABLE_SERVLET_FIELD": {
+    "fix": "Keep request state in local variables, or make the servlet field final and immutable; servlet instances are shared by threads.",
+    "mayBeIntended": false
+  },
+  "MS_CANNOT_BE_FINAL": {
+    "fix": "Hide the static field behind a private field and a method, or initialise it in a static block of a holder class.",
+    "mayBeIntended": false
+  },
+  "MS_EXPOSE_BUF": {
+    "fix": "Expose a read-only view with buf.asReadOnlyBuffer() instead of the shared static buffer.",
+    "mayBeIntended": false
+  },
+  "MS_EXPOSE_REP": {
+    "fix": "Return a copy from the static accessor, such as array.clone() or List.copyOf(items), instead of the stored object.",
+    "mayBeIntended": false
+  },
+  "MS_FINAL_PKGPROTECT": {
+    "fix": "Make the field private and final, or hold an immutable value (List.of, a record) so protection is unnecessary.",
+    "mayBeIntended": false
+  },
+  "MS_MUTABLE_ARRAY": {
+    "fix": "Make the array private and return a clone from a method, or expose an immutable List.of(...) instead.",
+    "mayBeIntended": false
+  },
+  "MS_MUTABLE_COLLECTION": {
+    "fix": "Declare the field as List.of(...), Set.of(...) or Map.of(...) so the collection is immutable.",
+    "mayBeIntended": false
+  },
+  "MS_MUTABLE_COLLECTION_PKGPROTECT": {
+    "fix": "Declare the field as List.of(...), Set.of(...) or Map.of(...) so the collection is immutable.",
+    "mayBeIntended": false
+  },
+  "MS_MUTABLE_HASHTABLE": {
+    "fix": "Declare the field as Map.of(...) or Map.copyOf(m) so the table is immutable.",
+    "mayBeIntended": false
+  },
+  "MS_OOI_PKGPROTECT": {
+    "fix": "Make the field private, or move it into the interface as an immutable value such as List.of(...).",
+    "mayBeIntended": false
+  },
+  "MS_PKGPROTECT": {
+    "fix": "Make the static field private and add an accessor that returns a copy, or hold an immutable value such as List.of(...).",
+    "mayBeIntended": false
+  },
+  "MS_SHOULD_BE_FINAL": {
+    "fix": "Add final to the static field and assign it once at declaration.",
+    "mayBeIntended": false
+  },
+  "MS_SHOULD_BE_REFACTORED_TO_BE_FINAL": {
+    "fix": "Assign the static field once in a static initializer and declare it final.",
+    "mayBeIntended": false
+  },
+  "MTIA_SUSPECT_SERVLET_INSTANCE_FIELD": {
+    "fix": "Move the instance field into doGet or doPost as a local variable; servlet instances are shared by all request threads.",
+    "mayBeIntended": false
+  },
+  "MTIA_SUSPECT_STRUTS_INSTANCE_FIELD": {
+    "fix": "Remove the instance field from the Action and keep that state in locals or the form bean; Actions are shared across requests.",
+    "mayBeIntended": false
+  },
+  "MWN_MISMATCHED_NOTIFY": {
+    "fix": "Call notify or notifyAll on the same object whose synchronized block you are in.",
+    "mayBeIntended": false
+  },
+  "MWN_MISMATCHED_WAIT": {
+    "fix": "Call wait on the same object whose synchronized block you are in, inside a while loop.",
+    "mayBeIntended": false
+  },
+  "NM_BAD_EQUAL": {
+    "fix": "Rename equal(Object) to equals(Object) and add @Override.",
+    "mayBeIntended": false
+  },
+  "NM_CLASS_NAMING_CONVENTION": {
+    "fix": "Name the class in UpperCamelCase, such as OrderService.",
+    "mayBeIntended": false
+  },
+  "NM_CLASS_NOT_EXCEPTION": {
+    "fix": "Rename the class so it does not end in Exception, or make it extend Exception or RuntimeException.",
+    "mayBeIntended": false
+  },
+  "NM_CONFUSING": {
+    "fix": "Rename one of the two methods so they differ by more than letter case.",
+    "mayBeIntended": true
+  },
+  "NM_FIELD_NAMING_CONVENTION": {
+    "fix": "Name fields in lowerCamelCase, and static final constants in UPPER_SNAKE_CASE.",
+    "mayBeIntended": false
+  },
+  "NM_FUTURE_KEYWORD_USED_AS_IDENTIFIER": {
+    "fix": "Rename the identifier, since it is a reserved word in newer Java versions (assert, enum, var, record, yield).",
+    "mayBeIntended": false
+  },
+  "NM_FUTURE_KEYWORD_USED_AS_MEMBER_IDENTIFIER": {
+    "fix": "Rename the member, since its name is a reserved word in newer Java versions (assert, enum, var, record, yield).",
+    "mayBeIntended": false
+  },
+  "NM_LCASE_HASHCODE": {
+    "fix": "Rename hashcode() to hashCode() and add @Override.",
+    "mayBeIntended": false
+  },
+  "NM_LCASE_TOSTRING": {
+    "fix": "Rename tostring() to toString() and add @Override.",
+    "mayBeIntended": false
+  },
+  "NM_METHOD_CONSTRUCTOR_CONFUSION": {
+    "fix": "Rename the method, or drop the return type if it is meant to be a constructor.",
+    "mayBeIntended": false
+  },
+  "NM_METHOD_NAMING_CONVENTION": {
+    "fix": "Name methods in lowerCamelCase, starting with a verb, such as parseOrder.",
+    "mayBeIntended": false
+  },
+  "NM_SAME_SIMPLE_NAME_AS_INTERFACE": {
+    "fix": "Give the class a name different from the interface it extends or implements in another package, such as DefaultOrderStore.",
+    "mayBeIntended": false
+  },
+  "NM_SAME_SIMPLE_NAME_AS_SUPERCLASS": {
+    "fix": "Give the class a name different from its superclass in another package, such as ExtendedOrder.",
+    "mayBeIntended": false
+  },
+  "NM_VERY_CONFUSING": {
+    "fix": "Rename one of the two methods so their names differ by more than capitalization.",
+    "mayBeIntended": true
+  },
+  "NM_VERY_CONFUSING_INTENTIONAL": {
+    "fix": "Rename one of the two methods so they differ by more than letter case.",
+    "mayBeIntended": true
+  },
+  "NM_WRONG_PACKAGE": {
+    "fix": "Import the parameter type from the same package the superclass method uses, and add @Override so the compiler checks it.",
+    "mayBeIntended": false
+  },
+  "NM_WRONG_PACKAGE_INTENTIONAL": {
+    "fix": "Import the same type the superclass method declares and add @Override, so the method really overrides it.",
+    "mayBeIntended": true
+  },
+  "NN_NAKED_NOTIFY": {
+    "fix": "Change the shared state under the lock right before notify or notifyAll, so the waiter can see the new condition.",
+    "mayBeIntended": false
+  },
+  "NOISE_FIELD_REFERENCE": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "NOISE_METHOD_CALL": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "NOISE_NULL_DEREFERENCE": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "NOISE_OPERATION": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "NO_NOTIFY_NOT_NOTIFYALL": {
+    "fix": "Call notifyAll() instead of notify(), or use a Condition per predicate.",
+    "mayBeIntended": true
+  },
+  "NP_ALWAYS_NULL": {
+    "fix": "Assign a real value before the dereference, or delete the dead branch; the variable is null on this path.",
+    "mayBeIntended": false
+  },
+  "NP_ALWAYS_NULL_EXCEPTION": {
+    "fix": "Fix the path so the value is non-null before the dereference, or handle the null case before it.",
+    "mayBeIntended": false
+  },
+  "NP_ARGUMENT_MIGHT_BE_NULL": {
+    "fix": "Check the value for null before passing it, or use Objects.requireNonNull at the entry that produces it.",
+    "mayBeIntended": false
+  },
+  "NP_BOOLEAN_RETURN_NULL": {
+    "fix": "Return Boolean.FALSE or TRUE, or change the return type to boolean or Optional<Boolean>.",
+    "mayBeIntended": false
+  },
+  "NP_CLONE_COULD_RETURN_NULL": {
+    "fix": "Return the copy from super.clone() or throw; never return null from clone.",
+    "mayBeIntended": false
+  },
+  "NP_CLOSING_NULL": {
+    "fix": "Only close what was opened; open the resource in try-with-resources so it is never null at close.",
+    "mayBeIntended": false
+  },
+  "NP_DEREFERENCE_OF_READLINE_VALUE": {
+    "fix": "Assign readLine() to a variable and test it for null before use, or iterate reader.lines().",
+    "mayBeIntended": false
+  },
+  "NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT": {
+    "fix": "Begin equals with an instanceof check, which is false for null, or use Objects.equals for each field.",
+    "mayBeIntended": false
+  },
+  "NP_GUARANTEED_DEREF": {
+    "fix": "Check for null and return or throw before the dereference; the null path always reaches it.",
+    "mayBeIntended": false
+  },
+  "NP_GUARANTEED_DEREF_ON_EXCEPTION_PATH": {
+    "fix": "Check for null in the catch or finally before dereferencing, or restructure with try-with-resources.",
+    "mayBeIntended": false
+  },
+  "NP_IMMEDIATE_DEREFERENCE_OF_READLINE": {
+    "fix": "Assign readLine() to a variable and test it for null before calling methods on it, or iterate reader.lines().",
+    "mayBeIntended": false
+  },
+  "NP_LOAD_OF_KNOWN_NULL_VALUE": {
+    "fix": "Remove the use of the variable that is always null here, or fix the earlier branch that should have set it.",
+    "mayBeIntended": false
+  },
+  "NP_METHOD_PARAMETER_RELAXING_ANNOTATION": {
+    "fix": "Give the override's parameter the same nullness annotation as the method it overrides.",
+    "mayBeIntended": false
+  },
+  "NP_METHOD_PARAMETER_TIGHTENS_ANNOTATION": {
+    "fix": "Give the override's parameter the same nullness annotation as the method it overrides, and handle null if the parent allows it.",
+    "mayBeIntended": false
+  },
+  "NP_METHOD_RETURN_RELAXING_ANNOTATION": {
+    "fix": "Keep the override's return nullness as strict as the parent's: return a non-null value, or change the parent's contract.",
+    "mayBeIntended": false
+  },
+  "NP_NONNULL_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR": {
+    "fix": "Assign the field in every constructor, or make it a final field set from a constructor parameter.",
+    "mayBeIntended": true
+  },
+  "NP_NONNULL_PARAM_VIOLATION": {
+    "fix": "Pass a non-null value, or change the callee to accept null explicitly; the parameter is declared non-null.",
+    "mayBeIntended": false
+  },
+  "NP_NONNULL_RETURN_VIOLATION": {
+    "fix": "Return a non-null value, such as List.of(), Optional.empty() or an empty string, instead of null.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_INSTANCEOF": {
+    "fix": "Remove the instanceof test; the value is null here, so it is always false.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_ON_SOME_PATH": {
+    "fix": "Add a null check that returns or throws before the dereference, or make the value non-null on every path.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_ON_SOME_PATH_EXCEPTION": {
+    "fix": "Check the value for null in the catch or finally block before using it, or initialize it before the try.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE": {
+    "fix": "Check the returned value for null before dereferencing it, or make the callee return Optional or an empty collection.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE": {
+    "fix": "Guard the dereference with a null check, or restructure so the branch that can hold null never reaches it.",
+    "mayBeIntended": true
+  },
+  "NP_NULL_PARAM_DEREF": {
+    "fix": "Pass a non-null value; the callee dereferences the parameter without a null check.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS": {
+    "fix": "Pass a non-null value; every possible target dereferences this parameter.",
+    "mayBeIntended": false
+  },
+  "NP_NULL_PARAM_DEREF_NONVIRTUAL": {
+    "fix": "Pass a non-null value; the called method dereferences this parameter without a null check.",
+    "mayBeIntended": false
+  },
+  "NP_OPTIONAL_RETURN_NULL": {
+    "fix": "Return Optional.empty() instead of null from a method that returns Optional.",
+    "mayBeIntended": false
+  },
+  "NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE": {
+    "fix": "Remove the nullable annotation from the parameter, or check it for null before the dereference.",
+    "mayBeIntended": false
+  },
+  "NP_STORE_INTO_NONNULL_FIELD": {
+    "fix": "Store a non-null value, or drop the non-null annotation if the field can legitimately be null.",
+    "mayBeIntended": false
+  },
+  "NP_SYNC_AND_NULL_CHECK_FIELD": {
+    "fix": "Make the field final and non-null, and synchronize on a separate private final lock Object.",
+    "mayBeIntended": false
+  },
+  "NP_TOSTRING_COULD_RETURN_NULL": {
+    "fix": "Return an empty string or String.valueOf(field) from toString, never null.",
+    "mayBeIntended": false
+  },
+  "NP_UNWRITTEN_FIELD": {
+    "fix": "Assign the field somewhere, or delete it; reading a never-written field always yields null.",
+    "mayBeIntended": true
+  },
+  "NP_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD": {
+    "fix": "Assign the field in the constructor and make it private final, or remove it if nothing sets it.",
+    "mayBeIntended": true
+  },
+  "NS_DANGEROUS_NON_SHORT_CIRCUIT": {
+    "fix": "Use && or || so the right side is skipped when the left side already decides the result or guards against null.",
+    "mayBeIntended": false
+  },
+  "NS_NON_SHORT_CIRCUIT": {
+    "fix": "Use && or || instead of & or | on booleans, so the right side runs only when needed.",
+    "mayBeIntended": false
+  },
+  "OBL_UNSATISFIED_OBLIGATION": {
+    "fix": "Open the stream, connection or other resource in try-with-resources so it closes on every path.",
+    "mayBeIntended": false
+  },
+  "OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE": {
+    "fix": "Open the stream, connection or other resource in try-with-resources so it closes when an exception is thrown.",
+    "mayBeIntended": false
+  },
+  "ODR_OPEN_DATABASE_RESOURCE": {
+    "fix": "Open the Connection, Statement and ResultSet in try-with-resources so each closes on every path.",
+    "mayBeIntended": false
+  },
+  "ODR_OPEN_DATABASE_RESOURCE_EXCEPTION_PATH": {
+    "fix": "Open the Connection, Statement and ResultSet in try-with-resources so each closes when an exception is thrown.",
+    "mayBeIntended": false
+  },
+  "OS_OPEN_STREAM": {
+    "fix": "Open the stream in try-with-resources so it closes on every path.",
+    "mayBeIntended": false
+  },
+  "OS_OPEN_STREAM_EXCEPTION_PATH": {
+    "fix": "Open the stream in try-with-resources so it closes when an exception is thrown.",
+    "mayBeIntended": false
+  },
+  "OVERRIDING_METHODS_MUST_INVOKE_SUPER": {
+    "fix": "Call super.method(...) in the override, because the overridden method is annotated to require it.",
+    "mayBeIntended": false
+  },
+  "PA_PUBLIC_ARRAY_ATTRIBUTE": {
+    "fix": "Make the array field private and final, and return a clone from an accessor or an immutable List.of(...).",
+    "mayBeIntended": false
+  },
+  "PA_PUBLIC_MUTABLE_OBJECT_ATTRIBUTE": {
+    "fix": "Make the field private and final, and expose an immutable copy such as List.copyOf(items) from an accessor.",
+    "mayBeIntended": false
+  },
+  "PA_PUBLIC_PRIMITIVE_ATTRIBUTE": {
+    "fix": "Make the field private and final with an accessor, or turn the class into a record.",
+    "mayBeIntended": false
+  },
+  "PERM_SUPER_NOT_CALLED_IN_GETPERMISSIONS": {
+    "fix": "Call super.getPermissions(codeSource) in getPermissions and add to the permissions it returns.",
+    "mayBeIntended": false
+  },
+  "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_CLASS_NAMES": {
+    "fix": "Rename the class so it does not match a JDK type such as List, Optional or Entry; use a domain name like OrderList.",
+    "mayBeIntended": false
+  },
+  "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_FIELD_NAMES": {
+    "fix": "Rename the field so it does not match a JDK class name; use a domain name such as orderList.",
+    "mayBeIntended": false
+  },
+  "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_LOCAL_VARIABLE_NAMES": {
+    "fix": "Rename the local so it does not match a JDK class name; use a domain name such as orderList.",
+    "mayBeIntended": false
+  },
+  "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_METHOD_NAMES": {
+    "fix": "Rename the method so it does not match a JDK class name; use a domain verb such as parseOrder.",
+    "mayBeIntended": false
+  },
+  "PS_PUBLIC_SEMAPHORES": {
+    "fix": "Synchronize and call wait and notify on a private final lock Object, not on this.",
+    "mayBeIntended": false
+  },
+  "PT_ABSOLUTE_PATH_TRAVERSAL": {
+    "fix": "Resolve the user value against a fixed base with Path.resolve, normalize it, and check startsWith(base) before opening.",
+    "mayBeIntended": false
+  },
+  "PT_RELATIVE_PATH_TRAVERSAL": {
+    "fix": "Resolve the user value against a fixed base with Path.resolve, normalize it, and check startsWith(base) before opening.",
+    "mayBeIntended": false
+  },
+  "PZLA_PREFER_ZERO_LENGTH_ARRAYS": {
+    "fix": "Return an empty array (a static final zero-length constant) or List.of() instead of null.",
+    "mayBeIntended": false
+  },
+  "PZ_DONT_REUSE_ENTRY_OBJECTS_IN_ITERATORS": {
+    "fix": "Return a new Map.Entry on each next() call, such as Map.entry(k, v), instead of making the iterator itself the entry.",
+    "mayBeIntended": false
+  },
+  "QBA_QUESTIONABLE_BOOLEAN_ASSIGNMENT": {
+    "fix": "Write the comparison with == or just the boolean: if (flag), not if (flag = true).",
+    "mayBeIntended": false
+  },
+  "QF_QUESTIONABLE_FOR_LOOP": {
+    "fix": "Test and increment the same variable the loop declares, or write a for-each loop.",
+    "mayBeIntended": false
+  },
+  "RANGE_ARRAY_INDEX": {
+    "fix": "Check the index is within 0 and array.length - 1 before the access, or fix the index computation.",
+    "mayBeIntended": false
+  },
+  "RANGE_ARRAY_LENGTH": {
+    "fix": "Pass a length that fits the array (offset + length <= array.length), or fix the computation.",
+    "mayBeIntended": false
+  },
+  "RANGE_ARRAY_OFFSET": {
+    "fix": "Pass an offset between 0 and array.length, or fix the computation.",
+    "mayBeIntended": false
+  },
+  "RANGE_STRING_INDEX": {
+    "fix": "Check the index is within 0 and length() before calling charAt or substring, or fix the computation.",
+    "mayBeIntended": false
+  },
+  "RCN_REDUNDANT_COMPARISON_OF_NULL_AND_NONNULL_VALUE": {
+    "fix": "Remove the null comparison on a value that cannot be null here, or fix the earlier assumption.",
+    "mayBeIntended": false
+  },
+  "RCN_REDUNDANT_COMPARISON_TWO_NULL_VALUES": {
+    "fix": "Remove the comparison of two values that are both null here, or fix the earlier assignment that made them so.",
+    "mayBeIntended": false
+  },
+  "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE": {
+    "fix": "Remove the null check on a value that cannot be null here, or fix the earlier code that made that assumption.",
+    "mayBeIntended": true
+  },
+  "RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE": {
+    "fix": "Remove the null check on a value that is always null here, and fix the earlier code that left it null.",
+    "mayBeIntended": false
+  },
+  "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE": {
+    "fix": "Move the null check ahead of the dereference, or remove it if the value can never be null.",
+    "mayBeIntended": false
+  },
+  "RC_REF_COMPARISON": {
+    "fix": "Compare boxed values with equals, or unbox them first; == on Integer, Long or Boolean compares references.",
+    "mayBeIntended": false
+  },
+  "RC_REF_COMPARISON_BAD_PRACTICE": {
+    "fix": "Compare with equals, for example a.equals(b) or Objects.equals(a, b), instead of == on boxed values.",
+    "mayBeIntended": false
+  },
+  "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN": {
+    "fix": "Compare with Boolean.TRUE.equals(x) or unbox to a primitive boolean, not == between Boolean objects.",
+    "mayBeIntended": false
+  },
+  "REC_CATCH_EXCEPTION": {
+    "fix": "Catch the specific checked exceptions the try block throws, so runtime exceptions propagate.",
+    "mayBeIntended": true
+  },
+  "REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS": {
+    "fix": "Avoid reflection on classes that are not public; use a public API, a MethodHandles.Lookup, or an interface.",
+    "mayBeIntended": true
+  },
+  "REFLF_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_FIELD": {
+    "fix": "Avoid setAccessible on fields; use a public accessor, a MethodHandles.Lookup, or a VarHandle.",
+    "mayBeIntended": true
+  },
+  "RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION": {
+    "fix": "Correct the pattern, or build it with Pattern.quote for literal text; test it with a unit test.",
+    "mayBeIntended": false
+  },
+  "RE_CANT_USE_FILE_SEPARATOR_AS_REGULAR_EXPRESSION": {
+    "fix": "Use Pattern.quote(File.separator), or work on Path and call getFileName and getParent instead of splitting.",
+    "mayBeIntended": false
+  },
+  "RE_POSSIBLE_UNINTENDED_PATTERN": {
+    "fix": "Escape the dot or quote the text, split(Pattern.quote(\".\")), or pass a real regex; \".\" matches every character.",
+    "mayBeIntended": false
+  },
+  "RI_REDUNDANT_INTERFACES": {
+    "fix": "Remove the interface from the implements clause, since the superclass already implements it.",
+    "mayBeIntended": false
+  },
+  "RR_NOT_CHECKED": {
+    "fix": "Check the count returned by read(buf) in a loop, or use readNBytes or readAllBytes, so short reads are handled.",
+    "mayBeIntended": false
+  },
+  "RS_READOBJECT_SYNC": {
+    "fix": "Remove synchronized from readObject; the object being deserialized is not shared yet.",
+    "mayBeIntended": false
+  },
+  "RU_INVOKE_RUN": {
+    "fix": "Call start() to run in a new thread, or submit the Runnable to an ExecutorService; run() executes on the current thread.",
+    "mayBeIntended": false
+  },
+  "RV_01_TO_INT": {
+    "fix": "Cast after the multiplication: (int) (Math.random() * n), or use ThreadLocalRandom.current().nextInt(n).",
+    "mayBeIntended": false
+  },
+  "RV_ABSOLUTE_VALUE_OF_HASHCODE": {
+    "fix": "Use Math.floorMod(x.hashCode(), n); Math.abs of Integer.MIN_VALUE is still negative.",
+    "mayBeIntended": false
+  },
+  "RV_ABSOLUTE_VALUE_OF_RANDOM_INT": {
+    "fix": "Use random.nextInt(n), which is never negative, instead of Math.abs(random.nextInt()) % n.",
+    "mayBeIntended": false
+  },
+  "RV_CHECK_COMPARETO_FOR_SPECIFIC_RETURN_VALUE": {
+    "fix": "Test only the sign: compareTo(x) < 0, == 0 or > 0, never == 1 or == -1.",
+    "mayBeIntended": false
+  },
+  "RV_CHECK_FOR_POSITIVE_INDEXOF": {
+    "fix": "Test indexOf(x) >= 0 or use contains(x); indexOf(x) > 0 misses a match at position 0.",
+    "mayBeIntended": false
+  },
+  "RV_DONT_JUST_NULL_CHECK_READLINE": {
+    "fix": "Assign readLine() to a variable in the loop condition and use that variable, so no line is discarded.",
+    "mayBeIntended": false
+  },
+  "RV_EXCEPTION_NOT_THROWN": {
+    "fix": "Add throw before new SomeException(...), or delete the unused exception.",
+    "mayBeIntended": false
+  },
+  "RV_NEGATING_RESULT_OF_COMPARETO": {
+    "fix": "Swap the operands, compare(b, a) or b.compareTo(a), instead of negating a compareTo result.",
+    "mayBeIntended": false
+  },
+  "RV_REM_OF_HASHCODE": {
+    "fix": "Use Math.floorMod(x.hashCode(), n), because hashCode() can be negative.",
+    "mayBeIntended": false
+  },
+  "RV_REM_OF_RANDOM_INT": {
+    "fix": "Call random.nextInt(n) for a bounded value; nextInt() % n can be negative.",
+    "mayBeIntended": false
+  },
+  "RV_RETURN_VALUE_IGNORED": {
+    "fix": "Use the returned value, e.g. assign it: s = s.trim(); the call does not change the receiver.",
+    "mayBeIntended": false
+  },
+  "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE": {
+    "fix": "Use the return value: check the boolean from File.delete or mkdirs, or call Files.delete or Files.createDirectories, which throw.",
+    "mayBeIntended": false
+  },
+  "RV_RETURN_VALUE_IGNORED_INFERRED": {
+    "fix": "Use the returned value, or remove the call when it only produces a value.",
+    "mayBeIntended": true
+  },
+  "RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT": {
+    "fix": "Use the returned value, or delete the call; the method has no other effect.",
+    "mayBeIntended": false
+  },
+  "RV_RETURN_VALUE_OF_PUTIFABSENT_IGNORED": {
+    "fix": "Use the value putIfAbsent returns (the existing entry), or call computeIfAbsent and use its result.",
+    "mayBeIntended": false
+  },
+  "RpC_REPEATED_CONDITIONAL_TEST": {
+    "fix": "Fix the repeated condition so the second test checks something different, or delete it.",
+    "mayBeIntended": false
+  },
+  "SA_FIELD_DOUBLE_ASSIGNMENT": {
+    "fix": "Delete the first assignment to the field, or assign the other field that was meant.",
+    "mayBeIntended": false
+  },
+  "SA_FIELD_SELF_ASSIGNMENT": {
+    "fix": "Delete the self-assignment, or assign the intended value to the field.",
+    "mayBeIntended": false
+  },
+  "SA_FIELD_SELF_COMPARISON": {
+    "fix": "Compare the field with the other value you meant; comparing it with itself is constant.",
+    "mayBeIntended": false
+  },
+  "SA_FIELD_SELF_COMPUTATION": {
+    "fix": "Replace the self-computation (x & x, x - x) with the intended operands.",
+    "mayBeIntended": false
+  },
+  "SA_LOCAL_DOUBLE_ASSIGNMENT": {
+    "fix": "Keep a single assignment of the local and delete the repeated one.",
+    "mayBeIntended": false
+  },
+  "SA_LOCAL_SELF_ASSIGNMENT": {
+    "fix": "Remove x = x, or assign from the variable that was meant; a self-assignment does nothing.",
+    "mayBeIntended": false
+  },
+  "SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD": {
+    "fix": "Write this.name = name so the parameter is stored in the field.",
+    "mayBeIntended": false
+  },
+  "SA_LOCAL_SELF_COMPARISON": {
+    "fix": "Compare with the other value you meant; comparing a local with itself is constant. Use Double.isNaN for NaN.",
+    "mayBeIntended": false
+  },
+  "SA_LOCAL_SELF_COMPUTATION": {
+    "fix": "Replace the self-computation (x & x, x - x) with the intended operands.",
+    "mayBeIntended": false
+  },
+  "SBSC_USE_STRINGBUFFER_CONCATENATION": {
+    "fix": "Append inside the loop to a StringBuilder and call toString() once after it, or use String.join or a Collectors.joining stream.",
+    "mayBeIntended": false
+  },
+  "SC_START_IN_CTOR": {
+    "fix": "Move start() out of the constructor into a start() method or static factory called after construction.",
+    "mayBeIntended": false
+  },
+  "SE_BAD_FIELD": {
+    "fix": "Make the field type Serializable, mark it transient, or use a record of serializable values.",
+    "mayBeIntended": false
+  },
+  "SE_BAD_FIELD_INNER_CLASS": {
+    "fix": "Make the inner class a static nested class, so it does not hold a non-serializable outer instance.",
+    "mayBeIntended": false
+  },
+  "SE_BAD_FIELD_STORE": {
+    "fix": "Store only Serializable values in the serializable class's field, or mark the field transient.",
+    "mayBeIntended": false
+  },
+  "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE": {
+    "fix": "Declare the comparator as implements Comparator<T>, Serializable, since it is held by a serializable container.",
+    "mayBeIntended": false
+  },
+  "SE_INNER_CLASS": {
+    "fix": "Make the serializable inner class static, so it does not capture the outer instance.",
+    "mayBeIntended": false
+  },
+  "SE_METHOD_MUST_BE_PRIVATE": {
+    "fix": "Declare writeObject, readObject, readObjectNoData as private so serialization calls them.",
+    "mayBeIntended": false
+  },
+  "SE_NONFINAL_SERIALVERSIONID": {
+    "fix": "Declare it exactly as: private static final long serialVersionUID = 1L;",
+    "mayBeIntended": false
+  },
+  "SE_NONLONG_SERIALVERSIONID": {
+    "fix": "Declare it exactly as: private static final long serialVersionUID = 1L;",
+    "mayBeIntended": false
+  },
+  "SE_NONSTATIC_SERIALVERSIONID": {
+    "fix": "Declare it exactly as: private static final long serialVersionUID = 1L;",
+    "mayBeIntended": false
+  },
+  "SE_NO_SERIALVERSIONID": {
+    "fix": "Add private static final long serialVersionUID = 1L; or stop implementing Serializable.",
+    "mayBeIntended": true
+  },
+  "SE_NO_SUITABLE_CONSTRUCTOR": {
+    "fix": "Give the first non-serializable superclass an accessible no-argument constructor, or make that superclass serializable.",
+    "mayBeIntended": false
+  },
+  "SE_NO_SUITABLE_CONSTRUCTOR_FOR_EXTERNALIZATION": {
+    "fix": "Add a public no-argument constructor to the Externalizable class.",
+    "mayBeIntended": false
+  },
+  "SE_PREVENT_EXT_OBJ_OVERWRITE": {
+    "fix": "Guard readExternal with a private initialized flag that is set once, or stop using Externalizable.",
+    "mayBeIntended": false
+  },
+  "SE_PRIVATE_READ_RESOLVE_NOT_INHERITED": {
+    "fix": "Make readResolve protected so subclasses inherit it, or make the class final.",
+    "mayBeIntended": false
+  },
+  "SE_READ_RESOLVE_IS_STATIC": {
+    "fix": "Make readResolve an instance method (no static) so serialization calls it.",
+    "mayBeIntended": false
+  },
+  "SE_READ_RESOLVE_MUST_RETURN_OBJECT": {
+    "fix": "Declare readResolve as returning Object, with throws ObjectStreamException if needed.",
+    "mayBeIntended": false
+  },
+  "SE_TRANSIENT_FIELD_NOT_RESTORED": {
+    "fix": "Restore the transient field in readObject or readResolve, or make it a non-transient serializable field.",
+    "mayBeIntended": false
+  },
+  "SE_TRANSIENT_FIELD_OF_NONSERIALIZABLE_CLASS": {
+    "fix": "Remove transient from the field, or make the class Serializable; transient has no effect in a class that is not serialized.",
+    "mayBeIntended": false
+  },
+  "SF_DEAD_STORE_DUE_TO_SWITCH_FALLTHROUGH": {
+    "fix": "Use a switch expression with arrow cases, or end each case with break or return, so values are not overwritten.",
+    "mayBeIntended": false
+  },
+  "SF_DEAD_STORE_DUE_TO_SWITCH_FALLTHROUGH_TO_THROW": {
+    "fix": "End the case with break or return before the next case, or use arrow cases in a switch expression.",
+    "mayBeIntended": false
+  },
+  "SF_SWITCH_FALLTHROUGH": {
+    "fix": "End every case with break, return or throw, or use arrow-form cases, which never fall through.",
+    "mayBeIntended": false
+  },
+  "SF_SWITCH_NO_DEFAULT": {
+    "fix": "Add a default branch, or use an exhaustive switch expression over an enum or sealed type.",
+    "mayBeIntended": false
+  },
+  "SIC_INNER_SHOULD_BE_STATIC": {
+    "fix": "Declare the nested class static, since it never uses the outer instance; make it a record if it only holds data.",
+    "mayBeIntended": false
+  },
+  "SIC_INNER_SHOULD_BE_STATIC_ANON": {
+    "fix": "Replace the anonymous class with a lambda or a static nested class that does not capture the outer instance.",
+    "mayBeIntended": false
+  },
+  "SIC_INNER_SHOULD_BE_STATIC_NEEDS_THIS": {
+    "fix": "Declare the nested class static and pass the outer instance in through its constructor.",
+    "mayBeIntended": false
+  },
+  "SIC_THREADLOCAL_DEADLY_EMBRACE": {
+    "fix": "Make the inner class a static nested class so it does not hold the outer instance.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_GETTER_NOT_SYNCHRONIZED": {
+    "fix": "Use a single-element enum, or an eager private static final instance, instead of lazy unsynchronized creation.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR": {
+    "fix": "Make the singleton's constructor private, or use a single-element enum.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_IMPLEMENTS_CLONEABLE": {
+    "fix": "Remove Cloneable from the singleton; use a single-element enum.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_IMPLEMENTS_CLONE_METHOD": {
+    "fix": "Delete clone from the singleton, or make it throw CloneNotSupportedException; a single-element enum avoids it.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_IMPLEMENTS_SERIALIZABLE": {
+    "fix": "Use a single-element enum, or add a readResolve returning the instance, so deserialization cannot make a copy.",
+    "mayBeIntended": false
+  },
+  "SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE": {
+    "fix": "Do not inherit Cloneable in a singleton; use a single-element enum or override clone to throw.",
+    "mayBeIntended": false
+  },
+  "SIO_SUPERFLUOUS_INSTANCEOF": {
+    "fix": "Remove the instanceof test; the static type already guarantees it, so it is always true.",
+    "mayBeIntended": false
+  },
+  "SI_INSTANCE_BEFORE_FINALS_ASSIGNED": {
+    "fix": "Declare the instance field after every other static final field, or use a lazy holder class to create the instance.",
+    "mayBeIntended": false
+  },
+  "SKIPPED_CLASS_TOO_BIG": {
+    "fix": "Split the class into smaller classes so analysis can cover all of it.",
+    "mayBeIntended": false
+  },
+  "SP_SPIN_ON_FIELD": {
+    "fix": "Wait with a CountDownLatch, a Condition or wait and notify instead of polling a field in a loop.",
+    "mayBeIntended": false
+  },
+  "SQL_BAD_PREPARED_STATEMENT_ACCESS": {
+    "fix": "Set parameters from index 1, setString(1, value); JDBC indexes start at 1, not 0.",
+    "mayBeIntended": false
+  },
+  "SQL_BAD_RESULTSET_ACCESS": {
+    "fix": "Read columns from index 1, rs.getString(1), or by column name; JDBC indexes start at 1.",
+    "mayBeIntended": false
+  },
+  "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE": {
+    "fix": "Use a PreparedStatement with a constant SQL string and ? placeholders, and bind the values with setString and setInt.",
+    "mayBeIntended": false
+  },
+  "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING": {
+    "fix": "Use a constant SQL string with ? placeholders and bind the values with setString and setInt.",
+    "mayBeIntended": false
+  },
+  "SR_NOT_CHECKED": {
+    "fix": "Check the number of bytes returned by skip, or use skipNBytes, so a short skip is handled.",
+    "mayBeIntended": false
+  },
+  "SSD_DO_NOT_USE_INSTANCE_LOCK_ON_SHARED_STATIC_DATA": {
+    "fix": "Guard the static data with a private static final lock Object, not an instance lock or a synchronized instance method.",
+    "mayBeIntended": false
+  },
+  "SS_SHOULD_BE_STATIC": {
+    "fix": "Declare the final field with a constant initializer as static final.",
+    "mayBeIntended": false
+  },
+  "STCAL_INVOKE_ON_STATIC_CALENDAR_INSTANCE": {
+    "fix": "Use java.time types (LocalDate, ZonedDateTime) instead of calling a shared static Calendar.",
+    "mayBeIntended": false
+  },
+  "STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE": {
+    "fix": "Format with a static final DateTimeFormatter, which is thread-safe, instead of a shared DateFormat.",
+    "mayBeIntended": false
+  },
+  "STCAL_STATIC_CALENDAR_INSTANCE": {
+    "fix": "Replace the static Calendar with java.time types (Instant, LocalDate, ZonedDateTime), which are immutable.",
+    "mayBeIntended": false
+  },
+  "STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE": {
+    "fix": "Replace the static SimpleDateFormat with a static final DateTimeFormatter, which is thread-safe.",
+    "mayBeIntended": false
+  },
+  "STI_INTERRUPTED_ON_CURRENTTHREAD": {
+    "fix": "Call the static Thread.interrupted() directly, or Thread.currentThread().isInterrupted() to read without clearing.",
+    "mayBeIntended": false
+  },
+  "STI_INTERRUPTED_ON_UNKNOWNTHREAD": {
+    "fix": "Use thread.isInterrupted() to read another thread's flag; interrupted() always checks the current thread and clears the flag.",
+    "mayBeIntended": false
+  },
+  "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD": {
+    "fix": "Keep the state in an instance field, or move the write to a static method that guards it with a lock or an Atomic type.",
+    "mayBeIntended": false
+  },
+  "SWL_SLEEP_WITH_LOCK_HELD": {
+    "fix": "Release the lock before Thread.sleep, or wait with a timeout on a Condition (await(time, unit)).",
+    "mayBeIntended": false
+  },
+  "SW_SWING_METHODS_INVOKED_IN_SWING_THREAD": {
+    "fix": "Build and show Swing components inside SwingUtilities.invokeLater.",
+    "mayBeIntended": false
+  },
+  "TESTING": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "TESTING1": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "TESTING2": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "TESTING3": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION": {
+    "fix": "Declare the specific checked exception the method throws, such as IOException, not Exception.",
+    "mayBeIntended": true
+  },
+  "THROWS_METHOD_THROWS_CLAUSE_THROWABLE": {
+    "fix": "Declare the specific checked exception the method throws, such as IOException, not Throwable.",
+    "mayBeIntended": true
+  },
+  "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION": {
+    "fix": "Remove RuntimeException from the throws clause and describe it in Javadoc, or return a failure value.",
+    "mayBeIntended": false
+  },
+  "TLW_TWO_LOCK_WAIT": {
+    "fix": "Wait while holding only the monitor you wait on; release the outer lock first, or use one lock.",
+    "mayBeIntended": false
+  },
+  "TQ_ALWAYS_VALUE_USED_WHERE_NEVER_REQUIRED": {
+    "fix": "Pass a value that does not carry the qualifier, or fix the qualifier annotation on the parameter or field.",
+    "mayBeIntended": true
+  },
+  "TQ_COMPARING_VALUES_WITH_INCOMPATIBLE_TYPE_QUALIFIERS": {
+    "fix": "Compare values with the same type qualifier, or fix the annotations; the two sides can never be equal.",
+    "mayBeIntended": true
+  },
+  "TQ_EXPLICIT_UNKNOWN_SOURCE_VALUE_REACHES_ALWAYS_SINK": {
+    "fix": "Remove the unknown-source annotation from the value, or make the source carry the qualifier the sink requires.",
+    "mayBeIntended": false
+  },
+  "TQ_EXPLICIT_UNKNOWN_SOURCE_VALUE_REACHES_NEVER_SINK": {
+    "fix": "Remove the unknown-source annotation from the value, or make the source guarantee it lacks the forbidden qualifier.",
+    "mayBeIntended": false
+  },
+  "TQ_MAYBE_SOURCE_VALUE_REACHES_ALWAYS_SINK": {
+    "fix": "Make the source always carry the qualifier, or validate the value before it reaches the annotated parameter.",
+    "mayBeIntended": true
+  },
+  "TQ_MAYBE_SOURCE_VALUE_REACHES_NEVER_SINK": {
+    "fix": "Make sure the value never carries the qualifier before it reaches the annotated parameter, or fix the annotations.",
+    "mayBeIntended": true
+  },
+  "TQ_NEVER_VALUE_USED_WHERE_ALWAYS_REQUIRED": {
+    "fix": "Pass a value that carries the required qualifier, or fix the annotations on the source or the parameter.",
+    "mayBeIntended": true
+  },
+  "TQ_UNKNOWN_VALUE_USED_WHERE_ALWAYS_STRICTLY_REQUIRED": {
+    "fix": "Pass a value from a source annotated with the required qualifier, or convert it through a method that returns the annotated type.",
+    "mayBeIntended": true
+  },
+  "UCF_USELESS_CONTROL_FLOW": {
+    "fix": "Remove the if or loop with an empty body, or put the intended statements in it.",
+    "mayBeIntended": false
+  },
+  "UCF_USELESS_CONTROL_FLOW_NEXT_LINE": {
+    "fix": "Remove the stray semicolon after the condition, so the if guards the statement on the next line.",
+    "mayBeIntended": false
+  },
+  "UC_USELESS_CONDITION": {
+    "fix": "Remove the condition that the known value range makes always true or false, or test the right variable.",
+    "mayBeIntended": false
+  },
+  "UC_USELESS_CONDITION_TYPE": {
+    "fix": "Remove the comparison that the variable's type already decides, or compare against the intended variable.",
+    "mayBeIntended": false
+  },
+  "UC_USELESS_OBJECT": {
+    "fix": "Remove the collection or object that is filled but never read, or return or use it.",
+    "mayBeIntended": false
+  },
+  "UC_USELESS_OBJECT_STACK": {
+    "fix": "Remove the object that is only modified and never read, or use its result.",
+    "mayBeIntended": false
+  },
+  "UC_USELESS_VOID_METHOD": {
+    "fix": "Delete the void method that does nothing, or give it the intended effect.",
+    "mayBeIntended": true
+  },
+  "UG_SYNC_SET_UNSYNC_GET": {
+    "fix": "Make the getter synchronized too, or replace both with a volatile or atomic field.",
+    "mayBeIntended": false
+  },
+  "UI_INHERITANCE_UNSAFE_GETRESOURCE": {
+    "fix": "Call Foo.class.getResource(name) with the class literal instead of getClass().getResource(name).",
+    "mayBeIntended": false
+  },
+  "UL_UNRELEASED_LOCK": {
+    "fix": "Call lock.lock() just before a try block and put unlock() in its finally.",
+    "mayBeIntended": false
+  },
+  "UL_UNRELEASED_LOCK_EXCEPTION_PATH": {
+    "fix": "Put unlock() in a finally block so every exception path releases the lock.",
+    "mayBeIntended": false
+  },
+  "UMAC_UNCALLABLE_METHOD_OF_ANONYMOUS_CLASS": {
+    "fix": "Delete the unreachable method, or fix its name and signature so it overrides the supertype method; add @Override.",
+    "mayBeIntended": false
+  },
+  "UM_UNNECESSARY_MATH": {
+    "fix": "Replace the Math call on a constant with its literal result.",
+    "mayBeIntended": false
+  },
+  "UNKNOWN": {
+    "fix": null,
+    "mayBeIntended": false
+  },
+  "UPM_UNCALLED_PRIVATE_METHOD": {
+    "fix": "Delete the private method that nothing calls.",
+    "mayBeIntended": true
+  },
+  "URF_UNREAD_FIELD": {
+    "fix": "Delete the field that is written but never read, or read it where the value is needed.",
+    "mayBeIntended": false
+  },
+  "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD": {
+    "fix": "Delete the field that is written but never read, or read it where the value is needed.",
+    "mayBeIntended": true
+  },
+  "UR_UNINIT_READ": {
+    "fix": "Assign the field in the constructor before it is read, or make it final and set it from a parameter.",
+    "mayBeIntended": false
+  },
+  "UR_UNINIT_READ_CALLED_FROM_SUPER_CONSTRUCTOR": {
+    "fix": "Do not call overridable methods from a constructor; make the method final or private, or move the call to a factory.",
+    "mayBeIntended": false
+  },
+  "USC_POTENTIAL_SECURITY_CHECK_BASED_ON_UNTRUSTED_SOURCE": {
+    "fix": "Make a defensive copy of the untrusted value before the security check, then use only the copy afterward.",
+    "mayBeIntended": false
+  },
+  "USM_USELESS_ABSTRACT_METHOD": {
+    "fix": "Delete the abstract method; the implemented interface already declares it.",
+    "mayBeIntended": false
+  },
+  "USM_USELESS_SUBCLASS_METHOD": {
+    "fix": "Delete the override that only calls super with the same arguments.",
+    "mayBeIntended": false
+  },
+  "US_USELESS_SUPPRESSION_ON_CLASS": {
+    "fix": "Delete the SuppressFBWarnings annotation on the class; it suppresses nothing.",
+    "mayBeIntended": false
+  },
+  "US_USELESS_SUPPRESSION_ON_FIELD": {
+    "fix": "Delete the SuppressFBWarnings annotation on the field; it suppresses nothing.",
+    "mayBeIntended": false
+  },
+  "US_USELESS_SUPPRESSION_ON_METHOD": {
+    "fix": "Delete the SuppressFBWarnings annotation on the method; it suppresses nothing.",
+    "mayBeIntended": false
+  },
+  "US_USELESS_SUPPRESSION_ON_METHOD_PARAMETER": {
+    "fix": "Delete the SuppressFBWarnings annotation on the parameter; it suppresses nothing.",
+    "mayBeIntended": false
+  },
+  "US_USELESS_SUPPRESSION_ON_PACKAGE": {
+    "fix": "Delete the SuppressFBWarnings annotation on the package; it suppresses nothing.",
+    "mayBeIntended": false
+  },
+  "UUF_UNUSED_FIELD": {
+    "fix": "Delete the field that is never used.",
+    "mayBeIntended": false
+  },
+  "UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD": {
+    "fix": "Delete the field that is never used, or make it private if only the class needs it.",
+    "mayBeIntended": true
+  },
+  "UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR": {
+    "fix": "Assign the field in every constructor and make it private final, so it is never null when dereferenced.",
+    "mayBeIntended": true
+  },
+  "UWF_NULL_FIELD": {
+    "fix": "Assign a non-null value to the field somewhere, or delete the field; it is only ever null.",
+    "mayBeIntended": true
+  },
+  "UWF_UNWRITTEN_FIELD": {
+    "fix": "Assign the field somewhere, or delete it; reading a never-written field always yields null or zero.",
+    "mayBeIntended": true
+  },
+  "UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD": {
+    "fix": "Assign the field in the constructor and make it private final, or remove it if nothing sets it.",
+    "mayBeIntended": true
+  },
+  "UW_UNCOND_WAIT": {
+    "fix": "Test the condition under the lock and call wait only while it is false, inside a while loop.",
+    "mayBeIntended": false
+  },
+  "VA_FORMAT_STRING_USES_NEWLINE": {
+    "fix": "Use %n in the format string instead of \\n.",
+    "mayBeIntended": false
+  },
+  "VA_PRIMITIVE_ARRAY_PASSED_TO_OBJECT_VARARG": {
+    "fix": "Pass a boxed array (Integer[]) or the elements individually; a primitive array arrives as one Object argument.",
+    "mayBeIntended": false
+  },
+  "VO_VOLATILE_INCREMENT": {
+    "fix": "Use AtomicInteger or AtomicLong (incrementAndGet) instead of ++ on a volatile field.",
+    "mayBeIntended": false
+  },
+  "VO_VOLATILE_REFERENCE_TO_ARRAY": {
+    "fix": "Use AtomicReferenceArray or replace the whole array with a copy; volatile covers the reference, not the elements.",
+    "mayBeIntended": false
+  },
+  "VR_UNRESOLVABLE_REFERENCE": {
+    "fix": "Add the missing class to the analysis classpath (the dependency in build.gradle), or remove the reference to it.",
+    "mayBeIntended": true
+  },
+  "VSC_VULNERABLE_SECURITY_CHECK_METHODS": {
+    "fix": "Make the security-checked method private or final, so a subclass cannot override it.",
+    "mayBeIntended": false
+  },
+  "WA_AWAIT_NOT_IN_LOOP": {
+    "fix": "Call Condition.await inside a while loop that rechecks the condition after waking.",
+    "mayBeIntended": false
+  },
+  "WA_NOT_IN_LOOP": {
+    "fix": "Call wait inside a while loop that rechecks the condition after waking.",
+    "mayBeIntended": false
+  },
+  "WL_USING_GETCLASS_RATHER_THAN_CLASS_LITERAL": {
+    "fix": "Synchronize on the class literal Foo.class, or better a private static final lock Object, not getClass().",
+    "mayBeIntended": false
+  },
+  "WMI_WRONG_MAP_ITERATOR": {
+    "fix": "Iterate map.entrySet() and read getKey() and getValue() instead of iterating keySet() and calling get(key).",
+    "mayBeIntended": false
+  },
+  "WS_WRITEOBJECT_SYNC": {
+    "fix": "Remove synchronized from writeObject, or synchronize the other methods that touch the same state.",
+    "mayBeIntended": false
+  },
+  "XFB_XML_FACTORY_BYPASS": {
+    "fix": "Create XML objects through the factory (DocumentBuilderFactory, SAXParserFactory, TransformerFactory), not by instantiating an implementation class.",
+    "mayBeIntended": false
+  },
+  "XSS_REQUEST_PARAMETER_TO_JSP_WRITER": {
+    "fix": "Escape the request value for HTML output, or use a templating layer that escapes by default, before writing it.",
+    "mayBeIntended": false
+  },
+  "XSS_REQUEST_PARAMETER_TO_SEND_ERROR": {
+    "fix": "Do not put the request value in the error message; send a fixed message, or escape the value for HTML first.",
+    "mayBeIntended": false
+  },
+  "XSS_REQUEST_PARAMETER_TO_SERVLET_WRITER": {
+    "fix": "Escape the request value for HTML output, or use a templating layer that escapes by default, before writing it.",
+    "mayBeIntended": false
+  }
+}
