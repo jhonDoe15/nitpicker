@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { readLayout } from '../../head-policy.mjs';
+import { helperRuntimeImports } from './react-test-files.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
@@ -42,6 +43,14 @@ function isProductionModule(filename, source) {
   );
 }
 
+function reachesProduction(filename, source) {
+  if (isProductionModule(filename, source)) {
+    return true;
+  }
+  const helper = helperRuntimeImports(filename, source);
+  return helper.sources.some((imported) => isProductionModule(helper.file, imported));
+}
+
 function isProductionRequire(filename, node) {
   const [argument] = node.arguments;
   return (
@@ -49,7 +58,7 @@ function isProductionRequire(filename, node) {
     node.callee.name === 'require' &&
     argument?.type === 'Literal' &&
     typeof argument.value === 'string' &&
-    isProductionModule(filename, argument.value)
+    reachesProduction(filename, argument.value)
   );
 }
 
@@ -70,7 +79,7 @@ export const rule = {
     ],
     messages: {
       missingRuntime:
-        'This test imports no production code at runtime (only types, helpers or libraries). Import the code under test from the source root. Shared helpers belong in a file not named *.test.* or *.spec.*.',
+        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*.',
     },
   },
   create(context) {
@@ -96,7 +105,7 @@ export const rule = {
         if (
           isRuntimeImport(node) &&
           typeof node.source.value === 'string' &&
-          isProductionModule(filename, node.source.value)
+          reachesProduction(filename, node.source.value)
         ) {
           hasProductionRuntime = true;
         }
@@ -105,7 +114,7 @@ export const rule = {
         if (
           node.source.type === 'Literal' &&
           typeof node.source.value === 'string' &&
-          isProductionModule(filename, node.source.value)
+          reachesProduction(filename, node.source.value)
         ) {
           hasProductionRuntime = true;
         }

@@ -12,6 +12,8 @@ const relativeModule = /^\.{1,2}\//u;
 const compiledExtension = /\.(?:[cm]?js|jsx)$/u;
 const scriptExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'];
 const moduleSource = /(?:\bfrom|\bimport|\brequire\s*\()\s*\(?\s*['"]([^'"\n]+)['"]/gu;
+const runtimeModuleSource =
+  /\b(?:import|export)(?!\s+type\b)(?:\s*\(|[^'"`;()=]*?\bfrom)?\s*['"]([^'"\n]+)['"]|\brequire\s*\(\s*['"]([^'"\n]+)['"]/gu;
 
 function isReactTestModule(source) {
   return typeof source === 'string' && reactTestModule.test(source);
@@ -39,6 +41,17 @@ function helperImportsTestingLibrary(testFile, source) {
       testingLibraryModule.test(imported),
     )
   );
+}
+
+export function helperRuntimeImports(testFile, source) {
+  const file = relativeModule.test(source) ? helperFile(testFile, source) : undefined;
+  const sources =
+    file === undefined
+      ? []
+      : [...readFileSync(file, 'utf8').matchAll(runtimeModuleSource)].map(
+          ([, imported, required]) => imported ?? required,
+        );
+  return { file, sources };
 }
 
 function requiredSource(node) {
