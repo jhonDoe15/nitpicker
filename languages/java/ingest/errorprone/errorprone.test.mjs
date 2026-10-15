@@ -16,7 +16,7 @@ const CHECK_RETURN_VALUE =
 const FUTURE =
   "Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future. Did you mean 'var unused = future.thenAccept(result -> variables.put(variable, result));' or to remove this line?";
 const NULLAWAY =
-  "initializer method does not guarantee @NonNull field 'expressionParser' (line 18) is initialized along all control-flow paths (remember to check for exceptions or early returns). Annotate what may be null with @Nullable (org.jspecify.annotations.Nullable) and check it before use; otherwise give it a non-null value.";
+  "initializer method does not guarantee @NonNull field 'expressionParser' (line 18) is initialized along all control-flow paths (remember to check for exceptions or early returns). Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.";
 const STACK =
   'Stack is a nonstandard class that predates the Java Collections Framework; prefer ArrayDeque. Note that the Stack methods push/pop/peek correspond to the Deque methods addFirst/removeFirst/peekFirst.';
 

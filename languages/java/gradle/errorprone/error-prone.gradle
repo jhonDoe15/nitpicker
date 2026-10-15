@@ -2,16 +2,16 @@
 // this script to each java project after setting nitpickerErrorProneVersions and nitpickerReportDir.
 // ErrorProneReport.java runs javac with Error Prone as its plugin, in the JVM that runs Gradle, into a
 // throwaway directory, and writes build/nitpicker/errorprone.json. checks.json turns checks on and off.
+// The Maven build runs the same ErrorProneReport.java (languages/java/maven/errorprone/).
 
 def scriptDir = buildscript.sourceFile.parentFile
-def checks = new groovy.json.JsonSlurper().parse(new File(scriptDir, 'checks.json'))
+def checks = new File(scriptDir, 'checks.json')
 def reportDir = project.ext.nitpickerReportDir
 def workDir = reportDir.map { it.dir('errorprone') }
 def reportFile = reportDir.map { it.file('errorprone.json') }
 def compilerPackages = ['api', 'file', 'main', 'model', 'parser', 'processing', 'tree', 'util', 'code', 'comp']
 def jvmFlags = compilerPackages.collect { "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString() } +
     ['code', 'comp'].collect { "--add-opens=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString() }
-def passedOptions = ['--add-exports', '--add-modules', '--add-reads']
 
 // A detached configuration, so a dependency-management plugin of the project cannot move Error Prone's
 // own dependencies; the attributes pick the JVM runtime variants (Guava publishes several).
@@ -31,49 +31,16 @@ def errorProneClasspath = {
     configuration.files
 }
 
-// The project's own top-level packages: every package holding a main class, without its subpackages.
-// CheckReturnValue requires the results of their methods to be used, and NullAway treats them as null-marked.
-def ownPackages = {
-    def packages = sourceSets.main.output.classesDirs.files.findAll { it.exists() }.collectMany { dir ->
-        fileTree(dir) { include '**/*.class' }.files.collect {
-            dir.toPath().relativize(it.parentFile.toPath()).toString().replace(File.separator, '.')
-        }
-    }.findAll { it }.unique().sort()
-    packages.findAll { name -> !packages.any { name.startsWith("${it}.") } }
-}
-
-def pluginArgument = { boolean test ->
-    def packages = ownPackages()
-    (['-Xplugin:ErrorProne', '-XepAllErrorsAsWarnings',
-      '-XepIgnoreSuppressionAnnotations'] +
-        (test ? ['-XepCompilingTestOnlyCode'] : []) +
-        checks.enable.collect { "-Xep:${it}:WARN" } +
-        checks.disable.collect { "-Xep:${it}:OFF" } +
-        (packages.isEmpty() ? ['-Xep:NullAway:OFF'] : ["-XepOpt:CheckReturnValue:Packages=${packages.join(',')}",
-            '-Xep:NullAway:WARN', "-XepOpt:NullAway:AnnotatedPackages=${packages.join(',')}"])).join(' ')
-}
-
 def releaseOf = { JavaCompile compile ->
     def toolchain = extensions.getByType(JavaPluginExtension).toolchain.languageVersion
     compile.options.release.orNull ?: (toolchain.present ? toolchain.get().asInt()
         : JavaVersion.toVersion(compile.targetCompatibility).majorVersion as int)
 }
 
+// ErrorProneReport.java decides which of these javac gets (see its usage note).
 def projectOptions = { JavaCompile compile ->
-    def args = compile.options.compilerArgs
-    def kept = []
-    args.eachWithIndex { argument, index ->
-        if (argument == '--enable-preview') {
-            kept << argument
-        } else if (argument in passedOptions && index + 1 < args.size()) {
-            kept += [argument, args[index + 1]]
-        } else if (passedOptions.any { argument.startsWith("${it}=") }) {
-            kept << argument
-        }
-    }
-    def release = releaseOf(compile)
-    def current = Runtime.version().feature()
-    (kept.isEmpty() && release >= 8 && release < current ? ['--release', release.toString()] : []) + kept +
+    compile.options.compilerArgs.collect { "--project-arg=${it}".toString() } +
+        ["--target-release=${releaseOf(compile)}".toString()] +
         (compile.options.encoding ? ['-encoding', compile.options.encoding] : [])
 }
 
@@ -90,7 +57,7 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
                  '-processorpath', (errorProne + processors).collect { it.absolutePath }.join(File.pathSeparator),
                  '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
                  '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000'] +
-        projectOptions(compile) + [pluginArgument(test), '--sources'] + sources*.absolutePath
+        projectOptions(compile) + (test ? ['--test-only'] : []) + ['--sources'] + sources*.absolutePath
     def file = workDir.get().file("${name}.args").asFile
     file.text = lines.collect { it + '\n' }.join('')
     sources.isEmpty() ? null : file
@@ -115,8 +82,9 @@ tasks.register('nitpickerErrorProne') {
         def argumentFiles = compiles.collect { name, compile -> writeArguments(name, compile, errorProne, name == 'test') }
             .findAll { it != null }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
-        def process = new ProcessBuilder([java] + jvmFlags + [runner.absolutePath, report.absolutePath] +
-                argumentFiles*.absolutePath)
+        def mainClasses = sourceSets.main.output.classesDirs.files*.absolutePath.join(File.pathSeparator)
+        def process = new ProcessBuilder([java] + jvmFlags + [runner.absolutePath, report.absolutePath,
+                checks.absolutePath, mainClasses] + argumentFiles*.absolutePath)
             .directory(projectDir).redirectErrorStream(true).start()
         // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.
         def log = process.inputStream.getText('UTF-8').readLines().findAll { !it.startsWith('Picked up ') }

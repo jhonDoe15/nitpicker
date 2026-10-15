@@ -96,9 +96,11 @@ describe('fileFindings', () => {
     ].join('\n');
 
     expect(
-      fileFindings(source, 'A.java').map(
-        (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
-      ),
+      fileFindings(source, 'A.java')
+        .filter((finding) => finding.tool === 'pmd')
+        .map(
+          (finding) => `${String(finding.location.line)}${finding.message.slice(MESSAGE.length)}`,
+        ),
     ).toEqual([
       '2 Found: "PMD.X".',
       '3 Found: "PMD.X".',
@@ -226,16 +228,17 @@ describe('fileFindings for SpotBugs', () => {
 });
 
 describe('fileFindings for Error Prone', () => {
-  const NULLAWAY_MESSAGE =
-    'Do not silence NullAway inline: mark what may be null with @Nullable, or add an exception for errorprone/NullAway in nitpicker.config.json. Error Prone itself ignores @SuppressWarnings; NullAway does not.';
+  const ERROR_PRONE_MESSAGE =
+    'Do not silence Error Prone or NullAway inline: fix the finding (for NullAway, annotate what may be null with @Nullable), or add an exception for errorprone/<check> in nitpicker.config.json.';
 
-  it('reports @SuppressWarnings naming NullAway, but not the Error Prone checks, which nitpicker runs with suppressions ignored', () => {
+  it('reports @SuppressWarnings naming NullAway or a check nitpicker runs, by name or alternative name', () => {
     const source = [
       'class A {',
       '  @SuppressWarnings("NullAway") String a() { return null; }',
       '  @SuppressWarnings({"NullAway.Init", "unchecked"}) private String b;',
       '  @SuppressWarnings("FutureReturnValueIgnored") void c() {}',
       '  @SuppressWarnings("NullAwayLike") void d() {}',
+      '  @SuppressWarnings({"dep-ann", "MissingOverride"}) void e() {}',
       '}',
     ].join('\n');
 
@@ -247,8 +250,15 @@ describe('fileFindings for Error Prone', () => {
         finding.message,
       ]),
     ).toEqual([
-      ['errorprone', 'InlineSuppression', 2, `${NULLAWAY_MESSAGE} Found: "NullAway".`],
-      ['errorprone', 'InlineSuppression', 3, `${NULLAWAY_MESSAGE} Found: "NullAway.Init".`],
+      ['errorprone', 'InlineSuppression', 2, `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
+      ['errorprone', 'InlineSuppression', 3, `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        4,
+        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored".`,
+      ],
+      ['errorprone', 'InlineSuppression', 6, `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
     ]);
   });
 
@@ -259,7 +269,7 @@ describe('fileFindings for Error Prone', () => {
       fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
     ).toEqual([
       ['pmd', `${MESSAGE} Found: "PMD".`],
-      ['errorprone', `${NULLAWAY_MESSAGE} Found: "NullAway".`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
     ]);
   });
 });

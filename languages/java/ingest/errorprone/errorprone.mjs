@@ -7,7 +7,7 @@ const SENTENCE_END = /[.?!:]$/;
 const ALLOWED_FORMS = new Map([
   [
     'NullAway',
-    'Annotate what may be null with @Nullable (org.jspecify.annotations.Nullable) and check it before use; otherwise give it a non-null value.',
+    "Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.",
   ],
 ]);
 

@@ -64,6 +64,8 @@ tasks.named('nitpickerErrorProne') {
 `;
 
 const projects = [];
+const hint = (check, file) =>
+  `If this is intended, add {"rule":"errorprone/${check}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
 function project(extraBuild = '') {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-errorprone-e2e-')));
@@ -108,7 +110,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     for (const directory of projects.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it('reports an ignored Future, ignored results of own methods in main and test code, and a returned null', () => {
+  it('reports an ignored Future, an ignored result of an own method in test code and a returned null, and honors @SuppressWarnings', () => {
     expect(run.status).toBe(0);
     const findings = readErrorProneFindings({
       reportRoot: path.join(root, 'build/nitpicker'),
@@ -130,21 +132,14 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         'FutureReturnValueIgnored',
         'src/main/java/demo/Jobs.java',
         13,
-        "Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future. Did you mean 'var unused = executor.submit(this::count);' or to remove this line?",
-      ],
-      [
-        'errorprone',
-        'CheckReturnValue',
-        'src/main/java/demo/Jobs.java',
-        18,
-        "The result of `count()` must be used. Did you mean '@CanIgnoreReturnValue public int count() {' or 'var unused = count();' or to remove this line?",
+        `Return value of methods returning Future must be checked. Ignoring returned Futures suppresses exceptions thrown from the code that completes the Future. Did you mean 'var unused = executor.submit(this::count);' or to remove this line? ${hint('FutureReturnValueIgnored', 'src/main/java/demo/Jobs.java')}`,
       ],
       [
         'errorprone',
         'NullAway',
         'src/main/java/demo/Jobs.java',
         26,
-        'returning @Nullable expression from method with @NonNull return type. Annotate what may be null with @Nullable (org.jspecify.annotations.Nullable) and check it before use; otherwise give it a non-null value.',
+        `returning @Nullable expression from method with @NonNull return type. Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value. ${hint('NullAway', 'src/main/java/demo/Jobs.java')}`,
       ],
       [
         'errorprone',
