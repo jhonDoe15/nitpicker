@@ -33,12 +33,20 @@ export const domainRestrictedSyntax = [
     message: `domain/ code does not use reduceRight: fold with xs.reduce((sum, x) => sum + x, 0) (pass an initial value) or transform with ${TRANSFORMS}.`,
   },
   {
-    selector: `CallExpression[callee.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
+    selector: [
+      `CallExpression[callee.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
+      `CallExpression[callee.property.name=/^(call|apply|bind)$/][callee.object.property.name=/^(${MUTATING_ARRAY_METHODS})$/]`,
+    ].join(', '),
     message:
       'domain/ code does not mutate arrays: build a new array with map, filter, flatMap or spread (toSorted, toReversed and toSpliced instead of sort, reverse and splice).',
   },
   {
     selector: "AssignmentExpression[left.type='MemberExpression']",
+    message:
+      'domain/ code does not assign to properties: return a new object with spread, e.g. { ...value, field }.',
+  },
+  {
+    selector: 'AssignmentExpression[left.type=/^(ObjectPattern|ArrayPattern)$/]',
     message:
       'domain/ code does not assign to properties: return a new object with spread, e.g. { ...value, field }.',
   },
@@ -58,6 +66,12 @@ export const domainRestrictedSyntax = [
       "CallExpression[callee.object.name='Object'][callee.property.name=/^(assign|defineProperty|defineProperties|setPrototypeOf)$/]:not([arguments.0.type='ObjectExpression'])",
     message:
       'domain/ code does not mutate objects: return a new object with spread, e.g. { ...value, field } (Object.assign is fine only onto a fresh object literal).',
+  },
+  {
+    selector:
+      "CallExpression[callee.object.name='Reflect'][callee.property.name=/^(set|defineProperty|deleteProperty|setPrototypeOf|apply)$/], CallExpression[callee.object.name='Atomics'][callee.property.name=/^(store|add|sub|and|or|xor|exchange|compareExchange)$/]",
+    message:
+      'domain/ code does not change values through Reflect or Atomics: return a new value with spread, e.g. { ...value, field }.',
   },
   {
     selector: "UnaryExpression[operator='delete']",
@@ -87,7 +101,11 @@ export const domainFunctionalRules = {
 };
 
 export const domainTypeAwareFunctionalRules = {
-  'functional/prefer-immutable-types': ['error', { enforcement: 'ReadonlyDeep' }],
+  'nitpicker/no-mutating-method-in-domain': 'error',
+  'functional/prefer-immutable-types': [
+    'error',
+    { enforcement: 'ReadonlyDeep', variables: { ignoreInFunctions: true } },
+  ],
 };
 
 export const strictDomainConfig = [

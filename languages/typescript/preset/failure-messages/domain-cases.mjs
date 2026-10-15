@@ -9,6 +9,21 @@ function domainCase(name, banned, allowed) {
 export const domainFailureMessageCases = [
   domainCase('let names const', 'let total = 1;', 'const'),
   domainCase(
+    'destructuring assignment names spread',
+    'const run = (o: { readonly a: number }) => { ({ a: o.a } = { a: 1 }); };',
+    '{ ...value, field }',
+  ),
+  domainCase(
+    'Reflect.set names spread',
+    "const run = (o: { readonly a: number }) => Reflect.set(o, 'a', 1);",
+    'return a new value with spread',
+  ),
+  domainCase(
+    'Atomics.store names spread',
+    'const run = (t: Int32Array) => Atomics.store(t, 0, 1);',
+    'through Reflect or Atomics',
+  ),
+  domainCase(
     'for loop names map',
     'const run = (xs: readonly number[]) => { for (const x of xs) { x; } };',
     'map, filter, flatMap',
