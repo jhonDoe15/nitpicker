@@ -134,13 +134,7 @@ function installPrettierPolicy(options) {
   }
   trackTemporaryPath(configPath);
   trackTemporaryPath(ignorePath);
-  symlinkSync(policyConfig, configPath, 'file');
-  try {
-    symlinkSync(policyIgnore, ignorePath, 'file');
-  } catch (error) {
-    unlinkSync(configPath);
-    throw error;
-  }
+  linkPrettierPolicy({ policyConfig, policyIgnore, configPath, ignorePath });
   return {
     configPath,
     ignorePath,
@@ -149,6 +143,16 @@ function installPrettierPolicy(options) {
       unlinkSync(configPath);
     },
   };
+}
+
+function linkPrettierPolicy({ policyConfig, policyIgnore, configPath, ignorePath }) {
+  symlinkSync(policyConfig, configPath, 'file');
+  try {
+    symlinkSync(policyIgnore, ignorePath, 'file');
+  } catch (error) {
+    unlinkSync(configPath);
+    throw error;
+  }
 }
 
 function formattingFindings({ tool, relativePath, source }, formatted) {
