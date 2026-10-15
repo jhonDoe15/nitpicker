@@ -46,8 +46,8 @@ If your change edits a function that existed before it, read
   `/** @typedef {import('./domain/tally.js').Invoice} Invoice */` in `invoices/index.js`, then
   `/** @import { Invoice } from '../../invoices/index.js' */` in the other feature. Never copy a
   type: import it, or derive it from a function you call (`Parameters<typeof runGreeting>[1]`).
-- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it to
-  `dependencies` if it isn't listed). Field rules and conversions live in the schema
+- `adapters/` does I/O and parses untrusted input (files, HTTP bodies, JSON) once, with zod (add it
+  if it isn't a dependency). Field rules and conversions live in the schema
   (`z.string().trim().min(1)`, `z.email()`, `z.iso.date()`, `.transform(toCents)`), never
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
@@ -67,13 +67,9 @@ If your change edits a function that existed before it, read
 
 ## Dependencies and files
 
-- Every package you import is listed in `package.json`: `dependencies` for production code (zod
-  too), `devDependencies` for tests and tooling. Remove a dependency nothing imports. Production
-  code importing a `devDependency` fails, except in an app a bundler builds (Vite, webpack, Next.js
-  and the like) and in test helpers, mocks and stories.
-- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries,
-  or a file over 1 MB. If one is really needed, stop and ask: the project adds an `exceptions`
-  entry (rule, paths, reason) to `nitpicker.config.json`.
+- The gate fails unlisted, unused and unresolved dependencies, production imports of a
+  `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
+  names the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
 ## Types are JSDoc
 

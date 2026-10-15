@@ -4,15 +4,18 @@ import { validateConfig } from '../config.mjs';
 describe('hygiene exceptions', () => {
   const exception = (rule) => ({ rule, paths: ['config/**'], reason: 'Fixture' });
 
-  it.each(['committed-env-file', 'committed-private-key', 'committed-binary', 'large-file'])(
-    'accepts an exception for %s in every preset',
-    (rule) => {
-      for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
-        const config = { preset, exceptions: [exception(rule)] };
-        expect(validateConfig(config)).toEqual(config);
-      }
-    },
-  );
+  it.each([
+    'committed-env-file',
+    'committed-private-key',
+    'committed-binary',
+    'large-file',
+    'committed-build-output',
+  ])('accepts an exception for %s in every preset', (rule) => {
+    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
+      const config = { preset, exceptions: [exception(rule)] };
+      expect(validateConfig(config)).toEqual(config);
+    }
+  });
 
   it('keeps the package rules to the TypeScript and JavaScript presets', () => {
     for (const rule of ['unused-dependency', 'unlisted-dependency', 'unresolved-import']) {

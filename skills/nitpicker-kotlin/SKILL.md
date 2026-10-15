@@ -57,9 +57,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 
 ## Repository files
 
-- Never commit `.env` files (commit `.env.example`), private keys, archives or compiled binaries
-  (the Gradle wrapper jar is fine), or a file over 1 MB. If one is really needed, stop and ask:
-  the project adds an `exceptions` entry (rule, paths, reason) to `nitpicker.config.json`.
+- The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
+  the fix. Don't add an `exceptions` entry to get past one: stop and ask.
 
 ## Size and tests
 

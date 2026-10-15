@@ -66,7 +66,7 @@ function localPackageFiles(projectRoot, manifest) {
     .map((spec) => path.posix.normalize(path.posix.join(directory, spec.slice('file:'.length))));
 }
 
-function readJson(file) {
+export function readJson(file) {
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8'));
     return typeof parsed === 'object' && parsed !== null ? { value: parsed } : {};

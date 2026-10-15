@@ -5,6 +5,7 @@ export const HYGIENE_RULE_IDS = {
   committedPrivateKey: 'committed-private-key',
   committedBinary: 'committed-binary',
   largeFile: 'large-file',
+  committedBuildOutput: 'committed-build-output',
 };
 
 export const PACKAGE_RULE_IDS = {

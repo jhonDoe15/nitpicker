@@ -117,6 +117,7 @@ describe('the hygiene configuration hash', () => {
     expect(configurationFiles()).toEqual([
       'glob.mjs',
       'head-policy.mjs',
+      'hygiene/files/build-output.mjs',
       'hygiene/files/env-files.mjs',
       'hygiene/files/known-files.mjs',
       'hygiene/files/repository-files.mjs',
