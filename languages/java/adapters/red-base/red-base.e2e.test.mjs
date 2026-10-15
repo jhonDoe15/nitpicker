@@ -145,7 +145,12 @@ describeRedBase({
   },
   expected: {
     legacy: 'pmd UnusedPrivateField Legacy.java',
-    violation: [],
+    violation: [
+      'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck Bad.java',
+      'pit mutant-nocoverage Bad.java',
+      'pmd EmptyCatchBlock Bad.java',
+      'spotbugs DM_DEFAULT_ENCODING Bad.java',
+    ],
   },
 });
 
