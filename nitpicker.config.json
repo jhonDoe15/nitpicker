@@ -52,8 +52,12 @@
   "exceptions": [
     {
       "rule": "nitpicker/no-io-in-loop",
-      "paths": ["languages/java/adapters/comments/java-comments.mjs"],
-      "reason": "The comment scan reads each Java source file exactly once; the files are distinct, so there is no batched read to use."
+      "paths": [
+        "languages/java/adapters/comments/java-comments.mjs",
+        "languages/java/adapters/test-support/violation-markers.mjs",
+        "languages/java/guards/javac-lint.mjs"
+      ],
+      "reason": "Each reads or checks every distinct local file exactly once; the file system has no batched read to use."
     },
     {
       "rule": "nitpicker/no-node-process-per-test",

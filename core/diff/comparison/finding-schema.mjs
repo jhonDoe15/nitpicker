@@ -1,6 +1,7 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
 
-const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
+const DESCRIPTIVE = 'descriptive';
+const CLASSIFICATIONS = new Set(['enforceable', DESCRIPTIVE, 'tool-error']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -53,7 +54,7 @@ function parseOptionalFields(value, classification, context) {
     fields.location = parseLocation(value.location, `${context}.location`);
   }
   if (value.metric !== undefined) {
-    if (classification !== 'descriptive') {
+    if (classification !== DESCRIPTIVE) {
       throw new TypeError(`${context}.metric requires descriptive classification`);
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
@@ -69,7 +70,7 @@ function parseOptionalFields(value, classification, context) {
 }
 
 function parseToolNotRun(value, classification, context) {
-  if (value !== true || classification !== 'descriptive') {
+  if (value !== true || classification !== DESCRIPTIVE) {
     throw new TypeError(`${context}.toolNotRun must be true on a descriptive finding`);
   }
   return true;

@@ -45,6 +45,7 @@ export function compareFindings({
   };
 }
 
+const DESCRIPTIVE = 'descriptive';
 const BROKEN_ON_HEAD = 'The base produced this {tool} report, so the change broke it.';
 const NOT_COMPARED = 'Not enforced: no base {tool} report shows whether the change added it.';
 
@@ -65,7 +66,7 @@ function againstMissingReports(headFindings, baseFindings) {
       return reclassified(finding, 'tool-error', BROKEN_ON_HEAD);
     }
     return finding.classification === 'enforceable' && missingOnBase.has(finding.tool)
-      ? reclassified(finding, 'descriptive', NOT_COMPARED)
+      ? reclassified(finding, DESCRIPTIVE, NOT_COMPARED)
       : finding;
   });
 }
@@ -277,8 +278,8 @@ function indexFindings({ findings, renames = new Map(), directories = new Map(),
 
 function hasChangedMetric(baseFinding, headFinding) {
   return (
-    baseFinding.classification === 'descriptive' &&
-    headFinding.classification === 'descriptive' &&
+    baseFinding.classification === DESCRIPTIVE &&
+    headFinding.classification === DESCRIPTIVE &&
     baseFinding.metric !== undefined &&
     headFinding.metric !== undefined &&
     baseFinding.metric.name === headFinding.metric.name &&
