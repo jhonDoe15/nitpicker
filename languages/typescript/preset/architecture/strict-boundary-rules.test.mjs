@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruiseStrict } from './fixtures/strict-cruise.mjs';
+import { cruiseStrict } from './test-support/strict-cruise.mjs';
 import { strictBoundaryRules } from './strict-boundary-rules.mjs';
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');

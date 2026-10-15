@@ -1,7 +1,7 @@
 import { chmodSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../fixtures/scratch.mjs';
+import { createScratch } from '../test-support/scratch.mjs';
 import {
   crap,
   findLizard,
