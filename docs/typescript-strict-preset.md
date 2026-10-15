@@ -95,8 +95,9 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   template literal without `${}`) of five characters or more that a file uses three times or more
   is reported from its third use. Name it once (`const PENDING = 'pending'`). Import sources,
   type-position literals, object and class keys, `case` labels, discriminant values
-  (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members and directives are not
-  counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
+  (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members, directives and
+  translation keys (`t('orders.title')`, `i18n.t`, `intl.formatMessage({ id })`, `useTranslation('ns')`)
+  are not counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
   `status` is typed `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already
   rejects a misspelling there.
 - `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters

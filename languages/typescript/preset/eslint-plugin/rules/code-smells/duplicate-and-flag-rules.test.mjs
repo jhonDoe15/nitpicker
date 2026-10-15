@@ -30,8 +30,19 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       "const a = require('pkg'); const b = require('pkg'); const c = require('pkg');",
       "enum A { X = 'value' } enum B { X = 'value' } enum C { X = 'value' }",
     ]),
+    ...cases([
+      "t('orders.title'); t('orders.title'); t('orders.title');",
+      "i18n.t('orders.title'); i18next.t('orders.title'); this.$t('orders.title');",
+      "translate('orders.title'); __('orders.title'); _t('orders.title');",
+      "intl.formatMessage({ id: 'orders.title' }); intl.formatMessage({ id: 'orders.title' }); formatMessage({ id: 'orders.title' });",
+      "useTranslation('checkout'); useTranslation('checkout'); getFixedT(null, 'checkout');",
+    ]),
     {
       code: 'const a = <input type="text" />; const b = <input type="text" />; const c = <input type="text" />;',
+      languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
+    },
+    {
+      code: "const a = <Trans i18nKey={'orders.title'} />; const b = <Trans i18nKey={'orders.title'} />; const c = <Trans i18nKey={'orders.title'} />;",
       languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
     },
   ],
@@ -57,6 +68,18 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
     {
       code: "const a = { s: 'opened' }; const b = ['opened']; const c = 'opened';",
       errors: [{ messageId: 'repeated', data: { text: 'opened' } }],
+    },
+    {
+      code: "t('orders.title'); label('orders.title'); label('orders.title'); label('orders.title');",
+      errors: [{ messageId: 'repeated', data: { text: 'orders.title' } }],
+    },
+    {
+      code: "t('orders.title', 'Orders list'); t('orders.title', 'Orders list'); t('x', 'Orders list');",
+      errors: [{ messageId: 'repeated', data: { text: 'Orders list' } }],
+    },
+    {
+      code: "intl.formatMessage({ id: 'orders.title' }, { name: 'shipped' }); use({ name: 'shipped' }); use('shipped');",
+      errors: [{ messageId: 'repeated', data: { text: 'shipped' } }],
     },
     {
       code: 'use(`pending`); use(`pending`); use(`pending`);',

@@ -14,6 +14,19 @@ const MODULE_SOURCE_PARENTS = new Set([
 ]);
 const KEY_PARENTS = new Set(['Property', 'PropertyDefinition', 'MethodDefinition']);
 const DISCRIMINANT_KEYS = new Set(['type', 'kind', 'tag', 'variant']);
+const TRANSLATION_CALLS = new Set([
+  't',
+  '$t',
+  '_t',
+  '__',
+  'translate',
+  'formatMessage',
+  'useTranslation',
+  'useTranslations',
+  'getTranslations',
+  'getFixedT',
+]);
+const CALL = 'CallExpression';
 const SKIPPED_PARENTS = new Set([
   'TSLiteralType',
   'JSXAttribute',
@@ -31,15 +44,42 @@ function isDiscriminant(parent) {
   return parent.type === 'Property' && !parent.computed && DISCRIMINANT_KEYS.has(parent.key.name);
 }
 
+function calleeName({ callee }) {
+  if (callee.type === 'Identifier') return callee.name;
+  return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : undefined;
+}
+
+function isTranslationArgument(node) {
+  const { parent } = node;
+  return (
+    parent?.type === CALL &&
+    parent.arguments[0] === node &&
+    TRANSLATION_CALLS.has(calleeName(parent))
+  );
+}
+
+function isTranslationKey(node) {
+  const { parent } = node;
+  if (parent.type === 'JSXExpressionContainer') return parent.parent.type === 'JSXAttribute';
+  const inMessageDescriptor =
+    parent.type === 'Property' &&
+    parent.value === node &&
+    parent.parent.type === 'ObjectExpression';
+  return (
+    isTranslationArgument(node) || (inMessageDescriptor && isTranslationArgument(parent.parent))
+  );
+}
+
 function isCountable(node, value) {
   const { parent } = node;
   if (value === undefined || value.length < MINIMUM_LENGTH || !ALPHANUMERIC.test(value)) {
     return false;
   }
   if (MODULE_SOURCE_PARENTS.has(parent.type) || SKIPPED_PARENTS.has(parent.type)) return false;
-  if (parent.type === 'SwitchCase' || isDiscriminant(parent)) return false;
+  if (parent.type === 'SwitchCase' || isDiscriminant(parent) || isTranslationKey(node))
+    return false;
   if (KEY_PARENTS.has(parent.type) && parent.key === node && !parent.computed) return false;
-  return !(parent.type === 'CallExpression' && parent.callee.name === 'require');
+  return !(parent.type === CALL && parent.callee.name === 'require');
 }
 
 function shown(value) {
