@@ -37,6 +37,9 @@ import { rule as reactNoEffectDataFetching } from './rules/react-no-effect-data-
 import { rule as reactNoEffectDerivedState } from './rules/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react-single-styling-approach.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-test-no-implementation-details.mjs';
+import { testAssertionRules } from './test-assertions/rules.mjs';
+import { testIsolationRules } from './test-isolation/rules.mjs';
+import { testQualityRules } from './test-quality/rules.mjs';
 
 export const nitpickerRules = {
   meta: {
@@ -84,5 +87,8 @@ export const nitpickerRules = {
     'react-no-effect-derived-state': reactNoEffectDerivedState,
     'react-single-styling-approach': reactSingleStylingApproach,
     'react-test-no-implementation-details': reactTestNoImplementationDetails,
+    ...testAssertionRules,
+    ...testIsolationRules,
+    ...testQualityRules,
   },
 };

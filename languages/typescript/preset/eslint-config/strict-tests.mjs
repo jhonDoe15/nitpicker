@@ -3,6 +3,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
 import { testControlFlowSelectors } from './strict-control-flow.mjs';
 import { typeAssertionSelectors } from './strict-escape-hatches.mjs';
+import { testHonestySelectors } from './test-honesty/selectors.mjs';
 
 export const strictTestRules = {
   'nitpicker/no-git-repository-per-test': 'error',
@@ -14,7 +15,11 @@ export const strictTestRules = {
   'nitpicker/test-tsconfig-pins-lib-and-types': 'error',
 };
 
-const testRestrictedSyntax = [...typeAssertionSelectors, ...testControlFlowSelectors];
+const testRestrictedSyntax = [
+  ...typeAssertionSelectors,
+  ...testControlFlowSelectors,
+  ...testHonestySelectors,
+];
 
 export const strictTestHelperRules = {
   'nitpicker/no-process-globals-outside-main-guard': 'error',

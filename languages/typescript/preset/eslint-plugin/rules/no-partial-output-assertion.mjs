@@ -1,6 +1,6 @@
 import { chainOf } from './ancestry.mjs';
 
-const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual']);
+const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual', 'toMatch']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
 const PARTIAL_ASYMMETRIC_MATCHERS = new Set([
   'objectContaining',
@@ -46,6 +46,19 @@ function isTextArgument(node) {
   );
 }
 
+function isAnchoredPattern(node) {
+  const pattern = node.regex?.pattern;
+  return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
+}
+
+function isFragmentMatch(node) {
+  const argument = node.arguments[0];
+  if (argument?.type === 'Literal' && argument.regex !== undefined) {
+    return !isAnchoredPattern(argument);
+  }
+  return isTextArgument(argument);
+}
+
 function isPositiveExpectation(callee) {
   return startsFromExpect(callee) && !isNegatedExpectation(callee);
 }
@@ -56,6 +69,7 @@ function isPartialAssertion(node) {
   const matcher = propertyName(callee);
   if (!PARTIAL_MATCHERS.has(matcher)) return false;
   if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) return false;
+  if (matcher === 'toMatch' && !isFragmentMatch(node)) return false;
   return isPositiveExpectation(callee);
 }
 
@@ -106,7 +120,7 @@ export const rule = {
     schema: [],
     messages: {
       partialOutput:
-        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment: a fragment passes even when the rest is wrong. If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
+        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. If the output is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
       partialMatcher:
         'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. If the value is too large or unordered to pin, add an exception for this rule in nitpicker.config.json.',
     },

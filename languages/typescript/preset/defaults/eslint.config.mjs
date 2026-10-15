@@ -16,6 +16,8 @@ import {
   isReactProject,
   reactScopeConfigFor,
 } from '../eslint-config/react-scope.mjs';
+import { testHonestyConfigFor } from '../eslint-config/test-honesty/index.mjs';
+import { setupFilesIn } from '../eslint-config/test-honesty/setup-files.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
 
 const policy = readHeadPolicy();
@@ -122,6 +124,7 @@ const presetConfig = tseslint.config(
     files: unitTestGlobs,
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
+  ...testHonestyConfigFor(layout, { setupFiles: setupFilesIn(analyzedProjectRoot()) }),
 );
 
 const applicableExceptions = react

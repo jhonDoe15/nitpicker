@@ -10,6 +10,8 @@ import { positiveInteger } from './finding-helpers.mjs';
 // replacement code when the adapter knows it.
 
 const REPLACEMENT_LIMIT = 80;
+const HIDDEN_BY_COMMENT =
+  'an ignore comment hides this code from mutation testing. Remove the comment and test the code; mutation ignore comments are not an exception route.';
 const EQUIVALENT_MUTANT_WAY_OUT =
   'If no input can tell the two apart, simplify the code so this mutant disappears.';
 
@@ -20,9 +22,10 @@ export function mutantFindings(mutants, { tool }) {
     path: mutant.path,
     identity: mutant.identity,
     message: mutantMessage(mutant),
-    classification: ENFORCED_MUTATION_STATUSES.includes(mutant.status)
-      ? 'enforceable'
-      : 'descriptive',
+    classification:
+      ENFORCED_MUTATION_STATUSES.includes(mutant.status) || mutant.hiddenByComment === true
+        ? 'enforceable'
+        : 'descriptive',
     ...(mutant.symbol === undefined ? {} : { symbol: mutant.symbol }),
     ...mutantLocation(mutant),
   }));
@@ -48,8 +51,11 @@ function inlineCode(value) {
   return shown.includes('`') ? `\`\` ${shown} \`\`` : `\`${shown}\``;
 }
 
-export function mutantMessage({ status, label, replacement, original, column }) {
+export function mutantMessage({ status, label, replacement, original, column, hiddenByComment }) {
   const name = `${status} ${label}${positiveInteger(column) === undefined ? '' : ` at column ${String(column)}`}`;
+  if (hiddenByComment === true) {
+    return `${name}: ${HIDDEN_BY_COMMENT}`;
+  }
   if (status === 'NoCoverage') {
     return `${name}: no test runs this code. Add a test that reaches it.`;
   }

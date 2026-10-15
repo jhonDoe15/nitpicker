@@ -51,6 +51,12 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
+const DISABLED_TEST_TAIL =
+  /\s*-\s*if you want to skip a test(?: suite)? temporarily, use \.todo\(\) instead$/u;
+
+const DISABLED_TEST_HINT =
+  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`. A justified exception goes in nitpicker.config.json.';
+
 const NODE_TEST_HINT =
   ' nitpicker runs tests with Vitest only (Jest and node:test support is tracked in issue #162). If this file must stay on node:test, add an exception for this rule in nitpicker.config.json.';
 
@@ -113,12 +119,19 @@ function switchExhaustivenessMessage({ text }) {
     : text;
 }
 
+function disabledTestMessage({ text }) {
+  return DISABLED_TEST_TAIL.test(text)
+    ? `${text.replace(DISABLED_TEST_TAIL, '')}${DISABLED_TEST_HINT}`
+    : text;
+}
+
 function nodeTestMessage({ text }) {
   return `${text}${NODE_TEST_HINT}`;
 }
 
 const MESSAGE_REWRITERS = new Map([
   ['vitest/no-import-node-test', nodeTestMessage],
+  ['vitest/no-disabled-tests', disabledTestMessage],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],

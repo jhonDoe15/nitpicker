@@ -39,6 +39,11 @@ import { typescriptFileLimitFindings } from '../preset/structure/file-limits.mjs
 import { normalizeDuplicates } from '../preset/duplicates/normalize.mjs';
 import { spawnedEntryFiles } from './spawned-entries.mjs';
 import { MUTATION_REPORT_PATH, mutationTargets } from './mutation-scope.mjs';
+import { crapUnknownMessage } from './quality-messages/crap-unknown-message.mjs';
+import { unhandledErrors, unhandledErrorText } from './quality-messages/failure-text.mjs';
+import { formatVitestFailures, vitestFailures } from './quality-messages/vitest-failures.mjs';
+
+export { formatVitestFailures };
 import {
   layoutJscpdConfig,
   layoutKnipConfig,
@@ -69,7 +74,8 @@ const QUALITY_AREA_RUNNERS = new Map([
 const STRYKER_TSCONFIG_TARGET = '.nitpicker-diff-tsconfig.stryker.json';
 const STRYKER_CONFIG_PATH = 'languages/typescript/preset/defaults/stryker.config.mjs';
 const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
-const INITIAL_TEST_RUN_FAILED_PATTERN = /failed tests in the initial test run/u;
+const INITIAL_TEST_RUN_FAILED_PATTERN =
+  /failed tests in the initial test run|Something went wrong in the initial test run/u;
 const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
 const STRUCTURE_HINTS = {
   lines:
@@ -350,9 +356,10 @@ function runCoverage(options) {
         '--testTimeout',
         '10000',
         '--reporter',
+        'dot',
+        '--reporter',
         'json',
-        '--outputFile',
-        testReportPath,
+        `--outputFile.json=${testReportPath}`,
       ],
       acceptedStatuses: [0, 1],
     });
@@ -368,6 +375,16 @@ function runCoverage(options) {
 
 export function coverageFailureFindings(options, report, result) {
   const [firstFailure] = vitestFailures(report, options.projectRoot);
+  const unhandled = unhandledErrors(result.stderr);
+  if (firstFailure === undefined && unhandled.length > 0) {
+    return [
+      toolErrorFinding(options, {
+        rule: TESTS_FAILED_RULE,
+        path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
+        message: unhandledErrorText(unhandled),
+      }),
+    ];
+  }
   if (firstFailure === undefined) {
     throw new Error(
       `Vitest exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
@@ -416,95 +433,8 @@ function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
   };
 }
 
-const MAX_LISTED_FAILURES = 5;
-const MAX_ASSERTION_LINE_LENGTH = 200;
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
-
-function vitestFailures(report, projectRoot) {
-  const failures = [];
-  const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
-  for (const testResult of testResults) {
-    const file = projectFile(projectRoot, testResult?.name);
-    const failedAssertions = Array.isArray(testResult?.assertionResults)
-      ? testResult.assertionResults.filter((assertion) => assertion?.status === 'failed')
-      : [];
-    for (const assertion of failedAssertions) {
-      failures.push({
-        file,
-        name: vitestAssertionName(assertion),
-        assertion: firstLine(
-          assertion.failureMessages?.find((message) => typeof message === 'string'),
-        ),
-      });
-    }
-    if (failedAssertions.length === 0 && testResult?.status === 'failed') {
-      failures.push({ file, name: 'could not run', assertion: firstLine(testResult.message) });
-    }
-  }
-  return failures;
-}
-
-function projectFile(projectRoot, name) {
-  if (typeof name !== 'string') {
-    return '<unknown test file>';
-  }
-  const relativePath = path.relative(projectRoot, name).replaceAll('\\', '/');
-  return relativePath.startsWith('..') || path.isAbsolute(relativePath) ? name : relativePath;
-}
-
 function findingPath(file) {
   return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
-}
-
-function firstLine(message) {
-  const line =
-    typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
-          .split('\n')
-          .map((candidate) => candidate.trim())
-          .find((candidate) => candidate.length > 0)
-      : undefined;
-  if (line === undefined) {
-    return '';
-  }
-  return line.length > MAX_ASSERTION_LINE_LENGTH
-    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
-    : line;
-}
-
-export function formatVitestFailures(report, projectRoot) {
-  const failures = vitestFailures(report, projectRoot);
-  const failedCount = Number.isInteger(report?.numFailedTests)
-    ? Math.max(report.numFailedTests, failures.length)
-    : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
-  if (failures.length === 0) {
-    return `${headline}; the report named no test.`;
-  }
-  const listed = failures
-    .slice(0, MAX_LISTED_FAILURES)
-    .map(
-      ({ file, name, assertion }) =>
-        `  ${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`,
-    );
-  const omitted = failures.length - listed.length;
-  return [
-    `${headline}:`,
-    ...listed,
-    ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
-  ].join('\n');
-}
-
-function vitestAssertionName(assertion) {
-  if (typeof assertion.fullName === 'string') {
-    return assertion.fullName;
-  }
-  if (typeof assertion.title === 'string') {
-    return assertion.title;
-  }
-  return '<unknown test>';
 }
 
 function formatProcessOutput(result) {
@@ -858,7 +788,7 @@ function addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence
           crap: entry.crap,
         },
       ],
-      { tool: analyzerName, limit: scoreLimit },
+      { tool: analyzerName, limit: scoreLimit, unknownMessage: crapUnknownMessage(entry.source) },
     ),
   );
   const values = {
@@ -926,6 +856,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
     status,
+    ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined
