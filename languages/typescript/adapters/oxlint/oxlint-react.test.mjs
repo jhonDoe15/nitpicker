@@ -8,6 +8,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-react-')));
 const adapters = 'src/main/features/profile/adapters';
 const domain = 'src/main/features/profile/domain';
+const ui = 'src/main/features/profile/ui';
 const typedRules = new Set([
   'react-x/no-leaked-conditional-rendering',
   'nitpicker/react-no-effect-data-fetching',
@@ -62,6 +63,12 @@ const files = {
     '    void loadUser();',
     '  }, []);',
     '  return <p>profile</p>;',
+    '}',
+  ],
+  [`${ui}/banner.ts`]: [
+    'export function showBanner(text: string) {',
+    "  const banner = window.document.querySelector('#banner');",
+    '  if (banner) banner.textContent = text;',
     '}',
   ],
   [`${domain}/required.ts`]: [
@@ -125,7 +132,12 @@ describe('the React rules under the oxlint engine', () => {
     ).toEqual([]);
     expect(residualRuns).toEqual([
       {
-        files: [`${adapters}/badge.tsx`, `${adapters}/profile.tsx`, `${domain}/required.ts`],
+        files: [
+          `${adapters}/badge.tsx`,
+          `${adapters}/profile.tsx`,
+          `${domain}/required.ts`,
+          `${ui}/banner.ts`,
+        ],
         rules: [...typedRules].toSorted(),
       },
     ]);
@@ -135,6 +147,13 @@ describe('the React rules under the oxlint engine', () => {
     expect(findingsOf('nitpicker/no-ui-framework-in-domain')).toEqual([
       `${domain}/required.ts:1`,
       `${domain}/required.ts:2`,
+    ]);
+  });
+
+  it('report page DOM queries and content writes in ui/ files without JSX', () => {
+    expect(findingsOf('nitpicker/react-no-direct-dom')).toEqual([
+      `${ui}/banner.ts:2`,
+      `${ui}/banner.ts:3`,
     ]);
   });
 });

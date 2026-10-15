@@ -305,11 +305,14 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   disconnected in the returned cleanup. Fetching in an effect is covered by the data-fetching rule
   above.
 - **No direct DOM changes in components** (`nitpicker/react-no-direct-dom`), in files that render
-  JSX. `document.getElementById`/`querySelector`/`querySelectorAll`, `getElementsBy*`, assignments
-  to `.innerHTML`, `.innerText`, `.textContent`, `.className` or `.style.*`, and `classList.add`,
-  `remove`, `toggle`, `replace` are flagged: state and props drive the DOM, and a ref is for
-  focusing and measuring. The file that mounts the app with `createRoot` or `hydrateRoot` may look
-  up its container. Glue for a third-party widget needs an exception.
+  JSX, files under `ui/` and hook files (`use*`). `document.getElementById`/`querySelector`/
+  `querySelectorAll` and `getElementsBy*` (also through `window.document` or
+  `globalThis.document`), assignments to `.innerHTML`, `.outerHTML`, `.innerText` or
+  `.textContent`, and `.className`, `.style.*` or `classList.add`, `remove`, `toggle`, `replace` on
+  anything but a ref (`ref.current`, or a const read from it), `document.documentElement` or
+  `document.body` are flagged: state and props drive the DOM. The file that mounts the app with
+  `createRoot` or `hydrateRoot` may look up its container. Glue for a third-party widget needs an
+  exception.
 - **Form fields** (`nitpicker/react-field-has-label`, `nitpicker/react-controlled-input`). An
   `<input>`, `<textarea>` or `<select>` has a label: wrapped in `<label>`, an `id` that a
   `<label htmlFor>` points to, `aria-label` or `aria-labelledby` (hidden, submit, reset, button
