@@ -189,7 +189,7 @@ line) is a finding.
   the test or `beforeEach`, not in a `let` shared by tests. Never skip, `todo` or `fails` a test. No
   `Date.now()`, `new Date()` or `Math.random()` without a fake clock or spy, no network in unit tests,
   no `vi.spyOn` on a namespace import (`import * as`) of production code, no mention of
-  `__stryker__`, and no `eslint-disable`, `@ts-*` or coverage-ignore comment in tests. Tests live in `*.test.js` files, and a setup file
+  `__stryker__` or `activeMutant`, no global read by a computed key (`Reflect.get(globalThis, key)`), and no `eslint-disable`, `@ts-*` or coverage-ignore comment in tests. Tests live in `*.test.js` files, and a setup file
   imports no production code. The gate runs Vitest without retries and never writes snapshots: commit
   the `.snap` file, or assert with `toEqual`.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`.

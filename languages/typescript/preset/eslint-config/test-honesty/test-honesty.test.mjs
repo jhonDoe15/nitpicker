@@ -48,6 +48,7 @@ describe('test honesty rules', () => {
       "it('y', () => { expect(make()).toEqual({ id: 1 }); expect(spy).toHaveBeenCalledWith(1); });",
       "it('z', () => { expect(run).toThrow('bad input'); expect(make()).toBeUndefined(); });",
       "it.skipIf(process.platform === 'win32')('w', () => {});",
+      "it('v', () => { expect(Reflect.get(store, 'total')).toBe(1); });",
     ].join('\n');
 
     expect(messages(code)).toEqual([]);

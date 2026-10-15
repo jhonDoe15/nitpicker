@@ -77,8 +77,23 @@ const HONESTY_ROWS = [
   ],
   [
     'stryker access names testing behaviour only',
-    "it('x', () => { Reflect.get(globalThis, '__stryker__'); });",
+    "it('x', () => { run(globalThis.__stryker__); });",
     'Test the behaviour only',
+  ],
+  [
+    'activeMutant access names testing behaviour only',
+    "it('x', () => { run(harness.activeMutant); });",
+    'Test the behaviour only',
+  ],
+  [
+    'reading a global by a computed key names reading it by name',
+    "it('x', () => { run(Reflect.get(globalThis, key)); });",
+    'Read a global by its name (`globalThis.name`)',
+  ],
+  [
+    'indexing a global by a variable names reading it by name',
+    "it('x', () => { run(globalThis[key]); });",
+    'Read a global by its name (`globalThis.name`)',
   ],
   [
     'an uncollected test file names the test suffix',
@@ -94,7 +109,7 @@ const HONESTY_ROWS = [
   ],
   [
     'a test helper in production source names the test folder',
-    'export const labels = [1, -1, 0];',
+    'export const labels = [1, -1, 0];\n',
     'Move it to the test folder',
     'src/main/features/labels/testing/make-labels.ts',
   ],
