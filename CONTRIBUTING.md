@@ -44,7 +44,8 @@ untracked files included, while CI checks the pull request merged into its targe
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
 `test:python`), which needs the language's toolchain. CI runs only the Python one, in the
-`python-e2e` workflow, on pushes and pull requests that touch the paths it lists.
+`python-e2e` workflow, which follows the same triggers as the `typescript` workflow below (pushes to
+`main` that touch the paths it lists, a manual run, and the `run-ci` label).
 
 CI (the `typescript` workflow) runs:
 

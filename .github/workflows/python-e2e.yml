@@ -14,23 +14,16 @@ on:
       - '.github/python-e2e-constraints.txt'
       - '.github/workflows/python-e2e.yml'
   pull_request:
-    paths:
-      - 'core/**'
-      - 'shared/**'
-      - 'languages/python/**'
-      - 'languages/java/ingest/**'
-      - 'languages/java/adapters/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - '.github/python-e2e-constraints.txt'
-      - '.github/workflows/python-e2e.yml'
+    types: [labeled]
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   python-e2e:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
     # The suite installs pytest, mutmut and import-linter into throwaway environments and runs mutation
     # testing; it takes 8 to 25 minutes.
