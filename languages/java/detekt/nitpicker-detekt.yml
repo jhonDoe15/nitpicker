@@ -1,42 +1,50 @@
 # Nitpicker's detekt rules for the Kotlin preset (detekt 1.23.8). Laid over detekt's defaults and over the
-# project's own detekt config, so a project cannot switch these rules off, lower their severity or exclude
-# paths in detekt.yml: every rule below sets active, severity, includes and excludes itself. Lift them per
-# path with "exceptions" in nitpicker.config.json. The rule list is languages/java/adapters/kotlin-rules.mjs.
+# project's own detekt config, so a project cannot switch these rules off, lower their severity, exclude
+# paths or skip annotated code in detekt.yml: every rule below sets active, severity, includes, excludes and
+# ignoreAnnotated itself. Lift them per path with "exceptions" in nitpicker.config.json. The rule list is
+# languages/java/adapters/kotlin-rules.mjs.
 # Rules here that need type resolution run because the detekt task passes the module's classpath.
 
 potential-bugs:
   active: true
   excludes: []
+  ignoreAnnotated: []
   includes: []
   UnsafeCallOnNullableType:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
   CastNullableToNonNullableType:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
 
 coroutines:
   active: true
   excludes: []
+  ignoreAnnotated: []
   includes: []
   GlobalCoroutineUsage:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
 
 style:
   active: true
   excludes: []
+  ignoreAnnotated: []
   includes: []
   ForbiddenMethodCall:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
     methods:
       - value: 'kotlin.run'
@@ -51,25 +59,30 @@ style:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
   UnnecessaryApply:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
   UseLet:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
   UseDataClass:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []
     allowVars: true
   DataClassShouldBeImmutable:
     active: true
     severity: warning
     excludes: []
+    ignoreAnnotated: []
     includes: []

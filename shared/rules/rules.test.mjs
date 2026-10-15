@@ -77,6 +77,41 @@ describe('structure rule on neutral function metrics', () => {
     expect(second.identity).toBe('function:run:occurrence:2:source:b');
   });
 
+  it('numbers a violation among the entries of the same name and source over the limit when asked to, so no other entry renames it', () => {
+    const violations = (functions) =>
+      evaluateStructure({ functions }, 'structure')
+        .filter((finding) => finding.rule === 'function-control-nesting-limit')
+        .map((finding) => [finding.identity, finding.ratchet.key]);
+    const nested = (sourceHash) =>
+      fn({ name: 'Box.<init>', maxControlNesting: 3, numberedAmongSameSource: true, sourceHash });
+    const quiet = (sourceHash) =>
+      fn({ name: 'Box.<init>', maxControlNesting: 1, numberedAmongSameSource: true, sourceHash });
+    const legacy = [
+      [
+        'function:Box.<init>:occurrence:1:source:a',
+        'function:Box.<init>:occurrence:1:maxControlNesting',
+      ],
+    ];
+
+    expect(violations([nested('a')])).toEqual(legacy);
+    expect(violations([quiet('q'), nested('a')])).toEqual(legacy);
+    expect(violations([quiet('q'), quiet('r'), nested('a'), quiet('s')])).toEqual(legacy);
+    expect(violations([nested('b'), nested('a')])).toEqual([
+      [
+        'function:Box.<init>:occurrence:1:source:b',
+        'function:Box.<init>:occurrence:1:maxControlNesting',
+      ],
+      ...legacy,
+    ]);
+    expect(violations([nested('a'), nested('a')])).toEqual([
+      ...legacy,
+      [
+        'function:Box.<init>:occurrence:2:source:a',
+        'function:Box.<init>:occurrence:2:maxControlNesting',
+      ],
+    ]);
+  });
+
   it('reports summary, distributions and class metrics as descriptive', () => {
     const findings = evaluateStructure(
       {
