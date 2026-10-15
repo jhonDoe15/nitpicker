@@ -342,10 +342,9 @@ describe.skipIf(!enabled)('Kotlin preset end to end', () => {
     expect(summarize(result.newEnforceable)).toEqual(
       [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
     );
-    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual([
-      'ktfmt format Greeter.kt',
-      'ktfmt format Legacy.kt',
-    ]);
+    expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual(
+      ['Greeter', 'GreeterTest', 'Legacy'].map((name) => `ktfmt format ${name}.kt`),
+    );
   });
 
   it('detects ktfmt from the build files when the project names it', () => {
