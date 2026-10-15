@@ -86,8 +86,7 @@ const POLICY_FILES = [
   ...reactPolicyFiles,
 ];
 
-const ARCHITECTURE_EXCLUSION =
-  '(^|/)(node_modules|dist|build|generated|coverage|reports|target)(/|$)';
+const ARCHITECTURE_EXCLUSION = '(^|/)(dist|build|generated|coverage|reports|target)(/|$)';
 
 export function createQualityChecks(layout = resolveLayout()) {
   const exclusions = checkExclusions(layout);
