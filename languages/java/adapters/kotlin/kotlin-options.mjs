@@ -10,7 +10,7 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 const KOTLIN_KEYS = ['formatter', 'detektConfig'];
-export const KOTLIN_EXCEPTION_RULES = [
+const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
   ...SHARED_EXCEPTION_RULES.filter((rule) => !JAVA_NATIVE_RULES.includes(rule)),
 ];

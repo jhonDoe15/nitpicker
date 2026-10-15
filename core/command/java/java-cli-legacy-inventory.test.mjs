@@ -7,6 +7,9 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { gradleRepository, run } = useGradleFixtures(nitpickerCli);
 
+const PMD_ROUTE =
+  ' If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.';
+
 describe('nitpicker with "preset": "java" and a legacy inventory', () => {
   const site = (name, count) => ({
     file: 'src/main/java/demo/A.java',
@@ -36,7 +39,7 @@ describe('nitpicker with "preset": "java" and a legacy inventory', () => {
 Quality gate summary
 ✖ 1 new enforceable violation
   pmd/UnusedPrivateField src/main/java/demo/A.java:5
-    Avoid unused field: other. If a reviewer agrees this is intended, add {"rule":"pmd/UnusedPrivateField","paths":["src/main/java/demo/A.java"],"reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.
+    Avoid unused field: other.${PMD_ROUTE}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });

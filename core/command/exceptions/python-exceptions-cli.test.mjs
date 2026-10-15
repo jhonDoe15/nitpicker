@@ -1,16 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../configuration/validate.mjs';
-import { RULE_IDS } from '../../shared/policy.mjs';
-import {
-  commit,
-  LEGACY_VIOLATION,
-  pythonRepository,
-  run,
-  usePythonCli,
-  write,
-} from './test-support/python-cli.mjs';
+import { validateConfig } from '../../configuration/validate.mjs';
+import { RULE_IDS } from '../../../shared/policy.mjs';
+import { runCli as nitpickerCli } from '../../cli.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { LEGACY_VIOLATION, usePythonFixtures } from '../python/test-support/python-cli-harness.mjs';
 
-usePythonCli();
+const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 describe('exceptions with "preset": "python"', () => {
   const config = (...entries) =>
@@ -40,7 +36,7 @@ describe('exceptions with "preset": "python"', () => {
 
   it('fails the same wide method without the exception', () => {
     const root = pythonRepository();
-    write(root, { 'src/demo/a.py': SOURCE, 'structure-data.json': JSON.stringify([wide]) });
+    writeFiles(root, { 'src/demo/a.py': SOURCE, 'structure-data.json': JSON.stringify([wide]) });
     commit(root, 'add a wide method');
 
     const result = run(root);
@@ -51,7 +47,7 @@ describe('exceptions with "preset": "python"', () => {
 
   it('accepts a wide method with the exception added in the same change', () => {
     const root = pythonRepository();
-    write(root, {
+    writeFiles(root, {
       'nitpicker.config.json': config(lifted),
       'src/demo/a.py': SOURCE,
       'structure-data.json': JSON.stringify([wide]),
@@ -70,7 +66,7 @@ describe('exceptions with "preset": "python"', () => {
       'src/demo/a.py': SOURCE,
       'structure-data.json': JSON.stringify([wide]),
     });
-    write(root, { 'nitpicker.config.json': config(), 'src/demo/b.py': 'VALUE = 1\n' });
+    writeFiles(root, { 'nitpicker.config.json': config(), 'src/demo/b.py': 'VALUE = 1\n' });
     commit(root, 'drop the exception');
 
     const result = run(root);
@@ -90,7 +86,7 @@ describe('exceptions with "preset": "python"', () => {
       }),
       'violations.txt': `${LEGACY_VIOLATION}T201|scripts/run.py|\`print\` found\n`,
     });
-    write(root, { 'nitpicker.config.json': lintedConfig(), 'src/demo/b.py': 'VALUE = 1\n' });
+    writeFiles(root, { 'nitpicker.config.json': lintedConfig(), 'src/demo/b.py': 'VALUE = 1\n' });
     commit(root, 'drop the exception');
 
     const result = run(root);

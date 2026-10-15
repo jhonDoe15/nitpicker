@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../configuration/validate.mjs';
-import {
-  commitAll,
-  runTypescript,
-  typescriptRepository,
-  useTypescriptCli,
-  writeFiles,
-} from './test-support/typescript-cli.mjs';
+import { validateConfig } from '../../configuration/validate.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { useTypescriptCli } from './test-support/typescript-cli.mjs';
 
-useTypescriptCli();
+const { runTypescript, typescriptRepository } = useTypescriptCli();
 
 const WIDE = 'export function wide(a, b, c, d) {\n  return a + b + c + d;\n}\n';
 const config = (...exceptions) =>
@@ -21,7 +17,7 @@ describe('exceptions with "preset": "javascript"', () => {
       'nitpicker.config.json': config(),
     });
     writeFiles(root, { 'src/main/a.js': WIDE });
-    commitAll(root, 'add a wide function');
+    commit(root, 'add a wide function');
 
     const failing = runTypescript(root, ['structure']);
 
@@ -47,7 +43,7 @@ describe('exceptions with "preset": "javascript"', () => {
         reason: 'A reviewed reason.',
       }),
     });
-    commitAll(root, 'accept it');
+    commit(root, 'accept it');
 
     const accepted = runTypescript(root, ['structure']);
 

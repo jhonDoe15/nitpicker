@@ -1,14 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../configuration/validate.mjs';
-import {
-  commitAll,
-  runTypescript,
-  typescriptRepository,
-  useTypescriptCli,
-  writeFiles,
-} from './test-support/typescript-cli.mjs';
+import { validateConfig } from '../../configuration/validate.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { useTypescriptCli } from './test-support/typescript-cli.mjs';
 
-useTypescriptCli();
+const { runTypescript, typescriptRepository } = useTypescriptCli();
 
 const WIDE =
   'export function wide(a: number, b: number, c: number, d: number): number {\n  return a + b + c + d;\n}\n';
@@ -32,7 +28,7 @@ describe('exceptions in the differential gate', () => {
       'nitpicker.config.json': config(lifted),
     });
     writeFiles(root, { 'nitpicker.config.json': '{}\n', 'src/main/b.ts': 'export const b = 1;\n' });
-    commitAll(root, 'drop the exception');
+    commit(root, 'drop the exception');
 
     const result = runTypescript(root, ['structure']);
 
@@ -49,7 +45,7 @@ describe('exceptions in the differential gate', () => {
       'nitpicker.config.json': config({ ...lifted, function: 'other' }),
       'src/main/b.ts': 'export const b = 1;\n',
     });
-    commitAll(root, 'narrow the exception');
+    commit(root, 'narrow the exception');
 
     const result = runTypescript(root, ['structure']);
 
@@ -60,7 +56,7 @@ describe('exceptions in the differential gate', () => {
   it('accepts new code with the exception that lifts it in the same change', () => {
     const root = typescriptRepository({ 'src/main/b.ts': 'export const b = 1;\n' });
     writeFiles(root, { 'src/main/a.ts': WIDE, 'nitpicker.config.json': config(lifted) });
-    commitAll(root, 'add a wide function and its exception');
+    commit(root, 'add a wide function and its exception');
 
     const result = runTypescript(root, ['structure']);
 
@@ -71,7 +67,7 @@ describe('exceptions in the differential gate', () => {
   it('fails the same new code without the exception', () => {
     const root = typescriptRepository({ 'src/main/b.ts': 'export const b = 1;\n' });
     writeFiles(root, { 'src/main/a.ts': WIDE });
-    commitAll(root, 'add a wide function');
+    commit(root, 'add a wide function');
 
     const result = runTypescript(root, ['structure']);
 
