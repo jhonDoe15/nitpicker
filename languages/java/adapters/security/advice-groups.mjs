@@ -1,3 +1,5 @@
+import { PLATFORM_ADVICE } from './advice-platforms.mjs';
+
 const BIND =
   'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA) and never build query text from input.';
 const SECRETS =
@@ -116,7 +118,6 @@ export const ADVICE_GROUPS = [
       'SCALA_XSS_TWIRL',
       'SCALA_XSS_MVC_API',
       'WICKET_XSS1',
-      'ANDROID_WEB_VIEW_JAVASCRIPT',
     ],
     text: ESCAPE_OUTPUT,
   },
@@ -159,7 +160,6 @@ export const ADVICE_GROUPS = [
       'GROOVY_SHELL',
       'SCRIPT_ENGINE_INJECTION',
       'JSP_SPRING_EVAL',
-      'JSP_INCLUDE',
     ],
     text: NO_EVALUATE,
   },
@@ -210,7 +210,6 @@ export const ADVICE_GROUPS = [
       'RSA_KEY_SIZE',
       'BLOWFISH_KEY_SIZE',
       'HAZELCAST_SYMMETRIC_ENCRYPTION',
-      'ESAPI_ENCRYPTOR',
     ],
     text: 'Use RSA with OAEP padding and at least 2048-bit keys, or AES-256 with GCM.',
   },
@@ -272,22 +271,5 @@ export const ADVICE_GROUPS = [
     ],
     text: 'Normalize and change case first, then validate, so the checked value is the used value.',
   },
-  {
-    patterns: [
-      'ANDROID_EXTERNAL_FILE_ACCESS',
-      'ANDROID_BROADCAST',
-      'ANDROID_WORLD_WRITABLE',
-      'ANDROID_GEOLOCATION',
-      'ANDROID_WEB_VIEW_JAVASCRIPT_INTERFACE',
-    ],
-    text: 'Keep app data private to the app and expose nothing to other apps or web content without a check.',
-  },
-  {
-    patterns: ['STRUTS_FORM_VALIDATION'],
-    text: 'Validate the form in a validator, not by trusting the bound values.',
-  },
-  {
-    patterns: ['SCALA_SENSITIVE_DATA_EXPOSURE'],
-    text: 'Do not log or return sensitive data.',
-  },
+  ...PLATFORM_ADVICE,
 ];

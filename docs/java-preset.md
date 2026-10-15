@@ -215,8 +215,9 @@ Notes on the glue in `java-reports.mjs`:
   (`src/main/java/demo/Bad.java`). `manifest.json` lists the project's source roots, and a relative
   report path is attached to the root where the file exists.
 - **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
-  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
-  ingester's `fp:` identity path is used and the line is never involved. The alternative, the
+  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs; for a
+  find-sec-bugs pattern also the enclosing class and method name, without its parameter list), so
+  the SARIF ingester's `fp:` identity path is used and the line is never involved. The alternative, the
   ingester's default hash of rule, path and symbol, would treat two different unused fields in one
   file as indistinguishable repeats; matching by what the finding is about is more precise.
 - **SpotBugs level.** SpotBugs marks lower-confidence findings with SARIF level `note`, which the
@@ -660,9 +661,9 @@ as bind parameters (...) and never build query text from input. If it is right h
 exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json." The texts live in
 `languages/java/adapters/security/advice-groups.mjs`; a test requires one for every pattern of the
 pinned plugin version, so a plugin bump that adds a pattern fails until the pattern is either
-given advice or excluded with a reason. Identity is the sink plus the enclosing method, so two
-findings of one pattern in different methods are told apart and a move within a file does not
-re-report them.
+given advice or excluded with a reason. Identity is the sink plus the enclosing class and method
+name, without the parameter types, so two findings of one pattern in different methods are told
+apart, and neither a move within a file nor a changed parameter type re-reports them.
 
 What the detectors catch, grouped: SQL, JPQL, LDAP, XPath, command, expression (SpEL, EL, OGNL,
 scripts) and template injection; path traversal and file disclosure; XXE; deserialization
@@ -685,6 +686,10 @@ frameworks a project may not use (Struts, Android, JSP): they find nothing witho
 cost nothing. Rules that can flag correct code stay on and carry the exception route; the two
 common cases are `PREDICTABLE_RANDOM` for `Random` or `ThreadLocalRandom` used for jitter or
 sampling, and `WEAK_MESSAGE_DIGEST_MD5` or `_SHA1` for an ETag or a legacy interface.
+
+`security/security.e2e.test.mjs` (gated like the other Java e2e tests) runs the plugin through Gradle on
+the `gradle-project` fixture and expects exactly one `SQL_INJECTION_JPA` for a Jakarta `createQuery`
+built from a parameter, next to a servlet cookie that must not be reported.
 
 **Limits.** SpotBugs sees the project's classes without the dependency jars (the Kotlin preset
 passes them), because giving SpotBugs the classpath adds core `EI_EXPOSE_REP` reports on every
@@ -825,7 +830,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 
 - `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `security/security.e2e.test.mjs`, `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset

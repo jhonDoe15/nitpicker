@@ -4,6 +4,7 @@ import {
   classifyExpression,
   declaredExpression,
   forbiddenLicenseText,
+  offersChoice,
   REJECTED,
 } from './license-rule.mjs';
 
@@ -24,90 +25,48 @@ export const JAVA_TOOL_LICENSES = {
   kotlinCompiler: 'Apache-2.0',
 };
 
+const JAVA_ONLY_PERMISSIVE = new Set(['BSD-style']);
 const LICENSE_FILE = /^(?:licen[cs]e|copying)(?:[.-].*)?$/i;
 const EXACT_VERSION = /^\d+(?:\.\d+)*$/;
 const PINNED_BLOCK = /def pinned = \[([\s\S]*?)\n\]/;
 const PINNED_ENTRY = /^\s*(\w+)\s*:\s*'([^']*)'/gm;
 
-function findManifest(name, fromDirectory) {
-  const directories = [fromDirectory];
-  for (const directory of directories) {
-    const candidate = path.join(directory, 'node_modules', name, 'package.json');
-    if (existsSync(candidate)) {
-      return candidate;
-    }
-    const parent = path.dirname(directory);
-    if (parent !== directory) {
-      directories.push(parent);
-    }
-  }
-  return undefined;
-}
-
 function readJson(file) {
   return JSON.parse(readFileSync(file, 'utf8'));
 }
 
-function dependencyNames(manifest, { requiredOnly }) {
-  const required = Object.keys(manifest.dependencies ?? {});
-  return requiredOnly
-    ? required
-    : [
-        ...required,
-        ...Object.keys(manifest.optionalDependencies ?? {}),
-        ...Object.keys(manifest.peerDependencies ?? {}),
-      ];
+export function lockedPackages(root) {
+  const lock = readJson(path.join(root, 'package-lock.json'));
+  return Object.entries(lock.packages ?? {})
+    .filter(([key, entry]) => key !== '' && entry.dev !== true)
+    .map(([key, entry]) => ({
+      key,
+      label: `${entry.name ?? key.split('node_modules/').at(-1)}@${entry.version}`,
+      manifest: { license: entry.license, licenses: entry.licenses },
+    }));
 }
 
-function dependencyEntries(manifest, fromDirectory, requiredOnly) {
-  return dependencyNames(manifest, { requiredOnly }).map((name) => ({
-    name,
-    fromDirectory,
-    requiredOnly,
-  }));
-}
-
-export function collectShippedPackages(root) {
-  const packages = new Map();
-  const missing = [];
-  const pending = dependencyEntries(readJson(path.join(root, 'package.json')), root, true);
-  for (const { name, fromDirectory, requiredOnly } of pending) {
-    const file = findManifest(name, fromDirectory);
-    if (file === undefined && requiredOnly) {
-      missing.push(name);
-    }
-    if (file !== undefined && !packages.has(file)) {
-      const manifest = readJson(file);
-      packages.set(file, manifest);
-      pending.push(...dependencyEntries(manifest, path.dirname(file), false));
-    }
+function textProblems(directory, label, declared) {
+  if (!existsSync(directory) || (declared !== undefined && offersChoice(declared))) {
+    return [];
   }
-  return { packages: [...packages.entries()], missing };
-}
-
-function npmViolations(file, manifest) {
-  const label = `${manifest.name}@${manifest.version}`;
-  const declared = declaredExpression(manifest);
-  const declaredProblem =
-    declared === undefined || classifyExpression(declared) === REJECTED
-      ? [`${label}: license "${String(declared)}" is not on the allowlist`]
-      : [];
-  const directory = path.dirname(file);
-  const textProblems = readdirSync(directory)
+  return readdirSync(directory)
     .filter((entry) => LICENSE_FILE.test(entry))
     .flatMap((entry) => {
       const found = forbiddenLicenseText(readFileSync(path.join(directory, entry), 'utf8'));
       return found === undefined ? [] : [`${label}: ${entry} is ${found}, which is not allowed`];
     });
-  return [...declaredProblem, ...textProblems];
 }
 
 export function npmLicenseViolations(root) {
-  const { packages, missing } = collectShippedPackages(root);
-  return [
-    ...missing.map((name) => `${name}: listed in dependencies but not installed`),
-    ...packages.flatMap(([file, manifest]) => npmViolations(file, manifest)),
-  ];
+  return lockedPackages(root).flatMap(({ key, label, manifest }) => {
+    const declared = declaredExpression(manifest);
+    const declaredProblem =
+      declared === undefined || classifyExpression(declared) === REJECTED
+        ? [`${label}: license "${String(declared)}" is not on the allowlist`]
+        : [];
+    return [...declaredProblem, ...textProblems(path.join(root, key), label, declared)];
+  });
 }
 
 export function pinnedJavaTools(initScript) {
@@ -126,7 +85,8 @@ export function javaToolLicenseViolations(initScript) {
       ? []
       : [`${tool}: version "${version}" is not pinned exactly`];
     const allowed =
-      license !== undefined && classifyExpression(license) !== REJECTED
+      license !== undefined &&
+      classifyExpression(license, { extraPermissive: JAVA_ONLY_PERMISSIVE }) !== REJECTED
         ? []
         : [`${tool}: license ${String(license)} is not on the allowlist`];
     return [...exact, ...allowed];
