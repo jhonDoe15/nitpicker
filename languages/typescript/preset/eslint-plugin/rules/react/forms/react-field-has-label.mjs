@@ -3,7 +3,7 @@ import { attributeNamed, elementName, hasSpread, literalValueOf } from '../jsx.m
 
 const fields = new Set(['input', 'textarea', 'select']);
 const buttonLikeTypes = new Set(['hidden', 'submit', 'reset', 'button', 'image']);
-const labellingAttributes = ['aria-label', 'aria-labelledby', 'id'];
+const ariaLabels = ['aria-label', 'aria-labelledby'];
 
 function isButtonLike(opening) {
   return (
@@ -19,13 +19,36 @@ function isInsideLabel(opening) {
   );
 }
 
-function isLabelled(opening) {
+function idPointedTo(opening, labelTargets) {
+  const id = attributeNamed(opening, 'id');
+  if (id === undefined) {
+    return false;
+  }
+  const value = literalValueOf(id);
+  return typeof value !== 'string' || labelTargets.dynamic || labelTargets.ids.has(value);
+}
+
+function isLabelled(opening, labelTargets) {
   return (
     hasSpread(opening) ||
     isButtonLike(opening) ||
-    labellingAttributes.some((name) => attributeNamed(opening, name) !== undefined) ||
+    ariaLabels.some((name) => attributeNamed(opening, name) !== undefined) ||
+    idPointedTo(opening, labelTargets) ||
     isInsideLabel(opening)
   );
+}
+
+function recordLabelTarget(opening, labelTargets) {
+  const htmlFor = attributeNamed(opening, 'htmlFor');
+  if (htmlFor === undefined) {
+    return;
+  }
+  const value = literalValueOf(htmlFor);
+  if (typeof value === 'string') {
+    labelTargets.ids.add(value);
+  } else {
+    labelTargets.dynamic = true;
+  }
 }
 
 export const rule = {
@@ -41,9 +64,18 @@ export const rule = {
     },
   },
   create(context) {
+    const fieldsToCheck = [];
+    const labelTargets = { ids: new Set(), dynamic: false };
     return {
       JSXOpeningElement(node) {
-        if (fields.has(elementName(node)) && !isLabelled(node)) {
+        if (elementName(node) === 'label') {
+          recordLabelTarget(node, labelTargets);
+        } else if (fields.has(elementName(node))) {
+          fieldsToCheck.push(node);
+        }
+      },
+      'Program:exit'() {
+        for (const node of fieldsToCheck.filter((field) => !isLabelled(field, labelTargets))) {
           context.report({ node, messageId: 'unlabelled' });
         }
       },

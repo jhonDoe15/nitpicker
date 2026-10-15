@@ -3,9 +3,27 @@ import { isEffectCallback, isFunctionNode } from '../../react-effects.mjs';
 
 const callbackName = /^on[A-Z]/u;
 
-function isPropBinding(sourceCode, identifier) {
+function isParameter(sourceCode, identifier) {
   return (
     variableNamed(sourceCode, identifier)?.defs.some(({ type }) => type === 'Parameter') ?? false
+  );
+}
+
+function isDestructuredFromParameter(sourceCode, { type, node }) {
+  return (
+    type === 'Variable' &&
+    node.id.type === 'ObjectPattern' &&
+    node.init?.type === 'Identifier' &&
+    isParameter(sourceCode, node.init)
+  );
+}
+
+function isPropBinding(sourceCode, identifier) {
+  return (
+    variableNamed(sourceCode, identifier)?.defs.some(
+      (definition) =>
+        definition.type === 'Parameter' || isDestructuredFromParameter(sourceCode, definition),
+    ) ?? false
   );
 }
 

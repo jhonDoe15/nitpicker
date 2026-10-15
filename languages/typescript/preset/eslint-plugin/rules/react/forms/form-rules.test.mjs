@@ -16,9 +16,11 @@ tester.run('react-field-has-label', reactFieldHasLabel, {
   valid: [
     '<input aria-label="Name" />',
     '<input aria-labelledby="heading" />',
-    '<input id="name" />',
-    '<textarea id="bio" />',
-    '<select id="kind"><option>a</option></select>',
+    '<><label htmlFor="name">Name</label><input id="name" /></>',
+    '<><textarea id="bio" /><label htmlFor="bio">Bio</label></>',
+    '<><label htmlFor={"kind"}>Kind</label><select id="kind"><option>a</option></select></>',
+    '<input id={fieldId} />',
+    '<><label htmlFor={fieldId}>Name</label><input id="name" /></>',
     '<label>Name <input type="text" /></label>',
     '<label><span>Name</span><div><input /></div></label>',
     '<input {...props} />',
@@ -45,6 +47,8 @@ tester.run('react-field-has-label', reactFieldHasLabel, {
     invalid('<Label><input /></Label>', 'unlabelled'),
     invalid('<form><label>Name</label><input name="n" /></form>', 'unlabelled'),
     invalid('<><input /><input /></>', 'unlabelled', 'unlabelled'),
+    invalid('<input id="name" />', 'unlabelled'),
+    invalid('<><label htmlFor="email">Email</label><input id="name" /></>', 'unlabelled'),
   ],
 });
 
