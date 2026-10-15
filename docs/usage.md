@@ -476,7 +476,9 @@ new and touched code must comply.
   inside such a region. An unformatted new file or newly unformatted lines fail the run.
 - **Exceptions**: a team that cannot adopt a rule yet adds an entry to `exceptions` in
   `nitpicker.config.json`. It is the only way out; inline disables are errors. Because
-  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
+  `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths;
+  default exports, `null` and promise chains have their own rules (`nitpicker/no-default-export`,
+  `nitpicker/no-null`, `nitpicker/no-promise-chain`) so a framework convention lifts only one of them.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
 
 A small project that follows all of this is kept in `languages/typescript/preset/fixtures/strict-clean` of the nitpicker

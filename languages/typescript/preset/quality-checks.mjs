@@ -50,6 +50,7 @@ const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-branch-in-composition-root.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-comments.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/syntax/syntax-bans.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-self-recursion.mjs',
   'languages/typescript/preset/eslint-plugin/rules/no-throw.mjs',

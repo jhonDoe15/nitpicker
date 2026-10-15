@@ -208,8 +208,9 @@ alone.
   needs an exception in the config file.
 - `no-restricted-syntax` bans the same constructs as in production code, with the same messages:
   `for(;;)`, `for...in`, `while` and `do...while` (use `for...of`, or `it.each` for one test per
-  case), `forEach`, `.then()`/`.catch()`/`.finally()` chains, `as` (except `as const`) and
-  `<Type>value`. `any` and non-null `!` are already reported in test files by
+  case), `forEach`, `as` (except `as const`) and
+  `<Type>value`; `.then()`/`.catch()`/`.finally()` chains are `nitpicker/no-promise-chain`. `any`
+  and non-null `!` are already reported in test files by
   typescript-eslint's `no-explicit-any` and `no-non-null-assertion`. Like the other bans, these are
   strict rules: a finding on a line a change edits, or in a new test file, fails the run. An exception for
   `no-restricted-syntax` lifts all the syntax bans for those paths.
@@ -374,13 +375,13 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
 - **Default exports.** Next.js `page.tsx`, `layout.tsx` and route handlers, React Router route
   modules and Storybook `*.stories.tsx` need `export default`. The messages name the exception;
   scope it to those paths:
-  `"exceptions": [{ "rule": "no-restricted-syntax", "paths": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "**/*.stories.tsx"], "reason": "framework file convention" }]`.
-  The exception switches every `no-restricted-syntax` ban off for those paths, so keep the path list
-  narrow.
+  `"exceptions": [{ "rule": "nitpicker/no-default-export", "paths": ["src/app/**/page.tsx", "src/app/**/layout.tsx", "**/*.stories.tsx"], "reason": "framework file convention" }]`.
+  The default-export ban is its own rule, so the exception lifts nothing else for those paths.
 - **Lazy components.** The standard `lazy(() => import('./x').then(...))` is a promise chain. Use
   `lazy(async () => ({ default: (await import('./badge.js')).Badge }))`.
 - **`null`.** `useRef<HTMLDivElement>(null)` and `createContext<T | null>(null)` are allowed. Anything
-  else a library forces is an exception for `no-restricted-syntax` on those paths.
+  else a library forces is an exception for `nitpicker/no-null` on those paths (promise chains a
+  library forces: `nitpicker/no-promise-chain`).
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x`, `eslint-plugin-react-dom` and
 `eslint-plugin-react-web-api` (the last three are eslint-react, MIT, pinned to one version),
@@ -422,7 +423,10 @@ support, so their maintained, ESLint 10 compatible counterparts are used.
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
   turns that rule off for the listed paths. `no-restricted-syntax` is a single rule id, so an
   exception for it lifts every selector (all the syntax bans) for those paths; prefer fixing the
-  code, and keep such exceptions narrow.
+  code, and keep such exceptions narrow. The bans that frameworks and libraries legitimately need
+  lifted have their own rule ids, `nitpicker/no-default-export`, `nitpicker/no-null` and
+  `nitpicker/no-promise-chain`, built from the same `{ selector, message }` lists, so an exception
+  for one of them leaves the other bans on.
 - The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) take exceptions the
   same way; each failure message spells out the entry that would lift it.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The

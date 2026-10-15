@@ -132,7 +132,7 @@ describe('the react-project fixture', () => {
       );
 
       expect(rulesByFile(findings)).toEqual({
-        allowed: ['@typescript-eslint/no-misused-promises', 'no-restricted-syntax'],
+        allowed: ['@typescript-eslint/no-misused-promises', 'nitpicker/no-null'],
         'class-component': ['no-restricted-syntax'],
       });
     },

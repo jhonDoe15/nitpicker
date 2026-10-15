@@ -32,18 +32,14 @@ export const promiseChainSelectors = [
   },
 ];
 
-export const controlFlowSelectors = [
-  ...loopSelectors,
-  ...forEachSelectors,
-  ...promiseChainSelectors,
-];
+export const controlFlowSelectors = [...loopSelectors, ...forEachSelectors];
 
-export const testControlFlowSelectors = [
-  ...testLoopSelectors,
-  ...forEachSelectors,
-  ...promiseChainSelectors,
-];
+export const testControlFlowSelectors = [...testLoopSelectors, ...forEachSelectors];
 
-export const controlFlowRules = { eqeqeq: ['error', 'always'] };
+export const promiseChainRule = {
+  'nitpicker/no-promise-chain': ['error', ...promiseChainSelectors],
+};
+
+export const controlFlowRules = { eqeqeq: ['error', 'always'], ...promiseChainRule };
 
 export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };

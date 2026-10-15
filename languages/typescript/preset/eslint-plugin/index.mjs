@@ -10,6 +10,7 @@ import { rule as noModuleLevelLet } from './rules/no-module-level-let.mjs';
 import { rule as noMockingSubjectUnderTest } from './rules/no-mocking-subject-under-test.mjs';
 import { rule as cognitiveComplexity } from './rules/cognitive-complexity.mjs';
 import { rule as noComments } from './rules/no-comments.mjs';
+import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-bans.mjs';
 import { rule as noProductionConsole } from './rules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/no-self-recursion.mjs';
 import { rule as noSilentCatch } from './rules/no-silent-catch.mjs';
@@ -49,6 +50,9 @@ export const nitpickerRules = {
     version: '0.1.0',
   },
   rules: {
+    'no-default-export': noDefaultExport,
+    'no-null': noNull,
+    'no-promise-chain': noPromiseChain,
     'container-pause-requires-finally-unpause': containerPauseRequiresFinallyUnpause,
     'bounded-container-teardown': boundedContainerTeardown,
     'no-fixed-sleep-synchronization': noFixedSleepSynchronization,

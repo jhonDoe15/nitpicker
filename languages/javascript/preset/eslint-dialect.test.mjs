@@ -128,8 +128,17 @@ describe('applyJavascriptDialect', () => {
     expect(forJavascript).toHaveLength(before.length);
     for (const setting of forJavascript) {
       expect(selectors(setting).some((text) => /\bTS[A-Z]/.test(text))).toBe(false);
-      expect(selectors(setting).length).toBeGreaterThan(5);
+      expect(selectors(setting).length).toBeGreaterThan(4);
     }
+  });
+
+  it('removes the TypeScript-only null selector from the null rule in JavaScript files', () => {
+    const mapped = applyJavascriptDialect(strict, javascript);
+    const [forJavascript] = ruleSettings(entriesFor(mapped, JAVASCRIPT_FILES), 'nitpicker/no-null');
+    const [forTypescript] = ruleSettings(entriesFor(mapped, TYPESCRIPT_FILES), 'nitpicker/no-null');
+
+    expect(selectors(forTypescript)).toHaveLength(2);
+    expect(selectors(forJavascript)).toEqual([selectors(forTypescript)[0]]);
   });
 
   it('keeps severity and string selectors when filtering restrictions', () => {

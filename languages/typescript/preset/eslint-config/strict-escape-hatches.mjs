@@ -30,7 +30,7 @@ function except(allowed) {
   return allowed.map((selector) => `:not(${selector})`).join('');
 }
 
-export function escapeHatchSelectorsFor({ react = false } = {}) {
+export function nullSelectorsFor({ react = false } = {}) {
   const allowedNullLiterals = [
     strictEqualityOperand,
     jsonStringifyArgument,
@@ -40,17 +40,6 @@ export function escapeHatchSelectorsFor({ react = false } = {}) {
     ? [`${reactNullHost} > TSTypeParameterInstantiation TSNullKeyword`]
     : [];
   return [
-    ...typeAssertionSelectors,
-    {
-      selector: 'TSAnyKeyword',
-      message:
-        'Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',
-    },
-    {
-      selector: 'TSNonNullExpression',
-      message:
-        'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
-    },
     {
       selector: `${nullLiteral}${except(allowedNullLiterals)}`,
       message: nullMessageFor({ react }),
@@ -61,6 +50,20 @@ export function escapeHatchSelectorsFor({ react = false } = {}) {
     },
   ];
 }
+
+export const escapeHatchSelectors = [
+  ...typeAssertionSelectors,
+  {
+    selector: 'TSAnyKeyword',
+    message:
+      'Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type.',
+  },
+  {
+    selector: 'TSNonNullExpression',
+    message:
+      'Do not use the non-null assertion `!`. Check for `undefined` and return early, or make the type non-optional at its source.',
+  },
+];
 
 export const escapeHatchRules = {
   'nitpicker/no-comments': 'error',
