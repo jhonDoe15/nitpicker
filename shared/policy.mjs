@@ -19,6 +19,8 @@ export const RULE_IDS = {
   mutantNoCoverage: 'mutant-nocoverage',
   duplicateClone: 'duplicate-clone',
   stabilityDirection: 'stability-direction',
+  packageCycle: 'package-cycle',
+  classCycle: 'class-cycle',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
   noProductionRuntime: 'no-production-runtime',
@@ -153,6 +155,7 @@ export const HELD_MESSAGES = {
 const BOTH = { typescript: true, java: true, python: false };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
+const JAVA_ONLY = { typescript: false, java: true, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
 /**
@@ -225,6 +228,18 @@ export const RULES = [
     check: 'coupling',
     limit: 'a package depending on a less stable package',
     enforcedBy: withKotlin(ALL, true),
+  },
+  {
+    id: RULE_IDS.packageCycle,
+    check: 'coupling',
+    limit: 'packages that depend on each other in a loop',
+    enforcedBy: withKotlin(JAVA_ONLY, true),
+  },
+  {
+    id: RULE_IDS.classCycle,
+    check: 'coupling',
+    limit: 'top-level classes (or Kotlin files) that depend on each other in a loop',
+    enforcedBy: withKotlin(JAVA_ONLY, true),
   },
   {
     id: RULE_IDS.noProductionRuntime,

@@ -1,14 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's PMD rules: the errorprone and bestpractices categories plus a catch rule from
-     design, run over main and test sources. Two test rules are left out because they set an
-     assertion style the TypeScript preset does not have: a message on every assertion, and one
-     assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
-     and mutation testing catches weak ones. -->
 <ruleset name="nitpicker"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
-  <description>Nitpicker's PMD categories for main and test sources.</description>
+  <description>Nitpicker's PMD rules for main and test sources.</description>
   <rule ref="category/java/errorprone.xml">
     <exclude name="TestClassWithoutTestCases"/>
   </rule>
@@ -27,6 +22,44 @@
     <properties>
       <property name="extraAssertMethodNames" value="andExpect"/>
     </properties>
+  </rule>
+  <rule ref="category/java/performance.xml">
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    <exclude name="InsufficientStringBufferDeclaration"/>
+    <exclude name="TooFewBranchesForSwitch"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <exclude name="AvoidSynchronizedAtMethodLevel"/>
+    <exclude name="AvoidUsingVolatile"/>
+    <exclude name="DoNotUseThreads"/>
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml/AvoidSynchronizedAtMethodLevel"
+        message="Use a ReentrantLock, an atomic or a concurrent collection instead of a synchronized method. If it is right here, add an exception for pmd/AvoidSynchronizedAtMethodLevel in nitpicker.config.json."/>
+  <rule ref="category/java/security.xml"/>
+  <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
+  <rule name="NonFinalStaticField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Make this static field final, or keep the state in an instance. Mutable static state is shared by every caller and every test. If it is right here, add an exception for pmd/NonFinalStaticField in nitpicker.config.json.">
+    <description>A non-final static field is global mutable state.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FieldDeclaration[pmd-java:modifiers() = 'static'][not(pmd-java:modifiers() = 'final')]
+  [not(ModifierList/Annotation[@SimpleName = ('TempDir', 'Container', 'RegisterExtension', 'ClassRule')])]
+]]></value></property></properties>
+  </rule>
+  <rule name="MutableStaticCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not mutate a static collection or expose a mutable one. Build it once as an immutable List.of, Map.of or Map.copyOf, or keep the state in an instance. If it is right here, add an exception for pmd/MutableStaticCollection in nitpicker.config.json.">
+    <description>A static final collection that is public or changed after class loading is global mutable state.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+  [VariableDeclarator/ConstructorCall[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]]
+  [let $name := VariableDeclarator/VariableId/@Name return
+    pmd-java:modifiers() = 'public'
+    or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]
+        [*[1][self::VariableAccess or self::FieldAccess]/@Name = $name]
+        [ancestor::MethodDeclaration or ancestor::ConstructorDeclaration]]
+]]></value></property></properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"
         message="Catch the specific exceptions this code can handle, not Exception, RuntimeException or NullPointerException. If a boundary must catch everything, add an exception for pmd/AvoidCatchingGenericException in nitpicker.config.json."/>

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildCouplingReport, evaluateCoupling } from '../../../shared/rules/coupling.mjs';
+import { cycleFindings } from '../guards/cycles.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';
@@ -59,14 +60,25 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
       relative
     );
   }
-  const report = analyzeJavaCoupling({
-    classes,
-    edges: parseJdeps(readFileSync(jdeps, 'utf8')),
-    fileOf,
-    moduleOf: (className) => {
-      const outer = outerClass(className);
-      return kotlin?.moduleOf.get(outer) ?? outer;
-    },
-  });
-  return evaluateCoupling(report, COUPLING_TOOL);
+  function moduleOf(className) {
+    const outer = outerClass(className);
+    return kotlin?.moduleOf.get(outer) ?? outer;
+  }
+  const edges = parseJdeps(readFileSync(jdeps, 'utf8'));
+  const report = analyzeJavaCoupling({ classes, edges, fileOf, moduleOf });
+  return [
+    ...evaluateCoupling(report, COUPLING_TOOL),
+    ...cycleFindings(
+      {
+        modules: [...new Set(classes.map(moduleOf))],
+        edges: edges.map((edge) => ({
+          source: moduleOf(edge.source),
+          target: moduleOf(edge.target),
+        })),
+        packageOf,
+        fileOf,
+      },
+      COUPLING_TOOL,
+    ),
+  ];
 }
