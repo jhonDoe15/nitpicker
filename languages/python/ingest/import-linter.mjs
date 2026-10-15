@@ -1,4 +1,5 @@
 import { createIdentityCounter } from '../../java/ingest/common.mjs';
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 
 const SUMMARY_LINE = /^Contracts: \d+ kept, \d+ broken\.$/m;
 const BROKEN_SECTION = /^Broken contracts$/m;
@@ -70,9 +71,10 @@ function describe(violation) {
 
 function brokenMessage(name, violation, file) {
   const detail = violation === NO_VIOLATION ? '' : `: ${describe(violation)}`;
-  const route =
-    file === undefined ? '' : ', or lift this file with exclude in nitpicker.config.json';
-  return `Import contract "${name}" is broken${detail}. Remove the import${route}.`;
+  const message = `Import contract "${name}" is broken${detail}. Remove the import.`;
+  return file === undefined
+    ? message
+    : `${message} ${exceptionRoute({ rule: 'contract-broken', path: file, key: 'python.exceptions' })}`;
 }
 
 function contractFinding({ name, violation, files, identity }) {

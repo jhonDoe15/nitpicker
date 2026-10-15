@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../shared/policy.mjs';
-import { commit, pythonRepository, run, usePythonCli, write } from '../diff/fixtures/python-cli.mjs';
+import {
+  commit,
+  pythonRepository,
+  run,
+  usePythonCli,
+  write,
+} from '../diff/fixtures/python-cli.mjs';
 
 usePythonCli();
 
@@ -27,9 +33,9 @@ describe('exceptions with "preset": "python"', () => {
     result
       .json('new-findings.json')
       .filter(({ classification }) => classification === 'enforceable')
-      .map(({ symbol, message }) => [symbol, message]);
+      .map(({ rule, symbol }) => [rule, symbol]);
 
-  it('fails a wide method and names the entry that accepts it', () => {
+  it('fails the same wide method without the exception', () => {
     const root = pythonRepository();
     write(root, { 'src/demo/a.py': SOURCE, 'structure-data.json': JSON.stringify([wide]) });
     commit(root, 'add a wide method');
@@ -37,12 +43,7 @@ describe('exceptions with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual([
-      [
-        'Service.wide',
-        'Service.wide has 4 parameters; limit is 3. If a reviewer agrees this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/a.py"],"function":"Service.wide","reason":"<why this is intended>"} to "exceptions" in nitpicker.config.json.',
-      ],
-    ]);
+    expect(enforceable(result)).toEqual([['function-parameters-limit', 'Service.wide']]);
   });
 
   it('accepts a wide method with the exception added in the same change', () => {

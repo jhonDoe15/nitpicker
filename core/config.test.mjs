@@ -82,7 +82,9 @@ describe('config file', () => {
         preset: 'python',
         exceptions: [{ rule: 'nitpicker/no-throw', paths: ['src/**'], reason: 'Legacy' }],
       }),
-    ).toThrow('"exceptions" is not supported with "preset": "python"');
+    ).toThrow(
+      '"exceptions" has rule "nitpicker/no-throw", which no top-level exception lifts in the python preset. Top-level "exceptions" take only function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage, mutant-survived, mutant-nocoverage, duplicate-clone, stability-direction, file-lines-limit, line-length-limit, folder-files-limit; a ruff, type-checker or python-rules id goes in "python.exceptions"',
+    );
   });
 
   describe('kotlin options', () => {

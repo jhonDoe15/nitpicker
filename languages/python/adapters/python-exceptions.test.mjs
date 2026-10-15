@@ -51,4 +51,13 @@ describe('python exceptions', () => {
       mypy,
     ]);
   });
+
+  it('lifts a broken import contract for the file it names', () => {
+    const contract = (file) => ({ tool: 'import-linter', rule: 'contract-broken', path: file });
+    const broken = [contract('src/app/web/views.py'), contract('src/app/domain/model.py')];
+
+    expect(
+      applyPythonExceptions(broken, [exception('contract-broken', ['src/app/web/views.py'])]),
+    ).toEqual([broken[1]]);
+  });
 });

@@ -26,8 +26,8 @@ import {
   absoluteTextReportPath,
   clearDiffReports,
   renderConsoleSummary,
-  renderRuleFilterSection,
 } from './diff/reporters.mjs';
+import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { withRunLock } from './run-lock.mjs';
 import { createLayeredStore, resolveCacheStore } from './diff/cache-stores.mjs';
 import { publishBaseSnapshot } from './diff/publish-cache.mjs';
@@ -360,7 +360,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
-  stdout.write(renderRuleFilterSection(report, options.ruleFilters));
+  stdout.write(renderClosingSections(cli, report));
   if (options.deferExit) {
     return 0;
   }

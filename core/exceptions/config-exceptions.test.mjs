@@ -126,12 +126,12 @@ describe('config exceptions', () => {
       expect(validateConfig({ exceptions: [mutant, unused] })).toEqual({
         exceptions: [mutant, unused],
       });
-      expect(() =>
-        validateConfig({ exceptions: [{ ...unused, rule: 'files' }] }),
-      ).toThrow('"exceptions[0].name" is only supported for these rules: exports, types');
-      expect(() =>
-        validateConfig({ exceptions: [{ ...unused, function: 'save' }] }),
-      ).toThrow('"exceptions[0].function" is only supported for these rules');
+      expect(() => validateConfig({ exceptions: [{ ...unused, rule: 'files' }] })).toThrow(
+        '"exceptions[0].name" is only supported for these rules: exports, types',
+      );
+      expect(() => validateConfig({ exceptions: [{ ...unused, function: 'save' }] })).toThrow(
+        '"exceptions[0].function" is only supported for these rules',
+      );
     });
 
     it('allows a structure exception with or without a function', () => {
@@ -151,18 +151,18 @@ describe('config exceptions', () => {
       function: 'save',
       reason: 'A reviewed reason.',
     };
-    const rejected = (override) => () => validateConfig({ exceptions: [{ ...entry, ...override }] });
+    const rejected = (override) => () =>
+      validateConfig({ exceptions: [{ ...entry, ...override }] });
 
     it('rejects a tool prefix that is not the tool of the rule', () => {
       expect(rejected({ rule: 'bogus/function-lines-limit' })).toThrow(
         '"exceptions[0].rule" has an unknown tool prefix "bogus" for function-lines-limit: use the rule bare or as structure/function-lines-limit',
       );
-      expect(
-        () =>
-          validateConfig({
-            preset: 'python',
-            exceptions: [{ ...entry, rule: 'jacoco/changed-branch-coverage' }],
-          }),
+      expect(() =>
+        validateConfig({
+          preset: 'python',
+          exceptions: [{ ...entry, rule: 'jacoco/changed-branch-coverage' }],
+        }),
       ).toThrow(
         '"exceptions[0].rule" has an unknown tool prefix "jacoco" for changed-branch-coverage: use the rule bare or as coverage-py/changed-branch-coverage',
       );
