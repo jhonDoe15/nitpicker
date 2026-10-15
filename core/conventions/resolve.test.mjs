@@ -140,7 +140,10 @@ describe('reading the measured files', () => {
 
     runHeadPolicy({ cli: comparison(stdout), config: { preset: 'java' }, projectRoot: root });
 
-    expect(stdout.text()).toContain('4 spaces (google-java-format --aosp) (used by 2 of 3');
+    expect(stdout.text()).toBe(
+      "Following this project's conventions:\n" +
+        '  Java indentation: 4 spaces (google-java-format --aosp) (used by 2 of 3 measured files)\n',
+    );
   });
 
   it('needs no git when every convention is pinned', () => {
