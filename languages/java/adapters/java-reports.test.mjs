@@ -98,8 +98,21 @@ function projectWithReports({ shift = 0 } = {}) {
   );
   // One complex function that the JaCoCo method above (0 of 3 lines covered) belongs to.
   writeFileSync(
-    path.join(reports, 'lizard.csv'),
-    `9,12,60,1,7,"Bad::decode@${String(8 + shift)}-${String(14 + shift)}@src/main/java/demo/Bad.java","src/main/java/demo/Bad.java","Bad::decode","Bad::decode( byte[] bytes)",${String(8 + shift)},${String(14 + shift)}\n`,
+    path.join(reports, 'structure.json'),
+    JSON.stringify([
+      {
+        file: 'src/main/java/demo/Bad.java',
+        name: 'Bad.decode',
+        start: 8 + shift,
+        end: 14 + shift,
+        lines: 7,
+        statements: 9,
+        maxControlNesting: 1,
+        parameters: 1,
+        complexity: 12,
+        signature: 'Bad.decode(byte[])',
+      },
+    ]),
   );
   // The jscpd sample report (one clone); `shift` moves its start lines like the other reports.
   const jscpd = JSON.parse(
@@ -153,7 +166,7 @@ describe('readJavaFindings', () => {
         'crap',
         'crap-score-limit',
         bad,
-        expect.stringMatching(/^function:Bad::decode\( byte\[\] bytes\):source:[0-9a-f]{24}$/),
+        expect.stringMatching(/^function:Bad\.decode\(byte\[\]\):source:[0-9a-f]{24}$/),
       ],
       ['jacoco', 'changed-branch-coverage', bad, expect.stringMatching(/^branch-source:/)],
     ]);
@@ -210,6 +223,68 @@ describe('readJavaFindings', () => {
 
     expect(identities(after)).toEqual(identities(before));
     expect(after[0].location.line).toBe(before[0].location.line + 17);
+  });
+
+  it("reads the test sources' Checkstyle report and inline suppressions like the main ones", () => {
+    const root = projectWithReports();
+    const testFile = path.join(root, 'src/test/java/demo/BadTest.java');
+    mkdirSync(path.dirname(testFile), { recursive: true });
+    writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
+    writeFileSync(
+      path.join(root, 'build/nitpicker/manifest.json'),
+      JSON.stringify({ sourceRoots: ['src/main/java'], testSourceRoots: ['src/test/java'] }),
+    );
+    writeFileSync(
+      path.join(root, 'build/nitpicker/checkstyle-test.xml'),
+      `<checkstyle><file name="${testFile}"><error line="2" severity="warning" message="Too long" source="${CS_LENGTH}"/></file></checkstyle>`,
+    );
+
+    const onTests = readJavaFindings(root).findings.filter(
+      ({ path: file }) => file === 'src/test/java/demo/BadTest.java',
+    );
+
+    expect(onTests.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
+      `checkstyle ${CS_LENGTH}`,
+      'pmd InlineSuppression',
+    ]);
+  });
+
+  it('keeps a PMD identity when a line number in its message moves', () => {
+    const identityOf = (line) => {
+      const root = projectWithReports();
+      const uri = `file://${path.join(root, 'src/main/java/demo/Bad.java')}`;
+      const text = `The String literal "x" appears 2 times in this file; the first occurrence is on line ${String(line)}`;
+      const result = {
+        ruleId: 'AvoidDuplicateLiterals',
+        message: { text },
+        locations: [
+          { physicalLocation: { artifactLocation: { uri }, region: { startLine: line } } },
+        ],
+      };
+      writeFileSync(
+        path.join(root, 'build/nitpicker/pmd.sarif'),
+        JSON.stringify({
+          runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results: [result] }],
+        }),
+      );
+      return readJavaFindings(root).findings.find(({ rule }) => rule === 'AvoidDuplicateLiterals');
+    };
+
+    expect(identityOf(4).identity).toBe(identityOf(9).identity);
+  });
+
+  it('skips test sources the manifest does not list, but needs the main Checkstyle report', () => {
+    const root = projectWithReports();
+    const testFile = path.join(root, 'src/test/java/demo/BadTest.java');
+    mkdirSync(path.dirname(testFile), { recursive: true });
+    writeFileSync(testFile, '@SuppressWarnings("PMD")\nclass BadTest {}\n');
+    const findings = readJavaFindings(root).findings;
+    rmSync(path.join(root, 'build/nitpicker/checkstyle.xml'));
+
+    expect(findings.filter(({ path: file }) => file.startsWith('src/test/'))).toEqual([]);
+    expect(() => readJavaFindings(root)).toThrow(
+      `ENOENT: no such file or directory, open '${path.join(root, 'build/nitpicker/checkstyle.xml')}'`,
+    );
   });
 });
 
