@@ -128,7 +128,9 @@ function canonicalCycle(value, context) {
   );
   const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
   const inSnapshot = rotations.filter(([first]) => isInSnapshot(first));
-  return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
+  return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) =>
+    left.join('\0').localeCompare(right.join('\0')),
+  )[0];
 }
 
 function ruleComments(report) {

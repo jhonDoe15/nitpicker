@@ -159,7 +159,10 @@ describe('static differential adapters', () => {
             {
               from,
               to: '../node_modules/pg/lib/index.js',
-              rule: { name: 'domain-does-not-import-network-or-database-clients', severity: 'error' },
+              rule: {
+                name: 'domain-does-not-import-network-or-database-clients',
+                severity: 'error',
+              },
             },
           ],
         },

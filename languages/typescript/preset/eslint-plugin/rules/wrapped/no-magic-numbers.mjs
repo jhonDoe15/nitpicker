@@ -8,16 +8,26 @@ const FUNCTION_TYPES = new Set([
   'FunctionExpression',
   'ArrowFunctionExpression',
 ]);
-const STATUS_METHODS = new Set([
-  'status',
-  'sendStatus',
-  'json',
-  'send',
-  'redirect',
-  'code',
-  'writeHead',
+const FIRST = [0];
+const SECOND = [1];
+const EITHER = [0, 1];
+const STATUS_POSITIONS = new Map([
+  ['status', FIRST],
+  ['sendStatus', FIRST],
+  ['code', FIRST],
+  ['writeHead', FIRST],
+  ['text', SECOND],
+  ['json', SECOND],
+  ['body', SECOND],
+  ['html', SECOND],
+  ['redirect', EITHER],
+  ['throw', EITHER],
 ]);
-const STATUS_CALLEE = /status|error|exception|text|body|json|send|redirect|end|head|throw/i;
+const STATUS_FUNCTIONS = new Map([
+  ['error', FIRST],
+  ['fail', FIRST],
+]);
+const ERROR_NAME = /(?:Error|Exception)$/;
 const STATUS_PROPERTIES = new Set(['status', 'statusCode']);
 const EQUALITY_OPERATORS = new Set(['===', '!==', '==', '!=']);
 const DIGITS_METHODS = new Set(['toFixed', 'toPrecision']);
@@ -70,16 +80,20 @@ function isStatusProperty(expression) {
   );
 }
 
+function statusPositions(callee) {
+  const name = calleeName(callee);
+  if (typeof name !== 'string') {
+    return [];
+  }
+  const functionPositions = callee.type === 'Identifier' ? STATUS_FUNCTIONS.get(name) : undefined;
+  return STATUS_POSITIONS.get(name) ?? functionPositions ?? (ERROR_NAME.test(name) ? EITHER : []);
+}
+
 function isStatusCallArgument(node, parent) {
   if (parent.type !== 'CallExpression' && parent.type !== 'NewExpression') {
     return false;
   }
-  const name = calleeName(parent.callee);
-  return (
-    parent.arguments.includes(node) &&
-    typeof name === 'string' &&
-    (STATUS_METHODS.has(name) || STATUS_CALLEE.test(name))
-  );
+  return statusPositions(parent.callee).includes(parent.arguments.indexOf(node));
 }
 
 function isStatusComparison(node, parent) {
