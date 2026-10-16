@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
@@ -137,8 +138,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
   });
   it('does not ask for coverage of branches the Kotlin compiler generated', () => {
     git(project, 'checkout', '-q', 'generated-branches');
-    const findings = collectJavaFindings(project.root, { gradle, policy: kotlinPolicy });
-    const report = readFileSync(path.join(project.root, 'build/nitpicker/jacoco.xml'), 'utf8');
+    const reportDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-'));
+    const options = { gradle, policy: kotlinPolicy, reportDirectory };
+    const findings = collectJavaFindings(project.root, options);
+    const report = readFileSync(path.join(reportDirectory, 'root/jacoco.xml'), 'utf8');
+    rmSync(reportDirectory, { recursive: true, force: true });
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
     const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
       ([, line]) => Number(line),
