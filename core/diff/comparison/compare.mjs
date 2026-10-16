@@ -16,7 +16,10 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     snapshot: 'base',
   });
-  const comparedHead = againstMissingReports(headFindings, baseFindings);
+  const comparedHead = againstMissingReports(headFindings, baseFindings, {
+    renames: baseToHeadRenames,
+    directories: baseToHeadDirectories,
+  });
   const headByKey = indexFindings({ findings: comparedHead, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const unmatchedBase = [...baseByKey]

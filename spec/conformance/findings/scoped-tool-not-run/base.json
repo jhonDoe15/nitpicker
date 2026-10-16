@@ -4,11 +4,21 @@
       "tool": "duplicates",
       "rule": "cpd-not-run",
       "path": ".",
-      "identity": "cpd-not-run@core",
+      "identity": "cpd-not-run@:core",
       "message": "No CPD duplicate report for core/src/main/java.",
       "classification": "descriptive",
       "toolNotRun": true,
-      "notRunScope": ["cpd:pair:core/src/main/java/"]
+      "notRunScope": ["core/src/main/java"]
+    },
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:legacy",
+      "message": "No CPD duplicate report for legacy/src/main/java.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["legacy/src/main/java"]
     }
   ]
 }
