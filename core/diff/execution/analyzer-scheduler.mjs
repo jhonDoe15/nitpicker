@@ -88,7 +88,10 @@ async function runTask(
   { semaphore, groupSemaphores, maxParallel, execute, signal },
 ) {
   const dependencyOutcomes = await Promise.all(dependencies);
-  const failedDependency = dependencyOutcomes.find(hasFailed);
+  const tolerated = new Set(task.toleratedDependencyErrors ?? []);
+  const failedDependency = dependencyOutcomes.find((outcome) =>
+    blocksDependents(outcome, tolerated),
+  );
   if (failedDependency !== undefined) {
     return skippedOutcome(task.name, failedDependency);
   }
@@ -139,6 +142,18 @@ function hasFailed(outcome) {
     outcome.error !== undefined ||
     outcome.skippedBecause !== undefined ||
     (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+  );
+}
+
+// A dependent task may name tools whose tool errors in its dependency do not stop it, such as
+// failing project tests that the dependent leaves out on its own.
+function blocksDependents(outcome, tolerated) {
+  return (
+    outcome.error !== undefined ||
+    outcome.skippedBecause !== undefined ||
+    (outcome.report?.findings ?? []).some(
+      (finding) => finding.classification === 'tool-error' && !tolerated.has(finding.tool),
+    )
   );
 }
 
