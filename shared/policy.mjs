@@ -6,10 +6,11 @@
 // under `shared/` may import from `core/`, `languages/` or a tool package (shared/import-direction.test.mjs).
 
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './rules/reuse-rules.mjs';
+import { docCommentRule, reuseRules } from './rules/reuse-rules.mjs';
 import { testConsoleRule } from './rules/test-runtime.mjs';
+import { sharedFactExceptionRules, withLanguageColumns } from './rules/facts/registry.mjs';
 
-export const LANGUAGES = ['typescript', 'java', 'python', 'kotlin'];
+export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -40,6 +41,7 @@ export const RULE_IDS = {
   newIconAsset: 'new-icon-asset',
   componentStoryMissing: 'component-story-missing',
   testConsoleOutput: 'test-console-output',
+  docCommentContent: 'doc-comment-content',
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -69,6 +71,7 @@ export const SHARED_EXCEPTION_RULES = [
   RULE_IDS.fileLines,
   RULE_IDS.lineLength,
   RULE_IDS.folderFiles,
+  ...sharedFactExceptionRules(),
 ];
 
 /** The shared rules the Java preset leaves to its own tools (Checkstyle checks line length). */
@@ -128,6 +131,10 @@ export const MESSAGES = {
   testOnlyExport: `Export {name} is only imported by tests. Remove \`export\`, or import it from production code. ${EXCEPTION_HINT}`,
   testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. Remove the re-export and \`export\`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints". ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. Move it to a test-support/ folder, or import it from production code. ${EXCEPTION_HINT}`,
+  testOnlyDeclaration: `{name} is only used by tests. Make it private to its module, or use it from production code. ${EXCEPTION_HINT}`,
+  testOnlyFile: `Module {name} is only used by tests. Move it beside the tests as a test helper, or use it from production code. ${EXCEPTION_HINT}`,
+  restatingDocComment: `This doc comment only restates {name}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${EXCEPTION_HINT}`,
+  longDocComment: `This doc comment's description is {lines} lines (limit {limit}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types. ${EXCEPTION_HINT}`,
   fileLines: `File has {value} lines (limit {limit}). Split it into files by responsibility. ${EXCEPTION_HINT}`,
   lineLength: `Line is {value} characters (limit {limit}). Break it up or extract a named value. ${EXCEPTION_HINT}`,
   folderFiles: `Folder has {value} {kind} files directly in it (limit {limit}). Group related files into subfolders (packages in Java). ${EXCEPTION_HINT}`,
@@ -194,7 +201,7 @@ const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
  * The catalog of custom rules for `spec/checks.md`. `limit` is the human text of the default
  * threshold; `enforcedBy` says which languages enforce the rule today.
  */
-export const RULES = [
+const CATALOG = [
   {
     id: RULE_IDS.functionLines,
     check: 'structure',
@@ -320,7 +327,10 @@ export const RULES = [
     enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
   },
   testConsoleRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  docCommentRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
 ];
+
+export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));
 
 /** Rules of the TypeScript-only structure, coupling, dead-code and test-console checks, lifted by `exceptions`. */
 export const TYPESCRIPT_PROJECT_EXCEPTION_RULES = RULES.filter(
