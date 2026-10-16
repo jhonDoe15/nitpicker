@@ -24,7 +24,9 @@ const ENTRY_POINT_RULES = new Set(['crap-coverage-unknown', 'process-env-access'
 
 function topImports(statements = []) {
   return statements.flatMap((statement) => {
-    if (statement.level !== 0) return [];
+    if (statement.level !== 0) {
+      return [];
+    }
     const names = statement.module === null ? statement.names : [statement.module];
     return names.map((name) => name.split('.')[0]);
   });
@@ -76,7 +78,9 @@ function routerFiles(imports) {
   );
   const reached = new Set(routers);
   for (const { source, target } of importEdges(imports.modules, imports.imports)) {
-    if (routers.has(source)) reached.add(target);
+    if (routers.has(source)) {
+      reached.add(target);
+    }
   }
   return new Set(
     imports.modules.filter(({ module }) => reached.has(module)).map(({ file }) => file),

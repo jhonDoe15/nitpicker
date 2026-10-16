@@ -9,7 +9,9 @@ const LISTED_MEMBERS = 5;
 export const IMPORT_RULE_IDS = [PACKAGE_CYCLE_RULE, MODULE_CYCLE_RULE, OUTSIDE_ROOTS_RULE];
 
 function packageOf(entry) {
-  if (entry.isPackage) return entry.module;
+  if (entry.isPackage) {
+    return entry.module;
+  }
   return entry.module.includes('.')
     ? entry.module.slice(0, entry.module.lastIndexOf('.'))
     : '(root)';
@@ -21,7 +23,9 @@ function isInside(name, owner) {
 
 export function stronglyConnected(nodes, edges) {
   const next = new Map(nodes.map((node) => [node, []]));
-  for (const { source, target } of edges) next.get(source)?.push(target);
+  for (const { source, target } of edges) {
+    next.get(source)?.push(target);
+  }
   const state = { index: 0, indices: new Map(), low: new Map(), stack: [], onStack: new Set() };
   const components = [];
   const visit = (node) => {
@@ -43,12 +47,16 @@ export function stronglyConnected(nodes, edges) {
       for (let member = state.stack.pop(); ; member = state.stack.pop()) {
         state.onStack.delete(member);
         component.push(member);
-        if (member === node) break;
+        if (member === node) {
+          break;
+        }
       }
       components.push(component.sort());
     }
   };
-  for (const node of [...nodes].sort()) if (!state.indices.has(node)) visit(node);
+  for (const node of [...nodes].sort()) {
+    if (!state.indices.has(node)) visit(node);
+  }
   return components.filter((component) => component.length > 1);
 }
 
@@ -119,7 +127,9 @@ export function cycleFindings(report) {
 }
 
 function outsideTarget(statement, outside) {
-  if (statement.level !== 0) return [];
+  if (statement.level !== 0) {
+    return [];
+  }
   const names =
     statement.module === null
       ? statement.names

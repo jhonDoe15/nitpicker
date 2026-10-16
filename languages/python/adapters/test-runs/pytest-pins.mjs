@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { parseIni } from '../configuration/mypy-config.mjs';
+import { toml } from '../../libraries/project-files.mjs';
 
 const CONFIG_FILES = [
   { file: 'pytest.toml', read: (text) => tomlTable(text, ['pytest']) },
@@ -42,10 +42,6 @@ const FILTERING_OPTIONS = new Set([
 const RESULT_PLUGINS = new Set(['python', 'unittest', 'doctest', 'junitxml', 'runner', 'main']);
 const SHORT_WITH_VALUE = new Set(['k', 'm', 'p', 'c', 'o', 'W', 'r', 'n']);
 
-function toml() {
-  return createRequire(import.meta.url)('smol-toml');
-}
-
 function tomlTable(text, keys) {
   const table = keys.reduce((current, key) => current?.[key], toml().parse(text));
   return table !== null && typeof table === 'object' && !Array.isArray(table) ? table : undefined;
@@ -63,7 +59,9 @@ export function shellWords(text) {
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index];
     if (quote === undefined && /\s/u.test(character)) {
-      if (current !== undefined) words.push(current);
+      if (current !== undefined) {
+        words.push(current);
+      }
       current = undefined;
     } else if (quote === undefined && (character === '"' || character === "'")) {
       quote = character;
@@ -108,17 +106,23 @@ function withoutExitFirst(word) {
 }
 
 function optionName(word) {
-  if (word.startsWith('--')) return word.split('=')[0];
+  if (word.startsWith('--')) {
+    return word.split('=')[0];
+  }
   return /^-[kp]/u.test(word) ? word.slice(0, 2) : word;
 }
 
 function attachedValue(word, name) {
-  if (word.length === name.length) return undefined;
+  if (word.length === name.length) {
+    return undefined;
+  }
   return word.startsWith('--') ? word.slice(name.length + 1) : word.slice(name.length);
 }
 
 function pinnedOption(name, value) {
-  if (name === '-p') return value.startsWith('no:') && RESULT_PLUGINS.has(value.slice(3));
+  if (name === '-p') {
+    return value.startsWith('no:') && RESULT_PLUGINS.has(value.slice(3));
+  }
   return FILTERING_OPTIONS.has(name);
 }
 
@@ -138,8 +142,12 @@ export function pinAddopts(words) {
       removed.push(word);
     } else {
       const flags = withoutExitFirst(word);
-      if (flags !== word) removed.push(word);
-      if (flags !== undefined) kept.push(flags);
+      if (flags !== word) {
+        removed.push(word);
+      }
+      if (flags !== undefined) {
+        kept.push(flags);
+      }
     }
   }
   return { kept, removed };
@@ -155,7 +163,9 @@ export function pinnedPytestArguments(projectRoot, { rerunfailures = false } = {
 }
 
 export function pinnedEnvironmentAddopts(value) {
-  if (value === undefined || value === '') return {};
+  if (value === undefined || value === '') {
+    return {};
+  }
   const { kept, removed } = pinAddopts(shellWords(value));
   return removed.length === 0 ? {} : { PYTEST_ADDOPTS: kept.map(quoted).join(' ') };
 }

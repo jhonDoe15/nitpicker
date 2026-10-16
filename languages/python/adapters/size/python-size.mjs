@@ -35,8 +35,12 @@ export function pythonFolderDepthFindings(modules, { thresholds = {}, exceptions
 }
 
 function importedBase(entry, importer) {
-  if (entry.name === undefined) return entry.module;
-  if ((entry.level ?? 0) === 0) return `${entry.module}.${entry.name}`;
+  if (entry.name === undefined) {
+    return entry.module;
+  }
+  if ((entry.level ?? 0) === 0) {
+    return `${entry.module}.${entry.name}`;
+  }
   const owner = importer.isPackage
     ? importer.module
     : importer.module.split('.').slice(0, -1).join('.');
@@ -89,7 +93,9 @@ function countedBases(entry) {
 
 function inheritanceDepth(entry, resolve, seen = new Set()) {
   const bases = countedBases(entry);
-  if (bases.length === 0) return 0;
+  if (bases.length === 0) {
+    return 0;
+  }
   const parents = bases
     .map((written) => resolve(entry, written))
     .filter((parent) => parent !== undefined && !seen.has(parent));

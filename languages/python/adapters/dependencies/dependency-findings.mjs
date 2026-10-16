@@ -76,7 +76,9 @@ function pythonTooOld(version) {
 }
 
 function topLevelImports(statement) {
-  if (statement.level !== 0) return [];
+  if (statement.level !== 0) {
+    return [];
+  }
   const names = statement.module === null ? statement.names : [statement.module];
   return names.map((name) => name.split('.')[0]);
 }
@@ -146,7 +148,9 @@ function devOnlyFinding(entry, declaring) {
 function importFindings(state, entry, production) {
   const seen = new Set();
   return importedTops(state, entry).flatMap((imported) => {
-    if (imported.typeOnly || seen.has(imported.top)) return [];
+    if (imported.typeOnly || seen.has(imported.top)) {
+      return [];
+    }
     seen.add(imported.top);
     const declaring = imported.distributions.flatMap((name) => state.declaredBy.get(name) ?? []);
     if (declaring.length === 0) {
@@ -167,10 +171,14 @@ function usedDistributions(state) {
       importedTops(state, entry).flatMap(({ distributions }) => distributions),
     ),
   );
-  for (const name of state.scan.entryPoints ?? []) used.add(normalizeRequirementName(name));
+  for (const name of state.scan.entryPoints ?? []) {
+    used.add(normalizeRequirementName(name));
+  }
   for (const [owner, optional] of Object.entries(state.scan.optional ?? {})) {
     if (state.declaredBy.has(normalizeRequirementName(owner))) {
-      for (const name of optional) used.add(normalizeRequirementName(name));
+      for (const name of optional) {
+        used.add(normalizeRequirementName(name));
+      }
     }
   }
   return used;
@@ -178,7 +186,9 @@ function usedDistributions(state) {
 
 function lineOf(projectRoot, file, name) {
   const absolute = path.join(projectRoot, file);
-  if (!existsSync(absolute)) return undefined;
+  if (!existsSync(absolute)) {
+    return undefined;
+  }
   const pattern = new RegExp(`(^|["'\\s])${name.replaceAll(/[-_.]/gu, '[-_.]')}(?![\\w-])`, 'iu');
   const index = readFileSync(absolute, 'utf8')
     .split(/\r?\n/u)
@@ -210,7 +220,9 @@ function unusedFindings(state, projectRoot) {
 
 export function readDependencyFindings({ reportRoot, projectRoot, snapshot }) {
   const report = path.join(reportRoot, DEPENDENCIES_REPORT);
-  if (!existsSync(report)) return [];
+  if (!existsSync(report)) {
+    return [];
+  }
   const dependencies = JSON.parse(readFileSync(report, 'utf8'));
   const { scan, declared } = dependencies;
   if (pythonTooOld(scan.python)) {
@@ -220,7 +232,9 @@ export function readDependencyFindings({ reportRoot, projectRoot, snapshot }) {
       ),
     ];
   }
-  if (!declared.complete) return [];
+  if (!declared.complete) {
+    return [];
+  }
   const state = dependencyState(dependencies, readImportsReport(reportRoot));
   const tests = (state.imports.others ?? []).filter(({ kind }) => kind === 'test');
   return [

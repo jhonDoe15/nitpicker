@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globToRegExpSource } from '../../../../shared/glob.mjs';
+import { toml } from '../../libraries/project-files.mjs';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [
@@ -19,10 +19,6 @@ const PLUGIN_FILE = /^.+\.py(?=(?::\w+)?$)/;
 const INI_SECTION = /^\[([^\]]+)\]\s*$/;
 const INI_OPTION = /^([^\s=:][^=:]*?)\s*[=:]\s*(.*)$/;
 const INI_COMMENT = /\s+[#;].*$/;
-
-function toml() {
-  return createRequire(import.meta.url)('smol-toml');
-}
 
 function startSection(name, sections, state) {
   state.options = new Map();

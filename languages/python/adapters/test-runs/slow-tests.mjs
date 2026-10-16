@@ -25,11 +25,17 @@ function indentOf(line) {
 function blockAt(lines, definition) {
   const indent = indentOf(lines[definition]);
   let first = definition;
-  while (first > 0 && DECORATOR.test(lines[first - 1])) first -= 1;
+  while (first > 0 && DECORATOR.test(lines[first - 1])) {
+    first -= 1;
+  }
   let last = definition;
   for (let index = definition + 1; index < lines.length; index += 1) {
-    if (lines[index].trim() === '') continue;
-    if (indentOf(lines[index]) <= indent) break;
+    if (lines[index].trim() === '') {
+      continue;
+    }
+    if (indentOf(lines[index]) <= indent) {
+      break;
+    }
     last = index;
   }
   return { first, definition, last, text: lines.slice(first, last + 1).join('\n') };
@@ -56,8 +62,12 @@ function classDecorators(lines, block) {
 
 function isIntegration(testCase, lines, block) {
   const folders = path.posix.dirname(testCase.file).split('/');
-  if (folders.some((folder) => INTEGRATION_FOLDERS.has(folder))) return true;
-  if (block === undefined) return false;
+  if (folders.some((folder) => INTEGRATION_FOLDERS.has(folder))) {
+    return true;
+  }
+  if (block === undefined) {
+    return false;
+  }
   const marks = [
     ...lines.slice(block.first, block.definition),
     ...classDecorators(lines, block),
@@ -67,7 +77,9 @@ function isIntegration(testCase, lines, block) {
 }
 
 function headBlock(lines, testCase) {
-  if (lines === undefined || testCase.functionName === undefined) return undefined;
+  if (lines === undefined || testCase.functionName === undefined) {
+    return undefined;
+  }
   const blocks = blocksNamed(lines, testCase.functionName);
   return (
     blocks.find(
@@ -87,7 +99,9 @@ function slowestRuns(cases) {
   const byTest = new Map();
   for (const testCase of cases) {
     const key = `${testCase.file}::${testCase.className}::${testCase.functionName}`;
-    if ((byTest.get(key)?.seconds ?? -1) < testCase.seconds) byTest.set(key, testCase);
+    if ((byTest.get(key)?.seconds ?? -1) < testCase.seconds) {
+      byTest.set(key, testCase);
+    }
   }
   return [...byTest.values()];
 }
@@ -101,7 +115,9 @@ function slowTestMessage({ testCase, limit, integration }) {
 }
 
 export function readSlowTestFindings({ reportRoot, projectRoot, limits, baselineRoot, snapshot }) {
-  if (snapshot === 'base') return [];
+  if (snapshot === 'base') {
+    return [];
+  }
   const budget = { ...TEST_TIME_DEFAULTS, ...limits };
   return slowestRuns(readJunit(reportRoot).filter(({ name }) => name !== undefined)).flatMap(
     (testCase) => {
@@ -110,7 +126,9 @@ export function readSlowTestFindings({ reportRoot, projectRoot, limits, baseline
       const integration = isIntegration(testCase, lines, block);
       const limit = integration ? budget.integrationTestSeconds : budget.unitTestSeconds;
       const counted = baselineRoot === undefined || isChanged(testCase, block, baselineRoot);
-      if (testCase.seconds <= limit || !counted) return [];
+      if (testCase.seconds <= limit || !counted) {
+        return [];
+      }
       return [
         {
           tool: SLOW_TEST_TOOL,

@@ -57,8 +57,12 @@ function pragmaFindings(projectRoot, file) {
 function fnmatch(pattern) {
   const source = [...pattern]
     .map((character) => {
-      if (character === '*') return '.*';
-      if (character === '?') return '.';
+      if (character === '*') {
+        return '.*';
+      }
+      if (character === '?') {
+        return '.';
+      }
       return character.replaceAll(/[.+^${}()|[\]\\]/gu, String.raw`\$&`);
     })
     .join('');
@@ -66,7 +70,9 @@ function fnmatch(pattern) {
 }
 
 function listOf(value) {
-  if (Array.isArray(value)) return value.map(String);
+  if (Array.isArray(value)) {
+    return value.map(String);
+  }
   return String(value ?? '')
     .split(/\r?\n/u)
     .map((line) => line.trim())
