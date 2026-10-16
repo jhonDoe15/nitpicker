@@ -1,7 +1,19 @@
 import { variableNamed } from '../analysis/ancestry.mjs';
 
 const OBJECT_SCHEMA_FACTORIES = new Set(['object', 'strictObject', 'looseObject']);
-const CONTAINER_FACTORIES = new Set(['record', 'array', 'set', 'map', 'tuple']);
+const CONTAINER_FACTORIES = new Set([
+  'record',
+  'array',
+  'set',
+  'map',
+  'tuple',
+  'optional',
+  'nullable',
+  'nullish',
+  'readonly',
+]);
+const SHAPE_METHODS = new Set(['extend', 'safeExtend', 'augment']);
+const ELEMENT_METHOD = 'array';
 const LOOSE_OBJECT_METHODS = new Set(['passthrough', 'loose']);
 const MAX_ALIAS_DEPTH = 3;
 const UNVALIDATED_FACTORIES = new Set(['unknown', 'any']);
@@ -58,12 +70,13 @@ function constantInitializer(sourceCode, identifier) {
     : undefined;
 }
 
-function withoutNonValidatingCalls(expression) {
+function withoutNonValidatingCalls(sourceCode, expression) {
   const pending = [expression];
   for (const current of pending) {
     if (
       current.type === 'CallExpression' &&
-      NON_VALIDATING_METHODS.has(memberName(current.callee))
+      NON_VALIDATING_METHODS.has(memberName(current.callee)) &&
+      !isZodCall(sourceCode, current, CONTAINER_FACTORIES)
     ) {
       pending.push(current.callee.object);
     }
@@ -83,13 +96,20 @@ function nestedSchemas(sourceCode, root, depth) {
     const initializer = depth < MAX_ALIAS_DEPTH ? constantInitializer(sourceCode, root) : undefined;
     return initializer ? [initializer] : [];
   }
-  return isZodCall(sourceCode, root, CONTAINER_FACTORIES) ? root.arguments : [];
+  if (isZodCall(sourceCode, root, CONTAINER_FACTORIES)) {
+    return root.arguments;
+  }
+  return root.type === 'CallExpression' &&
+    memberName(root.callee) === ELEMENT_METHOD &&
+    root.arguments.length === 0
+    ? [root.callee.object]
+    : [];
 }
 
 function unvalidatedRoot(sourceCode, expression) {
   const pending = [{ node: expression, depth: 0 }];
   for (const { node, depth } of pending) {
-    const root = withoutNonValidatingCalls(node);
+    const root = withoutNonValidatingCalls(sourceCode, node);
     if (isUnvalidatedLeaf(sourceCode, root)) {
       return root;
     }
@@ -161,10 +181,10 @@ export const rule = {
       CallExpression(node) {
         reportLooseObject(node);
         const [shape] = node.arguments;
-        if (
-          !isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES) ||
-          shape?.type !== 'ObjectExpression'
-        ) {
+        const definesShape =
+          isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES) ||
+          SHAPE_METHODS.has(memberName(node.callee));
+        if (!definesShape || shape?.type !== 'ObjectExpression') {
           return;
         }
         for (const property of shape.properties) {

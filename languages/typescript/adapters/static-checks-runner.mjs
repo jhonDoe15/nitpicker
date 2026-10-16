@@ -10,6 +10,10 @@ import { runTypecheck } from './static-checks/typescript.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { existingRoots } from '../preset/layout.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import {
+  REACH_THROUGH_SHARED_RULE,
+  sharedReachPath,
+} from '../preset/architecture/strict-boundary-rules.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -62,21 +66,32 @@ function runArchitecture(options) {
   return normalizeArchitectureViolations(report, options.analyzerName);
 }
 
+function reportedViolations(report) {
+  const modules = Array.isArray(report.modules) ? report.modules : [];
+  return report.summary.violations.flatMap((violation) => {
+    if (violation?.rule?.name !== REACH_THROUGH_SHARED_RULE) {
+      return [violation];
+    }
+    const via = sharedReachPath(violation, modules);
+    return via === undefined ? [] : [{ ...violation, via: via.map((name) => ({ name })) }];
+  });
+}
+
 export function normalizeArchitectureViolations(report, analyzerName) {
   if (!Array.isArray(report?.summary?.violations)) {
     throw new TypeError('dependency-cruiser report is missing summary.violations');
   }
   const occurrences = new Map();
   const comments = ruleComments(report);
-  return report.summary.violations.map((violation, index) => {
+  return reportedViolations(report).map((violation, index) => {
     const context = `dependency-cruiser violation ${String(index)}`;
     const rule = requiredString(violation?.rule?.name, `${context}.rule.name`);
     const severity = requiredString(violation?.rule?.severity, `${context}.rule.severity`);
     const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
-    const to = normalizedRelativePath(requiredString(violation.to, `${context}.to`), context);
+    const to = displayedPath(requiredString(violation.to, `${context}.to`));
     const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
     const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
-    const canonicalPath = cycle?.[0] ?? from;
+    const canonicalPath = cycle !== undefined && isInSnapshot(cycle[0]) ? cycle[0] : from;
     const occurrenceKey = JSON.stringify([rule, canonicalPath, semanticIdentity]);
     const occurrence = (occurrences.get(occurrenceKey) ?? 0) + 1;
     occurrences.set(occurrenceKey, occurrence);
@@ -87,7 +102,7 @@ export function normalizeArchitectureViolations(report, analyzerName) {
       identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
       message: withComment(
         cycle === undefined
-          ? `${from} must not depend on ${to}${viaText(violation.via, context)}`
+          ? `${from} must not depend on ${to}${viaText(violation.via)}`
           : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
         comments.get(rule),
       ),
@@ -96,18 +111,26 @@ export function normalizeArchitectureViolations(report, analyzerName) {
   });
 }
 
+function displayedPath(value) {
+  return path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
+}
+
+function isInSnapshot(value) {
+  return !value.startsWith('../') && !path.posix.isAbsolute(value) && !/^[A-Za-z]:\//.test(value);
+}
+
 function canonicalCycle(value, context) {
   if (!Array.isArray(value) || value.length < 2) {
     throw new TypeError(`${context}.cycle must contain at least two modules`);
   }
   const names = value.map((item, index) =>
-    normalizedRelativePath(
-      requiredString(item?.name, `${context}.cycle[${String(index)}].name`),
-      context,
-    ),
+    displayedPath(requiredString(item?.name, `${context}.cycle[${String(index)}].name`)),
   );
   const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
-  return rotations.sort((left, right) => left.join('\0').localeCompare(right.join('\0')))[0];
+  const inSnapshot = rotations.filter(([first]) => isInSnapshot(first));
+  return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) =>
+    left.join('\0').localeCompare(right.join('\0')),
+  )[0];
 }
 
 function ruleComments(report) {
@@ -123,17 +146,12 @@ function withComment(message, comment) {
   return comment === undefined ? message : `${message}. ${comment}`;
 }
 
-function viaText(via, context) {
+function viaText(via) {
   if (!Array.isArray(via) || via.length < 2) {
     return '';
   }
   const steps = via
     .slice(0, -1)
-    .map((step, index) =>
-      normalizedRelativePath(
-        requiredString(step?.name, `${context}.via[${String(index)}].name`),
-        context,
-      ),
-    );
+    .map((step) => (typeof step?.name === 'string' ? displayedPath(step.name) : '?'));
   return ` through ${steps.join(' -> ')}`;
 }

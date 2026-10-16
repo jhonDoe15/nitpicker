@@ -21,7 +21,7 @@ function readManifest(projectRoot) {
   }
 }
 
-function readDependencyNames(projectRoot) {
+export function readDependencyNames(projectRoot) {
   const manifest = readManifest(projectRoot);
   return [
     ...Object.keys(manifest?.dependencies ?? {}),

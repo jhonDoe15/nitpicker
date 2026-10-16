@@ -1,9 +1,13 @@
-import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { depthFirst } from '../../../../../../shared/traversal.mjs';
+import { variableNamed } from '../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import { isContained, unwrapped } from './path-containment.mjs';
 
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
 const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);
-const TWO_PATH_FUNCTIONS = new Set(['rename', 'copyFile'].flatMap((name) => [name, `${name}Sync`]));
+const TWO_PATH_FUNCTIONS = new Set(
+  ['rename', 'copyFile', 'cp', 'symlink', 'link'].flatMap((name) => [name, `${name}Sync`]),
+);
 const FS_FUNCTIONS = new Set(
   [
     'readFile',
@@ -12,37 +16,39 @@ const FS_FUNCTIONS = new Set(
     'readdir',
     'unlink',
     'rm',
+    'rmdir',
     'stat',
+    'lstat',
     'access',
+    'exists',
     'mkdir',
     'open',
+    'opendir',
     'readlink',
+    'realpath',
     'truncate',
+    'chmod',
+    'chown',
+    'utimes',
     'createReadStream',
   ]
     .flatMap((name) => [name, `${name}Sync`])
-    .concat(['createWriteStream', ...TWO_PATH_FUNCTIONS]),
+    .concat(['createWriteStream', 'watch', ...TWO_PATH_FUNCTIONS]),
 );
 const RESPONSE_SINKS = new Set(['sendFile']);
-const WRAPPED_EXPRESSIONS = new Set([
-  'TSAsExpression',
-  'TSNonNullExpression',
-  'TSSatisfiesExpression',
-  'ChainExpression',
-]);
-const PATH_BUILDERS = new Set(['join', 'resolve']);
+const PATH_BUILDERS = new Set(['join', 'resolve', 'normalize']);
 const MAX_TAINT_STEPS = 50;
-const FUNCTION_TYPES = new Set([
-  'FunctionDeclaration',
-  'FunctionExpression',
-  'ArrowFunctionExpression',
-]);
 
-function constantInitializer(sourceCode, identifier) {
-  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
-  return definition?.type === 'Variable' && definition.parent.kind === 'const'
-    ? (definition.node.init ?? undefined)
-    : undefined;
+function boundValues(sourceCode, identifier) {
+  const variable = variableNamed(sourceCode, identifier);
+  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
+  if (definition?.type !== 'Variable') {
+    return [];
+  }
+  const writes = variable.references
+    .filter((reference) => reference.isWrite() && reference.writeExpr)
+    .map((reference) => reference.writeExpr);
+  return [...new Set([definition.node.init, ...writes].filter(Boolean))];
 }
 
 function isParameter(sourceCode, identifier) {
@@ -58,14 +64,13 @@ function callTaintSources(call, pathModule) {
 }
 
 function taintSources(scope, expression) {
-  if (WRAPPED_EXPRESSIONS.has(expression.type)) {
-    return [expression.expression];
+  const inner = unwrapped(expression);
+  if (inner !== expression) {
+    return [inner];
   }
   switch (expression.type) {
-    case 'Identifier': {
-      const initializer = constantInitializer(scope.sourceCode, expression);
-      return initializer === undefined ? [] : [initializer];
-    }
+    case 'Identifier':
+      return boundValues(scope.sourceCode, expression);
     case 'MemberExpression':
       return [expression.object];
     case 'CallExpression':
@@ -97,37 +102,45 @@ function isTainted(scope, expression) {
   return false;
 }
 
-function joinedPath(sourceCode, argument) {
-  if (argument?.type === 'Identifier') {
-    return { call: constantInitializer(sourceCode, argument), name: argument.name };
+function isConcatenation(node) {
+  return node.type === 'BinaryExpression' && node.operator === '+';
+}
+
+function concatenationOperands(node) {
+  return isConcatenation(node) ? [node.left, node.right] : [];
+}
+
+function concatenated(expression) {
+  const leaves = [...depthFirst(expression, concatenationOperands)];
+  return leaves.filter((node) => !isConcatenation(node));
+}
+
+function pathParts(scope, node) {
+  if (node.type === 'CallExpression') {
+    const builds = PATH_BUILDERS.has(importedCalleeName(node.callee, scope.pathModule));
+    return builds ? node.arguments : undefined;
   }
-  return { call: argument, name: undefined };
-}
-
-function escaped(text) {
-  return text.replaceAll(/[$]/g, String.raw`\$`);
-}
-
-function checksContainment(sourceCode, owner, name) {
-  if (name === undefined) {
-    return false;
+  if (node.type === 'TemplateLiteral') {
+    const startsWithText = node.quasis[0].value.cooked !== '';
+    return startsWithText ? [undefined, ...node.expressions] : node.expressions;
   }
-  const variable = escaped(name);
-  const checks = [
-    String.raw`\b${variable}\.startsWith\(`,
-    String.raw`\bresolve\(\s*${variable}\s*\)\.startsWith\(`,
-    String.raw`\brelative\([^)]*\b${variable}\b`,
-  ];
-  const check = new RegExp(checks.join('|'), 'u');
-  return check.test(sourceCode.getText(owner));
+  return isConcatenation(node) ? concatenated(node) : undefined;
 }
 
-function isUnsafeBuild(scope, call) {
-  return (
-    call?.type === 'CallExpression' &&
-    PATH_BUILDERS.has(importedCalleeName(call.callee, scope.pathModule)) &&
-    call.arguments.slice(1).some((segment) => isTainted(scope, segment))
-  );
+function isUnsafeBuild(scope, expression) {
+  const pending = [expression];
+  for (const current of pending) {
+    const node = unwrapped(current);
+    const parts = node.type === 'Identifier' ? undefined : pathParts(scope, node);
+    if (parts?.slice(1).some((segment) => segment && isTainted(scope, segment))) {
+      return true;
+    }
+    if (pending.length < MAX_TAINT_STEPS) {
+      const next = node.type === 'Identifier' ? boundValues(scope.sourceCode, node) : parts;
+      pending.push(...(next ?? []).filter(Boolean));
+    }
+  }
+  return false;
 }
 
 function fsBindings(program) {
@@ -159,21 +172,20 @@ export const rule = {
     schema: [],
     messages: {
       unsafePath:
-        "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. If the parameter is a fixed file name, add an exception for this rule in nitpicker.config.json.",
+        "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable in an `if` that returns or throws: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. If the parameter is a fixed file name, add an exception for this rule in nitpicker.config.json.",
     },
   },
   create(context) {
     const sourceCode = context.sourceCode;
     let fs = { named: new Map(), namespaces: new Set() };
-    const scope = { sourceCode, pathModule: { named: new Map(), namespaces: new Set() } };
+    const scope = {
+      context,
+      sourceCode,
+      pathModule: { named: new Map(), namespaces: new Set() },
+    };
 
     function isUnsafeSink(node, argument) {
-      const { call, name } = joinedPath(sourceCode, argument);
-      if (!isUnsafeBuild(scope, call)) {
-        return false;
-      }
-      const owner = ancestorsOf(node).find((ancestor) => FUNCTION_TYPES.has(ancestor.type));
-      return !checksContainment(sourceCode, owner, name);
+      return isUnsafeBuild(scope, argument) && !isContained(scope, node, argument);
     }
 
     return {
