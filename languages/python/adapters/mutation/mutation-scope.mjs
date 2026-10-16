@@ -4,6 +4,7 @@ import { pytestCommand } from '../execution/python-test-runner.mjs';
 import { pinnedEnvironmentAddopts } from '../test-runs/pytest-pins.mjs';
 import { failingModules, readJunit } from '../test-runs/junit-results.mjs';
 import { snapshotScope } from '../test-runs/test-failures.mjs';
+import { MUTANTS_DIRECTORY } from './python-mutation-data.mjs';
 
 const MUTMUT_TOOL = 'mutmut';
 const MINIMUM_PYTHON = [3, 10];
@@ -52,9 +53,12 @@ export function failedOnProjectTests(message) {
   return stats === null ? message.includes(CLEAN_RUN_FAILURE) : stats[1] !== NO_TESTS_EXIT;
 }
 
-/** Runs pytest once without mutants and names the test modules that fail or cannot be collected. */
+/**
+ * Runs pytest once on the snapshot itself (not mutmut's copy in mutants/) and names the test
+ * modules that fail or cannot be collected.
+ */
 export function failingTestModules(context) {
-  run(context, ['python', ...pytestCommand(context)], {
+  run(context, ['python', ...pytestCommand(context), `--ignore=${MUTANTS_DIRECTORY}`], {
     accepted: () => true,
     rule: 'mutation-failed',
     env: pinnedEnvironmentAddopts(process.env.PYTEST_ADDOPTS),
