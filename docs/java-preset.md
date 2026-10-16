@@ -739,7 +739,8 @@ A Checkstyle rule prints as its full check class, for example
   (Apache-2.0, one jar from Maven Central, pinned in the init script) reads the main bytecode
   against `rules/forbidden-apis.txt`. Each signature group has a tag that becomes the rule name
   (`thread-sleep`); the report is `forbidden-apis.txt`. Source locations come
-  from the class's debug line numbers. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
+  from the class's debug line numbers; a field, parameter, return type, record component or
+  supertype of a banned type is placed on its declaration in the source. `new-thread` bans `Thread.start()`, so a `ThreadFactory`
   or `Runtime.addShutdownHook` may still construct a `Thread`. `legacy-date-time` skips a
   statement that converts a `Date` another API returns with `toInstant()` and does not name `Date`
   itself (`certificate.getNotAfter().toInstant()`).
