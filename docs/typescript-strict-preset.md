@@ -128,6 +128,42 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
 - Named exports only; config files are exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
+- `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
+  `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
+  literals of a union that has at least three members, when the chain is a predicate's value: an
+  arrow body, a `return`, or a value stored in a variable or assigned (also inside `!`, another
+  `&&`/`||` or a ternary branch). A chain used as the condition of an `if`, `while`, `for` or
+  ternary is ordinary narrowing and is not reported, and neither is a call argument. Allowed forms: a `switch` over the union with no `default`, or a
+  `Record<Union, boolean>` lookup, so adding a member fails to compile. A subset check such as
+  `status === 'open' || status === 'pending'` on a project union of three or more members is the
+  case this reports. The message names the union by its alias (`Kind`) when the value's declared type
+  has one, also after the value was narrowed or when it is `Kind | undefined`; an inline union is
+  reported as "the union". It is not reported when the union comes from a library (its alias, or the
+  property it is read from, is declared in `node_modules` or the default library, including a local
+  binding or destructured parameter that holds a library value), when the comparison is on a
+  property of a union-typed object (`event.type === 'a' || event.type === 'b'`, which narrows a
+  discriminated union), or inside a function whose return type is a type predicate (`kind is
+'a' | 'b'`), which names the subset in its type. The type is read at the first comparison, so an
+  earlier guard that already narrowed the union can shrink it below three members. Add an exception
+  for the rule when a partial test is intended.
+- `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
+  whose body is one `return` (or an expression body) of a call that passes exactly its own
+  parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`) is
+  flagged when its parameter types and return type are identical to the callee's, so a wrapper that
+  brands, narrows or widens a type passes. The callee must be a module-level binding or an import
+  that the file could re-export or the caller could import directly. Not flagged: member callees
+  (`repo.find(id)`, `Math.abs(x)`, `api.get(url)`), callees that are parameters or closure variables
+  (injected dependencies), functions declared inside a component, factory or other function,
+  overload implementations, type-predicate and `asserts` functions (on either side), parameters
+  whose optional or rest form differs from the callee's (`b?: number` over `b: number | undefined`),
+  methods, `async` and generator functions, functions with type
+  parameters, calls with type arguments, optional calls, PascalCase names (components), functions
+  without parameters, default, destructured or transformed parameters, and a `const` with a type
+  annotation. A wrapper around a hook (`useUser(key)` over an imported `useQuery(key)`) is reported
+  like any other when the callee is module-level. For an exported wrapper (an `export` declaration,
+  `export default`, or an export list) the message gives the re-export under the exported name,
+  `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
+  call the callee directly and delete the wrapper.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
@@ -319,6 +355,42 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
   (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
+- **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
+  type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
+  two ways to pass the same data. The rule reports the plural when both props are optional and the
+  plural is an array (`T[]`, `readonly T[]`, `Array<T>`, `ReadonlyArray<T>`) of the singular's type;
+  keep the plural and pass a single item as a one-element array. Props that differ in type, a
+  required prop, a prop typed `never` in a discriminated union and props in different union branches
+  are not reported. Aliases and interfaces in the same file are followed; types imported from other
+  files are not.
+- **Exclusive props are a type, not a check** (`nitpicker/no-runtime-exclusive-props-check`). An
+  `if` in a component body whose condition tests two or more of its own props the same way (`a && b`,
+  `!a && !b`, `a !== undefined && b !== undefined`, `a != null && b != null`, only `&&` chains of
+  props with nothing else in them) and whose branch rejects, by `throw`, `console.error(...)` or
+  `console.warn(...)`, is flagged: make the props a discriminated union
+  (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the
+  combination. Props are the destructured parameter names or `props.name`. A branch that renders a
+  fallback, returns `null`, logs at another level or sets state is not flagged, and neither is a check
+  inside a nested function or a hook callback.
+- **A story for every component, where Storybook is used** (`component-story-missing`, a check of
+  the `structure` analyzer, not an ESLint rule). A package whose nearest `package.json` lists
+  `storybook` or an `@storybook/*` package is checked: each source file in it that exports a real
+  component (a function returning JSX, a `memo` or `forwardRef` result or a class extending
+  `Component` or `PureComponent`; not objects, arrays or tables holding JSX) needs a story. The
+  story is `<Name>.stories.<ext>` or `<Name>.story.<ext>` (any code extension, the story pattern
+  the i18n scope uses), anywhere under the source roots of the same package (beside the component,
+  in a `__stories__` folder or in a top-level `src/stories/` as Storybook's setup creates it), named
+  after any component the file exports, after the file, or after the folder for an `index.*` file
+  (`Card/index.tsx` with `Card/Card.stories.tsx`). MDX docs pages do not count, because they hold
+  no stories. Story files and files under `__stories__` or `stories` are not components. Each
+  component of a file without a story is its own finding, located at its declaration, so a second
+  component added to a file that has none is a new finding. A finding is enforced when more than half of the checked
+  components have a story, and only reported (`descriptive`) otherwise, so a project adopting
+  stories is not failed on every old component. That decision, and whether Storybook is present, are
+  read from the head checkout on both sides of a comparison, so a pull request that adds Storybook or
+  crosses the half mark does not turn untouched components into new findings. An exception lists the
+  file; the message carries the exact entry:
+  `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
@@ -340,7 +412,15 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   (`nitpicker/react-test-no-implementation-details`): no `.instance()`, `.state()`, `.setState()` or
   test-renderer `findByType`/`findByProps`, no React fiber internals (`_reactInternals`,
   `stateNode`, `memoizedState`) and no `spyOn(React, 'useState')`; assert what the user sees. An
-  element with no role or accessible name needs an exception. A project with
+  element with no role or accessible name needs an exception. A test file that hovers
+  (`user.hover`, `userEvent.hover`, `fireEvent.mouseEnter` or `mouseOver`, or a `user.pointer` call
+  that only moves to a `target`) must also exercise the keyboard path somewhere in the same file:
+  `user.tab()`, `user.keyboard(...)`, `user.type(...)` with a `{Enter}`-style key token, `.focus()`,
+  `fireEvent.focus`, `focusIn`, `keyDown`, `keyUp` or `keyPress`, a `press`, `down` or `up` call
+  (`locator.press('Enter')`), or any call through a `keyboard` object (`page.keyboard.press('Tab')`).
+  `nitpicker/hover-test-needs-keyboard`
+  reports the first hover when none appears: add a test that tabs to the element and asserts the
+  same state. A hover-only control gets an exception. A project with
   `@testing-library/react-native` keeps `testID` queries, the idiom there.
 
 The plugins are `eslint-plugin-react-hooks`, `eslint-plugin-react-x` (from eslint-react),

@@ -7,7 +7,7 @@ const scopePackages = {
   i18n: ['react-intl', '@formatjs/intl'],
 };
 
-const storySuffixes = ['stories', 'story'];
+export const storySuffixes = ['stories', 'story'];
 export const storyGlobs = [`**/*.{${storySuffixes.join(',')}}.${codeExtensions}`];
 
 function readManifest(projectRoot) {
