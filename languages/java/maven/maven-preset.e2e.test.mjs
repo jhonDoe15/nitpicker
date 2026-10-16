@@ -1,9 +1,18 @@
-import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings, runJavaDiff } from '../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
+import { testCasesOf } from '../adapters/test-times/slow-tests.mjs';
 import {
   commitBranch,
   GRADLE_STEP_TIMEOUT_MS,
@@ -26,6 +35,10 @@ public class Dated {
         if (a > 0) { if (b > 0) { if (c > 0) { if (d > 0) { return new Date(); } } } }
         try { Integer.parseInt("x"); } catch (NumberFormatException e) { }
         return new Date(new String(new byte[] {1}).length());
+    }
+
+    public String shout(String text) {
+        return text.toUpperCase();
     }
 }
 `;
@@ -66,6 +79,29 @@ function copyOf(...sources) {
   return root;
 }
 
+function copiedTestCases(project) {
+  const results = path.join(project, 'target/nitpicker/test-results');
+  return readdirSync(results)
+    .sort()
+    .flatMap((task) =>
+      readdirSync(path.join(results, task))
+        .sort()
+        .flatMap((name) => testCasesOf(readFileSync(path.join(results, task, name), 'utf8'), task)),
+    );
+}
+
+function lineCoverage(text, value) {
+  return {
+    tool: 'jacoco',
+    rule: 'line-coverage',
+    path: 'src/main/java/demo/Greeter.java',
+    identity: 'line-coverage',
+    metric: { name: 'line-coverage', value },
+    message: `line-coverage ${text}`,
+    classification: 'descriptive',
+  };
+}
+
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 afterAll(() => {
@@ -96,6 +132,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'checkstyle',
         'coupling',
         'crap',
+        'errorprone',
         'google-java-format',
         'jacoco',
         'pit',
@@ -111,7 +148,10 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     'reads every module of a reactor under the module path, with coupling across modules',
     () => {
       const project = copyOf(path.join(fixtures, 'multi-module'));
-      const findings = collectJavaFindings(project, { maven, policy: {} });
+      const findings = collectJavaFindings(project, {
+        maven,
+        policy: { testSeconds: { unitTestSeconds: -1 } },
+      });
       const metrics = (file) =>
         findings
           .filter((finding) => finding.path === file && finding.metric !== undefined)
@@ -120,9 +160,12 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
       expect(
         findings
-          .filter((finding) => finding.tool === 'pmd')
-          .map(({ rule, path: file }) => `${rule} ${file}`),
-      ).toEqual(['SystemPrintln app/src/main/java/demo/app/Main.java']);
+          .filter((finding) => ['errorprone', 'pmd'].includes(finding.tool))
+          .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
+      ).toEqual([
+        'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
+        'errorprone SystemOut app/src/main/java/demo/app/Main.java',
+      ]);
       expect(metrics('core/src/main/java/demo/core/Adder.java')).toEqual([
         'coupling fanIn 1',
         'coupling fanOut 0',
@@ -137,6 +180,97 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         'checks/src/test/java/demo/checks/AdderIT.java',
         'core',
         'core/src/main/java/demo/core/Adder.java',
+        'core/src/test/java/demo/core/AdderTest.java',
+      ]);
+      expect(
+        findings
+          .filter((finding) => finding.tool === 'test-runtime')
+          .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
+      ).toEqual([
+        'slow-test core/src/test/java/demo/core/AdderTest.java test:demo.core.AdderTest#adds',
+      ]);
+      expect(
+        existsSync(
+          path.join(
+            project,
+            'core/target/nitpicker/test-results/surefire/TEST-demo.core.AdderTest.xml',
+          ),
+        ),
+      ).toBe(true);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'runs verify when Failsafe is bound, counting its tests for coverage and the integration budget',
+    () => {
+      const project = copyOf(path.join(fixtures, 'failsafe'));
+      const findings = collectJavaFindings(project, {
+        maven,
+        policy: { testSeconds: { integrationTestSeconds: -1 } },
+      });
+      const cases = copiedTestCases(project);
+      const seconds = cases[0].seconds.toFixed(1);
+      const exception =
+        '{"rule":"test-runtime/slow-test","paths":["src/test/java/demo/GreeterIT.java"],"reason":"..."}';
+
+      expect(cases.map(({ task, className, name }) => `${task} ${className}#${name}`)).toEqual([
+        'failsafe demo.GreeterIT#saysGoodbye',
+        'surefire demo.GreeterTest#greets',
+      ]);
+      expect(existsSync(path.join(project, 'target/greeter-1.0.jar'))).toBe(true);
+      expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
+        lineCoverage('100% (3/3)', 100),
+      ]);
+      expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([
+        {
+          tool: 'test-runtime',
+          rule: 'slow-test',
+          path: 'src/test/java/demo/GreeterIT.java',
+          identity: 'test:demo.GreeterIT#saysGoodbye',
+          location: { line: 9 },
+          message:
+            `GreeterIT saysGoodbye took ${seconds} s; an integration test may take -1 s. ` +
+            'Remove Thread.sleep and other waits, start a smaller Spring context or a test slice. ' +
+            `If this is intended, add ${exception} to "exceptions" in nitpicker.config.json.`,
+          classification: 'enforceable',
+        },
+      ]);
+    },
+    GRADLE_STEP_TIMEOUT_MS,
+  );
+
+  it(
+    'stays on test when the project keeps its integration tests off with skipITs',
+    () => {
+      const project = copyOf(path.join(fixtures, 'failsafe'));
+      const pom = path.join(project, 'pom.xml');
+      writeFileSync(
+        pom,
+        readFileSync(pom, 'utf8').replace('<properties>', '<properties><skipITs>true</skipITs>'),
+      );
+      const findings = collectJavaFindings(project, { maven, policy: {} });
+
+      expect(
+        copiedTestCases(project).map(({ task, className, name }) => `${task} ${className}#${name}`),
+      ).toEqual(['surefire demo.GreeterTest#greets']);
+      expect(
+        ['target/failsafe-reports', 'target/greeter-1.0.jar'].map((file) =>
+          existsSync(path.join(project, file)),
+        ),
+      ).toEqual([false, false]);
+      expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
+        lineCoverage('66.67% (2/3)', 66.67),
+        {
+          tool: 'jacoco',
+          rule: 'uncovered-method',
+          path: 'src/main/java/demo/Greeter.java',
+          identity: 'cov:a14fde8c431ba476',
+          symbol: 'demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
+          message:
+            'Method demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String; is not covered',
+          classification: 'descriptive',
+        },
       ]);
     },
     GRADLE_STEP_TIMEOUT_MS,
@@ -187,11 +321,9 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       );
 
       expect(failing).toEqual(
-        [
-          'checkstyle com.puppycrawl.tools.checkstyle.checks.blocks.EmptyCatchBlockCheck',
-          'pit mutant-nocoverage',
-          'pmd EmptyCatchBlock',
-        ].map((finding) => `${finding} app/src/main/java/demo/app/Parser.java`),
+        ['errorprone EmptyCatch', 'pit mutant-nocoverage'].map(
+          (finding) => `${finding} app/src/main/java/demo/app/Parser.java`,
+        ),
       );
     },
     2 * GRADLE_STEP_TIMEOUT_MS,

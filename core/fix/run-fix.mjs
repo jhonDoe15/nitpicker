@@ -3,8 +3,7 @@ import {
   resolveHeadPolicy,
   withHeadPolicyFile,
   headPolicyEnvironment,
-  usesProjectConfig,
-  prettierPrecedence,
+  usesLayeredPrettier,
 } from '../../languages/typescript/preset/head-policy.mjs';
 import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { collectWorkingTreeChanges, readBaseFiles } from './changes.mjs';
@@ -195,7 +194,7 @@ function parseBaseCheck(result, expectedCount) {
 
 function writePrettier(settings, safeFiles) {
   try {
-    if (usesProjectConfig(prettierPrecedence(settings.policyEnvironment))) {
+    if (usesLayeredPrettier(settings.policyEnvironment)) {
       writeLayeredPrettier(settings, safeFiles);
       return [];
     }
@@ -231,6 +230,7 @@ function writePolicyPrettier({ projectRoot, policyEnvironment, executeFixCommand
       path.join(PACKAGE_ROOT, prettierPolicy.configRelativePath),
       '--ignore-path',
       path.join(PACKAGE_ROOT, prettierPolicy.ignoreRelativePath),
+      '--no-editorconfig',
       '--write',
       '--',
       ...safeFiles.map(({ path: name }) => `./${name}`),

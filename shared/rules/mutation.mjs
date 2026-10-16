@@ -13,13 +13,13 @@ const REPLACEMENT_LIMIT = 80;
 const EQUIVALENT_MUTANT_WAY_OUT =
   'If no input can tell the two apart, simplify the code so this mutant disappears.';
 
-export function mutantFindings(mutants, { tool }) {
+export function mutantFindings(mutants, { tool, wayOut = EQUIVALENT_MUTANT_WAY_OUT }) {
   return mutants.map((mutant) => ({
     tool,
     rule: mutantRuleId(mutant.status),
     path: mutant.path,
     identity: mutant.identity,
-    message: mutantMessage(mutant),
+    message: mutantMessage(mutant, wayOut),
     classification: ENFORCED_MUTATION_STATUSES.includes(mutant.status)
       ? 'enforceable'
       : 'descriptive',
@@ -48,7 +48,10 @@ function inlineCode(value) {
   return shown.includes('`') ? `\`\` ${shown} \`\`` : `\`${shown}\``;
 }
 
-export function mutantMessage({ status, label, replacement, original, column }) {
+export function mutantMessage(
+  { status, label, replacement, original, column },
+  wayOut = EQUIVALENT_MUTANT_WAY_OUT,
+) {
   const name = `${status} ${label}${positiveInteger(column) === undefined ? '' : ` at column ${String(column)}`}`;
   if (status === 'NoCoverage') {
     return `${name}: no test runs this code. Add a test that reaches it.`;
@@ -57,8 +60,8 @@ export function mutantMessage({ status, label, replacement, original, column }) 
     return name;
   }
   if (replacement === undefined) {
-    return `${name}: no test fails when this code changes. Add an assertion that would. ${EQUIVALENT_MUTANT_WAY_OUT}`;
+    return `${name}: no test fails when this code changes. Add an assertion that would. ${wayOut}`;
   }
   const subject = original === undefined ? 'this code' : inlineCode(original);
-  return `${name}: replacing ${subject} with ${inlineCode(replacement)} fails no test. Add an assertion that would. ${EQUIVALENT_MUTANT_WAY_OUT}`;
+  return `${name}: replacing ${subject} with ${inlineCode(replacement)} fails no test. Add an assertion that would. ${wayOut}`;
 }

@@ -19,7 +19,7 @@ function gradleArguments(policy) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-style-')));
   roots.push(root);
   analyzeJavaSnapshot(root, { gradle: fakeGradle, policy });
-  return JSON.parse(readFileSync(path.join(root, 'build/nitpicker/gradle-args.json'), 'utf8'));
+  return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8'));
 }
 
 describe('javaStyleProperties', () => {

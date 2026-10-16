@@ -7,16 +7,19 @@
     "allowSyntheticDefaultImports": true,
     "allowJs": true,
     "esModuleInterop": true,
+    "exactOptionalPropertyTypes": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true,
+    "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
+    "noUncheckedSideEffectImports": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src/**/*", "test/**/*", "tests/**/*", "vitest*.ts"],
+  "include": ["src/**/*", "test/**/*", "tests/**/*", "__tests__/**/*", "e2e/**/*", "vitest*.ts"],
   "exclude": [
     "**/dist/**",
     "**/build/**",
@@ -24,7 +27,6 @@
     "**/node_modules/**",
     "**/coverage/**",
     "**/reports/**",
-    "**/target/**",
-    "**/*.d.ts"
+    "**/target/**"
   ]
 }

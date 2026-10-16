@@ -12,6 +12,7 @@ import { JAVA_TOOLS, PROJECT_TOOL_CONFIGS } from './gradle-presets.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/policy-size.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { evaluateBaselineExpansions } from '../../../shared/rules/baseline-expansion.mjs';
+import { checkstyleRuleName } from '../messages/rule-messages.mjs';
 
 export const EXCEPTION_SEPARATOR = ':';
 const FILE_LIMIT_THRESHOLDS = [
@@ -24,6 +25,7 @@ const FILE_LIMIT_THRESHOLDS = [
   'classFields',
   'inheritanceDepth',
 ];
+const TEST_TIME_THRESHOLDS = ['unitTestSeconds', 'integrationTestSeconds'];
 const NATIVE_LINE_LENGTH = {
   java: `Java keeps ${String(JAVA_LINE_LENGTH)} characters per line, where google-java-format wraps; lift the rule for some paths with an exception for "line-length-limit"`,
   kotlin: `detekt checks Kotlin line length (set style>MaxLineLength in config/detekt/detekt.yml); the Java files keep ${String(JAVA_LINE_LENGTH)} characters per line, and an exception for "line-length-limit" lifts that for some paths`,
@@ -58,6 +60,12 @@ function validateJavaExceptionRule(rule, label) {
     return;
   }
   const [tool] = rule.split('/');
+  const checkstyleRule = rule.slice('checkstyle/'.length);
+  if (tool === 'checkstyle' && checkstyleRuleName(checkstyleRule) !== checkstyleRule) {
+    throw configError(
+      `"${label}" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/${checkstyleRuleName(checkstyleRule)}"`,
+    );
+  }
   if (!JAVA_TOOLS.includes(tool) || rule.length <= tool.length + 1) {
     throw configError(
       `"${label}" must name a finding as it is printed, "<tool>/<rule>" (for example "pmd/SpringConstructorInjection"), or one of ${JAVA_EXCEPTION_RULES.join(', ')}. Tools: ${JAVA_TOOLS.join(', ')}`,
@@ -72,11 +80,13 @@ function javaAdapterArguments({
   kotlin = {},
   tools = {},
 }) {
-  const fileLimits = fileLimitThresholds(thresholds);
+  const fileLimits = chosenThresholds(thresholds, FILE_LIMIT_THRESHOLDS);
+  const testSeconds = chosenThresholds(thresholds, TEST_TIME_THRESHOLDS);
   return [
     ...(thresholds.crapLimit === undefined ? [] : ['--crap-limit', String(thresholds.crapLimit)]),
     ...exclude.flatMap((glob) => ['--exclude', glob]),
     ...(fileLimits === undefined ? [] : ['--file-limits', JSON.stringify(fileLimits)]),
+    ...(testSeconds === undefined ? [] : ['--test-seconds', JSON.stringify(testSeconds)]),
     ...exceptions.flatMap(({ rule, paths }) =>
       paths.flatMap((glob) => ['--exception', `${rule}${EXCEPTION_SEPARATOR}${glob}`]),
     ),
@@ -161,8 +171,8 @@ function filesUnder(root, directory) {
     .sort();
 }
 
-function fileLimitThresholds(thresholds) {
-  const limits = FILE_LIMIT_THRESHOLDS.filter((key) => thresholds[key] !== undefined);
+function chosenThresholds(thresholds, keys) {
+  const limits = keys.filter((key) => thresholds[key] !== undefined);
   return limits.length === 0
     ? undefined
     : Object.fromEntries(limits.map((key) => [key, thresholds[key]]));
@@ -189,12 +199,15 @@ export function applyJavaPolicy(
     preset = 'java',
     inventoryTool = preset,
   } = {},
+  resolveOverlaps = (reported) => reported,
 ) {
   const excluders = exclude.map((glob) => globToRegExp(glob));
   const lifted = exceptions.map(({ rule, glob }) => ({ rule, matcher: globToRegExp(glob) }));
-  const kept = findings.filter(
-    (finding) =>
-      !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
+  const kept = resolveOverlaps(
+    findings.filter(
+      (finding) =>
+        !excluders.some((matcher) => matcher.test(finding.path)) && !isLifted(finding, lifted),
+    ),
   );
   if (legacyInventory === undefined || policyRoot === undefined) {
     return kept;

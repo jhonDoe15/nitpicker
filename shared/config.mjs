@@ -19,7 +19,11 @@ export const THRESHOLD_KEYS = [
   'classMethods',
   'classFields',
   'inheritanceDepth',
+  'unitTestSeconds',
+  'integrationTestSeconds',
 ];
+const TEST_TIME_KEYS = ['unitTestSeconds', 'integrationTestSeconds'];
+const TEST_TIME_PRESETS = new Set(['java', 'kotlin']);
 const THRESHOLD_PRESETS = {
   folderDepth: ['typescript', 'javascript', 'java', 'kotlin'],
   classMethods: ['java', 'kotlin'],
@@ -62,6 +66,12 @@ export function validateStringArray(value, name) {
 export function validateThresholds(thresholds, preset = 'typescript') {
   if (!isPlainObject(thresholds)) {
     throw configError('"thresholds" must be an object');
+  }
+  const testTime = TEST_TIME_KEYS.find((key) => thresholds[key] !== undefined);
+  if (testTime !== undefined && !TEST_TIME_PRESETS.has(preset)) {
+    throw configError(
+      `"thresholds.${testTime}" is supported only with "preset": "java" or "kotlin"`,
+    );
   }
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {

@@ -13,6 +13,7 @@ export const KOTLIN_EXCEPTION_RULES = [
   ...ONE_WAY_RULE_IDS,
   ...SHARED_EXCEPTION_RULES,
   ...JAVA_SIZE_RULES,
+  'test-runtime/slow-test',
 ];
 
 function validateKotlinExceptions(config) {
