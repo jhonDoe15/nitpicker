@@ -15,7 +15,7 @@ import {
   TYPECHECK_FAILED_SKIPPED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import { toolErrorFinding } from '../reporting/vitest.mjs';
+import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 

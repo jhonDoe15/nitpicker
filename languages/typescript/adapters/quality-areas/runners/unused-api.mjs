@@ -9,7 +9,7 @@ import {
   testOnlyExportFindings,
 } from '../../../preset/unused-api/test-only/test-only-exports.mjs';
 import { loadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { toolErrorFinding } from '../reporting/vitest.mjs';
+import { toolErrorFinding } from '../reporting/test-report.mjs';
 import { importPolicyModule, policyFile } from './tooling.mjs';
 
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
