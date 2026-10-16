@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { createFakeProjects } from '../../test-support/fake-project.mjs';
 import { pyrightConfig } from './pyright-config.mjs';
 
 const fakes = createFakeProjects();

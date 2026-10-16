@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { jscpdVersion } from '../../java/adapters/metrics/java-duplicates.mjs';
 import { createFakeProjects } from './test-support/fake-project.mjs';
 import { toolVersions } from './python-tools.mjs';
-import { pyrightConfig } from './project-tools/pyright-config.mjs';
+import { pyrightConfig } from './project-tools/pyright/pyright-config.mjs';
 import { resolveTypeChecker, typeCheck } from './python-types.mjs';
 
 const fakes = createFakeProjects();

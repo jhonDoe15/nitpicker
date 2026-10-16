@@ -9,8 +9,7 @@ export const MYPY_LOOKED =
 const ANY_MODULE = '*';
 
 export function mypyLayers(context) {
-  const layers = toolLayers(context, MYPY_TOOL);
-  return { ...layers, appliesProject: layers.optedIn && !layers.nitpickerFirst };
+  return toolLayers(context, MYPY_TOOL);
 }
 
 function moduleName(entry) {

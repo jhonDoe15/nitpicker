@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { importRoots } from '../execution/python-project.mjs';
-import { requireProjectConfig, toolLayers, unique } from './project-tool-layers.mjs';
-import { additionalKeysOf, environmentOf, readProjectPyright } from './pyright-project-config.mjs';
+import { importRoots } from '../../execution/python-project.mjs';
+import { requireProjectConfig, toolLayers, unique } from '../project-tool-layers.mjs';
+import { environmentOf, readProjectPyright } from './pyright-project-config.mjs';
 
 export const PYRIGHT_TOOL = 'pyright';
 const PYRIGHT_DEFAULT_EXCLUDE = ['**/node_modules', '**/__pycache__', '**/.*'];

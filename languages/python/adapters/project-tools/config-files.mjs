@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { projectFormatConfigFiles } from '../formatting/project-format-config.mjs';
-import { PYRIGHT_JSON, readProjectPyright } from './pyright-project-config.mjs';
+import { PYRIGHT_JSON, readProjectPyright } from './pyright/pyright-project-config.mjs';
 
 const TYPE_CONFIG_FILES = [PYRIGHT_JSON, 'pyproject.toml', 'mypy.ini', '.mypy.ini', 'setup.cfg'];
 const MUTATION_CONFIG_FILES = ['pyproject.toml', 'setup.cfg'];

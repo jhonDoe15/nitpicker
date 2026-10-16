@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { realTypeFindings, removeTemporaryRoots } from './test-support/real-type-check.mjs';
+import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
+import { realTypeFindings, removeTemporaryRoots } from '../test-support/real-type-check.mjs';
 
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value\n';
 const WEAKENING = {

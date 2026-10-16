@@ -12,12 +12,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installFakeToolchain } from '../test-support/fake-toolchain.mjs';
 import {
-  ensureMutmutConfiguration,
   MUTATION_FAILED_RULE,
   MUTATION_SKIPPED_RULE,
   mutationFindings,
 } from './python-mutation.mjs';
 import { createToolContext } from '../python-tools.mjs';
+import { writeMutmutConfig } from '../project-tools/mutmut/mutmut-config.mjs';
 
 const roots = [];
 const savedEnvironment = new Map();
@@ -59,7 +59,7 @@ function write(root, files) {
 function configurationContext(files = {}, overrides = {}) {
   const projectRoot = temporaryRoot();
   write(projectRoot, files);
-  return { projectRoot, project: { sourceRoots: ['src'] }, ...overrides };
+  return { projectRoot, project: { sourceRoots: ['src'] }, exclude: [], ...overrides };
 }
 
 const TEST_PATTERNS =
@@ -68,6 +68,12 @@ const section = (sourcePaths, patterns = TEST_PATTERNS) =>
   `[tool.mutmut]\nsource_paths = ${sourcePaths}\ndo_not_mutate = [${patterns}]\n`;
 
 const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
+
+const failure = (message) => new Error(message);
+const ensureMutmutConfiguration = (context) => {
+  writeMutmutConfig({ context, fail: failure });
+};
+const LISTED = { mutmut: ['project', 'nitpicker'] };
 
 describe('the mutmut configuration', () => {
   it('adds the source roots and the test patterns when the project has no mutmut configuration', () => {
@@ -101,24 +107,58 @@ describe('the mutmut configuration', () => {
     );
   });
 
-  it('keeps the [tool.mutmut] table of the project', () => {
-    const own = '[tool.mutmut]\nsource_paths = ["app"]\n';
-    const context = configurationContext({ 'pyproject.toml': own }, { exclude: ['legacy/**'] });
+  it('replaces the [tool.mutmut] table of the project, keeping only what the run needs', () => {
+    const own = [
+      '[project]',
+      'name = "demo"',
+      '',
+      '[tool.mutmut]',
+      'source_paths = ["app"]',
+      'do_not_mutate = ["src/*"]',
+      'only_mutate = ["src/a.py"]',
+      'also_copy = ["data/"]',
+      'process_isolation = "forkserver"',
+      'max_stack_depth = 3',
+      'mutate_only_covered_lines = true',
+      '',
+      '[tool.ruff]',
+      'line-length = 100',
+      '',
+    ].join('\n');
+    const context = configurationContext({ 'pyproject.toml': own });
 
     ensureMutmutConfiguration(context);
 
-    expect(read(context.projectRoot, 'pyproject.toml')).toBe(own);
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      [
+        '[project]',
+        'name = "demo"',
+        '',
+        '[tool.ruff]',
+        'line-length = 100',
+        '',
+        `${section('["src"]').trimEnd()}`,
+        'also_copy = ["data/"]',
+        'process_isolation = "forkserver"',
+        '',
+      ].join('\n'),
+    );
   });
 
-  it('keeps the [mutmut] section of setup.cfg', () => {
-    const context = configurationContext({ 'setup.cfg': '[mutmut]\nsource_paths=app\n' });
+  it('takes also_copy from the setup.cfg section and puts nitpicker section in pyproject.toml', () => {
+    const context = configurationContext({
+      'setup.cfg':
+        '[mutmut]\nsource_paths=app\nalso_copy=\n  data/\n  fixtures/\ndo_not_mutate=src/*\n',
+    });
 
     ensureMutmutConfiguration(context);
 
-    expect(existsSync(path.join(context.projectRoot, 'pyproject.toml'))).toBe(false);
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section('["src"]').trimEnd()}\nalso_copy = ["data/","fixtures/"]\n`,
+    );
   });
 
-  it('asks for the directories to mutate instead of copying the whole project', () => {
+  it('asks for the directories to mutate when neither nitpicker nor the project names them', () => {
     const context = configurationContext({}, { project: { sourceRoots: ['.'] } });
 
     expect(() => {
@@ -126,6 +166,78 @@ describe('the mutmut configuration', () => {
     }).toThrow(
       /set "python.sourceRoots" in nitpicker.config.json or source_paths in \[tool.mutmut\]/,
     );
+  });
+
+  it('takes the source paths from the project when the source roots are the whole project', () => {
+    const context = configurationContext(
+      { 'pyproject.toml': '[tool.mutmut]\npaths_to_mutate = ["app"]\ndo_not_mutate = ["app/*"]\n' },
+      { project: { sourceRoots: ['.'] } },
+    );
+
+    ensureMutmutConfiguration(context);
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(`\n${section('["app"]')}`);
+  });
+});
+
+describe('the mutmut configuration with tools.mutmut listing the project', () => {
+  const policy = (context) => ({ toolPrecedence: LISTED, policyRoot: context.projectRoot });
+
+  it('lets the project override the keys it sets and keeps the test patterns', () => {
+    const own = [
+      '[tool.mutmut]',
+      'source_paths = ["app"]',
+      'do_not_mutate = ["app/generated/*"]',
+      'mutate_only_covered_lines = true',
+      'timeout_multiplier = 3',
+      '',
+    ].join('\n');
+    const context = configurationContext({ 'pyproject.toml': own }, { exclude: ['legacy/**'] });
+
+    ensureMutmutConfiguration({ ...context, ...policy(context) });
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section(
+        '["app"]',
+        `${TEST_PATTERNS},"legacy/**","legacy/**/*","app/generated/*"`,
+      ).trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 3\n`,
+    );
+  });
+
+  it('reads the setup.cfg section with typed values', () => {
+    const context = configurationContext({
+      'setup.cfg': '[mutmut]\nmutate_only_covered_lines=true\ntimeout_multiplier=2.5\n',
+    });
+
+    ensureMutmutConfiguration({ ...context, ...policy(context) });
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section('["src"]').trimEnd()}\nmutate_only_covered_lines = true\ntimeout_multiplier = 2.5\n`,
+    );
+  });
+
+  it('keeps the isolated configuration when nitpicker is listed first', () => {
+    const context = configurationContext({
+      'pyproject.toml': '[tool.mutmut]\nonly_mutate = ["src/a.py"]\nalso_copy = ["data/"]\n',
+    });
+
+    ensureMutmutConfiguration({
+      ...context,
+      toolPrecedence: { mutmut: ['nitpicker', 'project'] },
+      policyRoot: context.projectRoot,
+    });
+
+    expect(read(context.projectRoot, 'pyproject.toml')).toBe(
+      `\n${section('["src"]').trimEnd()}\nalso_copy = ["data/"]\n`,
+    );
+  });
+
+  it('names the missing config', () => {
+    const context = configurationContext({});
+
+    expect(() => {
+      ensureMutmutConfiguration({ ...context, ...policy(context) });
+    }).toThrow(/^"tools\.mutmut\.precedence" lists "project" but a mutmut config .+ is missing/u);
   });
 });
 
