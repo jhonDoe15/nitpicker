@@ -21,7 +21,7 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     def report = reportDir.map { it.file('forbidden-apis.txt') }
     inputs.files({ analyzedClassDirs() }, sourceSets.main.compileClasspath, new File(rulesDir, 'forbidden-apis.txt'))
         .withPropertyName('classes')
-    inputs.file(project.ext.nitpickerToolCommandsFile).withPropertyName('toolCommands')
+    inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
     def log = new ByteArrayOutputStream()
     def command = null
@@ -36,7 +36,7 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
             classDirectories: classDirs*.absolutePath,
             libraries       : libraries*.absolutePath,
             signatures      : new File(rulesDir, 'forbidden-apis.txt').absolutePath,
-        ])
+        ], temporaryDir)
         args(command.args)
     }
     doLast {
