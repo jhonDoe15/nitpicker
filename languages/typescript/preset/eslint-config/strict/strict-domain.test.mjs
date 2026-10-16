@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ESLint } from 'eslint';
+import { ESLint, Linter } from 'eslint';
 import functional from 'eslint-plugin-functional';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -56,6 +56,116 @@ export function total(lines: readonly Line[]) {
     expect(ruleIds).toEqual(['nitpicker/no-unknown-in-domain']);
   });
 
+  it('keeps react and other UI frameworks out of domain/', () => {
+    const messageFor = (source) =>
+      `domain/ does not import a UI framework or UI state library (\`${source}\`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. ` +
+      'An exception fits only when a framework requires this file in domain/.';
+    const banned = [
+      ['react', "import { useState } from 'react'; export const y = useState;"],
+      [
+        'react-dom/client',
+        "import { createRoot } from 'react-dom/client'; export const y = createRoot;",
+      ],
+      ['react-native', "import { View } from 'react-native'; export const y = View;"],
+      ['preact/hooks', "import { useState } from 'preact/hooks'; export const y = useState;"],
+      ['react', "import type { ReactNode } from 'react'; export type A = ReactNode;"],
+      ['react', "export const load = () => import('react');"],
+      ['react', "export { useState } from 'react';"],
+      ['react', "export * from 'react';"],
+      ['react', "const react = require('react'); export const y = react;"],
+      ['react', "import React = require('react'); export const y = React;"],
+      [
+        '@tanstack/react-query',
+        "import { useQuery } from '@tanstack/react-query'; export const y = useQuery;",
+      ],
+      ['zustand', "import { create } from 'zustand'; export const y = create;"],
+      [
+        'next/navigation',
+        "import { useRouter } from 'next/navigation'; export const y = useRouter;",
+      ],
+      ['expo-router', "import { Link } from 'expo-router'; export const y = Link;"],
+      ['jotai', "import { atom } from 'jotai'; export const y = atom;"],
+      ...[
+        '@reduxjs/toolkit',
+        'redux',
+        'lucide-react',
+        '@tabler/icons-react',
+        'motion/react',
+        'framer-motion',
+        '@mui/material',
+        'styled-components',
+        '@emotion/styled',
+        '@preact/signals-react',
+      ].map((source) => [source, `import { x } from '${source}'; export const y = x;`]),
+    ];
+    expect(banned.map(([, code]) => messagesFor(domainFile, code))).toEqual(
+      banned.map(([source]) => [messageFor(source)]),
+    );
+    for (const allowed of ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod', 'motion-utils']) {
+      expect(
+        messagesFor(domainFile, `import { x } from '${allowed}'; export const y = x;`),
+      ).toEqual([]);
+    }
+    expect(messagesFor('src/main/features/billing/adapters/view.ts', "import 'react';")).toEqual(
+      [],
+    );
+  });
+
+  it('keeps JSX out of domain/, also with the automatic runtime and no import', () => {
+    const jsx = new Linter().verify(
+      'export const Badge = () => <span><b>{1}</b></span>;\nexport const List = () => <>{[]}</>;',
+      [
+        {
+          files: ['**/*.tsx'],
+          languageOptions: {
+            parser: tseslint.parser,
+            parserOptions: { ecmaFeatures: { jsx: true } },
+          },
+          plugins: { nitpicker: nitpickerRules },
+          rules: { 'nitpicker/no-ui-framework-in-domain': 'error' },
+        },
+      ],
+      'src/main/features/billing/domain/badge.tsx',
+    );
+
+    expect(jsx.map(({ line, message }) => `${line} ${message.slice(0, 24)}`)).toEqual([
+      '1 domain/ does not render:',
+      '2 domain/ does not render:',
+    ]);
+  });
+
+  it('follows imports through shared/ to a UI framework', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-domain-shared-'));
+    const files = {
+      'tsconfig.json': '{}',
+      'src/main/shared/ui/hooks.ts': "export { useState as useLocalState } from 'react';\n",
+      'src/main/shared/ui/index.ts': "export * from './hooks';\n",
+      'src/main/shared/money.ts': 'export const cents = (n: number) => n * 100;\n',
+    };
+    for (const [file, text] of Object.entries(files)) {
+      mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      writeFileSync(path.join(root, file), text);
+    }
+    const linted = (code) =>
+      new Linter({ cwd: root })
+        .verify(
+          code,
+          strictDomainConfig.map((entry) => ({ ...entry, files: ['**/*.ts'] })),
+          path.join(root, domainFile),
+        )
+        .filter(({ ruleId }) => ruleId === 'nitpicker/no-ui-framework-in-domain')
+        .map(({ message }) => message.split(':')[0]);
+
+    try {
+      expect(linted("import { useLocalState } from '../../../shared/ui';")).toEqual([
+        'domain/ does not import a UI framework or UI state library, here `react` through `../../../shared/ui`',
+      ]);
+      expect(linted("import { cents } from '../../../shared/money';")).toEqual([]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('reports the clock and I/O reached through the global object or a renamed date library', () => {
     const cases = [
       'export const now = () => globalThis.Date.now();',
@@ -91,6 +201,16 @@ export function total(lines: readonly Line[]) {
 
   it('applies to nested domain files of every feature', () => {
     expect(messagesFor('src/main/features/other/domain/deep/x.ts', 'let n = 1;')).toHaveLength(1);
+  });
+
+  it('bans UI frameworks under a rule id of their own', () => {
+    const ruleIds = lintFixture({
+      config: strictDomainConfig,
+      filename: domainFile,
+      code: "import { useState } from 'react'; export const y = useState;",
+    }).map(({ ruleId }) => ruleId);
+
+    expect(ruleIds).toEqual(['nitpicker/no-ui-framework-in-domain']);
   });
 });
 

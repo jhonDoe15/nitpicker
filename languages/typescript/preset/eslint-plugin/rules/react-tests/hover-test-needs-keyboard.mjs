@@ -1,5 +1,5 @@
 import { staticKeyName } from '../analysis/static-shapes.mjs';
-import { inReactTestFilesOnly } from '../react/react-test-files.mjs';
+import { inReactTestFilesOnly } from './react-test-files.mjs';
 
 const HOVER_EVENTS = new Set(['mouseEnter', 'mouseOver']);
 const KEYBOARD_ACTIONS = new Set(['tab', 'keyboard', 'focus', 'press', 'down', 'up']);

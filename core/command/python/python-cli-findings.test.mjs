@@ -200,10 +200,9 @@ describe('nitpicker with "preset": "python"', () => {
   });
   it('reports a project without a type checker as a tool error', () => {
     const root = pythonRepository();
-    rmSync(path.join(root, '.venv/bin/mypy'));
-    rmSync(path.join(root, '.venv/bin/pyright'));
     const broken = temporaryRoot('nitpicker-python-broken-checkers-');
-    for (const name of ['mypy', 'pyright']) {
+    for (const name of ['mypy', 'pyright', 'basedpyright']) {
+      rmSync(path.join(root, '.venv/bin', name));
       writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
     vi.stubEnv('PATH', `${broken}${path.delimiter}${process.env.PATH}`);

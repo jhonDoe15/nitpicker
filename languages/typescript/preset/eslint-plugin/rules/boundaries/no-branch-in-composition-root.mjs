@@ -12,6 +12,17 @@ function isInMainGuardTest(node) {
   );
 }
 
+function isThrowOnlyGuard(node) {
+  const body =
+    node.consequent?.type === 'BlockStatement' ? node.consequent.body : [node.consequent];
+  return (
+    node.type === 'IfStatement' &&
+    node.alternate === null &&
+    body.length === 1 &&
+    body[0]?.type === 'ThrowStatement'
+  );
+}
+
 const LOOP_TYPES = [
   'ForStatement',
   'ForInStatement',
@@ -41,7 +52,7 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       branch:
-        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. An exception fits only when this branch belongs here.",
+        "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. A guard that only throws may stay: `const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); }` and then `createRoot(container)`. An exception fits only when this branch belongs here.",
     },
   },
   create(context) {
@@ -49,7 +60,7 @@ export const rule = {
       return {};
     }
     function report(node) {
-      if (!isMainGuard(node) && !isInMainGuardTest(node)) {
+      if (!isMainGuard(node) && !isInMainGuardTest(node) && !isThrowOnlyGuard(node)) {
         context.report({ node, messageId: 'branch' });
       }
     }

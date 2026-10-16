@@ -1,3 +1,6 @@
+export const SYNTAX_EXCEPTION_HINT =
+  ' An exception fits only when a framework or library requires it.';
+
 export function withReportFilter(rule, filterFor) {
   return {
     ...rule,
@@ -27,14 +30,27 @@ export function withHint(rule, hint) {
   };
 }
 
+const closingPunctuation = /[.!?:;]$/u;
+const leadingPunctuation = /^[.!?:;]/u;
+
+function withHintText(text, hint) {
+  if (leadingPunctuation.test(hint)) {
+    return `${text}${hint}`;
+  }
+  const trimmed = text.trimEnd();
+  return closingPunctuation.test(trimmed) ? `${trimmed}${hint}` : `${trimmed}.${hint}`;
+}
+
 function hintedMessages(messages, hint) {
-  return Object.fromEntries(Object.entries(messages).map(([id, text]) => [id, `${text}${hint}`]));
+  return Object.fromEntries(
+    Object.entries(messages).map(([id, text]) => [id, withHintText(text, hint)]),
+  );
 }
 
 function hintedDescriptor(descriptor, hint) {
   return descriptor.message === undefined
     ? descriptor
-    : { ...descriptor, message: `${descriptor.message}${hint}` };
+    : { ...descriptor, message: withHintText(descriptor.message, hint) };
 }
 
 function omit(object, keys) {
