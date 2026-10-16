@@ -60,7 +60,6 @@ const BASELINED_FINDINGS = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
-  'errorprone PrivateConstructorForUtilityClass ArchitectureTest.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -77,7 +76,6 @@ const BASELINED_FINDINGS = [
   'pit mutant-nocoverage Wide.java',
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
-  'spotbugs UUF_UNUSED_FIELD Legacy.java',
   'structure function-parameters-limit Wide.java',
 ];
 
@@ -88,7 +86,6 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling module-coupling Legacy.java',
   'coupling module-coupling Wide.java',
   'coupling package-coupling .',
-  'errorprone PrivateConstructorForUtilityClass ArchitectureTest.java',
   'errorprone UnnecessarilyFullyQualified Greeter.java',
   'jacoco changed-branch-coverage Branchy.java',
   'jacoco line-coverage Branchy.java',
@@ -104,7 +101,6 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pit mutant-nocoverage Wide.java',
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
-  'spotbugs UUF_UNUSED_FIELD Legacy.java',
   'structure function-parameters-limit Wide.java',
 ];
 
@@ -225,7 +221,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       expect(result.failed).toBe(true);
       expect(summarize(result.newEnforceable)).toEqual([
         ...repeated(2, 'archunit no_classes_use_legacy_date Stamp.java'),
-        ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
+        ...repeated(2, 'errorprone JavaUtilDate Stamp.java'),
         ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
       ]);
       expect(

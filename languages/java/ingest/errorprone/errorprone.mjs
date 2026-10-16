@@ -26,17 +26,28 @@ export function ingestErrorProne(json, options = {}) {
   const tool = options.tool ?? 'errorprone';
   const resolvePath = options.resolvePath ?? ((file) => file);
   const counters = new Map();
-  const findings = [];
-  for (const diagnostic of [...diagnostics].sort(byPosition)) {
-    const parsed = parseMessage(diagnostic.message);
-    const filePath = typeof diagnostic.file === 'string' ? resolvePath(diagnostic.file) : undefined;
-    if (parsed !== undefined && filePath !== undefined) {
+  const findings = distinctDiagnostics(diagnostics, resolvePath).map(
+    ({ diagnostic, parsed, filePath }) => {
       const unique = counters.get(filePath) ?? createIdentityCounter();
       counters.set(filePath, unique);
-      findings.push(finding({ tool, filePath, parsed, diagnostic, unique }));
-    }
-  }
+      return finding({ tool, filePath, parsed, diagnostic, unique });
+    },
+  );
   return { findings };
+}
+
+function distinctDiagnostics(diagnostics, resolvePath) {
+  const reported = new Set();
+  return [...diagnostics].sort(byPosition).flatMap((diagnostic) => {
+    const parsed = parseMessage(diagnostic.message);
+    const filePath = typeof diagnostic.file === 'string' ? resolvePath(diagnostic.file) : undefined;
+    const key = JSON.stringify([filePath, diagnostic.line, parsed?.check, parsed?.message]);
+    if (parsed === undefined || filePath === undefined || reported.has(key)) {
+      return [];
+    }
+    reported.add(key);
+    return [{ diagnostic, parsed, filePath }];
+  });
 }
 
 function finding({ tool, filePath, parsed, diagnostic, unique }) {

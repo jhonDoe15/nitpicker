@@ -926,6 +926,22 @@
     "UnnecessarilyFullyQualified",
     "UnrecognisedJavadocTag"
   ],
+  "classExemptions": {
+    "FieldCanBeFinal": [
+      "jakarta.persistence.Embeddable",
+      "jakarta.persistence.Entity",
+      "jakarta.persistence.MappedSuperclass",
+      "javax.persistence.Embeddable",
+      "javax.persistence.Entity",
+      "javax.persistence.MappedSuperclass"
+    ],
+    "PrivateConstructorForUtilityClass": [
+      "com.tngtech.archunit.junit.AnalyzeClasses",
+      "org.springframework.boot.SpringBootConfiguration",
+      "org.springframework.boot.autoconfigure.SpringBootApplication",
+      "org.springframework.context.annotation.Configuration"
+    ]
+  },
   "nullAway": {
     "ExcludedFieldAnnotations": [
       "com.google.inject.Inject",

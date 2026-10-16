@@ -477,7 +477,10 @@ resolved plus a new finding, as in the TypeScript check.
   list of ERROR checks whose finding is a bug in any code, not a severity filter (the ERROR checks
   left out, and why, are listed below). The route is added after the identity is computed, so it
   does not change it. Diagnostics outside the main and test source roots (annotation-processor
-  output) are dropped. Identity: a hash of the check and the message's first line, with
+  output) are dropped. Diagnostics with the same check, file, line and message are one finding
+  (`SunApi` reports one use up to four times, `JavaUtilDate` both `new Date()` and its
+  `.getTime()`; different messages on a line stay apart). Identity: a hash of the check and the
+  message's first line, with
   `line <n>` removed, and `#2`, `#3` for repeats in one file in source order; no line, no path and
   no `Did you mean` text, so moved or reformatted code stays baselined and a renamed file follows
   the rename map.
@@ -521,6 +524,11 @@ resolved plus a new finding, as in the TypeScript check.
   and fields a `@PostConstruct` method sets. A plain bean whose field
   only a setter assigns keeps the finding. Without main classes in a named package,
   `CheckReturnValue` keeps its defaults and NullAway is off.
+- **Annotated classes.** The runner records, for every diagnostic, the annotations of the
+  innermost class around it, meta-annotations included (`classAnnotations` in `errorprone.json`,
+  so `@SpringBootApplication` also lists `@SpringBootConfiguration` and `@Configuration`).
+  `classExemptions` in `checks.json` names the checks a class annotation rules out, and those
+  diagnostics are dropped; the table below gives the reason for each.
 - **No inline escape.** Error Prone honors `@SuppressWarnings`, because Lombok marks the members
   it generates with `@SuppressWarnings("all")` and Error Prone must skip them. The inline
   suppression scan reads the source the project wrote, where Lombok's annotations are not, and
@@ -564,7 +572,9 @@ resolved plus a new finding, as in the TypeScript check.
   `<exclude>` entries in `languages/java/gradle/pmd-ruleset.xml`, and SpotBugs patterns in
   `languages/java/gradle/spotbugs-exclude.xml` (java preset only; the kotlin preset keeps
   SpotBugs whole because it runs no Error Prone on Kotlin). The decisions are in the overlap table
-  below.
+  below. Where both sides stay on because each covers cases the other does not, a line both flag
+  gives one finding, from the side named primary below
+  (`languages/java/adapters/overlaps/static-overlaps.mjs`).
 - **Measured** (findings on the whole project, main and test code; see the review for each check):
   crank 68 (79 before round 3: `Varifier` 14 off, NullAway 2 in test code gone,
   `PrivateConstructorForUtilityClass` 5 new), PetClinic 43 (98: `Varifier` 51 off, NullAway 4 in
@@ -577,33 +587,39 @@ resolved plus a new finding, as in the TypeScript check.
   and PetClinic, most of it JVM start-up and Error Prone's own class loading.
 - **Limits.** A project whose own build already runs Error Prone gets nitpicker's run in
   addition; its Error Prone jars are taken off the processor path of the second compile.
-- **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report, schema validity, line-shift
-  and suggested-fix stability), `adapters/errorprone/java-errorprone.test.mjs` (paths, source
-  roots, missing report, the exceptions route, Lombok-generated diagnostics),
-  `adapters/errorprone/lombok/lombok-generated.test.mjs` (which positions and checks count as
-  generated), `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the
-  pinned ones on Gradle and Maven, every list names reviewed checks, sorted, and every check turned
-  off or kept on the exceptions route is documented below), `maven/errorprone/maven-compiler.test.mjs`
-  and `maven-jdk.test.mjs` (Maven compiler settings, processor-path errors, the JDK check),
-  `suppressions/errorprone/errorprone-escapes.test.mjs` and the inline suppression cases in
-  `suppressions/java-suppressions.test.mjs`, and, in `npm run test:java`:
-  `adapters/errorprone/error-prone.e2e.test.mjs` (an ignored `Future`, ignored results of the
-  project's methods in test code, a test-only package included, a returned `null` and a setter
-  bean's field in main code, and no NullAway finding for `@Autowired`, `@Value`, a JPA entity's fields or a
-  `null` passed in a test, while the entity's `null` return is reported; a `@SuppressWarnings` in main code is honored; the regular classes are
-  byte-identical; a source that only the second compile sees fails the build with javac's error
-  and no report; projects on `--enable-preview` with `--release`, an `--add-exports` of
-  `java.base`, and `-source`/`-target 8` compile), `adapters/errorprone/lombok.e2e.test.mjs` (a
-  Lombok project on Gradle, on Gradle with `lombok.addSuppressWarnings = false`, and on Maven runs
-  the whole preset with no tool error and only the findings in written code, `import lombok.*;`
-  with a `@Deprecated` method included), `adapters/errorprone/checks/checks-catalog.e2e.test.mjs`
-  (loads the pinned jar's checks: the reviewed set is the jar's, `enable` names off-by-default
-  checks and `disable` on-by-default ones, `certainBugs` plus the documented ERROR checks are
-  exactly the enabled ERROR checks, `suppressible` is every name of every enabled check),
+- **Tests.** `ingest/errorprone/errorprone.test.mjs` (sample report, schema validity, line-shift and
+  suggested-fix stability, one finding with a stable identity for a repeated diagnostic),
+  `adapters/errorprone/java-errorprone.test.mjs` (paths, source roots, missing report, the
+  exceptions route, Lombok-generated diagnostics),
+  `adapters/errorprone/exemptions/class-exemptions.test.mjs` (which class annotations spare which
+  checks), `adapters/overlaps/static-overlaps.test.mjs` (one finding per partial-overlap pair on a
+  line, both on different lines or files), `adapters/errorprone/lombok/lombok-generated.test.mjs`
+  (which positions and checks count as generated),
+  `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the pinned ones on
+  Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
+  the exceptions route or spared in annotated classes is documented below),
+  `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,
+  processor-path errors, the JDK check), `suppressions/errorprone/errorprone-escapes.test.mjs` and
+  the inline suppression cases in `suppressions/java-suppressions.test.mjs`, and, in
+  `npm run test:java`: `adapters/errorprone/error-prone.e2e.test.mjs` (an ignored `Future`, ignored results
+  of the project's methods in test code, a test-only package included, a returned `null` and a
+  setter bean's field in main code, and no NullAway finding for `@Autowired`, `@Value`, a JPA
+  entity's fields or a `null` passed in a test, while the entity's `null` return is reported; a
+  utility class is reported and a `@SpringBootApplication` or `@Configuration` class is not; a
+  `@SuppressWarnings` in main code is honored; the regular classes are byte-identical; a source that
+  only the second compile sees fails the build with javac's error and no report; projects on
+  `--enable-preview` with `--release`, an `--add-exports` of `java.base`, and `-source`/`-target 8`
+  compile), `adapters/errorprone/lombok.e2e.test.mjs` (a Lombok project on Gradle, on Gradle with
+  `lombok.addSuppressWarnings = false`, and on Maven runs the whole preset with no tool error and
+  only the findings in written code, `import lombok.*;` with a `@Deprecated` method included),
+  `adapters/errorprone/checks/checks-catalog.e2e.test.mjs` (loads the pinned jar's checks: the
+  reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
+  `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,
+  `suppressible` is every name of every enabled check),
   `maven/errorprone/maven-errorprone.e2e.test.mjs` (a Spring Initializr style build with a local
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
-  `pluginManagement` with a property version, Lombok's appended in the child with no version, and
-  a class compiled into `target/classes` before the regular compile), and
+  `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
+  class compiled into `target/classes` before the regular compile), and
   `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
@@ -807,13 +823,31 @@ still lists them, to be removed once that branch reaches main.
 | pmd/CheckSkipResult, SpotBugs SR_NOT_CHECKED                                                                               | PMD                                 | Same call                                                                           |
 | Error Prone checks, the matching SpotBugs patterns in spotbugs-exclude.xml                                                 | Error Prone                         | Error Prone reports at the source line, with a fix                                  |
 
-Partial overlaps kept, because each side also covers code the other does not: `IntLongMath` and
-`NarrowCalculation` on int multiplication, `FieldCanBeFinal` and `NonFinalStaticField` on a
-never-reassigned static field, `UnnecessarySemicolon` and `checkstyle/NeedBraces` on `if (c);`,
-`pmd/UnusedPrivateField` and SpotBugs `UUF_UNUSED_FIELD` / `URF_UNREAD_FIELD` on a private field
-(SpotBugs also covers package-private fields, PMD names the field and its line), and
-`DoubleCheckedLocking` and SpotBugs `IS2_INCONSISTENT_SYNC` on double-checked locking (SpotBugs also
-covers other inconsistent locking).
+### Partial overlaps
+
+Both sides stay on, because each also covers code the other does not. When both flag the same
+line, only the primary one is reported. Each pair has a unit test in
+`adapters/overlaps/static-overlaps.test.mjs`.
+
+| Primary                         | Dropped on the same line                       | Only the dropped side covers                 |
+| ------------------------------- | ---------------------------------------------- | -------------------------------------------- |
+| errorprone/IntLongMath          | errorprone/NarrowCalculation                   | Narrowing outside int-to-long multiplication |
+| errorprone/UnnecessarySemicolon | checkstyle/NeedBraces                          | Any statement without braces                 |
+| errorprone/DoubleCheckedLocking | SpotBugs IS2_INCONSISTENT_SYNC                 | Other inconsistent locking                   |
+| errorprone/NonFinalStaticField  | errorprone/FieldCanBeFinal                     | Instance fields                              |
+| pmd/UnusedPrivateField          | SpotBugs UUF_UNUSED_FIELD and URF_UNREAD_FIELD | Package-private and protected fields         |
+
+The PMD and SpotBugs field pair is matched by file and field name rather than line, because
+SpotBugs gives an unused field no line and an unread one the line of a write.
+
+### Checks spared in annotated classes
+
+`classExemptions` in `checks.json`; a unit test checks that this table lists exactly its checks.
+
+| Check                               | Spared in classes annotated                                                                       | Why                                                                       |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `FieldCanBeFinal`                   | `@Entity`, `@Embeddable`, `@MappedSuperclass` (jakarta and javax persistence)                     | JPA forbids final persistent fields                                       |
+| `PrivateConstructorForUtilityClass` | `@Configuration` (and so `@SpringBootApplication`, `@SpringBootConfiguration`), `@AnalyzeClasses` | Spring's CGLIB proxy and ArchUnit's runner need a non-private constructor |
 
 ## Structure limits (SH5)
 
@@ -997,7 +1031,9 @@ placement need a cross-class view and come with nitpicker's ArchUnit rules.
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
-accept.
+accept. It also runs Error Prone on the fixture and asserts its only finding is `MethodCanBeStatic`
+in `OrderService`: no `FieldCanBeFinal` in the JPA entities and no
+`PrivateConstructorForUtilityClass` on the application or configuration classes.
 
 ## Spring configuration files
 

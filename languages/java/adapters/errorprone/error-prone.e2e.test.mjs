@@ -132,9 +132,46 @@ public class Bean {
 }
 `;
 
+const APPLICATION = `package demo;
+
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class DemoApplication {
+  public static void main(String[] args) {
+    System.setProperty("demo", "on");
+  }
+}
+`;
+
+const CONFIGURATION = `package demo;
+
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class Beans {
+  @org.springframework.context.annotation.Bean
+  static StringBuilder builder() {
+    return new StringBuilder();
+  }
+}
+`;
+
+const NAMES = `package demo;
+
+import java.util.Locale;
+
+public class Names {
+  public static String upper(String name) {
+    return name.toUpperCase(Locale.ROOT);
+  }
+}
+`;
+
 const DEPENDENCIES = `
 repositories { mavenCentral() }
 dependencies {
+    compileOnly 'org.springframework.boot:spring-boot-autoconfigure:3.5.5'
     compileOnly 'org.springframework:spring-context:6.2.10'
     compileOnly 'jakarta.persistence:jakarta.persistence-api:3.1.0'
 }
@@ -196,6 +233,9 @@ const FULL_PROJECT = {
   'src/main/java/demo/Wired.java': WIRED,
   'src/main/java/demo/Owner.java': OWNER,
   'src/main/java/demo/Bean.java': BEAN,
+  'src/main/java/demo/DemoApplication.java': APPLICATION,
+  'src/main/java/demo/Beans.java': CONFIGURATION,
+  'src/main/java/demo/Names.java': NAMES,
   'src/test/java/demo/JobsCheck.java': JOBS_CHECK,
   'src/test/java/demo/samples/Samples.java': SAMPLES,
 };
@@ -247,7 +287,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     for (const directory of projects.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
-  it('reports ignored results in main and test code, and nulls in main code only, not framework-set fields', () => {
+  it('reports ignored results, main-code nulls and utility classes, but not framework fields or Spring config', () => {
     expect(run.status).toBe(0);
     const findings = readErrorProneFindings({
       reportRoot: path.join(root, 'build/nitpicker'),
@@ -285,6 +325,16 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         26,
         'returning @Nullable expression from method with @NonNull return type. ' +
           `${NULLAWAY_FORM} ${hint('NullAway', 'src/main/java/demo/Jobs.java')}`,
+      ],
+      [
+        'errorprone',
+        'PrivateConstructorForUtilityClass',
+        'src/main/java/demo/Names.java',
+        5,
+        'Classes which are not intended to be instantiated should be made non-instantiable with a ' +
+          'private constructor. This includes utility classes (classes with only static members), ' +
+          "and the main class. Did you mean 'public final class Names {'? " +
+          hint('PrivateConstructorForUtilityClass', 'src/main/java/demo/Names.java'),
       ],
       [
         'errorprone',
