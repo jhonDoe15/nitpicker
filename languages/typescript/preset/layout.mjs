@@ -115,7 +115,10 @@ function createClassifiers({ sourceRoots, testRoots, exclude, patterns }) {
     sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
     isTestFixture: (file, name = '') => {
       const normalized = toPosix(file);
-      return testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`));
+      return (
+        normalized.includes(`/__tests__/fixtures/${name}`) ||
+        testRoots.some((root) => normalized.includes(`/${root}/fixtures/${name}`))
+      );
     },
   };
 }

@@ -176,6 +176,18 @@ sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, 
   mutation ignore comments (`istanbul ignore`, `c8 ignore`, `v8 ignore`, `Stryker disable`) are
   suppressions too: `nitpicker/no-comments` reports them, and code that truly cannot be tested
   gets a reviewed exception for that rule in `nitpicker.config.json`.
+- A doc comment has to say something the name does not. `nitpicker/no-comments` reports a doc
+  comment on an exported declaration or exported type member whose description only restates the
+  name: it splits the name into words (camelCase, PascalCase, snake_case, kebab-case, digits),
+  drops stopwords (`the`, `a`, `of`, `get`, `returns`, `component`, `value`...), and reports when
+  every remaining description word, with a crude `ing`/`ed`/`es`/`s` stem, is a word of the name
+  (`/** Gets the user name. */ getUserName`, `/** The order id */ orderId`, `/** Button component */
+Button`). `@param`, `@returns` and other tag lines are not part of the description. Write the
+  unit, the limit, the edge case or the reason (`/** Price in cents, rounded down. */`). A
+  description longer than 5 lines, tag lines and blank lines not counted (an `@example` block is a
+  tag), is reported too: keep the non-obvious point and move the rest into names and types. Both
+  checks are skipped in the JavaScript preset's JSDoc mode, which already bans JSDoc prose, and a
+  doc comment that is needed as written gets an exception for the rule.
 
 ## Inside tests
 
@@ -209,7 +221,19 @@ alone.
 - `nitpicker/no-fixed-sleep-synchronization` (existing, extended): besides `await sleep()` and
   `await new Promise((resolve) => setTimeout(resolve, n))`, it also flags
   `setTimeout(() => resolve(), n)`, `await setTimeout(n)` from `node:timers/promises` and
-  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`.
+  `scheduler.wait(n)`. Wait on a condition with `vi.waitFor` or `expect.poll`. It also flags waits
+  on wall-clock time. A timeout-based negative assertion, `expect(waitFor(...)).rejects`,
+  `expect(vi.waitFor(...)).rejects` or `expect(screen.findByRole(...)).rejects` (a `findBy*` or
+  `findAllBy*` call on `screen`, on a `within(...)` result or on a render result, or a bare
+  `waitFor`; awaited or not, also through a `const`; a data-layer `repo.findByEmail(...)` is not),
+  passes only after the full wait times out, so it is slow and depends on the delay: advance fake
+  timers past the delay (`vi.advanceTimersByTime`) and assert absence at once
+  (`expect(screen.queryByRole('tooltip')).toBeNull()`). Playwright `<anything>.waitForTimeout(n)`
+  and Cypress `cy.wait(500)` (a number literal, or a `const` bound to a number; `cy.wait('@alias')`
+  is fine, and so is `cy.wait(0)`) are flagged too: wait on a condition (`await expect(locator).toBeVisible()`,
+  `cy.wait('@request')`). The rule covers every test-area file: the test roots (e2e folders under
+  them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
+  fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   `testTimeout` nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
   Stryker also uses, and the coverage runner's `--testTimeout`; a test keeps them in step).
@@ -355,6 +379,37 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   in any module: `declare module 'csstype' { interface Properties { '--progress'?: number } }`
   (needs `csstype` installed; `interface` is allowed in that augmentation). This is the default
   because inline `style` objects are the usual agent slop.
+- **No hard-coded colors** (`nitpicker/react-no-hardcoded-colors`). Every production source file
+  of the scope is checked (`.ts` and `.mjs` helpers included; tests and story files,
+  `*.stories.*` and `*.story.*`, are not; the story pattern is `storyGlobs` in
+  `eslint-config/scope-support.mjs`, shared with the i18n scope). A whole string that is a 6- or
+  8-digit hex color (`'#336699'`) or a color function with
+  literal arguments (`rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`,
+  `oklch()`, `color(display-p3 ...)`) is reported anywhere. A 3- or 4-digit hex (`'#add'`) and a
+  named color (`red`, `gray`) are reported only in a color position, so ids, hashes and anchors
+  that happen to look like colors are left alone. The color positions are:
+  - the value of `color`, `backgroundColor`, `background`, `borderColor`, `fill`, `stroke`,
+    `outlineColor`, `textDecorationColor` or `caretColor`, as an object key or as a JSX attribute
+    (`<svg fill="red">`). A named color under such a key is reported only in a JSX attribute or in
+    a style context, so domain data such as `{ name: 'Tee', color: 'black' }` passes;
+  - a style context: the JSX `style`, `sx` and `css` attributes, an object passed to `styled`,
+    `css`, `keyframes`, `createGlobalStyle` or `StyleSheet.create`, and an object typed or
+    asserted as `CSSProperties` and similar style types. Compound values are checked there
+    (`border: '1px solid #ccc'`, `boxShadow: '0 0 4px rgba(0, 0, 0, 0.2)'`);
+  - the text of a `styled.x`, `styled(X)`, `css`, `keyframes` or `createGlobalStyle` template
+    (comments and `url(#id)` references are ignored), where a named color is reported as the
+    whole value of a color property (`color: red;`, `background-color: white !important;`);
+  - a CSS declaration in any other string or template, with a color-bearing property name at the
+    start or after `;` or `{` (`'border: 1px solid #ccc'`, `'a:1; --brand: #336699'`), so prose
+    such as `'Invalid color: #fff is not allowed'` passes, and a Tailwind arbitrary value
+    (`bg-[#336699]`, `bg-[rgb(0,0,0)]`).
+
+  Prose that mentions a color function (`'Use rgb(255, 0, 0) format'`), `rgb(var(--brand-rgb))`,
+  `transparent`, `currentColor`, `inherit`, `initial` and `unset` are fine. Take the color from the
+  theme or palette (a theme token, a CSS variable, `currentColor`). The file or folder that
+  defines the palette gets one exception for the rule (`src/theme/**`); there is no filename
+  heuristic.
+
 - **One optional input per concept** (`nitpicker/no-singular-and-plural-prop`). A component's props
   type (or an exported `*Props` type) that declares both `tag?: string` and `tags?: string[]` offers
   two ways to pass the same data. The rule reports the plural when both props are optional and the
@@ -392,6 +447,9 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   file; the message carries the exact entry:
   `{"rule":"component-story-missing","paths":["src/Card.tsx"],"reason":"..."}`.
 - **Accessibility** (`jsx-a11y/*`): the recommended `eslint-plugin-jsx-a11y` rule set, as errors.
+  `jsx-a11y/mouse-events-have-key-events` is configured beyond the recommended default, which only
+  checks `onMouseOver`/`onMouseOut`: `onMouseEnter` also needs `onFocus` and `onMouseLeave` also
+  needs `onBlur`, so hover-only cards are caught.
 - **`null` for refs and contexts.** `null` stays banned, except as the argument and the type
   argument of `useRef` and `createContext` (`useRef<HTMLDivElement>(null)`,
   `createContext<Theme | null>(null)`), where React's types need it.

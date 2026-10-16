@@ -8,7 +8,12 @@ import {
   reactTestRuleIds,
   testingLibrarySettings,
 } from './react-rules.mjs';
-import { hasScopePackage, productionScope, readDependencyNames } from '../scope-support.mjs';
+import {
+  hasScopePackage,
+  productionScope,
+  readDependencyNames,
+  storyGlobs,
+} from '../scope-support.mjs';
 
 export function isReactProject({ projectRoot, react = {} }) {
   return react.enabled ?? hasScopePackage(projectRoot, 'react');
@@ -53,6 +58,7 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         'nitpicker/no-singular-and-plural-prop': 'error',
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
+        'nitpicker/react-no-hardcoded-colors': 'error',
         'nitpicker/react-single-styling-approach': [
           'error',
           { approach: react.styling ?? defaultStylingApproach },
@@ -67,6 +73,16 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         ...Object.fromEntries(reactTestRuleIds.map((id) => [id, 'error'])),
         ...(react.reactNative ? { 'testing-library/no-test-id-queries': 'off' } : {}),
       },
+    },
+  ];
+}
+
+function storyConfigFor() {
+  return [
+    {
+      files: storyGlobs,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/react-no-hardcoded-colors': 'off' },
     },
   ];
 }
@@ -91,6 +107,7 @@ export async function reactScopeConfigFor(layout, react = {}, projectRoot = anal
   const reactNative = readDependencyNames(projectRoot).includes(reactNativeTestingPackage);
   return [
     ...(await reactSyntaxConfigFor(layout, { ...react, styling, reactNative })),
+    ...storyConfigFor(),
     ...reactTypedConfigFor(layout),
   ];
 }
