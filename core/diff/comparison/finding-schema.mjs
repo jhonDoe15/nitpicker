@@ -84,16 +84,15 @@ function parseToolNotRun(value, classification, context) {
 }
 
 function parseNotRunScope(value, toolNotRun, context) {
-  const prefixes = Array.isArray(value) ? value : [undefined];
-  if (
-    toolNotRun !== true ||
-    prefixes.some((prefix) => typeof prefix !== 'string' || prefix === '')
-  ) {
+  if (toolNotRun !== true || !Array.isArray(value) || value.length === 0) {
     throw new TypeError(
-      `${context}.notRunScope must be a list of identity prefixes on a toolNotRun finding`,
+      `${context}.notRunScope must be a non-empty list of project directories on a toolNotRun finding`,
     );
   }
-  return [...prefixes];
+  return value.map((directory, index) => {
+    const at = `${context}.notRunScope[${String(index)}]`;
+    return normalizeFindingPath(requiredString(directory, at), at).replace(/\/+$/u, '');
+  });
 }
 
 function parseLocation(value, context) {

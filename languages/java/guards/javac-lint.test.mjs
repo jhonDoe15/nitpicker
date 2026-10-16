@@ -111,7 +111,10 @@ describe('readLintFindings', () => {
       'Picked up JAVA_TOOL_OPTIONS: -Dx=y\nsrc/main/java/demo/A.java:3: error: cannot find symbol\n1 error\n',
     );
 
-    const findings = readLintFindings(reports, { projectRoot: root });
+    const findings = readLintFindings(reports, {
+      projectRoot: root,
+      sourceRoots: ['src/main/java', 'src/main/generated'],
+    });
 
     expect(findings).toEqual([
       {
@@ -121,6 +124,7 @@ describe('readLintFindings', () => {
         identity: 'lint-not-run',
         classification: 'descriptive',
         toolNotRun: true,
+        notRunScope: ['src/main/java', 'src/main/generated'],
         message:
           'No javac lint report: the lint compile failed (src/main/java/demo/A.java:3: error: cannot find symbol), ' +
           'so raw types, unchecked operations, deprecated calls and redundant casts were not checked.',
@@ -159,5 +163,29 @@ describe('readLintFindings', () => {
       'enforceable',
       'enforceable',
     ]);
+  });
+
+  it('relaxes only the warnings under the source roots of the module whose base lint failed', () => {
+    const head = project(['src/main/java/demo/Raw.java']);
+    const base = project([]);
+    const baseReports = path.join(base, 'failed');
+    mkdirSync(baseReports);
+    writeFileSync(path.join(baseReports, 'javac-lint-failed.txt'), 'A.java:3: error: boom\n');
+    const headFindings = readLintFindings(path.join(head, 'build/nitpicker'), {
+      projectRoot: head,
+    });
+    const compare = (sourceRoots) =>
+      compareFindings({
+        baseFindings: readLintFindings(baseReports, { projectRoot: base, sourceRoots }),
+        headFindings,
+      }).newFindings.map((finding) => finding.classification);
+
+    expect(compare(['legacy/src/main/java'])).toEqual([
+      'enforceable',
+      'enforceable',
+      'enforceable',
+      'enforceable',
+    ]);
+    expect(compare([''])).toEqual(['descriptive', 'descriptive', 'descriptive', 'descriptive']);
   });
 });

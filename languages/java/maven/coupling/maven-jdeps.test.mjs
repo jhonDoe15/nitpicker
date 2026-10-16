@@ -1,65 +1,67 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { zipOf } from '../../builds/test-support/zip-writer.mjs';
-import { isModulePathEntry, jdepsModuleOptions } from './maven-jdeps.mjs';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { runJdeps } from './maven-jdeps.mjs';
 
 const roots = [];
-const CLASS = 'class bytes';
-const JARS = {
-  'explicit-1.0.jar': { 'module-info.class': CLASS, 'a/A.class': CLASS },
-  'versioned-1.0.jar': { 'META-INF/versions/9/module-info.class': CLASS, 'b/B.class': CLASS },
-  'named-1.0.jar': {
-    'META-INF/MANIFEST.MF': 'Manifest-Version: 1.0\r\nAutomatic-Module-Name: org.named\r\n',
-    'c/C.class': CLASS,
-  },
-  'commons-io-2.11.0.jar': { 'org/apache/commons/io/IOUtils.class': CLASS },
-  'top-level-1.0.jar': { 'Top.class': CLASS },
-  'foo-native-1.0.jar': { 'p/P.class': CLASS },
-  'bad-package-1.0.jar': { 'p/1x/P.class': CLASS },
-  '1st-1.0.jar': { 'p/P.class': CLASS },
-  'unreadable-1.0.jar': 'not a zip',
-  'groovy-all-2.4.21.pom': '<project/>',
-  'bundle-1.0.zip': { 'p/P.class': CLASS },
-};
+const GRAPH = '   app.Main -> java.lang.Object   java.base\n';
 
-function workspace() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-'));
-  roots.push(root);
-  for (const [name, content] of Object.entries(JARS)) {
-    writeFileSync(path.join(root, name), typeof content === 'string' ? content : zipOf(content));
-  }
-  mkdirSync(path.join(root, 'modular-classes'));
-  writeFileSync(path.join(root, 'modular-classes/module-info.class'), CLASS);
-  mkdirSync(path.join(root, 'plain-classes/sib'), { recursive: true });
-  writeFileSync(path.join(root, 'plain-classes/sib/S.class'), CLASS);
-  const output = path.join(root, 'target/classes');
-  mkdirSync(output, { recursive: true });
-  writeFileSync(path.join(output, 'module-info.class'), CLASS);
-  return { root, output };
-}
-
-function fakeJdeps(root, version) {
+function fakeJdeps(root, { stderr = '', exit = 0 } = {}) {
   const jdeps = path.join(root, 'jdk/bin/jdeps');
   mkdirSync(path.dirname(jdeps), { recursive: true });
-  writeFileSync(jdeps, ['#!/bin/sh', `echo '${version}'`].join('\n'));
+  writeFileSync(
+    jdeps,
+    [
+      '#!/bin/sh',
+      `for arg in "$@"; do classes="$arg"; done`,
+      `printf '%s\\n' "$@" > '${root}/args.txt'`,
+      `(cd "$classes" && find . -type f | sort) > '${root}/staged.txt'`,
+      `printf '%s' '${GRAPH}'`,
+      `printf '%s' '${stderr}' >&2`,
+      `exit ${String(exit)}`,
+    ].join('\n'),
+  );
   chmodSync(jdeps, 0o755);
   vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
 }
 
-function options(compiler, entries = Object.keys(JARS)) {
-  const { root, output } = workspace();
-  fakeJdeps(root, '17.0.2');
-  return jdepsModuleOptions(
-    { outputDirectory: output, compiler: { args: [], ...compiler } },
-    { mainCompile: entries.map((name) => path.join(root, name)) },
-  ).map((option) => option.replaceAll(root, '<root>'));
+function project(files, jdeps) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-test-'));
+  roots.push(root);
+  const outputDirectory = path.join(root, 'target/classes');
+  for (const file of files) {
+    mkdirSync(path.dirname(path.join(outputDirectory, file)), { recursive: true });
+    writeFileSync(path.join(outputDirectory, file), 'class bytes');
+  }
+  const reportDir = path.join(root, 'report');
+  mkdirSync(reportDir);
+  fakeJdeps(root, jdeps);
+  return { root, module: { basedir: root, outputDirectory }, reportDir };
 }
 
-beforeEach(() => {
-  vi.stubEnv('JAVA_TOOL_OPTIONS', undefined);
-});
+function read(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
+}
+
+function run(files, jdeps) {
+  const { root, module, reportDir } = project(files, jdeps);
+  runJdeps(module, reportDir);
+  return {
+    args: read(path.join(root, 'args.txt'))?.replaceAll(root, '<root>'),
+    staged: read(path.join(root, 'staged.txt')),
+    classes: read(path.join(reportDir, 'jdeps-classes.txt')),
+    graph: read(path.join(reportDir, 'jdeps.txt')),
+  };
+}
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -68,73 +70,73 @@ afterEach(() => {
   }
 });
 
-describe.skipIf(process.platform === 'win32')('jdepsModuleOptions', () => {
-  it('puts only the entries jdeps can read as modules on the module path', () => {
-    expect(
-      options({ release: '17' }, [
-        ...Object.keys(JARS),
-        'modular-classes',
-        'plain-classes',
-        'missing-1.0.jar',
-      ]),
-    ).toEqual([
-      '--module-path',
-      [
-        'explicit-1.0.jar',
-        'versioned-1.0.jar',
-        'named-1.0.jar',
-        'commons-io-2.11.0.jar',
-        'modular-classes',
-      ]
-        .map((name) => `<root>/${name}`)
-        .join(path.delimiter),
-      '--multi-release',
-      '17',
-    ]);
+describe.skipIf(process.platform === 'win32')('runJdeps', () => {
+  it('analyzes the class directory of a module without a descriptor in place', () => {
+    expect(run(['app/Main.class', 'app/package-info.class'])).toEqual({
+      args: '-verbose:class\n-filter:none\n<root>/target/classes\n',
+      staged: './app/Main.class\n./app/package-info.class\n',
+      classes: 'app.Main\n',
+      graph: GRAPH,
+    });
   });
 
-  it.each([
-    ['release 8', { release: '8' }, '9'],
-    ['target 1.8', { target: '1.8' }, '9'],
-    ['a --release compiler argument', { args: ['--release', '11'] }, '11'],
-    ['a --release= compiler argument', { args: ['--release=21'] }, '21'],
-    ['release 17 over target 11', { release: '17', target: '11' }, '17'],
-    ['no release, source or target', {}, '17'],
-  ])('passes --multi-release for %s', (_, compiler, release) => {
-    expect(options(compiler, [])).toEqual(['--multi-release', release]);
+  it('analyzes a copy of a modular class directory without its module descriptor', () => {
+    const result = run(['module-info.class', 'app/Main.class', 'app/impl/Impl.class']);
+
+    expect({
+      ...result,
+      args: result.args.replace(/\/nitpicker-jdeps-[^/]+\//u, '/<staged>/'),
+    }).toEqual({
+      args: `-verbose:class\n-filter:none\n${path.join(tmpdir(), '<staged>/classes')}\n`,
+      staged: './app/Main.class\n./app/impl/Impl.class\n',
+      classes: 'app.Main\napp.impl.Impl\n',
+      graph: GRAPH,
+    });
   });
 
-  it('adds nothing to a module without a descriptor', () => {
-    const { root } = workspace();
+  it('removes the staged copy once jdeps finishes', () => {
+    const result = run(['module-info.class', 'app/Main.class']);
 
-    expect(
-      jdepsModuleOptions(
-        {
-          outputDirectory: path.join(root, 'plain-classes'),
-          compiler: { release: '17', args: [] },
-        },
-        { mainCompile: [path.join(root, 'explicit-1.0.jar')] },
+    expect(existsSync(result.args.split('\n')[2])).toBe(false);
+  });
+
+  it('writes an empty graph without running jdeps when there are no classes', () => {
+    expect(run(['module-info.class'])).toEqual({
+      args: undefined,
+      staged: undefined,
+      classes: '',
+      graph: '',
+    });
+  });
+
+  it('reports the error lines of a failed run without JVM notices', () => {
+    const stderr = [
+      'Picked up JAVA_TOOL_OPTIONS: -Xmx1g',
+      'Warning: split package app',
+      'Exception in thread "main" java.lang.IllegalStateException: broken',
+      '\tat com.sun.tools.jdeps.Main.main(Main.java:1)',
+      'Caused by: java.io.IOException: unreadable',
+    ].join('\n');
+    const { module, reportDir } = project(['app/Main.class'], { stderr, exit: 2 });
+
+    expect(() => {
+      runJdeps(module, reportDir);
+    }).toThrow(
+      new Error(
+        [
+          'jdeps failed with exit code 2: Exception in thread "main" java.lang.IllegalStateException: broken',
+          'Caused by: java.io.IOException: unreadable',
+        ].join('\n'),
       ),
-    ).toEqual([]);
+    );
   });
-});
 
-describe.skipIf(process.platform === 'win32')('isModulePathEntry', () => {
-  it.each([
-    ['explicit-1.0.jar', true],
-    ['commons-io-2.11.0.jar', true],
-    ['top-level-1.0.jar', false],
-    ['foo-native-1.0.jar', false],
-    ['bad-package-1.0.jar', false],
-    ['1st-1.0.jar', false],
-    ['unreadable-1.0.jar', false],
-    ['groovy-all-2.4.21.pom', false],
-    ['bundle-1.0.zip', false],
-    ['plain-classes', false],
-    ['modular-classes', true],
-  ])('reads %s as a module: %s', (name, expected) => {
-    const { root } = workspace();
+  it('reports the first stderr lines when none name an error', () => {
+    const stderr = ['NOTE: Picked up JDK_JAVA_OPTIONS: -Xss1m', 'Module app not found'].join('\n');
+    const { module, reportDir } = project(['app/Main.class'], { stderr, exit: 1 });
 
-    expect(isModulePathEntry(path.join(root, name))).toBe(expected);
+    expect(() => {
+      runJdeps(module, reportDir);
+    }).toThrow(new Error('jdeps failed with exit code 1: Module app not found'));
   });
 });

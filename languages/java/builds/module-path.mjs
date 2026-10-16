@@ -4,3 +4,8 @@ export function inModule(modulePath, relativePath) {
   }
   return relativePath === '.' ? modulePath : `${modulePath}/${relativePath}`;
 }
+
+export function rootsScope(roots) {
+  const scope = [...new Set(roots.map((root) => (root === '' ? '.' : root)))];
+  return scope.length === 0 ? ['.'] : scope;
+}

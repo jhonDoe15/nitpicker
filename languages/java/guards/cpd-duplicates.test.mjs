@@ -341,11 +341,11 @@ describe('readCpdFindings', () => {
         path: '.',
         identity: 'cpd-not-run',
         message:
-          'No CPD duplicate report for core/src/main/java, core/src/test/java, so duplicated code ' +
-          `there was not checked: ${reason}`,
+          'No CPD duplicate report for this module, so duplicated code in core/src/main/java, ' +
+          `core/src/test/java was not checked: ${reason}`,
         classification: 'descriptive',
         toolNotRun: true,
-        notRunScope: ['cpd:pair:core/src/main/java/', 'cpd:pair:core/src/test/java/'],
+        notRunScope: ['core/src/main/java', 'core/src/test/java'],
       },
     ];
   }
@@ -360,6 +360,11 @@ describe('readCpdFindings', () => {
       'a failure without error output',
       '1\n',
       'PMD CPD exited with code 1 and wrote no report: no error output',
+    ],
+    [
+      'a launcher that timed out',
+      'ETIMEDOUT\nspawnSync java ETIMEDOUT',
+      'PMD CPD did not finish (ETIMEDOUT) and wrote no report: spawnSync java ETIMEDOUT',
     ],
   ])('reports %s as CPD not run, naming the exit code and stderr', (_, failure, reason) => {
     const { root, reportRoot } = project({});
@@ -390,19 +395,19 @@ describe('readCpdFindings', () => {
     expect(readCpdFindings(reportRoot, options(root))).toEqual([]);
   });
 
-  it('scopes a project whose sources sit at its root to every CPD clone', () => {
+  it('scopes a module whose sources sit at its root to the whole module', () => {
     const { root, reportRoot } = project({});
     writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\n');
 
     expect(
-      readCpdFindings(reportRoot, { projectRoot: root, sourceRoots: ['.'], testRoots: [] }).map(
+      readCpdFindings(reportRoot, { projectRoot: root, sourceRoots: [''], testRoots: [''] }).map(
         ({ message, notRunScope }) => [message, notRunScope],
       ),
     ).toEqual([
       [
-        'No CPD duplicate report for ., so duplicated code there was not checked: ' +
-          'PMD CPD exited with code 1 and wrote no report: no error output',
-        ['cpd:pair:'],
+        'No CPD duplicate report for this module, so duplicated code in the module root was not ' +
+          'checked: PMD CPD exited with code 1 and wrote no report: no error output',
+        ['.'],
       ],
     ]);
   });
