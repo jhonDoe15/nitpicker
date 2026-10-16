@@ -28,7 +28,11 @@ export function summaryFields(configOverrides, shardSummary) {
     configOverrides,
     policyChanges: shardSummary.policyChanges ?? [],
     policyLoosenings: shardSummary.policyLoosenings ?? [],
+    ...(shardSummary.policyDigest === undefined ? {} : { policyDigest: shardSummary.policyDigest }),
     policyChangeAccepted: shardSummary.policyChangeAccepted === true,
+    ...(shardSummary.policyAcceptanceSource === undefined
+      ? {}
+      : { policyAcceptanceSource: shardSummary.policyAcceptanceSource }),
     notices: shardSummary.notices ?? [],
   };
 }

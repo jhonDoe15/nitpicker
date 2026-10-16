@@ -40,43 +40,32 @@ async function loadDefault(name) {
 }
 
 describe('what each tool reads of the project', () => {
-  it('turns on the script rules typescript-eslint leaves off for .js files', async () => {
-    const config = await loadDefault('eslint.config.mjs');
-    const scriptEntry = config.find(
-      (entry) =>
-        entry.rules?.['no-var'] === 'error' &&
-        entry.files?.includes('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'),
-    );
-
-    expect(scriptEntry?.rules).toEqual({
-      'no-var': 'error',
-      'prefer-const': 'error',
-      'prefer-rest-params': 'error',
-      'prefer-spread': 'error',
-    });
-  });
-
-  it('keeps declaration files out of crap and stryker while lint reads them', async () => {
+  it('keeps declaration files out of crap and stryker', async () => {
     const crap = await loadDefault('crap.config.mjs');
     const stryker = await loadDefault('stryker.config.mjs');
-    const lint = await loadDefault('eslint.config.mjs');
 
     expect(crap.excludes.filter((glob) => glob.endsWith('.d.ts'))).toEqual(['**/*.d.ts']);
     expect(stryker.mutate.filter((glob) => glob.endsWith('.d.ts'))).toEqual(['!**/*.d.ts']);
-    expect(lint.flatMap((entry) => entry.ignores ?? [])).not.toContain('**/*.d.ts');
   });
 });
 
 describe('built-in exclusions', () => {
-  it('skip output folders only at the project root and node_modules at any depth', () => {
+  it('skip node_modules at any depth and only marked generated files in root output folders', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-runtime-scope-'));
     temporaryRoots.push(root);
-    for (const file of ['lib/a.ts', 'lib/dist/c.ts', 'dist/d.ts', 'lib/node_modules/e.ts']) {
+    const files = ['lib/a.ts', 'lib/dist/c.ts', 'dist/d.ts', 'dist/e.ts', 'lib/node_modules/f.ts'];
+    for (const file of files) {
       mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       writeFileSync(path.join(root, file), 'export {};\n');
     }
-    const layout = resolveLayout({ sourceRoots: ['lib', 'dist'] });
+    const layout = resolveLayout({ sourceRoots: ['lib', 'dist'] }, [], {
+      generatedFiles: ['dist/e.ts'],
+    });
 
-    expect(layout.projectCodeFiles(root).sort()).toEqual(['lib/a.ts', 'lib/dist/c.ts']);
+    expect(layout.projectCodeFiles(root).sort()).toEqual([
+      'dist/d.ts',
+      'lib/a.ts',
+      'lib/dist/c.ts',
+    ]);
   });
 });

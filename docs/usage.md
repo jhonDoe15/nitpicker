@@ -145,10 +145,13 @@ nitpicker cache publish [--analyzer <name>]...
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
 - `--accept-policy-change=<digest>`: accept the loosenings of `nitpicker.config.json` whose digest
-  the `nitpicker-config/policy-loosened` findings name (see [Configuration](#configuration));
-  `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` does the same. A digest accepts exactly the loosenings
-  it was printed for: a later loosening changes it and fails again. It is for the person who
-  approves the change, never for a coding agent.
+  the `nitpicker-config/policy-loosened` findings name (see [Configuration](#configuration)). It is
+  for the person reviewing the change, never for a coding agent, so it is honoured only at an
+  interactive terminal (stdin and stdout both terminals); in CI, where `CI` is set, a person sets
+  `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead, and that variable is ignored anywhere else. An
+  ignored acceptance is named on stderr and the run still fails. The digest covers every loosening
+  in full and the content (git blob id) of each file it names, and `summary.json` records it as
+  `policyDigest`: editing a named file or adding a loosening changes it and fails again.
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
@@ -181,32 +184,41 @@ both sides; a base config that does not load is ignored the same way, and the he
 compared with the defaults. Because the head controls its own config, every change to it is printed
 in the console summary and in `report.txt` as "Policy changed in this change" and listed in
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
-`nitpicker-config/policy-loosened` finding per loosening; the finding tells a coding agent to stop
-and ask a person, who accepts it with the `--accept-policy-change=<digest>` the finding names (in
-CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`). A project's first `nitpicker.config.json` is compared with the
+`nitpicker-config/policy-loosened` finding per loosening. The finding names the allowed form first:
+keep the base's policy and change the code until it passes (new code under the source roots, findings
+fixed rather than excluded, excepted or reclassified). If the change is intended, a coding agent
+stops and asks a person reviewing the change, who accepts it with the `--accept-policy-change=<digest>`
+the finding names (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`). A project's first `nitpicker.config.json` is compared with the
 defaults. These changes are loosening:
 
 - an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints`, `exceptions` or
-  `python.exceptions` glob that covers a checked file the base config did not already cover (code
-  files under the source and test roots for TypeScript and JavaScript, all `.py` files for Python,
-  all `.java`, `.kt` and `.kts` files for Java and Kotlin). Files moved with `git mv` keep their
-  base path, so updating a glob after a move is not loosening; a glob that covers no newly checked
-  file is listed but does not fail;
+  `python.exceptions` glob that covers a code file the base config did not already cover (every
+  tracked code file of the preset, wherever it is: `.ts`/`.js` family files for TypeScript and
+  JavaScript, `.py` files for Python, `.java`, `.kt` and `.kts` files for Java and Kotlin, so
+  excluding a folder outside the roots that production code imports is loosening too). `exclude`
+  and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
+  one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
+  path, so updating a glob after a move is not loosening; a glob that covers no new code file is
+  listed but does not fail;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
-- code the change adds, or moves from a path that was not hidden, under an `exclude`,
-  `layout.excludedGlobs`, `exceptions` or `python.exceptions` glob or a test root inside a source
-  root that the base config already had. When the glob or root covers no code of the base, any
-  such code fails: an idle glob is listed when it is added, and the code that later arrives under
-  it fails then. When it already covers base code (an established `vendor/**` or
-  `**/fixtures/**`), adding files there is normal and passes, unless production code (files under
-  the source roots that are neither tests nor hidden) imports one of them, so a feature cannot be
-  written under an excluded folder and imported from the checked code. Exceptions that cover base
-  code never fail this way, and the import check reads TypeScript and JavaScript imports only, so
-  under the Python, Java and Kotlin presets an established glob does not fail. The finding names
-  the allowed form, new code as production code under the source roots, and the acceptance route;
-- `checkJs` turned off in the project's `tsconfig.json` (TypeScript preset);
+- a code file the change adds or moves to a path the head hides, decided per file: by `exclude`
+  and `layout.excludedGlobs` (one set), by the exception paths of one rule (`exceptions`,
+  `python.exceptions`), or by a test root inside a source root. It passes only when the base config
+  hid the same path in the same set and a base glob or root that hid it there already covered
+  code of the base (an established `vendor/**` or `**/fixtures/**`): otherwise an idle glob is
+  listed when it is added, and the code that later arrives under it fails then, however the glob
+  is spelled. Even under an established exclusion or test root the file fails when production code
+  reaches it: imports from files under the source roots that are neither tests nor hidden, followed
+  through other hidden files (a barrel re-exporting a new file), plus the `main`, `bin` and
+  `exports` targets of any `package.json` and the `layout.entryPoints` files. So a feature cannot be
+  written under an excluded folder and used from the checked code. Exceptions under an established
+  glob do not fail on imports, because the file is still checked by every other rule, and the
+  import walk reads TypeScript and JavaScript only, so under the Python, Java and Kotlin presets an
+  established glob does not fail;
+- a `tsconfig.json` removed, or `checkJs` turned off in any of the project's tsconfig files (the root
+  one, per-package ones and the configs they reference), with the TypeScript preset;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -224,7 +236,7 @@ Choosing another tool that runs the same checks is not loosening and is only lis
 `python.testRunner`, `python.environment` and a `kotlin.formatter` other than `none`. Other changes
 (`base`, added roots, `legacyInventory`, and tightenings: a removed `exclude`, `layout.excludedGlobs`,
 `layout.entryPoints` or exception path, a re-enabled analyzer, a lowered threshold, `checkJs` turned
-on) are listed and never fail; an added
+on in a tsconfig) are listed and never fail; an added
 `nitpicker.legacy.json` entry fails on its own as `baseline-expansion`. With sharding, the first
 shard reports the findings. Unknown keys and
 invalid values are an error (exit 2). Every override is listed in the report and changes the policy
@@ -257,7 +269,7 @@ hash, so a weakened check is visible in review.
 | `preset`          | `"typescript"`, `"javascript"`, `"java"`, `"kotlin"` or `"python"` | The preset; default `typescript`. `javascript` gates a plain JavaScript project; see [JavaScript preset](#javascript-preset). `java` and `kotlin` gate a Gradle project and `python` a Python project; none of them is auto-detected. Without `preset`, a project whose source roots hold no TypeScript or JavaScript but that has `pom.xml`, `build.gradle(.kts)` or `settings.gradle(.kts)` (Java, or Kotlin when `.kt` files outnumber `.java`), or `pyproject.toml`, `setup.py` or `setup.cfg` (Python), stops with a config error (exit 2) naming the preset to set. The check is best-effort: files under `resources`, `static`, `public`, `assets`, `webapp` or `wwwroot` folders and `*.min.js` files are bundled assets and do not count as TypeScript or JavaScript; see [Java preset](#java-preset), [Kotlin preset](#kotlin-preset) and [Python preset](#python-preset).                                                                                                                                                                                                                                                                                                                                                                 |
 | `disable`         | string[]                                                           | Analyzer names to turn off, without duplicates. An unknown name is an error, and so is disabling an analyzer another one depends on (`coverage` is needed by `crap`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `thresholds`      | object                                                             | `crapLimit`: a positive number. The CRAP score above which a function is a finding. The default is 9 (from `shared/policy.mjs`). TypeScript, JavaScript, Java and Python. Whole numbers for the file limits: `fileLines` (lines per source file, default 300), `testFileLines` (per test file, default 500), `lineLength` (characters per line, default 120; imports, URLs and the text inside string literals are not counted) and `folderFiles` (source files, and separately test files, directly in one folder, default 6; only code files of the language count, so config and asset folders are never checked, and test files under a `fixtures` folder are skipped). A file or folder already over a limit on the base fails only when it grows, and a folder moved to a new path is matched to its old path. Every preset, except `lineLength` with Java and Kotlin: their line length is Checkstyle's and detekt's, and setting it with `"preset": "java"` or `"kotlin"` is a config error. Generated sources a build registers (Java, Kotlin) belong in `exclude`.                                                                                                                                                                         |
-| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `exclude`         | string[]                                                           | Globs relative to the project root (`**`, `*`, `?`, `{a,b}`), added to the built-in exclusions: the project-root folders `dist`, `build`, `generated`, `coverage`, `reports` and `target`, and `node_modules` at any depth (a folder such as `src/build/` is analysed). Generated code needs no `exclude`: a file named like generated code (`*.gen.*`, `*.generated.*`, `*.pb.*`, `*_pb.*`, under `__generated__/`) or a tracked code file in one of those root folders counts as generated, skipped by the layout checks and importable from the source roots, only when one of its first five lines carries a generator marker such as `// @generated` or `// Code generated by <tool>. DO NOT EDIT.`. That marker is the allowed form for generated code; without it the file is checked like any other. Hand-written `*.d.ts` files under the source roots are linted, and the type check reads their declarations, but it runs with `skipLibCheck`, so it reports no errors inside any `.d.ts` file; coverage, CRAP and mutation skip them. Excluded files are skipped by every analyzer and are absent from the dependency graph. With the Java and Python presets the built-in list does not apply and findings whose path matches a glob are dropped (Python also keeps those files away from ruff and black).                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `layout`          | object                                                             | Both the TypeScript and JavaScript presets; a config error with `java`, `kotlin` and `python`. `sourceRoots` (default `["src"]`) and `testRoots` (default `["test", "tests"]`): non-empty arrays of directories inside the project, with no absolute paths, `..` or globs. `excludedGlobs`: an array of globs that replaces the built-in exclusions. `entryPoints`: an array of globs of files that are started or loaded by path (a spawned script, a worker, a config read by another tool) and so are never imported; the dead-code check treats them as entries and the module-load-effects check skips them. Other keys are an error. The strict preset puts features under `<sourceRoot>/main/features/`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `exceptions`      | object[]                                                           | The TypeScript, JavaScript, Java and Kotlin presets; with `python`, only for the file limits (`file-lines-limit`, `folder-files-limit` and `line-length-limit`), and `python` has `python.exceptions` for its other rules. Lifts a strict rule for some paths: `{ "rule", "paths", "reason" }`, all required. `rule` must be a rule the preset configures (with `java`: the finding as printed, `<tool>/<rule>`; with `kotlin`: one of the one-way rules, see [Kotlin preset](#kotlin-preset)) or one of the file limits `file-lines-limit` and `folder-files-limit` (the TypeScript preset also takes `component-story-missing` and the reuse rules `shared-used-by-one-feature`, `duplicate-definition`, `exported-name-collision`, `redefined-library-component` and `new-icon-asset`, and a `domain-*` architecture rule, whose `paths` are the importing files); with the other presets also `line-length-limit`; `paths` a non-empty glob array, `reason` a non-empty text. A file matching a file-limit exception is not checked and not counted in its folder; a `folder-files-limit` path may also name the folder itself. Each exception is listed in the report and changes the policy hash. See [The strict preset](#the-strict-preset). |
 | `react`           | object                                                             | TypeScript and JavaScript presets. The React rule scope; see [React](#react). `enabled` (`true` or `false`) forces it on or off; without it the scope is on when `react` is in the project's `package.json` `dependencies` or `devDependencies`. `styling` (`"class-names"`, `"css-in-js"` or `"inline-style"`; inferred from `package.json` when unset) is the one styling approach the project uses. Other keys are an error.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -569,10 +581,12 @@ new and touched code must comply.
   `no-restricted-syntax` is one rule, an exception for it lifts all the syntax bans for those paths.
 - **Layout overrides**: `layout.sourceRoots` moves the whole structure (`<root>/main/features/...`).
 - **Imports stay inside the roots**: production code imports only from files under
-  `layout.sourceRoots` (plus packages, `.json` files and code generated into the root-level
-  `generated/` folder). An import of another project folder, including build output such as
-  `dist/`, `build/` or `target/`, fails with a message naming the ways out: move the file under a
-  root or add its folder to `layout.sourceRoots`; to leave it unchecked, list it in `exclude`.
+  `layout.sourceRoots` (plus packages, `.json` files and files carrying a generator marker, see
+  `exclude` under [Configuration](#configuration)). An import of another project folder, including
+  build output such as `dist/`, `build/` or `target/`, fails with a message naming the allowed form
+  first: move the imported code under a source root, or add its folder to `layout.sourceRoots` so
+  the gate checks it. Excluding the imported file instead is a policy loosening that fails until a
+  person accepts it.
 - **`/* eslint-env */`**: ESLint no longer supports the comment. It is reported as one lint finding
   on the file instead of stopping the lint analyzers.
 
@@ -732,7 +746,8 @@ The inventory is read from the head commit and applied to both sides, and its co
 the policy hash.
 
 You can also relax the gate while you adopt it: `disable` analyzers you are not ready for,
-`exclude` generated or vendored code, and set `layout` if your sources are not under `src/`. Each
+`exclude` vendored code (generated code needs only its generator marker), and set `layout` if your
+sources are not under `src/`. Each
 of these is visible in the report. Remove them as the codebase improves.
 
 ## Container image

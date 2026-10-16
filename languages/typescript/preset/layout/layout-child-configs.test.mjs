@@ -45,6 +45,21 @@ describe('package-owned child configs', () => {
     ]);
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
   });
+  it('eslint.config.mjs turns on the script rules typescript-eslint leaves off for .js files', async () => {
+    const config = await loadConfig('defaults/eslint.config.mjs', policy);
+    const scriptEntry = config.find(
+      (entry) =>
+        entry.rules?.['no-var'] === 'error' &&
+        entry.files?.includes('lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'),
+    );
+
+    expect(scriptEntry?.rules).toEqual({
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-rest-params': 'error',
+      'prefer-spread': 'error',
+    });
+  });
   it('eslint-config policies/base.mjs and coding-standards.config.mjs follow the same layout', async () => {
     const config = await loadConfig(
       'eslint-config/policies/coding-standards.config.mjs',

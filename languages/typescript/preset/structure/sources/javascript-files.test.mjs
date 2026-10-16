@@ -54,15 +54,22 @@ describe('javascript-in-typescript-project', () => {
     ]);
     expect(findings[1].message).toBe(
       'src/orders/parse.mjs is JavaScript in a TypeScript project, so its values are not type-checked. ' +
-        'Write it as src/orders/parse.mts instead. If this is intended, add ' +
+        'Write it as a .ts or .tsx file: src/orders/parse.ts. If this is intended, add ' +
         '{"rule":"javascript-in-typescript-project","paths":["src/orders/parse.mjs"],"reason":"..."} ' +
         'to "exceptions" in nitpicker.config.json.',
     );
-    expect(findings[2].message.split('. ')[1]).toBe('Write it as src/orders/view.tsx instead');
+    expect(findings[2].message.split('. ')[1]).toBe(
+      'Write it as a .ts or .tsx file: src/orders/view.tsx',
+    );
   });
 
-  it('skips entry points, excepted paths, JavaScript projects and projects without a tsconfig', () => {
-    const root = project({ ...TSCONFIG, ...SCRIPTS });
+  it('lifts only for an exception, and skips test fixtures, JavaScript projects and projects without a tsconfig', () => {
+    const root = project({
+      ...TSCONFIG,
+      ...SCRIPTS,
+      'tests/fixtures/legacy-module.cjs': 'module.exports = {};\n',
+      'src/orders/__tests__/__fixtures__/input.js': 'export {};\n',
+    });
     const exception = {
       rule: 'javascript-in-typescript-project',
       paths: ['src/orders/**'],
@@ -74,9 +81,25 @@ describe('javascript-in-typescript-project', () => {
         layout: { entryPoints: ['src/cli.cjs'] },
         exceptions: [exception],
       }).map(({ path: file }) => file),
-    ).toEqual(['tests/orders.test.js']);
+    ).toEqual(['src/cli.cjs', 'tests/orders.test.js']);
     expect(findingsOf(root, { preset: 'javascript' })).toEqual([]);
     expect(findingsOf(project(SCRIPTS))).toEqual([]);
+  });
+
+  it('counts a tsconfig in a package, but not one in a hidden folder', () => {
+    const scripts = { 'src/orders/parse.mjs': 'export {};\n' };
+    const packaged = project({ ...scripts, 'packages/shared/tsconfig.json': '{}' });
+    const vendored = project({ ...scripts, 'vendor/tsconfig.json': '{}' });
+    const hidden = resolveLayout({}, ['vendor/**']);
+    const findings = (root, layout = resolveLayout()) =>
+      javascriptFileFindings({
+        projectRoot: root,
+        analyzerName: 'structure',
+        layout,
+        policy: { exceptions: [] },
+      });
+
+    expect([findings(packaged).length, findings(vendored, hidden).length]).toEqual([1, 0]);
   });
 
   it('decides from the head checkout, so a change that adds the tsconfig keeps old scripts old', () => {

@@ -7,7 +7,7 @@ export function sourceRuleMessages(exceptionHint) {
   return {
     componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${exceptionHint}`,
     componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${exceptionHint}`,
-    javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. Write it as {typescript} instead. ${exceptionHint}`,
+    javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. Write it as a .ts or .tsx file: {typescript}. ${exceptionHint}`,
   };
 }
 
@@ -24,7 +24,7 @@ export function sourceRules(ids, enforcedBy) {
       id: ids.javascriptInTypescriptProject,
       check: 'structure',
       limit:
-        'a `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a `tsconfig.json`, except `layout.entryPoints`',
+        'a `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a `tsconfig.json` (at the root, in a package or referenced from one), except files under a `fixtures/` or `__fixtures__/` folder in a test location',
       enforcedBy,
     },
   ];

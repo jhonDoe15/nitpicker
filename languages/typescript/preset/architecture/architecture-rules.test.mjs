@@ -54,7 +54,7 @@ describe('dependency architecture rules', () => {
             'unknown',
             'undetermined',
           ],
-          pathNot: '^(?:src|test|tests)/|(?:^|/)node_modules/|^generated/|\\.json$',
+          pathNot: '^(?:src|test|tests)/|(?:^|/)node_modules/|\\.json$',
         },
       },
       {

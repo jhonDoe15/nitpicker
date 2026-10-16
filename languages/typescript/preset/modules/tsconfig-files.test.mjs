@@ -1,18 +1,41 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { projectChecksJavascript } from './tsconfig-files.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { checksJavascript, projectTsconfigs } from './tsconfig-files.mjs';
 
-describe('projectChecksJavascript', () => {
-  it('reads checkJs through the project tsconfig and what it extends', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-check-js-'));
-    writeFileSync(path.join(root, 'base.json'), '{ "compilerOptions": { "checkJs": true } }');
-    const checked = projectChecksJavascript(root);
-    writeFileSync(path.join(root, 'tsconfig.json'), '{ "extends": "./base.json" }');
-    const extended = projectChecksJavascript(root);
-    rmSync(root, { recursive: true, force: true });
+const { temporaryRoot } = useGitFixtures();
 
-    expect([checked, extended]).toEqual([false, true]);
+describe('checksJavascript', () => {
+  it('reads checkJs through the tsconfig and what it extends', () => {
+    const root = temporaryRoot('nitpicker-check-js-');
+    writeFiles(root, {
+      'base.json': '{ "compilerOptions": { "checkJs": true } }',
+      'tsconfig.json': '{ "extends": "./base.json" }',
+      'plain/tsconfig.json': '{}',
+    });
+
+    expect([
+      checksJavascript(path.join(root, 'tsconfig.json')),
+      checksJavascript(path.join(root, 'plain/tsconfig.json')),
+    ]).toEqual([true, false]);
+  });
+});
+
+describe('projectTsconfigs', () => {
+  it('finds the root, package and referenced configs, but not dependencies or hidden folders', () => {
+    const root = temporaryRoot('nitpicker-project-tsconfigs-');
+    const files = {
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './config/app.json' }] }),
+      'config/app.json': '{ "compilerOptions": { "checkJs": true } }',
+      'packages/shared/tsconfig.json': '{}',
+      'node_modules/pkg/tsconfig.json': '{}',
+      'vendor/lib/tsconfig.json': '{}',
+    };
+    writeFiles(root, files);
+
+    expect(
+      projectTsconfigs(root, Object.keys(files), (file) => file.startsWith('vendor/')),
+    ).toEqual(['config/app.json', 'packages/shared/tsconfig.json', 'tsconfig.json']);
   });
 });

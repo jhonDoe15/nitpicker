@@ -110,11 +110,9 @@ describe('new-icon-asset', () => {
     ]);
   });
 
-  it('looks in the source roots only, skipping generated, test, fixture, story and excluded folders', () => {
+  it('looks in the source roots only, skipping test, fixture, story and excluded folders', () => {
     const files = withLucide({
       'src/a.svg': icon,
-      'src/__generated__/c.svg': icon,
-      'src/c.generated.svg': icon,
       'src/__tests__/d.svg': icon,
       'src/__fixtures__/e.svg': icon,
       'src/fixtures/e.svg': icon,
@@ -136,6 +134,15 @@ describe('new-icon-asset', () => {
     ]);
     expect(rows(iconFindings(files, { layout: { sourceRoots: ['public'] } }))).toEqual([
       ['new-icon-asset', 'public/g.svg', 'new-icon-asset'],
+    ]);
+  });
+
+  it('checks an svg named like generated output, since only code files carry a generator marker', () => {
+    const files = withLucide({ 'src/__generated__/c.svg': icon, 'src/c.generated.svg': icon });
+
+    expect(rows(iconFindings(files))).toEqual([
+      ['new-icon-asset', 'src/__generated__/c.svg', 'new-icon-asset'],
+      ['new-icon-asset', 'src/c.generated.svg', 'new-icon-asset'],
     ]);
   });
 

@@ -3,7 +3,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { policyDigest } from '../../diff/reporting/review/policy-findings.mjs';
+import { acceptedDigest } from '../test-support/accepted-digest.mjs';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -81,9 +81,10 @@ describe('nitpicker with "preset": "python" and function structure', () => {
         'lizard-data.csv': lizardRow('value', 5),
       });
       commit(root, 'raise the CRAP limit, grow the legacy function');
-      const grown = run(root, [
-        `--accept-policy-change=${policyDigest(['threshold crapLimit raised from 9 to 40'])}`,
-      ]);
+      const digest = acceptedDigest(['threshold crapLimit raised from 9 to 40'], {
+        'nitpicker.config.json': '{ "preset": "python", "thresholds": { "crapLimit": 40 } }\n',
+      });
+      const grown = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
 
       expect(added.exitCode, added.text).toBe(1);
       expect(enforceable(added)).toEqual([

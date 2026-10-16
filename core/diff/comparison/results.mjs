@@ -4,7 +4,11 @@ import {
   policyHash,
   sortByToolAndPath,
 } from '../reporting/report-model.mjs';
-import { isPolicyChangeAccepted, policyFindings } from '../reporting/review/policy-findings.mjs';
+import {
+  isPolicyChangeAccepted,
+  policyDigest,
+  policyFindings,
+} from '../reporting/review/policy-findings.mjs';
 import { compareFindings } from './compare.mjs';
 
 export function combineAnalyzerReports(context) {
@@ -96,9 +100,10 @@ function declaredExclusions(analyzers) {
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
   const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
   const newFindings = [
     ...collect(outcomes, 'newFindings'),
-    ...(context.reportsPolicy ? policyFindings(policyLoosenings, acceptPolicyChange) : []),
+    ...(context.reportsPolicy ? policyFindings(policyLoosenings, digest, acceptPolicyChange) : []),
   ];
   return {
     summary: {
@@ -110,7 +115,11 @@ function buildReport(context) {
       configOverrides,
       policyChanges,
       policyLoosenings,
-      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, acceptPolicyChange),
+      ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
+      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptPolicyChange),
+      ...(context.policyAcceptanceSource === undefined
+        ? {}
+        : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),

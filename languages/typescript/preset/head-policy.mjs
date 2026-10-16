@@ -9,6 +9,7 @@ import { isJavascriptPolicy } from '../../javascript/preset/javascript-preset.mj
 import { hasScopePackage, scopePackage } from './eslint-config/scope-support.mjs';
 import { builtInExcludedGlobs, resolveLayout, sourceRoots, testRoots } from './layout.mjs';
 import { prettierConventionOptions } from '../conventions/prettier-conventions.mjs';
+import { markedGeneratedFiles } from './layout/generated-files.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -49,7 +50,12 @@ function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   return {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset) ? detectedScopes(policy, projectRoot) : {}),
+    ...(SCOPED_PRESETS.includes(config.preset)
+      ? {
+          ...detectedScopes(policy, projectRoot),
+          generatedFiles: markedGeneratedFiles(projectRoot),
+        }
+      : {}),
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
@@ -116,13 +122,17 @@ export function readHeadPolicy(environment = process.env) {
     preset: policy.preset,
     tools: policy.tools ?? {},
     conventions: policy.conventions,
+    generatedFiles: policy.generatedFiles ?? [],
   };
 }
 
 export function readLayout(environment = process.env) {
   const policy = readHeadPolicy(environment);
   return {
-    ...resolveLayout(policy.layout, policy.exclude, { javascript: isJavascriptPolicy(policy) }),
+    ...resolveLayout(policy.layout, policy.exclude, {
+      javascript: isJavascriptPolicy(policy),
+      generatedFiles: policy.generatedFiles,
+    }),
     entryPoints: policy.layout.entryPoints ?? [],
   };
 }

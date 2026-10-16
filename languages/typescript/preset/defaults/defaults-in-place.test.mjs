@@ -35,6 +35,7 @@ const POLICY_PATHS = [
   'languages/typescript/conventions/prettier-conventions.mjs',
   'languages/typescript/conventions/print-width.mjs',
   'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/tool-configs.mjs',
   'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',

@@ -73,21 +73,27 @@ describe('outsideRootsRule', () => {
     expect(result.exitCode, result.output).toBe(0);
   });
 
-  it('fails an import of build output the architecture check sees, and accepts generated code', async () => {
+  it('fails an import of build output or unmarked generated code, and accepts marked generated code', async () => {
     const { exclude } = createQualityChecks().staticChecks.find(
       ({ name }) => name === 'dependency-architecture',
     );
+    const rule = outsideRootsRule({
+      productionSource: '^src/',
+      roots: ['src'],
+      generatedFilePattern: '^(?:generated/marked\\.ts)$',
+    });
     const result = await cruiseWithConfig(
       {
-        forbidden: [outsideRootsRule({ productionSource: '^src/', roots: ['src'] })],
+        forbidden: [rule],
         options: { tsConfig: { fileName: tsConfig }, exclude: { path: exclude } },
       },
       {
         baseDir: project({
           'src/a.ts':
-            "import { b } from '../dist/b';\nimport { c } from '../generated/c';\nexport const a = [b, c];\n",
+            "import { b } from '../dist/b';\nimport { c } from '../generated/c';\nimport { d } from '../generated/marked';\nexport const a = [b, c, d];\n",
           'dist/b.ts': 'export const b = 1;\n',
           'generated/c.ts': 'export const c = 1;\n',
+          'generated/marked.ts': '// @generated\nexport const d = 1;\n',
         }),
         paths: ['src'],
         outputType: 'json',
@@ -99,7 +105,10 @@ describe('outsideRootsRule', () => {
       rule.name,
     ]);
 
-    expect(violations).toEqual([['src/a.ts', 'dist/b.ts', NO_IMPORT_OUTSIDE_ROOTS]]);
+    expect(violations).toEqual([
+      ['src/a.ts', 'dist/b.ts', NO_IMPORT_OUTSIDE_ROOTS],
+      ['src/a.ts', 'generated/c.ts', NO_IMPORT_OUTSIDE_ROOTS],
+    ]);
   });
 
   it('does not apply to files outside production source', async () => {

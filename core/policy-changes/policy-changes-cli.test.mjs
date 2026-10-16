@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
-import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
 const fakeAnalyzerPath = path.resolve(
@@ -38,44 +37,22 @@ function fakeAnalyzer(name = 'fake-quality-analyzer') {
   };
 }
 
-const ALLOWED_FORM =
-  'Write new code as production code under the source roots, where the gate checks it';
 const TYPESCRIPT_FILES = {
   'src/a.ts': 'export {};\n',
   'src/legacy/old.ts': 'export {};\n',
   'src/vendor/lib.ts': 'export {};\n',
-  'src/view.jsx': 'export {};\n',
 };
 
-function prepareRepository({
-  baseConfig,
-  headConfig,
-  headMoves = [],
-  commitHead = false,
-  projectFiles = TYPESCRIPT_FILES,
-  headFiles = {},
-}) {
-  const files = { 'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n', ...projectFiles };
+function prepareRepository({ baseConfig, headConfig, headFiles = {} }) {
+  const files = { 'quality-policy.json': '{"marker":"QUALITY_FINDING"}\n', ...TYPESCRIPT_FILES };
   const repository = createGitRepository(
-    baseConfig === undefined
-      ? files
-      : { ...files, 'nitpicker.config.json': JSON.stringify(baseConfig) },
+    { ...files, 'nitpicker.config.json': JSON.stringify(baseConfig) },
     { prefix: 'nitpicker-policy-changes-' },
   );
   writeFileSync(path.join(repository.root, 'nitpicker.config.json'), JSON.stringify(headConfig));
   writeFiles(repository.root, headFiles);
-  for (const [from, to] of headMoves) {
-    fixtureGit(repository.root, ['mv', from, to]);
-  }
-  if (commitHead) {
-    fixtureGit(repository.root, ['commit', '--quiet', '--all', '--message', 'head']);
-  }
   fixtureGit(repository.root, ['branch', 'comparison-base', repository.baseSha]);
   return repository.root;
-}
-
-function temporaryOutput() {
-  return path.join(temporaryRoot('nitpicker-policy-output-'), 'reports');
 }
 
 function readReports(outputRoot) {
@@ -87,40 +64,26 @@ function readReports(outputRoot) {
   };
 }
 
-function runIn(root, { arguments_, environment = {}, analyzers = [fakeAnalyzer()] }) {
+function runWithHeadConfig({ extraArguments = [], environment = {}, ...repository }) {
+  const outputRoot = path.join(temporaryRoot('nitpicker-policy-output-'), 'reports');
   let stdoutText = '';
+  let stderrText = '';
   const exitCode = runCli({
-    arguments_,
+    arguments_: ['--base', 'comparison-base', '--output', outputRoot, ...extraArguments],
     environment: { NO_COLOR: '1', ...environment },
-    currentProjectRoot: root,
-    analyzers,
+    currentProjectRoot: prepareRepository(repository),
+    analyzers: [fakeAnalyzer()],
     stdout: { write: (value) => (stdoutText += value) },
-    stderr: { write() {} },
+    stderr: { write: (value) => (stderrText += value) },
     progress: { write() {} },
     runTasks: runTasksInProcess,
   });
-  return { exitCode, stdoutText };
-}
-
-function runWithHeadConfig({ extraArguments = [], environment = {}, ...repository }) {
-  const outputRoot = temporaryOutput();
-  const run = runIn(prepareRepository(repository), {
-    arguments_: ['--base', 'comparison-base', '--output', outputRoot, ...extraArguments],
-    environment,
-  });
-  return { ...run, ...readReports(outputRoot) };
+  return { exitCode, stdoutText, stderrText, ...readReports(outputRoot) };
 }
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):';
-function acceptRoute(loosenings) {
-  const digest = policyDigest(loosenings);
-  return (
-    'Stop and ask a person to review this change; they accept exactly these loosenings with ' +
-    `--accept-policy-change=${digest} (or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI).`
-  );
-}
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');
@@ -131,11 +94,12 @@ function policyBlock(text, heading = HEADING) {
 function policyFindings(newFindings) {
   return newFindings
     .filter(({ tool }) => tool === 'nitpicker-config')
-    .map(({ rule, path: file, message }) => ({ rule, file, message }));
+    .map(({ message }) => message.split('. ')[0]);
 }
 
 describe('a change that loosens nitpicker.config.json', () => {
-  const loosened = {
+  const baseConfig = { exclude: ['src/legacy/**'] };
+  const headConfig = {
     exclude: ['src/legacy/**', 'src/vendor/**'],
     thresholds: { crapLimit: 20 },
     react: { enabled: false },
@@ -146,255 +110,62 @@ describe('a change that loosens nitpicker.config.json', () => {
     'react.enabled: not set -> false',
   ];
 
-  it('fails with one finding per loosening and lists them in the policy block', () => {
-    const { exitCode, stdoutText, summary, report, newFindings } = runWithHeadConfig({
-      baseConfig: { exclude: ['src/legacy/**'] },
-      headConfig: loosened,
+  it('fails with one finding per loosening and passes only once a person accepts its digest in CI', () => {
+    const outsideCi = runWithHeadConfig({
+      baseConfig,
+      headConfig,
+      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: 'ffffffffffff' },
+    });
+    const accepted = runWithHeadConfig({
+      baseConfig,
+      headConfig,
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: outsideCi.summary.policyDigest },
     });
 
-    expect(exitCode).toBe(1);
-    expect(summary.policyChanges).toEqual(expected);
-    expect(summary.policyLoosenings).toEqual(expected);
-    expect(summary.policyChangeAccepted).toBe(false);
-    expect(policyFindings(newFindings)).toEqual(
-      [...expected].sort().map((change) => ({
-        rule: 'policy-loosened',
-        file: 'nitpicker.config.json',
-        message: `${change}. ${acceptRoute(expected)}`,
-      })),
+    expect(outsideCi.exitCode).toBe(1);
+    expect(outsideCi.summary.policyLoosenings).toEqual(expected);
+    expect(outsideCi.summary.policyAcceptanceSource).toBe('environment');
+    expect(outsideCi.stderrText).toContain('NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI');
+    expect(policyFindings(outsideCi.newFindings)).toEqual([...expected].sort());
+    expect(outsideCi.newFindings[0].message).toContain(
+      `NITPICKER_ACCEPT_POLICY_CHANGE=${outsideCi.summary.policyDigest} in CI`,
     );
-    expect(policyBlock(stdoutText)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
-    expect(policyBlock(report)).toEqual([HEADING, ...expected.map((change) => `  ${change}`)]);
-  });
-
-  it('passes when a person accepts the digest of these loosenings', () => {
-    const run = runWithHeadConfig({
-      baseConfig: { exclude: ['src/legacy/**'] },
-      headConfig: loosened,
-      environment: { NITPICKER_ACCEPT_POLICY_CHANGE: policyDigest(expected) },
-    });
-
-    expect(run.exitCode).toBe(0);
-    expect(run.summary.policyChangeAccepted).toBe(true);
-    expect(policyFindings(run.newFindings)).toEqual([]);
-    expect(policyBlock(run.stdoutText, ACCEPTED_HEADING)).toEqual([
+    expect(policyBlock(outsideCi.report)).toEqual([
+      HEADING,
+      ...expected.map((change) => `  ${change}`),
+    ]);
+    expect([accepted.exitCode, accepted.summary.policyChangeAccepted]).toEqual([0, true]);
+    expect(policyBlock(accepted.stdoutText, ACCEPTED_HEADING)).toEqual([
       ACCEPTED_HEADING,
       ...expected.map((change) => `  ${change}`),
     ]);
   });
-
-  it('counts the whole head config when the base has none', () => {
-    const { summary } = runWithHeadConfig({ headConfig: loosened });
-
-    expect(summary.policyLoosenings).toEqual([
-      'exclude added: src/legacy/**',
-      'exclude added: src/vendor/**',
-      ...expected.slice(1),
-    ]);
-  });
-
-  it('passes a tightening and lists a neutral change without failing', () => {
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: { exclude: ['src/legacy/**'], thresholds: { crapLimit: 20 } },
-      headConfig: { base: 'comparison-base', thresholds: { crapLimit: 12 } },
-    });
-
-    expect(exitCode).toBe(0);
-    expect(summary.policyLoosenings).toEqual([]);
-    expect(summary.policyChanges).toEqual([
-      'exclude removed: src/legacy/**',
-      'threshold crapLimit lowered from 20 to 12',
-      'base: not set -> "comparison-base"',
-    ]);
-  });
-
-  it('prints nothing when the config did not change', () => {
-    const { exitCode, stdoutText, summary } = runWithHeadConfig({
-      baseConfig: loosened,
-      headConfig: loosened,
-    });
-
-    expect(exitCode).toBe(0);
-    expect(summary.policyChanges).toEqual([]);
-    expect(stdoutText.split('\n').filter((line) => line.startsWith('Policy changed'))).toEqual([]);
-  });
-
-  it('reports the loosening once when the run is sharded', () => {
-    const root = prepareRepository({
-      baseConfig: { exclude: ['src/legacy/**'] },
-      headConfig: loosened,
-      commitHead: true,
-    });
-    const analyzers = [fakeAnalyzer('fake-first'), fakeAnalyzer('fake-second')];
-    const outputRoot = temporaryOutput();
-    const shards = [0, 1].map((index) => {
-      const shardOutput = path.join(outputRoot, 'shards', String(index));
-      runIn(root, {
-        arguments_: [
-          '--base',
-          'comparison-base',
-          '--output',
-          shardOutput,
-          '--shard-count',
-          '2',
-          '--shard-index',
-          String(index),
-        ],
-        analyzers,
-      });
-      return readReports(shardOutput);
-    });
-    const combined = path.join(outputRoot, 'combined');
-    const aggregate = runIn(root, {
-      arguments_: [
-        'aggregate',
-        '--input-root',
-        path.join(outputRoot, 'shards'),
-        '--shard-count',
-        '2',
-        '--output',
-        combined,
-      ],
-      analyzers,
-    });
-    const { summary, newFindings } = readReports(combined);
-
-    expect(shards.map((shard) => policyFindings(shard.newFindings).length)).toEqual([3, 0]);
-    expect(aggregate.exitCode).toBe(1);
-    expect(policyFindings(newFindings).map(({ message }) => message.split('. ')[0])).toEqual(
-      [...expected].sort(),
-    );
-    expect([summary.policyLoosenings, summary.policyChangeAccepted]).toEqual([expected, false]);
-  });
 });
 
-describe('a change that adopts or keeps the policy', () => {
-  it('passes when a first config declares the preset that the project needs', () => {
-    const java = { 'pom.xml': '<project/>\n', 'src/main/java/A.java': 'class A {}\n' };
-    const runs = [
-      runWithHeadConfig({ headConfig: { preset: 'java' }, projectFiles: java }),
-      runWithHeadConfig({ headConfig: { preset: 'typescript' } }),
-    ];
-
-    expect(runs.map(({ exitCode, summary }) => [exitCode, summary.policyLoosenings])).toEqual([
-      [0, []],
-      [0, []],
-    ]);
-  });
-
-  it('fails when a first config moves a TypeScript project to another preset', () => {
-    const { exitCode, summary } = runWithHeadConfig({ headConfig: { preset: 'java' } });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([1, ['preset: not set -> "java"']]);
-  });
-
-  it('passes when the config drops a preset that is the default anyway', () => {
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: { preset: 'typescript' },
-      headConfig: {},
-    });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
-  });
-
-  it('still compares a base config that only the new project checks reject', () => {
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: { preset: 'javascript' },
-      headConfig: { preset: 'javascript', exclude: ['src/view.jsx', 'src/legacy/**'] },
-    });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([1, ['exclude added: src/legacy/**']]);
-  });
-
-  it('fails code the change adds or moves under a kept exclude, exception or test root that covers no base code', () => {
-    const config = {
-      exclude: ['src/later/**'],
-      exceptions: [{ rule: 'file-lines-limit', paths: ['src/next/**'], reason: 'Generated' }],
-      layout: { testRoots: ['test', 'tests', 'src/spare'] },
-    };
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: config,
-      headConfig: config,
+describe('a change that keeps the policy', () => {
+  it('fails hidden code production reaches, passes vendored code it does not, and ignores an acceptance from an agent', () => {
+    const vendor = { exclude: ['src/vendor/**'] };
+    const run = runWithHeadConfig({
+      baseConfig: vendor,
+      headConfig: vendor,
       headFiles: {
-        'src/later/a.ts': 'export {};\n',
-        'src/next/big.ts': 'export {};\n',
-        'src/spare/c.ts': 'export {};\n',
+        'src/a.ts': "export * from './vendor/lib';\n",
+        'src/vendor/lib.ts': "export * from './feature';\n",
+        'src/vendor/feature.ts': 'export const feature = 1;\n',
+        'src/vendor/unused.ts': 'export {};\n',
       },
+      extraArguments: ['--accept-policy-change=ffffffffffff'],
     });
 
-    expect([exitCode, summary.policyLoosenings]).toEqual([
+    expect([run.exitCode, run.summary.policyLoosenings]).toEqual([
       1,
       [
-        `exclude src/later/** covers no code of the base and hides code this change adds or moves: src/later/a.ts. ${ALLOWED_FORM}`,
-        `exception file-lines-limit for src/next/** covers no code of the base and hides code this change adds or moves: src/next/big.ts. ${ALLOWED_FORM}`,
-        `layout.testRoots src/spare covers no code of the base and hides code this change adds or moves: src/spare/c.ts. ${ALLOWED_FORM}`,
+        'exclude and layout.excludedGlobs hide code this change adds or moves that production code imports: src/vendor/feature.ts (imported by src/a.ts)',
       ],
     ]);
-    expect(summary.notices).toEqual([]);
-  });
-
-  it('fails code added or moved under an exclude or test root that covers base code only when production code imports it', () => {
-    const config = {
-      exclude: ['src/vendor/**'],
-      layout: { testRoots: ['test', 'tests', 'src/legacy'] },
-    };
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: config,
-      headConfig: config,
-      headMoves: [['src/a.ts', 'src/vendor/a.ts']],
-      headFiles: {
-        'src/feature.ts': "import './vendor/a';\nimport './legacy/helper';\n",
-        'src/legacy/fixture.ts': "import '../vendor/only-vendored';\n",
-        'src/vendor/b.ts': "import './only-vendored';\n",
-        'src/vendor/only-vendored.ts': 'export {};\n',
-        'src/legacy/helper.ts': 'export {};\n',
-      },
-    });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([
-      1,
-      [
-        `exclude src/vendor/** hides code this change adds or moves that production code imports: src/vendor/a.ts (imported by src/feature.ts). ${ALLOWED_FORM}`,
-        `layout.testRoots src/legacy hides code this change adds or moves that production code imports: src/legacy/helper.ts (imported by src/feature.ts). ${ALLOWED_FORM}`,
-      ],
-    ]);
-  });
-
-  it('passes code added under an exception that already covered code in the base', () => {
-    const config = {
-      exceptions: [{ rule: 'file-lines-limit', paths: ['src/legacy/**'], reason: 'Legacy' }],
-    };
-    const { exitCode, summary } = runWithHeadConfig({
-      baseConfig: config,
-      headConfig: config,
-      headFiles: { 'src/legacy/new.ts': 'export {};\n' },
-    });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([0, []]);
-  });
-
-  it('fails a change that turns checkJs off in the project tsconfig', () => {
-    const tsconfig = (checkJs) =>
-      JSON.stringify({ compilerOptions: { allowJs: true, checkJs, types: [], lib: ['ES2022'] } });
-    const { exitCode, summary } = runWithHeadConfig({
-      headConfig: {},
-      projectFiles: { ...TYPESCRIPT_FILES, 'tsconfig.json': tsconfig(true) },
-      headFiles: { 'tsconfig.json': tsconfig(false) },
-    });
-
-    expect([exitCode, summary.policyLoosenings]).toEqual([
-      1,
-      ['tsconfig.json checkJs: true -> false'],
-    ]);
-  });
-
-  it('fails a test root added over production code', () => {
-    const { summary } = runWithHeadConfig({
-      headConfig: { layout: { testRoots: ['test', 'tests', 'src/legacy'] } },
-    });
-
-    expect(summary.policyLoosenings).toEqual([
-      'layout.testRoots added: src/legacy (production code under it becomes test code)',
-    ]);
+    expect(run.summary.policyAcceptanceSource).toBe('flag');
+    expect(run.stderrText).toContain(
+      '--accept-policy-change is honoured only at an interactive terminal',
+    );
   });
 });

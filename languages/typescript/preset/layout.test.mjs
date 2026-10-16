@@ -97,36 +97,33 @@ describe('built-in excluded globs', () => {
 });
 
 describe('generated files', () => {
-  it.each([
+  const NAMED_LIKE_GENERATED = [
     'src/api.generated.ts',
     'src/schema.gen.tsx',
     'src/__generated__/types.ts',
-    'generated/service.ts',
     'src/proto/user_pb.js',
     'src/proto/user_grpc_pb.ts',
     'src/proto/user.pb.ts',
-  ])('are not source: %s', (file) => {
-    expect(isSourceFile(file)).toBe(false);
+  ];
+
+  it.each(NAMED_LIKE_GENERATED)('are source code without a generator marker: %s', (file) => {
+    expect(isSourceFile(file)).toBe(true);
   });
 
-  it.each(['src/generator.ts', 'src/gen.ts', 'src/generated-names.ts', 'src/pb.ts', 'src/web.ts'])(
-    'does not treat a similar name as generated: %s',
-    (file) => {
-      expect(isSourceFile(file)).toBe(true);
-    },
-  );
-});
+  it.each(NAMED_LIKE_GENERATED)('are generated when they carry a marker: %s', (file) => {
+    const layout = resolveLayout({}, [], { generatedFiles: [file] });
 
-describe('layout.isGeneratedPath', () => {
-  it('is the one generated-code test: output folders at the root, generated names anywhere', () => {
-    const layout = resolveLayout();
+    expect([layout.isGeneratedPath(file), layout.isSourceFile(file)]).toEqual([true, false]);
+  });
 
-    expect(layout.isGeneratedPath('dist/b.svg')).toBe(true);
-    expect(layout.isGeneratedPath('src/__generated__/types.ts')).toBe(true);
-    expect(layout.isGeneratedPath('src/api.gen.ts')).toBe(true);
-    expect(layout.isGeneratedPath('src/billing/build/math.ts')).toBe(false);
-    expect(layout.isGeneratedPath('src/generated/service.ts')).toBe(false);
-    expect(layout.isGeneratedPath('src/generator.ts')).toBe(false);
+  it('keeps dependencies generated and builds the marked-file pattern for the import rules', () => {
+    const layout = resolveLayout({}, [], { generatedFiles: ['generated/api.ts'] });
+
+    expect(layout.isGeneratedPath('src/node_modules/pkg/a.ts')).toBe(true);
+    expect(layout.isGeneratedPath('dist/b.ts')).toBe(false);
+    expect(new RegExp(layout.generatedFilePattern).test('generated/api.ts')).toBe(true);
+    expect(new RegExp(layout.generatedFilePattern).test('generated/api.tsx')).toBe(false);
+    expect(resolveLayout().generatedFilePattern).toBeUndefined();
   });
 });
 
