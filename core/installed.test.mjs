@@ -63,6 +63,8 @@ const expectedDirtyFindings = [
   },
 ];
 const expectedSnapshotOutput = [
+  "Following this project's conventions:",
+  '  Trailing commas: none (used by 1 of 1 measured files)',
   'Nitpicker quality snapshot',
   'Status: violations',
   'Enforceable findings: 2',
