@@ -13,7 +13,7 @@ const HINTED_TOOLS = [
   'mutmut',
 ];
 
-// Rules whose message names a setting to change instead of an exception.
+/** Rules whose message names a setting to change instead of an exception. */
 const ROUTED_BY_SETTING = new Set(['no-import-outside-roots']);
 
 const LOGGING = 'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';

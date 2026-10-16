@@ -46,10 +46,12 @@ describe('failing tests', () => {
 
     const [{ message }] = testFailureFindings({ testRunner: 'unittest', testFailures });
 
-    expect(message.split('\n')).toHaveLength(23);
-    expect(message).toContain('  and 3 more');
-    expect(message).toContain('the head snapshot');
-    expect(message).not.toContain('mutmut');
+    expect(message.split('\n')).toEqual([
+      'Tests fail in the head snapshot. Make each failing test pass:',
+      ...testFailures.slice(0, 20).map(({ id }) => `  ${id}`),
+      '  and 3 more',
+      'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
+    ]);
   });
   it('reports nothing when every test passes', () => {
     expect(testFailureFindings({ testFailures: [] })).toEqual([]);

@@ -88,7 +88,7 @@ export function testRunnerLabel(context) {
 
 /** PYTEST_ADDOPTS for the pytest runs mutmut starts: pinned, single-process, `ignored` left out. */
 export function mutmutPytestEnvironment(context, ignored = []) {
-  const inherited = process.env.PYTEST_ADDOPTS;
+  const inherited = context.pytestAddopts;
   const pinned = pinnedEnvironmentAddopts(inherited).PYTEST_ADDOPTS ?? inherited;
   const options = [
     pinned,
@@ -125,7 +125,7 @@ export function pytestCommand(context) {
 
 export function testEnvironment(context) {
   return context.project.testRunner === 'pytest'
-    ? pinnedEnvironmentAddopts(process.env.PYTEST_ADDOPTS)
+    ? pinnedEnvironmentAddopts(context.pytestAddopts)
     : {};
 }
 

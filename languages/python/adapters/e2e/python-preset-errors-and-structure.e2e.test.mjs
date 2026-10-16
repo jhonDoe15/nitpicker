@@ -59,9 +59,9 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(
         result
           .json('new-findings.json')
-          .filter(({ path: file }) => file === 'src/demo/bad.py')
-          .map(({ tool }) => tool),
-      ).toContain('ruff');
+          .filter(({ tool, path: file }) => tool === 'ruff' && file === 'src/demo/bad.py')
+          .map(({ rule }) => rule),
+      ).toEqual(['F401']);
     });
     it('reports a slow new test, an import cycle and a dev-only package in production code', () => {
       const result = gate(project, 'project-shape');

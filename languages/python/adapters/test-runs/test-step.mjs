@@ -8,6 +8,7 @@ import {
   testEnvironment,
   testsRan,
 } from '../execution/python-test-runner.mjs';
+import { insideProject } from '../../libraries/project-files.mjs';
 import { failedTests, readJunit } from './junit-results.mjs';
 import { unittestFailures } from './test-failures.mjs';
 
@@ -24,7 +25,7 @@ const TEST_FILES = ['test_*.py', '*_test.py', 'conftest.py', '*/tests/*', '*/tes
 const EMPTY_COVERAGE_REPORT = '{"files":{}}';
 
 function coverageSources({ projectRoot, project }) {
-  return project.sourceRoots.filter((root) => existsSync(path.join(projectRoot, root)));
+  return project.sourceRoots.filter((root) => existsSync(insideProject(projectRoot, root)));
 }
 
 function indented(entries) {

@@ -175,8 +175,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         ].join('\n'),
       },
     ]);
-    expect(result.json('new-findings.json').map(({ tool, rule }) => `${tool}/${rule}`)).toContain(
-      'ruff/F841',
-    );
+    const ruff = result.json('new-findings.json').filter(({ tool }) => tool === 'ruff');
+    expect(ruff.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual(['F841 src/demo/a.py']);
   });
 });

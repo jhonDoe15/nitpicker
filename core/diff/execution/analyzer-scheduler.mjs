@@ -88,10 +88,7 @@ async function runTask(
   { semaphore, groupSemaphores, maxParallel, execute, signal },
 ) {
   const dependencyOutcomes = await Promise.all(dependencies);
-  const tolerated = new Set(task.toleratedDependencyErrors ?? []);
-  const failedDependency = dependencyOutcomes.find((outcome) =>
-    blocksDependents(outcome, tolerated),
-  );
+  const failedDependency = blockingDependency(task, dependencyOutcomes);
   if (failedDependency !== undefined) {
     return skippedOutcome(task.name, failedDependency);
   }
@@ -145,8 +142,15 @@ function hasFailed(outcome) {
   );
 }
 
-// A dependent task may name tools whose tool errors in its dependency do not stop it, such as
-// failing project tests that the dependent leaves out on its own.
+/**
+ * A dependent task may name tools whose tool errors in its dependency do not stop it, such as
+ * failing project tests that the dependent leaves out on its own.
+ */
+function blockingDependency(task, dependencyOutcomes) {
+  const tolerated = new Set(task.toleratedDependencyErrors ?? []);
+  return dependencyOutcomes.find((outcome) => blocksDependents(outcome, tolerated));
+}
+
 function blocksDependents(outcome, tolerated) {
   return (
     outcome.error !== undefined ||

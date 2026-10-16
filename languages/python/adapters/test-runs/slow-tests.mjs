@@ -1,9 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../shared/policy.mjs';
+import { readProjectFile } from '../../libraries/project-files.mjs';
 import { readJunit } from './junit-results.mjs';
 
-export const SLOW_TEST_TOOL = 'test-runtime';
+const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
 const INTEGRATION_MARK = /\bmark\s*\.\s*(?:integration|e2e)\b/u;
 const DEFINITION = /^(\s*)(?:async\s+)?def\s+(\w+)\s*\(/u;
@@ -12,32 +12,30 @@ const DECORATOR = /^\s*@/u;
 const MODULE_MARKS = /^pytestmark\s*=[^\n]*(?:\n[ \t)\]][^\n]*)*/mu;
 
 function readLines(root, file) {
-  const absolute = root === undefined || file === '' ? undefined : path.join(root, file);
-  return absolute !== undefined && existsSync(absolute)
-    ? readFileSync(absolute, 'utf8').split(/\r?\n/u)
-    : undefined;
+  return root === undefined || file === ''
+    ? undefined
+    : readProjectFile(root, file)?.split(/\r?\n/u);
 }
 
 function indentOf(line) {
   return /^\s*/u.exec(line)[0].length;
 }
 
+function isBlank(line) {
+  return line.trim() === '';
+}
+
 function blockAt(lines, definition) {
   const indent = indentOf(lines[definition]);
-  let first = definition;
-  while (first > 0 && DECORATOR.test(lines[first - 1])) {
-    first -= 1;
-  }
-  let last = definition;
-  for (let index = definition + 1; index < lines.length; index += 1) {
-    if (lines[index].trim() === '') {
-      continue;
-    }
-    if (indentOf(lines[index]) <= indent) {
-      break;
-    }
-    last = index;
-  }
+  const decorators = lines
+    .slice(0, definition)
+    .reverse()
+    .findIndex((line) => !DECORATOR.test(line));
+  const first = decorators === -1 ? 0 : definition - decorators;
+  const after = lines.slice(definition + 1);
+  const end = after.findIndex((line) => !isBlank(line) && indentOf(line) <= indent);
+  const body = end === -1 ? after : after.slice(0, end);
+  const last = definition + 1 + body.findLastIndex((line) => !isBlank(line));
   return { first, definition, last, text: lines.slice(first, last + 1).join('\n') };
 }
 
@@ -49,15 +47,14 @@ function blocksNamed(lines, name) {
 
 function classDecorators(lines, block) {
   const indent = indentOf(lines[block.definition]);
-  for (let index = block.first - 1; index >= 0; index -= 1) {
-    const owner = CLASS.exec(lines[index]);
-    if (owner !== null && owner[1].length < indent) {
-      return blockAt(lines, index)
+  const owner = lines
+    .slice(0, block.first)
+    .findLastIndex((line) => (CLASS.exec(line)?.[1].length ?? indent) < indent);
+  return owner === -1
+    ? []
+    : blockAt(lines, owner)
         .text.split('\n')
         .filter((line) => DECORATOR.test(line));
-    }
-  }
-  return [];
 }
 
 function isIntegration(testCase, lines, block) {
