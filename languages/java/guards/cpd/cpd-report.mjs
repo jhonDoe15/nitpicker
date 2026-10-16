@@ -41,9 +41,13 @@ function lexErrors(xml) {
 export function skippedPaths(reportRoot, { projectRoot, xml }) {
   const file = path.join(reportRoot, CPD_SKIPPED);
   const unread = existsSync(file) ? readFileSync(file, 'utf8').split(/\r?\n/u) : [];
-  const lines = [...unread, ...lexErrors(xml)]
-    .filter((line) => line.trim() !== '')
-    .map((line) => line.replaceAll(`${projectRoot}${path.sep}`, ''));
+  const lines = [
+    ...new Set(
+      [...unread, ...lexErrors(xml)]
+        .filter((line) => line.trim() !== '')
+        .map((line) => line.replaceAll(`${projectRoot}${path.sep}`, '')),
+    ),
+  ];
   if (lines.length === 0) {
     return [];
   }

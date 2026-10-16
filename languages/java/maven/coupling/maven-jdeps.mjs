@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -73,12 +74,16 @@ function stagingParent({ outputDirectory, buildDirectory }) {
 }
 
 function analyzeWithoutModuleInfo(module) {
-  const parent = stagingParent(module);
-  mkdirSync(parent, { recursive: true });
+  mkdirSync(module.buildDirectory, { recursive: true });
+  const outputDirectory = realpathSync(module.outputDirectory);
+  const parent = stagingParent({
+    outputDirectory,
+    buildDirectory: realpathSync(module.buildDirectory),
+  });
   const staged = mkdtempSync(path.join(parent, 'nitpicker-jdeps-'));
   try {
     const classes = path.join(staged, 'classes');
-    cpSync(module.outputDirectory, classes, { recursive: true, filter: isStagedClass });
+    cpSync(outputDirectory, classes, { recursive: true, filter: isStagedClass });
     return analyzeClasses(module, classes);
   } finally {
     rmSync(staged, { recursive: true, force: true });

@@ -12,13 +12,11 @@
     },
     {
       "tool": "duplicates",
-      "rule": "cpd-not-run",
-      "path": "legacy",
-      "identity": "cpd-not-run",
-      "message": "No CPD duplicate report for legacy.",
-      "classification": "descriptive",
-      "toolNotRun": true,
-      "notRunScope": ["legacy/src/main/java", "legacy/src/test/java"]
+      "rule": "duplicate-clone",
+      "path": "kernel/src/main/java/n/Fresh.java",
+      "identity": "cpd:pair:kernel/src/main/java/n/Fresh.java|kernel/src/main/java/n/Copy.java:occurrence:1",
+      "message": "This code repeats kernel/src/main/java/n/Copy.java.",
+      "classification": "enforceable"
     },
     {
       "tool": "duplicates",
@@ -26,14 +24,6 @@
       "path": "kernel/src/main/java/p/E.java",
       "identity": "cpd:pair:kernel/src/main/java/p/E.java|kernel/src/main/java/p/F.java:occurrence:1",
       "message": "This code repeats kernel/src/main/java/p/F.java.",
-      "classification": "enforceable"
-    },
-    {
-      "tool": "duplicates",
-      "rule": "duplicate-clone",
-      "path": "legacy/src/main/java/n/Fresh.java",
-      "identity": "cpd:pair:legacy/src/main/java/n/Fresh.java|legacy/src/main/java/n/Copy.java:occurrence:1",
-      "message": "This code repeats legacy/src/main/java/n/Copy.java.",
       "classification": "enforceable"
     }
   ]
