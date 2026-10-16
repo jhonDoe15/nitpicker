@@ -78,7 +78,7 @@ export function evaluateFileLimits(files, options) {
   ];
 }
 
-function exceptionMatcher(exceptions) {
+export function exceptionMatcher(exceptions) {
   const matchers = exceptions.map(({ rule, paths, glob }) => ({
     rule,
     patterns: (paths ?? [glob]).map((pattern) => globToRegExp(pattern)),
@@ -91,7 +91,7 @@ function exceptionMatcher(exceptions) {
     );
 }
 
-function exceptionText(rule, glob) {
+export function exceptionText(rule, glob) {
   return JSON.stringify({ rule, paths: [glob], reason: '...' });
 }
 
