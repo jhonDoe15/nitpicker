@@ -8,6 +8,7 @@ const MUTABLE_CLASSES = new Set([
   'AbortSignal',
   'ArrayBuffer',
   'Buffer',
+  'Error',
   'EventTarget',
   'Headers',
   'URL',
@@ -25,14 +26,14 @@ export function kindOfType(typeNode, sourceFile) {
     return {};
   }
   const name = typeNode.typeName.getText(sourceFile);
-  const kind = TYPE_NAME_KINDS.get(name);
+  const kind = kindOfTypeName(name);
   if (kind !== undefined) {
     return { kind, label: KINDS[kind].label };
   }
   return MUTABLE_CLASSES.has(name) ? { kind: 'class', label: name } : {};
 }
 
-export const TYPE_NAME_KINDS = new Map([
+const TYPE_NAME_KINDS = new Map([
   ['Array', 'array'],
   ['Set', 'set'],
   ['Map', 'map'],
@@ -41,6 +42,10 @@ export const TYPE_NAME_KINDS = new Map([
   ['RegExpExecArray', 'execArray'],
   ['RegExpMatchArray', 'execArray'],
 ]);
+
+export function kindOfTypeName(name) {
+  return TYPE_NAME_KINDS.get(name);
+}
 
 const MAX_ALIAS_DEPTH = 4;
 
@@ -67,7 +72,7 @@ function isMutableType(node, sourceFile) {
     return false;
   }
   const name = node.typeName.getText(sourceFile);
-  return MUTABLE_CLASSES.has(name) || TYPE_NAME_KINDS.has(name);
+  return MUTABLE_CLASSES.has(name) || kindOfTypeName(name) !== undefined;
 }
 
 function childrenOf(node, item, sourceFile) {

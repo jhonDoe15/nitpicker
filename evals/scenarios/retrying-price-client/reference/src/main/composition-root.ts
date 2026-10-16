@@ -1,5 +1,6 @@
 import { runGreeting } from './features/greeting/index.js';
 import { describePrice, fetchPrices } from './features/prices/index.js';
+import { writeLines } from './shared/write-lines.js';
 
 const QUOTE_URL = 'https://prices.example.com/quotes/';
 const DEFAULT_OPTIONS = { maxAttempts: 3, baseDelayMs: 500 };
@@ -25,7 +26,8 @@ export async function pricesMain(symbols: readonly string[]): Promise<void> {
     sleep,
     options: DEFAULT_OPTIONS,
   });
-  for (const result of results) {
-    process.stdout.write(`${describePrice(result)}\n`);
-  }
+  writeLines(
+    results.map((result) => describePrice(result)),
+    { write: (text) => process.stdout.write(text) },
+  );
 }
