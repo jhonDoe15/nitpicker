@@ -1,6 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJdeps, readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
+import {
+  outerClass,
+  parseJdeps,
+  readCouplingFindings,
+} from '../adapters/metrics/java-coupling.mjs';
 import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
 import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
 
@@ -18,10 +22,6 @@ function qualified(qualifier, className) {
     return className;
   }
   return `${qualifier}/${className.includes('.') ? className : `${ROOT_PACKAGE}.${className}`}`;
-}
-
-function outerClass(className) {
-  return className.split('$')[0];
 }
 
 function declaringProjects(projects) {

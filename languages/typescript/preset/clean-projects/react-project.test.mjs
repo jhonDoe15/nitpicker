@@ -89,6 +89,7 @@ describe('the react-project fixture', () => {
           'jsx-a11y/no-noninteractive-element-interactions',
         ],
         'index-key': ['react-x/no-array-index-key'],
+        'hard-coded-color': ['nitpicker/react-no-hardcoded-colors'],
         'inline-style': ['nitpicker/react-single-styling-approach'],
         'missing-dependency': ['react-hooks/exhaustive-deps'],
       });

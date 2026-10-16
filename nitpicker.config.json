@@ -28,6 +28,7 @@
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
       "languages/typescript/adapters/static-checks-runner.mjs",
+      "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
       "languages/typescript/preset/coding-standards/check.mjs"
@@ -77,7 +78,9 @@
         "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs",
         "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs",
         "languages/java/maven/maven-preset.e2e.test.mjs",
-        "languages/java/guards/guards.e2e.test.mjs"
+        "languages/java/maven/maven-failsafe.e2e.test.mjs",
+        "languages/java/guards/guards.e2e.test.mjs",
+        "languages/java/messages/rule-catalog.e2e.test.mjs"
       ],
       "reason": "Opt-in end-to-end suite that runs Gradle and Maven builds (minutes per step); it cannot be made faster and is skipped unless NITPICKER_JAVA_E2E=1."
     },
@@ -134,6 +137,16 @@
       "rule": "@typescript-eslint/restrict-plus-operands",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
+    },
+    {
+      "rule": "@typescript-eslint/no-deprecated",
+      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
+      "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
+    },
+    {
+      "rule": "no-restricted-syntax",
+      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
+      "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
     }
   ]
 }

@@ -15,7 +15,9 @@ const report = {
   analyzer: 'dependency-cruiser + project coupling metrics',
   policy: 'report-only; no coupling thresholds',
   sourceRoot,
-  ...analyzeCoupling(cruise(existingRoots(projectRoot, [sourceRoot])), sourceRoot, { layout }),
+  ...analyzeCoupling(cruise(existingRoots(projectRoot, layout.sourceRoots)), sourceRoot, {
+    layout,
+  }),
 };
 
 await mkdir(path.dirname(outputPath), { recursive: true });

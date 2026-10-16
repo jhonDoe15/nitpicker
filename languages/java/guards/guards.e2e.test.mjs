@@ -19,13 +19,14 @@ import { readReportModules } from '../adapters/gradle-reports/report-modules.mjs
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readLintFindings } from './javac-lint.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.join(import.meta.dirname, '..', 'adapters', 'fixtures');
-const OPTIONAL_GET_MESSAGE =
+const optionalGetMessage = (file) =>
   'Use orElseThrow(), orElse(...), map or ifPresent instead of Optional.get(). ' +
-  'If it is right here, add an exception for pmd/OptionalGet in nitpicker.config.json.';
+  exceptionHint('pmd/OptionalGet', file);
 const LINE_MARKER = /\/\/ violation: (.*)$/;
 const FILE_MARKER = /\/\/ file violation: (.*)$/;
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
@@ -56,9 +57,9 @@ const GUARD_RULES = new Set([
   'MockedValueType',
   'TestOrderDependence',
   'TestClassWithoutTestCases',
-  'com.puppycrawl.tools.checkstyle.checks.naming.ConstantNameCheck',
-  'com.puppycrawl.tools.checkstyle.checks.coding.MagicNumberCheck',
-  'com.puppycrawl.tools.checkstyle.checks.design.VisibilityModifierCheck',
+  'ConstantName',
+  'MagicNumber',
+  'VisibilityModifier',
 ]);
 
 function markedFiles(root) {
@@ -177,7 +178,7 @@ describe.skipIf(!enabled)('Java guards on a fixture project', () => {
   it('ends a guard message with its exception route', () => {
     const optionalGet = guardFindings(roots[0]).find((finding) => finding.rule === 'OptionalGet');
 
-    expect(optionalGet.message).toBe(OPTIONAL_GET_MESSAGE);
+    expect(optionalGet.message).toBe(optionalGetMessage(optionalGet.path));
   });
 
   it.each(['legacy', 'arguments'])(
