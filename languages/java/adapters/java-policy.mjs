@@ -22,8 +22,8 @@ const JAVA_EXCEPTION_RULES = SHARED_EXCEPTION_RULES.filter(
   (rule) => !JAVA_NATIVE_RULES.includes(rule),
 );
 
-export function parseJavaRunnerArguments(arguments_) {
-  return parseRunnerArguments(arguments_, {
+export function parseJavaRunnerArguments(argumentList) {
+  return parseRunnerArguments(argumentList, {
     runner: 'java-runner.mjs',
     choices: { '--preset': GRADLE_PRESETS, '--kotlin-formatter': KOTLIN_FORMATTERS },
     precedenceTools: [...PROJECT_TOOL_CONFIGS.keys()],
