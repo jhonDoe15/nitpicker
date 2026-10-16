@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, describe, expect, it } from 'vitest';
+import { eslintShapedResults } from './oxlint-diagnostics.mjs';
 import {
   escapeGlob,
   messageIdResolver,
@@ -206,5 +210,52 @@ describe('messageIdResolver', () => {
   it('leaves the id out when no template of the rule matches', () => {
     expect(messageIdOf('nitpicker/size', 'Something else.')).toBeUndefined();
     expect(messageIdOf('eslint/no-debugger', 'Unexpected debugger statement.')).toBeUndefined();
+  });
+});
+
+describe('eslintShapedResults', () => {
+  const stage = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-diagnostics-'));
+  writeFileSync(path.join(stage, 'a.ts'), 'export const roll = Math.random();\n');
+
+  afterAll(() => {
+    rmSync(stage, { recursive: true, force: true });
+  });
+
+  function shaped(diagnostic) {
+    const naming = {
+      ruleNames: new Map([
+        ['eslint/no-restricted-properties', 'no-restricted-properties'],
+        ['eslint/no-restricted-globals', 'no-restricted-globals'],
+      ]),
+      messageIdOf: () => undefined,
+      neutralized: new Map(),
+    };
+    const labels = [{ span: { offset: 20, length: 11 } }];
+    const [result] = eslintShapedResults(
+      stage,
+      [{ filename: 'a.ts', labels, ...diagnostic }],
+      naming,
+    );
+    return result.messages[0].message;
+  }
+
+  it('keeps the configured message that oxlint moves into the help of a restricted property', () => {
+    expect(
+      shaped({
+        code: 'eslint(no-restricted-properties)',
+        message: "'Math.random' is restricted from being used.",
+        help: 'Use crypto.randomUUID().',
+      }),
+    ).toBe("'Math.random' is restricted from being used. Use crypto.randomUUID().");
+  });
+
+  it('leaves the generic help of other rules out', () => {
+    expect(
+      shaped({
+        code: 'eslint(no-restricted-globals)',
+        message: "Unexpected use of 'name'. Write window.name.",
+        help: 'Use a local variable or function parameter instead of the restricted global.',
+      }),
+    ).toBe("Unexpected use of 'name'. Write window.name.");
   });
 });

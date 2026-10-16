@@ -8,6 +8,9 @@ import { normalizeCoverage } from './tests.mjs';
 
 import { withBranchSourceHashes } from './source-hashes.mjs';
 
+import { firstLine, missingSetupHints } from './failure-lines.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+
 export function coverageFailureFindings(
   options,
   { report, result, runnerName, precedingCommands },
@@ -22,7 +25,7 @@ export function coverageFailureFindings(
     toolErrorFinding(options, {
       rule: TESTS_FAILED_RULE,
       path: findingPath(firstFailure.file),
-      message: formatTestFailures(report, options.projectRoot, precedingCommands),
+      message: formatTestFailures(report, options.projectRoot, { runnerName, precedingCommands }),
     }),
   ];
 }
@@ -63,12 +66,6 @@ export function toolErrorFinding(options, { rule, path: findingPath = '.', messa
 
 const MAX_LISTED_FAILURES = 5;
 
-const MAX_ASSERTION_LINE_LENGTH = 200;
-
-const ESCAPE_CHARACTER = String.fromCodePoint(0x1b);
-
-const ANSI_PATTERN = new RegExp(`${ESCAPE_CHARACTER}\\[[0-9;]*m`, 'gu');
-
 function testFailures(report, projectRoot) {
   const failures = [];
   const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
@@ -105,23 +102,6 @@ function findingPath(file) {
   return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
 }
 
-function firstLine(message) {
-  const line =
-    typeof message === 'string'
-      ? message
-          .replaceAll(ANSI_PATTERN, '')
-          .split('\n')
-          .map((candidate) => candidate.trim())
-          .find((candidate) => candidate.length > 0)
-      : undefined;
-  if (line === undefined) {
-    return '';
-  }
-  return line.length > MAX_ASSERTION_LINE_LENGTH
-    ? `${line.slice(0, MAX_ASSERTION_LINE_LENGTH)}…`
-    : line;
-}
-
 function precedingNote(precedingCommands) {
   if (!Array.isArray(precedingCommands) || precedingCommands.length === 0) {
     return [];
@@ -134,11 +114,13 @@ function precedingNote(precedingCommands) {
   ];
 }
 
-export function formatTestFailures(report, projectRoot, precedingCommands) {
-  return [failureText(report, projectRoot), ...precedingNote(precedingCommands)].join('\n');
+export function formatTestFailures(report, projectRoot, { runnerName, precedingCommands } = {}) {
+  return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
+    '\n',
+  );
 }
 
-function failureText(report, projectRoot) {
+function failureText(report, projectRoot, runnerName) {
   const failures = testFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
@@ -158,6 +140,7 @@ function failureText(report, projectRoot) {
     `${headline}:`,
     ...listed,
     ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+    ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
   ].join('\n');
 }
 
