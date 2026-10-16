@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { readSuppressionFindings, suppressionTokens } from './kotlin-suppressions.mjs';
 
 const roots = [];
@@ -101,7 +102,7 @@ describe('readSuppressionFindings', () => {
   it('reports each banned token with its rule, a line-free identity and a message that names the fix', () => {
     const root = projectWith({
       [file]:
-        '@Suppress("UnsafeCallOnNullableType", "UNCHECKED_CAST")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
+        '@Suppress("UnsafeCallOnNullableType", "unused")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
     expect(readSuppressionFindings(root, ['src/main/kotlin'])).toEqual([
@@ -161,9 +162,21 @@ describe('readSuppressionFindings', () => {
     ).toEqual(['src/main/java/Mixed.kt', 'src/main/kotlin/A.kt', 'src/main/kotlin/z/Deep.kt']);
   });
 
+  it('reports a suppressed compiler warning with the exception route of its kotlinc rule', () => {
+    const root = projectWith({
+      [file]: '@Suppress("UNCHECKED_CAST")\nfun a(value: Any) = value as List<String>\n',
+    });
+
+    expect(
+      readSuppressionFindings(root, ['src/main/kotlin']).map(({ message }) => message),
+    ).toEqual([
+      `Suppressing "UNCHECKED_CAST" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint('kotlinc/unchecked', file)}`,
+    ]);
+  });
+
   it('reports nothing for allowed suppressions, comments and missing source roots', () => {
     const root = projectWith({
-      [file]: '@Suppress("UNCHECKED_CAST", "unused")\nfun a() = 42\n// @Suppress("all")\n',
+      [file]: '@Suppress("unused", "UNUSED_PARAMETER")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
     expect(readSuppressionFindings(root, ['src/main/kotlin', 'src/main/missing'])).toEqual([]);

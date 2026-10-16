@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { createIdentityCounter } from '../../../ingest/common.mjs';
 import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
-import { isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
+import { compilerWarningRule, isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
 
 const SUPPRESS_ANNOTATION =
   /@\[?(?:\w+:)?(?:(?:kotlin|java\.lang)\.)?Suppress(?:Warnings)?\s*\(((?:"[^"]*"|[^")])*)\)/g;
@@ -23,13 +24,21 @@ function kotlinFiles(projectRoot, sourceRoot) {
     .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
 }
 
+function suppressionMessage(file, token) {
+  const compilerRule = compilerWarningRule(token);
+  if (compilerRule !== undefined) {
+    return `Suppressing "${token}" inline is not allowed. Fix the code the compiler warns about. ${exceptionHint(compilerRule, file)}`;
+  }
+  return `Suppressing "${token}" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.`;
+}
+
 function suppressionFinding(file, token, identity) {
   return {
     tool: 'detekt',
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: `Suppressing "${token}" inline is not allowed. Fix the code the rule flags. To lift a one-way rule for some paths, add an "exceptions" entry for it in nitpicker.config.json; to skip generated code, add it to "exclude" there.`,
+    message: suppressionMessage(file, token),
     classification: 'enforceable',
   };
 }
