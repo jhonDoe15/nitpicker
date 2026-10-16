@@ -1,19 +1,34 @@
-export function withHint(rule, hint) {
+export function withReportFilter(rule, filterFor) {
   return {
     ...rule,
+    create: (context) => {
+      const filtered = filterFor(context);
+      return rule.create(
+        Object.create(context, {
+          report: {
+            value: (descriptor) => {
+              const kept = filtered(descriptor);
+              if (kept !== undefined) {
+                context.report(kept);
+              }
+            },
+          },
+        }),
+      );
+    },
+  };
+}
+
+export function withHint(rule, hint) {
+  const hinted = withReportFilter(rule, () => (descriptor) => hintedDescriptor(descriptor, hint));
+  return {
+    ...hinted,
     meta: { ...rule.meta, messages: hintedMessages(rule.meta.messages ?? {}, hint) },
-    create: (context) => rule.create(hintedContext(context, hint)),
   };
 }
 
 function hintedMessages(messages, hint) {
   return Object.fromEntries(Object.entries(messages).map(([id, text]) => [id, `${text}${hint}`]));
-}
-
-function hintedContext(context, hint) {
-  return Object.create(context, {
-    report: { value: (descriptor) => context.report(hintedDescriptor(descriptor, hint)) },
-  });
 }
 
 function hintedDescriptor(descriptor, hint) {
@@ -27,14 +42,9 @@ function omit(object, keys) {
 }
 
 export function withoutFixes(rule) {
-  return {
-    ...rule,
-    meta: omit(rule.meta, ['fixable', 'hasSuggestions']),
-    create: (context) =>
-      rule.create(
-        Object.create(context, {
-          report: { value: (descriptor) => context.report(omit(descriptor, ['fix', 'suggest'])) },
-        }),
-      ),
-  };
+  const unfixed = withReportFilter(
+    rule,
+    () => (descriptor) => omit(descriptor, ['fix', 'suggest']),
+  );
+  return { ...unfixed, meta: omit(rule.meta, ['fixable', 'hasSuggestions']) };
 }

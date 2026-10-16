@@ -15,7 +15,6 @@
 
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathMatcher } from '../exceptions/matching.mjs';
 import { escapeGlob, exceptionEntryText } from '../exceptions/sentence.mjs';
 import {
   FILE_LIMIT_DEFAULTS,
@@ -25,6 +24,7 @@ import {
   RULE_IDS,
   renderMessage,
 } from '../policy.mjs';
+import { exceptionMatcher } from './exceptions.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
 
 export const FILE_LIMIT_CHECKS = ['fileLines', 'lineLength', 'folderFiles'];
@@ -77,14 +77,6 @@ export function evaluateFileLimits(files, options) {
       : []),
     ...(checks.includes('folderFiles') ? folderFindings(checked, context) : []),
   ];
-}
-
-function exceptionMatcher(exceptions) {
-  const matchers = exceptions.map(({ rule, paths }) => ({ rule, matches: pathMatcher(paths) }));
-  return (rule, ...candidates) =>
-    matchers.some(
-      (matcher) => matcher.rule === rule && candidates.some((candidate) => matcher.matches(candidate)),
-    );
 }
 
 function lineCount(text) {

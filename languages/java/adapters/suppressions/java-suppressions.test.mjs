@@ -1,8 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fileFindings, readInlineSuppressionFindings } from './java-suppressions.mjs';
+import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
+import {
+  INLINE_SUPPRESSIBLE_RULES,
+  fileFindings,
+  readInlineSuppressionFindings,
+} from './java-suppressions.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -101,9 +106,11 @@ describe('fileFindings', () => {
     ].join('\n');
 
     expect(
-      fileFindings(source, 'A.java').map(
-        (finding) => `${String(finding.location.line)}${afterMessage(finding.message, MESSAGE)}`,
-      ),
+      fileFindings(source, 'A.java')
+        .filter((finding) => finding.tool === 'pmd')
+        .map(
+          (finding) => `${String(finding.location.line)}${afterMessage(finding.message, MESSAGE)}`,
+        ),
     ).toEqual([
       '2 Found: "PMD.X".',
       '3 Found: "PMD.X".',
@@ -229,6 +236,61 @@ describe('fileFindings for SpotBugs', () => {
   });
 });
 
+describe('fileFindings for Error Prone', () => {
+  it('reports @SuppressWarnings naming NullAway or a check nitpicker runs, by name or alternative name', () => {
+    const source = [
+      'class A {',
+      '  @SuppressWarnings("NullAway") String a() { return null; }',
+      '  @SuppressWarnings({"NullAway.Init", "unchecked"}) private String b;',
+      '  @SuppressWarnings("FutureReturnValueIgnored") void c() {}',
+      '  @SuppressWarnings("NullAwayLike") void d() {}',
+      '  @SuppressWarnings({"dep-ann", "Varifier"}) void e() {}',
+      '}',
+    ].join('\n');
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [
+        finding.tool,
+        finding.rule,
+        finding.location.line,
+        finding.message,
+      ]),
+    ).toEqual([
+      ['errorprone', 'InlineSuppression', 2, `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
+      ['errorprone', 'InlineSuppression', 3, `${ERROR_PRONE_MESSAGE} Found: "NullAway.Init".`],
+      [
+        'errorprone',
+        'InlineSuppression',
+        4,
+        `${ERROR_PRONE_MESSAGE} Found: "FutureReturnValueIgnored".`,
+      ],
+      ['errorprone', 'InlineSuppression', 6, `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+    ]);
+  });
+
+  it('reports a NullAway suppression next to a PMD one on the same annotation once per tool', () => {
+    const source = 'class A {\n  @SuppressWarnings({"PMD", "NullAway"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "PMD".`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "NullAway".`],
+    ]);
+  });
+
+  it('leaves "unused", which PMD also honors, to the PMD finding alone', () => {
+    const source = 'class A {\n  @SuppressWarnings({"unused", "dep-ann"}) void a() {}\n}\n';
+
+    expect(
+      fileFindings(source, 'A.java').map((finding) => [finding.tool, finding.message]),
+    ).toEqual([
+      ['pmd', `${MESSAGE} Found: "unused".`],
+      ['errorprone', `${ERROR_PRONE_MESSAGE} Found: "dep-ann".`],
+    ]);
+  });
+});
+
 describe('fileFindings identities', () => {
   it('keeps identities when lines shift and tells repeated suppressions apart', () => {
     const source =
@@ -268,5 +330,19 @@ describe('readInlineSuppressionFindings', () => {
         (finding) => `${finding.path}:${String(finding.location.line)}`,
       ),
     ).toEqual(['src/main/java/shop/A.java:2']);
+  });
+});
+
+describe('the Java skill', () => {
+  it('names every accepted marker as the exception to its never-suppress rule', () => {
+    const skill = readFileSync(
+      path.resolve(import.meta.dirname, '../../../../skills/nitpicker-java/SKILL.md'),
+      'utf8',
+    );
+    const rule = /^\d+\. Never suppress:[\s\S]*?(?=\n\n|\n\d+\. )/mu.exec(skill)?.[0] ?? '';
+
+    expect(
+      INLINE_SUPPRESSIBLE_RULES.map((marker) => rule.includes(`@SuppressWarnings("${marker}")`)),
+    ).toStrictEqual(INLINE_SUPPRESSIBLE_RULES.map(() => true));
   });
 });

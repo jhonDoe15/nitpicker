@@ -51,6 +51,15 @@ a project uses is not: nitpicker supports the common options and moves toward th
 over time, so adopting it on an existing project is never blocked by tooling. For the same reason,
 rules target code shape, not framework versions.
 
+## Follow the project where both ways are right
+
+Some choices have two equally valid answers that well-known style guides disagree on: 2 or 4
+space indentation, line width, quotes, import order, which build tool or formatter a project uses.
+nitpicker does not pick one of those for the project. It measures which one most files already use
+on the base branch (so a change cannot flip it) and checks with that; a project can pin the value
+in `nitpicker.config.json`. Which construct to write (a loop form, a function form, `null` or
+`undefined`) is not such a choice: that stays one allowed way.
+
 ## Clear over clever
 
 Prefer the slightly more verbose form when it is clearer and less complex: an explicit `@Query`
