@@ -87,8 +87,13 @@ function productionGuardRules({ react }) {
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-disabled-tls-verification': 'error',
     'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/no-sql-string-building': 'error',
+    'nitpicker/no-unsafe-deserialization': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/no-weak-hash': 'error',
+    'nitpicker/require-http-timeout': ['error', { fetch: !react }],
   };
 }
 

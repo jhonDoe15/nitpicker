@@ -274,6 +274,12 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   (`@typescript-eslint/explicit-module-boundary-types`): `export function total(rows: readonly Row[]): number`;
   a React component returns `ReactElement`. A function typed by its variable
   (`export const handler: Handler = ...`) counts as typed. Tests and JavaScript files are exempt.
+- No deprecated API (`@typescript-eslint/no-deprecated`, type-aware, from the `strictTypeChecked`
+  set): a call, import or type that its declaration marks `@deprecated` (`new Buffer`, `url.parse`,
+  `fs.exists`, a deprecated React type) is reported with the replacement the deprecation names.
+  The check is the TypeScript counterpart of the Java preset's `javac/deprecation` and
+  `javac/removal` lint. A deprecation without a replacement, or an API the project must keep
+  calling, takes an exception for the rule in `nitpicker.config.json`.
 - No magic numbers (`nitpicker/no-magic-numbers`, which wraps
   `@typescript-eslint/no-magic-numbers`): name the number with a module-level constant; any number
   in its initializer is allowed (`const SECONDS_PER_DAY = 24 * 60 * 60;`,
@@ -304,6 +310,44 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Security sinks, the TypeScript counterpart of the Java preset's find-sec-bugs and PMD rules. All
+  five apply to production code; each message names the allowed form and the exception route. They
+  follow `const` values, aliases (`import { createHash as digestOf }`, `const run = pool.query.bind(pool)`,
+  `const { createHash } = crypto`), `require`, default and namespace imports, and options objects held
+  in a `const` or spread from one.
+  - `nitpicker/no-sql-string-building`: SQL text made by `+`, a template literal, `concat`, `join`,
+    `replace` or `util.format` with a runtime value in it. A statement that starts with an upper-case
+    `SELECT ... FROM`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM` or DDL keyword, or a fragment
+    such as `WHERE id = ` or `ORDER BY ` before a value, is reported where it is built, so a helper
+    in another module that returns the string is caught at its definition. When the string reaches a
+    call named like `query`, `execute`, `raw`, `run` or `prepare` (also through a variable, a
+    `{ text }` object or a `+=`), lower-case SQL counts too. Allowed: bind parameters (`$1`, `?`,
+    `:name`), a tagged template (`` sql`...` ``, `` prisma.$queryRaw`...` ``), a table or column name
+    taken from a fixed lookup, `ids.map(() => '?').join(',')` for a list, and values that cannot
+    carry SQL: numbers, `Number(x)`, `Math.*`, `.length`, `mysql.escape(x)`, and with type
+    information a `number`, `boolean` or union of plain string literals.
+  - `nitpicker/no-weak-hash`: MD5, SHA-1, MD2/MD4 and RIPEMD-160 in `createHash`, `createHmac`,
+    `createSign`, `createVerify`, `crypto.hash`, `pbkdf2`, `hkdf`, WebCrypto `subtle.digest`, `sign`
+    and `importKey`, a call whose name says hash, digest or checksum, a `{ algorithm }` or
+    `{ hashAlgorithm }` property, `crypto-js` `MD5`/`SHA1`, and the md5 and sha1 packages. Allowed:
+    `createHash('sha256')` or stronger, `createHmac('sha256', key)`, and `scrypt`, argon2 or bcrypt
+    for passwords.
+  - `nitpicker/no-disabled-tls-verification`: `rejectUnauthorized: false`, `strictSSL: false`,
+    `NODE_TLS_REJECT_UNAUTHORIZED` set to `0` (assignment, `env` object or shell text),
+    `sslmode=no-verify`, a `checkServerIdentity` that returns nothing, `ignoreHTTPSErrors`,
+    `acceptInsecureCerts` and `--ignore-certificate-errors`. Allowed: trust the CA with
+    `ca: readFileSync(caPath)` or `NODE_EXTRA_CA_CERTS`.
+  - `nitpicker/require-http-timeout`: a `fetch` without a `signal`, `axios` (`get`, `post`, `request`,
+    `create`) and `got` without `timeout`, and `http`/`https` `request`/`get` without `timeout`,
+    `signal` or `setTimeout`. A call whose options come from a parameter or a spread is not
+    reported, and a client made by `axios.create({ timeout })` or `got.extend({ timeout })` covers
+    its calls. `fetch` is not checked in React projects, where it is browser code. Allowed:
+    `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster`, `cryo` and
+    `serialize-to-js` (they rebuild functions), `v8.deserialize`, `vm.runInNewContext`,
+    `runInThisContext`, `new vm.Script` and `compileFunction` with text that is not a string
+    literal, js-yaml `DEFAULT_FULL_SCHEMA`, BSON `evalFunctions: true` and libxmljs `noent: true`.
+    Allowed: `JSON.parse` checked against a schema, and `yaml.load(text)` with the default schema.
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
