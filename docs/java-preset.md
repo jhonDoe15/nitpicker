@@ -3,7 +3,8 @@
 Status: slices 1 (ticket X11), 2 (ticket J2), 3 (ticket J3), 4 (ticket J4), 5 (ticket J5), 6 (ticket J6), 7 (ticket J7) and 8 (ticket J8) implemented; later slices are planned below. The scope is a proposal
 pending owner review.
 
-The Java preset runs the same differential gate as the TypeScript preset on a Gradle project: run
+The Java preset runs the same differential gate as the TypeScript preset on a Gradle or Maven
+project (see [Maven builds](#maven-builds)): run
 the tools on the merge base and on head, turn each report into findings
 ([`spec/findings.schema.json`](../spec/findings.schema.json)), and fail only on new enforceable
 findings. The comparison is the language-neutral core (`compareFindings`, rename map from git),
@@ -13,9 +14,9 @@ side contributes only two things: producing reports, and converting them into fi
 ## How it works
 
 ```
-gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head)
+gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot: base, head; Maven builds: see below)
   -> build/nitpicker/{pmd.sarif, spotbugs.sarif, format.txt, jacoco.xml, checkstyle.xml, checkstyle-test.xml, archunit/*.xml, structure.json, duplicates.json, pit/mutations.xml, jdeps.txt, jdeps-classes.txt, manifest.json}
-  -> languages/java/adapters/java-reports.mjs          (readJavaFindings, via the ingesters)
+  -> languages/java/adapters/reporting/java-reports.mjs       (readJavaFindings, via the ingesters)
   -> languages/java/adapters/spring/java-spring.mjs    (spring findings read straight from application*.properties/yml, no Gradle report; only when manifest.json says spring: true)
   -> compareFindings(base, head, renames)               (languages/java/adapters/java-diff.mjs)
 ```
@@ -42,6 +43,75 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+
+## Maven builds
+
+A project is built with Maven when its root has a `pom.xml` and no Gradle build file
+(`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks Maven,
+anything else Gradle. Nothing is configured and the choice is never a finding: both builds are valid,
+so nitpicker follows the one the project uses (`detectJavaBuild` in
+`languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
+
+The Maven side produces the same reports as the init script, one set per module in
+`<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
+end-to-end suite builds one source tree with Gradle and with Maven and compares the findings
+field by field. Per snapshot:
+
+1. `mvn help:effective-pom` (help plugin pinned): the modules, their source, test, resource and
+   output directories (plus `build-helper-maven-plugin` `add-source`/`add-test-source` roots), the
+   surefire reports directory, a JaCoCo `destFile` the project configures, and the
+   `nitpicker.archunit.includes` property (read from the POM's `<properties>` only, not from `-D`
+   or `settings.xml`). Module directories come from following the effective `<modules>` (active
+   profiles included) from the root `pom.xml`. Each module's `pom.xml` is matched to its effective
+   project by `groupId:artifactId`, or, when the raw coordinates use a property, by the effective
+   build directory inside the module directory. A declared module that matches nothing, a module
+   outside the project root, or two modules in one directory is a tool error.
+2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
+   dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
+   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
+   module's resolved classpath (reactor modules as their `target/classes`). Our coverage file
+   (`target/nitpicker-jacoco.exec`) and a project `destFile` inside `target` are deleted before the
+   build, so coverage never accumulates across runs.
+3. The tools resolved once from Maven Central through Maven itself (a generated tools project in
+   `$XDG_CACHE_HOME/nitpicker` or `~/.cache/nitpicker`, private to the user, reused while the jars
+   exist), so the project's `settings.xml` mirrors apply.
+4. Per module, outside Maven: PMD, SpotBugs, google-java-format, Checkstyle (the bundled Google checks
+   without inline suppression filters, as in the init script), `StructureMetrics.java`, jdeps, the
+   JaCoCo CLI report and PIT, with the same arguments and classpaths as the init script tasks (PMD's
+   auxiliary classpath is the main and test compile classpaths plus both class directories). The
+   versions are read from the init script's `pinned` map, so both builds always run the same tools.
+
+- **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
+  `nitpicker.archunit.includes` property in the POM) become findings; any other failing test is a
+  `java/maven-failure` tool error that names up to ten failing tests. Surefire reports older than
+  the build are ignored. Gradle runs the ArchUnit classes in their own task, but Maven only has
+  surefire's results: when a module has ArchUnit classes and surefire ran none of them (its
+  `<includes>` miss them, as they would `*Rules`, or the module skips tests), that is a tool error
+  rather than a silent pass. ArchUnit reads bytecode without running it, so running these classes in
+  the covered test run does not change coverage.
+- **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` replaces it (the agent
+  replaces an earlier agent in `argLine`) and writes to its configured `destFile`, which is read
+  instead. A module whose tests ran but left no fresh coverage file is a tool error that points at a
+  surefire `<argLine>` without `@{argLine}`. A module whose test classes ran no test (only helpers,
+  or `*IT` classes surefire skips) gets zero coverage, as on Gradle, and a module without main
+  classes gets an empty report.
+- **Multi-module.** Each module (packaging other than `pom`) is analyzed on its own and its findings
+  are prefixed with the module path (`core/src/main/java/...`). Coupling is computed once over all
+  modules, so a dependency from one module to another counts, and file limits are evaluated once
+  over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
+  (`languages/java/builds/java-modules.mjs`, build-neutral). Duplicate detection runs per module, so
+  a clone between two modules is not found, as a clone between two source roots is not.
+- **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
+  run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
+  that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
+  set, else the PATH.
+- **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
+  project's Java sources. A surefire configuration that sets
+  `<testFailureIgnore>false</testFailureIgnore>` explicitly overrides the command line, so a
+  violated ArchUnit rule stops the build as a tool error. Maven 3 cannot resolve a `test-jar`
+  dependency on another module in the `test` phase; such reactors fail as they would with
+  `mvn test`. Gradle multi-project builds still read only the root project's reports (see
+  [Slice 1](#slice-1-what-is-deliberately-not-included)).
 
 ## Slices
 
@@ -102,9 +172,11 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 ## Slice 7: mutation with PIT
 
 - **Profile.** As decided in [`mutation-testing.md`](mutation-testing.md) (X10): one default
-  profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (the
-  packages found in the compiled main classes), against the project's own tests. The only profile
-  can produce enforceable findings.
+  profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
+  path of the compiled main classes, the first package that holds classes: a project rooted in
+  `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
+  so classes directly in `org` are named one by one), against the project's own tests. The only
+  profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the
   `pitest-junit5-plugin` (1.2.1), default mutators, XML output, two threads, to
   `build/nitpicker/pit/mutations.xml`. Tests are named class by class (`--targetTests`), and
@@ -153,8 +225,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   (0 pass, 1 new enforceable findings, 2 tool error), the console summary, `new-findings.json`,
   `summary.json`, `report.sarif` and `report.junit.xml` are the ones described in the CLI README.
 - **Gradle failure.** `languages/java/adapters/java-runner.mjs` catches any failure of the preset on a
-  snapshot and returns one finding, `java/gradle-failure` with classification `tool-error`, whose
-  message is Gradle's diagnostic output. The comparison turns it into a tool error for that
+  snapshot and returns one finding, `java/gradle-failure` (`java/maven-failure` on a Maven build) with
+  classification `tool-error`, whose message is the build's diagnostic output. The comparison turns it into a tool error for that
   snapshot (`base` or `head`), skips the comparison for the analyzer and exits with 2; nothing
   throws and no partial result is compared.
 - **Gradle binary.** The command in `NITPICKER_GRADLE` when it is set; otherwise the analyzed
@@ -189,7 +261,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
-- **Tests.** `core/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
+- **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
   so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
   on base, missing binary, `--all`. The real Gradle run stays behind `NITPICKER_JAVA_E2E=1`
   (`npm run test:java`), unchanged.
@@ -201,12 +273,12 @@ finding that only moves stays baselined. The comparison key is already
 `tool, rule, path, symbol, identity, classification, metric name`; "identity" below is what each
 tool adds on top of rule and path.
 
-| Tool                                      | Report                     | Ingester                                                            | Classification                                          | Identity                                                                                                            |
-| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
-| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                             | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
-| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                 | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
+| Tool                                      | Report                     | Ingester                                                                       | Classification                                          | Identity                                                                                                            |
+| ----------------------------------------- | -------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| PMD (`pmd`)                               | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
+| SpotBugs (`spotbugs`)                     | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                                        | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
+| google-java-format (`google-java-format`) | file list from `--dry-run` | `ingestFormatCheck` (new, `languages/java/ingest/formatting/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| JaCoCo (`jacoco`)                         | XML                        | `ingestJacoco` (X6)                                                            | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mjs`:
 
@@ -295,7 +367,7 @@ identity when the value changes: editing such a line counts as a resolved plus a
 
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `build/nitpicker/manifest.json`,
-  `languages/java/adapters/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
+  `languages/java/adapters/metrics/java-duplicates.mjs` runs the package's own pinned jscpd (the one the TypeScript
   `duplicates` check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once
   per existing main source root with `--format java --mode mild` and a nitpicker-owned `--config`
   (a project's `.jscpd.json` is not read), ignoring `build`, `generated`, `target` and `out`. Reports go to `build/nitpicker/jscpd/<n>/` and are merged into
@@ -317,7 +389,7 @@ resolved plus a new finding, as in the TypeScript check.
 
 - **Tool and report.** No new tool: the JaCoCo XML of slice 1 already has, per source line, the
   covered and missed branch outcomes (`<line nr mb cb>`). The init script is unchanged.
-- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/jacoco-branches.mjs`) emits one enforceable
+- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage-reports/jacoco-branches.mjs`) emits one enforceable
   `jacoco` / `changed-branch-coverage` finding per source line whose covered branch outcomes are
   below 95% (the TypeScript check's minimum); lines without branches are never reported. It runs on
   both snapshots, so a branch that is uncovered on the base is baselined like any other finding.
@@ -339,7 +411,7 @@ resolved plus a new finding, as in the TypeScript check.
   used. A line that is only reformatted counts as changed. Lines whose source text is empty after
   trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
   that is added or removed changes which branches are covered on head.
-- **Tests.** `languages/java/ingest/jacoco-branches.test.mjs` (sample report, identity stability,
+- **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs` (sample report, identity stability,
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mjs`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).
@@ -371,7 +443,7 @@ resolved plus a new finding, as in the TypeScript check.
   (statement or expression) and `catch`; an `else if` nests like in TypeScript. `parameters`:
   declared parameters. Anonymous, local and member class bodies are separate units and do not count
   towards the method that contains them; lambda bodies count towards the enclosing method.
-- **Findings.** `languages/java/adapters/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
+- **Findings.** `languages/java/adapters/metrics/java-structure.mjs` hands the metrics to `evaluateStructure` and keeps
   the enforceable limit findings only (tool `structure`); the per-method descriptive metrics of the
   TypeScript check are not emitted, since they would add four findings per method to every report.
   Name: `Outer.Inner.method` (constructors use the class name; anonymous classes `<anonymous>`),
@@ -391,7 +463,7 @@ resolved plus a new finding, as in the TypeScript check.
   `build/nitpicker/jdeps.txt` plus `jdeps-classes.txt` (the main classes, one binary name per line).
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The
   block is delimited by `// --- coupling (SH6)` comments in the init script.
-- **Conversion.** `languages/java/adapters/java-coupling.mjs` parses the class graph, folds nested classes
+- **Conversion.** `languages/java/adapters/metrics/java-coupling.mjs` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
   hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
   the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
@@ -415,7 +487,7 @@ resolved plus a new finding, as in the TypeScript check.
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.
-- **Tests.** `languages/java/adapters/java-coupling.test.mjs` (parsing, metrics, stability edges, the
+- **Tests.** `languages/java/adapters/metrics/java-coupling.test.mjs` (parsing, metrics, stability edges, the
   neutral report through the shared rule), `java-reports.test.mjs` (glue), and two gated e2e cases
   (a package depending on a less stable package fails; the same violation on the base stays
   baselined).
@@ -610,17 +682,20 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 - Multi-module reporting beyond "each project writes its own `build/nitpicker`": the e2e test and
   the ingestion cover a single project. `nitpickerJava` is registered in subprojects, but the Nitpicker
   side reads one project root.
-- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven.
+- Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven (since added, see
+  [Maven builds](#maven-builds)).
 
 ## Tests
 
-- `languages/java/adapters/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
+- `languages/java/adapters/reporting/java-reports.test.mjs`: fast, always on. Report conversion, project-relative paths,
   classification, line-shift stability.
-- `languages/java/adapters/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs` and `escape-hatches.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs` and `languages/java/maven/maven-preset.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle and network access to Maven Central; about 85 seconds
   warm. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.
+  `pit-targets.e2e.test.mjs` runs `nitpickerPit` on a project whose packages sit under `org.acme`
+  and a class directly in `org`, and checks that PIT starts and mutates every class.
 - The conformance suite (`npm run test:conformance`) already covers the comparison itself. The
   Java-specific part of X11's done criterion ("passes the conformance suite") is that the findings
   produced here satisfy the findings schema, which `collectJavaFindings` enforces on every run via

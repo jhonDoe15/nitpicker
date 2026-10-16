@@ -4,8 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { ingestPit } from '../pit.mjs';
 import { createGeneratedFilter } from './generated-filter.mjs';
 
-// PIT 1.17.4 with its default mutators on languages/java/ingest/fixtures/kotlin-measurement (Kotlin
-// 2.4.21), unfiltered, and the facts that KotlinMutationFacts.java reads from its sources.
 const fixtures = path.resolve(import.meta.dirname, '../fixtures');
 const report = readFileSync(path.join(fixtures, 'kotlin-measurement-pit.xml'), 'utf8');
 const facts = JSON.parse(
