@@ -91,7 +91,7 @@ function definitionOf(spec, sourceFile, lookup) {
     ...declarationParts(spec.node),
   ];
   const texts = leafTexts(nodes, sourceFile);
-  const tokens = normalizedTexts(texts);
+  const tokens = Object.freeze(normalizedTexts(texts));
   const first = sourceFile.getLineAndCharacterOfPosition(spec.statement.getStart(sourceFile)).line;
   const last = sourceFile.getLineAndCharacterOfPosition(spec.statement.getEnd()).line;
   return {
