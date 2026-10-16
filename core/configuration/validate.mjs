@@ -26,7 +26,7 @@ const OPTIONAL_VALIDATORS = [
   [
     'thresholds',
     (thresholds, _key, preset) => {
-      return validateThresholds(thresholds, preset);
+      validateThresholds(thresholds, preset);
     },
   ],
   ['exclude', validateStringArray],

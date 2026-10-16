@@ -34,9 +34,9 @@ function parseSkippedFolders(value) {
   return folders;
 }
 
-function optionPairs(arguments_, usage, allowed) {
+function optionPairs(argumentList, usage, allowed) {
   const pairs = [];
-  const remaining = arguments_.values();
+  const remaining = argumentList.values();
   for (const name of remaining) {
     const value = remaining.next().value;
     if (!allowed.includes(name) || value === undefined) {
@@ -51,8 +51,8 @@ function valuesOf(pairs, option) {
   return pairs.filter(([name]) => name === option).map(([, value]) => value);
 }
 
-function readOptionValues(arguments_, usage, allowed) {
-  const pairs = optionPairs(arguments_, usage, allowed);
+function readOptionValues(argumentList, usage, allowed) {
+  const pairs = optionPairs(argumentList, usage, allowed);
   const values = new Map(pairs.filter(([name]) => !REPEATED_OPTIONS.includes(name)));
   if (!values.has('--project-root')) {
     throw new Error(usage);
@@ -74,12 +74,12 @@ function checkChoices(values, choices) {
 }
 
 export function parseRunnerArguments(
-  arguments_,
+  argumentList,
   { runner = 'runner', choices = {}, precedenceTools = [] } = {},
 ) {
   const usage = usageOf(runner, choices, precedenceTools);
   const allowed = [...RUNNER_OPTIONS, ...precedenceTools.map(precedenceOption)];
-  const { values, exclude, exceptions } = readOptionValues(arguments_, usage, allowed);
+  const { values, exclude, exceptions } = readOptionValues(argumentList, usage, allowed);
   checkChoices(values, choices);
   const crapLimit = values.has('--crap-limit') ? Number(values.get('--crap-limit')) : undefined;
   if (crapLimit !== undefined && !(Number.isFinite(crapLimit) && crapLimit > 0)) {
